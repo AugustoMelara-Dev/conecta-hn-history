@@ -205,8 +205,10 @@ final class ProductionConfigGuardCommand extends Command
         if ($isReleaseEnvironment) {
             $checked[] = 'RESEND_API_KEY';
             $checked[] = 'RESEND_WEBHOOK_SECRET';
+            $checked[] = 'MAIL_FROM_ADDRESS';
             $resendKey = (string) config('services.resend.key', '');
             $resendWebhookSecret = (string) config('services.resend.webhook_secret', '');
+            $mailFromAddress = (string) config('mail.from.address', '');
 
             if ($this->isBlankOrPlaceholder($resendKey)) {
                 $violations[] = $this->violation(
@@ -223,6 +225,15 @@ final class ProductionConfigGuardCommand extends Command
                     $this->redact($resendWebhookSecret),
                     'rotated Resend webhook secret',
                     'Email delivery events must be signed before they update CRM touchpoints.'
+                );
+            }
+
+            if ($this->isBlankOrPlaceholder($mailFromAddress)) {
+                $violations[] = $this->violation(
+                    'MAIL_FROM_ADDRESS',
+                    $this->redact($mailFromAddress),
+                    'verified transactional sender',
+                    'OTP, billing, and lifecycle email require a configured sender on a verified Resend domain.'
                 );
             }
         }

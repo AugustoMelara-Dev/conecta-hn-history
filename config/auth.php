@@ -165,6 +165,11 @@ return [
 
         // Idempotency TTL for OTP generation (24 hours = 86400)
         'idempotency_ttl_seconds' => env('AUTH_OTP_IDEMPOTENCY_TTL', 86400),
+
+        // Optional tenant UUID used when OTP is requested from a public surface
+        // before a tenant context exists. If blank, the controller falls back
+        // to an existing tenant and returns that tenant_id to the client.
+        'platform_tenant_id' => env('AUTH_OTP_PLATFORM_TENANT_ID'),
     ],
 
 ];

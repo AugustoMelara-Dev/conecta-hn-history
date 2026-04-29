@@ -57,7 +57,9 @@ class AuthenticationTest extends TestCase
         ]);
 
         $this->assertAuthenticated();
-        $response->assertRedirect(route('directory.index', [], false));
+        $response->assertRedirect(
+            'https://www.vitobusinessos.com'.route('directory.index', [], false)
+        );
     }
 
     public function test_tenant_owners_are_redirected_to_the_filament_app_panel_after_login(): void
@@ -85,7 +87,7 @@ class AuthenticationTest extends TestCase
 
         $this->assertAuthenticated();
         $response->assertRedirect(
-            route('filament.app.pages.dashboard', ['tenant' => 'mi-negocio'], false)
+            'https://app.vitobusinessos.com'.route('filament.app.pages.dashboard', ['tenant' => 'mi-negocio'], false)
         );
     }
 

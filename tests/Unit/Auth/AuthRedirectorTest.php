@@ -92,6 +92,25 @@ final class AuthRedirectorTest extends TestCase
         );
     }
 
+    public function test_unverified_business_owner_is_redirected_to_email_verification_first(): void
+    {
+        config([
+            'app.platform_directory_url' => 'https://www.vitobusinessos.com',
+            'app.platform_app_url' => 'https://app.vitobusinessos.com',
+            'app.platform_admin_url' => 'https://admin.vitobusinessos.com',
+        ]);
+
+        $owner = User::factory()->tenantOwner()->unverified()->create();
+        $tenant = Tenant::factory()->forUser($owner)->create([
+            'slug' => 'clinica-verificacion',
+        ]);
+        $owner->forceFill(['tenant_id' => $tenant->id])->save();
+
+        $destination = AuthRedirector::destinationFor($owner);
+
+        $this->assertSame(route('verification.notice', [], false), $destination);
+    }
+
     public function test_customer_with_tenant_context_but_no_business_membership_is_redirected_to_directory(): void
     {
         config([

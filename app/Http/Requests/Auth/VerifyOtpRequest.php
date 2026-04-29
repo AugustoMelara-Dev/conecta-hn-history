@@ -18,6 +18,17 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 final class VerifyOtpRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $identifier = $this->input('identifier', $this->input('uuid'));
+        $otpCode = $this->input('otp_code', $this->input('code'));
+
+        $this->merge([
+            'identifier' => is_string($identifier) ? $identifier : $this->input('identifier'),
+            'otp_code' => is_string($otpCode) ? $otpCode : $this->input('otp_code'),
+        ]);
+    }
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -34,7 +45,7 @@ final class VerifyOtpRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'uuid' => ['required', 'uuid'],
+            'identifier' => ['required', 'string', 'max:255'],
             'otp_code' => ['required', 'numeric', 'digits:6'],
         ];
     }
@@ -47,8 +58,8 @@ final class VerifyOtpRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'uuid.required' => 'El identificador UUID es obligatorio.',
-            'uuid.uuid' => 'El identificador debe ser un UUID válido.',
+            'identifier.required' => 'El email o telefono es obligatorio.',
+            'identifier.max' => 'El identificador no puede exceder 255 caracteres.',
             'otp_code.required' => 'El código OTP es obligatorio.',
             'otp_code.numeric' => 'El código OTP debe ser numérico.',
             'otp_code.digits' => 'El código OTP debe tener exactamente 6 dígitos.',

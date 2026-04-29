@@ -72,7 +72,7 @@ final class RegistrationControllerTest extends TestCase
             'terms_accepted' => true,
         ]);
 
-        $response->assertRedirect();
+        $response->assertRedirect(route('verification.notice', [], false));
         $this->assertAuthenticated();
 
         $tenant = Tenant::query()->where('slug', 'legal-norte')->first();

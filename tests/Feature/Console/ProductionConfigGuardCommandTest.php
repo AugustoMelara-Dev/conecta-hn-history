@@ -31,6 +31,7 @@ final class ProductionConfigGuardCommandTest extends TestCase
             'services.stripe.use_price_ids' => true,
             'services.stripe.prices.pro' => '',
             'mail.default' => 'log',
+            'mail.from.address' => '',
             'services.resend.key' => '',
             'services.resend.webhook_secret' => '',
             'observability.channels.whatsapp' => 'twilio',
@@ -72,6 +73,7 @@ final class ProductionConfigGuardCommandTest extends TestCase
         $this->assertContains('STRIPE_WEBHOOK_SECRET', $violationKeys);
         $this->assertContains('STRIPE_PRICE_PRO', $violationKeys);
         $this->assertContains('MAIL_MAILER', $violationKeys);
+        $this->assertContains('MAIL_FROM_ADDRESS', $violationKeys);
         $this->assertContains('RESEND_API_KEY', $violationKeys);
         $this->assertContains('RESEND_WEBHOOK_SECRET', $violationKeys);
         $this->assertContains('CUSTOMER_AUTOMATION_WHATSAPP_PROVIDER', $violationKeys);
@@ -103,6 +105,7 @@ final class ProductionConfigGuardCommandTest extends TestCase
             'services.stripe.webhook_secret' => '',
             'services.stripe.prices.pro' => '',
             'mail.default' => 'resend',
+            'mail.from.address' => 'no-reply@mail.conectahn.test',
             'services.resend.key' => 're_rotated_realistic_resend_secret',
             'services.resend.webhook_secret' => 'resend_rotated_realistic_webhook_secret',
             'observability.channels.whatsapp' => 'whatsapp_cloud',

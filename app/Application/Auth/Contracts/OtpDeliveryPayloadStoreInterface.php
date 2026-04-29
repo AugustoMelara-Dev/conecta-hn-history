@@ -25,4 +25,8 @@ interface OtpDeliveryPayloadStoreInterface
     public function get(string $otpId): ?array;
 
     public function forget(string $otpId): void;
+
+    public function markSent(string $otpId, int $expiryMinutes): void;
+
+    public function wasSent(string $otpId): bool;
 }

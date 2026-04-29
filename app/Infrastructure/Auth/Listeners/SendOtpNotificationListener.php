@@ -41,6 +41,15 @@ final class SendOtpNotificationListener implements ShouldQueue
      */
     public function handle(OtpGenerated $event): void
     {
+        if ($this->deliveryPayloadStore->wasSent($event->otpId)) {
+            Log::info('otp_delivery_skipped_duplicate', [
+                'otp_id' => $event->otpId,
+                'tenant_id' => $event->tenantId,
+            ]);
+
+            return;
+        }
+
         $otp = OneTimePassword::query()
             ->whereKey($event->otpId)
             ->where('tenant_id', $event->tenantId)
@@ -58,7 +67,7 @@ final class SendOtpNotificationListener implements ShouldQueue
         $deliveryPayload = $this->deliveryPayloadStore->get($event->otpId);
 
         if ($deliveryPayload === null) {
-            Log::error('OTP notification skipped: missing ephemeral delivery payload', [
+            Log::info('otp_delivery_skipped_missing_payload', [
                 'otp_id' => $event->otpId,
                 'tenant_id' => $event->tenantId,
             ]);
@@ -69,11 +78,18 @@ final class SendOtpNotificationListener implements ShouldQueue
         $serviceName = $otp->type === 'email' ? 'email_provider' : 'sms_provider';
         $maskedIdentifier = $this->maskIdentifier($deliveryPayload['identifier']);
 
+        Log::info('otp_delivery_requested', [
+            'identifier' => $maskedIdentifier,
+            'tenant_id' => $event->tenantId,
+            'channel' => $otp->type,
+        ]);
+
         // 1. FAIL FAST CHECK
         if (! $this->circuitBreaker->isAvailable($serviceName)) {
-            Log::warning('Circuit Open: Skipping SMS send', [
+            Log::warning('otp_delivery_blocked_by_circuit_breaker', [
                 'identifier' => $maskedIdentifier,
                 'tenant_id' => $event->tenantId,
+                'service' => $serviceName,
             ]);
 
             return; // Abort, do not retry blindly
@@ -90,23 +106,26 @@ final class SendOtpNotificationListener implements ShouldQueue
             );
 
             $this->deliveryPayloadStore->forget($event->otpId);
+            $this->deliveryPayloadStore->markSent($event->otpId, (int) $deliveryPayload['expiry_minutes']);
 
             // 3. REPORT SUCCESS
             $this->circuitBreaker->reportSuccess($serviceName);
 
-            Log::info('OTP notification sent successfully', [
+            Log::info('otp_delivery_sent', [
                 'identifier' => $maskedIdentifier,
                 'tenant_id' => $event->tenantId,
+                'channel' => $otp->type,
             ]);
 
         } catch (Throwable $e) {
             // 4. REPORT FAILURE & OBSERVE
             $this->circuitBreaker->reportFailure($serviceName);
 
-            Log::error('SMS Send Failed', [
+            Log::error('otp_delivery_failed', [
                 'error' => $e->getMessage(),
                 'identifier' => $maskedIdentifier,
                 'tenant_id' => $event->tenantId,
+                'service' => $serviceName,
             ]);
 
             // 5. RETRY STRATEGY (Let queue handle it via backoff)

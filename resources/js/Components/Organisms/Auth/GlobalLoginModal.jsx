@@ -13,6 +13,7 @@ export default function GlobalLoginModal() {
     const { isLoginModalOpen, closeLoginModal, loginView, setLoginView } = useUIStore();
     const [otpStep, setOtpStep] = useState('identifier'); // 'identifier' | 'verify'
     const [otpIdentifier, setOtpIdentifier] = useState('');
+    const [otpTenantId, setOtpTenantId] = useState('');
     const [isLoadingOtp, setIsLoadingOtp] = useState(false);
     const [otpError, setOtpError] = useState('');
     const [otpSuccess, setOtpSuccess] = useState('');
@@ -55,6 +56,7 @@ export default function GlobalLoginModal() {
 
             setOtpSuccess(response.data.message);
             setOtpIdentifier(identifier);
+            setOtpTenantId(response.data.tenant_id || '');
             setOtpStep('verify');
         } catch (error) {
             setOtpError(error.response?.data?.message || 'Error al enviar el código');
@@ -72,7 +74,8 @@ export default function GlobalLoginModal() {
         try {
             const response = await axios.post('/api/v1/otp/verify', {
                 identifier: otpIdentifier,
-                code: code,
+                otp_code: code,
+                tenant_id: otpTenantId || undefined,
             });
 
             if (response.data.requires_registration) {
@@ -83,7 +86,11 @@ export default function GlobalLoginModal() {
                 window.location.href = response.data.redirect;
             }
         } catch (error) {
-            setOtpError(error.response?.data?.errors?.code?.[0] || 'Código inválido');
+            setOtpError(
+                error.response?.data?.errors?.otp_code?.[0]
+                || error.response?.data?.errors?.code?.[0]
+                || 'Código inválido'
+            );
         } finally {
             setIsLoadingOtp(false);
         }
@@ -94,6 +101,7 @@ export default function GlobalLoginModal() {
         closeLoginModal();
         setOtpStep('identifier');
         setIdentifier('');
+        setOtpTenantId('');
         setCode('');
         setOtpError('');
         setOtpSuccess('');

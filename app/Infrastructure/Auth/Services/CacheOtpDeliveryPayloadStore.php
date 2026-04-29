@@ -11,6 +11,8 @@ final readonly class CacheOtpDeliveryPayloadStore implements OtpDeliveryPayloadS
 {
     private const KEY_PREFIX = 'auth:otp:delivery:';
 
+    private const SENT_KEY_PREFIX = 'auth:otp:delivery-sent:';
+
     public function __construct(
         private CacheRepository $cache,
     ) {}
@@ -44,8 +46,27 @@ final readonly class CacheOtpDeliveryPayloadStore implements OtpDeliveryPayloadS
         $this->cache->forget($this->key($otpId));
     }
 
+    public function markSent(string $otpId, int $expiryMinutes): void
+    {
+        $this->cache->put(
+            $this->sentKey($otpId),
+            true,
+            now()->addMinutes(max(10, $expiryMinutes * 2))
+        );
+    }
+
+    public function wasSent(string $otpId): bool
+    {
+        return (bool) $this->cache->get($this->sentKey($otpId), false);
+    }
+
     private function key(string $otpId): string
     {
         return self::KEY_PREFIX.$otpId;
+    }
+
+    private function sentKey(string $otpId): string
+    {
+        return self::SENT_KEY_PREFIX.$otpId;
     }
 }

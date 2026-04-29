@@ -64,6 +64,48 @@ final class SendOtpNotificationListenerTest extends TestCase
         self::assertSame(10, $notifier->expiryMinutes);
         self::assertNull($notifier->recipient);
         self::assertNull($store->get((string) $otp->id));
+        self::assertTrue($store->wasSent((string) $otp->id));
+    }
+
+    #[Test]
+    public function it_skips_duplicate_delivery_after_a_successful_send(): void
+    {
+        $tenantId = (string) Tenant::factory()->create()->id;
+
+        $otp = OneTimePassword::query()->create([
+            'user_id' => null,
+            'identifier' => 'duplicate@example.com',
+            'tenant_id' => $tenantId,
+            'code' => 'hashed-otp',
+            'type' => 'email',
+            'ip_address' => '127.0.0.1',
+            'user_agent' => 'PHPUnit',
+            'expires_at' => now()->addMinutes(10),
+            'attempts' => 0,
+        ]);
+
+        $store = $this->app->make(OtpDeliveryPayloadStoreInterface::class);
+        $store->put($otp->id, '123456', 'duplicate@example.com', 10);
+
+        $notifier = new RecordingOtpNotifier;
+        $circuitBreaker = new RecordingCircuitBreaker;
+
+        $this->app->instance(OtpNotifierInterface::class, $notifier);
+        $this->app->instance(CircuitBreakerInterface::class, $circuitBreaker);
+
+        $listener = $this->app->make(SendOtpNotificationListener::class);
+        $event = new OtpGenerated(
+            otpId: (string) $otp->id,
+            userId: null,
+            tenantId: $tenantId,
+            occurredAt: new \DateTimeImmutable,
+        );
+
+        $listener->handle($event);
+        $listener->handle($event);
+
+        self::assertSame('123456', $notifier->plainTextCode);
+        self::assertCount(1, $circuitBreaker->availabilityChecks);
     }
 }
 

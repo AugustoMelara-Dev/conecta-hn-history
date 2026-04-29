@@ -260,6 +260,10 @@ final class AuthRedirector
             return false;
         }
 
+        if (! self::isRuntimeInternalHost($baseHost)) {
+            return false;
+        }
+
         return ! hash_equals($runtimeHost, $baseHost);
     }
 
@@ -267,6 +271,12 @@ final class AuthRedirector
     {
         return in_array($host, ['localhost', '127.0.0.1', '::1'], true)
             || str_ends_with($host, '.localhost');
+    }
+
+    private static function isRuntimeInternalHost(string $host): bool
+    {
+        return str_ends_with($host, '.up.railway.app')
+            || str_ends_with($host, '.railway.internal');
     }
 
     private static function normalizeHost(string $value): ?string

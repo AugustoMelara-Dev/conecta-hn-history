@@ -11,7 +11,10 @@ use App\Domain\Auth\Exceptions\OtpExpiredException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\GenerateOtpRequest;
 use App\Http\Requests\Auth\VerifyOtpRequest;
+use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Cache\RateLimiter;
+use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -21,13 +24,14 @@ final class OtpController extends Controller
     public function __construct(
         private GenerateOtpAction $generateAction,
         private VerifyOtpAction $verifyAction,
-        private RateLimiter $limiter
+        private RateLimiter $limiter,
+        private StatefulGuard $guard,
     ) {}
 
     public function generate(GenerateOtpRequest $request): JsonResponse
     {
         $validated = $request->validated();
-        $tenantId = (string) ($request->input('tenant_id') ?? 'public');
+        $tenantId = $this->resolveTenantId($request, $validated['identifier']);
 
         $this->enforceRateLimit($request, 'generate', 3);
 
@@ -42,24 +46,27 @@ final class OtpController extends Controller
         return response()->json([
             'message' => 'Codigo enviado exitosamente.',
             'expires_at' => $result['expires_at'],
+            'tenant_id' => $tenantId,
         ]);
     }
 
     public function verify(VerifyOtpRequest $request): JsonResponse
     {
         $validated = $request->validated();
-        $tenantId = (string) ($request->input('tenant_id') ?? 'public');
+        $tenantId = $this->resolveTenantId($request, $validated['identifier']);
 
         $this->enforceRateLimit($request, 'verify', 5);
 
         try {
             $result = $this->verifyAction->execute(
                 $tenantId,
-                identifier: $validated['uuid'],
+                identifier: $validated['identifier'],
                 code: $validated['otp_code'],
                 ipAddress: $request->ip() ?? '127.0.0.1',
                 idempotencyKey: $request->header('Idempotency-Key')
             );
+
+            $this->authenticateVerifiedUser($request, $result);
 
             $this->limiter->clear($this->rateLimitKey($request, 'verify'));
 
@@ -88,5 +95,66 @@ final class OtpController extends Controller
         $identifier = $request->input('identifier') ?? $request->input('uuid');
 
         return "otp-{$action}:{$request->ip()}:{$identifier}";
+    }
+
+    private function resolveTenantId(Request $request, ?string $identifier): string
+    {
+        $requestedTenantId = $request->input('tenant_id');
+        if (is_string($requestedTenantId) && $requestedTenantId !== '') {
+            return $requestedTenantId;
+        }
+
+        if (is_string($identifier) && filter_var($identifier, FILTER_VALIDATE_EMAIL) !== false) {
+            $userTenantId = User::query()
+                ->where('email', $identifier)
+                ->whereNotNull('tenant_id')
+                ->value('tenant_id');
+
+            if (is_string($userTenantId) && $userTenantId !== '') {
+                return $userTenantId;
+            }
+        }
+
+        $configuredTenantId = config('auth.otp.platform_tenant_id');
+        if (is_string($configuredTenantId) && $configuredTenantId !== ''
+            && Tenant::query()->whereKey($configuredTenantId)->exists()) {
+            return $configuredTenantId;
+        }
+
+        $fallbackTenantId = Tenant::query()
+            ->orderBy('created_at')
+            ->value('id');
+
+        if (is_string($fallbackTenantId) && $fallbackTenantId !== '') {
+            return $fallbackTenantId;
+        }
+
+        throw ValidationException::withMessages([
+            'identifier' => ['No hay un tenant disponible para enviar codigos OTP.'],
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $result
+     */
+    private function authenticateVerifiedUser(Request $request, array $result): void
+    {
+        $userId = data_get($result, 'user.id');
+
+        if (! is_string($userId) || $userId === '') {
+            return;
+        }
+
+        $user = User::query()->find($userId);
+
+        if (! $user instanceof User) {
+            return;
+        }
+
+        $this->guard->login($user);
+
+        if ($request->hasSession()) {
+            $request->session()->regenerate();
+        }
     }
 }

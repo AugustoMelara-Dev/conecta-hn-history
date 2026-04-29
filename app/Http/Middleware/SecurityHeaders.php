@@ -272,7 +272,7 @@ class SecurityHeaders
             return;
         }
 
-        if (! in_array($targetHost, $this->runtimeInternalHosts(), true) && ! $this->isRailwayHost($targetHost)) {
+        if (! in_array($targetHost, $this->runtimeInternalHosts(), true) && ! $this->isRuntimeInternalHost($targetHost)) {
             return;
         }
 
@@ -293,12 +293,6 @@ class SecurityHeaders
     {
         $candidates = [
             (string) config('app.url', ''),
-            (string) config('app.platform_app_url', ''),
-            (string) config('app.platform_directory_url', ''),
-            (string) config('app.platform_admin_url', ''),
-            (string) config('surfaces.origins.user_app', ''),
-            (string) config('surfaces.origins.business_app', ''),
-            (string) config('surfaces.origins.admin_app', ''),
             (string) config('surfaces.origins.platform_api', ''),
         ];
 
@@ -317,13 +311,19 @@ class SecurityHeaders
                 continue;
             }
 
-            $hosts[] = strtolower($host);
+            $host = strtolower($host);
+
+            if (! $this->isRuntimeInternalHost($host)) {
+                continue;
+            }
+
+            $hosts[] = $host;
         }
 
         return array_values(array_unique($hosts));
     }
 
-    private function isRailwayHost(string $host): bool
+    private function isRuntimeInternalHost(string $host): bool
     {
         return str_ends_with($host, '.up.railway.app')
             || str_ends_with($host, '.railway.internal');
