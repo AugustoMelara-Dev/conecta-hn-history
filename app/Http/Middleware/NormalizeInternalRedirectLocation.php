@@ -20,44 +20,87 @@ final class NormalizeInternalRedirectLocation
             return $response;
         }
 
+        $this->normalizeRedirectLocation($request, $response);
+        $this->normalizeInertiaLocation($request, $response);
+
+        return $response;
+    }
+
+    private function normalizeRedirectLocation(Request $request, Response $response): void
+    {
         if (! $response->isRedirection()) {
-            return $response;
+            return;
         }
 
         $location = $response->headers->get('Location');
+        $normalized = $this->internalLocationPath($request, $location);
 
+        if ($normalized === null) {
+            return;
+        }
+
+        $response->headers->set('Location', $normalized);
+    }
+
+    private function normalizeInertiaLocation(Request $request, Response $response): void
+    {
+        $location = $response->headers->get('X-Inertia-Location');
+        $normalized = $this->internalLocationPath($request, $location);
+
+        if ($normalized === null) {
+            return;
+        }
+
+        $response->headers->set('X-Inertia-Location', $this->requestOrigin($request).$normalized);
+    }
+
+    private function internalLocationPath(Request $request, mixed $location): ?string
+    {
         if (! is_string($location) || ! Str::startsWith($location, ['http://', 'https://'])) {
-            return $response;
+            return null;
         }
 
         $targetHost = $this->normalizeHost((string) parse_url($location, PHP_URL_HOST));
         $requestHost = $this->requestHost($request);
 
         if ($targetHost === '') {
-            return $response;
+            return null;
         }
 
         $isRuntimeInternal = in_array($targetHost, $this->runtimeInternalHosts(), true);
         $isRailwayHost = $this->isRailwayHost($targetHost);
 
         if (! $isRuntimeInternal && ! $isRailwayHost) {
-            return $response;
+            return null;
         }
 
         if (! $isRailwayHost && $targetHost !== $requestHost) {
-            return $response;
+            return null;
         }
 
-        $path = (string) (parse_url($location, PHP_URL_PATH) ?? '/');
+        $path = (string) (parse_url($location, PHP_URL_PATH) ?? '');
         $query = (string) (parse_url($location, PHP_URL_QUERY) ?? '');
         $fragment = (string) (parse_url($location, PHP_URL_FRAGMENT) ?? '');
-        $relativeLocation = $path
+
+        if ($path === '') {
+            $path = $request->getPathInfo() ?: '/';
+        }
+
+        return $path
             .($query !== '' ? '?'.$query : '')
             .($fragment !== '' ? '#'.$fragment : '');
+    }
 
-        $response->headers->set('Location', $relativeLocation);
+    private function requestOrigin(Request $request): string
+    {
+        $proto = trim((string) $request->headers->get('x-forwarded-proto', ''));
+        $proto = $proto !== '' ? strtolower(trim(explode(',', $proto, 2)[0])) : $request->getScheme();
 
-        return $response;
+        return sprintf(
+            '%s://%s',
+            $proto !== '' ? $proto : 'https',
+            $this->requestHost($request)
+        );
     }
 
     /**
