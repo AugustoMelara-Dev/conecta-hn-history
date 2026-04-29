@@ -56,6 +56,29 @@ final class ProductionStorageGuardCommandTest extends TestCase
         $this->assertSame([], $payload['violations']);
     }
 
+    public function test_it_passes_production_when_media_and_evidence_use_railway_bucket_storage(): void
+    {
+        config([
+            'filesystems.default' => 's3',
+            'filesystems.media_disk' => 'media',
+            'filesystems.payment_evidence_disk' => 'media',
+            'filesystems.disks.s3.endpoint' => 'https://t3.storageapi.dev',
+            'filesystems.disks.media.driver' => 's3',
+            'filesystems.disks.media.endpoint' => 'https://t3.storageapi.dev',
+        ]);
+
+        $exitCode = Artisan::call('storage:production-guard', [
+            '--env' => 'production',
+            '--json' => true,
+        ]);
+
+        $payload = json_decode(Artisan::output(), true, 512, JSON_THROW_ON_ERROR);
+
+        $this->assertSame(0, $exitCode);
+        $this->assertSame('ok', $payload['status']);
+        $this->assertSame([], $payload['violations']);
+    }
+
     public function test_it_allows_local_development_storage(): void
     {
         config([

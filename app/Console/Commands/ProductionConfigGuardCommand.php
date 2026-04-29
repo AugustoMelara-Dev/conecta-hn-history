@@ -240,30 +240,32 @@ final class ProductionConfigGuardCommand extends Command
 
         $whatsAppProvider = strtolower((string) config('observability.channels.whatsapp', 'whatsapp_cloud'));
         if ($isReleaseEnvironment) {
-            if ($whatsAppProvider !== 'whatsapp_cloud') {
+            if (! in_array($whatsAppProvider, ['whatsapp_cloud', 'missing', 'none', 'disabled'], true)) {
                 $violations[] = $this->violation(
                     'CUSTOMER_AUTOMATION_WHATSAPP_PROVIDER',
                     $whatsAppProvider,
-                    'whatsapp_cloud',
-                    'Campaign and lifecycle WhatsApp delivery must use Meta WhatsApp Cloud API directly, not Twilio.'
+                    'whatsapp_cloud|missing|none|disabled',
+                    'WhatsApp automation is optional at launch. If enabled, it must use Meta WhatsApp Cloud API directly, not Twilio.'
                 );
             }
 
-            foreach ([
-                'WHATSAPP_CLOUD_ACCESS_TOKEN' => (string) config('services.whatsapp_cloud.access_token', ''),
-                'WHATSAPP_CLOUD_PHONE_NUMBER_ID' => (string) config('services.whatsapp_cloud.phone_number_id', ''),
-                'WHATSAPP_CLOUD_VERIFY_TOKEN' => (string) config('services.whatsapp_cloud.verify_token', ''),
-                'WHATSAPP_CLOUD_APP_SECRET' => (string) config('services.whatsapp_cloud.app_secret', ''),
-            ] as $key => $value) {
-                $checked[] = $key;
+            if ($whatsAppProvider === 'whatsapp_cloud') {
+                foreach ([
+                    'WHATSAPP_CLOUD_ACCESS_TOKEN' => (string) config('services.whatsapp_cloud.access_token', ''),
+                    'WHATSAPP_CLOUD_PHONE_NUMBER_ID' => (string) config('services.whatsapp_cloud.phone_number_id', ''),
+                    'WHATSAPP_CLOUD_VERIFY_TOKEN' => (string) config('services.whatsapp_cloud.verify_token', ''),
+                    'WHATSAPP_CLOUD_APP_SECRET' => (string) config('services.whatsapp_cloud.app_secret', ''),
+                ] as $key => $value) {
+                    $checked[] = $key;
 
-                if ($this->isBlankOrPlaceholder($value)) {
-                    $violations[] = $this->violation(
-                        $key,
-                        $this->redact($value),
-                        'rotated WhatsApp Cloud credential',
-                        'WhatsApp Cloud inbound/outbound flows must be signed and provider-direct before production.'
-                    );
+                    if ($this->isBlankOrPlaceholder($value)) {
+                        $violations[] = $this->violation(
+                            $key,
+                            $this->redact($value),
+                            'rotated WhatsApp Cloud credential',
+                            'WhatsApp Cloud inbound/outbound flows must be signed and provider-direct when enabled.'
+                        );
+                    }
                 }
             }
         }

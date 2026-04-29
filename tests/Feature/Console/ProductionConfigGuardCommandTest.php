@@ -79,7 +79,6 @@ final class ProductionConfigGuardCommandTest extends TestCase
         $this->assertContains('RESEND_API_KEY', $violationKeys);
         $this->assertContains('RESEND_WEBHOOK_SECRET', $violationKeys);
         $this->assertContains('CUSTOMER_AUTOMATION_WHATSAPP_PROVIDER', $violationKeys);
-        $this->assertContains('WHATSAPP_CLOUD_ACCESS_TOKEN', $violationKeys);
         $this->assertContains('SMS_MARKETING_PROVIDER', $violationKeys);
         $this->assertContains('OPENAI_API_KEY', $violationKeys);
         $this->assertContains('TENANT_PRIVATE_QDRANT_URL', $violationKeys);
@@ -212,5 +211,55 @@ final class ProductionConfigGuardCommandTest extends TestCase
         $this->assertSame(0, $exitCode);
         $this->assertSame('ok', $payload['status']);
         $this->assertNotContains('STRIPE_SECRET', array_column($payload['violations'], 'key'));
+    }
+
+    public function test_it_allows_whatsapp_automation_to_be_disabled_in_production(): void
+    {
+        config([
+            'app.env' => 'production',
+            'app.debug' => false,
+            'app.key' => 'base64:'.base64_encode(random_bytes(32)),
+            'queue.default' => 'redis',
+            'cache.default' => 'redis',
+            'observability.error_tracking.provider' => 'sentry',
+            'observability.error_tracking.sentry_dsn' => 'https://public@o123456.ingest.sentry.io/123',
+            'observability.error_tracking.frontend_dsn' => 'https://public@o123456.ingest.sentry.io/456',
+            'observability.logs.provider' => 'better_stack',
+            'observability.logs.better_stack_source_token' => 'better_stack_rotated_source_token',
+            'observability.logs.better_stack_ingesting_host' => 'in.logs.betterstack.com',
+            'services.payment.provider' => 'generic',
+            'services.payment.webhook_secret' => 'whsec_rotated_realistic_payment_secret',
+            'mail.default' => 'resend',
+            'mail.from.address' => 'no-reply@mail.conectahn.test',
+            'services.resend.key' => 're_rotated_realistic_resend_secret',
+            'services.resend.webhook_secret' => 'resend_rotated_realistic_webhook_secret',
+            'observability.channels.whatsapp' => 'missing',
+            'observability.channels.sms' => 'missing',
+            'services.whatsapp_cloud.access_token' => '',
+            'services.whatsapp_cloud.phone_number_id' => '',
+            'services.whatsapp_cloud.verify_token' => '',
+            'services.whatsapp_cloud.app_secret' => '',
+            'services.openai.api_key' => 'sk-proj-rotated-realistic-openai-secret',
+            'ai-rag.private.vector_store.driver' => 'qdrant',
+            'ai-rag.private.qdrant.enabled' => true,
+            'ai-rag.private.qdrant.url' => 'https://qdrant.conecta-hn.internal:6333',
+            'ai-rag.private.qdrant.api_key' => 'qdrant_rotated_realistic_secret',
+            'ai-rag.scopes.tenant_private.collection' => 'tenant_private_documents',
+            'webpush.vapid.public_key' => 'BNrotatedRealisticPublicKey',
+            'webpush.vapid.private_key' => 'rotatedRealisticPrivateKey',
+        ]);
+
+        $exitCode = Artisan::call('config:production-guard', [
+            '--env' => 'production',
+            '--json' => true,
+        ]);
+
+        $payload = json_decode(Artisan::output(), true, 512, JSON_THROW_ON_ERROR);
+        $violationKeys = array_column($payload['violations'], 'key');
+
+        $this->assertSame(0, $exitCode);
+        $this->assertSame('ok', $payload['status']);
+        $this->assertNotContains('WHATSAPP_CLOUD_ACCESS_TOKEN', $violationKeys);
+        $this->assertNotContains('WHATSAPP_CLOUD_APP_SECRET', $violationKeys);
     }
 }
