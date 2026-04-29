@@ -96,12 +96,12 @@ function EmptyState({ filters, onClear }) {
 
 function formatQuotaResetAt(resetAt) {
     if (!resetAt) {
-        return 'manana';
+        return 'mañana';
     }
 
     const parsed = new Date(resetAt);
     if (Number.isNaN(parsed.getTime())) {
-        return 'manana';
+        return 'mañana';
     }
 
     return parsed.toLocaleString('es-HN', {
@@ -211,7 +211,7 @@ function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
                 setGuideError({
                     status: response.status,
                     code: payload?.error_code || 'DIRECTORY_GUIDE_REQUEST_FAILED',
-                    message: payload?.message || 'No pudimos procesar la guia en este momento.',
+                    message: payload?.message || 'No pudimos procesar la guía en este momento.',
                     retryAfterSeconds: payload?.retry_after_seconds || null,
                     resetAt: payload?.reset_at || responseMeta.quota_reset_at || null,
                 });
@@ -224,7 +224,7 @@ function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
             setGuideError({
                 status: 0,
                 code: 'DIRECTORY_GUIDE_NETWORK_ERROR',
-                message: 'No fue posible conectar con la guia. Intenta nuevamente.',
+                message: 'No fue posible conectar con la guía. Intenta nuevamente.',
                 retryAfterSeconds: null,
                 resetAt: null,
             });
@@ -298,19 +298,19 @@ function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
     if (!authUser) {
         return (
             <div className="mt-8 rounded-[28px] border border-stone-200 bg-white px-5 py-5 sm:px-6">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Guia personalizada</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Guía personalizada</p>
                 <h2 className="mt-2 text-xl font-semibold text-slate-950" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                    Inicia sesion para usar la guia (5 consultas al dia)
+                    Inicia sesión para usar la guía (5 consultas al día)
                 </h2>
                 <p className="mt-2 text-sm text-slate-600">
-                    La guia te recomienda negocios y productos con tu presupuesto, ciudad y categoria.
+                    La guía te recomienda negocios y productos con tu presupuesto, ciudad y categoría.
                 </p>
                 <div className="mt-4">
                     <Link
                         href={route('login')}
                         className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
                     >
-                        Entrar como customer
+                        Entrar como cliente
                         <ArrowRight className="h-4 w-4" />
                     </Link>
                 </div>
@@ -321,12 +321,12 @@ function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
     if (!isCustomer) {
         return (
             <div className="mt-8 rounded-[28px] border border-amber-200 bg-amber-50 px-5 py-5 sm:px-6">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Guia personalizada</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Guía personalizada</p>
                 <h2 className="mt-2 text-xl font-semibold text-amber-900" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                    Disponible solo para cuentas customer
+                    Disponible solo para cuentas de cliente
                 </h2>
                 <p className="mt-2 text-sm text-amber-800/90">
-                    Tu cuenta actual es operativa para panel interno. Usa una cuenta customer para consultas del directorio.
+                    Tu cuenta actual es operativa para panel interno. Usa una cuenta de cliente para consultas del directorio.
                 </p>
             </div>
         );
@@ -336,12 +336,12 @@ function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
         <div className="mt-8 rounded-[28px] border border-stone-200 bg-white px-5 py-5 shadow-sm sm:px-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Guia personalizada</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Guía personalizada</p>
                     <h2 className="mt-2 text-xl font-semibold text-slate-950" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
                         Recomendaciones por presupuesto
                     </h2>
                     <p className="mt-1 text-sm text-slate-600">
-                        Plan gratis: {quotaLimit} consultas por dia.
+                        Plan gratis: {quotaLimit} consultas por día.
                     </p>
                 </div>
                 <div className="rounded-full bg-[#f3f3f1] px-4 py-2 text-sm font-semibold text-slate-700" data-testid="directory-guide-quota">
@@ -369,7 +369,7 @@ function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
                     />
                 </div>
                 <div className="self-end rounded-2xl border border-stone-200 bg-[#f3f3f1] px-4 py-3 text-sm text-slate-600">
-                    Filtro actual: {filters.category || 'todas las categorias'} · {cityTerm || filters.city || 'todas las ciudades'}
+                    Filtro actual: {filters.category || 'todas las categorías'} · {cityTerm || filters.city || 'todas las ciudades'}
                 </div>
                 <button
                     type="submit"
@@ -377,7 +377,7 @@ function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
                     className="self-end inline-flex h-12 items-center justify-center rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
                     data-testid="directory-guide-submit"
                 >
-                    {isSubmitting ? 'Consultando...' : 'Pedir guia'}
+                    {isSubmitting ? 'Consultando...' : 'Pedir guía'}
                 </button>
             </form>
 
@@ -587,7 +587,7 @@ export default function DirectoryIndex({ tenants, categories = [], cities = [], 
             <Head title={`Negocios ${activeCity ? `en ${activeCity.name}` : 'en Honduras'}`}>
                 <meta
                     name="description"
-                    content="Busca negocios en Honduras por ciudad, categoria o termino de busqueda desde la capa publica unificada de Vito Business OS."
+                    content="Busca negocios en Honduras por ciudad, categoría o término de búsqueda desde la capa pública unificada de Vito Business OS."
                 />
             </Head>
 
@@ -596,10 +596,10 @@ export default function DirectoryIndex({ tenants, categories = [], cities = [], 
                     <div className="max-w-3xl">
                         <p className="text-sm font-semibold uppercase tracking-[0.28em] text-slate-500">Negocios</p>
                         <h1 className="mt-4 text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                            Busca por ciudad, categoria o servicio sin salirte de la misma experiencia publica.
+                            Busca por ciudad, categoría o servicio sin salirte de la misma experiencia pública.
                         </h1>
                         <p className="mt-6 text-lg leading-8 text-slate-600">
-                            Este es el modo completo de resultados: aqui comparas, filtras y aterrizas al negocio correcto. La operacion interna del negocio sigue en Filament.
+                            Este es el modo completo de resultados: aquí comparas, filtras y aterrizas al negocio correcto. La operación interna del negocio sigue en Filament.
                         </p>
                     </div>
 
