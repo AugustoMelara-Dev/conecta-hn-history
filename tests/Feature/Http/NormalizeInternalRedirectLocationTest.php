@@ -60,4 +60,35 @@ final class NormalizeInternalRedirectLocationTest extends TestCase
             $response->headers->get('X-Inertia-Location')
         );
     }
+
+    public function test_inertia_version_conflict_falls_back_to_public_origin_when_runtime_host_is_railway(): void
+    {
+        app()['env'] = 'production';
+
+        config([
+            'app.url' => 'https://vito-business-os-production.up.railway.app',
+            'app.platform_directory_url' => 'https://vitobusinessos.vercel.app',
+            'app.platform_app_url' => 'https://vito-business-os-production.up.railway.app',
+        ]);
+
+        try {
+            $request = Request::create('https://vito-business-os-production.up.railway.app/', 'GET');
+            $request->headers->set('X-Forwarded-Host', 'vito-business-os-production.up.railway.app');
+            $request->headers->set('X-Forwarded-Proto', 'https');
+
+            $response = (new NormalizeInternalRedirectLocation)->handle(
+                $request,
+                fn () => new Response('', 409, [
+                    'X-Inertia-Location' => 'https://vito-business-os-production.up.railway.app',
+                ])
+            );
+        } finally {
+            app()['env'] = 'testing';
+        }
+
+        self::assertSame(
+            'https://vitobusinessos.vercel.app/',
+            $response->headers->get('X-Inertia-Location')
+        );
+    }
 }

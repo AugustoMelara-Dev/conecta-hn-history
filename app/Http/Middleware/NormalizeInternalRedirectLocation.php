@@ -95,12 +95,48 @@ final class NormalizeInternalRedirectLocation
     {
         $proto = trim((string) $request->headers->get('x-forwarded-proto', ''));
         $proto = $proto !== '' ? strtolower(trim(explode(',', $proto, 2)[0])) : $request->getScheme();
+        $host = $this->requestHost($request);
+
+        if ($this->isRailwayHost($host)) {
+            $publicOrigin = $this->publicOrigin();
+
+            if ($publicOrigin !== null) {
+                return $publicOrigin;
+            }
+        }
 
         return sprintf(
             '%s://%s',
             $proto !== '' ? $proto : 'https',
-            $this->requestHost($request)
+            $host
         );
+    }
+
+    private function publicOrigin(): ?string
+    {
+        $candidates = [
+            (string) config('app.platform_directory_url', ''),
+            (string) config('app.platform_app_url', ''),
+            (string) config('app.url', ''),
+        ];
+
+        foreach ($candidates as $candidate) {
+            $candidate = rtrim(trim($candidate), '/');
+
+            if ($candidate === '' || ! Str::startsWith($candidate, ['http://', 'https://'])) {
+                continue;
+            }
+
+            $host = $this->normalizeHost((string) parse_url($candidate, PHP_URL_HOST));
+
+            if ($host === '' || $this->isRailwayHost($host)) {
+                continue;
+            }
+
+            return $candidate;
+        }
+
+        return null;
     }
 
     /**
