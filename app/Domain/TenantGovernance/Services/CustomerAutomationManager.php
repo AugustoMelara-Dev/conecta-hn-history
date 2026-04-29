@@ -487,7 +487,7 @@ class CustomerAutomationManager
         ]));
 
         if (! filled($profile->phone)) {
-            return $this->markSkipped($touchpoint, 'El cliente no tiene tel�fono para WhatsApp.');
+            return $this->markSkipped($touchpoint, 'El cliente no tiene telefono para WhatsApp.');
         }
 
         if (! $profile->whatsapp_opt_in) {

@@ -25,7 +25,7 @@ final class WaitlistSlotFreedMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: '�Un espacio se ha liberado en '.$this->tenantName.'!',
+            subject: 'Un espacio se ha liberado en '.$this->tenantName.'!',
             from: new Address(
                 config('mail.from.address'),
                 $this->tenantName.' via Vito Business OS'

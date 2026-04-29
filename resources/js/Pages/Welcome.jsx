@@ -92,7 +92,7 @@ function DashboardHeroMockup() {
                                             L. 124,820
                                         </p>
                                         <p className="mt-2 text-sm text-slate-500">
-                                            Ventas, pedidos, campanas y operacion conectados en una sola vista.
+                                            Ventas, pedidos, campanas y operacion integrados en una sola vista.
                                         </p>
                                     </div>
                                     <div className="rounded-2xl bg-slate-950 px-3 py-2 text-xs font-bold text-white" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
@@ -129,7 +129,7 @@ function DashboardHeroMockup() {
 
                         <div className="grid gap-4 md:grid-cols-3">
                             {[
-                                { icon: ShoppingCart, title: 'Catalogo inteligente', body: 'Inventario y visibilidad conectados.' },
+                                { icon: ShoppingCart, title: 'Catalogo inteligente', body: 'Inventario y visibilidad integrados.' },
                                 { icon: MessageSquareMore, title: 'WhatsApp nativo', body: 'Pedidos y mensajes sin salir del flujo.' },
                                 { icon: CalendarCheck2, title: 'Reservas y citas', body: 'Agenda operativa para salud y servicios.' },
                             ].map((item) => (
@@ -248,7 +248,7 @@ function BenefitsSection() {
                 <div className="mb-16">
                     <SectionTitle className="text-4xl">Todo lo que necesitas para operar</SectionTitle>
                     <p className="mt-4 max-w-xl text-slate-600">
-                        Catalogo, reservas, CRM, campañas, analytics y operacion conectados sin duplicar herramientas ni flujos.
+                        Catalogo, reservas, CRM, campañas, analytics y operacion integrados sin duplicar herramientas ni flujos.
                     </p>
                 </div>
 
@@ -550,7 +550,7 @@ function FaqSection() {
         },
         {
             title: 'Puedo usar mi propio dominio?',
-            body: 'Absolutamente. Puedes conectar tu dominio personalizado para que tu tienda digital y catalogo luzcan 100% profesionales bajo tu propia marca.',
+            body: 'Absolutamente. Puedes vincular tu dominio personalizado para que tu tienda digital y catalogo luzcan 100% profesionales bajo tu propia marca.',
         },
     ];
 

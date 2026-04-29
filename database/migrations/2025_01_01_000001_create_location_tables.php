@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -109,6 +110,15 @@ return new class extends Migration
 
     private function hasForeign(string $table, string $foreignName): bool
     {
+        if (DB::getDriverName() === 'mysql') {
+            return DB::table('information_schema.table_constraints')
+                ->whereRaw('constraint_schema = database()')
+                ->where('table_name', $table)
+                ->where('constraint_type', 'FOREIGN KEY')
+                ->where('constraint_name', $foreignName)
+                ->exists();
+        }
+
         return collect(Schema::getForeignKeys($table))
             ->contains(static fn (array $foreign): bool => (string) ($foreign['name'] ?? '') === $foreignName);
     }

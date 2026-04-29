@@ -64,9 +64,9 @@ final class BusinessSegmentResolver
             $categorySlug,
         ]))));
 
-        foreach ($keywordMap as $segmentKey => $keywords) {
+        foreach ($this->orderedKeywordMap($keywordMap) as $segmentKey => $keywords) {
             foreach ($keywords as $keyword) {
-                if (Str::contains($haystack, Str::lower(Str::ascii($keyword)))) {
+                if ($this->keywordMatches($haystack, (string) $keyword)) {
                     return $segmentKey;
                 }
             }
@@ -79,6 +79,64 @@ final class BusinessSegmentResolver
         }
 
         return $defaults[$businessType] ?? 'retail_general';
+    }
+
+    /**
+     * @param  array<string, array<int, string>>  $keywordMap
+     * @return array<string, array<int, string>>
+     */
+    private function orderedKeywordMap(array $keywordMap): array
+    {
+        $priority = [
+            'corporate_law_firm',
+            'dental_clinic',
+            'financial_consultancy',
+            'premium_barbershop',
+            'spa_studio',
+            'premium_phone_store',
+            'hardware_store',
+            'auto_parts_store',
+            'coffee_shop',
+            'casual_restaurant',
+            'law_firm',
+            'clinic',
+            'barbershop',
+            'cellphone_store',
+            'workshop',
+            'restaurant',
+            'consultancy',
+        ];
+
+        $ordered = [];
+
+        foreach ($priority as $segmentKey) {
+            if (isset($keywordMap[$segmentKey])) {
+                $ordered[$segmentKey] = $keywordMap[$segmentKey];
+            }
+        }
+
+        foreach ($keywordMap as $segmentKey => $keywords) {
+            if (! isset($ordered[$segmentKey])) {
+                $ordered[$segmentKey] = $keywords;
+            }
+        }
+
+        return $ordered;
+    }
+
+    private function keywordMatches(string $haystack, string $keyword): bool
+    {
+        $normalizedKeyword = Str::lower(Str::ascii($keyword));
+
+        if ($normalizedKeyword === '') {
+            return false;
+        }
+
+        if (strlen($normalizedKeyword) <= 3 && preg_match('/^[a-z0-9]+$/', $normalizedKeyword) === 1) {
+            return preg_match('/\b'.preg_quote($normalizedKeyword, '/').'\b/', $haystack) === 1;
+        }
+
+        return Str::contains($haystack, $normalizedKeyword);
     }
 
     /**

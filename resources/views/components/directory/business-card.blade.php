@@ -10,7 +10,7 @@
     2. Imagen con Cinematic Zoom (group-hover:scale-110)
     3. Fallback premium con textura de categoría
     4. HUD con badges flotantes (PRO + Estado Operativo)
-    5. Footer con affordance conectado (group-hover:bg-blue-600)
+    5. Footer con affordance integrado (group-hover:bg-blue-600)
     
     @param \App\Models\Tenant $tenant
     ═══════════════════════════════════════════════════════════════════════

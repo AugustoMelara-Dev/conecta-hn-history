@@ -442,10 +442,12 @@ class CheckoutApiTest extends TestCase
         $product = Product::factory()->forTenant($this->tenant)->create([
             'price' => 50.00,
         ]);
+        $checkoutSession = $this->startCheckoutSession();
 
         $response = $this->postJson('/api/v1/checkout/cart-summary', [
             'tenant' => $this->tenant->id,
-            'session_id' => 'test-session-001',
+            'session_id' => $checkoutSession['session_id'],
+            'checkout_nonce' => $checkoutSession['checkout_nonce'],
             'items' => [
                 [
                     'product_id' => $product->id,
@@ -475,10 +477,12 @@ class CheckoutApiTest extends TestCase
         $product = Product::factory()->forTenant($otherTenant)->create([
             'price' => 50.00,
         ]);
+        $checkoutSession = $this->startCheckoutSession();
 
         $this->postJson('/api/v1/checkout/cart-summary', [
             'tenant' => $this->tenant->id,
-            'session_id' => 'test-session-tenant-leak',
+            'session_id' => $checkoutSession['session_id'],
+            'checkout_nonce' => $checkoutSession['checkout_nonce'],
             'items' => [
                 [
                     'product_id' => $product->id,
@@ -488,6 +492,23 @@ class CheckoutApiTest extends TestCase
             ],
             'subtotal' => 0.01,
         ])->assertStatus(422);
+    }
+
+    /**
+     * @return array{session_id:string, checkout_nonce:string}
+     */
+    private function startCheckoutSession(): array
+    {
+        $response = $this->postJson('/api/v1/checkout/session', [
+            'tenant' => $this->tenant->id,
+        ]);
+
+        $response->assertCreated();
+
+        /** @var array{session_id:string, checkout_nonce:string} $payload */
+        $payload = $response->json();
+
+        return $payload;
     }
 
     /**

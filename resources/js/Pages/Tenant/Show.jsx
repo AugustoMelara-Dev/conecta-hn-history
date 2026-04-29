@@ -4,6 +4,17 @@ import FollowButton from '@/Components/Public/FollowButton';
 import ReviewSection from '@/Components/Public/ReviewSection';
 import FloatingCart from '@/Components/Tenant/FloatingCart';
 import ProductActionArea from '@/Components/Tenant/ProductActionArea';
+import { Badge } from '@/Components/ui/badge';
+import { Button } from '@/Components/ui/button';
+import { Card } from '@/Components/ui/card';
+import {
+    Empty,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyIcon,
+    EmptyTitle,
+} from '@/Components/ui/empty';
+import { Input } from '@/Components/ui/input';
 import useCartStore from '@/Stores/useCartStore';
 import { buildWhatsAppUrl, isValidWhatsAppPhone } from '@/Utils/phoneUtils';
 import { cn } from '@/lib/utils';
@@ -165,7 +176,7 @@ function MetricCard({ label, value, helper = null, dark = false }) {
 
 function ActionLink({ href, label, icon: Icon, variant = 'dark', external = false }) {
     const className = cn(
-        'inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] transition',
+        'h-auto rounded-full px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] transition-colors',
         variant === 'dark'
             ? 'bg-slate-950 text-white hover:bg-slate-800'
             : 'border border-white/20 bg-white/10 text-white hover:bg-white/16',
@@ -177,37 +188,227 @@ function ActionLink({ href, label, icon: Icon, variant = 'dark', external = fals
 
     const content = (
         <>
-            {Icon ? <Icon className="h-4 w-4" /> : null}
+            {Icon ? <Icon data-icon="inline-start" aria-hidden="true" /> : null}
             <span>{label}</span>
         </>
     );
 
     if (external) {
         return (
-            <a
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
+            <Button
+                asChild
+                variant="ghost"
                 className={className}
                 style={{ fontFamily: PUBLIC_LABEL_FONT }}
             >
-                {content}
-            </a>
+                <a href={href} target="_blank" rel="noopener noreferrer">
+                    {content}
+                </a>
+            </Button>
         );
     }
 
     if (href.startsWith('#')) {
         return (
-            <a href={href} className={className} style={{ fontFamily: PUBLIC_LABEL_FONT }}>
-                {content}
-            </a>
+            <Button asChild variant="ghost" className={className} style={{ fontFamily: PUBLIC_LABEL_FONT }}>
+                <a href={href}>{content}</a>
+            </Button>
         );
     }
 
     return (
-        <Link href={href} className={className} style={{ fontFamily: PUBLIC_LABEL_FONT }}>
-            {content}
-        </Link>
+        <Button asChild variant="ghost" className={className} style={{ fontFamily: PUBLIC_LABEL_FONT }}>
+            <Link href={href}>{content}</Link>
+        </Button>
+    );
+}
+
+function HeroLogo({ tenant }) {
+    return (
+        <div className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-[1.75rem] border border-white/10 bg-white/10 shadow-2xl shadow-black/20 backdrop-blur-md">
+            {tenant.logo ? (
+                <img
+                    src={tenant.logo}
+                    alt={`${tenant.name} logo`}
+                    className="h-full w-full object-cover"
+                />
+            ) : (
+                <span
+                    className="text-3xl font-extrabold uppercase tracking-[0.12em] text-white"
+                    style={{ fontFamily: PUBLIC_DISPLAY_FONT }}
+                >
+                    {tenant.name?.slice(0, 2).toUpperCase()}
+                </span>
+            )}
+        </div>
+    );
+}
+
+function HeroBadgeRail({ theme, ThemeIcon, profile, tenant, tenantPlan }) {
+    return (
+        <div className="flex flex-wrap items-center gap-3">
+            <Badge
+                className={cn('gap-2 rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em]', theme.chipClass)}
+                data-testid="storefront-vertical-label"
+                style={{ fontFamily: PUBLIC_LABEL_FONT }}
+            >
+                <ThemeIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                {profile.vertical_label || profile.label}
+            </Badge>
+            <Badge
+                className="rounded-full bg-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-white hover:bg-white/10"
+                style={{ fontFamily: PUBLIC_LABEL_FONT }}
+            >
+                {tenant.category?.name || 'Negocio local'}
+            </Badge>
+            <Badge
+                className="rounded-full bg-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-slate-200 hover:bg-white/10"
+                style={{ fontFamily: PUBLIC_LABEL_FONT }}
+            >
+                {PLAN_LABELS[tenantPlan] || tenantPlan}
+            </Badge>
+            {tenantPlan !== PLAN.SEMILLA ? (
+                <Badge
+                    className="gap-2 rounded-full bg-white px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-slate-950 hover:bg-white"
+                    style={{ fontFamily: PUBLIC_LABEL_FONT }}
+                >
+                    <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                    Operacion lista
+                </Badge>
+            ) : null}
+        </div>
+    );
+}
+
+function HeroMetaList({ cityName, isOpen, tenant, reviewCount, followersCount }) {
+    return (
+        <div
+            className="flex flex-wrap items-center gap-x-5 gap-y-3 text-sm font-semibold text-slate-200"
+            style={{ fontFamily: PUBLIC_LABEL_FONT }}
+        >
+            <span className="inline-flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-white" aria-hidden="true" />
+                {cityName}
+            </span>
+            <span className="inline-flex items-center gap-2">
+                <span className={cn('h-2.5 w-2.5 rounded-full', isOpen ? 'bg-emerald-400' : 'bg-rose-400')} />
+                {isOpen ? 'Abierto ahora' : 'Fuera de horario'}
+            </span>
+            {reviewCount > 0 ? (
+                <span className="inline-flex items-center gap-2">
+                    <Star className="h-4 w-4 fill-white text-white" aria-hidden="true" />
+                    {tenant.rating || '4.8'} ({reviewCount})
+                </span>
+            ) : null}
+            {followersCount > 0 ? (
+                <span className="inline-flex items-center gap-2">
+                    <Users className="h-4 w-4 text-white" aria-hidden="true" />
+                    {followersCount} siguiendo este negocio
+                </span>
+            ) : null}
+        </div>
+    );
+}
+
+function HeroActionRow({
+    tenant,
+    isOwner,
+    isFollowing,
+    followersCount,
+    primaryAction,
+    secondaryAction,
+    ownerPanelHref,
+}) {
+    return (
+        <div className="flex flex-wrap items-center gap-3">
+            {!isOwner ? (
+                <FollowButton
+                    tenantId={tenant.id}
+                    isFollowing={isFollowing}
+                    followersCount={followersCount}
+                    className="!rounded-full !border-white/15 !bg-white !px-5 !py-3 !text-xs !font-semibold !uppercase !tracking-[0.16em] !text-slate-950 hover:!bg-slate-100"
+                />
+            ) : null}
+
+            <ActionLink
+                href={primaryAction.href}
+                label={primaryAction.label}
+                icon={primaryAction.icon}
+                external={primaryAction.external}
+            />
+
+            {secondaryAction ? (
+                <ActionLink
+                    href={secondaryAction.href}
+                    label={secondaryAction.label}
+                    icon={secondaryAction.icon}
+                    variant="ghost"
+                    external={secondaryAction.external}
+                />
+            ) : null}
+
+            {isOwner && ownerPanelHref ? (
+                <Button
+                    asChild
+                    variant="ghost"
+                    className="h-auto rounded-full border border-white/20 bg-white/10 px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-white transition-colors hover:bg-white/16 hover:text-white"
+                    style={{ fontFamily: PUBLIC_LABEL_FONT }}
+                >
+                    <a href={ownerPanelHref}>
+                        Administrar
+                        <ArrowUpRight data-icon="inline-end" aria-hidden="true" />
+                    </a>
+                </Button>
+            ) : null}
+        </div>
+    );
+}
+
+function HeroInsightPanel({
+    profile,
+    businessType,
+    servicesCount,
+    totalProductsCount,
+    reviewCount,
+    menuSectionsCount,
+    serviceProvidersCount,
+}) {
+    return (
+        <aside className="rounded-[1.8rem] border border-white/10 bg-white/10 p-6 shadow-2xl shadow-slate-950/20 backdrop-blur-md">
+            <Eyebrow dark>Modo de atencion</Eyebrow>
+            <SectionTitle dark className="mt-3 text-2xl">
+                {profile.offer_title}
+            </SectionTitle>
+            <p className="mt-3 text-sm leading-7 text-slate-200">
+                {profile.offer_copy}
+            </p>
+
+            {Array.isArray(profile.trust_points) && profile.trust_points.length > 0 ? (
+                <div className="mt-5 flex flex-wrap gap-2">
+                    {profile.trust_points.slice(0, 3).map((point) => (
+                        <Badge
+                            key={point}
+                            className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-white hover:bg-white/10"
+                            style={{ fontFamily: PUBLIC_LABEL_FONT }}
+                        >
+                            {point}
+                        </Badge>
+                    ))}
+                </div>
+            ) : null}
+
+            <div className="mt-6 grid grid-cols-2 gap-3">
+                <MetricCard
+                    label={profile.mobile_tab_label}
+                    value={businessType === 'service' ? servicesCount : totalProductsCount}
+                    helper={businessType === 'service' ? 'servicios visibles' : 'items visibles'}
+                    dark
+                />
+                <MetricCard label="Resenas" value={reviewCount} helper="feedback disponible" dark />
+                <MetricCard label="Secciones" value={menuSectionsCount} helper="bloques activos" dark />
+                <MetricCard label="Equipo" value={serviceProvidersCount} helper="personas visibles" dark />
+            </div>
+        </aside>
     );
 }
 
@@ -272,57 +473,18 @@ function HeroSection({
                     </div>
 
                     <div className="relative grid gap-8 px-6 py-8 lg:grid-cols-[minmax(0,1fr)_340px] lg:p-10">
-                        <div className="space-y-8">
-                            <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
-                                <div className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-[1.75rem] border border-white/10 bg-white/10 shadow-2xl shadow-black/20 backdrop-blur-md">
-                                    {tenant.logo ? (
-                                        <img
-                                            src={tenant.logo}
-                                            alt={`${tenant.name} logo`}
-                                            className="h-full w-full object-cover"
-                                        />
-                                    ) : (
-                                        <span
-                                            className="text-3xl font-extrabold uppercase tracking-[0.12em] text-white"
-                                            style={{ fontFamily: PUBLIC_DISPLAY_FONT }}
-                                        >
-                                            {tenant.name?.slice(0, 2).toUpperCase()}
-                                        </span>
-                                    )}
-                                </div>
+                        <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
+                            <HeroLogo tenant={tenant} />
 
-                                <div className="flex-1 space-y-5">
-                                    <div className="flex flex-wrap items-center gap-3">
-                                        <span
-                                            className={cn('inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em]', theme.chipClass)}
-                                            style={{ fontFamily: PUBLIC_LABEL_FONT }}
-                                            data-testid="storefront-vertical-label"
-                                        >
-                                            <ThemeIcon className="h-3.5 w-3.5" />
-                                            {profile.vertical_label || profile.label}
-                                        </span>
-                                        <span
-                                            className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-white"
-                                            style={{ fontFamily: PUBLIC_LABEL_FONT }}
-                                        >
-                                            {tenant.category?.name || 'Negocio local'}
-                                        </span>
-                                        <span
-                                            className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-200"
-                                            style={{ fontFamily: PUBLIC_LABEL_FONT }}
-                                        >
-                                            {PLAN_LABELS[tenantPlan] || tenantPlan}
-                                        </span>
-                                        {tenantPlan !== PLAN.SEMILLA ? (
-                                            <span
-                                                className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-950"
-                                                style={{ fontFamily: PUBLIC_LABEL_FONT }}
-                                            >
-                                                <BadgeCheck className="h-3.5 w-3.5" />
-                                                Operacion lista
-                                            </span>
-                                        ) : null}
-                                    </div>
+                            <div className="min-w-0 flex-1">
+                                <div className="flex flex-col gap-5">
+                                    <HeroBadgeRail
+                                        theme={theme}
+                                        ThemeIcon={ThemeIcon}
+                                        profile={profile}
+                                        tenant={tenant}
+                                        tenantPlan={tenantPlan}
+                                    />
 
                                     <div>
                                         <h1
@@ -339,109 +501,36 @@ function HeroSection({
                                         </p>
                                     </div>
 
-                                    <div
-                                        className="flex flex-wrap items-center gap-x-5 gap-y-3 text-sm font-semibold text-slate-200"
-                                        style={{ fontFamily: PUBLIC_LABEL_FONT }}
-                                    >
-                                        <span className="inline-flex items-center gap-2">
-                                            <MapPin className="h-4 w-4 text-white" />
-                                            {cityName}
-                                        </span>
-                                        <span className="inline-flex items-center gap-2">
-                                            <span className={cn('h-2.5 w-2.5 rounded-full', isOpen ? 'bg-emerald-400' : 'bg-rose-400')} />
-                                            {isOpen ? 'Abierto ahora' : 'Fuera de horario'}
-                                        </span>
-                                        {reviewCount > 0 ? (
-                                            <span className="inline-flex items-center gap-2">
-                                                <Star className="h-4 w-4 fill-white text-white" />
-                                                {tenant.rating || '4.8'} ({reviewCount})
-                                            </span>
-                                        ) : null}
-                                        {followersCount > 0 ? (
-                                            <span className="inline-flex items-center gap-2">
-                                                <Users className="h-4 w-4 text-white" />
-                                                {followersCount} siguiendo este negocio
-                                            </span>
-                                        ) : null}
-                                    </div>
+                                    <HeroMetaList
+                                        cityName={cityName}
+                                        isOpen={isOpen}
+                                        tenant={tenant}
+                                        reviewCount={reviewCount}
+                                        followersCount={followersCount}
+                                    />
 
-                                    <div className="flex flex-wrap items-center gap-3">
-                                        {!isOwner ? (
-                                            <FollowButton
-                                                tenantId={tenant.id}
-                                                isFollowing={isFollowing}
-                                                followersCount={followersCount}
-                                                className="!rounded-full !border-white/15 !bg-white !px-5 !py-3 !text-xs !font-semibold !uppercase !tracking-[0.16em] !text-slate-950 hover:!bg-slate-100"
-                                            />
-                                        ) : null}
-
-                                        <ActionLink
-                                            href={primaryAction.href}
-                                            label={primaryAction.label}
-                                            icon={primaryAction.icon}
-                                            external={primaryAction.external}
-                                        />
-
-                                        {secondaryAction ? (
-                                            <ActionLink
-                                                href={secondaryAction.href}
-                                                label={secondaryAction.label}
-                                                icon={secondaryAction.icon}
-                                                variant="ghost"
-                                                external={secondaryAction.external}
-                                            />
-                                        ) : null}
-
-                                        {isOwner && ownerPanelHref ? (
-                                            <a
-                                                href={ownerPanelHref}
-                                                className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-white transition hover:bg-white/16"
-                                                style={{ fontFamily: PUBLIC_LABEL_FONT }}
-                                            >
-                                                Administrar
-                                                <ArrowUpRight className="h-4 w-4" />
-                                            </a>
-                                        ) : null}
-                                    </div>
+                                    <HeroActionRow
+                                        tenant={tenant}
+                                        isOwner={isOwner}
+                                        isFollowing={isFollowing}
+                                        followersCount={followersCount}
+                                        primaryAction={primaryAction}
+                                        secondaryAction={secondaryAction}
+                                        ownerPanelHref={ownerPanelHref}
+                                    />
                                 </div>
                             </div>
                         </div>
 
-                        <aside className="rounded-[1.8rem] border border-white/10 bg-white/10 p-6 shadow-2xl shadow-slate-950/20 backdrop-blur-md">
-                            <Eyebrow dark>Modo de atencion</Eyebrow>
-                            <SectionTitle dark className="mt-3 text-2xl">
-                                {profile.offer_title}
-                            </SectionTitle>
-                            <p className="mt-3 text-sm leading-7 text-slate-200">
-                                {profile.offer_copy}
-                            </p>
-
-                            {Array.isArray(profile.trust_points) && profile.trust_points.length > 0 ? (
-                                <div className="mt-5 flex flex-wrap gap-2">
-                                    {profile.trust_points.slice(0, 3).map((point) => (
-                                        <span
-                                            key={point}
-                                            className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-white"
-                                            style={{ fontFamily: PUBLIC_LABEL_FONT }}
-                                        >
-                                            {point}
-                                        </span>
-                                    ))}
-                                </div>
-                            ) : null}
-
-                            <div className="mt-6 grid grid-cols-2 gap-3">
-                                <MetricCard
-                                    label={profile.mobile_tab_label}
-                                    value={businessType === 'service' ? servicesCount : totalProductsCount}
-                                    helper={businessType === 'service' ? 'servicios visibles' : 'items visibles'}
-                                    dark
-                                />
-                                <MetricCard label="Resenas" value={reviewCount} helper="feedback disponible" dark />
-                                <MetricCard label="Secciones" value={menuSectionsCount} helper="bloques activos" dark />
-                                <MetricCard label="Equipo" value={serviceProvidersCount} helper="personas visibles" dark />
-                            </div>
-                        </aside>
+                        <HeroInsightPanel
+                            profile={profile}
+                            businessType={businessType}
+                            servicesCount={servicesCount}
+                            totalProductsCount={totalProductsCount}
+                            reviewCount={reviewCount}
+                            menuSectionsCount={menuSectionsCount}
+                            serviceProvidersCount={serviceProvidersCount}
+                        />
                     </div>
                 </div>
             </div>
@@ -471,6 +560,46 @@ function PreviewBanner({ previewReason, ownerPanelHref }) {
                 ) : null}
             </div>
         </section>
+    );
+}
+
+function FocusCard({ card, eyebrow }) {
+    const content = (
+        <>
+            {card.actionLabel}
+            <ArrowUpRight data-icon="inline-end" aria-hidden="true" />
+        </>
+    );
+
+    return (
+        <Card className="rounded-[1.7rem] border-slate-200 bg-white p-6 shadow-sm shadow-slate-950/5">
+            <Eyebrow>{eyebrow}</Eyebrow>
+            <h3
+                className="mt-3 text-2xl font-bold tracking-tight text-slate-950"
+                style={{ fontFamily: PUBLIC_DISPLAY_FONT }}
+            >
+                {card.title}
+            </h3>
+            <p className="mt-3 text-sm leading-7 text-slate-600">
+                {card.copy}
+            </p>
+            <div className="mt-5">
+                <Button
+                    asChild
+                    variant="ghost"
+                    className="h-auto justify-start gap-2 p-0 text-sm font-semibold text-slate-950 hover:bg-transparent hover:text-slate-700"
+                    style={{ fontFamily: PUBLIC_LABEL_FONT }}
+                >
+                    {card.external ? (
+                        <a href={card.actionHref} target="_blank" rel="noopener noreferrer">
+                            {content}
+                        </a>
+                    ) : (
+                        <a href={card.actionHref}>{content}</a>
+                    )}
+                </Button>
+            </div>
+        </Card>
     );
 }
 
@@ -590,41 +719,7 @@ function FocusStrip({ businessType, services, menuSections, products, bookingUrl
         <section className="px-6 pb-8">
             <div className="mx-auto grid max-w-7xl gap-4 lg:grid-cols-3">
                 {cards.map((card) => (
-                    <article key={card.title} className="rounded-[1.7rem] border border-slate-200 bg-white p-6 shadow-sm shadow-slate-950/5">
-                        <Eyebrow>{profile.offer_title}</Eyebrow>
-                        <h3
-                            className="mt-3 text-2xl font-bold tracking-tight text-slate-950"
-                            style={{ fontFamily: PUBLIC_DISPLAY_FONT }}
-                        >
-                            {card.title}
-                        </h3>
-                        <p className="mt-3 text-sm leading-7 text-slate-600">
-                            {card.copy}
-                        </p>
-                        <div className="mt-5">
-                            {card.external ? (
-                                <a
-                                    href={card.actionHref}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 text-sm font-semibold text-slate-950 transition hover:text-slate-700"
-                                    style={{ fontFamily: PUBLIC_LABEL_FONT }}
-                                >
-                                    {card.actionLabel}
-                                    <ArrowUpRight className="h-4 w-4" />
-                                </a>
-                            ) : (
-                                <a
-                                    href={card.actionHref}
-                                    className="inline-flex items-center gap-2 text-sm font-semibold text-slate-950 transition hover:text-slate-700"
-                                    style={{ fontFamily: PUBLIC_LABEL_FONT }}
-                                >
-                                    {card.actionLabel}
-                                    <ArrowUpRight className="h-4 w-4" />
-                                </a>
-                            )}
-                        </div>
-                    </article>
+                    <FocusCard key={card.title} card={card} eyebrow={profile.offer_title} />
                 ))}
             </div>
         </section>
@@ -1079,12 +1174,12 @@ function SearchToolbar({
                     </label>
                     <div className="relative">
                         <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                        <input
+                        <Input
                             id="catalog-search"
                             value={searchQuery}
                             onChange={(event) => setSearchQuery(event.target.value)}
                             placeholder="Busca productos, platos o palabras clave"
-                            className="w-full rounded-full border border-slate-200 bg-white px-12 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:ring-2 focus:ring-slate-200"
+                            className="h-auto rounded-full border-slate-200 bg-white px-12 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus-visible:ring-slate-200"
                         />
                     </div>
                 </form>
@@ -1283,20 +1378,106 @@ function ProductPanel({
                     <PaginationBar pagination={pagination} />
                 </>
             ) : (
-                <div className="rounded-[1.8rem] border border-dashed border-slate-300 bg-slate-50 py-16 text-center">
-                    <ShoppingBag className="mx-auto mb-4 h-14 w-14 text-slate-300" />
-                    <p className="text-lg font-semibold text-slate-700">Sin catalogo publico por ahora</p>
-                    <p className="mt-2 text-sm leading-7 text-slate-500">{emptyMessage}</p>
-                </div>
+                <MicrositeEmptyState
+                    icon={ShoppingBag}
+                    title="Sin catalogo publico por ahora"
+                    description={emptyMessage}
+                />
             )}
         </div>
+    );
+}
+
+function MicrositeEmptyState({ icon, title, description }) {
+    return (
+        <Empty className="rounded-[1.8rem] border-slate-300 bg-slate-50 py-16">
+            <EmptyHeader>
+                <EmptyIcon icon={icon} className="bg-white text-slate-400" />
+                <EmptyTitle className="text-slate-700">{title}</EmptyTitle>
+                <EmptyDescription className="leading-7 text-slate-500">
+                    {description}
+                </EmptyDescription>
+            </EmptyHeader>
+        </Empty>
+    );
+}
+
+function ServiceStatBadge({ children }) {
+    return (
+        <Badge
+            className="rounded-full bg-white px-4 py-2 text-xs uppercase tracking-[0.16em] text-slate-600 hover:bg-white"
+            style={{ fontFamily: PUBLIC_LABEL_FONT }}
+        >
+            {children}
+        </Badge>
+    );
+}
+
+function ServiceCard({ service, bookingUrl, primaryWhatsAppUrl }) {
+    return (
+        <Card className="rounded-[1.7rem] border-slate-200 bg-white p-6 shadow-sm shadow-slate-950/5">
+            <Eyebrow>Servicio destacado</Eyebrow>
+            <div className="mt-3 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div className="min-w-0">
+                    <h3
+                        className="text-2xl font-bold tracking-tight text-slate-950"
+                        style={{ fontFamily: PUBLIC_DISPLAY_FONT }}
+                    >
+                        {service.name}
+                    </h3>
+                    <p className="mt-3 text-sm leading-7 text-slate-600">
+                        {service.description || 'Atencion profesional lista para reservar o cotizar.'}
+                    </p>
+                </div>
+
+                <div className="shrink-0 rounded-[1.25rem] bg-slate-950 px-4 py-3 text-white">
+                    <Eyebrow dark>Precio</Eyebrow>
+                    <p className="mt-2 text-xl font-bold" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
+                        {service.formatted_price}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-300">
+                        {service.duration_formatted || `${service.duration_minutes} min`}
+                    </p>
+                </div>
+            </div>
+
+            <div className="mt-5 flex flex-wrap gap-3">
+                {bookingUrl ? (
+                    <Button
+                        asChild
+                        variant="ghost"
+                        className="h-auto rounded-full bg-slate-950 px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-white transition-colors hover:bg-slate-800 hover:text-white"
+                        style={{ fontFamily: PUBLIC_LABEL_FONT }}
+                    >
+                        <Link href={`${bookingUrl}?service=${service.id}`}>
+                            <CalendarClock data-icon="inline-start" aria-hidden="true" />
+                            Reservar
+                        </Link>
+                    </Button>
+                ) : null}
+
+                {primaryWhatsAppUrl ? (
+                    <Button
+                        asChild
+                        variant="outline"
+                        className="h-auto rounded-full border-slate-200 bg-white px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-950 transition-colors hover:border-slate-300 hover:bg-slate-50"
+                        style={{ fontFamily: PUBLIC_LABEL_FONT }}
+                    >
+                        <a href={primaryWhatsAppUrl} target="_blank" rel="noopener noreferrer">
+                            <MessageCircle data-icon="inline-start" aria-hidden="true" />
+                            Consultar
+                        </a>
+                    </Button>
+                ) : null}
+            </div>
+        </Card>
     );
 }
 
 function ServicePanel({ services, bookingUrl, serviceProvidersCount, primaryWhatsAppUrl, profile }) {
     return (
         <section id="servicios" className="space-y-8" data-testid="service-panel">
-            <div className="rounded-[1.9rem] bg-slate-50 p-6 md:p-8">
+            <Card className="rounded-[1.9rem] border-0 bg-slate-50 p-6 shadow-none md:p-8">
                 <Eyebrow>Servicios</Eyebrow>
                 <SectionTitle className="mt-3 text-3xl">
                     {profile?.service_panel_title || 'Reserva, cotiza o consulta con claridad'}
@@ -1305,80 +1486,32 @@ function ServicePanel({ services, bookingUrl, serviceProvidersCount, primaryWhat
                     {profile?.service_panel_copy || 'Servicios visibles, duracion, precio y una forma directa de avanzar a cita o conversacion.'}
                 </p>
                 <div className="mt-6 flex flex-wrap gap-3">
-                    <span className="rounded-full bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-600" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
+                    <ServiceStatBadge>
                         {services.length} servicios activos
-                    </span>
-                    <span className="rounded-full bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-600" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
+                    </ServiceStatBadge>
+                    <ServiceStatBadge>
                         {serviceProvidersCount} personas visibles
-                    </span>
+                    </ServiceStatBadge>
                 </div>
-            </div>
+            </Card>
 
             {services.length > 0 ? (
                 <div className="grid gap-5 xl:grid-cols-2">
                     {services.map((service) => (
-                        <article key={service.id} className="rounded-[1.7rem] border border-slate-200 bg-white p-6 shadow-sm shadow-slate-950/5">
-                            <Eyebrow>Servicio destacado</Eyebrow>
-                            <div className="mt-3 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                                <div>
-                                    <h3
-                                        className="text-2xl font-bold tracking-tight text-slate-950"
-                                        style={{ fontFamily: PUBLIC_DISPLAY_FONT }}
-                                    >
-                                        {service.name}
-                                    </h3>
-                                    <p className="mt-3 text-sm leading-7 text-slate-600">
-                                        {service.description || 'Atencion profesional lista para reservar o cotizar.'}
-                                    </p>
-                                </div>
-
-                                <div className="rounded-[1.25rem] bg-slate-950 px-4 py-3 text-white">
-                                    <Eyebrow dark>Precio</Eyebrow>
-                                    <p className="mt-2 text-xl font-bold" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                                        {service.formatted_price}
-                                    </p>
-                                    <p className="mt-1 text-sm text-slate-300">
-                                        {service.duration_formatted || `${service.duration_minutes} min`}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="mt-5 flex flex-wrap gap-3">
-                                {bookingUrl ? (
-                                    <Link
-                                        href={`${bookingUrl}?service=${service.id}`}
-                                        className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-white transition hover:bg-slate-800"
-                                        style={{ fontFamily: PUBLIC_LABEL_FONT }}
-                                    >
-                                        <CalendarClock className="h-4 w-4" />
-                                        Reservar
-                                    </Link>
-                                ) : null}
-
-                                {primaryWhatsAppUrl ? (
-                                    <a
-                                        href={primaryWhatsAppUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-950 transition hover:border-slate-300 hover:bg-slate-50"
-                                        style={{ fontFamily: PUBLIC_LABEL_FONT }}
-                                    >
-                                        <MessageCircle className="h-4 w-4" />
-                                        Consultar
-                                    </a>
-                                ) : null}
-                            </div>
-                        </article>
+                        <ServiceCard
+                            key={service.id}
+                            service={service}
+                            bookingUrl={bookingUrl}
+                            primaryWhatsAppUrl={primaryWhatsAppUrl}
+                        />
                     ))}
                 </div>
             ) : (
-                <div className="rounded-[1.8rem] border border-dashed border-slate-300 bg-slate-50 py-16 text-center">
-                    <CalendarClock className="mx-auto mb-4 h-14 w-14 text-slate-300" />
-                    <p className="text-lg font-semibold text-slate-700">Todavia no hay servicios visibles</p>
-                    <p className="mt-2 text-sm leading-7 text-slate-500">
-                        Cuando el negocio publique sus servicios, esta seccion se convertira en su frente de reservas y consultas.
-                    </p>
-                </div>
+                <MicrositeEmptyState
+                    icon={CalendarClock}
+                    title="Todavia no hay servicios visibles"
+                    description="Cuando el negocio publique sus servicios, esta seccion se convertira en su frente de reservas y consultas."
+                />
             )}
         </section>
     );
@@ -1409,7 +1542,7 @@ function OffersPanel({ businessType, services, menuSections, products, bookingUr
         <section id="ofertas" className="space-y-8">
             <div className="grid gap-4 lg:grid-cols-3">
                 {cards.map((card) => (
-                    <article key={card.title} className="rounded-[1.7rem] border border-slate-200 bg-white p-6 shadow-sm shadow-slate-950/5">
+                    <Card key={card.title} className="rounded-[1.7rem] border-slate-200 bg-white p-6 shadow-sm shadow-slate-950/5">
                         <Eyebrow>Oferta principal</Eyebrow>
                         <h3
                             className="mt-3 text-xl font-bold tracking-tight text-slate-950"
@@ -1424,17 +1557,17 @@ function OffersPanel({ businessType, services, menuSections, products, bookingUr
                             {card.value}
                         </p>
                         <p className="mt-3 text-sm leading-7 text-slate-600">{card.copy}</p>
-                    </article>
+                    </Card>
                 ))}
             </div>
 
             {services.length > 0 ? (
-                <div className="rounded-[1.8rem] border border-slate-200 bg-slate-50 p-6">
+                <Card className="rounded-[1.8rem] border-slate-200 bg-slate-50 p-6">
                     <Eyebrow>Servicios visibles</Eyebrow>
                     <SectionTitle className="mt-3 text-2xl">La parte consultiva del negocio</SectionTitle>
                     <div className="mt-6 grid gap-4 md:grid-cols-2">
                         {services.slice(0, 4).map((service) => (
-                            <div key={service.id} className="rounded-[1.35rem] border border-slate-200 bg-white p-5">
+                            <Card key={service.id} className="rounded-[1.35rem] border-slate-200 bg-white p-5 shadow-none">
                                 <h3
                                     className="text-lg font-bold tracking-tight text-slate-950"
                                     style={{ fontFamily: PUBLIC_DISPLAY_FONT }}
@@ -1445,82 +1578,78 @@ function OffersPanel({ businessType, services, menuSections, products, bookingUr
                                 <p className="mt-4 text-sm font-semibold text-slate-950">
                                     {service.formatted_price}  -  {service.duration_formatted || `${service.duration_minutes} min`}
                                 </p>
-                            </div>
+                            </Card>
                         ))}
                     </div>
-                </div>
+                </Card>
             ) : null}
         </section>
+    );
+}
+
+function InfoRow({ icon: Icon, label, children }) {
+    return (
+        <div className="flex items-start gap-4">
+            <Icon data-icon="info" className="mt-1 h-4 w-4 text-slate-950" aria-hidden="true" />
+            <div className="min-w-0">
+                <p className="font-semibold text-slate-950">{label}</p>
+                <div className="mt-1 leading-7">{children}</div>
+            </div>
+        </div>
     );
 }
 
 function InfoPanel({ tenant, isOpen, openingHours = [] }) {
     return (
         <section id="informacion" className="grid gap-8 lg:grid-cols-[minmax(0,1.65fr)_360px]">
-            <article className="rounded-[1.9rem] bg-slate-50 p-8 md:p-10">
+            <Card className="rounded-[1.9rem] border-0 bg-slate-50 p-8 shadow-none md:p-10">
                 <Eyebrow>Presentacion</Eyebrow>
                 <SectionTitle className="mt-3 text-3xl">Sobre {tenant.name}</SectionTitle>
                 <p className="mt-6 whitespace-pre-line text-base leading-8 text-slate-600">
                     {tenant.about || tenant.description || 'Bienvenido a este negocio dentro de Vito Business OS.'}
                 </p>
-            </article>
+            </Card>
 
-            <div className="space-y-6">
-                <article className="rounded-[1.6rem] bg-white p-6 shadow-sm shadow-slate-950/5">
+            <div className="flex flex-col gap-6">
+                <Card className="rounded-[1.6rem] border-0 bg-white p-6 shadow-sm shadow-slate-950/5">
                     <Eyebrow>Informacion clave</Eyebrow>
-                    <div className="mt-5 space-y-5 text-sm text-slate-600">
-                        <div className="flex items-start gap-4">
-                            <MapPin className="mt-1 h-4 w-4 text-slate-950" />
-                            <div>
-                                <p className="font-semibold text-slate-950">Ubicacion</p>
-                                <p className="mt-1 leading-7">{tenant.address || tenant.location?.address || 'No especificada'}</p>
-                            </div>
-                        </div>
+                    <div className="mt-5 flex flex-col gap-5 text-sm text-slate-600">
+                        <InfoRow icon={MapPin} label="Ubicacion">
+                            <p>{tenant.address || tenant.location?.address || 'No especificada'}</p>
+                        </InfoRow>
 
-                        <div className="flex items-start gap-4">
-                            <Clock3 className="mt-1 h-4 w-4 text-slate-950" />
-                            <div>
-                                <p className="font-semibold text-slate-950">Estado</p>
-                                <p className="mt-1 leading-7">{isOpen ? 'Abierto ahora' : 'Cerrado en este momento'}</p>
-                            </div>
-                        </div>
+                        <InfoRow icon={Clock3} label="Estado">
+                            <p>{isOpen ? 'Abierto ahora' : 'Cerrado en este momento'}</p>
+                        </InfoRow>
 
                         {tenant.phone ? (
-                            <div className="flex items-start gap-4">
-                                <Phone className="mt-1 h-4 w-4 text-slate-950" />
-                                <div>
-                                    <p className="font-semibold text-slate-950">Telefono</p>
-                                    <a href={`tel:${tenant.phone}`} className="mt-1 inline-flex leading-7 text-slate-600 underline decoration-slate-300 underline-offset-4 transition hover:text-slate-950">
-                                        {tenant.phone}
-                                    </a>
-                                </div>
-                            </div>
+                            <InfoRow icon={Phone} label="Telefono">
+                                <a href={`tel:${tenant.phone}`} className="inline-flex text-slate-600 underline decoration-slate-300 underline-offset-4 transition-colors hover:text-slate-950">
+                                    {tenant.phone}
+                                </a>
+                            </InfoRow>
                         ) : null}
 
                         {tenant.website_url ? (
-                            <div className="flex items-start gap-4">
-                                <Globe className="mt-1 h-4 w-4 text-slate-950" />
-                                <div>
-                                    <p className="font-semibold text-slate-950">Sitio web</p>
-                                    <a
-                                        href={tenant.website_url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="mt-1 inline-flex items-center gap-2 leading-7 text-slate-600 underline decoration-slate-300 underline-offset-4 transition hover:text-slate-950"
-                                    >
-                                        Visitar
-                                        <ExternalLink className="h-4 w-4" />
-                                    </a>
-                                </div>
-                            </div>
+                            <InfoRow icon={Globe} label="Sitio web">
+                                <a
+                                    href={tenant.website_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 text-slate-600 underline decoration-slate-300 underline-offset-4 transition-colors hover:text-slate-950"
+                                >
+                                    Visitar
+                                    <ExternalLink data-icon="inline-end" aria-hidden="true" />
+                                </a>
+                            </InfoRow>
                         ) : null}
                     </div>
-                </article>
+                </Card>
 
                 {openingHours.length > 0 ? (
-                    <article className="rounded-[1.6rem] bg-slate-950 p-6 text-white">
+                    <Card className="rounded-[1.6rem] border-0 bg-slate-950 p-6 text-white">
                         <Eyebrow dark>Horarios</Eyebrow>
-                        <div className="mt-5 space-y-4">
+                        <div className="mt-5 flex flex-col gap-4">
                             {openingHours.map((slot) => (
                                 <div key={`${slot.day_name}-${slot.day_of_week}`} className="flex items-center justify-between gap-4 text-sm">
                                     <span className="font-semibold text-white">
@@ -1532,7 +1661,7 @@ function InfoPanel({ tenant, isOpen, openingHours = [] }) {
                                 </div>
                             ))}
                         </div>
-                    </article>
+                    </Card>
                 ) : null}
             </div>
         </section>
@@ -1571,32 +1700,71 @@ function MicrositeFooter({ tenant, profile, primaryWhatsAppUrl, tenantPlan }) {
 
                 <div className="flex flex-wrap items-center gap-3">
                     {primaryWhatsAppUrl ? (
-                        <a
-                            href={primaryWhatsAppUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-white transition hover:bg-slate-800"
+                        <Button
+                            asChild
+                            variant="ghost"
+                            className="h-auto rounded-full bg-slate-950 px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-white transition-colors hover:bg-slate-800 hover:text-white"
                             style={{ fontFamily: PUBLIC_LABEL_FONT }}
                         >
-                            <MessageCircle className="h-4 w-4" />
-                            Contactar
-                        </a>
+                            <a href={primaryWhatsAppUrl} target="_blank" rel="noopener noreferrer">
+                                <MessageCircle data-icon="inline-start" aria-hidden="true" />
+                                Contactar
+                            </a>
+                        </Button>
                     ) : null}
 
-                    <Link
-                        href={route('tenant.register')}
+                    <Button
+                        asChild
+                        variant="ghost"
                         className={cn(
-                            'inline-flex items-center gap-2 rounded-full border border-slate-200 px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] transition hover:border-slate-300 hover:bg-slate-100',
+                            'h-auto rounded-full border border-slate-200 px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] transition-colors hover:border-slate-300 hover:bg-slate-100',
                             tenantPlan === PLAN.SEMILLA ? 'text-slate-950' : 'text-slate-700'
                         )}
                         style={{ fontFamily: PUBLIC_LABEL_FONT }}
                     >
-                        Crear mi negocio
-                        <ArrowUpRight className="h-4 w-4" />
-                    </Link>
+                        <Link href={route('tenant.register')}>
+                            Crear mi negocio
+                            <ArrowUpRight data-icon="inline-end" aria-hidden="true" />
+                        </Link>
+                    </Button>
                 </div>
             </div>
         </footer>
+    );
+}
+
+function MobileDockAction({ href, label, icon: Icon, external = false, inertia = false, active = false }) {
+    if (!href) {
+        return <div aria-hidden="true" />;
+    }
+
+    const className = cn(
+        'h-16 rounded-none bg-transparent px-1 py-0 text-[10px] font-semibold uppercase tracking-[0.14em] transition-colors hover:bg-slate-50 hover:text-slate-950',
+        'flex-col gap-1',
+        active ? 'text-slate-950' : 'text-slate-500',
+    );
+
+    const content = (
+        <>
+            <Icon data-icon="dock" className="h-4 w-4" aria-hidden="true" />
+            <span>{label}</span>
+        </>
+    );
+
+    if (inertia) {
+        return (
+            <Button asChild variant="ghost" className={className} style={{ fontFamily: PUBLIC_LABEL_FONT }}>
+                <Link href={href}>{content}</Link>
+            </Button>
+        );
+    }
+
+    return (
+        <Button asChild variant="ghost" className={className} style={{ fontFamily: PUBLIC_LABEL_FONT }}>
+            <a href={href} target={external ? '_blank' : undefined} rel={external ? 'noopener noreferrer' : undefined}>
+                {content}
+            </a>
+        </Button>
     );
 }
 
@@ -1604,59 +1772,119 @@ function MobileDock({ primaryLabel, primaryHref, tenant, primaryWhatsAppUrl, boo
     return (
         <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur-xl md:hidden">
             <div className="grid h-16 grid-cols-4">
-                <a
-                    href="#top"
-                    className="flex flex-col items-center justify-center gap-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 transition hover:text-slate-950"
-                    style={{ fontFamily: PUBLIC_LABEL_FONT }}
-                >
-                    <Store className="h-4 w-4" />
-                    <span>Inicio</span>
-                </a>
-                <a
-                    href={primaryHref}
-                    className="flex flex-col items-center justify-center gap-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 transition hover:text-slate-950"
-                    style={{ fontFamily: PUBLIC_LABEL_FONT }}
-                >
-                    <ShoppingBag className="h-4 w-4" />
-                    <span>{primaryLabel}</span>
-                </a>
+                <MobileDockAction href="#top" label="Inicio" icon={Store} />
+                <MobileDockAction href={primaryHref} label={primaryLabel} icon={ShoppingBag} />
                 {tenant.phone ? (
-                    <a
-                        href={`tel:${tenant.phone}`}
-                        className="flex flex-col items-center justify-center gap-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 transition hover:text-slate-950"
-                        style={{ fontFamily: PUBLIC_LABEL_FONT }}
-                    >
-                        <Phone className="h-4 w-4" />
-                        <span>Llamar</span>
-                    </a>
+                    <MobileDockAction href={`tel:${tenant.phone}`} label="Llamar" icon={Phone} />
                 ) : bookingUrl ? (
-                    <Link
-                        href={bookingUrl}
-                        className="flex flex-col items-center justify-center gap-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 transition hover:text-slate-950"
-                        style={{ fontFamily: PUBLIC_LABEL_FONT }}
-                    >
-                        <CalendarClock className="h-4 w-4" />
-                        <span>Reservar</span>
-                    </Link>
+                    <MobileDockAction href={bookingUrl} label="Reservar" icon={CalendarClock} inertia />
                 ) : (
-                    <div />
+                    <div aria-hidden="true" />
                 )}
                 {primaryWhatsAppUrl ? (
-                    <a
-                        href={primaryWhatsAppUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex flex-col items-center justify-center gap-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-950"
-                        style={{ fontFamily: PUBLIC_LABEL_FONT }}
-                    >
-                        <MessageCircle className="h-4 w-4" />
-                        <span>WhatsApp</span>
-                    </a>
+                    <MobileDockAction href={primaryWhatsAppUrl} label="WhatsApp" icon={MessageCircle} external active />
                 ) : (
-                    <div />
+                    <div aria-hidden="true" />
                 )}
             </div>
         </nav>
+    );
+}
+
+function MicrositeSeoHead({ pageTitle, pageDescription, pageImage, canonicalUrl, seoStructuredData }) {
+    return (
+        <Head title={pageTitle}>
+            <meta name="description" content={pageDescription} />
+            <meta property="og:title" content={pageTitle} />
+            <meta property="og:description" content={pageDescription} />
+            <meta property="og:type" content="business.business" />
+            <meta property="og:image" content={pageImage} />
+            {canonicalUrl ? <link rel="canonical" href={canonicalUrl} /> : null}
+            {seoStructuredData ? (
+                <script
+                    type="application/ld+json"
+                    dangerouslySetInnerHTML={{ __html: JSON.stringify(seoStructuredData) }}
+                />
+            ) : null}
+        </Head>
+    );
+}
+
+function MicrositeWorkspace({
+    activeTab,
+    businessType,
+    services,
+    menuSections,
+    products,
+    bookingUrl,
+    primaryWhatsAppUrl,
+    profile,
+    searchQuery,
+    setSearchQuery,
+    handleSearch,
+    pagination,
+    tenant,
+    tenantPlan,
+    hiddenProductsCount,
+    hasHiddenProducts,
+    visibleTotal,
+    serviceProvidersCount,
+    isOpen,
+    openingHours,
+}) {
+    return (
+        <main id="workspace" className="mx-auto max-w-7xl space-y-10 px-6 py-10 pb-32">
+            {activeTab === 'offers' ? (
+                <OffersPanel
+                    businessType={businessType}
+                    services={services}
+                    menuSections={menuSections}
+                    products={products}
+                    bookingUrl={bookingUrl}
+                    primaryWhatsAppUrl={primaryWhatsAppUrl}
+                />
+            ) : null}
+
+            {activeTab === 'catalog' ? (
+                <ProductPanel
+                    businessType={businessType}
+                    profile={profile}
+                    panelTitle={profile.catalog_panel_title}
+                    panelCopy={profile.catalog_panel_copy}
+                    searchQuery={searchQuery}
+                    setSearchQuery={setSearchQuery}
+                    handleSearch={handleSearch}
+                    products={products}
+                    pagination={pagination}
+                    tenant={tenant}
+                    tenantPlan={tenantPlan}
+                    hiddenProductsCount={hiddenProductsCount}
+                    hasHiddenProducts={hasHiddenProducts}
+                    visibleTotal={visibleTotal}
+                    menuSections={menuSections}
+                />
+            ) : null}
+
+            {activeTab === 'services' ? (
+                <ServicePanel
+                    services={services}
+                    bookingUrl={bookingUrl}
+                    serviceProvidersCount={serviceProvidersCount}
+                    primaryWhatsAppUrl={primaryWhatsAppUrl}
+                    profile={profile}
+                />
+            ) : null}
+
+            {activeTab === 'info' ? (
+                <InfoPanel tenant={tenant} isOpen={isOpen} openingHours={openingHours} />
+            ) : null}
+
+            {activeTab === 'reviews' ? (
+                <section id="resenas">
+                    <ReviewsPanel tenant={tenant} />
+                </section>
+            ) : null}
+        </main>
     );
 }
 
@@ -1722,7 +1950,7 @@ export default function TenantShow({
         primary_cta_label: 'Ver catalogo',
         secondary_cta_label: 'Hablar por WhatsApp',
         mobile_tab_label: 'Catalogo',
-        footer_copy: 'Micrositio conectado a Vito Business OS.',
+        footer_copy: 'Micrositio impulsado por Vito Business OS.',
     };
     const theme = BUSINESS_THEMES[businessType] ?? BUSINESS_THEMES.retail;
     const reviewCount = Number(tenant.reviews_count ?? (Array.isArray(tenant.reviews) ? tenant.reviews.length : 0));
@@ -1801,20 +2029,13 @@ export default function TenantShow({
                 '--primary-text-color': '#ffffff',
             }}
         >
-            <Head title={pageTitle}>
-                <meta name="description" content={pageDescription} />
-                <meta property="og:title" content={pageTitle} />
-                <meta property="og:description" content={pageDescription} />
-                <meta property="og:type" content="business.business" />
-                <meta property="og:image" content={pageImage} />
-                {canonicalUrl ? <link rel="canonical" href={canonicalUrl} /> : null}
-                {seoStructuredData ? (
-                    <script
-                        type="application/ld+json"
-                        dangerouslySetInnerHTML={{ __html: JSON.stringify(seoStructuredData) }}
-                    />
-                ) : null}
-            </Head>
+            <MicrositeSeoHead
+                pageTitle={pageTitle}
+                pageDescription={pageDescription}
+                pageImage={pageImage}
+                canonicalUrl={canonicalUrl}
+                seoStructuredData={seoStructuredData}
+            />
 
             <TopNav isOwner={isOwner} ownerPanelHref={ownerPanelHref} businessLabel={theme.label} />
 
@@ -1873,58 +2094,28 @@ export default function TenantShow({
 
             <WorkspaceTabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
-            <main id="workspace" className="mx-auto max-w-7xl space-y-10 px-6 py-10 pb-32">
-                {activeTab === 'offers' ? (
-                    <OffersPanel
-                        businessType={businessType}
-                        services={safeServices}
-                        menuSections={safeMenuSections}
-                        products={safeProducts}
-                        bookingUrl={bookingUrl}
-                        primaryWhatsAppUrl={primaryWhatsAppUrl}
-                    />
-                ) : null}
-
-                {activeTab === 'catalog' ? (
-                    <ProductPanel
-                        businessType={businessType}
-                        profile={profile}
-                        panelTitle={profile.catalog_panel_title}
-                        panelCopy={profile.catalog_panel_copy}
-                        searchQuery={searchQuery}
-                        setSearchQuery={setSearchQuery}
-                        handleSearch={handleSearch}
-                        products={safeProducts}
-                        pagination={pagination}
-                        tenant={tenant}
-                        tenantPlan={tenantPlan}
-                        hiddenProductsCount={hiddenProductsCount}
-                        hasHiddenProducts={hasHiddenProducts}
-                        visibleTotal={visibleTotal}
-                        menuSections={safeMenuSections}
-                    />
-                ) : null}
-
-                {activeTab === 'services' ? (
-                    <ServicePanel
-                        services={safeServices}
-                        bookingUrl={bookingUrl}
-                        serviceProvidersCount={tenant.service_providers_count || 0}
-                        primaryWhatsAppUrl={primaryWhatsAppUrl}
-                        profile={profile}
-                    />
-                ) : null}
-
-                {activeTab === 'info' ? (
-                    <InfoPanel tenant={tenant} isOpen={isOpen} openingHours={openingHours} />
-                ) : null}
-
-                {activeTab === 'reviews' ? (
-                    <section id="resenas">
-                        <ReviewsPanel tenant={tenant} />
-                    </section>
-                ) : null}
-            </main>
+            <MicrositeWorkspace
+                activeTab={activeTab}
+                businessType={businessType}
+                services={safeServices}
+                menuSections={safeMenuSections}
+                products={safeProducts}
+                bookingUrl={bookingUrl}
+                primaryWhatsAppUrl={primaryWhatsAppUrl}
+                profile={profile}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                handleSearch={handleSearch}
+                pagination={pagination}
+                tenant={tenant}
+                tenantPlan={tenantPlan}
+                hiddenProductsCount={hiddenProductsCount}
+                hasHiddenProducts={hasHiddenProducts}
+                visibleTotal={visibleTotal}
+                serviceProvidersCount={tenant.service_providers_count || 0}
+                isOpen={isOpen}
+                openingHours={openingHours}
+            />
 
             {tenantPlan !== PLAN.SEMILLA ? <FloatingCart /> : null}
             <MobileDock
@@ -1938,4 +2129,3 @@ export default function TenantShow({
         </div>
     );
 }
-

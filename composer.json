@@ -79,6 +79,9 @@
             "@php artisan migrate:fresh --env=testing --force --ansi",
             "@php artisan test"
         ],
+        "test:architecture": [
+            "@php vendor/bin/pest --configuration=phpunit.architecture.xml"
+        ],
         "test:tenancy": [
             "@php artisan config:clear --ansi",
             "@php artisan view:clear --ansi",

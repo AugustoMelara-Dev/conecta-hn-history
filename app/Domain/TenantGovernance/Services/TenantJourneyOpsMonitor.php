@@ -77,6 +77,7 @@ final class TenantJourneyOpsMonitor
     {
         return Tenant::query()
             ->withoutGlobalScopes()
+            ->with('category:id,slug,name')
             ->where(function ($query): void {
                 $query->whereNotNull('business_segment_key')
                     ->orWhereNotNull('user_id');

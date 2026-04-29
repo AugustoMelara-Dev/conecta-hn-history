@@ -3,7 +3,21 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { AlertCircle, ArrowRight, Filter, MapPin, Search, Sparkles, X } from 'lucide-react';
 import PublicLayout from '@/Layouts/PublicLayout';
 import { ActionableAlert, EmptyState as UXEmptyState, LoadingState } from '@/Components/Feedback/UXStates';
+import { Badge } from '@/Components/ui/badge';
+import { Button } from '@/Components/ui/button';
+import { Card } from '@/Components/ui/card';
+import { Input } from '@/Components/ui/input';
+import {
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/Components/ui/select';
+import { Textarea } from '@/Components/ui/textarea';
 import { PUBLIC_DISPLAY_FONT } from '@/lib/publicTypography';
+import { cn } from '@/lib/utils';
 import {
     getTenantInitials,
     resolveTenantCategoryName,
@@ -36,20 +50,20 @@ function DirectoryCard({ tenant }) {
                     </div>
                 )}
                 <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-slate-950/65 to-transparent" />
-                <div className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm">
-                    <Sparkles className="h-3.5 w-3.5 text-slate-950" />
+                <Badge className="absolute left-4 top-4 gap-2 rounded-full border border-white/60 bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-white/90">
+                    <Sparkles data-icon="inline-start" aria-hidden="true" />
                     {resolveTenantPlanLabel(tenant)}
-                </div>
+                </Badge>
             </div>
 
             <div className="flex flex-1 flex-col gap-4 p-5 sm:p-6">
                 <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-[#f3f3f1] px-3 py-1 text-xs font-semibold text-slate-700">
+                    <Badge className="rounded-full bg-[#f3f3f1] px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-[#f3f3f1]">
                         {resolveTenantCategoryName(tenant)}
-                    </span>
-                    <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                    </Badge>
+                    <Badge className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-stone-100">
                         {resolveTenantCityName(tenant)}
-                    </span>
+                    </Badge>
                 </div>
 
                 <div>
@@ -66,15 +80,34 @@ function DirectoryCard({ tenant }) {
 
                 <div className="mt-auto flex items-center justify-between gap-3 border-t border-stone-100 pt-4">
                     <span className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
-                        <MapPin className="h-4 w-4 text-slate-950" />
+                        <MapPin className="h-4 w-4 text-slate-950" aria-hidden="true" />
                         {resolveTenantCityName(tenant)}
                     </span>
                     <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#f3f3f1] text-slate-700 transition group-hover:bg-slate-950 group-hover:text-white">
-                        <ArrowRight className="h-4 w-4" />
+                        <ArrowRight className="h-4 w-4" aria-hidden="true" />
                     </span>
                 </div>
             </div>
         </Link>
+    );
+}
+
+function FilterButton({ active = false, children, onClick, testId = undefined }) {
+    return (
+        <Button
+            type="button"
+            variant={active ? 'default' : 'outline'}
+            onClick={onClick}
+            className={cn(
+                'h-auto rounded-full px-4 py-2 text-sm font-semibold transition-colors',
+                active
+                    ? 'bg-slate-950 text-white hover:bg-slate-800'
+                    : 'border-stone-200 bg-white text-slate-700 hover:border-stone-300 hover:bg-white hover:text-slate-950',
+            )}
+            data-testid={testId}
+        >
+            {children}
+        </Button>
     );
 }
 
@@ -224,7 +257,7 @@ function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
             setGuideError({
                 status: 0,
                 code: 'DIRECTORY_GUIDE_NETWORK_ERROR',
-                message: 'No fue posible conectar con la guía. Intenta nuevamente.',
+                message: 'No fue posible cargar la guía. Intenta nuevamente.',
                 retryAfterSeconds: null,
                 resetAt: null,
             });
@@ -287,7 +320,7 @@ function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
             setChatError({
                 status: 0,
                 code: 'DIRECTORY_GUIDE_CHAT_NETWORK_ERROR',
-                message: 'No fue posible conectar con el chat. Intenta nuevamente.',
+                message: 'No fue posible abrir el chat. Intenta nuevamente.',
                 resetAt: null,
             });
         } finally {
@@ -333,7 +366,7 @@ function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
     }
 
     return (
-        <div className="mt-8 rounded-[28px] border border-stone-200 bg-white px-5 py-5 shadow-sm sm:px-6">
+        <Card className="mt-8 rounded-[28px] border-stone-200 bg-white px-5 py-5 shadow-sm sm:px-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Guía personalizada</p>
@@ -344,11 +377,11 @@ function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
                         Plan gratis: {quotaLimit} consultas por día.
                     </p>
                 </div>
-                <div className="rounded-full bg-[#f3f3f1] px-4 py-2 text-sm font-semibold text-slate-700" data-testid="directory-guide-quota">
+                <Badge className="rounded-full bg-[#f3f3f1] px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-[#f3f3f1]" data-testid="directory-guide-quota">
                     {quotaRemaining !== undefined && quotaRemaining !== null
                         ? `Consultas restantes: ${quotaRemaining}/${quotaLimit}`
                         : `Consultas restantes: ${quotaLimit}/${quotaLimit}`}
-                </div>
+                </Badge>
             </div>
 
             <form onSubmit={runGuide} className="mt-5 grid gap-3 sm:grid-cols-[180px,1fr,auto]">
@@ -356,7 +389,7 @@ function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
                     <label htmlFor="directory-guide-budget" className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                         Presupuesto (L)
                     </label>
-                    <input
+                    <Input
                         id="directory-guide-budget"
                         name="budget"
                         type="number"
@@ -364,21 +397,21 @@ function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
                         step="1"
                         value={budget}
                         onChange={(event) => setBudget(event.target.value)}
-                        className="h-12 w-full rounded-2xl border border-stone-200 bg-[#f3f3f1] px-4 text-sm text-slate-900 outline-none transition focus:border-slate-950"
+                        className="h-12 rounded-2xl border-stone-200 bg-[#f3f3f1] px-4 text-sm text-slate-900 focus-visible:ring-slate-950"
                         data-testid="directory-guide-budget-input"
                     />
                 </div>
                 <div className="self-end rounded-2xl border border-stone-200 bg-[#f3f3f1] px-4 py-3 text-sm text-slate-600">
                     Filtro actual: {filters.category || 'todas las categorías'} · {cityTerm || filters.city || 'todas las ciudades'}
                 </div>
-                <button
+                <Button
                     type="submit"
                     disabled={isSubmitting}
-                    className="self-end inline-flex h-12 items-center justify-center rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
+                    className="self-end h-12 rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
                     data-testid="directory-guide-submit"
                 >
                     {isSubmitting ? 'Consultando...' : 'Pedir guía'}
-                </button>
+                </Button>
             </form>
 
             {guideError ? (
@@ -418,7 +451,7 @@ function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
                         <p className="mt-1">{diagnostic.probable_cause}</p>
                     </div>
                     <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Accion</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Acción</p>
                         <p className="mt-1">{diagnostic.recommended_action}</p>
                         {diagnostic.trace_id ? (
                             <p className="mt-2 text-xs text-slate-500">REF: {diagnostic.trace_id}</p>
@@ -467,29 +500,29 @@ function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
                     <div className="pointer-events-none absolute right-0 top-0 h-32 w-32 rounded-full bg-lime-300/20 blur-3xl" />
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-lime-200">Chat IA del directorio</p>
                     <h3 className="mt-2 text-2xl font-semibold" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                        Pregunta como hablaria un cliente real
+                        Pregunta como hablaría un cliente real
                     </h3>
                     <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
                         Ejemplo: "tengo 100 lps y quiero comer algo en Tegucigalpa". El chat responde con negocios publicados, presupuesto y trazabilidad.
                     </p>
 
                     <form onSubmit={runChat} className="mt-5 grid gap-3 lg:grid-cols-[1fr,auto]">
-                        <textarea
+                        <Textarea
                             value={chatPrompt}
                             onChange={(event) => setChatPrompt(event.target.value)}
                             rows={3}
-                            className="min-h-[96px] rounded-3xl border border-white/10 bg-white/10 px-4 py-3 text-sm leading-6 text-white outline-none transition placeholder:text-slate-400 focus:border-lime-200"
+                            className="min-h-[96px] rounded-3xl border-white/10 bg-white/10 px-4 py-3 text-sm leading-6 text-white placeholder:text-slate-400 focus-visible:ring-lime-200"
                             placeholder="Que puedo comprar con 100 lps?"
                             data-testid="directory-guide-chat-input"
                         />
-                        <button
+                        <Button
                             type="submit"
                             disabled={isChatting || !chatPrompt.trim()}
-                            className="inline-flex items-center justify-center rounded-3xl bg-lime-200 px-6 py-3 text-sm font-black text-slate-950 transition hover:bg-lime-100 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="rounded-3xl bg-lime-200 px-6 py-3 text-sm font-black text-slate-950 transition-colors hover:bg-lime-100 disabled:cursor-not-allowed disabled:opacity-60"
                             data-testid="directory-guide-chat-submit"
                         >
                             {isChatting ? 'Pensando...' : 'Preguntar'}
-                        </button>
+                        </Button>
                     </form>
 
                     {chatError ? (
@@ -520,7 +553,7 @@ function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
                     ) : null}
                 </div>
             </div>
-        </div>
+        </Card>
     );
 }
 
@@ -609,55 +642,61 @@ export default function DirectoryIndex({ tenants, categories = [], cities = [], 
                                 Buscar negocios, productos o servicios
                             </label>
                             <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                            <input
+                            <Input
                                 id="directory-search"
                                 name="search"
                                 type="text"
                                 placeholder="Buscar negocios, productos o servicios..."
                                 value={searchTerm}
                                 onChange={(event) => setSearchTerm(event.target.value)}
-                                className="h-14 w-full rounded-[24px] border border-stone-200 bg-[#f3f3f1] px-11 text-base text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-slate-950"
+                                className="h-14 rounded-[24px] border-stone-200 bg-[#f3f3f1] px-11 text-base text-slate-950 placeholder:text-slate-400 focus-visible:ring-slate-950"
+                                data-testid="directory-search-input"
                             />
                         </div>
 
-                        <select
-                            value={cityTerm}
-                            onChange={(event) => setCity(event.target.value)}
-                            className="h-14 rounded-[24px] border border-stone-200 bg-[#f3f3f1] px-4 text-base text-slate-900 outline-none transition focus:border-slate-950"
-                        >
-                            <option value="">Todas las ciudades</option>
-                            {cities.map((city) => (
-                                <option key={city.id} value={city.slug}>{city.name}</option>
-                            ))}
-                        </select>
+                        <Select value={cityTerm || 'all'} onValueChange={(value) => setCity(value === 'all' ? '' : value)}>
+                            <SelectTrigger
+                                aria-label="Filtrar por ciudad"
+                                className="h-14 rounded-[24px] border-stone-200 bg-[#f3f3f1] px-4 text-base text-slate-900 focus:ring-slate-950"
+                                data-testid="directory-city-select"
+                            >
+                                <SelectValue placeholder="Todas las ciudades" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectGroup>
+                                    <SelectItem value="all">Todas las ciudades</SelectItem>
+                                    {cities.map((city) => (
+                                        <SelectItem key={city.id} value={city.slug}>{city.name}</SelectItem>
+                                    ))}
+                                </SelectGroup>
+                            </SelectContent>
+                        </Select>
 
-                        <button
+                        <Button
                             type="button"
                             onClick={() => setMobileOpen((value) => !value)}
-                            className="inline-flex h-14 items-center justify-center gap-2 rounded-[24px] border border-stone-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:border-stone-300 lg:hidden"
+                            variant="outline"
+                            className="h-14 rounded-[24px] border-stone-200 bg-white px-5 text-sm font-semibold text-slate-700 transition-colors hover:border-stone-300 lg:hidden"
+                            data-testid="directory-mobile-filters"
                         >
-                            <Filter className="h-4 w-4" />
+                            <Filter data-icon="inline-start" aria-hidden="true" />
                             Filtros
-                        </button>
+                        </Button>
                     </div>
 
                     <div className="mt-6 flex flex-wrap gap-3">
-                        <button
-                            type="button"
-                            onClick={() => setCategory('')}
-                            className={`rounded-full px-4 py-2 text-sm font-semibold transition ${filters.category ? 'border border-stone-200 bg-white text-slate-700 hover:border-stone-300' : 'bg-slate-950 text-white'}`}
-                        >
+                        <FilterButton active={!filters.category} onClick={() => setCategory('')} testId="directory-category-all">
                             Todo
-                        </button>
+                        </FilterButton>
                         {categories.map((category) => (
-                            <button
+                            <FilterButton
                                 key={category.id}
-                                type="button"
                                 onClick={() => setCategory(category.slug)}
-                                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${filters.category === category.slug ? 'bg-slate-950 text-white' : 'border border-stone-200 bg-white text-slate-700 hover:border-stone-300'}`}
+                                active={filters.category === category.slug}
+                                testId={`directory-category-${category.slug}`}
                             >
                                 {category.name}
-                            </button>
+                            </FilterButton>
                         ))}
                     </div>
 
@@ -665,18 +704,13 @@ export default function DirectoryIndex({ tenants, categories = [], cities = [], 
                         <div className="mt-6 flex flex-wrap items-center gap-3">
                             <span className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Ciudades rapidas</span>
                             {quickCities.map((city) => (
-                                <button
+                                <FilterButton
                                     key={city.id}
-                                    type="button"
                                     onClick={() => setCity(city.slug)}
-                                    className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${
-                                        filters.city === city.slug
-                                            ? 'border-slate-300 bg-[#f3f3f1] text-slate-950'
-                                            : 'border-stone-200 bg-white text-slate-600 hover:border-stone-300 hover:text-slate-950'
-                                    }`}
+                                    active={filters.city === city.slug}
                                 >
                                     {city.name}
-                                </button>
+                                </FilterButton>
                             ))}
                         </div>
                     ) : null}
@@ -713,14 +747,15 @@ export default function DirectoryIndex({ tenants, categories = [], cities = [], 
                                 {items.length} resultados
                             </span>
                             {hasFilters ? (
-                                <button
+                                <Button
                                     type="button"
                                     onClick={clearFilters}
-                                    className="inline-flex items-center gap-2 rounded-full border border-stone-300 px-4 py-2 font-semibold transition hover:border-stone-400 hover:bg-white"
+                                    variant="outline"
+                                    className="h-auto rounded-full border-stone-300 px-4 py-2 font-semibold transition-colors hover:border-stone-400 hover:bg-white"
                                 >
-                                    <X className="h-4 w-4" />
+                                    <X data-icon="inline-start" aria-hidden="true" />
                                     Limpiar
-                                </button>
+                                </Button>
                             ) : null}
                         </div>
                     </div>
@@ -781,63 +816,62 @@ export default function DirectoryIndex({ tenants, categories = [], cities = [], 
 
             {mobileOpen ? (
                 <div className="fixed inset-0 z-50 lg:hidden">
-                    <button type="button" className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
+                    <button type="button" aria-label="Cerrar filtros" className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
                     <div className="absolute inset-x-0 bottom-0 rounded-t-[32px] border border-stone-200 bg-white p-6 shadow-2xl">
                         <div className="flex items-center justify-between">
                             <h2 className="text-lg font-semibold text-slate-950" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
                                 Filtros
                             </h2>
-                            <button type="button" onClick={() => setMobileOpen(false)} className="rounded-full border border-stone-200 p-2 text-slate-600">
-                                <X className="h-4 w-4" />
-                            </button>
+                            <Button type="button" variant="outline" size="icon" aria-label="Cerrar filtros" onClick={() => setMobileOpen(false)} className="rounded-full border-stone-200 text-slate-600">
+                                <X data-icon="icon" aria-hidden="true" />
+                            </Button>
                         </div>
 
-                        <div className="mt-6 space-y-5">
+                        <div className="mt-6 flex flex-col gap-5">
                             <div>
                                 <label className="text-sm font-semibold text-slate-700">Ciudad</label>
-                                <select
-                                    value={cityTerm}
-                                    onChange={(event) => setCity(event.target.value)}
-                                    className="mt-2 h-12 w-full rounded-2xl border border-stone-200 bg-[#f3f3f1] px-4 text-sm text-slate-900 outline-none focus:border-slate-950"
-                                >
-                                    <option value="">Todas las ciudades</option>
-                                    {cities.map((city) => (
-                                        <option key={city.id} value={city.slug}>{city.name}</option>
-                                    ))}
-                                </select>
+                                <Select value={cityTerm || 'all'} onValueChange={(value) => setCity(value === 'all' ? '' : value)}>
+                                    <SelectTrigger aria-label="Filtrar por ciudad en móvil" className="mt-2 h-12 rounded-2xl border-stone-200 bg-[#f3f3f1] text-sm text-slate-900 focus:ring-slate-950">
+                                        <SelectValue placeholder="Todas las ciudades" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectGroup>
+                                            <SelectItem value="all">Todas las ciudades</SelectItem>
+                                            {cities.map((city) => (
+                                                <SelectItem key={city.id} value={city.slug}>{city.name}</SelectItem>
+                                            ))}
+                                        </SelectGroup>
+                                    </SelectContent>
+                                </Select>
                             </div>
 
                             <div>
                                 <label className="text-sm font-semibold text-slate-700">Categoria</label>
                                 <div className="mt-3 flex flex-wrap gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => setCategory('')}
-                                        className={`rounded-full px-4 py-2 text-sm font-semibold ${filters.category ? 'border border-stone-200 bg-white text-slate-700' : 'bg-slate-950 text-white'}`}
-                                    >
+                                    <FilterButton active={!filters.category} onClick={() => setCategory('')}>
                                         Todo
-                                    </button>
+                                    </FilterButton>
                                     {categories.map((category) => (
-                                        <button
+                                        <FilterButton
                                             key={category.id}
-                                            type="button"
                                             onClick={() => setCategory(category.slug)}
-                                            className={`rounded-full px-4 py-2 text-sm font-semibold ${filters.category === category.slug ? 'bg-slate-950 text-white' : 'border border-stone-200 bg-white text-slate-700'}`}
+                                            active={filters.category === category.slug}
                                         >
                                             {category.name}
-                                        </button>
+                                        </FilterButton>
                                     ))}
                                 </div>
                             </div>
 
-                            <button
+                            <Button
                                 type="button"
                                 onClick={clearFilters}
-                                className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-stone-300 px-6 py-3 text-sm font-semibold text-slate-700"
+                                variant="outline"
+                                className="w-full rounded-full border-stone-300 px-6 py-3 text-sm font-semibold text-slate-700"
                             >
-                                <X className="h-4 w-4" />
+                                <X data-icon="inline-start" aria-hidden="true" />
                                 Limpiar filtros
-                            </button>
+                            </Button>
                         </div>
                     </div>
                 </div>

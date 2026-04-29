@@ -6,7 +6,7 @@ import { Skeleton } from '@/Components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 export function LoadingState({
-    title = 'Cargando información',
+    title = 'Cargando informacion',
     description = 'Estamos preparando los datos para mostrarte una vista actualizada.',
     variant = 'cards',
     className = '',
@@ -123,10 +123,10 @@ export function ActionableAlert({
     testId = 'ux-actionable-alert',
 }) {
     const tones = {
-        info: 'border-sky-200 bg-sky-50 text-sky-900',
-        warning: 'border-amber-200 bg-amber-50 text-amber-900',
-        error: 'border-rose-200 bg-rose-50 text-rose-900',
-        success: 'border-emerald-200 bg-emerald-50 text-emerald-900',
+        info: 'border-border bg-muted text-foreground',
+        warning: 'border-[color:var(--ds-warning)] bg-[color:var(--ds-warning-soft)] text-[color:var(--ds-warning)]',
+        error: 'border-[color:var(--ds-danger)] bg-[color:var(--ds-danger-soft)] text-[color:var(--ds-danger)]',
+        success: 'border-[color:var(--ds-success)] bg-[color:var(--ds-success-soft)] text-[color:var(--ds-success)]',
     };
 
     return (
@@ -142,14 +142,16 @@ export function ActionableAlert({
                     {title ? <p className="font-semibold">{title}</p> : null}
                     {children ? <div className="mt-1 text-sm leading-6 opacity-90">{children}</div> : null}
                     {actionLabel ? (
-                        <button
+                        <Button
                             type="button"
                             onClick={onAction}
-                            className="mt-3 inline-flex items-center gap-2 rounded-md bg-white/75 px-4 py-2 text-sm font-semibold text-current transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current focus-visible:ring-offset-2"
+                            variant="outline"
+                            size="sm"
+                            className="mt-3"
                         >
                             {actionLabel}
-                            <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                        </button>
+                            <ArrowRight data-icon="inline-end" aria-hidden="true" />
+                        </Button>
                     ) : null}
                 </div>
             </div>
@@ -169,7 +171,7 @@ export function ActionFeedback({
 
     return (
         <div
-            className={cn('inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200', className)}
+            className={cn('inline-flex items-center gap-2 rounded-full bg-[color:var(--ds-success-soft)] px-3 py-1.5 text-xs font-semibold text-[color:var(--ds-success)] ring-1 ring-[color:var(--ds-success)]', className)}
             role="status"
             aria-live="polite"
             data-testid={testId}

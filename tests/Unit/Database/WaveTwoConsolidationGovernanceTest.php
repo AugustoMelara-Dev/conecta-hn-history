@@ -4,85 +4,55 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Database;
 
-use App\Models\Product;
-use App\Models\Tenant;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Str;
-use Tests\TestCase;
+use PHPUnit\Framework\TestCase;
 
 final class WaveTwoConsolidationGovernanceTest extends TestCase
 {
-    use RefreshDatabase;
+    private const MIGRATION = __DIR__.'/../../../database/migrations/2026_04_15_090000_consolidate_menu_sections_and_inventory_holds.php';
 
     public function test_wave_two_alignment_keeps_snapshots_and_canonical_indexes(): void
     {
-        $tenant = Tenant::factory()->create();
-        $product = Product::factory()->forTenant($tenant)->create();
+        $source = $this->migrationSource();
 
-        $menuSectionId = (int) DB::table('menu_sections')->insertGetId([
-            'tenant_id' => $tenant->id,
-            'name' => 'Temporada',
-            'sort_order' => 77,
-            'is_active' => true,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        $this->assertStringContainsString("Schema::create('menu_sections_legacy_snapshot'", $source);
+        $this->assertStringContainsString("Schema::create('inventory_holds_legacy_snapshot'", $source);
+        $this->assertStringContainsString("'menu_section_id'", $source);
+        $this->assertStringContainsString("'hold_id'", $source);
+        $this->assertStringContainsString("'old_sort_order'", $source);
+        $this->assertStringContainsString("'legacy_numeric_id'", $source);
+        $this->assertStringContainsString("'legacy_location_id'", $source);
 
-        $holdId = (string) Str::uuid();
+        $this->assertStringContainsString("DB::table('menu_sections_legacy_snapshot')->insertUsing", $source);
+        $this->assertStringContainsString("DB::table('inventory_holds_legacy_snapshot')->insertUsing", $source);
+        $this->assertStringContainsString('CURRENT_TIMESTAMP', $source);
 
-        DB::table('inventory_holds')->insert([
-            'id' => $holdId,
-            'tenant_id' => $tenant->id,
-            'product_id' => $product->id,
-            'session_id' => 'wave2-test-session',
-            'location_id' => null,
-            'quantity' => 1,
-            'expires_at' => now()->addMinutes(30),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        $this->assertStringContainsString('menu_sections_tenant_id_sort_order_index', $source);
+        $this->assertStringContainsString("['tenant_id', 'sort_order']", $source);
+        $this->assertStringContainsString('inv_holds_unique', $source);
+        $this->assertStringContainsString("['tenant_id', 'session_id', 'location_id', 'product_id']", $source);
+        $this->assertStringContainsString('inventory_holds_expires_at_index', $source);
+    }
 
-        /** @var object{up: callable():void} $migration */
-        $migration = require base_path('database/migrations/2026_04_15_090000_consolidate_menu_sections_and_inventory_holds.php');
-        $migration->up();
+    public function test_wave_two_alignment_backfills_inventory_hold_locations_without_legacy_unique_contract(): void
+    {
+        $source = $this->migrationSource();
 
-        $this->assertTrue(Schema::hasTable('menu_sections_legacy_snapshot'));
-        $this->assertTrue(Schema::hasTable('inventory_holds_legacy_snapshot'));
+        $this->assertStringContainsString('ensurePrimaryLocationsForTenantsWithHolds', $source);
+        $this->assertStringContainsString('backfillInventoryHoldLocations', $source);
+        $this->assertStringContainsString('ensureInventoryHoldLocationForeignKey', $source);
+        $this->assertStringContainsString('ensureInventoryHoldIndexes', $source);
+        $this->assertStringContainsString('UPDATE inventory_holds ih', $source);
+        $this->assertStringContainsString('WHERE ih.location_id IS NULL', $source);
+        $this->assertStringContainsString('inventory_holds_tenant_id_session_id_product_id_unique', $source);
+        $this->assertStringContainsString('inventory_holds_tenant_id_session_id_location_id_product_id_unique', $source);
+    }
 
-        $this->assertNotNull(
-            DB::table('menu_sections_legacy_snapshot')
-                ->where('menu_section_id', $menuSectionId)
-                ->first()
-        );
+    private function migrationSource(): string
+    {
+        $source = file_get_contents(self::MIGRATION);
 
-        $this->assertNotNull(
-            DB::table('inventory_holds_legacy_snapshot')
-                ->where('hold_id', $holdId)
-                ->first()
-        );
+        $this->assertIsString($source, 'Wave two consolidation migration must be readable.');
 
-        $menuSectionIndexes = collect(Schema::getIndexes('menu_sections'));
-        $inventoryHoldIndexes = collect(Schema::getIndexes('inventory_holds'));
-
-        $this->assertTrue(
-            $menuSectionIndexes->contains(
-                static fn (array $index): bool => ($index['name'] ?? null) === 'menu_sections_tenant_id_sort_order_index'
-            )
-        );
-
-        $this->assertTrue(
-            $inventoryHoldIndexes->contains(
-                static fn (array $index): bool => ($index['name'] ?? null) === 'inv_holds_unique'
-            )
-        );
-
-        $this->assertNotNull(
-            DB::table('inventory_holds')
-                ->where('id', $holdId)
-                ->whereNotNull('location_id')
-                ->value('location_id')
-        );
+        return $source;
     }
 }

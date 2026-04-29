@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Http\Controllers\Payment;
 
+use App\Domain\Billing\Repositories\PlanRepositoryInterface;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -226,7 +227,7 @@ final class PaymentWebhookControllerTest extends TestCase
                 'object' => [
                     'id' => $paymentIntentId,
                     'object' => 'payment_intent',
-                    'amount_received' => 2900,
+                    'amount_received' => $this->proPlanAmountInCents(),
                     'currency' => 'hnl',
                     'metadata' => [
                         'tenant_id' => $fixture['tenant_id'],
@@ -295,7 +296,7 @@ final class PaymentWebhookControllerTest extends TestCase
                 'object' => [
                     'id' => $paymentIntentId,
                     'object' => 'payment_intent',
-                    'amount_received' => 2900,
+                    'amount_received' => $this->proPlanAmountInCents(),
                     'currency' => 'hnl',
                     'metadata' => [
                         'tenant_id' => $fixture['tenant_id'],
@@ -361,7 +362,7 @@ final class PaymentWebhookControllerTest extends TestCase
                 'object' => [
                     'id' => $sessionId,
                     'object' => 'checkout.session',
-                    'amount_total' => 2900,
+                    'amount_total' => $this->proPlanAmountInCents(),
                     'currency' => 'hnl',
                     'client_reference_id' => $fixture['tenant_id'],
                     'metadata' => [
@@ -432,7 +433,7 @@ final class PaymentWebhookControllerTest extends TestCase
                 'object' => [
                     'id' => $invoiceId,
                     'object' => 'invoice',
-                    'amount_due' => 2900,
+                    'amount_due' => $this->proPlanAmountInCents(),
                     'currency' => 'hnl',
                     'subscription_details' => [
                         'metadata' => [
@@ -528,5 +529,12 @@ final class PaymentWebhookControllerTest extends TestCase
             'user_id' => $userId,
             'tenant_id' => $tenantId,
         ];
+    }
+
+    private function proPlanAmountInCents(): int
+    {
+        $plan = app(PlanRepositoryInterface::class)->findByIdentifier('pro');
+
+        return $plan?->price->amount ?? 49900;
     }
 }

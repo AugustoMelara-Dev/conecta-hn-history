@@ -12,6 +12,16 @@ import {
     Star,
 } from 'lucide-react';
 import PublicLayout from '@/Layouts/PublicLayout';
+import { Button } from '@/Components/ui/button';
+import { Input } from '@/Components/ui/input';
+import {
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/Components/ui/select';
 import { PUBLIC_DISPLAY_FONT } from '@/lib/publicTypography';
 import {
     getTenantInitials,
@@ -58,7 +68,7 @@ function TenantImage({ tenant, className = '', overlay = false }) {
 }
 
 function TopSearch({ searchQuery, setSearchQuery, cities = [] }) {
-    const [cityFilter, setCityFilter] = useState('');
+    const [cityFilter, setCityFilter] = useState('all');
 
     const handleSubmit = (event) => {
         event.preventDefault();
@@ -67,7 +77,7 @@ function TopSearch({ searchQuery, setSearchQuery, cities = [] }) {
             route('directory.index'),
             {
                 ...(searchQuery.trim() ? { search: searchQuery } : {}),
-                ...(cityFilter ? { city: cityFilter } : {}),
+                ...(cityFilter && cityFilter !== 'all' ? { city: cityFilter } : {}),
             },
         );
     };
@@ -89,29 +99,29 @@ function TopSearch({ searchQuery, setSearchQuery, cities = [] }) {
                         </p>
                     </div>
 
-                    <Link
-                        href={route('tenant.register')}
-                        className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-slate-800"
-                    >
-                        Registrar negocio
-                        <ArrowRight className="h-4 w-4" />
-                    </Link>
+                    <Button asChild className="h-auto rounded-full bg-slate-950 px-6 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800">
+                        <Link href={route('tenant.register')}>
+                            Registrar negocio
+                            <ArrowRight data-icon="inline-end" aria-hidden="true" />
+                        </Link>
+                    </Button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="mt-8 rounded-[32px] border border-stone-200 bg-[#f3f3f1] p-3 shadow-sm">
+                <form onSubmit={handleSubmit} className="mt-8 rounded-[32px] border border-stone-200 bg-[#f3f3f1] p-3 shadow-sm" data-testid="explore-search-form">
                     <div className="grid gap-3 lg:grid-cols-[1.2fr,0.42fr,auto,auto]">
                         <div className="relative">
                             <label htmlFor="explore-search" className="sr-only">
                                 Buscar negocios, servicios o ubicaciones
                             </label>
                             <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                            <input
+                            <Input
                                 id="explore-search"
                                 type="text"
                                 value={searchQuery}
                                 onChange={(event) => setSearchQuery(event.target.value)}
                                 placeholder="Buscar negocios, servicios o ubicaciones..."
-                                className="h-14 w-full rounded-2xl border border-stone-200 bg-white px-11 text-base text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-slate-950"
+                                className="h-14 rounded-2xl border-stone-200 bg-white px-11 text-base text-slate-950 placeholder:text-slate-400 focus-visible:ring-slate-950"
+                                data-testid="explore-search-input"
                             />
                         </div>
 
@@ -120,33 +130,43 @@ function TopSearch({ searchQuery, setSearchQuery, cities = [] }) {
                                 Ciudad
                             </label>
                             <MapPin className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                            <select
-                                id="explore-city"
-                                value={cityFilter}
-                                onChange={(event) => setCityFilter(event.target.value)}
-                                className="h-14 w-full rounded-2xl border border-stone-200 bg-white px-11 text-sm text-slate-900 outline-none transition focus:border-slate-950"
-                            >
-                                <option value="">Todo Honduras</option>
-                                {cities.map((city) => (
-                                    <option key={city.id} value={city.slug}>{city.name}</option>
-                                ))}
-                            </select>
+                            <Select value={cityFilter} onValueChange={setCityFilter}>
+                                <SelectTrigger
+                                    id="explore-city"
+                                    className="h-14 rounded-2xl border-stone-200 bg-white pl-11 text-sm text-slate-900 focus:ring-slate-950"
+                                    data-testid="explore-city-select"
+                                >
+                                    <SelectValue placeholder="Todo Honduras" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectGroup>
+                                        <SelectItem value="all">Todo Honduras</SelectItem>
+                                        {cities.map((city) => (
+                                            <SelectItem key={city.id} value={city.slug}>{city.name}</SelectItem>
+                                        ))}
+                                    </SelectGroup>
+                                </SelectContent>
+                            </Select>
                         </div>
 
-                        <button
+                        <Button
                             type="submit"
-                            className="inline-flex h-14 items-center justify-center rounded-2xl bg-slate-950 px-6 text-sm font-semibold text-white transition hover:bg-slate-800"
+                            className="h-14 rounded-2xl bg-slate-950 px-6 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
+                            data-testid="explore-search-submit"
                         >
                             Buscar
-                        </button>
+                        </Button>
 
-                        <Link
-                            href={route('directory.index')}
-                            className="inline-flex h-14 items-center justify-center gap-2 rounded-2xl border border-stone-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:border-stone-300 hover:text-slate-950"
+                        <Button
+                            asChild
+                            variant="outline"
+                            className="h-14 rounded-2xl border-stone-200 bg-white px-5 text-sm font-semibold text-slate-700 transition-colors hover:border-stone-300 hover:text-slate-950"
                         >
-                            <SlidersHorizontal className="h-4 w-4" />
-                            Filtros
-                        </Link>
+                            <Link href={route('directory.index')}>
+                                <SlidersHorizontal data-icon="inline-start" aria-hidden="true" />
+                                Filtros
+                            </Link>
+                        </Button>
                     </div>
                 </form>
             </div>

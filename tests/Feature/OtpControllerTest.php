@@ -32,6 +32,7 @@ class OtpControllerTest extends TestCase
     public function test_otp_generation_uses_a_real_tenant_for_public_requests(): void
     {
         $tenant = Tenant::factory()->create();
+        config()->set('auth.otp.platform_tenant_id', (string) $tenant->getKey());
 
         $response = $this->postJson('/api/v1/otp/generate', [
             'identifier' => 'nuevo@example.com',

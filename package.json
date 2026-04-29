@@ -7,6 +7,7 @@
         "perf:budget": "node scripts/ci/check-performance-budgets.mjs",
         "perf:auth-cookie": "node scripts/perf/auth-cookie.mjs",
         "perf:p95-smoke": "node scripts/perf/p95-smoke.mjs",
+        "check:ui-guardrails": "node scripts/ci/check-ui-guardrails.mjs",
         "test:e2e": "playwright test",
         "test:e2e:smoke": "playwright test tests/e2e/smoke-post-deploy.spec.ts --reporter=list,html,junit",
         "test:e2e:pr-smoke-auth": "playwright test tests/e2e/smoke-auth-core.spec.ts tests/e2e/auth-flow.spec.ts --reporter=list,html,junit",

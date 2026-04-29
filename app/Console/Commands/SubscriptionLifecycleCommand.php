@@ -25,24 +25,24 @@ use Illuminate\Support\Facades\Mail;
  * SubscriptionLifecycleCommand - Unified Subscription State Machine
  *
  * +--------------------------------------------------------------------------+
- * ¦  OPERATIONAL RISK ANALYSIS: Domain Consolidation Strategy               ¦
- * ¦--------------------------------------------------------------------------¦
- * ¦  PROBLEM: Split commands (CheckExpiry + ExpireSubscriptions) create:    ¦
- * ¦    - Race conditions if run concurrently                                ¦
- * ¦    - Maintenance ambiguity (which file handles what?)                   ¦
- * ¦    - Inconsistent error handling between commands                       ¦
- * ¦                                                                          ¦
- * ¦  SOLUTION: Single command with orchestrated workflow:                    ¦
- * ¦    1. notifyUpcomingExpirations() - 3-day warnings                      ¦
- * ¦    2. processExpiredSubscriptions() - Downgrade expired plans           ¦
- * ¦                                                                          ¦
- * ¦  TRANSACTIONAL INTEGRITY:                                                ¦
- * ¦    Each expiration is wrapped in DB::transaction() ensuring:            ¦
- * ¦    - Status Update + Notification + Webhook are atomic                  ¦
- * ¦    - If notification fails, subscription is NOT downgraded              ¦
- * ¦    - Audit trail preserved even on partial failures                     ¦
- * ¦                                                                          ¦
- * ¦  MEMORY SAFETY: Uses chunkById(100) for all tenant iterations           ¦
+ * |  OPERATIONAL RISK ANALYSIS: Domain Consolidation Strategy               |
+ * |--------------------------------------------------------------------------|
+ * |  PROBLEM: Split commands (CheckExpiry + ExpireSubscriptions) create:    |
+ * |    - Race conditions if run concurrently                                |
+ * |    - Maintenance ambiguity (which file handles what?)                   |
+ * |    - Inconsistent error handling between commands                       |
+ * |                                                                          |
+ * |  SOLUTION: Single command with orchestrated workflow:                    |
+ * |    1. notifyUpcomingExpirations() - 3-day warnings                      |
+ * |    2. processExpiredSubscriptions() - Downgrade expired plans           |
+ * |                                                                          |
+ * |  TRANSACTIONAL INTEGRITY:                                                |
+ * |    Each expiration is wrapped in DB::transaction() ensuring:            |
+ * |    - Status Update + Notification + Webhook are atomic                  |
+ * |    - If notification fails, subscription is NOT downgraded              |
+ * |    - Audit trail preserved even on partial failures                     |
+ * |                                                                          |
+ * |  MEMORY SAFETY: Uses chunkById(100) for all tenant iterations           |
  * +--------------------------------------------------------------------------+
  *
  * USAGE:
@@ -202,7 +202,7 @@ class SubscriptionLifecycleCommand extends Command
 
             $this->notifiedCount++;
             $this->components->twoColumnDetail(
-                "  ? Notified: {$tenant->name}",
+                "  Notified: {$tenant->name}",
                 $user->email
             );
         } catch (\Exception $e) {
@@ -246,20 +246,20 @@ class SubscriptionLifecycleCommand extends Command
      * Expire a single tenant's subscription with TRUE transactional integrity.
      *
      * +------------------------------------------------------------------------+
-     * ¦  CRITICAL FIX: afterCommit() for Queue Operations                      ¦
-     * ¦------------------------------------------------------------------------¦
-     * ¦  PROBLEM: Mail::queue() dispatches IMMEDIATELY, not after commit.      ¦
-     * ¦                                                                        ¦
-     * ¦  RACE CONDITION SCENARIO:                                              ¦
-     * ¦    1. DB::transaction starts                                          ¦
-     * ¦    2. $tenant->update(['plan_type' => 'semilla']) ? SQL UPDATE        ¦
-     * ¦    3. Mail::queue() ? Job pushed to Redis IMMEDIATELY                 ¦
-     * ¦    4. AuditTenantLimits::dispatch() ? Throws exception                ¦
-     * ¦    5. Transaction ROLLBACK ? paid plan state reverts                  ¦
-     * ¦    6. User receives "Plan expired" email but tenant is still paid     ¦
-     * ¦                                                                        ¦
-     * ¦  SOLUTION: Use DB::afterCommit() to queue jobs ONLY after commit.     ¦
-     * ¦    If transaction fails, no email is sent.                            ¦
+     * |  CRITICAL FIX: afterCommit() for Queue Operations                      |
+     * |------------------------------------------------------------------------|
+     * |  PROBLEM: Mail::queue() dispatches IMMEDIATELY, not after commit.      |
+     * |                                                                        |
+     * |  RACE CONDITION SCENARIO:                                              |
+     * |    1. DB::transaction starts                                          |
+     * |    2. $tenant->update(['plan_type' => 'semilla']) -> SQL UPDATE       |
+     * |    3. Mail::queue() -> Job pushed to Redis IMMEDIATELY                |
+     * |    4. AuditTenantLimits::dispatch() -> Throws exception               |
+     * |    5. Transaction ROLLBACK -> paid plan state reverts                 |
+     * |    6. User receives "Plan expired" email but tenant is still paid     |
+     * |                                                                        |
+     * |  SOLUTION: Use DB::afterCommit() to queue jobs ONLY after commit.     |
+     * |    If transaction fails, no email is sent.                            |
      * +------------------------------------------------------------------------+
      */
     protected function expireTenantSubscription(Tenant $tenant, int $freeProductLimit): void
@@ -318,7 +318,7 @@ class SubscriptionLifecycleCommand extends Command
 
             $this->expiredCount++;
             $this->components->twoColumnDetail(
-                "  ? Expired: {$tenant->name}",
+                "  Expired: {$tenant->name}",
                 'Downgraded to Free'
             );
         } catch (\Exception $e) {
@@ -331,7 +331,7 @@ class SubscriptionLifecycleCommand extends Command
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            $this->components->error("  ? Failed: {$tenant->name} - {$e->getMessage()}");
+            $this->components->error("  Failed: {$tenant->name} - {$e->getMessage()}");
         }
     }
 

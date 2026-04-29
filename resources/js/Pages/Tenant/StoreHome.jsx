@@ -32,6 +32,10 @@ import { formatCurrency } from '@/Utils/currency';
 import ImageWithFallback from '@/Components/ImageWithFallback';
 import Toast from '@/Components/Toast';
 import { ActionFeedback, EmptyState, LoadingState } from '@/Components/Feedback/UXStates';
+import { Badge } from '@/Components/ui/badge';
+import { Button } from '@/Components/ui/button';
+import { Card, CardContent } from '@/Components/ui/card';
+import { cn } from '@/lib/utils';
 
 /**
  * ProductCard - Atomic product display with separated click areas
@@ -42,7 +46,13 @@ const ProductCard = memo(function ProductCard({ product, tenant, onQuickAdd, isA
     const isOutOfStock = product.manage_stock && product.stock_quantity <= 0;
 
     return (
-        <div className="group bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+        <Card
+            className="group overflow-hidden rounded-lg shadow-sm transition-shadow hover:shadow-md"
+            style={{
+                '--store-accent': tenant.primary_color,
+                '--store-accent-soft': `${tenant.primary_color}15`,
+            }}
+        >
             {/* Image Area - Navigates to product details */}
             <Link href={productUrl} className="block relative aspect-square overflow-hidden">
                 {product.image ? (
@@ -54,13 +64,10 @@ const ProductCard = memo(function ProductCard({ product, tenant, onQuickAdd, isA
                         fadeIn
                     />
                 ) : (
-                    <div
-                        className="w-full h-full flex items-center justify-center"
-                        style={{ backgroundColor: `${tenant.primary_color}15` }}
-                    >
+                    <div className="flex h-full w-full items-center justify-center bg-[color:var(--store-accent-soft)]">
                         <ShoppingBag
-                            className="h-12 w-12 opacity-30"
-                            style={{ color: tenant.primary_color }}
+                            className="h-12 w-12 text-[color:var(--store-accent)] opacity-30"
+                            data-icon
                             aria-hidden="true"
                         />
                     </div>
@@ -68,26 +75,26 @@ const ProductCard = memo(function ProductCard({ product, tenant, onQuickAdd, isA
 
                 {/* Out of Stock Badge */}
                 {isOutOfStock && (
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                        <span className="bg-white text-gray-900 px-3 py-1 rounded-full text-sm font-medium">
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                        <Badge variant="secondary" className="rounded-full bg-background px-3 py-1 text-sm text-foreground">
                             Agotado
-                        </span>
+                        </Badge>
                     </div>
                 )}
             </Link>
 
             {/* Content Area */}
-            <div className="p-4">
+            <CardContent className="p-4">
                 {/* Title - Navigates to product details */}
                 <Link href={productUrl}>
-                    <h3 className="font-medium text-gray-900 line-clamp-2 hover:text-gray-600 transition-colors">
+                    <h3 className="line-clamp-2 font-medium text-foreground transition-colors hover:text-muted-foreground">
                         {product.name}
                     </h3>
                 </Link>
 
                 {/* Description */}
                 {product.description && (
-                    <p className="mt-1 text-sm text-gray-500 line-clamp-2">
+                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
                         {product.description}
                     </p>
                 )}
@@ -98,54 +105,48 @@ const ProductCard = memo(function ProductCard({ product, tenant, onQuickAdd, isA
                         {/* Original Price (strikethrough if discounted) */}
                         {product.price_before_discount &&
                             product.price_before_discount > product.price && (
-                                <span className="text-sm text-gray-400 line-through">
+                                <span className="text-sm text-muted-foreground line-through">
                                     {formatCurrency(product.price_before_discount)}
                                 </span>
                             )}
                         {/* Current Price */}
-                        <span
-                            className="text-lg font-bold"
-                            style={{ color: tenant.primary_color }}
-                        >
+                        <span className="text-lg font-bold text-[color:var(--store-accent)]">
                             {formatCurrency(product.price)}
                         </span>
                     </div>
 
                     {/* Quick Add Button - Separated click area */}
                     {!isOutOfStock && (
-                        <button
+                        <Button
                             type="button"
+                            size="icon"
                             onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
                                 onQuickAdd(product);
                             }}
                             disabled={isAddingDisabled}
-                            className={`p-2 rounded-full text-white transition-all focus:outline-none focus:ring-2 focus:ring-offset-2
-                                ${isAddingDisabled
-                                    ? 'opacity-50 cursor-not-allowed'
-                                    : 'hover:scale-110'
-                                }`}
-                            style={{
-                                backgroundColor: tenant.primary_color,
-                                '--tw-ring-color': tenant.primary_color,
-                            }}
+                            className={cn(
+                                'h-10 w-10 rounded-full text-white shadow-sm',
+                                !isAddingDisabled && 'hover:scale-105'
+                            )}
+                            style={{ backgroundColor: tenant.primary_color }}
                             aria-label={`Agregar ${product.name} al carrito`}
                             data-testid={`store-add-to-cart-${product.id}`}
                         >
                             {recentlyAdded ? (
-                                <CheckCircle className="h-5 w-5" aria-hidden="true" />
+                                <CheckCircle className="h-5 w-5" data-icon aria-hidden="true" />
                             ) : (
-                                <Plus className="h-5 w-5" aria-hidden="true" />
+                                <Plus className="h-5 w-5" data-icon aria-hidden="true" />
                             )}
-                        </button>
+                        </Button>
                     )}
                 </div>
                 <ActionFeedback active={recentlyAdded} className="mt-3" testId={`store-add-feedback-${product.id}`}>
                     Agregado al carrito
                 </ActionFeedback>
-            </div>
-        </div>
+            </CardContent>
+        </Card>
     );
 });
 
@@ -154,20 +155,20 @@ function StoreBreadcrumbs({ tenant }) {
 
     return (
         <nav aria-label="Ubicación" className="mx-auto max-w-7xl px-4 pt-5 text-sm sm:px-6 lg:px-8">
-            <ol className="flex flex-wrap items-center gap-2 text-slate-500">
+            <ol className="flex flex-wrap items-center gap-2 text-muted-foreground">
                 <li>
-                    <Link href="/" className="font-medium transition hover:text-slate-900">
+                    <Link href="/" className="font-medium transition-colors hover:text-foreground">
                         Inicio
                     </Link>
                 </li>
                 <li aria-hidden="true">/</li>
                 <li>
-                    <Link href={tenantHref} className="font-medium transition hover:text-slate-900">
+                    <Link href={tenantHref} className="font-medium transition-colors hover:text-foreground">
                         {tenant.name || 'Negocio'}
                     </Link>
                 </li>
                 <li aria-hidden="true">/</li>
-                <li className="font-semibold text-slate-900">Catálogo</li>
+                <li className="font-semibold text-foreground">Catálogo</li>
             </ol>
         </nav>
     );
@@ -411,7 +412,7 @@ export default function StoreHome({ sections = [] }) {
                             className="scroll-mt-40 mb-12"
                         >
                             {/* Section Header */}
-                            <h2 className="text-2xl font-bold text-gray-900 mb-6">
+                            <h2 className="mb-6 text-2xl font-bold text-foreground">
                                 {section.name}
                             </h2>
 

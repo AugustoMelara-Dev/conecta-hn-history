@@ -4,14 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Database;
 
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 final class SchemaKeyTypeGovernanceTest extends TestCase
 {
-    use DatabaseTransactions;
-
     public function test_critical_fk_and_id_columns_keep_expected_key_types(): void
     {
         /** @var array<string, array<string, array<int, string>>> $contracts */

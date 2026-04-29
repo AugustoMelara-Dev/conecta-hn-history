@@ -27,7 +27,7 @@ final class CampaignCreatePageTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Playbooks sugeridos por tu vertical');
-        $response->assertSee('Recompra de accesorios');
+        $response->assertSee('Cadencia de recompra');
     }
 
     public function test_free_owner_cannot_open_campaign_create_page(): void

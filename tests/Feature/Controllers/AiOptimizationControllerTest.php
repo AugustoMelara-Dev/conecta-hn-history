@@ -9,14 +9,16 @@ use App\Jobs\GenerateBusinessProfileJob;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
 
 beforeEach(function () {
     Queue::fake();
 });
 
 test('optimizeProfile dispatches GenerateBusinessProfileJob and returns 202', function () {
+    $tenantId = (string) Str::uuid();
     $tenant = Tenant::factory()->pro()->create([
-        'id' => '00000000-0000-0000-0000-000000000001',
+        'id' => $tenantId,
         'business_type' => 'service',
         'ai_balance' => 1.0,
     ]);
@@ -53,7 +55,7 @@ test('optimizeProfile dispatches GenerateBusinessProfileJob and returns 202', fu
 
     Queue::assertPushed(GenerateBusinessProfileJob::class, function ($job) use ($user) {
         return $job->businessName === 'Café Tegus'
-            && $job->tenantId === '00000000-0000-0000-0000-000000000001'
+            && $job->tenantId === (string) $user->tenant_id
             && $job->userId === (string) $user->getAuthIdentifier()
             && $job->targetAudience === 'Millennials'
             && $job->tone === 'professional'

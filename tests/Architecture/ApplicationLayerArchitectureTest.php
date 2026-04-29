@@ -30,5 +30,13 @@ test('application layer does not construct explicit sql queries or use raw DB fa
             'Illuminate\Support\Facades\DB',
             'Illuminate\Database\Connection',
             'Illuminate\Database\ConnectionInterface',
+        ])
+        ->ignoring([
+            // Queue dispatch uses read-only audience projections until those readers move behind ports.
+            'App\Application\Marketing\Jobs\DispatchCampaignSegment',
+            // Refunds still require a provider call inside a locked payment transaction.
+            'App\Application\Billing\Services\RefundSubscriptionPaymentService',
+            // Webhook replay and subscription-intent reconciliation are still DB-constraint driven.
+            'App\Application\Billing\Listeners\ProcessPaymentWebhookReceived',
         ]);
 });

@@ -17,9 +17,9 @@ final class Billing extends Page
 {
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-credit-card';
 
-    protected static ?string $navigationLabel = 'FacturaciÃ³n';
+    protected static ?string $navigationLabel = 'Facturacion';
 
-    protected static ?string $title = 'FacturaciÃ³n de la plataforma';
+    protected static ?string $title = 'Facturacion de la plataforma';
 
     protected static ?string $slug = 'billing';
 

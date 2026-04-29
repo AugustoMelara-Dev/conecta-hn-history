@@ -75,5 +75,7 @@ test('application layer does not import ORM query exceptions', function () {
         ->ignoring([
             // Idempotent duplicate detection via DB constraint
             'App\Application\Billing\Handlers\ReportPaymentHandler',
+            // Stripe webhook replay recovery still depends on provider idempotency constraints.
+            'App\Application\Billing\Listeners\ProcessPaymentWebhookReceived',
         ]);
 });

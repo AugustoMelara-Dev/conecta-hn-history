@@ -76,7 +76,7 @@ export default function StoreLayout({ children, className = '' }) {
                     <div className="flex items-center justify-between h-16">
                         {/* Branding: Tenant Logo */}
                         <Link
-                            href={tenant.slug ? `/${tenant.slug}` : '/'}
+                            href={tenant.slug ? `/t/${tenant.slug}` : '/'}
                             className="flex items-center space-x-3"
                         >
                             {tenant.logo ? (

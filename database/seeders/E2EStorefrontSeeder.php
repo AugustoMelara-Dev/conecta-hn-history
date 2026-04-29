@@ -9,6 +9,7 @@ use App\Domain\Shared\Services\TenantContext;
 use App\Models\Category;
 use App\Models\City;
 use App\Models\Department;
+use App\Models\Location;
 use App\Models\MenuSection;
 use App\Models\Municipality;
 use App\Models\OpeningHour;
@@ -745,6 +746,21 @@ final class E2EStorefrontSeeder extends Seeder
         ]));
 
         $owner->forceFill(['tenant_id' => $tenant->id])->save();
+
+        Location::query()->updateOrCreate(
+            [
+                'tenant_id' => $tenant->id,
+                'slug' => 'principal',
+            ],
+            [
+                'name' => 'Sucursal principal',
+                'address' => $attributes['address'],
+                'phone' => $attributes['whatsapp_number'],
+                'contact_name' => $attributes['name'],
+                'is_active' => true,
+                'is_primary' => true,
+            ],
+        );
 
         return $tenant;
     }

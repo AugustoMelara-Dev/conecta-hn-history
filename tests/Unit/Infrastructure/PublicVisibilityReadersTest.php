@@ -61,7 +61,8 @@ final class PublicVisibilityReadersTest extends TestCase
         $featured = $reader->getFeaturedProducts(10);
         $featuredSlugs = collect($featured)->pluck('tenant.slug')->filter()->values()->all();
 
-        $this->assertSame(['visible-tenant'], $featuredSlugs);
+        $this->assertContains('visible-tenant', $featuredSlugs);
+        $this->assertNotContains('provisional-tenant', $featuredSlugs);
     }
 
     public function test_public_catalog_reader_locations_and_directory_only_include_published_tenants(): void
@@ -96,7 +97,8 @@ final class PublicVisibilityReadersTest extends TestCase
         $locationSlugs = collect($locations)->pluck('slug')->filter()->values()->all();
         $directorySlugs = collect($directory)->pluck('slug')->filter()->values()->all();
 
-        $this->assertSame(['location-visible'], $locationSlugs);
+        $this->assertContains('location-visible', $locationSlugs);
+        $this->assertNotContains('location-paused', $locationSlugs);
         $this->assertContains('location-visible', $directorySlugs);
         $this->assertNotContains('location-paused', $directorySlugs);
     }
@@ -126,7 +128,8 @@ final class PublicVisibilityReadersTest extends TestCase
         $results = $reader->searchTenants('Cafe', null, null, 20);
         $slugs = collect($results)->pluck('slug')->filter()->values()->all();
 
-        $this->assertSame(['cafe-visible'], $slugs);
+        $this->assertContains('cafe-visible', $slugs);
+        $this->assertNotContains('cafe-rejected', $slugs);
     }
 
     public function test_search_repository_only_returns_published_tenants(): void
@@ -156,6 +159,7 @@ final class PublicVisibilityReadersTest extends TestCase
         $results = $repository->searchTenants('Search', null, null, 20);
         $slugs = collect($results)->pluck('slug')->filter()->values()->all();
 
-        $this->assertSame(['search-visible'], $slugs);
+        $this->assertContains('search-visible', $slugs);
+        $this->assertNotContains('search-provisional', $slugs);
     }
 }

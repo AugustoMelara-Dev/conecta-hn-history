@@ -12,9 +12,6 @@
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
         </testsuite>
-        <testsuite name="Architecture">
-            <directory>tests/Architecture</directory>
-        </testsuite>
         <testsuite name="Integration">
             <directory>tests/Integration</directory>
         </testsuite>
@@ -28,6 +25,7 @@
 
     <php>
         <ini name="error_reporting" value="8191"/>
+        <ini name="memory_limit" value="1024M"/>
         <env name="APP_KEY" value="base64:2fl+Ktvkfl+Fuz4Qk/NaWvy1Pt7EQqHMA2wc/ulkZyo="/>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>

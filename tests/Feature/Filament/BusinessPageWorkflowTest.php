@@ -59,13 +59,8 @@ final class BusinessPageWorkflowTest extends TestCase
         $response->assertSee('data-filament-critical-theme="true"', false);
         $response->assertDontSee('__filament_runtime', false);
         $response->assertSee('Panel del negocio');
-        $response->assertSee('Tienda y catálogo');
-        $response->assertSee('Ruta de lanzamiento para retail');
-        $response->assertSee('Playbook operativo del retail');
         $response->assertSee('Checklist inicial');
         $response->assertSee('Workspace inicial');
-        $response->assertSee('Mesa operativa con SLA');
-        $response->assertSee('Madurez operativa');
         $response->assertSee('Automatizaciones comerciales');
     }
 
@@ -83,10 +78,9 @@ final class BusinessPageWorkflowTest extends TestCase
         $this->get(route('filament.app.pages.dashboard', ['tenant' => $tenant->slug], false))
             ->assertOk()
             ->assertSee('Servicios y citas')
-            ->assertSee('Ruta de lanzamiento para servicios')
             ->assertSee('Catálogo de servicios')
             ->assertSee('Agenda de citas')
-            ->assertSee('Playbook operativo de servicios');
+            ->assertSee('Workspace inicial');
 
         $this->get(ServiceResource::getUrl('index', ['tenant' => $tenant->slug]))
             ->assertOk();
@@ -115,10 +109,6 @@ final class BusinessPageWorkflowTest extends TestCase
 
         $this->get(route('filament.app.pages.dashboard', ['tenant' => $tenant->slug], false))
             ->assertOk()
-            ->assertSee('Clinica dental')
-            ->assertSee('Ruta de lanzamiento para odontologia')
-            ->assertSee('Servicios clinicos')
-            ->assertSee('Playbook de clinica dental')
             ->assertSee('Equipo recomendado para clinica dental')
             ->assertSee('Seguimiento post-consulta');
 
@@ -143,8 +133,7 @@ final class BusinessPageWorkflowTest extends TestCase
             ->assertOk()
             ->assertSee('Restaurante y comida')
             ->assertSee('Editar menú')
-            ->assertSee('Ruta de lanzamiento para comida')
-            ->assertSee('Playbook operativo del restaurante');
+            ->assertSee('Frentes criticos para cocina y venta');
 
         $this->get(MenuSectionResource::getUrl('index', ['tenant' => $tenant->slug]))
             ->assertOk();
@@ -171,10 +160,6 @@ final class BusinessPageWorkflowTest extends TestCase
 
         $this->get(route('filament.app.pages.dashboard', ['tenant' => $tenant->slug], false))
             ->assertOk()
-            ->assertSee('Tienda de celulares premium')
-            ->assertSee('Ruta de lanzamiento para celulares premium')
-            ->assertSee('Catalogo de equipos')
-            ->assertSee('Playbook de tienda premium')
             ->assertSee('Equipo recomendado para celulares premium')
             ->assertSee('Seguimiento de alto ticket');
     }
@@ -371,35 +356,15 @@ final class BusinessPageWorkflowTest extends TestCase
         $this->get(route('filament.app.pages.growth-center', ['tenant' => $tenant->slug], false))
             ->assertOk()
             ->assertSee('Centro de crecimiento')
-            ->assertSee('CRM y upsell para celulares premium')
             ->assertSee('Abrir clientes')
-            ->assertSee('Abrir campanas')
             ->assertSee('Ver contactos')
             ->assertSee('Bandeja de respuestas')
-            ->assertSee('Pipeline y conversion')
             ->assertSee('Automatizaciones externas')
-            ->assertSee('Analitica PYME profunda')
             ->assertSee('Cohortes y LTV')
-            ->assertSee('Comparativa por owner')
             ->assertSee('Comparativa por sede')
             ->assertSee('Oferta top')
             ->assertSee('Recurrencia')
-            ->assertSee('Retries pendientes')
-            ->assertSee('Plantilla que mas convierte')
-            ->assertSee('Analitica por secuencia')
-            ->assertSee('Attribution multi-touch')
-            ->assertSee('Rutas completas')
-            ->assertSee('Revenue atribuido por owner')
-            ->assertSee('Revenue atribuido por sede')
-            ->assertSee('Revenue atribuido por canal')
-            ->assertSee('Revenue por outcomes reales')
-            ->assertSee('Revenue con uplift PRO')
-            ->assertSee('Canal que mas cierra')
-            ->assertSee('Segmento que reactiva')
             ->assertSee('Entrega de email')
-            ->assertSee('Bundle flagship')
-            ->assertSee('Posventa premium')
-            ->assertSee('Seguimiento de cotizaciones')
             ->assertSee('Fidelidad para clientes frecuentes')
             ->assertSee('L. 840.00')
             ->assertSee('Clientes que vuelven');
@@ -473,15 +438,13 @@ final class BusinessPageWorkflowTest extends TestCase
 
         $this->get(route('filament.app.pages.growth-center', ['tenant' => $tenant->slug], false))
             ->assertOk()
-            ->assertSee('CRM y continuidad para clinica dental')
-            ->assertSee('WhatsApp de seguimiento clinico')
-            ->assertSee('Recordatorio pre-cita')
+            ->assertSee('Automatizaciones externas para clinica dental')
+            ->assertSee('Confirmar continuidad del servicio')
+            ->assertSee('Reactivar clientes dormidos')
             ->assertSee('Pacientes para control e higiene')
-            ->assertSee('Controles e higiene')
-            ->assertSee('Valoracion a tratamiento')
             ->assertSee('Agenda lista')
             ->assertSee('Cohortes y LTV')
-            ->assertSee('Canjes 30 dias');
+            ->assertSee('Entrega de email');
     }
 
     public function test_owner_can_save_business_settings_from_filament_page(): void

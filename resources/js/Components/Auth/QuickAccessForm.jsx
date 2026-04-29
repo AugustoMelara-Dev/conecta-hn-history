@@ -100,7 +100,7 @@ export function QuickAccessForm({ className = "", onAuthenticated }) {
                 <FieldGroup>
                     <Alert variant="success">
                         <div className="flex gap-3">
-                            <MailCheck className="mt-0.5 h-4 w-4 shrink-0" />
+                            <MailCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                             <div>
                                 <AlertTitle>Revisa tu correo</AlertTitle>
                                 <AlertDescription>
@@ -140,11 +140,11 @@ export function QuickAccessForm({ className = "", onAuthenticated }) {
 
                     <div className="grid grid-cols-[0.7fr_1fr] gap-2">
                         <Button type="button" variant="outline" onClick={reset} disabled={isLoading}>
-                            <RotateCcw className="mr-2 h-4 w-4" />
+                            <RotateCcw className="mr-2 h-4 w-4" data-icon="inline-start" />
                             Cambiar correo
                         </Button>
                         <Button type="submit" disabled={isLoading || code.length !== 6}>
-                            {isLoading ? <Spinner className="mr-2" /> : <KeyRound className="mr-2 h-4 w-4" />}
+                            {isLoading ? <Spinner className="mr-2" /> : <KeyRound className="mr-2 h-4 w-4" data-icon="inline-start" />}
                             Verificar y entrar
                         </Button>
                     </div>
@@ -182,7 +182,7 @@ export function QuickAccessForm({ className = "", onAuthenticated }) {
                 ) : null}
 
                 <Button type="submit" disabled={isLoading} className="w-full">
-                    {isLoading ? <Spinner className="mr-2" /> : <Send className="mr-2 h-4 w-4" />}
+                    {isLoading ? <Spinner className="mr-2" /> : <Send className="mr-2 h-4 w-4" data-icon="inline-start" />}
                     Enviar acceso
                 </Button>
             </FieldGroup>

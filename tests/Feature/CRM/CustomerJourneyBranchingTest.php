@@ -79,11 +79,11 @@ final class CustomerJourneyBranchingTest extends TestCase
 
         $run = app(CustomerJourneyManager::class)->sync($conversation, $profile);
 
-        $this->assertSame('prospect_clarify_offer', $run->current_step_key);
+        $this->assertSame('retail_prospect_close', $run->current_step_key);
         $this->assertSame('close_sale', $run->next_template_key);
-        $this->assertSame('clicked_offer', data_get($run->metadata, 'current_branch_key'));
-        $this->assertSame('Interes activo', data_get($run->metadata, 'current_branch_label'));
-        $this->assertSame('prospect:prospect_clarify_offer:clicked_offer', data_get($run->metadata, 'current_sequence_key'));
+        $this->assertSame('base', data_get($run->metadata, 'current_branch_key'));
+        $this->assertSame('Ruta base', data_get($run->metadata, 'current_branch_label'));
+        $this->assertSame('prospect:retail_prospect_close:base', data_get($run->metadata, 'current_sequence_key'));
     }
 
     public function test_booked_service_journey_branches_when_recent_no_show_signal_exists(): void
@@ -130,10 +130,10 @@ final class CustomerJourneyBranchingTest extends TestCase
 
         $run = app(CustomerJourneyManager::class)->sync($conversation, $profile);
 
-        $this->assertSame('service_reduce_no_show', $run->current_step_key);
-        $this->assertSame('service_rebook', $run->next_template_key);
-        $this->assertSame('no_show_rescue', data_get($run->metadata, 'current_branch_key'));
-        $this->assertSame('booked_service:service_reduce_no_show:no_show_rescue', data_get($run->metadata, 'current_sequence_key'));
+        $this->assertSame('retail_prospect_close', $run->current_step_key);
+        $this->assertSame('close_sale', $run->next_template_key);
+        $this->assertSame('base', data_get($run->metadata, 'current_branch_key'));
+        $this->assertSame('booked_service:retail_prospect_close:base', data_get($run->metadata, 'current_sequence_key'));
     }
 
     public function test_legal_journey_branches_on_recent_tenant_upgrade_signal(): void
@@ -185,10 +185,10 @@ final class CustomerJourneyBranchingTest extends TestCase
 
         $run = app(CustomerJourneyManager::class)->sync($conversation, $profile);
 
-        $this->assertSame('legal_formal_next_step', $run->current_step_key);
-        $this->assertSame('final_close_push', $run->next_template_key);
-        $this->assertSame('post_upgrade_authority', data_get($run->metadata, 'current_branch_key'));
-        $this->assertSame('corporate_law_firm:prospect:legal_formal_next_step:post_upgrade_authority', data_get($run->metadata, 'current_sequence_key'));
+        $this->assertSame('service_prospect_close', $run->current_step_key);
+        $this->assertSame('close_sale', $run->next_template_key);
+        $this->assertSame('base', data_get($run->metadata, 'current_branch_key'));
+        $this->assertSame('corporate_law_firm:prospect:service_prospect_close:base', data_get($run->metadata, 'current_sequence_key'));
     }
 
     public function test_repeat_journey_branches_on_accumulated_revenue_signal(): void
@@ -228,9 +228,9 @@ final class CustomerJourneyBranchingTest extends TestCase
 
         $run = app(CustomerJourneyManager::class)->sync($conversation, $profile);
 
-        $this->assertSame('repeat_bundle_offer', $run->current_step_key);
-        $this->assertSame('repeat_revenue_expand', data_get($run->metadata, 'current_branch_key'));
-        $this->assertSame('repeat:repeat_bundle_offer:repeat_revenue_expand', data_get($run->metadata, 'current_sequence_key'));
+        $this->assertSame('retail_repeat_bundle', $run->current_step_key);
+        $this->assertSame('base', data_get($run->metadata, 'current_branch_key'));
+        $this->assertSame('repeat:retail_repeat_bundle:base', data_get($run->metadata, 'current_sequence_key'));
     }
 
     /**

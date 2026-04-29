@@ -85,7 +85,7 @@ final class CustomerConversationOpsManagerTest extends TestCase
         $this->assertSame(1, $note->reply_count);
         $this->assertSame((string) $user->getKey(), (string) $note->assigned_user_id);
         $this->assertSame((string) $location->getKey(), (string) $note->location_id);
-        $this->assertSame('retention', (string) data_get($note->metadata, 'assignment_group'));
+        $this->assertSame('sales', (string) data_get($note->metadata, 'assignment_group'));
         $this->assertNotNull($note->customer_conversation_id);
 
         $conversation = CustomerConversation::query()
@@ -96,7 +96,7 @@ final class CustomerConversationOpsManagerTest extends TestCase
         $this->assertSame('open', $conversation->status);
         $this->assertSame((string) $user->getKey(), (string) $conversation->owner_user_id);
         $this->assertSame((string) $location->getKey(), (string) $conversation->location_id);
-        $this->assertSame('retention', (string) $conversation->assignment_group);
+        $this->assertSame('sales', (string) $conversation->assignment_group);
 
         $inboundMessage = CustomerConversationMessage::query()
             ->withoutGlobalScopes()
@@ -119,7 +119,7 @@ final class CustomerConversationOpsManagerTest extends TestCase
 
         $this->assertInstanceOf(CustomerJourneyRun::class, $journeyRun);
         $this->assertSame('active', $journeyRun->status);
-        $this->assertSame('repeat_fast_follow_up', $journeyRun->current_step_key);
+        $this->assertSame('retail_repeat_fast_follow_up', $journeyRun->current_step_key);
         $this->assertSame('fast_follow_up', $journeyRun->next_template_key);
         $this->assertSame('active', $journeyRun->sequence_state);
         $this->assertSame('scheduled', $journeyRun->due_state);
@@ -130,7 +130,7 @@ final class CustomerConversationOpsManagerTest extends TestCase
         $this->assertSame((string) $user->getKey(), (string) $task->assigned_user_id);
         $this->assertSame((string) $location->getKey(), (string) $task->location_id);
         $this->assertSame((int) $conversation->getKey(), (int) $task->customer_conversation_id);
-        $this->assertSame('retention', (string) $task->assignment_group);
+        $this->assertSame('sales', (string) $task->assignment_group);
 
         app(CustomerAutomationManager::class)->sendEmailTouchpoint(
             profile: $profile,
@@ -151,7 +151,7 @@ final class CustomerConversationOpsManagerTest extends TestCase
         $this->assertSame('waiting_customer', (string) $task->fresh()?->status);
         $this->assertSame('waiting_customer', (string) $conversation->fresh()?->status);
         $this->assertSame('waiting_customer', (string) $journeyRun->fresh()?->sequence_state);
-        $this->assertSame('repeat_bundle_offer', (string) $journeyRun->fresh()?->current_step_key);
+        $this->assertSame('retail_repeat_bundle', (string) $journeyRun->fresh()?->current_step_key);
 
         $outboundMessage = CustomerConversationMessage::query()
             ->withoutGlobalScopes()
@@ -181,7 +181,7 @@ final class CustomerConversationOpsManagerTest extends TestCase
         $this->assertSame((string) $location->getKey(), (string) $reopened->location_id);
         $this->assertSame('open', (string) $task->fresh()?->status);
         $this->assertSame('open', (string) $conversation->fresh()?->status);
-        $this->assertSame('repeat_close_continuity', (string) $journeyRun->fresh()?->current_step_key);
+        $this->assertSame('retail_repeat_close', (string) $journeyRun->fresh()?->current_step_key);
         $this->assertSame('close_sale', (string) $journeyRun->fresh()?->next_template_key);
         $this->assertCount(3, CustomerConversationMessage::query()
             ->withoutGlobalScopes()

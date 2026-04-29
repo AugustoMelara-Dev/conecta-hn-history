@@ -138,16 +138,16 @@ final class DispatchCustomerJourneyStepsCommandTest extends TestCase
         $this->assertSame('follow_up_reminder', $touchpoint->template_key);
         $this->assertSame('journey-repeat-001', (string) data_get($touchpoint->metadata, 'provider_thread_key'));
         $this->assertSame('email.reply.1', (string) data_get($touchpoint->metadata, 'provider_reply_to'));
-        $this->assertSame('repeat_bundle_offer', (string) data_get($touchpoint->metadata, 'journey_step_key'));
-        $this->assertSame('repeat:repeat_bundle_offer:base', (string) data_get($touchpoint->metadata, 'journey_sequence_key'));
+        $this->assertSame('retail_repeat_bundle', (string) data_get($touchpoint->metadata, 'journey_step_key'));
+        $this->assertSame('repeat:retail_repeat_bundle:base', (string) data_get($touchpoint->metadata, 'journey_sequence_key'));
 
         $run->refresh();
         $conversation->refresh();
         $note->refresh();
 
-        $this->assertSame('repeat_close_continuity', (string) $run->current_step_key);
+        $this->assertSame('retail_repeat_close', (string) $run->current_step_key);
         $this->assertSame('close_sale', (string) $run->next_template_key);
-        $this->assertSame('repeat:repeat_close_continuity:base', (string) data_get($run->metadata, 'current_sequence_key'));
+        $this->assertSame('repeat:retail_repeat_close:base', (string) data_get($run->metadata, 'current_sequence_key'));
         $this->assertSame(1, (int) $run->auto_step_count);
         $this->assertSame((int) $touchpoint->getKey(), (int) $run->last_auto_touchpoint_id);
         $this->assertNull($run->current_step_executed_at);

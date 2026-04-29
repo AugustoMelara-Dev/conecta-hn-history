@@ -46,7 +46,7 @@ export function LoginForm({
         <Card className={cn("overflow-hidden border-slate-200 bg-white text-slate-950 shadow-xl shadow-slate-200/60", className)} {...props}>
             <CardHeader className="space-y-3 border-b border-slate-100 bg-slate-50/70">
                 <div className="inline-flex w-fit items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600">
-                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" />
                     Acceso seguro
                 </div>
                 <div>
@@ -62,11 +62,11 @@ export function LoginForm({
                 <Tabs defaultValue="password" className="w-full">
                     <TabsList className="grid w-full grid-cols-2">
                         <TabsTrigger value="password" className="gap-2">
-                            <Building2 className="h-4 w-4" />
+                            <Building2 className="h-4 w-4" aria-hidden="true" />
                             Acceso con correo
                         </TabsTrigger>
                         <TabsTrigger value="quick" className="gap-2">
-                            <Mail className="h-4 w-4" />
+                            <Mail className="h-4 w-4" aria-hidden="true" />
                             Acceso rápido
                         </TabsTrigger>
                     </TabsList>

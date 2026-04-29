@@ -17,8 +17,18 @@ import AuthSplitLayout, {
     AuthAsideCard,
 } from "@/Components/Auth/AuthSplitLayout"
 import { Button } from "@/Components/ui/button"
+import { Checkbox } from "@/Components/ui/checkbox"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/Components/ui/field"
 import { Input } from "@/Components/ui/input"
+import { Progress } from "@/Components/ui/progress"
+import {
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/Components/ui/select"
 import {
     PUBLIC_BODY_FONT,
     PUBLIC_DISPLAY_FONT,
@@ -26,10 +36,10 @@ import {
 } from "@/lib/publicTypography"
 
 const STEPS = [
-    { key: "business", label: "Negocio", title: "Informacion del negocio", icon: Building2 },
-    { key: "location", label: "Zona", title: "Ubicacion y contacto", icon: MapPin },
+    { key: "business", label: "Negocio", title: "Información del negocio", icon: Building2 },
+    { key: "location", label: "Zona", title: "Ubicación y contacto", icon: MapPin },
     { key: "account", label: "Cuenta", title: "Cuenta propietaria", icon: UserRound },
-    { key: "plan", label: "Lanzar", title: "Plan y activacion", icon: Sparkles },
+    { key: "plan", label: "Lanzar", title: "Plan y activación", icon: Sparkles },
 ]
 
 const STEP_FIELDS = {
@@ -369,6 +379,8 @@ export function RegisterTenantWizard({
     const freePrice = money(settings.freePlanPrice ?? 0)
     const proPrice = money(settings.proPlanPrice ?? 500)
     const canSubmit = categories.length > 0 && cities.length > 0
+    const selectedCategoryValue = data.category_id ? String(data.category_id) : "none"
+    const selectedCityValue = data.city_id ? String(data.city_id) : "none"
 
     const focusField = (field) => {
         if (typeof window === "undefined") return
@@ -417,7 +429,7 @@ export function RegisterTenantWizard({
         if (!slug) {
             setSlugState({
                 status: "idle",
-                message: "La URL se genera automaticamente a partir del nombre comercial.",
+                message: "La URL se genera automáticamente a partir del nombre comercial.",
                 suggestions: [],
             })
             return undefined
@@ -465,12 +477,12 @@ export function RegisterTenantWizard({
                     payload.available
                         ? {
                               status: "available",
-                              message: payload.message || "Esta URL esta disponible.",
+                              message: payload.message || "Esta URL está disponible.",
                               suggestions: [],
                           }
                         : {
                               status: "unavailable",
-                              message: payload.message || "Esta URL ya esta ocupada.",
+                              message: payload.message || "Esta URL ya está ocupada.",
                               suggestions: payload.suggestions || [],
                           }
                 )
@@ -514,9 +526,9 @@ export function RegisterTenantWizard({
             if (!data.business_name.trim()) nextErrors.business_name = "Escribe el nombre comercial."
             if (!slug) nextErrors.slug = "Define una URL para el negocio."
             else if (slug.length < 3) nextErrors.slug = "La URL necesita al menos 3 caracteres."
-            else if (slugState.status === "checking") nextErrors.slug = "Espera a que termine la revision de la URL."
-            else if (slugState.status === "unavailable") nextErrors.slug = "Esa URL ya esta ocupada."
-            if (!String(data.category_id).trim()) nextErrors.category_id = "Selecciona una categoria."
+            else if (slugState.status === "checking") nextErrors.slug = "Espera a que termine la revisión de la URL."
+            else if (slugState.status === "unavailable") nextErrors.slug = "Esa URL ya está ocupada."
+            if (!String(data.category_id).trim()) nextErrors.category_id = "Selecciona una categoría."
             if (!String(data.business_type).trim()) nextErrors.business_type = "Selecciona el tipo de negocio."
         }
 
@@ -584,7 +596,7 @@ export function RegisterTenantWizard({
                             className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-300"
                             style={{ fontFamily: PUBLIC_LABEL_FONT }}
                         >
-                            Onboarding conectado
+                            Onboarding integrado
                         </div>
 
                         <div className="space-y-4">
@@ -592,7 +604,7 @@ export function RegisterTenantWizard({
                                 Lanza tu negocio en minutos con un registro guiado.
                             </h2>
                             <p className="max-w-lg text-base leading-7 text-slate-300 xl:text-lg">
-                                Definimos URL, perfil comercial, cuenta y plan en un solo flujo conectado a produccion.
+                                Definimos URL, perfil comercial, cuenta y plan en un solo flujo listo para producción.
                             </p>
                         </div>
                     </div>
@@ -602,16 +614,14 @@ export function RegisterTenantWizard({
                             invert
                             eyebrow={`Paso ${step + 1} de ${STEPS.length}`}
                             title={STEPS[step].title}
-                            description="Cada paso pide solo lo necesario para activar tu panel sin friccion."
+                            description="Cada paso pide solo lo necesario para activar tu panel sin fricción."
                         >
-                            <div className="mt-6 h-2 overflow-hidden rounded-full bg-white/10">
-                                <div className="h-full rounded-full bg-white transition-all duration-500" style={{ width: `${progress}%` }} />
-                            </div>
+                            <Progress value={progress} className="mt-6 h-2 bg-white/10 [&>div]:bg-white" />
                         </AuthAsideCard>
 
                         <AuthAsideCard
                             invert
-                            eyebrow="Checklist de activacion"
+                            eyebrow="Checklist de activación"
                             title="Lo que queda listo al enviar"
                             description="Este registro no es demo: crea recursos reales dentro de la plataforma."
                         >
@@ -619,7 +629,7 @@ export function RegisterTenantWizard({
                                 {[
                                     "Cuenta propietaria con login real",
                                     "Negocio con slug validado y aislado",
-                                    "Acceso al panel y flujo de verificacion",
+                                    "Acceso al panel y flujo de verificación",
                                 ].map((item) => (
                                     <div key={item} className="flex items-start gap-2 text-sm text-slate-200">
                                         <CheckCircle2 className="mt-0.5 h-4 w-4" />
@@ -631,7 +641,7 @@ export function RegisterTenantWizard({
 
                         <AuthAsideCard eyebrow="Vista previa" title={businessPreview} description={slugPreview}>
                             <div className="mt-4 space-y-3">
-                                <SummaryRow label="Categoria" value={selectedCategory?.name || "Pendiente"} />
+                                <SummaryRow label="Categoría" value={selectedCategory?.name || "Pendiente"} />
                                 <SummaryRow label="Tipo" value={selectedBusinessType?.label || "Pendiente"} />
                                 <SummaryRow label="Segmento" value={selectedSegment?.label || "Pendiente"} />
                                 <SummaryRow label="Ciudad" value={selectedCity?.name || "Pendiente"} />
@@ -650,10 +660,10 @@ export function RegisterTenantWizard({
                                 Registro de negocio
                             </p>
                             <h1 className="text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                                Crea tu negocio con una experiencia mas clara.
+                                Crea tu negocio con una experiencia más clara.
                             </h1>
                             <p className="max-w-2xl text-sm leading-7 text-slate-500">
-                                Cuatro pasos, validaciones en vivo y activacion real al finalizar.
+                                Cuatro pasos, validaciones en vivo y activación real al finalizar.
                             </p>
                         </div>
 
@@ -666,7 +676,7 @@ export function RegisterTenantWizard({
 
                     {!canSubmit ? (
                         <div className="mt-8 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                            No pudimos cargar ciudades o categorias. Recarga la página e intentalo de nuevo.
+                            No pudimos cargar ciudades o categorías. Recarga la página e inténtalo de nuevo.
                         </div>
                     ) : null}
 
@@ -709,14 +719,14 @@ export function RegisterTenantWizard({
                                                 {slugBaseHost}
                                             </span>
                                             <span className="text-xs text-slate-400">/t/</span>
-                                            <input id="slug" name="slug" data-testid="register-slug-input" autoComplete="off"
+                                            <Input id="slug" name="slug" data-testid="register-slug-input" autoComplete="off"
                                                 value={data.slug}
                                                 onChange={(event) => {
                                                     setSlugTouched(true)
                                                     updateField("slug", slugify(event.target.value))
                                                 }}
                                                 placeholder="tunegocio"
-                                                className="h-full w-full border-0 bg-transparent px-1 text-slate-950 outline-none placeholder:text-slate-400"
+                                                className="h-full w-full border-0 bg-transparent px-1 text-slate-950 shadow-none placeholder:text-slate-400 focus-visible:ring-0 focus-visible:ring-offset-0"
                                             />
                                         </div>
                                         <FieldDescription aria-live="polite" className={slugState.status === "unavailable" || slugState.status === "error" ? "text-rose-600" : "text-slate-500"}>
@@ -724,7 +734,7 @@ export function RegisterTenantWizard({
                                         </FieldDescription>
                                         {crossSurfaceHost ? (
                                             <FieldDescription className="text-slate-500">
-                                                Tu panel opera en {registrationHost} y tu micrositio publico se publica en {slugBaseHost}/t/...
+                                                Tu panel opera en {registrationHost} y tu micrositio público se publica en {slugBaseHost}/t/...
                                             </FieldDescription>
                                         ) : null}
                                         {slugState.suggestions?.length ? (
@@ -732,9 +742,9 @@ export function RegisterTenantWizard({
                                                 <p className="text-xs font-semibold text-slate-500">Opciones sugeridas:</p>
                                                 <div className="flex flex-wrap gap-2">
                                                     {slugState.suggestions.map((suggestion) => (
-                                                        <button key={suggestion} type="button" onClick={() => { setSlugTouched(true); updateField("slug", suggestion) }} className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-950">
+                                                        <Button key={suggestion} type="button" variant="outline" onClick={() => { setSlugTouched(true); updateField("slug", suggestion) }} className="h-8 rounded-full border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:border-slate-300 hover:text-slate-950">
                                                             {suggestion}
-                                                        </button>
+                                                        </Button>
                                                     ))}
                                                 </div>
                                             </div>
@@ -742,11 +752,28 @@ export function RegisterTenantWizard({
                                     </Field>
 
                                     <Field>
-                                        <FieldLabel htmlFor="category_id">Categoria</FieldLabel>
-                                        <select id="category_id" name="category_id" autoComplete="off" value={data.category_id} onChange={(event) => updateField("category_id", event.target.value)} className={`h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-950 outline-none transition focus:border-slate-950 focus:ring-4 focus:ring-slate-300 ${errorFor("category_id") ? "border-rose-300 focus:ring-rose-200" : ""}`}>
-                                            <option value="">Selecciona una categoria</option>
-                                            {categories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-                                        </select>
+                                        <FieldLabel htmlFor="category_id">Categoría</FieldLabel>
+                                        <Select
+                                            value={selectedCategoryValue}
+                                            onValueChange={(value) => updateField("category_id", value === "none" ? "" : value)}
+                                        >
+                                            <SelectTrigger
+                                                id="category_id"
+                                                data-testid="register-category-select"
+                                                aria-invalid={Boolean(errorFor("category_id"))}
+                                                className={`h-12 rounded-xl border-slate-200 bg-slate-50 px-4 text-slate-950 focus:ring-4 focus:ring-slate-300 ${errorFor("category_id") ? "border-rose-300 focus:ring-rose-200" : ""}`}
+                                            >
+                                                <SelectValue placeholder="Selecciona una categoría" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectGroup>
+                                                    <SelectItem value="none">Selecciona una categoría</SelectItem>
+                                                    {categories.map((item) => (
+                                                        <SelectItem key={item.id} value={String(item.id)}>{item.name}</SelectItem>
+                                                    ))}
+                                                </SelectGroup>
+                                            </SelectContent>
+                                        </Select>
                                         {errorFor("category_id") ? <FieldDescription className="text-rose-600">{errorFor("category_id")}</FieldDescription> : null}
                                     </Field>
 
@@ -754,7 +781,7 @@ export function RegisterTenantWizard({
                                         <div className="space-y-2">
                                             <FieldLabel>Tipo de negocio</FieldLabel>
                                             <FieldDescription>
-                                                Elige la operacion que mejor representa como vendes hoy.
+                                                Elige la operación que mejor representa cómo vendes hoy.
                                             </FieldDescription>
                                         </div>
 
@@ -778,7 +805,7 @@ export function RegisterTenantWizard({
 
                                         {suggestedBusinessType && !businessTypeTouched ? (
                                             <FieldDescription>
-                                                Te sugerimos <strong>{businessTypes.find((item) => item.value === suggestedBusinessType)?.label || "este tipo"}</strong> por la categoria que elegiste.
+                                                Te sugerimos <strong>{businessTypes.find((item) => item.value === suggestedBusinessType)?.label || "este tipo"}</strong> por la categoría que elegiste.
                                             </FieldDescription>
                                         ) : null}
 
@@ -855,17 +882,34 @@ export function RegisterTenantWizard({
                                 <FieldGroup>
                                     <Field>
                                         <FieldLabel htmlFor="city_id">Ciudad</FieldLabel>
-                                        <select id="city_id" name="city_id" autoComplete="address-level2" value={data.city_id} onChange={(event) => updateField("city_id", event.target.value)} className={`h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-950 outline-none transition focus:border-slate-950 focus:ring-4 focus:ring-slate-300 ${errorFor("city_id") ? "border-rose-300 focus:ring-rose-200" : ""}`}>
-                                            <option value="">Selecciona una ciudad</option>
-                                            {cities.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-                                        </select>
+                                        <Select
+                                            value={selectedCityValue}
+                                            onValueChange={(value) => updateField("city_id", value === "none" ? "" : value)}
+                                        >
+                                            <SelectTrigger
+                                                id="city_id"
+                                                data-testid="register-city-select"
+                                                aria-invalid={Boolean(errorFor("city_id"))}
+                                                className={`h-12 rounded-xl border-slate-200 bg-slate-50 px-4 text-slate-950 focus:ring-4 focus:ring-slate-300 ${errorFor("city_id") ? "border-rose-300 focus:ring-rose-200" : ""}`}
+                                            >
+                                                <SelectValue placeholder="Selecciona una ciudad" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectGroup>
+                                                    <SelectItem value="none">Selecciona una ciudad</SelectItem>
+                                                    {cities.map((item) => (
+                                                        <SelectItem key={item.id} value={String(item.id)}>{item.name}</SelectItem>
+                                                    ))}
+                                                </SelectGroup>
+                                            </SelectContent>
+                                        </Select>
                                         {errorFor("city_id") ? <FieldDescription className="text-rose-600">{errorFor("city_id")}</FieldDescription> : null}
                                     </Field>
 
                                     <Field>
                                         <FieldLabel htmlFor="whatsapp">WhatsApp</FieldLabel>
                                         <Input id="whatsapp" name="whatsapp" type="tel" autoComplete="tel" inputMode="tel" value={data.whatsapp} onChange={(event) => updateField("whatsapp", event.target.value)} placeholder="+504 9999-9999" className={inputClass("whatsapp")} />
-                                        <FieldDescription>Opcional, pero ayuda a conectar pedidos y contacto desde el inicio.</FieldDescription>
+                                        <FieldDescription>Opcional, pero ayuda a centralizar pedidos y contacto desde el inicio.</FieldDescription>
                                     </Field>
                                 </FieldGroup>
                             ) : null}
@@ -884,7 +928,7 @@ export function RegisterTenantWizard({
                                         {errorFor("email") ? (
                                             <FieldDescription className="text-rose-600">{errorFor("email")}</FieldDescription>
                                         ) : (
-                                            <FieldDescription>Usaremos este correo para login, verificacion y recuperacion.</FieldDescription>
+                                            <FieldDescription>Usaremos este correo para login, verificación y recuperación.</FieldDescription>
                                         )}
                                     </Field>
 
@@ -907,29 +951,34 @@ export function RegisterTenantWizard({
                             {step === 3 ? (
                                 <FieldGroup>
                                     <div className="grid gap-4 md:grid-cols-2">
-                                        <PlanCard active={data.selected_plan === "free"} title="Plan Basic" caption="Lo esencial para iniciar" price={`L. ${freePrice}`} bullets={["Perfil digital publico", `Catalogo de ${freeLimit} productos`, "Panel base para operar"]} onClick={() => updateField("selected_plan", "free")} />
-                                        <PlanCard active={data.selected_plan === "pro"} recommended title="Plan Business Pro" caption="Potencia total" price={`L. ${proPrice}`} bullets={["Ventas ilimitadas", "Analiticas avanzadas", `Capacidad comercial de ${proLimit} productos`]} onClick={() => updateField("selected_plan", "pro")} />
+                                        <PlanCard active={data.selected_plan === "free"} title="Plan Basic" caption="Lo esencial para iniciar" price={`L. ${freePrice}`} bullets={["Perfil digital público", `Catálogo de ${freeLimit} productos`, "Panel base para operar"]} onClick={() => updateField("selected_plan", "free")} />
+                                        <PlanCard active={data.selected_plan === "pro"} recommended title="Plan Business Pro" caption="Potencia total" price={`L. ${proPrice}`} bullets={["Ventas ilimitadas", "Analíticas avanzadas", `Capacidad comercial de ${proLimit} productos`]} onClick={() => updateField("selected_plan", "pro")} />
                                     </div>
                                     {errorFor("selected_plan") ? <FieldDescription className="text-rose-600">{errorFor("selected_plan")}</FieldDescription> : null}
 
                                     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr),300px]">
                                         <div className="space-y-3 rounded-[1.75rem] border border-slate-200 bg-white p-5">
-                                            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500" style={{ fontFamily: PUBLIC_LABEL_FONT }}>Resumen de activacion</p>
+                                            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500" style={{ fontFamily: PUBLIC_LABEL_FONT }}>Resumen de activación</p>
                                             <SummaryRow label="Negocio" value={businessPreview} />
                                             <SummaryRow label="URL" value={slugPreview} />
-                                            <SummaryRow label="Categoria" value={selectedCategory?.name || "Pendiente"} />
+                                            <SummaryRow label="Categoría" value={selectedCategory?.name || "Pendiente"} />
                                             <SummaryRow label="Tipo" value={selectedBusinessType?.label || "Pendiente"} />
                                             <SummaryRow label="Segmento" value={selectedSegment?.label || "Pendiente"} />
                                             <SummaryRow label="Ciudad" value={selectedCity?.name || "Pendiente"} />
-                                            <SummaryRow label="Cuenta" value={data.email || "Sin correo aun"} />
+                                            <SummaryRow label="Cuenta" value={data.email || "Sin correo aún"} />
                                             <SummaryRow label="Plan" value={data.selected_plan === "pro" ? "Business Pro" : "Basic"} />
                                         </div>
 
                                         <div className="space-y-4">
                                             <label className="flex items-start gap-3 rounded-[1.75rem] border border-slate-200 bg-slate-50 px-5 py-5">
-                                                <input type="checkbox" data-testid="register-terms-checkbox" checked={data.terms_accepted} onChange={(event) => updateField("terms_accepted", event.target.checked)} className="mt-1 h-4 w-4 rounded border-slate-300 text-slate-950 focus:ring-slate-300" />
+                                                <Checkbox
+                                                    data-testid="register-terms-checkbox"
+                                                    checked={data.terms_accepted}
+                                                    onCheckedChange={(checked) => updateField("terms_accepted", checked === true)}
+                                                    className="mt-1 border-slate-300 text-white data-[state=checked]:border-slate-950 data-[state=checked]:bg-slate-950"
+                                                />
                                                 <span className="text-sm leading-7 text-slate-600">
-                                                    Confirmo que tengo autorizacion para registrar este negocio y acepto los términos operativos de Vito Business OS.
+                                                    Confirmo que tengo autorización para registrar este negocio y acepto los términos operativos de Vito Business OS.
                                                 </span>
                                             </label>
                                             {errorFor("terms_accepted") ? <FieldDescription className="text-rose-600">{errorFor("terms_accepted")}</FieldDescription> : null}
@@ -952,15 +1001,13 @@ export function RegisterTenantWizard({
                             <span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
                                 Progreso
                             </span>
-                            <div className="h-2 w-32 overflow-hidden rounded-full bg-slate-200 sm:w-40">
-                                <div className="h-full rounded-full bg-slate-950 transition-all duration-500" style={{ width: `${progress}%` }} />
-                            </div>
+                            <Progress value={progress} className="h-2 w-32 bg-slate-200 sm:w-40 [&>div]:bg-slate-950" />
                         </div>
 
                         <div className="flex items-center justify-end gap-2">
                             <Button type="button" variant="outline" onClick={() => setStep((current) => Math.max(current - 1, 0))} disabled={step === 0 || processing} className="h-12 rounded-xl border-slate-200 bg-white text-slate-950 hover:bg-slate-50">
                                 <ArrowLeft className="mr-2 h-4 w-4" />
-                                Atras
+                                Atrás
                             </Button>
 
                             {step < STEPS.length - 1 ? (

@@ -155,6 +155,10 @@ abstract class TenantAwarePolicy
         }
 
         if ($resource && isset($resource->tenant_id)) {
+            if ($this->getUserTenantIds($user) === []) {
+                return null;
+            }
+
             return Tenant::query()->find($resource->tenant_id);
         }
 

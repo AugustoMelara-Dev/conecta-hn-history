@@ -11,11 +11,22 @@
  * @usage Conditionally rendered: {tenantPlan !== 'semilla' && <FloatingCart />}
  */
 
-import React, { useState, Fragment, useEffect, useRef } from 'react';
-import { Dialog, Transition } from '@headlessui/react';
-import { ShoppingCart, ShoppingBag, ChevronLeft, X, Percent } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ShoppingCart, ShoppingBag, ChevronLeft, Percent } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import useCartStore from '@/Stores/useCartStore';
+import { EmptyState } from '@/Components/Feedback/UXStates';
+import { Badge } from '@/Components/ui/badge';
+import { Button } from '@/Components/ui/button';
+import { ScrollArea } from '@/Components/ui/scroll-area';
+import { Separator } from '@/Components/ui/separator';
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+} from '@/Components/ui/sheet';
 
 // Subcomponents
 import CouponSection from './Cart/CouponSection';
@@ -159,105 +170,113 @@ export default function FloatingCart() {
     return (
         <>
             {/* Floating Button - Animated entrance */}
-            <button
+            <Button
+                type="button"
                 onClick={() => setIsOpen(true)}
                 data-testid="cart-fab"
+                aria-label="Abrir carrito"
                 className={cn(
-                    "fixed bottom-6 right-6 z-40",
-                    "w-16 h-16 rounded-full",
-                    "bg-[var(--primary-color,#6366f1)] hover:brightness-90 text-[var(--primary-text-color,#ffffff)]",
-                    "shadow-2xl shadow-black/30 hover:shadow-lg",
-                    "flex items-center justify-center",
-                    "transition-all active:scale-95",
-                    "group",
+                    'fixed bottom-6 right-6 z-40 h-16 w-16 rounded-full',
+                    'bg-[var(--primary-color,#6366f1)] text-[var(--primary-text-color,#ffffff)] hover:brightness-90',
+                    'shadow-2xl shadow-black/30 hover:shadow-lg',
+                    'transition-transform active:scale-95',
+                    'group animate-[scale-in_0.2s_ease-out_forwards]',
                     // Animation: scale-in from 0 when appearing
-                    "animate-[scale-in_0.2s_ease-out_forwards]"
+                    isBouncing && 'scale-105',
                 )}
-                style={{
-                    animation: 'scale-in 0.2s ease-out forwards',
-                }}
             >
-                <ShoppingCart className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                <ShoppingCart className="h-6 w-6 transition-transform group-hover:scale-110" aria-hidden="true" />
                 {totalItems > 0 && (
-                    <span className={cn(
-                        "absolute -top-1 -right-1 w-6 h-6 bg-rose-500 rounded-full text-xs font-bold flex items-center justify-center shadow-lg",
-                        isBouncing && "animate-bounce"
-                    )}>
+                    <Badge
+                        className={cn(
+                            'absolute -right-1 -top-1 flex h-6 min-w-6 items-center justify-center rounded-full shadow-lg',
+                            isBouncing && 'animate-bounce',
+                        )}
+                        aria-live="polite"
+                    >
                         {totalItems}
-                    </span>
+                    </Badge>
                 )}
-            </button>
+            </Button>
 
             {/* Cart Drawer */}
-            <Transition appear show={isOpen} as={Fragment}>
-                <Dialog as="div" className="relative z-50" onClose={() => !isSubmitting && setIsOpen(false)}>
-                    {/* Backdrop */}
-                    <Transition.Child
-                        as={Fragment}
-                        enter="ease-out duration-300"
-                        enterFrom="opacity-0"
-                        enterTo="opacity-100"
-                        leave="ease-in duration-200"
-                        leaveFrom="opacity-100"
-                        leaveTo="opacity-0"
-                    >
-                        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
-                    </Transition.Child>
+            <Sheet
+                open={isOpen}
+                onOpenChange={(open) => {
+                    if (!open && isSubmitting) {
+                        return;
+                    }
 
-                    {/* Drawer Container */}
-                    <div className="fixed inset-0 overflow-hidden">
-                        <div className="absolute inset-0 overflow-hidden">
-                            <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
-                                <Transition.Child
-                                    as={Fragment}
-                                    enter="transform transition ease-in-out duration-300"
-                                    enterFrom="translate-x-full"
-                                    enterTo="translate-x-0"
-                                    leave="transform transition ease-in-out duration-200"
-                                    leaveFrom="translate-x-0"
-                                    leaveTo="translate-x-full"
-                                >
-                                    <Dialog.Panel className="w-screen max-w-md transform overflow-hidden bg-slate-900 shadow-2xl flex flex-col h-full">
-                                        <div data-testid="cart-drawer" className="flex h-full flex-col">
+                    setIsOpen(open);
+                }}
+            >
+                <SheetContent
+                    side="right"
+                    data-testid="cart-drawer"
+                    className="flex h-full w-full max-w-md flex-col gap-0 overflow-hidden p-0 sm:max-w-md"
+                >
+                    <div className="flex h-full min-h-0 flex-col">
+                        <span className="sr-only" aria-live="polite">
+                            {totalItems} productos en el carrito
+                        </span>
+                        {(submitError || couponError) ? (
+                            <span className="sr-only" aria-live="assertive">
+                                {submitError || couponError}
+                            </span>
+                        ) : null}
                                         {/* ═══════════════════════════════════════════════════════════════
                                             HEADER
                                         ═══════════════════════════════════════════════════════════════ */}
-                                        <div className="flex items-center justify-between p-4 border-b border-white/10">
-                                            {step === STEPS.CHECKOUT ? (
-                                                <button
-                                                    onClick={handleBackToCart}
-                                                    className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
-                                                >
-                                                    <ChevronLeft className="w-5 h-5" />
-                                                    <span>Volver</span>
-                                                </button>
-                                            ) : (
-                                                <Dialog.Title className="text-lg font-bold text-white flex items-center gap-2">
-                                                    <ShoppingBag className="w-5 h-5" style={{ color: 'var(--primary-color, #818cf8)' }} />
-                                                    {step === STEPS.CART ? `Mi Carrito (${totalItems})` : 'Datos de Entrega'}
-                                                </Dialog.Title>
-                                            )}
-
-                                            <button
-                                                onClick={() => !isSubmitting && setIsOpen(false)}
-                                                disabled={isSubmitting}
-                                                className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-slate-400 hover:text-white transition-colors disabled:opacity-50"
-                                            >
-                                                <X className="w-5 h-5" />
-                                            </button>
-                                        </div>
+                        <SheetHeader className="border-b px-5 py-4 pr-12 text-left">
+                            <div className="flex min-w-0 items-center gap-3">
+                                {step === STEPS.CHECKOUT ? (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={handleBackToCart}
+                                        aria-label="Volver al carrito"
+                                        className="-ml-2 shrink-0"
+                                    >
+                                        <ChevronLeft className="h-4 w-4" data-icon aria-hidden="true" />
+                                        Volver
+                                    </Button>
+                                ) : (
+                                    <ShoppingBag className="h-5 w-5 shrink-0 text-primary" data-icon aria-hidden="true" />
+                                )}
+                                <div className="min-w-0">
+                                    <SheetTitle className="truncate">
+                                        {step === STEPS.CART ? 'Mi carrito' : 'Datos de entrega'}
+                                    </SheetTitle>
+                                    <SheetDescription>
+                                        {step === STEPS.CART
+                                            ? 'Revisa tu pedido antes de continuar.'
+                                            : 'Completa los datos para registrar el pedido.'}
+                                    </SheetDescription>
+                                </div>
+                                {step === STEPS.CART ? (
+                                    <Badge variant="secondary" aria-live="polite" className="ml-auto shrink-0">
+                                        {totalItems}
+                                    </Badge>
+                                ) : null}
+                            </div>
+                        </SheetHeader>
 
                                         {/* ═══════════════════════════════════════════════════════════════
                                             STEP: CART VIEW
                                         ═══════════════════════════════════════════════════════════════ */}
                                         {step === STEPS.CART && (
                                             <>
-                                                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                                                <ScrollArea className="min-h-0 flex-1">
+                                                    <div className="grid gap-4 p-4">
                                                     {items.length === 0 ? (
-                                                        <div className="text-center py-12">
-                                                            <ShoppingBag className="w-16 h-16 text-slate-700 mx-auto mb-4" />
-                                                            <p className="text-slate-400">Tu carrito está vacío</p>
-                                                        </div>
+                                                        <EmptyState
+                                                            icon={ShoppingBag}
+                                                            eyebrow="Carrito"
+                                                            title="Tu carrito está vacío"
+                                                            description="Agrega productos del catálogo para continuar con el pedido."
+                                                            testId="cart-empty-state"
+                                                        />
                                                     ) : (
                                                         items.map(item => (
                                                             <CartItem
@@ -268,11 +287,12 @@ export default function FloatingCart() {
                                                             />
                                                         ))
                                                     )}
-                                                </div>
+                                                    </div>
+                                                </ScrollArea>
 
                                                 {/* Footer: Coupon + Totals + Continue */}
                                                 {items.length > 0 && (
-                                                    <div className="p-4 border-t border-white/10 bg-slate-900/80 backdrop-blur-xl space-y-4">
+                                                    <div className="grid gap-4 border-t bg-card p-4 text-card-foreground shadow-sm">
 
                                                         {/* Coupon Section */}
                                                         <CouponSection
@@ -288,21 +308,24 @@ export default function FloatingCart() {
                                                         />
 
                                                         {/* Clear cart link */}
-                                                        <button
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
                                                             onClick={clearCart}
-                                                            className="w-full text-sm text-slate-400 transition-colors hover:text-white"
+                                                            className="w-full"
                                                         >
                                                             Vaciar carrito
-                                                        </button>
+                                                        </Button>
 
                                                         {/* Totals Breakdown */}
-                                                        <div className="space-y-2">
+                                                        <div className="grid gap-2">
                                                             {/* Subtotal */}
                                                             <div className="flex items-center justify-between text-sm">
-                                                                <span className="text-slate-400">Subtotal</span>
+                                                                <span className="text-muted-foreground">Subtotal</span>
                                                                 <span className={cn(
-                                                                    "text-slate-300",
-                                                                    discountAmount > 0 && "line-through"
+                                                                    'text-foreground',
+                                                                    discountAmount > 0 && 'line-through'
                                                                 )}>
                                                                     L. {subtotal.toFixed(2)}
                                                                 </span>
@@ -311,38 +334,37 @@ export default function FloatingCart() {
                                                             {/* Discount row (if applied) */}
                                                             {discountAmount > 0 && (
                                                                 <div className="flex items-center justify-between text-sm">
-                                                                    <span className="flex items-center gap-1 text-white">
-                                                                        <Percent className="w-3 h-3" />
+                                                                    <span className="flex items-center gap-1 text-foreground">
+                                                                        <Percent className="h-3 w-3" data-icon aria-hidden="true" />
                                                                         Descuento ({couponCode})
                                                                     </span>
-                                                                    <span className="font-medium text-white">
+                                                                    <span className="font-medium text-foreground">
                                                                         - L. {discountAmount.toFixed(2)}
                                                                     </span>
                                                                 </div>
                                                             )}
 
                                                             {/* Final Total */}
-                                                            <div className="flex items-center justify-between pt-2 border-t border-white/10">
-                                                                <span className="text-lg font-medium text-slate-300">Total</span>
-                                                                <span className="text-2xl font-bold text-white">
+                                                            <div className="flex items-center justify-between pt-2">
+                                                                <span className="text-lg font-medium text-muted-foreground">Total</span>
+                                                                <span className="text-2xl font-bold text-foreground">
                                                                     L. {grandTotal.toFixed(2)}
                                                                 </span>
                                                             </div>
                                                         </div>
 
+                                                        <Separator />
+
                                                         {/* Continue button */}
-                                                        <button
+                                                        <Button
+                                                            type="button"
                                                             onClick={handleProceedToCheckout}
                                                             data-testid="cart-continue"
-                                                            className={cn(
-                                                                "w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2",
-                                                                "bg-white text-slate-950 hover:bg-slate-200",
-                                                                "shadow-lg transition-all active:scale-98"
-                                                            )}
+                                                            className="w-full"
                                                         >
                                                             Continuar
-                                                            <ChevronLeft className="w-5 h-5 rotate-180" />
-                                                        </button>
+                                                            <ChevronLeft className="h-5 w-5 rotate-180" data-icon aria-hidden="true" />
+                                                        </Button>
                                                     </div>
                                                 )}
                                             </>
@@ -372,14 +394,9 @@ export default function FloatingCart() {
                                                 errors={errors}
                                             />
                                         )}
-                                        </div>
-                                    </Dialog.Panel>
-                                </Transition.Child>
-                            </div>
-                        </div>
                     </div>
-                </Dialog>
-            </Transition>
+                </SheetContent>
+            </Sheet>
         </>
     );
 }
