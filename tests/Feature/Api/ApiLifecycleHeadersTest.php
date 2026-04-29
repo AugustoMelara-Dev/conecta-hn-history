@@ -13,7 +13,7 @@ final class ApiLifecycleHeadersTest extends TestCase
         config([
             'api-lifecycle.supported_versions' => ['v1'],
             'api-lifecycle.versions.v1.status' => 'active',
-            'api-lifecycle.versions.v1.policy_url' => 'https://conecta.hn/docs/api/versioning',
+            'api-lifecycle.versions.v1.policy_url' => 'https://vitobusinessos.com/docs/api/versioning',
         ]);
 
         $response = $this->postJson('/api/v1/otp/verify', []);
@@ -21,7 +21,7 @@ final class ApiLifecycleHeadersTest extends TestCase
         $response->assertUnprocessable();
         $response->assertHeader('X-API-Version', 'v1');
         $response->assertHeader('X-API-Supported-Versions', 'v1');
-        $response->assertHeader('Link', '<https://conecta.hn/docs/api/versioning>; rel="version-policy"');
+        $response->assertHeader('Link', '<https://vitobusinessos.com/docs/api/versioning>; rel="version-policy"');
         $response->assertHeaderMissing('Deprecation');
         $response->assertHeaderMissing('Sunset');
     }
@@ -31,7 +31,7 @@ final class ApiLifecycleHeadersTest extends TestCase
         config([
             'api-lifecycle.supported_versions' => ['v1'],
             'api-lifecycle.versions.v1.status' => 'active',
-            'api-lifecycle.versions.v1.policy_url' => 'https://conecta.hn/docs/api/versioning',
+            'api-lifecycle.versions.v1.policy_url' => 'https://vitobusinessos.com/docs/api/versioning',
         ]);
 
         $response = $this->getJson('/api/v1/user');
@@ -39,7 +39,7 @@ final class ApiLifecycleHeadersTest extends TestCase
         $response->assertUnauthorized();
         $response->assertHeader('X-API-Version', 'v1');
         $response->assertHeader('X-API-Supported-Versions', 'v1');
-        $response->assertHeader('Link', '<https://conecta.hn/docs/api/versioning>; rel="version-policy"');
+        $response->assertHeader('Link', '<https://vitobusinessos.com/docs/api/versioning>; rel="version-policy"');
     }
 
     public function test_deprecated_versions_emit_sunset_and_successor_headers(): void
@@ -49,7 +49,7 @@ final class ApiLifecycleHeadersTest extends TestCase
             'api-lifecycle.versions.v1.status' => 'deprecated',
             'api-lifecycle.versions.v1.sunset_at' => 'Wed, 31 Dec 2026 23:59:59 GMT',
             'api-lifecycle.versions.v1.successor' => 'v2',
-            'api-lifecycle.versions.v1.policy_url' => 'https://conecta.hn/docs/api/versioning',
+            'api-lifecycle.versions.v1.policy_url' => 'https://vitobusinessos.com/docs/api/versioning',
         ]);
 
         $response = $this->postJson('/api/v1/otp/verify', []);
@@ -62,7 +62,7 @@ final class ApiLifecycleHeadersTest extends TestCase
 
         $links = $response->headers->all('link');
 
-        self::assertContains('<https://conecta.hn/docs/api/versioning>; rel="version-policy"', $links);
+        self::assertContains('<https://vitobusinessos.com/docs/api/versioning>; rel="version-policy"', $links);
         self::assertContains('</api/v2>; rel="successor-version"', $links);
     }
 }

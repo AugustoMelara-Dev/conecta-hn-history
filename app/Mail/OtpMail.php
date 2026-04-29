@@ -17,28 +17,29 @@ class OtpMail extends Mailable
 
     public int $expiresInMinutes;
 
-    /**
-     * Create a new message instance.
-     */
-    public function __construct(string $code, int $expiresInMinutes = 10)
-    {
+    public ?string $magicUrl;
+
+    public string $resetPasswordUrl;
+
+    public function __construct(
+        string $code,
+        int $expiresInMinutes = 10,
+        ?string $magicUrl = null,
+        ?string $resetPasswordUrl = null
+    ) {
         $this->code = $code;
         $this->expiresInMinutes = $expiresInMinutes;
+        $this->magicUrl = $magicUrl;
+        $this->resetPasswordUrl = $resetPasswordUrl ?? route('password.request');
     }
 
-    /**
-     * Get the message envelope.
-     */
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Tu código de verificación - Conecta HN',
+            subject: 'Tu código de acceso - Vito Business OS',
         );
     }
 
-    /**
-     * Get the message content definition.
-     */
     public function content(): Content
     {
         return new Content(
@@ -47,8 +48,6 @@ class OtpMail extends Mailable
     }
 
     /**
-     * Get the attachments for the message.
-     *
      * @return array<int, \Illuminate\Mail\Mailables\Attachment>
      */
     public function attachments(): array

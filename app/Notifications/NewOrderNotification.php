@@ -120,7 +120,7 @@ class NewOrderNotification extends Notification implements ShouldBroadcast, Shou
             ->line("**Total:** {$formattedTotal}")
             ->action('Ver Pedido', $orderUrl)
             ->line('Revisa tu panel de administración para gestionar este pedido.')
-            ->salutation('— Conecta HN');
+            ->salutation('— Vito Business OS');
     }
 
     /**

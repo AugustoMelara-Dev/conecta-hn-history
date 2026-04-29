@@ -65,7 +65,7 @@ function Invoke-GitHubApi {
         Accept                 = "application/vnd.github+json"
         Authorization          = "Bearer $GitHubToken"
         "X-GitHub-Api-Version" = "2022-11-28"
-        "User-Agent"           = "conecta-release-bootstrap"
+        "User-Agent"           = "vito-release-bootstrap"
     }
 
     $invokeParams = @{

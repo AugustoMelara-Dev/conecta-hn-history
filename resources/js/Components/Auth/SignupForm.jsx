@@ -53,21 +53,21 @@ export function SignupForm({
             >
                 <CardHeader>
                     <CardTitle className="text-2xl font-semibold text-slate-950">
-                        Create an account
+                        Crea tu cuenta
                     </CardTitle>
                     <CardDescription className="text-slate-500">
-                        Enter your information below to create your account
+                        Registra tu negocio y prepara el acceso administrativo.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={submit}>
                         <FieldGroup>
                             <Field>
-                                <FieldLabel htmlFor="business_name">Business Name</FieldLabel>
+                                <FieldLabel htmlFor="business_name">Nombre del negocio</FieldLabel>
                                 <Input
                                     id="business_name"
                                     type="text"
-                                    placeholder="Cafe La Esperanza"
+                                    placeholder="Café La Esperanza"
                                     required
                                     value={data.business_name}
                                     onChange={(event) => setData("business_name", event.target.value)}
@@ -77,7 +77,7 @@ export function SignupForm({
                                     )}
                                 />
                                 <FieldDescription>
-                                    We will generate your business URL from this name.
+                                    Generaremos la URL pública de tu negocio desde este nombre.
                                 </FieldDescription>
                                 {errors.business_name ? (
                                     <FieldDescription className="text-rose-600">
@@ -87,11 +87,11 @@ export function SignupForm({
                             </Field>
 
                             <Field>
-                                <FieldLabel htmlFor="name">Full Name</FieldLabel>
+                                <FieldLabel htmlFor="name">Nombre completo</FieldLabel>
                                 <Input
                                     id="name"
                                     type="text"
-                                    placeholder="John Doe"
+                                    placeholder="Augusto Melara"
                                     required
                                     value={data.name}
                                     onChange={(event) => setData("name", event.target.value)}
@@ -108,11 +108,11 @@ export function SignupForm({
                             </Field>
 
                             <Field>
-                                <FieldLabel htmlFor="email">Email</FieldLabel>
+                                <FieldLabel htmlFor="email">Correo</FieldLabel>
                                 <Input
                                     id="email"
                                     type="email"
-                                    placeholder="m@example.com"
+                                    placeholder="nombre@negocio.hn"
                                     required
                                     value={data.email}
                                     onChange={(event) => setData("email", event.target.value)}
@@ -122,7 +122,7 @@ export function SignupForm({
                                     )}
                                 />
                                 <FieldDescription>
-                                    We&apos;ll use this to contact you. We will not share your email with anyone else.
+                                    Usaremos este correo para avisos de acceso, facturación y seguridad.
                                 </FieldDescription>
                                 {errors.email ? (
                                     <FieldDescription className="text-rose-600">
@@ -132,7 +132,7 @@ export function SignupForm({
                             </Field>
 
                             <Field>
-                                <FieldLabel htmlFor="password">Password</FieldLabel>
+                                <FieldLabel htmlFor="password">Contraseña</FieldLabel>
                                 <Input
                                     id="password"
                                     type="password"
@@ -145,7 +145,7 @@ export function SignupForm({
                                     )}
                                 />
                                 <FieldDescription>
-                                    Must be at least 8 characters long.
+                                    Debe tener al menos 8 caracteres.
                                 </FieldDescription>
                                 {errors.password ? (
                                     <FieldDescription className="text-rose-600">
@@ -155,7 +155,7 @@ export function SignupForm({
                             </Field>
 
                             <Field>
-                                <FieldLabel htmlFor="password_confirmation">Confirm Password</FieldLabel>
+                                <FieldLabel htmlFor="password_confirmation">Confirmar contraseña</FieldLabel>
                                 <Input
                                     id="password_confirmation"
                                     type="password"
@@ -167,7 +167,7 @@ export function SignupForm({
                                         errors.password_confirmation && "border-rose-300 focus-visible:ring-rose-200"
                                     )}
                                 />
-                                <FieldDescription>Please confirm your password.</FieldDescription>
+                                <FieldDescription>Escribe la misma contraseña para confirmarla.</FieldDescription>
                                 {errors.password_confirmation ? (
                                     <FieldDescription className="text-rose-600">
                                         {errors.password_confirmation}
@@ -176,7 +176,7 @@ export function SignupForm({
                             </Field>
 
                             <Field>
-                                <FieldLabel htmlFor="category_id">Category</FieldLabel>
+                                <FieldLabel htmlFor="category_id">Categoría</FieldLabel>
                                 <select
                                     id="category_id"
                                     required
@@ -187,7 +187,7 @@ export function SignupForm({
                                         errors.category_id && "border-rose-300 focus-visible:ring-rose-200"
                                     )}
                                 >
-                                    <option value="">Select a category</option>
+                                    <option value="">Selecciona una categoría</option>
                                     {categories.map((category) => (
                                         <option key={category.id} value={category.id}>
                                             {category.name}
@@ -202,7 +202,7 @@ export function SignupForm({
                             </Field>
 
                             <Field>
-                                <FieldLabel htmlFor="city_id">City</FieldLabel>
+                                <FieldLabel htmlFor="city_id">Ciudad</FieldLabel>
                                 <select
                                     id="city_id"
                                     required
@@ -213,7 +213,7 @@ export function SignupForm({
                                         errors.city_id && "border-rose-300 focus-visible:ring-rose-200"
                                     )}
                                 >
-                                    <option value="">Select a city</option>
+                                    <option value="">Selecciona una ciudad</option>
                                     {cities.map((city) => (
                                         <option key={city.id} value={city.id}>
                                             {city.name}
@@ -235,7 +235,7 @@ export function SignupForm({
                                         onChange={(event) => setData("terms_accepted", event.target.checked)}
                                         className="mt-0.5 h-4 w-4 rounded border-slate-300 text-slate-950 focus:ring-slate-300"
                                     />
-                                    <span>I agree to the terms required to create this business account.</span>
+                                    <span>Acepto los términos necesarios para crear esta cuenta de negocio.</span>
                                 </label>
                                 {errors.terms_accepted ? (
                                     <FieldDescription className="text-rose-600">
@@ -250,7 +250,7 @@ export function SignupForm({
                                     disabled={processing}
                                     className="w-full bg-slate-950 text-white hover:bg-slate-800"
                                 >
-                                    {processing ? "Creating Account..." : "Create Account"}
+                                    {processing ? "Creando cuenta..." : "Crear cuenta"}
                                 </Button>
                                 <Button
                                     variant="outline"
@@ -259,13 +259,13 @@ export function SignupForm({
                                     asChild
                                 >
                                     <Link href={route("public.explore")}>
-                                        Explore businesses
+                                        Explorar negocios
                                     </Link>
                                 </Button>
                                 <FieldDescription className="px-6 text-center">
-                                    Already have an account?{" "}
+                                    ¿Ya tienes una cuenta?{" "}
                                     <Link href={route("login")} className="underline underline-offset-4">
-                                        Sign in
+                                        Iniciar sesión
                                     </Link>
                                 </FieldDescription>
                             </Field>

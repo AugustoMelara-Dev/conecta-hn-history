@@ -11,7 +11,7 @@ const failOnErrors = !/^(0|false|no|off)$/i.test(process.env.PERF_FAIL_ON_ERRORS
 
 const commonHeaders = {
     accept: 'application/json, text/html;q=0.9',
-    'user-agent': 'conecta-p95-smoke/1.0',
+    'user-agent': 'vito-p95-smoke/1.0',
 };
 
 if (bearer) {

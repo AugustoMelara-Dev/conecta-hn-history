@@ -121,18 +121,22 @@ final class RecordingOtpNotifier implements OtpNotifierInterface
 
     public ?int $expiryMinutes = null;
 
+    public ?string $magicUrl = null;
+
     public function send(
         ?UserEntity $recipient,
         string $plainTextCode,
         string $identifier,
         string $tenantId,
-        int $expiryMinutes
+        int $expiryMinutes,
+        ?string $magicUrl = null
     ): void {
         $this->recipient = $recipient;
         $this->plainTextCode = $plainTextCode;
         $this->identifier = $identifier;
         $this->tenantId = $tenantId;
         $this->expiryMinutes = $expiryMinutes;
+        $this->magicUrl = $magicUrl;
     }
 }
 

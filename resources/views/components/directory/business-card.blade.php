@@ -169,7 +169,7 @@
         @endif
 
         {{-- ══════════════════════════════════════════════════════════════ --}}
-        {{-- FOOTER DE ACCIÓN (Micro-Interacción Conectada) --}}
+        {{-- FOOTER DE ACCIÓN --}}
         {{-- ══════════════════════════════════════════════════════════════ --}}
         <div class="mt-4 pt-3 border-t border-gray-50 flex justify-between items-center">
             
@@ -196,7 +196,7 @@
                 @endif
             </div>
 
-            {{-- Derecha: Trigger de Acción (Affordance Conectado) --}}
+            {{-- Derecha: Trigger de Acción --}}
             <div class="w-8 h-8 rounded-full bg-gray-50 
                         flex items-center justify-center
                         transition-all duration-300

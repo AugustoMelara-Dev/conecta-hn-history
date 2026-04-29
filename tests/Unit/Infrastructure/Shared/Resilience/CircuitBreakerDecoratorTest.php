@@ -76,7 +76,8 @@ final class FailingOtpNotifier implements OtpNotifierInterface
         string $plainTextCode,
         string $identifier,
         string $tenantId,
-        int $expiryMinutes
+        int $expiryMinutes,
+        ?string $magicUrl = null
     ): void {
         $this->attempts++;
 

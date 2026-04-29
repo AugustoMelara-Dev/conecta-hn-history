@@ -1,7 +1,7 @@
 <?php
 
 $isVercel = (bool) env('VERCEL');
-$serverlessViewPath = rtrim((string) env('SERVERLESS_VIEW_PATH', sys_get_temp_dir().'/conecta-views'), '/\\');
+$serverlessViewPath = rtrim((string) env('SERVERLESS_VIEW_PATH', sys_get_temp_dir().'/vito-views'), '/\\');
 
 return [
 

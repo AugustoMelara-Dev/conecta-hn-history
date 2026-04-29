@@ -11,7 +11,7 @@
  * - Navigation restricted to store-only actions
  * - No escape routes to the directory
  * - Cart integration in bottom nav
- * - "Powered by Conecta HN" relegated to footer
+ * - "Powered by Vito Business OS" relegated to footer
  */
 
 import { useState } from 'react';
@@ -108,13 +108,13 @@ export default function ShopLayout({
             </main>
 
             {/* ═══════════════════════════════════════════════════════════════
-                FOOTER: Powered by Conecta HN (White-Label Attribution)
+                FOOTER: Powered by Vito Business OS (White-Label Attribution)
             ═══════════════════════════════════════════════════════════════ */}
             <footer className="hidden md:block py-4 text-center border-t border-white/5">
                 <p className="text-xs text-slate-500">
                     Powered by{' '}
                     <Link href="/" className="text-slate-400 hover:text-white transition-colors">
-                        Conecta HN
+                        Vito Business OS
                     </Link>
                 </p>
             </footer>

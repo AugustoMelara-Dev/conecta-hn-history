@@ -30,7 +30,7 @@ $fixture = [
     'tenant_slug' => 'demo-ai-booking-hn',
     'tenant_name' => 'Demo AI Booking HN',
     'owner_name' => 'Owner Demo AI Booking',
-    'owner_email' => 'owner-demo-ai-booking-hn@conectahn.app',
+    'owner_email' => 'owner-demo-ai-booking-hn@vitobusinessos.app',
     'owner_password' => getenv('DEMO_SERVICE_OWNER_PASSWORD') !== false
         ? (string) getenv('DEMO_SERVICE_OWNER_PASSWORD')
         : (
@@ -39,7 +39,7 @@ $fixture = [
                 : 'ChangeMe123!'
         ),
     'provider_name' => 'Laura Rivera',
-    'provider_email' => 'laura.rivera@conectahn.app',
+    'provider_email' => 'laura.rivera@vitobusinessos.app',
     'provider_phone' => '+50499991111',
     'service_name' => 'Corte y barba express',
     'service_description' => 'Servicio de corte, barba y grooming express para reservas publicas.',

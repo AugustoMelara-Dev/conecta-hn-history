@@ -6,11 +6,13 @@ use App\Application\Actions\Auth\VerifyOtpAction;
 use App\Application\Auth\Commands\VerifyOtpCommand;
 use App\Application\Auth\Handlers\VerifyOtpHandlerInterface;
 use App\Application\Auth\Results\VerifyOtpResult;
+use App\Models\OneTimePassword;
 use App\Models\Tenant;
 use App\Models\User;
 use DateTimeImmutable;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
 
 class OtpControllerTest extends TestCase
@@ -40,12 +42,33 @@ class OtpControllerTest extends TestCase
         $response->assertOk()
             ->assertJson([
                 'tenant_id' => (string) $tenant->getKey(),
+                'delivery_mode' => 'code',
             ]);
 
         $this->assertDatabaseHas('one_time_passwords', [
             'identifier' => 'nuevo@example.com',
             'tenant_id' => (string) $tenant->getKey(),
         ]);
+    }
+
+    public function test_otp_generation_reports_magic_link_and_code_when_enabled(): void
+    {
+        $tenant = Tenant::factory()->create();
+        config()->set('auth.otp.magic_link_enabled', true);
+        config()->set('auth.otp.magic_link_tenant_allowlist', [(string) $tenant->getKey()]);
+
+        $response = $this->postJson('/api/v1/otp/generate', [
+            'tenant_id' => (string) $tenant->getKey(),
+            'identifier' => 'magic@example.com',
+        ], [
+            'Idempotency-Key' => 'otp-generate-magic-mode',
+        ]);
+
+        $response->assertOk()
+            ->assertJson([
+                'tenant_id' => (string) $tenant->getKey(),
+                'delivery_mode' => 'magic_link_and_code',
+            ]);
     }
 
     public function test_otp_verification_works(): void
@@ -173,5 +196,66 @@ class OtpControllerTest extends TestCase
 
         $this->assertTrue(Auth::check());
         $this->assertSame((string) $user->getKey(), (string) Auth::id());
+    }
+
+    public function test_valid_magic_link_consumes_otp_logs_in_user_and_redirects(): void
+    {
+        $tenant = Tenant::factory()->create([
+            'slug' => 'magic-login-negocio',
+        ]);
+        $user = User::factory()->tenantOwner()->create([
+            'tenant_id' => $tenant->getKey(),
+        ]);
+        $tenant->forceFill(['user_id' => $user->getKey()])->save();
+        config()->set('auth.otp.magic_link_enabled', true);
+        config()->set('auth.otp.magic_link_tenant_allowlist', [(string) $tenant->getKey()]);
+
+        $otp = OneTimePassword::query()->create([
+            'user_id' => (string) $user->getKey(),
+            'identifier' => $user->email,
+            'tenant_id' => (string) $tenant->getKey(),
+            'code' => 'hashed-code',
+            'type' => 'email',
+            'ip_address' => '127.0.0.1',
+            'user_agent' => 'PHPUnit',
+            'expires_at' => now()->addMinutes(10),
+            'attempts' => 0,
+        ]);
+
+        $url = URL::temporarySignedRoute('otp.consume', now()->addMinutes(10), [
+            'otp' => (string) $otp->getKey(),
+        ]);
+
+        $response = $this->get($url);
+
+        $response->assertRedirect(route('filament.app.pages.dashboard', ['tenant' => $tenant->slug], false));
+        $this->assertTrue(Auth::check());
+        $this->assertSame((string) $user->getKey(), (string) Auth::id());
+        $this->assertDatabaseMissing('one_time_passwords', [
+            'id' => (string) $otp->getKey(),
+        ]);
+    }
+
+    public function test_magic_link_is_disabled_by_default(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $otp = OneTimePassword::query()->create([
+            'user_id' => null,
+            'identifier' => 'disabled@example.com',
+            'tenant_id' => (string) $tenant->getKey(),
+            'code' => 'hashed-code',
+            'type' => 'email',
+            'ip_address' => '127.0.0.1',
+            'user_agent' => 'PHPUnit',
+            'expires_at' => now()->addMinutes(10),
+            'attempts' => 0,
+        ]);
+
+        $url = URL::temporarySignedRoute('otp.consume', now()->addMinutes(10), [
+            'otp' => (string) $otp->getKey(),
+        ]);
+
+        $this->get($url)->assertNotFound();
+        $this->assertFalse(Auth::check());
     }
 }

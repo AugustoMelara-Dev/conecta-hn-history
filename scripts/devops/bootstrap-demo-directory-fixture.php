@@ -35,7 +35,7 @@ $fixture = [
     'tenant_slug' => 'demo-ai-guide-hn',
     'tenant_name' => 'Demo AI Guide HN',
     'owner_name' => 'Owner Demo AI Guide',
-    'owner_email' => 'owner-demo-ai-guide-hn@conectahn.app',
+    'owner_email' => 'owner-demo-ai-guide-hn@vitobusinessos.app',
     'owner_password' => getenv('DEMO_OWNER_PASSWORD') !== false
         ? (string) getenv('DEMO_OWNER_PASSWORD')
         : 'ChangeMe123!',

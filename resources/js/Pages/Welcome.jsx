@@ -156,7 +156,7 @@ function HeroSection() {
                 <div className="grid items-center gap-12 md:grid-cols-2">
                     <div className="space-y-8">
                         <div className="inline-flex items-center rounded-full bg-slate-200 px-3 py-1 text-xs font-bold uppercase tracking-[0.22em] text-slate-800" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
-                            Conecta HN Ecosystem
+                            Vito Business OS
                         </div>
 
                         <h1
@@ -593,7 +593,7 @@ function FinalCtaSection() {
                         Empezar ahora gratis
                     </Link>
                     <a
-                        href="mailto:soporte@conectahn.com?subject=Demo%20Vito%20Business%20OS"
+                        href="mailto:soporte@vitobusinessos.com?subject=Demo%20Vito%20Business%20OS"
                         className="inline-flex items-center justify-center rounded-xl border border-white/20 bg-slate-950/20 px-10 py-5 text-lg font-bold text-white transition hover:bg-slate-800"
                     >
                         Agendar demo personalizada
@@ -616,7 +616,7 @@ export default function Welcome({ newTenants = [], stats = {}, settings = {} }) 
     const schema = {
         '@context': 'https://schema.org',
         '@type': 'WebSite',
-        name: 'Vito Business OS | Conecta HN',
+        name: 'Vito Business OS',
         url: homeUrl,
     };
 

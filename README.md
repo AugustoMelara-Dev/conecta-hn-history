@@ -5,7 +5,7 @@ Vito Business OS es una plataforma SaaS multi-tenant para comercio local, catalo
 Este README documenta el estado actual del proyecto al 2026-04-26.
 
 > Nota de rebrand
-> El producto ya se documenta aqui como `Vito Business OS`, pero el codebase todavia conserva mucho naming heredado de `Conecta HN` en vistas, componentes, configs, correos, textos, providers y metadatos. Este README deja el nuevo nombre como referencia funcional, pero no implica que todo el repo ya fue renombrado.
+> El producto ya se documenta aqui como `Vito Business OS`, pero el codebase todavia conserva mucho naming heredado de `Vito Business OS` en vistas, componentes, configs, correos, textos, providers y metadatos. Este README deja el nuevo nombre como referencia funcional, pero no implica que todo el repo ya fue renombrado.
 
 ## Operacion y auditoria (No-MVP)
 
@@ -462,9 +462,9 @@ Comandos detectados en `app/Console/Commands` y `app/Infrastructure/Console/Comm
 - outbox y eventos: `outbox:process`, `outbox:prune`, `outbox:replay`, `infrastructure:process-outbox`, `infrastructure:outbox-coroner`, `event-sourcing:replay`, `projections:replay`, `app:validate-events`
 - schemas y contracts: `schema:generate-enums`, `schema:generate-types`, `schema:generate-sdk`, `schema:publish`, `schema:check-compatibility`
 - storage, media y sistema: `storage:cleanup-orphans`, `storage:rescue-proofs`, `media:clean-orphans`, `media:cleanup`, `system:prune`
-- DX y utilidades: `make:domain-event`, `seo:generate-sitemap`, `sitemap:generate`, `connectahn:recalculate-stats`
+- DX y utilidades: `make:domain-event`, `seo:generate-sitemap`, `sitemap:generate`, `vito:recalculate-stats`
 
-`connectahn:recalculate-stats` es otro ejemplo visible de naming legacy que sigue vivo dentro del repo.
+`vito:recalculate-stats` recalcula ratings y contadores cuando se necesita corregir drift operacional.
 
 ## Testing y calidad
 
@@ -565,7 +565,7 @@ New-Item database/database.sqlite -ItemType File -Force
 
 Directorios de operacion presentes:
 
-- `devops/`: `deploy.sh`, `nginx_app.conf`, `conecta-worker.conf`, README de despliegue
+- `devops/`: `deploy.sh`, `nginx_app.conf`, `vito-worker.conf`, README de despliegue
 - `deployment/nginx/`: config de `reverb_wss.conf`
 - `deployment/supervisor/`: workers y proceso de Reverb
 - `infrastructure/aws/`: politica de ciclo de vida para S3
@@ -590,7 +590,7 @@ Para que no quede nada "suelto", vale la pena dejar registradas estas piezas:
 - Existen controladores como `Api\V1\SearchController` y `Api\V1\FollowController` que no forman parte tan claramente de la ruta principal activa actual.
 - El proyecto conserva vistas Livewire heredadas junto al frontend Inertia/React moderno.
 - `AppServiceProvider` todavia documenta y mantiene compatibilidad para aliases de jobs, modelos y migraciones internas.
-- El branding viejo `Conecta HN` sigue disperso por Blade, React, emails, PDF, notificaciones, providers, configs y textos de negocio.
+- El branding viejo `Vito Business OS` sigue disperso por Blade, React, emails, PDF, notificaciones, providers, configs y textos de negocio.
 
 ## Documentacion relacionada
 

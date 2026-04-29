@@ -24,7 +24,7 @@ return [
     'collapse_all' => 'Colapsar todo',
     'comment' => 'Comentar',
     'confirm' => 'Confirmar',
-    'connect' => 'Conectar',
+    'connect' => 'Enlazar',
     'create' => 'Crear',
     'delete' => 'Borrar',
     'detach' => 'Desasociar',

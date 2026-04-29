@@ -201,7 +201,7 @@ export default function PaymentPending({ payment, tenant, checkUrl, diagnostic =
     return (
         <PublicLayout>
             <Head>
-                <title>Procesando Pago - ConectaHN</title>
+                <title>Procesando Pago - Vito Business OS</title>
                 <meta name="robots" content="noindex" />
             </Head>
 
@@ -282,7 +282,7 @@ export default function PaymentPending({ payment, tenant, checkUrl, diagnostic =
                                         Intentar de Nuevo
                                     </Link>
                                     <a
-                                        href="mailto:soporte@conectahn.com?subject=Problema con pago"
+                                        href="mailto:soporte@vitobusinessos.com?subject=Problema con pago"
                                         className="block w-full py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-colors"
                                     >
                                         Contactar Soporte
@@ -293,7 +293,7 @@ export default function PaymentPending({ payment, tenant, checkUrl, diagnostic =
                             {status === 'pending' && (
                                 <p className="text-xs text-gray-400">
                                     ¿Problemas?{' '}
-                                    <a href="mailto:soporte@conectahn.com" className="text-blue-600 hover:underline">
+                                    <a href="mailto:soporte@vitobusinessos.com" className="text-blue-600 hover:underline">
                                         Contacta a soporte
                                     </a>
                                 </p>

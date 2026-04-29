@@ -25,12 +25,14 @@ interface OtpNotifierInterface
      * @param  string  $identifier  Fallback identifier (email/phone) if user entity is null.
      * @param  string  $tenantId  Tenant context.
      * @param  int  $expiryMinutes  Time until code expires.
+     * @param  string|null  $magicUrl  Signed link that consumes the OTP on the current device.
      */
     public function send(
         ?UserEntity $recipient,
         string $plainTextCode,
         string $identifier,
         string $tenantId,
-        int $expiryMinutes
+        int $expiryMinutes,
+        ?string $magicUrl = null
     ): void;
 }

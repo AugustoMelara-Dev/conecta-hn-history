@@ -117,7 +117,7 @@
         </div>
         
         <div class="footer">
-            Powered by Conecta HN
+            Powered by Vito Business OS
         </div>
     </div>
 </body>

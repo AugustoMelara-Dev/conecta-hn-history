@@ -42,7 +42,7 @@ export default function UserDashboard({ auth }) {
 
     return (
         <>
-            <Head title="Mi Cuenta - Conecta HN" />
+            <Head title="Mi Cuenta - Vito Business OS" />
 
             <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
                 <div className="flex h-screen overflow-hidden">
@@ -53,7 +53,7 @@ export default function UserDashboard({ auth }) {
                                 <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center">
                                     <span className="text-white font-bold text-lg">C</span>
                                 </div>
-                                <span className="font-bold text-xl tracking-tight">Conecta HN</span>
+                                <span className="font-bold text-xl tracking-tight">Vito Business OS</span>
                             </Link>
                         </div>
 

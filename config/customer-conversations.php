@@ -143,8 +143,8 @@ return [
         'repeat' => [
             'journey' => [
                 ['key' => 'repeat_fast_follow_up', 'title' => 'Responder rapido', 'copy' => 'No dejes que una recompra se enfrie por falta de seguimiento humano.', 'template_key' => 'fast_follow_up', 'lane' => 'intake', 'wait_hours' => 0],
-                ['key' => 'repeat_bundle_offer', 'title' => 'Conectar bundle o reward', 'copy' => 'Usa fidelidad o continuidad como palanca del siguiente paso.', 'template_key' => 'follow_up_reminder', 'lane' => 'follow_up', 'wait_hours' => 18, 'branches' => [
-                    ['key' => 'reward_ready', 'label' => 'Canje listo', 'title' => 'Conectar recompensa lista', 'copy' => 'Ya hay una recompensa disponible: usa ese momento para mover recompra o continuidad.', 'template_key' => 'close_sale', 'lane' => 'loyalty_follow_up', 'when' => 'reward_ready'],
+                ['key' => 'repeat_bundle_offer', 'title' => 'Activar bundle o reward', 'copy' => 'Usa fidelidad o continuidad como palanca del siguiente paso.', 'template_key' => 'follow_up_reminder', 'lane' => 'follow_up', 'wait_hours' => 18, 'branches' => [
+                    ['key' => 'reward_ready', 'label' => 'Canje listo', 'title' => 'Activar recompensa lista', 'copy' => 'Ya hay una recompensa disponible: usa ese momento para mover recompra o continuidad.', 'template_key' => 'close_sale', 'lane' => 'loyalty_follow_up', 'when' => 'reward_ready'],
                     ['key' => 'reward_redeemed', 'label' => 'Canje reciente', 'title' => 'Activar continuidad despues del canje', 'copy' => 'El cliente acaba de canjear una recompensa: aprovecha ese momento para mover recompra o continuidad.', 'template_key' => 'close_sale', 'lane' => 'post_redeem_close', 'when' => 'recent_reward_redemption'],
                     ['key' => 'vip_priority', 'label' => 'Ruta VIP', 'title' => 'Mover continuidad premium', 'copy' => 'Usa tono premium, beneficio visible y prioridad real para no enfriar un cliente de alto valor.', 'template_key' => 'vip_priority', 'lane' => 'premium_follow_up', 'when' => 'vip_customer'],
                     ['key' => 'repeat_revenue_expand', 'label' => 'Revenue acumulado', 'title' => 'Mover continuidad con valor probado', 'copy' => 'Este cliente ya trae revenue recurrente: conviene pasar de recordatorio a expansion con propuesta concreta.', 'template_key' => 'final_close_push', 'lane' => 'revenue_follow_up', 'when' => 'high_repeat_revenue'],
@@ -175,7 +175,7 @@ return [
         ],
         'booked_service' => [
             'journey' => [
-                ['key' => 'service_confirm_continuity', 'title' => 'Confirmar continuidad', 'copy' => 'Conecta la respuesta del cliente con la siguiente cita o control.', 'template_key' => 'service_rebook', 'lane' => 'continuity', 'wait_hours' => 0],
+                ['key' => 'service_confirm_continuity', 'title' => 'Confirmar continuidad', 'copy' => 'Une la respuesta del cliente con la siguiente cita o control.', 'template_key' => 'service_rebook', 'lane' => 'continuity', 'wait_hours' => 0],
                 ['key' => 'service_reduce_no_show', 'title' => 'Reducir no-show', 'copy' => 'Reagenda rapido y deja siguiente accion visible.', 'template_key' => 'follow_up_reminder', 'lane' => 'reminder', 'wait_hours' => 16, 'branches' => [
                     ['key' => 'no_show_rescue', 'label' => 'No-show reciente', 'title' => 'Rescatar despues del no-show', 'copy' => 'El cliente no asistio: conviene reagendar con friccion baja y ownership claro.', 'template_key' => 'service_rebook', 'lane' => 'no_show_rescue', 'when' => 'recent_no_show'],
                 ]],

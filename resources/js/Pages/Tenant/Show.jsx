@@ -123,7 +123,7 @@ function TopNav({ isOwner = false, ownerPanelHref = null, businessLabel = 'Negoc
                         className="hidden text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500 sm:block"
                         style={{ fontFamily: PUBLIC_LABEL_FONT }}
                     >
-                        Conecta HN
+                        Vito Business OS
                     </span>
                 </Link>
 
@@ -554,7 +554,7 @@ function FocusStrip({ businessType, services, menuSections, products, bookingUrl
                     },
                     {
                         title: 'Experiencia coherente',
-                        copy: 'Conecta productos, servicios y CTA sin obligar al cliente a adivinar como comprar o reservar.',
+                        copy: 'Integra productos, servicios y CTA sin obligar al cliente a adivinar como comprar o reservar.',
                         actionLabel: profile.catalog_title,
                         actionHref: '#catalogo',
                     },
@@ -1461,7 +1461,7 @@ function InfoPanel({ tenant, isOpen, openingHours = [] }) {
                 <Eyebrow>Presentacion</Eyebrow>
                 <SectionTitle className="mt-3 text-3xl">Sobre {tenant.name}</SectionTitle>
                 <p className="mt-6 whitespace-pre-line text-base leading-8 text-slate-600">
-                    {tenant.about || tenant.description || 'Bienvenido a este negocio dentro de Conecta HN.'}
+                    {tenant.about || tenant.description || 'Bienvenido a este negocio dentro de Vito Business OS.'}
                 </p>
             </article>
 
@@ -1714,7 +1714,7 @@ export default function TenantShow({
     const profile = tenant.storefront_profile || {
         label: 'Tienda y catalogo',
         hero_title: tenant.description || 'Micrositio publico del negocio.',
-        hero_copy: tenant.slogan || 'Descubre este negocio dentro de Conecta HN.',
+        hero_copy: tenant.slogan || 'Descubre este negocio dentro de Vito Business OS.',
         offer_title: 'Oferta del negocio',
         offer_copy: 'Explora lo que este negocio tiene listo para ti.',
         catalog_title: 'Catalogo',
@@ -1722,7 +1722,7 @@ export default function TenantShow({
         primary_cta_label: 'Ver catalogo',
         secondary_cta_label: 'Hablar por WhatsApp',
         mobile_tab_label: 'Catalogo',
-        footer_copy: 'Micrositio conectado a Conecta HN.',
+        footer_copy: 'Micrositio conectado a Vito Business OS.',
     };
     const theme = BUSINESS_THEMES[businessType] ?? BUSINESS_THEMES.retail;
     const reviewCount = Number(tenant.reviews_count ?? (Array.isArray(tenant.reviews) ? tenant.reviews.length : 0));
@@ -1743,8 +1743,8 @@ export default function TenantShow({
         )
         : null;
     const visibleTotal = Number(products?.total ?? safeProducts.length);
-    const pageTitle = `${tenant.name || 'Negocio'} | ${profile.label} en ${cityName} | Conecta HN`;
-    const pageDescription = String(tenant.description || profile.hero_copy || `Descubre ${tenant.name} dentro de Conecta HN.`).substring(0, 160);
+    const pageTitle = `${tenant.name || 'Negocio'} | ${profile.label} en ${cityName} | Vito Business OS`;
+    const pageDescription = String(tenant.description || profile.hero_copy || `Descubre ${tenant.name} dentro de Vito Business OS.`).substring(0, 160);
     const pageImage = tenant.hero_image || tenant.cover || FALLBACK_IMAGE;
 
     const tabs = useMemo(() => {

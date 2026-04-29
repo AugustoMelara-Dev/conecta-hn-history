@@ -125,7 +125,7 @@ export default function ReviewSection({ tenant, reviews = [] }) {
                             className="inline-flex items-center justify-center rounded-full bg-slate-950 px-6 py-3 text-sm font-semibold uppercase tracking-[0.16em] text-white transition-colors hover:bg-slate-800"
                             style={{ fontFamily: PUBLIC_LABEL_FONT }}
                         >
-                            Iniciar sesion
+                            Iniciar sesión
                         </Link>
                     </div>
                 )}

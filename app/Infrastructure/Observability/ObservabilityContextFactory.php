@@ -26,7 +26,7 @@ final readonly class ObservabilityContextFactory
             'causation_id' => $this->traceContext->getCausationId(),
             'tenant_id' => $this->resolveTenantId(),
             'environment' => config('app.env'),
-            'service' => config('app.name', 'conecta-hn'),
+            'service' => config('app.name', 'vito-business-os'),
         ], $context);
     }
 

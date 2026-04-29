@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\EmailVerificationPromptController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
+use App\Http\Controllers\Auth\OtpController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
@@ -14,6 +15,10 @@ use Illuminate\Support\Facades\Route;
 Route::get('check-slug', [\App\Http\Controllers\Web\RegistrationController::class, 'checkSlug'])
     ->middleware('throttle:slug-check')
     ->name('check-slug');
+
+Route::get('auth/otp/consume/{otp}', [OtpController::class, 'consume'])
+    ->middleware(['signed', 'throttle:6,1'])
+    ->name('otp.consume');
 
 Route::middleware('guest')->group(function () {
     Route::get('register', static fn () => redirect()->route('tenant.register'))

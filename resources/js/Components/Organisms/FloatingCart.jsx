@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * FLOATING CART - Conecta HN
+ * FLOATING CART - Vito Business OS
  * ═══════════════════════════════════════════════════════════════════════════
  * 
  * Botón flotante con badge de cantidad + Drawer lateral del carrito.

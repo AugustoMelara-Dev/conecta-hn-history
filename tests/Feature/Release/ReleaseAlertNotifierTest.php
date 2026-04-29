@@ -26,7 +26,7 @@ final class ReleaseAlertNotifierTest extends TestCase
         DB::table('settings')->updateOrInsert(
             ['group' => 'general', 'name' => 'support_email'],
             [
-                'payload' => json_encode('ops@conectahn.test'),
+                'payload' => json_encode('ops@vitobusinessos.test'),
                 'locked' => false,
                 'updated_at' => now(),
             ]
@@ -46,7 +46,7 @@ final class ReleaseAlertNotifierTest extends TestCase
         );
 
         Mail::assertSent(ReleaseAlertMail::class, function (ReleaseAlertMail $mail) use ($tenant): bool {
-            return $mail->hasTo('ops@conectahn.test')
+            return $mail->hasTo('ops@vitobusinessos.test')
                 && $mail->context['feature_key'] === 'new_checkout'
                 && $mail->context['tenant_slug'] === $tenant->slug
                 && $mail->context['extra']['api_secret'] === '[redacted]';

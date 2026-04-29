@@ -195,7 +195,7 @@ if (typeof window !== 'undefined') {
     }
 }
 
-const appName = import.meta.env.VITE_APP_NAME || 'Conecta HN';
+const appName = import.meta.env.VITE_APP_NAME || 'Vito Business OS';
 const pages = import.meta.glob('./Pages/**/*.jsx');
 const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
 

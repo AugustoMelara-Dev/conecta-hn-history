@@ -71,7 +71,7 @@ final class CustomerConversationTemplateCatalog
         $definition = $this->resolvedTemplateDefinition($profile, $templateKey);
         $channel = $this->resolveChannel($profile, (string) ($definition['channel'] ?? 'preferred'));
         $replace = [
-            '{business_name}' => (string) ($tenant->name ?? 'Conecta HN'),
+            '{business_name}' => (string) ($tenant->name ?? 'Vito Business OS'),
             '{customer_name}' => (string) ($profile->name ?? 'cliente'),
             '{cta_url}' => (string) ($this->defaultCtaUrl($profile, $tenant) ?? ''),
         ];

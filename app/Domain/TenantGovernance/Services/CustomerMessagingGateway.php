@@ -214,7 +214,7 @@ class CustomerMessagingGateway
         $tenant = $profile->tenant;
         $businessName = $tenant instanceof Tenant && $tenant->name !== ''
             ? $tenant->name
-            : 'Conecta HN';
+            : 'Vito Business OS';
         $ctaUrl = (string) ($context['cta_url'] ?? '');
 
         return match ($key) {

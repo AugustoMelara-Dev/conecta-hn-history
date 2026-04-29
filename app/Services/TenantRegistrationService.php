@@ -50,7 +50,7 @@ class TenantRegistrationService
         // Security
         'root', 'superadmin', 'moderator', 'mod', 'staff', 'team',
         // Brand
-        'conecta', 'conectahn', 'conecta-hn', 'oficial', 'official',
+        'conecta', 'vitobusinessos', 'vito-business-os', 'oficial', 'official',
         // Utilities
         'track', 'tracking', 'webhook', 'webhooks', 'callback', 'oauth',
         'payment', 'payments', 'pago', 'pagos', 'checkout', 'billing',

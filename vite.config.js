@@ -54,8 +54,8 @@ export default defineConfig(({ mode }) => {
                     ],
                 },
                 manifest: {
-                    name: "Conecta HN",
-                    short_name: "Conecta",
+                    name: "Vito Business OS",
+                    short_name: "Vito OS",
                     description: "Infraestructura Digital para PyMEs de Honduras",
                     theme_color: "#000000",
                     background_color: "#ffffff",

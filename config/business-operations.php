@@ -67,7 +67,7 @@ return [
             'team_playbook' => [
                 ['eyebrow' => 'Hoy', 'title' => 'Coordinacion de atencion', 'copy' => 'Une pedidos, consultas y reservas para que el cliente no sienta dos negocios distintos.', 'role' => Role::OPERATOR->value, 'when' => 'Desde el primer flujo mixto', 'route_key' => 'team'],
                 ['eyebrow' => 'Siguiente', 'title' => 'Lider de operacion mixta', 'copy' => 'Balancea catalogo, servicio, tiempos y cobertura.', 'role' => Role::MANAGER->value, 'when' => 'Cuando ya se cruzan dos frentes de ingreso', 'route_key' => 'team'],
-                ['eyebrow' => 'Escala', 'title' => 'Growth y seguimiento', 'copy' => 'Conecta CRM, promociones y reportes para no perder oportunidades.', 'role' => Role::ADMIN->value, 'when' => 'Cuando quieres crecer sin aumentar caos', 'route_key' => 'team'],
+                ['eyebrow' => 'Escala', 'title' => 'Growth y seguimiento', 'copy' => 'Integra CRM, promociones y reportes para no perder oportunidades.', 'role' => Role::ADMIN->value, 'when' => 'Cuando quieres crecer sin aumentar caos', 'route_key' => 'team'],
             ],
             'automation_title' => 'Automatizaciones comerciales para negocio mixto',
             'automation_copy' => 'Automatiza el siguiente paso correcto segun si el cliente viene por producto, servicio o soporte.',
@@ -130,7 +130,7 @@ return [
             'team_copy' => 'Ticket alto y confianza postventa piden un equipo que venda bien y responda mejor.',
             'team_playbook' => [
                 ['eyebrow' => 'Hoy', 'title' => 'Asesor de alto ticket', 'copy' => 'Responde consultas y cotizaciones con foco en cierre y confianza.', 'role' => Role::OPERATOR->value, 'when' => 'Desde el primer flujo premium', 'route_key' => 'team'],
-                ['eyebrow' => 'Siguiente', 'title' => 'Responsable de bundles e inventario', 'copy' => 'Conecta equipos, accesorios y disponibilidad real.', 'role' => Role::MANAGER->value, 'when' => 'Cuando ya se cruzan varios modelos y margenes', 'route_key' => 'team'],
+                ['eyebrow' => 'Siguiente', 'title' => 'Responsable de bundles e inventario', 'copy' => 'Coordina equipos, accesorios y disponibilidad real.', 'role' => Role::MANAGER->value, 'when' => 'Cuando ya se cruzan varios modelos y margenes', 'route_key' => 'team'],
                 ['eyebrow' => 'Escala', 'title' => 'Posventa y retencion', 'copy' => 'Empuja upgrades, trade-ins y soporte visible.', 'role' => Role::ADMIN->value, 'when' => 'Cuando la recompra y el respaldo ya pesan en la marca', 'route_key' => 'team'],
             ],
             'automation_title' => 'Automatizaciones comerciales para alto ticket',

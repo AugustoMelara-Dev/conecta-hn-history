@@ -27,7 +27,8 @@ final class SmsOtpNotifier implements OtpNotifierInterface
         string $plainTextCode,
         string $identifier,
         string $tenantId,
-        int $expiryMinutes
+        int $expiryMinutes,
+        ?string $magicUrl = null
     ): void {
         // Check if production SMS service is configured
         if (! $this->isSmsServiceConfigured()) {
@@ -44,7 +45,7 @@ final class SmsOtpNotifier implements OtpNotifierInterface
             ), [
                 'From' => (string) config('services.twilio.from'),
                 'To' => $identifier,
-                'Body' => "Tu codigo de Conecta HN es {$plainTextCode}. Vence en {$expiryMinutes} minutos.",
+                'Body' => "Tu código de Vito Business OS es {$plainTextCode}. Vence en {$expiryMinutes} minutos.",
             ]);
 
         $response->throw();

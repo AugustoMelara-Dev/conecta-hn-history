@@ -70,7 +70,7 @@ final readonly class AuditContext
         return new self(
             actorId: null,
             ipAddress: new IpAddress('127.0.0.1'),
-            userAgent: 'System/ConectaHN',
+            userAgent: 'System/Vito Business OS',
             occurredAt: new DateTimeImmutable,
         );
     }

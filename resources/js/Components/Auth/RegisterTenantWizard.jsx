@@ -527,16 +527,16 @@ export function RegisterTenantWizard({
         if (targetStep === 2) {
             if (!data.name.trim()) nextErrors.name = "Escribe tu nombre completo."
             if (!data.email.trim()) nextErrors.email = "Escribe el correo de acceso."
-            else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) nextErrors.email = "Escribe un correo valido."
-            if (!data.password) nextErrors.password = "Crea una contrasena."
+            else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) nextErrors.email = "Escribe un correo válido."
+            if (!data.password) nextErrors.password = "Crea una contraseña."
             else if (data.password.length < 8) nextErrors.password = "Usa al menos 8 caracteres."
-            if (!data.password_confirmation) nextErrors.password_confirmation = "Confirma la contrasena."
-            else if (data.password_confirmation !== data.password) nextErrors.password_confirmation = "Las contrasenas no coinciden."
+            if (!data.password_confirmation) nextErrors.password_confirmation = "Confirma la contraseña."
+            else if (data.password_confirmation !== data.password) nextErrors.password_confirmation = "Las contraseñas no coinciden."
         }
 
         if (targetStep === 3) {
-            if (!["free", "pro"].includes(data.selected_plan)) nextErrors.selected_plan = "Selecciona un plan valido."
-            if (!data.terms_accepted) nextErrors.terms_accepted = "Debes aceptar los terminos para continuar."
+            if (!["free", "pro"].includes(data.selected_plan)) nextErrors.selected_plan = "Selecciona un plan válido."
+            if (!data.terms_accepted) nextErrors.terms_accepted = "Debes aceptar los términos para continuar."
         }
 
         const fields = STEP_FIELDS[targetStep]
@@ -570,7 +570,7 @@ export function RegisterTenantWizard({
             topActions={
                 <>
                     <Link href={route("login")} className="hidden text-sm font-semibold text-slate-600 transition hover:text-slate-950 md:inline-flex">
-                        Iniciar sesion
+                        Iniciar sesión
                     </Link>
                     <Link href={route("public.explore")} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-950">
                         Explorar
@@ -666,7 +666,7 @@ export function RegisterTenantWizard({
 
                     {!canSubmit ? (
                         <div className="mt-8 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                            No pudimos cargar ciudades o categorias. Recarga la pagina e intentalo de nuevo.
+                            No pudimos cargar ciudades o categorias. Recarga la página e intentalo de nuevo.
                         </div>
                     ) : null}
 
@@ -890,13 +890,13 @@ export function RegisterTenantWizard({
 
                                     <div className="grid gap-4 md:grid-cols-2">
                                         <Field>
-                                            <FieldLabel htmlFor="password">Contrasena</FieldLabel>
+                                            <FieldLabel htmlFor="password">Contraseña</FieldLabel>
                                             <Input id="password" name="password" type="password" autoComplete="new-password" value={data.password} onChange={(event) => updateField("password", event.target.value)} className={inputClass("password")} />
-                                            {errorFor("password") ? <FieldDescription className="text-rose-600">{errorFor("password")}</FieldDescription> : <FieldDescription>Minimo 8 caracteres.</FieldDescription>}
+                                            {errorFor("password") ? <FieldDescription className="text-rose-600">{errorFor("password")}</FieldDescription> : <FieldDescription>Mínimo 8 caracteres.</FieldDescription>}
                                         </Field>
 
                                         <Field>
-                                            <FieldLabel htmlFor="password_confirmation">Confirmar contrasena</FieldLabel>
+                                            <FieldLabel htmlFor="password_confirmation">Confirmar contraseña</FieldLabel>
                                             <Input id="password_confirmation" name="password_confirmation" type="password" autoComplete="new-password" value={data.password_confirmation} onChange={(event) => updateField("password_confirmation", event.target.value)} className={inputClass("password_confirmation")} />
                                             {errorFor("password_confirmation") ? <FieldDescription className="text-rose-600">{errorFor("password_confirmation")}</FieldDescription> : null}
                                         </Field>
@@ -929,7 +929,7 @@ export function RegisterTenantWizard({
                                             <label className="flex items-start gap-3 rounded-[1.75rem] border border-slate-200 bg-slate-50 px-5 py-5">
                                                 <input type="checkbox" data-testid="register-terms-checkbox" checked={data.terms_accepted} onChange={(event) => updateField("terms_accepted", event.target.checked)} className="mt-1 h-4 w-4 rounded border-slate-300 text-slate-950 focus:ring-slate-300" />
                                                 <span className="text-sm leading-7 text-slate-600">
-                                                    Confirmo que tengo autorizacion para registrar este negocio y acepto los terminos operativos de Conecta HN.
+                                                    Confirmo que tengo autorizacion para registrar este negocio y acepto los términos operativos de Vito Business OS.
                                                 </span>
                                             </label>
                                             {errorFor("terms_accepted") ? <FieldDescription className="text-rose-600">{errorFor("terms_accepted")}</FieldDescription> : null}

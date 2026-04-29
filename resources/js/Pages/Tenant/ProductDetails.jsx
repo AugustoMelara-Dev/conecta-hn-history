@@ -522,7 +522,7 @@ export default function ProductDetails({ product }) {
                 <meta property="og:description" content={seoData.description} />
                 <meta property="og:image" content={seoData.image} />
                 <meta property="og:url" content={seoData.url} />
-                <meta property="og:site_name" content={tenant.name || 'Conecta HN'} />
+                <meta property="og:site_name" content={tenant.name || 'Vito Business OS'} />
 
                 {/* Product Price Metadata (Commerce) */}
                 <meta property="product:price:amount" content={String(seoData.price)} />

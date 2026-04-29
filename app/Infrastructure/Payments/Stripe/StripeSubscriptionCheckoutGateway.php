@@ -154,7 +154,7 @@ final class StripeSubscriptionCheckoutGateway implements SubscriptionCheckoutGat
             'price_data' => [
                 'currency' => strtolower($currency),
                 'product_data' => [
-                    'name' => 'Conecta '.$planIdentifier,
+                    'name' => 'Vito Business OS '.$planIdentifier,
                 ],
                 'recurring' => [
                     'interval' => 'month',

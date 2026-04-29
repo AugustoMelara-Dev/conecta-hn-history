@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ══════════════════════════════════════════════════════════════════════════════
-# CONECTA HN - ATOMIC DEPLOYMENT SCRIPT
+# VITO BUSINESS OS - ATOMIC DEPLOYMENT SCRIPT
 # ══════════════════════════════════════════════════════════════════════════════
 #
 # Usage: ./deploy.sh [--skip-assets] [--no-backup]
@@ -27,11 +27,11 @@ set -o pipefail  # Catch errors in piped commands
 # CONFIGURATION
 # ═══════════════════════════════════════════════════════════════════════════════
 
-APP_DIR="/var/www/conecta-hn"
+APP_DIR="/var/www/vito-business-os"
 BRANCH="main"
 PHP_FPM_SERVICE="php8.2-fpm"
-BACKUP_DIR="/var/backups/conecta-hn"
-LOG_FILE="/var/log/conecta-deploy.log"
+BACKUP_DIR="/var/backups/vito-business-os"
+LOG_FILE="/var/log/vito-deploy.log"
 SLACK_WEBHOOK="${SLACK_DEPLOY_WEBHOOK:-}"
 
 # Parse arguments

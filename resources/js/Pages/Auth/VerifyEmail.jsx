@@ -1,5 +1,5 @@
 import { Head, Link, useForm, usePage } from "@inertiajs/react"
-import { RefreshCcw } from "lucide-react"
+import { MailCheck, RefreshCcw } from "lucide-react"
 
 import { Button } from "@/Components/ui/button"
 import {
@@ -27,28 +27,31 @@ export default function VerifyEmail({ status }) {
 
     return (
         <>
-            <Head title="Verify your email" />
+            <Head title="Verifica tu correo | Vito Business OS" />
 
-            <div className="flex min-h-svh w-full items-center justify-center bg-white p-6 md:p-10">
-                <div className="w-full max-w-sm">
-                    <Card className="border-slate-200 bg-white text-slate-950 shadow-sm">
+            <div className="flex min-h-svh w-full items-center justify-center bg-[#f7f8fb] p-6 md:p-10">
+                <div className="w-full max-w-md">
+                    <Card className="border-slate-200 bg-white text-slate-950 shadow-xl shadow-slate-200/60">
                         <CardHeader>
+                            <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
+                                <MailCheck className="h-6 w-6" />
+                            </div>
                             <CardTitle className="text-2xl font-semibold text-slate-950">
-                                Verify your email
+                                Verifica tu correo
                             </CardTitle>
                             <CardDescription className="text-slate-500">
-                                We sent a verification link to{" "}
+                                Enviamos un enlace de verificación a{" "}
                                 <span className="font-medium text-slate-950">
                                     {auth?.user?.email}
                                 </span>
-                                . Open that email to unlock full access to your account.
+                                . Ábrelo para desbloquear el panel correcto de Vito Business OS.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
                             <FieldGroup>
                                 {status === "verification-link-sent" ? (
                                     <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-                                        A new verification link has been sent to your email address.
+                                        Te enviamos un nuevo enlace de verificación.
                                     </div>
                                 ) : null}
 
@@ -62,12 +65,12 @@ export default function VerifyEmail({ status }) {
                                             <RefreshCcw
                                                 className={`mr-2 h-4 w-4 ${processing ? "animate-spin" : ""}`}
                                             />
-                                            {processing ? "Sending..." : "Resend verification email"}
+                                            {processing ? "Enviando..." : "Reenviar correo de verificación"}
                                         </Button>
                                     </form>
                                 </Field>
 
-                                <FieldSeparator>Need a different account?</FieldSeparator>
+                                <FieldSeparator>¿Necesitas otra cuenta?</FieldSeparator>
 
                                 <Field>
                                     <Button
@@ -77,11 +80,11 @@ export default function VerifyEmail({ status }) {
                                         asChild
                                     >
                                         <Link href={route("logout")} method="post" as="button">
-                                            Sign out
+                                            Cerrar sesión
                                         </Link>
                                     </Button>
                                     <FieldDescription className="text-center">
-                                        Verify your email first to continue into the app.
+                                        Verifica tu correo para continuar al panel que corresponde a tu cuenta.
                                     </FieldDescription>
                                 </Field>
                             </FieldGroup>

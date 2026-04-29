@@ -15,7 +15,7 @@ export default function UserDashboard({ auth }) {
                     <div className="p-6 border-b border-slate-100">
                         <Link href="/" className="flex items-center gap-2">
                             <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white font-bold font-serif">C</div>
-                            <span className="font-serif font-bold text-lg tracking-tight text-slate-900">Conecta HN</span>
+                            <span className="font-serif font-bold text-lg tracking-tight text-slate-900">Vito Business OS</span>
                         </Link>
                     </div>
 

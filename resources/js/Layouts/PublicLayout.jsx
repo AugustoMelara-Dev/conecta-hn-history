@@ -52,7 +52,7 @@ function Toast({ message, type = 'success', onClose }) {
 function BrandMark() {
     return (
         <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-slate-950 text-sm font-semibold text-white shadow-lg shadow-slate-950/15">
-            CH
+            VBO
         </div>
     );
 }
@@ -93,9 +93,9 @@ function Navbar() {
         : null;
 
     const homeLinks = [
-        { href: `${route('home')}#features`, label: 'Features', active: true, external: true },
-        { href: `${route('home')}#pricing`, label: 'Pricing', active: false, external: true },
-        { href: `${route('home')}#businesses`, label: 'Businesses', active: false, external: true },
+        { href: `${route('home')}#features`, label: 'Sistema', active: true, external: true },
+        { href: `${route('home')}#pricing`, label: 'Planes', active: false, external: true },
+        { href: `${route('home')}#businesses`, label: 'Negocios', active: false, external: true },
         { href: `${route('home')}#faq`, label: 'FAQ', active: false, external: true },
     ];
     const defaultLinks = [
@@ -106,7 +106,7 @@ function Navbar() {
     const registrationLinks = [
         { href: route('home'), label: 'Beneficios', active: false, external: true },
         { href: `${route('home')}#pricing`, label: 'Precios', active: false, external: true },
-        { href: 'mailto:soporte@conectahn.com', label: 'Soporte', active: false, external: true },
+        { href: 'mailto:soporte@vitobusinessos.com', label: 'Soporte', active: false, external: true },
     ];
     const links = isHome ? homeLinks : (isRegistrationFlow ? registrationLinks : defaultLinks);
     const headerClasses = isRegistrationFlow
@@ -136,7 +136,7 @@ function Navbar() {
                         </p>
                         {!isHome ? (
                             <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-slate-500" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
-                                Conecta HN
+                                Vito Business OS
                             </p>
                         ) : null}
                     </div>
@@ -200,16 +200,16 @@ function Navbar() {
                         </>
                     ) : isRegistrationFlow ? (
                         <Link href={route('login')} className="inline-flex items-center gap-2 rounded-lg bg-slate-950 px-5 py-3 text-sm font-semibold uppercase tracking-[0.16em] text-white transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-200" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
-                            Iniciar sesion
+                            Iniciar sesión
                         </Link>
                     ) : (
                         <>
                             <Link href={route('login')} className="px-5 py-2 text-sm font-semibold text-slate-900 transition hover:text-slate-600 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-200" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
-                                {isHome ? 'Log In' : 'Iniciar sesion'}
+                                Iniciar sesión
                             </Link>
                             {!isRegistrationFlow ? (
                                 <Link href={route('tenant.register')} className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-br from-slate-950 via-slate-900 to-slate-700 px-6 py-2.5 text-sm font-semibold text-white transition hover:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-200" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
-                                    {isHome ? 'Get Started' : 'Registrar negocio'}
+                                    Registrar negocio
                                     {!isHome ? <ArrowRight className="h-4 w-4" /> : null}
                                 </Link>
                             ) : null}
@@ -310,7 +310,7 @@ function Navbar() {
                                         className="inline-flex items-center justify-center rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-200"
                                         onClick={() => setMobileOpen(false)}
                                     >
-                                        {isHome ? 'Log In' : 'Iniciar sesion'}
+                                        Iniciar sesión
                                     </Link>
                                     {!isRegistrationFlow ? (
                                         <Link
@@ -318,7 +318,7 @@ function Navbar() {
                                             className="inline-flex items-center justify-center rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-200"
                                             onClick={() => setMobileOpen(false)}
                                         >
-                                            {isHome ? 'Get Started' : 'Registrar negocio'}
+                                            Registrar negocio
                                         </Link>
                                     ) : null}
                                 </>
@@ -340,30 +340,30 @@ function Footer() {
                 <div className="col-span-2 md:col-span-1">
                     <div className="text-xl font-bold text-slate-900" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>Vito Business OS</div>
                     <p className="mt-4 text-sm leading-relaxed text-slate-500">
-                        La infraestructura digital para el comercio local en Honduras y la region.
+                        La infraestructura digital para el comercio local en Honduras y la región.
                     </p>
                 </div>
 
                 <div>
                     <span className="mb-6 block text-xs font-bold uppercase tracking-[0.18em] text-slate-900" style={{ fontFamily: PUBLIC_LABEL_FONT }}>Producto</span>
                     <ul className="space-y-3 text-sm text-slate-500">
-                        <li><a href={`${route('home')}#features`} className="transition hover:underline">Features</a></li>
-                        <li><a href={`${route('home')}#pricing`} className="transition hover:underline">Pricing</a></li>
-                        <li><Link href={route('public.explore')} className="transition hover:underline">Businesses</Link></li>
-                        <li><Link href={route('tenant.register')} className="transition hover:underline">Get Started</Link></li>
+                        <li><a href={`${route('home')}#features`} className="transition hover:underline">Sistema</a></li>
+                        <li><a href={`${route('home')}#pricing`} className="transition hover:underline">Planes</a></li>
+                        <li><Link href={route('public.explore')} className="transition hover:underline">Negocios</Link></li>
+                        <li><Link href={route('tenant.register')} className="transition hover:underline">Registrar negocio</Link></li>
                     </ul>
                 </div>
 
                 <div>
-                    <span className="mb-6 block text-xs font-bold uppercase tracking-[0.18em] text-slate-900" style={{ fontFamily: PUBLIC_LABEL_FONT }}>Compania</span>
+                    <span className="mb-6 block text-xs font-bold uppercase tracking-[0.18em] text-slate-900" style={{ fontFamily: PUBLIC_LABEL_FONT }}>Compañía</span>
                     <ul className="space-y-3 text-sm text-slate-500">
-                        <li><a href={`${route('home')}#businesses`} className="transition hover:underline">About</a></li>
+                        <li><a href={`${route('home')}#businesses`} className="transition hover:underline">Clientes</a></li>
                         <li><a href={`${route('home')}#faq`} className="transition hover:underline">FAQ</a></li>
-                        <li><a href="mailto:soporte@conectahn.com" className="transition hover:underline">Support</a></li>
+                        <li><a href="mailto:soporte@vitobusinessos.com" className="transition hover:underline">Soporte</a></li>
                         {auth?.user ? (
                             <li><Link href={route('mi-cuenta.edit')} className="transition hover:underline">Mi cuenta</Link></li>
                         ) : (
-                            <li><Link href={route('login')} className="transition hover:underline">Log In</Link></li>
+                            <li><Link href={route('login')} className="transition hover:underline">Iniciar sesión</Link></li>
                         )}
                     </ul>
                 </div>
@@ -371,7 +371,7 @@ function Footer() {
                 <div>
                     <span className="mb-6 block text-xs font-bold uppercase tracking-[0.18em] text-slate-900" style={{ fontFamily: PUBLIC_LABEL_FONT }}>Social</span>
                     <div className="flex gap-4">
-                        <a href="https://conectahn.com" className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-slate-700 transition hover:bg-slate-300">
+                        <a href="https://vitobusinessos.com" className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-slate-700 transition hover:bg-slate-300">
                             <Compass className="h-4 w-4" />
                         </a>
                         <a href="https://wa.me/50499999999" className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-slate-700 transition hover:bg-slate-300">
@@ -384,7 +384,7 @@ function Footer() {
             <div className="border-t border-slate-200">
                 <div className="mx-auto max-w-7xl px-8 py-8">
                     <p className="text-center text-xs text-slate-500">
-                        &copy; {new Date().getFullYear()} Vito Business OS / Conecta HN. All rights reserved.
+                        &copy; {new Date().getFullYear()} Vito Business OS. Todos los derechos reservados.
                     </p>
                 </div>
             </div>

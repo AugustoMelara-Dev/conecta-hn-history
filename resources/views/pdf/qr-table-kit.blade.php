@@ -143,7 +143,7 @@
         
         <div class="footer">
             <div class="url">{{ $storefrontUrl }}</div>
-            <div class="powered-by">Powered by Conecta HN</div>
+            <div class="powered-by">Powered by Vito Business OS</div>
         </div>
     </div>
 </body>

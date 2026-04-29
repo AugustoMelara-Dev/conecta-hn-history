@@ -349,7 +349,7 @@ final readonly class TenantMicrositeTransformer
         if (empty($path)) {
             return match ($type) {
                 'cover' => 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800&h=600&fit=crop',
-                'logo' => 'https://ui-avatars.com/api/?name=ConectaHN&background=0ea5e9&color=fff&size=200',
+                'logo' => 'https://ui-avatars.com/api/?name=Vito Business OS&background=0ea5e9&color=fff&size=200',
                 'product' => 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop',
                 default => 'https://via.placeholder.com/400',
             };

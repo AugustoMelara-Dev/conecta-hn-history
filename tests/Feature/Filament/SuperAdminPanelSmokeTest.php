@@ -175,7 +175,7 @@ final class SuperAdminPanelSmokeTest extends TestCase
             ->set('data.pro_plan_product_limit', 300)
             ->set('data.bank_transfer_instructions', '<p>Transfiere {precio} y envia el comprobante.</p>')
             ->set('data.support_whatsapp_number', '99998888')
-            ->set('data.support_email', 'soporte@conectahn.test')
+            ->set('data.support_email', 'soporte@vitobusinessos.test')
             ->set('data.maintenance_mode', true)
             ->set('data.allow_registrations', false)
             ->set('data.feature_rollouts', [[
@@ -200,7 +200,7 @@ final class SuperAdminPanelSmokeTest extends TestCase
         $this->assertSame(300, $settings->pro_plan_product_limit);
         $this->assertSame('<p>Transfiere {precio} y envia el comprobante.</p>', $settings->bank_transfer_instructions);
         $this->assertSame('99998888', $settings->support_whatsapp_number);
-        $this->assertSame('soporte@conectahn.test', $settings->support_email);
+        $this->assertSame('soporte@vitobusinessos.test', $settings->support_email);
         $this->assertTrue($settings->maintenance_mode);
         $this->assertFalse($settings->allow_registrations);
         $this->assertSame('new_checkout', $settings->feature_rollouts[0]['key']);

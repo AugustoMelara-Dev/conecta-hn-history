@@ -53,7 +53,7 @@ final class E2EStorefrontSeeder extends Seeder
             'primary_color' => '#f97316',
             'whatsapp_number' => '50499991110',
             'address' => 'Boulevard Suyapa, Tegucigalpa',
-            'owner_email' => 'owner-demo-ai-guide-hn@conectahn.app',
+            'owner_email' => 'owner-demo-ai-guide-hn@vitobusinessos.app',
             'owner_password' => 'ChangeMe123!',
         ]);
 
@@ -108,14 +108,14 @@ final class E2EStorefrontSeeder extends Seeder
             'primary_color' => '#111827',
             'whatsapp_number' => '50499991111',
             'address' => 'Colonia Palmira, Tegucigalpa',
-            'owner_email' => 'owner-demo-ai-booking-hn@conectahn.app',
+            'owner_email' => 'owner-demo-ai-booking-hn@vitobusinessos.app',
             'owner_password' => 'ChangeMe123!',
         ]);
 
         ServiceProvider::factory()->create([
             'tenant_id' => $officialBookingFixture->id,
             'name' => 'Laura Rivera',
-            'email' => 'laura.rivera@conectahn.app',
+            'email' => 'laura.rivera@vitobusinessos.app',
             'is_active' => true,
         ]);
 
@@ -779,7 +779,7 @@ final class E2EStorefrontSeeder extends Seeder
     private function seedCustomerAccount(): void
     {
         User::query()->updateOrCreate(
-            ['email' => 'customer-e2e@conectahn.app'],
+            ['email' => 'customer-e2e@vitobusinessos.app'],
             [
                 'name' => 'Cliente E2E Directorio',
                 'password' => Hash::make('ChangeMe123!'),

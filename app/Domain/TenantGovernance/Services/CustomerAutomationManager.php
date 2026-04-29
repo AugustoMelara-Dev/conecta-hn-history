@@ -181,7 +181,7 @@ class CustomerAutomationManager
         }
 
         $tenant = $profile->tenant;
-        $tenantName = $tenant instanceof Tenant ? (string) $tenant->name : 'Conecta HN';
+        $tenantName = $tenant instanceof Tenant ? (string) $tenant->name : 'Vito Business OS';
 
         return $this->dispatchEmailTouchpoint(
             $record,
@@ -323,7 +323,7 @@ class CustomerAutomationManager
         $governance = $this->governance->definition($automationKey, $resolvedChannel, $definition);
         $ctaUrl = $this->defaultCtaUrl($profile, $tenant);
         $replace = [
-            '{business_name}' => (string) ($tenant->name ?? 'Conecta HN'),
+            '{business_name}' => (string) ($tenant->name ?? 'Vito Business OS'),
             '{customer_name}' => (string) ($profile->name ?? 'cliente'),
             '{cta_url}' => $ctaUrl ?? '',
         ];
@@ -407,7 +407,7 @@ class CustomerAutomationManager
 
         try {
             $tenant = $profile->tenant;
-            $tenantName = $tenant instanceof Tenant ? (string) $tenant->name : 'Conecta HN';
+            $tenantName = $tenant instanceof Tenant ? (string) $tenant->name : 'Vito Business OS';
             $mail = new CustomerLifecycleMail($subject, [
                 'tenant_name' => $tenantName,
                 'customer_name' => (string) ($profile->name ?? 'cliente'),
@@ -487,7 +487,7 @@ class CustomerAutomationManager
         ]));
 
         if (! filled($profile->phone)) {
-            return $this->markSkipped($touchpoint, 'El cliente no tiene teléfono para WhatsApp.');
+            return $this->markSkipped($touchpoint, 'El cliente no tiene telï¿½fono para WhatsApp.');
         }
 
         if (! $profile->whatsapp_opt_in) {

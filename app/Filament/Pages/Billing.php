@@ -41,7 +41,7 @@ final class Billing extends Page
 
     public string $proPlanPrice = 'L. 99.00';
 
-    public string $supportEmail = 'soporte@conectahn.com';
+    public string $supportEmail = 'soporte@vitobusinessos.com';
 
     public string $supportWhatsApp = '+504 0000-0000';
 

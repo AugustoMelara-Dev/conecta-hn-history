@@ -165,7 +165,7 @@ return [
         'security_slack' => [
             'driver' => 'slack',
             'url' => env('SECURITY_SLACK_WEBHOOK_URL'),
-            'username' => env('SECURITY_SLACK_USERNAME', '🔒 ConectaHN Security'),
+            'username' => env('SECURITY_SLACK_USERNAME', '🔒 Vito Business OS Security'),
             'emoji' => ':rotating_light:',
             'level' => 'critical', // Only CRITICAL events go to Slack
             'replace_placeholders' => true,

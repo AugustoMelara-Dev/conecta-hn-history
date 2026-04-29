@@ -28,8 +28,8 @@ class SubscriptionExpiringMail extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         $subject = $this->daysRemaining === 1
-            ? 'Tu Plan PRO vence MANANA | Conecta HN'
-            : "Tu Plan PRO vence en {$this->daysRemaining} dias | Conecta HN";
+            ? 'Tu Plan PRO vence MANANA | Vito Business OS'
+            : "Tu Plan PRO vence en {$this->daysRemaining} dias | Vito Business OS";
 
         return new Envelope(subject: $subject);
     }

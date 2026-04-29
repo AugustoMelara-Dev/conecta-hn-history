@@ -30,7 +30,8 @@ final class SmsOtpNotifier implements OtpNotifierInterface
         string $plainTextCode,
         string $identifier,
         string $tenantId,
-        int $expiryMinutes
+        int $expiryMinutes,
+        ?string $magicUrl = null
     ): void {
         if ($this->isTwilioConfigured()) {
             Http::asForm()
@@ -41,7 +42,7 @@ final class SmsOtpNotifier implements OtpNotifierInterface
                 ), [
                     'From' => (string) config('services.twilio.from'),
                     'To' => $identifier,
-                    'Body' => "Tu codigo de Conecta HN es {$plainTextCode}. Vence en {$expiryMinutes} minutos.",
+                    'Body' => "Tu código de Vito Business OS es {$plainTextCode}. Vence en {$expiryMinutes} minutos.",
                 ])
                 ->throw();
         }

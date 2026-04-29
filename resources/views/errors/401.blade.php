@@ -1,10 +1,10 @@
 @include('errors.partials.friendly', [
     'status' => '401',
-    'title' => 'Necesitas iniciar sesion',
-    'message' => 'Esta seccion requiere autenticacion para continuar.',
-    'hint' => 'Inicia sesion y vuelve a intentar. Si ya estabas autenticado, actualiza la pagina.',
+    'title' => 'Necesitas iniciar sesión',
+    'message' => 'Esta sección requiere autenticación para continuar.',
+    'hint' => 'Inicia sesión y vuelve a intentar. Si ya estabas autenticado, actualiza la página.',
     'actions' => [
-        ['label' => 'Iniciar sesion', 'href' => '/login'],
+        ['label' => 'Iniciar sesión', 'href' => '/login'],
         ['label' => 'Volver al inicio', 'href' => '/'],
     ],
 ])

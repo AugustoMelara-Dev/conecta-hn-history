@@ -240,7 +240,7 @@
                                     <span class="font-mono text-gray-600">200-998877-1</span>
                                 </div>
                             </div>
-                            <p class="text-xs text-blue-600 mt-3 font-medium">Beneficiario: Conecta HN S.A. de C.V.</p>
+                            <p class="text-xs text-blue-600 mt-3 font-medium">Beneficiario: Vito Business OS S.A. de C.V.</p>
                         </div>
 
                         <div class="space-y-4">

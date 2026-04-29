@@ -9,7 +9,7 @@
                         <p class="biz-kicker">Torre de control multi-negocio</p>
                         <h1 class="biz-title">Colas, SLA, churn y seguimiento entre tenants</h1>
                         <p class="biz-copy">
-                            Opera Conecta HN como una consola de ejecución real: pagos, altas,
+                            Opera Vito Business OS como una consola de ejecución real: pagos, altas,
                             playbooks comerciales, renovaciones y riesgo de churn en un solo frente.
                         </p>
                     </div>
@@ -1140,7 +1140,7 @@
 
                         <a href="{{ $usersUrl }}" class="biz-action">
                             <p class="biz-action-title">Usuarios y acceso</p>
-                            <p class="biz-action-copy">Bans, contrasenas, soporte e impersonacion.</p>
+                            <p class="biz-action-copy">Bloqueos, contraseñas, soporte e impersonación.</p>
                         </a>
 
                         <a href="{{ $settingsUrl }}" class="biz-action">

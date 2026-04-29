@@ -28,7 +28,7 @@ class CustomerLifecycleMail extends Mailable
             subject: $this->subjectLine,
             from: new Address(
                 config('mail.from.address'),
-                $this->payload['tenant_name'].' via Conecta HN',
+                $this->payload['tenant_name'].' via Vito Business OS',
             ),
         );
     }

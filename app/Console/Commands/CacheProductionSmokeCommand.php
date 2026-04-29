@@ -21,7 +21,7 @@ final class CacheProductionSmokeCommand extends Command
     {
         $ttl = max(5, (int) $this->option('ttl'));
         $key = 'production-cache-smoke:'.Str::uuid();
-        $value = 'conecta-hn-cache-smoke:'.Str::uuid();
+        $value = 'vito-business-os-cache-smoke:'.Str::uuid();
         $payload = [
             'status' => 'failed',
             'cache_store' => (string) config('cache.default'),

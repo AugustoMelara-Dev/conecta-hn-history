@@ -6,9 +6,9 @@ import { ForgotPasswordForm } from "@/Components/Auth/ForgotPasswordForm"
 export default function ForgotPassword({ status = null }) {
     return (
         <>
-            <Head title="Forgot password" />
+            <Head title="Recuperar acceso | Vito Business OS" />
 
-            <AuthShadcnShell imageAlt="Password recovery panel">
+            <AuthShadcnShell imageAlt="Panel de recuperación de acceso">
                 <ForgotPasswordForm status={status} />
             </AuthShadcnShell>
         </>

@@ -84,7 +84,7 @@ class EditTenantProfile extends BaseEditTenantProfile
 
                                         Forms\Components\TextInput::make('slug')
                                             ->label('URL Personalizada')
-                                            ->prefix('conectahn.com/')
+                                            ->prefix('vitobusinessos.com/')
                                             ->required()
                                             ->unique(ignoreRecord: true)
                                             ->alphaDash()
@@ -251,7 +251,7 @@ class EditTenantProfile extends BaseEditTenantProfile
                             ->icon('heroicon-o-clock')
                             ->schema([
                                 Section::make('Redes Sociales')
-                                    ->description($hasAdvancedBranding ? 'Conecta tus redes' : '🔒 PRO-only')
+                                    ->description($hasAdvancedBranding ? 'Integra tus redes' : '🔒 PRO-only')
                                     ->schema([
                                         Forms\Components\TextInput::make('facebook_url')
                                             ->label('Facebook')

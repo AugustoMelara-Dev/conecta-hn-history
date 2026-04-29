@@ -11,7 +11,7 @@
             <div class="flex items-center justify-between h-16">
                 <div class="flex items-center gap-4">
                     <a href="/" wire:navigate class="text-xl font-bold text-gray-900">
-                        Conecta<span class="text-blue-600">HN</span>
+                        Vito <span class="text-blue-600">Business OS</span>
                     </a>
                     <span class="text-gray-300">|</span>
                     <span class="font-semibold text-gray-700 truncate max-w-[200px]">{{ $tenant->name }}</span>

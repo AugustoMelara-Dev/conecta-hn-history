@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Conecta HN'),
+    'name' => env('APP_NAME', 'Vito Business OS'),
 
     /*
     |--------------------------------------------------------------------------

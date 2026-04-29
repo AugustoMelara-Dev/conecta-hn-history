@@ -42,7 +42,7 @@ final readonly class PaymentData
         public string $orderId,
 
         /** Description shown on statement */
-        public string $statementDescriptor = 'CONECTAHN',
+        public string $statementDescriptor = 'VITO OS',
 
         /** Additional metadata (idempotency keys, etc.) */
         public array $metadata = [],
@@ -99,7 +99,7 @@ final readonly class PaymentData
             customerEmail: $email,
             customerName: $name,
             orderId: $data['order_id'],
-            statementDescriptor: $data['statement_descriptor'] ?? 'CONECTAHN',
+            statementDescriptor: $data['statement_descriptor'] ?? 'VITO OS',
             metadata: $data['metadata'] ?? [],
             billingAddress: $data['billing_address'] ?? null,
         );

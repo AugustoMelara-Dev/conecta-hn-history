@@ -28,7 +28,7 @@ export default function TenantFooter({
                         Impulsado por <span className="text-emerald-300">Vito Business OS</span>
                     </p>
                     <p className="text-xs text-slate-400">
-                        Conecta HN te da una presencia publica clara y lista para vender.
+                        Vito Business OS te da una presencia publica clara y lista para vender.
                     </p>
                 </div>
 

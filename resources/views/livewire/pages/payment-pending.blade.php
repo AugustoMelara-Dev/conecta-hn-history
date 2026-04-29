@@ -13,7 +13,7 @@
         {{-- Logo --}}
         <div class="text-center mb-8">
             <h1 class="text-3xl font-bold text-gray-900">
-                Conecta<span class="text-blue-600">HN</span>
+                Vito <span class="text-blue-600">Business OS</span>
             </h1>
         </div>
 

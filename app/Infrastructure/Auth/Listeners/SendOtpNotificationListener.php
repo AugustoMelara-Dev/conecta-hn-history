@@ -12,6 +12,7 @@ use App\Models\OneTimePassword;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\URL;
 use Throwable;
 
 /**
@@ -103,6 +104,7 @@ final class SendOtpNotificationListener implements ShouldQueue
                 identifier: $deliveryPayload['identifier'],
                 tenantId: $event->tenantId,
                 expiryMinutes: (int) $deliveryPayload['expiry_minutes'],
+                magicUrl: $this->magicUrlFor($otp),
             );
 
             $this->deliveryPayloadStore->forget($event->otpId);
@@ -162,5 +164,24 @@ final class SendOtpNotificationListener implements ShouldQueue
         }
 
         return substr($identifier, 0, 4).'****'.substr($identifier, -2);
+    }
+
+    private function magicUrlFor(OneTimePassword $otp): ?string
+    {
+        if ($otp->type !== 'email' || ! (bool) config('auth.otp.magic_link_enabled', false)) {
+            return null;
+        }
+
+        $allowlist = config('auth.otp.magic_link_tenant_allowlist', []);
+        if (is_array($allowlist) && $allowlist !== []
+            && ! in_array((string) $otp->tenant_id, array_map('strval', $allowlist), true)) {
+            return null;
+        }
+
+        return URL::temporarySignedRoute(
+            'otp.consume',
+            now()->addMinutes((int) config('auth.otp.magic_link_expiry_minutes', 10)),
+            ['otp' => (string) $otp->getKey()],
+        );
     }
 }

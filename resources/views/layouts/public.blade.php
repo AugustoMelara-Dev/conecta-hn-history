@@ -9,21 +9,21 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     
     {{-- SEO Meta Tags Dinámicos --}}
-    <title>{{ $title ?? 'Conecta HN - El Directorio de Negocios de Honduras' }}</title>
+    <title>{{ $title ?? 'Vito Business OS - El Directorio de Negocios de Honduras' }}</title>
     <meta name="description" content="{{ $description ?? 'Descubre los mejores negocios de Honduras. Restaurantes, tiendas, servicios y más.' }}">
     
     {{-- Open Graph --}}
     <meta property="og:type" content="website">
-    <meta property="og:title" content="{{ $title ?? 'Conecta HN' }}">
+    <meta property="og:title" content="{{ $title ?? 'Vito Business OS' }}">
     <meta property="og:description" content="{{ $description ?? 'El directorio de negocios más completo de Honduras.' }}">
     <meta property="og:image" content="{{ $ogImage ?? asset('images/og-default.png') }}">
     <meta property="og:url" content="{{ url()->current() }}">
-    <meta property="og:site_name" content="Conecta HN">
+    <meta property="og:site_name" content="Vito Business OS">
     <meta property="og:locale" content="es_HN">
     
     {{-- Twitter Cards --}}
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="{{ $title ?? 'Conecta HN' }}">
+    <meta name="twitter:title" content="{{ $title ?? 'Vito Business OS' }}">
     <meta name="twitter:description" content="{{ $description ?? 'El directorio de negocios más completo de Honduras.' }}">
     <meta name="twitter:image" content="{{ $ogImage ?? asset('images/og-default.png') }}">
     
@@ -87,11 +87,11 @@
                 {{-- Logo y Descripción --}}
                 <div class="md:col-span-2">
                     <h3 class="text-2xl font-bold mb-4">
-                        Conecta<span class="text-blue-400">HN</span>
+                        Vito <span class="text-blue-400">Business OS</span>
                     </h3>
                     <p class="text-gray-400 max-w-md">
                         El directorio de negocios más completo de Honduras. 
-                        Conectamos a empresas locales con clientes que buscan calidad.
+                        Operamos el frente digital de negocios locales que buscan crecer con orden.
                     </p>
                 </div>
                 
@@ -114,8 +114,8 @@
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
                             </svg>
-                            <a href="mailto:soporte@conectahn.com" class="hover:text-white transition-colors">
-                                soporte@conectahn.com
+                            <a href="mailto:soporte@vitobusinessos.com" class="hover:text-white transition-colors">
+                                soporte@vitobusinessos.com
                             </a>
                         </li>
                         <li class="flex items-center gap-2">
@@ -132,7 +132,7 @@
             
             {{-- Copyright --}}
             <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-500 text-sm">
-                <p>&copy; {{ date('Y') }} Conecta HN. Todos los derechos reservados.</p>
+                <p>&copy; {{ date('Y') }} Vito Business OS. Todos los derechos reservados.</p>
             </div>
         </div>
     </footer>

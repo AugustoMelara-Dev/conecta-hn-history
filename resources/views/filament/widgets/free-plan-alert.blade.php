@@ -22,7 +22,7 @@
 
                     <div class="biz-button-row">
                         <a
-                            href="https://wa.me/50499999999?text=Quiero%20activar%20mi%20Plan%20PRO%20en%20Conecta%20HN"
+                            href="https://wa.me/50499999999?text=Quiero%20activar%20mi%20Plan%20PRO%20en%20Vito%20Business%20OS"
                             target="_blank"
                             class="biz-button"
                         >

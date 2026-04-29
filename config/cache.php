@@ -3,7 +3,7 @@
 use Illuminate\Support\Str;
 
 $isVercel = (bool) env('VERCEL');
-$serverlessCachePath = rtrim((string) env('SERVERLESS_CACHE_PATH', sys_get_temp_dir().'/conecta-cache'), '/\\');
+$serverlessCachePath = rtrim((string) env('SERVERLESS_CACHE_PATH', sys_get_temp_dir().'/vito-cache'), '/\\');
 
 return [
 

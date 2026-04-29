@@ -31,7 +31,7 @@ export default function Error({ status = 500 }) {
             <main className="min-h-screen bg-slate-950 text-white">
                 <section className="mx-auto flex min-h-screen max-w-3xl flex-col items-center justify-center px-6 text-center">
                     <p className="text-xs font-bold uppercase tracking-[0.25em] text-slate-400">
-                        Conecta HN
+                        Vito Business OS
                     </p>
 
                     <h1 className="mt-4 text-7xl font-extrabold tracking-tight md:text-8xl">

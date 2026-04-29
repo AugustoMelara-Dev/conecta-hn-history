@@ -239,7 +239,7 @@ return [
                 [
                     'eyebrow' => 'Upsell',
                     'title' => 'Campana de venta cruzada',
-                    'copy' => 'Conecta producto y servicio en un solo empuje comercial por cliente.',
+                    'copy' => 'Integra producto y servicio en un solo empuje comercial por cliente.',
                     'trigger' => 'Cliente activo con contexto',
                     'channel' => 'Campanas',
                     'state' => 'audience_ready',

@@ -226,7 +226,7 @@ return [
       'offer_copy' => 'Catalogo, disponibilidad y contacto directo pensados para mover ventas sin friccion.',
       'catalog_title' => 'Catalogo disponible',
       'catalog_copy' => 'Explora productos visibles, precios y razones para comprar aqui.',
-      'footer_copy' => 'Micrositio comercial conectado a Conecta HN para vender mejor, responder mas rapido y sostener una presencia profesional.',
+      'footer_copy' => 'Micrositio comercial conectado a Vito Business OS para vender mejor, responder mas rapido y sostener una presencia profesional.',
       'trust_points' =>
       [
         0 => 'Respuesta directa',
@@ -274,7 +274,7 @@ return [
       'catalog_copy' => 'Explora entradas, platos fuertes, bebidas y promociones del dia.',
       'primary_cta_label' => 'Pedir ahora',
       'secondary_cta_label' => 'Hablar por WhatsApp',
-      'footer_copy' => 'Micrositio gastronomico conectado a Conecta HN para mostrar menu, captar pedidos y crecer con mejor presencia digital.',
+      'footer_copy' => 'Micrositio gastronomico conectado a Vito Business OS para mostrar menu, captar pedidos y crecer con mejor presencia digital.',
       'trust_points' =>
       [
         0 => 'Menu claro',
@@ -322,7 +322,7 @@ return [
       'catalog_copy' => 'Explora smartphones, accesorios, repuestos o paquetes activos en esta tienda.',
       'primary_cta_label' => 'Explorar equipos',
       'secondary_cta_label' => 'Cotizar por WhatsApp',
-      'footer_copy' => 'Micrositio retail conectado a Conecta HN para vender celulares, accesorios y soporte con una experiencia mas clara y confiable.',
+      'footer_copy' => 'Micrositio retail conectado a Vito Business OS para vender celulares, accesorios y soporte con una experiencia mas clara y confiable.',
       'trust_points' =>
       [
         0 => 'Equipos destacados',
@@ -370,7 +370,7 @@ return [
       'catalog_copy' => 'Aqui puedes mostrar consultas, paquetes, controles y complementos visibles.',
       'primary_cta_label' => 'Reservar evaluacion',
       'secondary_cta_label' => 'Hablar con recepcion',
-      'footer_copy' => 'Micrositio profesional conectado a Conecta HN para mostrar atencion clinica, captar consultas y ordenar mejor la agenda.',
+      'footer_copy' => 'Micrositio profesional conectado a Vito Business OS para mostrar atencion clinica, captar consultas y ordenar mejor la agenda.',
       'trust_points' =>
       [
         0 => 'Agenda visible',
@@ -418,7 +418,7 @@ return [
       'catalog_copy' => 'Si vendes tratamientos, grooming kits o combos, aqui pueden convivir con tu agenda.',
       'primary_cta_label' => 'Reservar cita',
       'secondary_cta_label' => 'Escribir por WhatsApp',
-      'footer_copy' => 'Micrositio de belleza conectado a Conecta HN para mostrar servicios, llenar agenda y destacar promociones sin perder estilo.',
+      'footer_copy' => 'Micrositio de belleza conectado a Vito Business OS para mostrar servicios, llenar agenda y destacar promociones sin perder estilo.',
       'trust_points' =>
       [
         0 => 'Agenda rapida',
@@ -466,7 +466,7 @@ return [
       'catalog_copy' => 'Si tambien vendes paquetes, asesorias o servicios recurrentes, apareceran aqui.',
       'primary_cta_label' => 'Agendar consulta',
       'secondary_cta_label' => 'Hablar con el despacho',
-      'footer_copy' => 'Micrositio profesional conectado a Conecta HN para presentar servicios legales, captar consultas y ordenar mejor el primer contacto.',
+      'footer_copy' => 'Micrositio profesional conectado a Vito Business OS para presentar servicios legales, captar consultas y ordenar mejor el primer contacto.',
       'trust_points' =>
       [
         0 => 'Areas de practica',
@@ -514,7 +514,7 @@ return [
       'catalog_copy' => 'Si vendes recursos, plantillas o productos digitales, aqui tambien pueden convivir.',
       'primary_cta_label' => 'Agendar llamada',
       'secondary_cta_label' => 'Solicitar informacion',
-      'footer_copy' => 'Micrositio consultivo conectado a Conecta HN para presentar servicios, captar leads y estructurar mejor el funnel comercial.',
+      'footer_copy' => 'Micrositio consultivo conectado a Vito Business OS para presentar servicios, captar leads y estructurar mejor el funnel comercial.',
       'trust_points' =>
       [
         0 => 'Servicios claros',
@@ -562,7 +562,7 @@ return [
       'catalog_copy' => 'Explora servicios tecnicos, repuestos visibles y soluciones activas para este negocio.',
       'primary_cta_label' => 'Consultar diagnostico',
       'secondary_cta_label' => 'Ver catalogo tecnico',
-      'footer_copy' => 'Micrositio hibrido conectado a Conecta HN para mostrar servicios tecnicos, repuestos y canales de consulta sin fragmentar la experiencia.',
+      'footer_copy' => 'Micrositio hibrido conectado a Vito Business OS para mostrar servicios tecnicos, repuestos y canales de consulta sin fragmentar la experiencia.',
       'trust_points' =>
       [
         0 => 'Diagnostico claro',
@@ -662,7 +662,7 @@ return [
       'catalog_copy' => 'Explora platos estrella, promos del dia, add-ons y bebidas con una narrativa pensada para mover ticket.',
       'primary_cta_label' => 'Pedir combo',
       'secondary_cta_label' => 'Reservar mesa',
-      'footer_copy' => 'Micrositio gastronomico conectado a Conecta HN para empujar ticket, pedidos y recompra en restaurantes casuales.',
+      'footer_copy' => 'Micrositio gastronomico conectado a Vito Business OS para empujar ticket, pedidos y recompra en restaurantes casuales.',
       'trust_points' =>
       [
         0 => 'Combos visibles',
@@ -734,7 +734,7 @@ return [
       'catalog_copy' => 'Explora bebidas, panaderia, brunch y productos de temporada con una experiencia visual mas cuidada.',
       'primary_cta_label' => 'Ver carta',
       'secondary_cta_label' => 'Pedir para llevar',
-      'footer_copy' => 'Micrositio conectado a Conecta HN para cafeterias que quieren verse premium, captar pedidos y sostener comunidad.',
+      'footer_copy' => 'Micrositio conectado a Vito Business OS para cafeterias que quieren verse premium, captar pedidos y sostener comunidad.',
       'trust_points' =>
       [
         0 => 'Carta clara',
@@ -806,7 +806,7 @@ return [
       'catalog_copy' => 'Explora equipos de gama alta, accesorios premium, kits de proteccion y propuestas de upgrade.',
       'primary_cta_label' => 'Explorar flagships',
       'secondary_cta_label' => 'Cotizar por WhatsApp',
-      'footer_copy' => 'Micrositio retail conectado a Conecta HN para tiendas de celulares premium que quieren vender con mas confianza y margen.',
+      'footer_copy' => 'Micrositio retail conectado a Vito Business OS para tiendas de celulares premium que quieren vender con mas confianza y margen.',
       'trust_points' =>
       [
         0 => 'Equipos premium',
@@ -878,7 +878,7 @@ return [
       'catalog_copy' => 'Explora herramientas, pinturas, accesorios y materiales con una experiencia mas facil de cotizar.',
       'primary_cta_label' => 'Cotizar materiales',
       'secondary_cta_label' => 'Ver catalogo',
-      'footer_copy' => 'Micrositio comercial conectado a Conecta HN para ferreterias que quieren vender mas por WhatsApp y moverse mejor por proyecto.',
+      'footer_copy' => 'Micrositio comercial conectado a Vito Business OS para ferreterias que quieren vender mas por WhatsApp y moverse mejor por proyecto.',
       'trust_points' =>
       [
         0 => 'Cotizacion rapida',
@@ -950,7 +950,7 @@ return [
       'catalog_copy' => 'Explora limpiezas, ortodoncia, valoraciones y procedimientos con una experiencia mas clara para el paciente.',
       'primary_cta_label' => 'Agendar valoracion',
       'secondary_cta_label' => 'Hablar con recepcion',
-      'footer_copy' => 'Micrositio clinico conectado a Conecta HN para clinicas dentales que quieren orientar mejor, agendar mejor y verse mas confiables.',
+      'footer_copy' => 'Micrositio clinico conectado a Vito Business OS para clinicas dentales que quieren orientar mejor, agendar mejor y verse mas confiables.',
       'trust_points' =>
       [
         0 => 'Valoracion inicial',
@@ -1022,7 +1022,7 @@ return [
       'catalog_copy' => 'Explora servicios mercantiles, contractuales y de compliance con una narrativa mas orientada a empresa.',
       'primary_cta_label' => 'Agendar reunion',
       'secondary_cta_label' => 'Hablar con el equipo legal',
-      'footer_copy' => 'Micrositio profesional conectado a Conecta HN para bufetes corporativos que necesitan seriedad, claridad y un mejor primer filtro.',
+      'footer_copy' => 'Micrositio profesional conectado a Vito Business OS para bufetes corporativos que necesitan seriedad, claridad y un mejor primer filtro.',
       'trust_points' =>
       [
         0 => 'Enfoque empresa',
@@ -1094,7 +1094,7 @@ return [
       'catalog_copy' => 'Explora diagnosticos, tableros, flujo de caja y sesiones de acompanamiento con una narrativa mas vendible.',
       'primary_cta_label' => 'Agendar diagnostico',
       'secondary_cta_label' => 'Solicitar informacion',
-      'footer_copy' => 'Micrositio consultivo conectado a Conecta HN para firmas financieras que necesitan vender claridad, control y seguimiento.',
+      'footer_copy' => 'Micrositio consultivo conectado a Vito Business OS para firmas financieras que necesitan vender claridad, control y seguimiento.',
       'trust_points' =>
       [
         0 => 'Flujo de caja',
@@ -1166,7 +1166,7 @@ return [
       'catalog_copy' => 'Explora cortes premium, rituales de barba, cuidado personal y experiencias pensadas para recompra.',
       'primary_cta_label' => 'Reservar grooming',
       'secondary_cta_label' => 'Hablar con el lounge',
-      'footer_copy' => 'Micrositio de belleza conectado a Conecta HN para barberias premium que quieren verse tan bien como atienden.',
+      'footer_copy' => 'Micrositio de belleza conectado a Vito Business OS para barberias premium que quieren verse tan bien como atienden.',
       'trust_points' =>
       [
         0 => 'Slots premium',
@@ -1238,7 +1238,7 @@ return [
       'catalog_copy' => 'Explora masajes, faciales y experiencias de bienestar con una narrativa mas sensorial y organizada.',
       'primary_cta_label' => 'Reservar ritual',
       'secondary_cta_label' => 'Consultar por WhatsApp',
-      'footer_copy' => 'Micrositio de bienestar conectado a Conecta HN para spas que quieren elevar experiencia, agenda y recompra.',
+      'footer_copy' => 'Micrositio de bienestar conectado a Vito Business OS para spas que quieren elevar experiencia, agenda y recompra.',
       'trust_points' =>
       [
         0 => 'Rituales visibles',
@@ -1310,7 +1310,7 @@ return [
       'catalog_copy' => 'Explora baterias, frenos, suspension, filtros y servicios tecnicos con una experiencia mas clara para cotizar.',
       'primary_cta_label' => 'Consultar repuesto',
       'secondary_cta_label' => 'Ver catalogo tecnico',
-      'footer_copy' => 'Micrositio hibrido conectado a Conecta HN para negocios de repuestos que quieren vender piezas y soporte en una sola experiencia.',
+      'footer_copy' => 'Micrositio hibrido conectado a Vito Business OS para negocios de repuestos que quieren vender piezas y soporte en una sola experiencia.',
       'trust_points' =>
       [
         0 => 'Repuestos visibles',
@@ -1400,7 +1400,7 @@ return [
         ],
       ],
       'growth_title' => 'Palancas para retail local',
-      'growth_copy' => 'Conecta HN ayuda a que una tienda se vea profesional y convierta mejor desde movil y escritorio.',
+      'growth_copy' => 'Vito Business OS ayuda a que una tienda se vea profesional y convierta mejor desde movil y escritorio.',
       'growth_cards' =>
       [
         0 =>
@@ -1509,7 +1509,7 @@ return [
         2 =>
         [
           'eyebrow' => 'Paso 3',
-          'title' => 'Conecta venta y soporte',
+          'title' => 'Integra venta y soporte',
           'copy' => 'La misma vitrina sirve para vender, cotizar y abrir una conversacion postventa.',
         ],
       ],
@@ -1765,7 +1765,7 @@ return [
         [
           'eyebrow' => 'Funnel',
           'title' => 'Seguimiento comercial mas ordenado',
-          'copy' => 'Conecta landing, llamada y WhatsApp dentro de una misma experiencia de marca.',
+          'copy' => 'Integra landing, llamada y WhatsApp dentro de una misma experiencia de marca.',
           'cta_label' => 'Solicitar informacion',
           'cta_target' => 'whatsapp',
         ],
@@ -1794,7 +1794,7 @@ return [
         2 =>
         [
           'eyebrow' => 'Paso 3',
-          'title' => 'Conecta repuestos y extras',
+          'title' => 'Coordina repuestos y extras',
           'copy' => 'La misma experiencia ayuda a vender repuestos, accesorios y soluciones complementarias.',
         ],
       ],
@@ -1915,7 +1915,7 @@ return [
         ],
       ],
       'growth_title' => 'Palancas para negocio mixto',
-      'growth_copy' => 'Conecta catalogo, agenda y contacto dentro de un solo frente comercial.',
+      'growth_copy' => 'Integra catalogo, agenda y contacto dentro de un solo frente comercial.',
       'growth_cards' =>
       [
         0 =>
@@ -2029,7 +2029,7 @@ return [
                 'health_checks' => ['has_profile', 'has_products', 'has_payment_method'],
                 'playbook_steps' => [
                     ['title' => 'Publica tu catalogo ganador', 'copy' => 'Empieza por los productos que mas convierten o mas margen dejan.'],
-                    ['title' => 'Conecta cobro y contacto', 'copy' => 'Activa el canal de cierre antes de mandar trafico al negocio.'],
+                    ['title' => 'Une cobro y contacto', 'copy' => 'Activa el canal de cierre antes de mandar trafico al negocio.'],
                     ['title' => 'Valida la vitrina publica', 'copy' => 'Revisa que el micrositio realmente explique que vendes y como comprar.'],
                 ],
             ],
@@ -2203,7 +2203,7 @@ return [
                     ],
                     'booked_service' => [
                         'journey' => [
-                            ['key' => 'service_booked_continuity', 'title' => 'Confirmar continuidad', 'copy' => 'Conecta la cita actual con el siguiente control o servicio.', 'template_key' => 'service_rebook', 'lane' => 'continuity', 'wait_hours' => 0],
+                            ['key' => 'service_booked_continuity', 'title' => 'Confirmar continuidad', 'copy' => 'Une la cita actual con el siguiente control o servicio.', 'template_key' => 'service_rebook', 'lane' => 'continuity', 'wait_hours' => 0],
                             ['key' => 'service_booked_reduce_no_show', 'title' => 'Reducir no-show', 'copy' => 'Reagenda rapido y deja la siguiente accion visible.', 'template_key' => 'follow_up_reminder', 'lane' => 'reminder', 'wait_hours' => 16],
                         ],
                         'templates' => ['service_rebook', 'follow_up_reminder', 'vip_priority'],
@@ -2311,7 +2311,7 @@ return [
                     ],
                     'booked_service' => [
                         'journey' => [
-                            ['key' => 'hybrid_booked_follow_up', 'title' => 'Cerrar continuidad del servicio', 'copy' => 'Conecta agenda, soporte y proxima accion.', 'template_key' => 'service_rebook', 'lane' => 'continuity', 'wait_hours' => 0],
+                            ['key' => 'hybrid_booked_follow_up', 'title' => 'Cerrar continuidad del servicio', 'copy' => 'Ordena agenda, soporte y proxima accion.', 'template_key' => 'service_rebook', 'lane' => 'continuity', 'wait_hours' => 0],
                             ['key' => 'hybrid_booked_expand', 'title' => 'Abrir venta complementaria', 'copy' => 'Usa el servicio como punto de entrada para productos o paquetes.', 'template_key' => 'close_sale', 'lane' => 'expansion', 'wait_hours' => 24],
                         ],
                         'templates' => ['service_rebook', 'close_sale', 'vip_priority'],
@@ -2333,7 +2333,7 @@ return [
                 'health_checks' => ['has_profile', 'has_products_or_services'],
                 'playbook_steps' => [
                     ['title' => 'Activa una oferta principal', 'copy' => 'Define primero que debe vender o reservar el negocio para no fragmentar la experiencia.'],
-                    ['title' => 'Conecta productos y servicios', 'copy' => 'Haz que ambos frentes se sientan parte de la misma operacion.'],
+                    ['title' => 'Integra productos y servicios', 'copy' => 'Haz que ambos frentes se sientan parte de la misma operacion.'],
                     ['title' => 'Valida el flujo publico completo', 'copy' => 'Comprueba que el cliente entienda si debe comprar, reservar o ambas.'],
                 ],
             ],

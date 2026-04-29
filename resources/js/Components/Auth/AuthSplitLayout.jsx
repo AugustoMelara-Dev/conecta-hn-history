@@ -25,7 +25,7 @@ export function AuthBrand({ href = route("home"), className }) {
                     className="text-[11px] font-bold uppercase tracking-[0.28em] text-slate-500"
                     style={{ fontFamily: PUBLIC_LABEL_FONT }}
                 >
-                    Conecta HN
+                    Vito Business OS
                 </p>
             </div>
         </Link>

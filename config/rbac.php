@@ -358,7 +358,7 @@ return [
 
         'device_inventory_lead' => [
             'label' => 'Lider de inventario premium',
-            'description' => 'Conecta disponibilidad, bundles y productos de alta rotacion.',
+            'description' => 'Coordina disponibilidad, bundles y productos de alta rotacion.',
             'role' => Role::MANAGER->value,
             'permissions' => [
                 Permission::CATALOG_VIEW->value,

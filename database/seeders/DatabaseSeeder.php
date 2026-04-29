@@ -75,7 +75,7 @@ class DatabaseSeeder extends Seeder
         // 3. Usuarios Clave
         // Super Admin
         User::firstOrCreate(
-            ['email' => 'admin@conectahn.com'],
+            ['email' => 'admin@vitobusinessos.com'],
             [
                 'name' => 'Augusto Admin',
                 'password' => Hash::make('password'),

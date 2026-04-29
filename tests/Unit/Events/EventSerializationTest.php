@@ -111,7 +111,7 @@ class EventSerializationTest extends TestCase
 
         $original = new SensitiveDataAccessed(
             actorId: 99,
-            actorEmail: 'admin@conectahn.com',
+            actorEmail: 'admin@vitobusinessos.com',
             tenantId: TenantId::fromInt(1),
             resource: 'customer_export',
             action: 'download',

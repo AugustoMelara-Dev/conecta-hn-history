@@ -11,11 +11,14 @@ use App\Domain\Auth\Exceptions\OtpExpiredException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\GenerateOtpRequest;
 use App\Http\Requests\Auth\VerifyOtpRequest;
+use App\Models\OneTimePassword;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Support\Auth\AuthRedirector;
 use Illuminate\Cache\RateLimiter;
 use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -44,10 +47,50 @@ final class OtpController extends Controller
         );
 
         return response()->json([
-            'message' => 'Codigo enviado exitosamente.',
+            'message' => $this->magicLinkEnabledForTenant($tenantId)
+                ? 'Te enviamos un enlace de acceso y un código de respaldo.'
+                : 'Código enviado exitosamente.',
             'expires_at' => $result['expires_at'],
             'tenant_id' => $tenantId,
+            'delivery_mode' => $this->magicLinkEnabledForTenant($tenantId)
+                ? 'magic_link_and_code'
+                : 'code',
         ]);
+    }
+
+    public function consume(Request $request, string $otp): RedirectResponse
+    {
+        if (! (bool) config('auth.otp.magic_link_enabled', false)) {
+            abort(404);
+        }
+
+        $record = OneTimePassword::query()
+            ->whereKey($otp)
+            ->where('type', 'email')
+            ->where('expires_at', '>', now())
+            ->first();
+
+        if (! $record instanceof OneTimePassword || ! $this->magicLinkEnabledForTenant((string) $record->tenant_id)) {
+            return redirect()->route('login')->with('status', 'El enlace de acceso ya expiró o no es válido. Solicita uno nuevo.');
+        }
+
+        $user = $this->resolveOtpUser($record);
+        $identifier = $record->identifier;
+        $record->delete();
+
+        if (! $user instanceof User) {
+            return redirect()->route('tenant.register', [
+                'identifier' => $identifier,
+            ])->with('status', 'Validamos tu correo. Completa el registro para crear tu cuenta.');
+        }
+
+        $this->guard->login($user);
+
+        if ($request->hasSession()) {
+            $request->session()->regenerate();
+        }
+
+        return redirect()->to(AuthRedirector::destinationFor($user));
     }
 
     public function verify(VerifyOtpRequest $request): JsonResponse
@@ -130,8 +173,38 @@ final class OtpController extends Controller
         }
 
         throw ValidationException::withMessages([
-            'identifier' => ['No hay un tenant disponible para enviar codigos OTP.'],
+            'identifier' => ['No hay un tenant disponible para enviar códigos OTP.'],
         ]);
+    }
+
+    private function magicLinkEnabledForTenant(string $tenantId): bool
+    {
+        if (! (bool) config('auth.otp.magic_link_enabled', false)) {
+            return false;
+        }
+
+        $allowlist = config('auth.otp.magic_link_tenant_allowlist', []);
+        if (! is_array($allowlist) || $allowlist === []) {
+            return true;
+        }
+
+        return in_array($tenantId, array_map('strval', $allowlist), true);
+    }
+
+    private function resolveOtpUser(OneTimePassword $otp): ?User
+    {
+        if (is_string($otp->user_id) && $otp->user_id !== '') {
+            $user = User::query()->find($otp->user_id);
+
+            if ($user instanceof User) {
+                return $user;
+            }
+        }
+
+        return User::query()
+            ->where('email', $otp->identifier)
+            ->where('tenant_id', $otp->tenant_id)
+            ->first();
     }
 
     /**

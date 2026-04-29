@@ -49,7 +49,7 @@ final class ObservabilitySmokeCommand extends Command
             } else {
                 try {
                     if (function_exists('\\Sentry\\captureMessage')) {
-                        \Sentry\captureMessage('Conecta HN observability smoke '.$traceId);
+                        \Sentry\captureMessage('Vito Business OS observability smoke '.$traceId);
                     }
 
                     $checks['sentry'] = [

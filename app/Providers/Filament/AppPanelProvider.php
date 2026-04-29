@@ -191,7 +191,7 @@ class AppPanelProvider extends PanelProvider
 
         if ($tenant instanceof Tenant) {
             $url = route('tenant.microsite.show', ['tenant' => $tenant->slug]);
-            $text = "Mira mi negocio {$tenant->name} en Conecta HN.";
+            $text = "Mira mi negocio {$tenant->name} en Vito Business OS.";
 
             return 'https://wa.me/?text='.urlencode("{$text}\n\n{$url}");
         }

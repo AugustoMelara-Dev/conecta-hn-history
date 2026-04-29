@@ -170,6 +170,15 @@ return [
         // before a tenant context exists. If blank, the controller falls back
         // to an existing tenant and returns that tenant_id to the client.
         'platform_tenant_id' => env('AUTH_OTP_PLATFORM_TENANT_ID'),
+
+        // Magic-link OTP login authenticates the device that opens the signed
+        // email link, so it stays disabled until a real smoke test enables it.
+        'magic_link_enabled' => env('AUTH_MAGIC_LINK_ENABLED', false),
+        'magic_link_expiry_minutes' => env('AUTH_MAGIC_LINK_EXPIRY_MINUTES', env('AUTH_OTP_EXPIRY_MINUTES', 10)),
+        'magic_link_tenant_allowlist' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) env('AUTH_MAGIC_LINK_TENANT_ALLOWLIST', ''))
+        ))),
     ],
 
 ];

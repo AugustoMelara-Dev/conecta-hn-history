@@ -21,12 +21,13 @@ final readonly class OtpNotifierRouter implements OtpNotifierInterface
         string $plainTextCode,
         string $identifier,
         string $tenantId,
-        int $expiryMinutes
+        int $expiryMinutes,
+        ?string $magicUrl = null
     ): void {
         $notifier = str_contains($identifier, '@')
             ? $this->emailNotifier
             : $this->smsNotifier;
 
-        $notifier->send($recipient, $plainTextCode, $identifier, $tenantId, $expiryMinutes);
+        $notifier->send($recipient, $plainTextCode, $identifier, $tenantId, $expiryMinutes, $magicUrl);
     }
 }

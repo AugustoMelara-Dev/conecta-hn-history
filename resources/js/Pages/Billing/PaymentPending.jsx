@@ -14,7 +14,7 @@ export default function PaymentPending({ payment, bankInstructions, whatsappUrl,
 
     return (
         <GuestLayout>
-            <Head title="Completar Pago | Conecta HN" />
+            <Head title="Completar Pago | Vito Business OS" />
 
             <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
                 <div className="max-w-lg mx-auto">
@@ -78,7 +78,7 @@ export default function PaymentPending({ payment, bankInstructions, whatsappUrl,
                             </a>
                         ) : (
                             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-                                El numero de soporte por WhatsApp no esta configurado. Envia tu comprobante a soporte@conectahn.com con la referencia {payment.reference_number}.
+                                El numero de soporte por WhatsApp no esta configurado. Envia tu comprobante a soporte@vitobusinessos.com con la referencia {payment.reference_number}.
                             </div>
                         )}
 

@@ -29,7 +29,7 @@ final class AbandonedCartOfferMail extends Mailable
             subject: 'Olvidaste algo en tu carrito...',
             from: new Address(
                 config('mail.from.address'),
-                $this->tenantName.' via Conecta HN'
+                $this->tenantName.' via Vito Business OS'
             ),
         );
     }

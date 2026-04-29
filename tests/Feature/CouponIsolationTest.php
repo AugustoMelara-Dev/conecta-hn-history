@@ -14,7 +14,7 @@ use Tests\TestCase;
  * These tests simulate malicious attempts to exploit cross-tenant vulnerabilities.
  *
  * ARCHITECTURE CONTEXT:
- * Conecta HN uses a Shared Database model where multiple tenants coexist.
+ * Vito Business OS uses a Shared Database model where multiple tenants coexist.
  * A failure in tenant isolation could lead to:
  * - Financial fraud (using another tenant's discounts)
  * - Data leakage (seeing competitor's coupon strategies)

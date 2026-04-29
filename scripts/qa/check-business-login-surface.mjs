@@ -1,7 +1,7 @@
 import { chromium } from 'playwright';
 
 const baseUrl = (process.env.PLAYWRIGHT_BASE_URL || 'https://vitobusinessos.vercel.app').replace(/\/$/, '');
-const email = process.env.BUSINESS_OWNER_EMAIL || 'owner-demo-ai-guide-hn@conectahn.app';
+const email = process.env.BUSINESS_OWNER_EMAIL || 'owner-demo-ai-guide-hn@vitobusinessos.app';
 const password = process.env.BUSINESS_OWNER_PASSWORD || 'ChangeMe123!';
 
 const browser = await chromium.launch({ headless: true });

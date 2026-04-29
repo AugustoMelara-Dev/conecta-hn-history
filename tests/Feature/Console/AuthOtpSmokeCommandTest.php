@@ -21,7 +21,7 @@ final class AuthOtpSmokeCommandTest extends TestCase
 
         config([
             'mail.default' => 'resend',
-            'mail.from.address' => 'no-reply@mail.conectahn.test',
+            'mail.from.address' => 'no-reply@mail.vitobusinessos.test',
             'services.resend.key' => 're_rotated_smoke_test_key',
             'queue.default' => 'sync',
         ]);

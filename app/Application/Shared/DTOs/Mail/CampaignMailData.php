@@ -23,7 +23,7 @@ final readonly class CampaignMailData
      */
     public static function fromCampaign(object $campaign): self
     {
-        $tenantName = 'Conecta HN';
+        $tenantName = 'Vito Business OS';
 
         if (
             isset($campaign->tenant)

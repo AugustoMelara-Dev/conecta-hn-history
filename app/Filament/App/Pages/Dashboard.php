@@ -389,7 +389,7 @@ class Dashboard extends \Filament\Pages\Page
     private function configureRetailExperience(): void
     {
         $this->experienceTitle = 'Tu centro de operación para catálogo, pedidos y atención';
-        $this->experienceCopy = 'Conecta tu inventario, define cómo vendes y deja lista una vitrina clara para tiendas, ferreterías, tecnología, moda y negocios similares.';
+        $this->experienceCopy = 'Ordena tu inventario, define cómo vendes y deja lista una vitrina clara para tiendas, ferreterías, tecnología, moda y negocios similares.';
 
         $this->focusMetrics = [
             $this->metric('Productos', (string) $this->productsCount, "{$this->activeProductsCount} activos en tu catálogo."),
@@ -672,7 +672,7 @@ class Dashboard extends \Filament\Pages\Page
 
         $this->healthChecks = $configuredChecks !== [] ? $configuredChecks : [
             $this->check('Activa el frente principal', $this->productsCount > 0 || $this->servicesCount > 0, 'Tu negocio ya tiene una oferta inicial visible.', 'Activa al menos un producto o servicio para no abrir vacío.', 30),
-            $this->check('Conecta un canal directo', $this->hasWhatsApp, 'Tu canal de contacto ya está listo para convertir.', 'Agrega WhatsApp para mover conversaciones con menos fricción.', 20),
+            $this->check('Activa un canal directo', $this->hasWhatsApp, 'Tu canal de contacto ya está listo para convertir.', 'Agrega WhatsApp para mover conversaciones con menos fricción.', 20),
             $this->check('Completa perfil y confianza', $this->hasProfileEssentials && $this->hasBranding, 'Tu negocio ya transmite una presencia más completa.', 'Completa descripción, dirección y branding para verte más sólido.', 25),
             $this->check('Aclara cómo operas', $this->hasSchedule || $this->locationsCount > 0 || $this->pickupEnabled || $this->deliveryEnabled, 'Tu operación ya se entiende mejor desde el panel y el sitio.', 'Define horarios, cobertura o modalidad de atención.', 25),
         ];

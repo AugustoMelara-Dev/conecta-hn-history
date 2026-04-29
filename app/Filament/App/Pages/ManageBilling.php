@@ -209,7 +209,7 @@ class ManageBilling extends Page implements HasForms, HasTable
                         </div>
                         <div class="biz-split-item">
                             <span class="biz-muted">Beneficiario</span>
-                            <strong>Conecta HN S.A.</strong>
+                            <strong>Vito Business OS S.A.</strong>
                         </div>
                         <div class="biz-split-item">
                             <span class="biz-muted">Cuenta</span>
@@ -519,7 +519,7 @@ class ManageBilling extends Page implements HasForms, HasTable
             $digits = '504'.$digits;
         }
 
-        $message = rawurlencode('Hola, necesito ayuda con la suscripcion de mi negocio en Conecta HN.');
+        $message = rawurlencode('Hola, necesito ayuda con la suscripcion de mi negocio en Vito Business OS.');
 
         return "https://wa.me/{$digits}?text={$message}";
     }

@@ -43,7 +43,7 @@ function AppBrand({ isPro = false }) {
             className="inline-flex items-center gap-2 text-lg font-semibold text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2"
         >
             <span>
-                Conecta<span className="text-blue-600">HN</span>
+                Vito <span className="text-blue-600">Business OS</span>
             </span>
             {isPro ? (
                 <span className="rounded-full bg-slate-950 px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.14em] text-white">

@@ -18,7 +18,7 @@ class MinimalSeeder extends Seeder
         // Using Identity Domain Factory
         \App\Domain\Identity\Models\User::factory()->create([
             'name' => 'Super Admin',
-            'email' => 'admin@conectahn.com',
+            'email' => 'admin@vitobusinessos.com',
             'role' => 'super_admin',
             'password' => 'password', // Model has 'hashed' cast, will autopassword
         ]);

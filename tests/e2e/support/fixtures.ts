@@ -6,11 +6,11 @@ function asRoute(slug: string): string {
 
 export const officialFixtures = {
     owner: {
-        email: env.SMOKE_OWNER_EMAIL || env.BUSINESS_OWNER_EMAIL || 'owner-demo-ai-guide-hn@conectahn.app',
+        email: env.SMOKE_OWNER_EMAIL || env.BUSINESS_OWNER_EMAIL || 'owner-demo-ai-guide-hn@vitobusinessos.app',
         password: env.SMOKE_OWNER_PASSWORD || env.BUSINESS_OWNER_PASSWORD || 'ChangeMe123!',
     },
     customer: {
-        email: env.SMOKE_CUSTOMER_EMAIL || env.CUSTOMER_EMAIL || 'customer-e2e@conectahn.app',
+        email: env.SMOKE_CUSTOMER_EMAIL || env.CUSTOMER_EMAIL || 'customer-e2e@vitobusinessos.app',
         password: env.SMOKE_CUSTOMER_PASSWORD || env.CUSTOMER_PASSWORD || 'ChangeMe123!',
     },
     product: {

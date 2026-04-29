@@ -58,7 +58,7 @@ function DirectoryCard({ tenant }) {
                     <p className="mt-3 text-sm leading-7 text-slate-600">
                         {resolveTenantDescription(
                             tenant,
-                            'Negocio local con presencia activa dentro de Conecta HN y una salida clara hacia contacto, pedido o reserva.',
+                            'Negocio local con presencia activa dentro de Vito Business OS y una salida clara hacia contacto, pedido o reserva.',
                         )}
                     </p>
                 </div>
@@ -581,7 +581,7 @@ export default function DirectoryIndex({ tenants, categories = [], cities = [], 
             <Head title={`Negocios ${activeCity ? `en ${activeCity.name}` : 'en Honduras'}`}>
                 <meta
                     name="description"
-                    content="Busca negocios en Honduras por ciudad, categoria o termino de busqueda desde la capa publica unificada de Conecta HN."
+                    content="Busca negocios en Honduras por ciudad, categoria o termino de busqueda desde la capa publica unificada de Vito Business OS."
                 />
             </Head>
 

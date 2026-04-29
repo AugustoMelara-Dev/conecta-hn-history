@@ -9,7 +9,7 @@ return new class extends Migration
     /**
      * Run the migrations.
      *
-     * HORARIOS DE APERTURA - Conecta HN
+     * HORARIOS DE APERTURA - Vito Business OS
      * Permite intervalos múltiples por día (ej. 8:00-12:00 y 14:00-18:00)
      * Reemplaza el campo JSON simple para permitir consultas SQL de "Abierto Ahora"
      */

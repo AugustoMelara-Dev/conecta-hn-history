@@ -9,6 +9,7 @@ import {
     FieldSeparator,
 } from "@/Components/ui/field"
 import { Input } from "@/Components/ui/input"
+import { Spinner } from "@/Components/ui/spinner"
 import { cn } from "@/lib/utils"
 
 export function ResetPasswordForm({ token, email, className, ...props }) {
@@ -34,14 +35,14 @@ export function ResetPasswordForm({ token, email, className, ...props }) {
         <form onSubmit={submit} className={cn("flex flex-col gap-6", className)} {...props}>
             <FieldGroup>
                 <div className="flex flex-col items-center gap-1 text-center">
-                    <h1 className="text-2xl font-bold text-slate-950">Reset your password</h1>
+                    <h1 className="text-2xl font-bold text-slate-950">Cambia tu contraseña</h1>
                     <p className="text-sm text-balance text-slate-500">
-                        Create a new password to recover access to your account.
+                        Crea una contraseña nueva para recuperar el acceso a Vito Business OS.
                     </p>
                 </div>
 
                 <Field>
-                    <FieldLabel htmlFor="email">Email</FieldLabel>
+                    <FieldLabel htmlFor="email">Correo</FieldLabel>
                     <Input
                         id="email"
                         type="email"
@@ -60,7 +61,7 @@ export function ResetPasswordForm({ token, email, className, ...props }) {
                 </Field>
 
                 <Field>
-                    <FieldLabel htmlFor="password">Password</FieldLabel>
+                    <FieldLabel htmlFor="password">Contraseña</FieldLabel>
                     <Input
                         id="password"
                         type="password"
@@ -76,12 +77,12 @@ export function ResetPasswordForm({ token, email, className, ...props }) {
                     {errors.password ? (
                         <FieldDescription className="text-rose-600">{errors.password}</FieldDescription>
                     ) : (
-                        <FieldDescription>Must be at least 8 characters long.</FieldDescription>
+                        <FieldDescription>Debe tener al menos 8 caracteres.</FieldDescription>
                     )}
                 </Field>
 
                 <Field>
-                    <FieldLabel htmlFor="password_confirmation">Confirm Password</FieldLabel>
+                    <FieldLabel htmlFor="password_confirmation">Confirmar contraseña</FieldLabel>
                     <Input
                         id="password_confirmation"
                         type="password"
@@ -107,11 +108,12 @@ export function ResetPasswordForm({ token, email, className, ...props }) {
                         disabled={processing}
                         className="w-full bg-slate-950 text-white hover:bg-slate-800"
                     >
-                        {processing ? "Updating..." : "Update password"}
+                        {processing ? <Spinner className="mr-2" /> : null}
+                        {processing ? "Actualizando..." : "Actualizar contraseña"}
                     </Button>
                 </Field>
 
-                <FieldSeparator>Back to access</FieldSeparator>
+                <FieldSeparator>Volver al acceso</FieldSeparator>
 
                 <Field>
                     <Button
@@ -120,7 +122,7 @@ export function ResetPasswordForm({ token, email, className, ...props }) {
                         className="w-full border-slate-200 hover:bg-slate-50"
                         asChild
                     >
-                        <Link href={route("login")}>Sign in</Link>
+                        <Link href={route("login")}>Iniciar sesión</Link>
                     </Button>
                 </Field>
             </FieldGroup>

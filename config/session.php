@@ -6,7 +6,7 @@ $appUrl = (string) env('APP_URL', 'http://localhost');
 $sessionSecureCookie = env('SESSION_SECURE_COOKIE');
 $sessionCookieUsesHttps = str_starts_with(strtolower($appUrl), 'https://');
 $isVercel = (bool) env('VERCEL');
-$serverlessSessionPath = rtrim((string) env('SERVERLESS_SESSION_PATH', sys_get_temp_dir().'/conecta-sessions'), '/\\');
+$serverlessSessionPath = rtrim((string) env('SERVERLESS_SESSION_PATH', sys_get_temp_dir().'/vito-sessions'), '/\\');
 
 if ($sessionSecureCookie !== null) {
     $sessionCookieUsesHttps = filter_var($sessionSecureCookie, FILTER_VALIDATE_BOOL);

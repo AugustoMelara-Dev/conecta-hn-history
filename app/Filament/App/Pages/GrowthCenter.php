@@ -565,7 +565,7 @@ class GrowthCenter extends Page
         if ($this->businessType === BusinessType::SERVICE->value) {
             $actions[] = $this->action('Ver agenda', 'Usa citas y asistencia como motor de continuidad.', $this->appointmentsUrl);
         } else {
-            $actions[] = $this->action('Ver pedidos', 'Conecta conversion con ticket y recompra.', $this->ordersUrl);
+            $actions[] = $this->action('Ver pedidos', 'Une conversion con ticket y recompra.', $this->ordersUrl);
         }
 
         if ($this->hasLoyaltyFeature) {
@@ -600,7 +600,7 @@ class GrowthCenter extends Page
         }
 
         if ($this->hasLoyaltyProgram && $this->redeemableCustomersCount > 0 && $this->rewardCampaignsCount === 0) {
-            $queue[] = $this->priority('Conecta rewards a campanas', 'Tienes clientes listos para canjear, pero ninguna campana esta empujando ese momento de conversion.', $this->campaignsUrl, 'info');
+            $queue[] = $this->priority('Activa rewards en campanas', 'Tienes clientes listos para canjear, pero ninguna campana esta empujando ese momento de conversion.', $this->campaignsUrl, 'info');
         }
 
         if ($this->overduePlaybooksCount > 0) {

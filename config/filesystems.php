@@ -66,7 +66,7 @@ return [
 
         /*
         |--------------------------------------------------------------------------
-        | Cloudflare R2 - Alternativa económica a S3 para Conecta HN
+        | Cloudflare R2 - Alternativa económica a S3 para Vito Business OS
         |--------------------------------------------------------------------------
         | R2 es compatible con S3 API pero sin costos de egress.
         | Ideal para galerías ilimitadas del Plan PRO.

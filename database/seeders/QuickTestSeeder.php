@@ -25,7 +25,7 @@ class QuickTestSeeder extends Seeder
         // 2. Create Test Users
         $admin = User::create([
             'name' => 'Admin',
-            'email' => 'admin@conectahn.com',
+            'email' => 'admin@vitobusinessos.com',
             'password' => bcrypt('password'),
             'role' => 'super_admin',
         ]);
@@ -101,7 +101,7 @@ class QuickTestSeeder extends Seeder
         $this->command->info('🎉 Quick test data ready!');
         $this->command->newLine();
         $this->command->info('Login credentials:');
-        $this->command->info('  Admin: admin@conectahn.com / password');
+        $this->command->info('  Admin: admin@vitobusinessos.com / password');
         $this->command->info('  Café El Indio: cafe@test.com / password');
         $this->command->info('  TechStore: tech@test.com / password');
     }

@@ -8,7 +8,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     {{-- SEO Meta --}}
-    <title>{{ $title ?? 'Conecta HN - Dashboard' }}</title>
+    <title>{{ $title ?? 'Vito Business OS - Dashboard' }}</title>
     
     {{-- Favicon --}}
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
@@ -35,7 +35,7 @@
     {{-- Sidebar Placeholders (To be implemented or included) --}}
     <div class="hidden md:flex md:w-64 md:flex-col bg-white border-r border-gray-200">
         <div class="flex items-center justify-center h-16 border-b border-gray-200">
-             <span class="text-xl font-bold text-gray-900">Conecta<span class="text-blue-600">HN</span></span>
+             <span class="text-xl font-bold text-gray-900">Vito <span class="text-blue-600">Business OS</span></span>
         </div>
         <nav class="flex-1 overflow-y-auto py-4 px-2 space-y-1">
              <a href="/app" class="group flex items-center px-2 py-2 text-sm font-medium rounded-md bg-gray-100 text-gray-900">
@@ -57,7 +57,7 @@
     <div class="flex-1 flex flex-col overflow-hidden">
         {{-- Top App Bar (Mobile) --}}
         <header class="bg-white shadow-sm md:hidden p-4 flex justify-between items-center">
-             <span class="text-xl font-bold text-gray-900">Conecta<span class="text-blue-600">HN</span></span>
+             <span class="text-xl font-bold text-gray-900">Vito <span class="text-blue-600">Business OS</span></span>
              <button class="text-gray-500">Menu</button>
         </header>
 

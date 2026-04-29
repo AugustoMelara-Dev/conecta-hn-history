@@ -6,9 +6,9 @@ import { ResetPasswordForm } from "@/Components/Auth/ResetPasswordForm"
 export default function ResetPassword({ token, email }) {
     return (
         <>
-            <Head title="Reset password" />
+            <Head title="Cambiar contraseña | Vito Business OS" />
 
-            <AuthShadcnShell imageAlt="Reset password panel">
+            <AuthShadcnShell imageAlt="Panel para cambiar contraseña">
                 <ResetPasswordForm token={token} email={email} />
             </AuthShadcnShell>
         </>

@@ -342,7 +342,7 @@ function BusinessGrid({ featuredTenants = [] }) {
                                 <p className="mt-4 text-sm leading-7 text-slate-600">
                                     {resolveTenantDescription(
                                         tenant,
-                                        'Perfil activo dentro de Conecta HN con salida a contacto, catalogo o reserva segun el tipo de negocio.',
+                                        'Perfil activo dentro de Vito Business OS con salida a contacto, catalogo o reserva segun el tipo de negocio.',
                                     )}
                                 </p>
 

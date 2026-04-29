@@ -87,7 +87,7 @@
     </div>
 
     <div class="footer">
-        <p>Conecta HN &bull; {{ $generated_at->format('d/m/Y') }}</p>
+        <p>Vito Business OS &bull; {{ $generated_at->format('d/m/Y') }}</p>
     </div>
 </body>
 </html>

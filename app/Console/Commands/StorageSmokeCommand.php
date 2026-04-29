@@ -21,7 +21,7 @@ final class StorageSmokeCommand extends Command
     {
         $diskName = (string) ($this->option('disk') ?: config('filesystems.default', 'local'));
         $path = 'smoke/storage-smoke-'.Str::uuid().'.txt';
-        $body = 'conecta-hn-storage-smoke:'.Str::uuid();
+        $body = 'vito-business-os-storage-smoke:'.Str::uuid();
         $deleted = false;
 
         try {

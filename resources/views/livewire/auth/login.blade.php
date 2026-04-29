@@ -14,7 +14,7 @@
         <div class="text-center mb-8">
             <a href="/" class="inline-block">
                 <h1 class="text-3xl font-bold text-gray-900">
-                    Conecta<span class="text-blue-600">HN</span>
+                    Vito <span class="text-blue-600">Business OS</span>
                 </h1>
             </a>
         </div>
