@@ -10,6 +10,7 @@ use App\Models\Tenant;
 use App\Settings\GeneralSettings;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use Illuminate\Support\Facades\DB;
 
 class FinancialStatsOverview extends BaseWidget
 {
@@ -42,36 +43,65 @@ class FinancialStatsOverview extends BaseWidget
             })
             ->count();
 
-        try {
-            $settings = app(GeneralSettings::class);
-            $monthlyPlanPrice = (float) ($settings->pro_plan_price ?? 0);
-        } catch (\Throwable) {
-            $monthlyPlanPrice = 0.0;
-        }
-
+        $monthlyPlanPrice = $this->monthlyPlanPrice();
         $mrr = $proTenants * $monthlyPlanPrice;
+        $approvedPayments = SubscriptionPayment::query()
+            ->withoutGlobalScopes()
+            ->where('status', SubscriptionPayment::STATUS_APPROVED);
 
-        $totalRevenue = SubscriptionPayment::where('status', 'approved')->sum('amount');
+        $todayRevenue = (clone $approvedPayments)
+            ->whereDate('created_at', today())
+            ->sum('amount');
+
+        $monthRevenue = (clone $approvedPayments)
+            ->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])
+            ->sum('amount');
+
+        $previousMonthRevenue = (clone $approvedPayments)
+            ->whereBetween('created_at', [now()->subMonthNoOverflow()->startOfMonth(), now()->subMonthNoOverflow()->endOfMonth()])
+            ->sum('amount');
 
         $totalTenants = Tenant::count();
         $conversionRate = $totalTenants > 0
             ? round(($proTenants / $totalTenants) * 100, 1)
             : 0;
 
-        $pendingPayments = SubscriptionPayment::where('status', 'pending')->count();
+        $pendingPayments = SubscriptionPayment::query()
+            ->withoutGlobalScopes()
+            ->where('status', SubscriptionPayment::STATUS_PENDING)
+            ->count();
+
+        $failedStripeIntents = DB::table('subscription_intents')
+            ->where('gateway_provider', 'stripe')
+            ->where('status', 'FAILED')
+            ->where('updated_at', '>=', now()->subDays(30))
+            ->count();
+
+        $pastDueTenants = Tenant::query()
+            ->where('subscription_status', 'past_due')
+            ->count();
+
+        $growth = $previousMonthRevenue > 0
+            ? round(((float) $monthRevenue - (float) $previousMonthRevenue) / (float) $previousMonthRevenue * 100, 1)
+            : ((float) $monthRevenue > 0 ? 100.0 : 0.0);
 
         return [
-            Stat::make('MRR (Ingreso Mensual Recurrente)', 'L. '.number_format($mrr, 2))
+            Stat::make('MRR', $this->money($mrr))
                 ->description($proTenants.' suscripciones activas')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
-                ->color('gray'),
+                ->color($proTenants > 0 ? 'success' : 'gray'),
 
-            Stat::make('Ingresos Brutos Totales', 'L. '.number_format((float) $totalRevenue, 2))
-                ->description('Flujo de caja historico')
+            Stat::make('Revenue hoy', $this->money((float) $todayRevenue))
+                ->description('Cobros aprobados desde medianoche')
                 ->descriptionIcon('heroicon-m-banknotes')
-                ->color('gray'),
+                ->color((float) $todayRevenue > 0 ? 'success' : 'gray'),
 
-            Stat::make('Tasa de Conversion', $conversionRate.'%')
+            Stat::make('Revenue mes', $this->money((float) $monthRevenue))
+                ->description($growth.'% vs mes anterior')
+                ->descriptionIcon($growth >= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
+                ->color($growth >= 0 ? 'success' : 'danger'),
+
+            Stat::make('Conversion PRO', $conversionRate.'%')
                 ->description($proTenants.' de '.$totalTenants.' negocios son PRO')
                 ->descriptionIcon('heroicon-m-chart-pie')
                 ->color('gray'),
@@ -80,6 +110,37 @@ class FinancialStatsOverview extends BaseWidget
                 ->description('Requieren revision inmediata')
                 ->descriptionIcon('heroicon-m-clock')
                 ->color($pendingPayments > 0 ? 'warning' : 'gray'),
+
+            Stat::make('Fallos Stripe 30d', $failedStripeIntents)
+                ->description('Intents marcados como fallidos')
+                ->descriptionIcon('heroicon-m-exclamation-triangle')
+                ->color($failedStripeIntents > 0 ? 'danger' : 'gray'),
+
+            Stat::make('Past due', $pastDueTenants)
+                ->description('Tenants con invoice fallida o suscripcion vencida')
+                ->descriptionIcon('heroicon-m-no-symbol')
+                ->color($pastDueTenants > 0 ? 'danger' : 'gray'),
         ];
+    }
+
+    private function monthlyPlanPrice(): float
+    {
+        try {
+            $settings = app(GeneralSettings::class);
+            $configured = (float) ($settings->pro_plan_price ?? 0);
+
+            if ($configured > 0) {
+                return $configured;
+            }
+        } catch (\Throwable) {
+            // Fall back to static subscription config when settings are unavailable.
+        }
+
+        return ((float) config('subscriptions.plans.pro.price', 49900)) / 100;
+    }
+
+    private function money(float $amount): string
+    {
+        return 'L. '.number_format($amount, 2);
     }
 }

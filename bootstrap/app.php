@@ -11,6 +11,7 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Session\TokenMismatchException;
 use Inertia\Inertia;
+use Sentry\Laravel\Integration as SentryIntegration;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -95,6 +96,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('seo:generate-sitemap')->daily()->at('00:30');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        SentryIntegration::handles($exceptions);
+
         $exceptions->respond(function (SymfonyResponse $response, \Throwable $exception, Request $request) {
             $response = \App\Support\Http\ApiLifecycleHeaderFactory::apply($request, $response);
 

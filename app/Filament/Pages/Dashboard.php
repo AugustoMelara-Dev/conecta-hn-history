@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
+use App\Filament\Widgets\FinancialStatsOverview;
 use App\Infrastructure\TenantGovernance\SuperAdmin\SuperAdminDashboardBootstrapper;
 use Filament\Panel;
 
@@ -154,6 +155,13 @@ class Dashboard extends \Filament\Pages\Page
     public function mount(SuperAdminDashboardBootstrapper $bootstrapper): void
     {
         $bootstrapper->boot($this);
+    }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            FinancialStatsOverview::class,
+        ];
     }
 
     public static function getRoutePath(Panel $panel): string

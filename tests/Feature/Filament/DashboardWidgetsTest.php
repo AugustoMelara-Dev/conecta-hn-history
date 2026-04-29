@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Filament\App\Widgets\OrdersChart;
 use App\Filament\App\Widgets\RevenueChart;
+use App\Filament\Pages\Dashboard as SuperAdminDashboard;
+use App\Filament\Widgets\FinancialStatsOverview;
 
 describe('RevenueChart Widget', function () {
     it('exists and is properly configured', function () {
@@ -81,5 +83,13 @@ describe('Widget Registration', function () {
         $content = file_get_contents($providerPath);
 
         expect($content)->toContain('->widgets([])');
+    });
+
+    it('super admin dashboard exposes financial launch metrics', function () {
+        $dashboard = new SuperAdminDashboard;
+        $method = new ReflectionMethod($dashboard, 'getHeaderWidgets');
+        $method->setAccessible(true);
+
+        expect($method->invoke($dashboard))->toContain(FinancialStatsOverview::class);
     });
 });
