@@ -2,151 +2,150 @@
  * @jest-environment jsdom
  */
 
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { router } from '@inertiajs/core';
-import AuthGate from '@/Components/Utils/AuthGate';
-import GlobalLoginModal from '@/Components/Organisms/Auth/GlobalLoginModal';
-import { useUIStore } from '@/Stores/useUIStore';
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { vi } from "vitest"
 
-// Mock Inertia
-jest.mock('@inertiajs/react', () => ({
-    usePage: () => ({
+import GlobalLoginModal from "@/Components/Organisms/Auth/GlobalLoginModal"
+import AuthGate from "@/Components/Utils/AuthGate"
+import { useUIStore } from "@/Stores/useUIStore"
+
+const inertiaMock = vi.hoisted(() => ({
+    pageProps: {
         props: {
-            auth: { user: null }, // Not authenticated by default
+            auth: { user: null },
         },
-    }),
+    },
+    setData: vi.fn(),
+    post: vi.fn(),
+    reset: vi.fn(),
+}))
+
+vi.mock("@inertiajs/react", () => ({
+    usePage: () => inertiaMock.pageProps,
     useForm: () => ({
-        data: { email: '', password: '', remember: false },
-        setData: jest.fn(),
-        post: jest.fn(),
+        data: { email: "", password: "", remember: false },
+        setData: inertiaMock.setData,
+        post: inertiaMock.post,
         processing: false,
         errors: {},
-        reset: jest.fn(),
+        reset: inertiaMock.reset,
     }),
-}));
+}))
 
-// Mock Axios
-jest.mock('axios');
+vi.mock("axios")
 
-describe('AuthGate Component', () => {
+describe("AuthGate Component", () => {
     beforeEach(() => {
-        // Reset Zustand store
-        useUIStore.setState({ isLoginModalOpen: false });
-    });
-
-    it('opens modal when unauthenticated user clicks protected action', () => {
-        const mockAction = jest.fn();
-
-        render(
-            <AuthGate onAuth={mockAction}>
-                <button>Click Me</button>
-            </AuthGate>
-        );
-
-        const button = screen.getByText('Click Me');
-        fireEvent.click(button);
-
-        // Modal should open
-        expect(useUIStore.getState().isLoginModalOpen).toBe(true);
-
-        // Original action should NOT execute
-        expect(mockAction).not.toHaveBeenCalled();
-    });
-
-    it('executes action when authenticated user clicks', () => {
-        // Mock authenticated user
-        jest.spyOn(require('@inertiajs/react'), 'usePage').mockReturnValue({
+        useUIStore.setState({ isLoginModalOpen: false })
+        inertiaMock.pageProps = {
             props: {
-                auth: { user: { id: 1, name: 'Test User' } },
+                auth: { user: null },
             },
-        });
+        }
+    })
 
-        const mockAction = jest.fn();
+    it("opens modal when unauthenticated user clicks protected action", () => {
+        const mockAction = vi.fn()
 
         render(
             <AuthGate onAuth={mockAction}>
                 <button>Click Me</button>
-            </AuthGate>
-        );
+            </AuthGate>,
+        )
 
-        const button = screen.getByText('Click Me');
-        fireEvent.click(button);
+        fireEvent.click(screen.getByText("Click Me"))
 
-        // Action should execute
-        expect(mockAction).toHaveBeenCalled();
+        expect(useUIStore.getState().isLoginModalOpen).toBe(true)
+        expect(mockAction).not.toHaveBeenCalled()
+    })
 
-        // Modal should NOT open
-        expect(useUIStore.getState().isLoginModalOpen).toBe(false);
-    });
-});
+    it("executes action when authenticated user clicks", () => {
+        inertiaMock.pageProps = {
+            props: {
+                auth: { user: { id: 1, name: "Test User" } },
+            },
+        }
+        const mockAction = vi.fn()
 
-describe('GlobalLoginModal Component', () => {
+        render(
+            <AuthGate onAuth={mockAction}>
+                <button>Click Me</button>
+            </AuthGate>,
+        )
+
+        fireEvent.click(screen.getByText("Click Me"))
+
+        expect(mockAction).toHaveBeenCalled()
+        expect(useUIStore.getState().isLoginModalOpen).toBe(false)
+    })
+})
+
+describe("GlobalLoginModal Component", () => {
     beforeEach(() => {
-        useUIStore.setState({ isLoginModalOpen: true, loginView: 'otp' });
-    });
+        useUIStore.setState({ isLoginModalOpen: true, loginView: "otp" })
+        inertiaMock.setData.mockClear()
+        inertiaMock.post.mockClear()
+        inertiaMock.reset.mockClear()
+    })
 
-    it('renders with OTP tab active by default', () => {
-        render(<GlobalLoginModal />);
+    it("renders with quick access active by default", () => {
+        render(<GlobalLoginModal />)
 
-        expect(screen.getByText('Comprador')).toBeInTheDocument();
-        expect(screen.getByPlaceholderText(/ejemplo@correo.com/i)).toBeInTheDocument();
-    });
+        expect(screen.getByText("Acceso rápido")).toBeInTheDocument()
+        expect(screen.getByPlaceholderText(/nombre@negocio.hn/i)).toBeInTheDocument()
+    })
 
-    it('switches to password tab when clicked', () => {
-        render(<GlobalLoginModal />);
+    it("renders password fields when password access is active", () => {
+        useUIStore.setState({ isLoginModalOpen: true, loginView: "password" })
 
-        const vendedorTab = screen.getByText('Vendedor');
-        fireEvent.click(vendedorTab);
+        render(<GlobalLoginModal />)
 
-        expect(screen.getByLabelText(/Email/i)).toBeInTheDocument();
-        expect(screen.getByLabelText(/Contraseña/i)).toBeInTheDocument();
-    });
+        expect(screen.getByLabelText("Correo")).toBeInTheDocument()
+        expect(screen.getByLabelText("Contraseña")).toBeInTheDocument()
+    })
 
-    it('validates identifier input for OTP', async () => {
-        render(<GlobalLoginModal />);
+    it("captures identifier input for quick access", async () => {
+        render(<GlobalLoginModal />)
 
-        const input = screen.getByPlaceholderText(/ejemplo@correo.com/i);
-        const submitButton = screen.getByText(/Enviar Código/i);
+        const input = screen.getByPlaceholderText(/nombre@negocio.hn/i)
 
-        fireEvent.change(input, { target: { value: 'test@example.com' } });
-        fireEvent.click(submitButton);
+        fireEvent.change(input, { target: { value: "test@example.com" } })
 
-        // Should attempt to send request
         await waitFor(() => {
-            expect(input.value).toBe('test@example.com');
-        });
-    });
+            expect(input.value).toBe("test@example.com")
+        })
+    })
 
-    it('closes modal when close action is triggered', () => {
-        render(<GlobalLoginModal />);
+    it("closes modal when close action is triggered", () => {
+        render(<GlobalLoginModal />)
 
-        useUIStore.getState().closeLoginModal();
+        useUIStore.getState().closeLoginModal()
 
-        expect(useUIStore.getState().isLoginModalOpen).toBe(false);
-    });
-});
+        expect(useUIStore.getState().isLoginModalOpen).toBe(false)
+    })
+})
 
-describe('Zustand Store - useUIStore', () => {
+describe("Zustand Store - useUIStore", () => {
     beforeEach(() => {
         useUIStore.setState({
             isLoginModalOpen: false,
-            loginView: 'otp',
-        });
-    });
+            loginView: "otp",
+        })
+    })
 
-    it('opens login modal', () => {
-        useUIStore.getState().openLoginModal();
-        expect(useUIStore.getState().isLoginModalOpen).toBe(true);
-    });
+    it("opens login modal", () => {
+        useUIStore.getState().openLoginModal()
+        expect(useUIStore.getState().isLoginModalOpen).toBe(true)
+    })
 
-    it('closes login modal', () => {
-        useUIStore.setState({ isLoginModalOpen: true });
-        useUIStore.getState().closeLoginModal();
-        expect(useUIStore.getState().isLoginModalOpen).toBe(false);
-    });
+    it("closes login modal", () => {
+        useUIStore.setState({ isLoginModalOpen: true })
+        useUIStore.getState().closeLoginModal()
+        expect(useUIStore.getState().isLoginModalOpen).toBe(false)
+    })
 
-    it('switches login view', () => {
-        useUIStore.getState().setLoginView('password');
-        expect(useUIStore.getState().loginView).toBe('password');
-    });
-});
+    it("switches login view", () => {
+        useUIStore.getState().setLoginView("password")
+        expect(useUIStore.getState().loginView).toBe("password")
+    })
+})

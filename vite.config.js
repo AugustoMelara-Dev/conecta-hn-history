@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from "vite";
 import laravel from "laravel-vite-plugin";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
+import { fileURLToPath, URL } from "node:url";
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, process.cwd(), "");
@@ -88,6 +89,16 @@ export default defineConfig(({ mode }) => {
 
     return {
         plugins,
+        resolve: {
+            alias: {
+                "@": fileURLToPath(new URL("./resources/js", import.meta.url)),
+            },
+        },
+        test: {
+            environment: "jsdom",
+            globals: true,
+            setupFiles: ["resources/js/__tests__/setup.js"],
+        },
         build: {
             rollupOptions: {
                 output: {
@@ -96,7 +107,14 @@ export default defineConfig(({ mode }) => {
                         observability: ["@sentry/react"],
                         charts: ["recharts"],
                         motion: ["framer-motion"],
-                        ui: ["@radix-ui/react-dialog", "@radix-ui/react-select", "@radix-ui/react-tabs"],
+                        ui: [
+                            "@radix-ui/react-alert-dialog",
+                            "@radix-ui/react-dialog",
+                            "@radix-ui/react-dropdown-menu",
+                            "@radix-ui/react-select",
+                            "@radix-ui/react-tabs",
+                            "@radix-ui/react-tooltip",
+                        ],
                     },
                 },
             },
