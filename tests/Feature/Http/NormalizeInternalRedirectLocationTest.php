@@ -34,6 +34,7 @@ final class NormalizeInternalRedirectLocationTest extends TestCase
             'https://vitobusinessos.vercel.app/',
             $response->headers->get('X-Inertia-Location')
         );
+        self::assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
     }
 
     public function test_inertia_version_conflict_preserves_path_query_and_fragment(): void
@@ -90,5 +91,28 @@ final class NormalizeInternalRedirectLocationTest extends TestCase
             'https://vitobusinessos.vercel.app/',
             $response->headers->get('X-Inertia-Location')
         );
+    }
+
+    public function test_inertia_server_error_responses_are_not_cached(): void
+    {
+        app()['env'] = 'production';
+
+        try {
+            $request = Request::create('https://vitobusinessos.vercel.app/login', 'GET');
+            $request->headers->set('X-Inertia', 'true');
+            $request->headers->set('X-Forwarded-Host', 'vitobusinessos.vercel.app');
+            $request->headers->set('X-Forwarded-Proto', 'https');
+
+            $response = (new NormalizeInternalRedirectLocation)->handle(
+                $request,
+                fn () => new Response('', 500)
+            );
+        } finally {
+            app()['env'] = 'testing';
+        }
+
+        self::assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
+        self::assertSame('no-cache', $response->headers->get('Pragma'));
+        self::assertSame('0', $response->headers->get('Expires'));
     }
 }

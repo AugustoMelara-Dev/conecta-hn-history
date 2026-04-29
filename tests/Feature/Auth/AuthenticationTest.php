@@ -17,6 +17,10 @@ class AuthenticationTest extends TestCase
         $response = $this->get('/login');
 
         $response->assertStatus(200);
+
+        $decoded = html_entity_decode((string) $response->getContent());
+        $this->assertStringContainsString('"component":"Auth\/Login"', $decoded);
+        $this->assertStringContainsString('"url":"\/login"', $decoded);
     }
 
     public function test_login_ziggy_origin_uses_public_proxy_surface(): void

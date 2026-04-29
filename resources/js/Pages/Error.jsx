@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 
 const TITLES = {
     403: 'Acceso Denegado',
@@ -21,6 +21,8 @@ const DESCRIPTIONS = {
 export default function Error({ status = 500 }) {
     const title = TITLES[status] ?? 'Error';
     const description = DESCRIPTIONS[status] ?? 'Ocurrio un error inesperado.';
+    const retry = () => window.location.replace(window.location.href);
+    const goHome = () => window.location.assign(`${window.location.origin}/`);
 
     return (
         <>
@@ -41,17 +43,18 @@ export default function Error({ status = 500 }) {
                     <div className="mt-10 flex flex-col gap-3 sm:flex-row">
                         <button
                             type="button"
-                            onClick={() => window.location.reload()}
+                            onClick={retry}
                             className="rounded-xl bg-white px-6 py-3 font-bold text-slate-950 transition hover:opacity-90"
                         >
                             Reintentar
                         </button>
-                        <Link
-                            href="/"
+                        <button
+                            type="button"
+                            onClick={goHome}
                             className="rounded-xl border border-white/30 px-6 py-3 font-bold text-white transition hover:bg-white/10"
                         >
                             Volver al inicio
-                        </Link>
+                        </button>
                     </div>
                 </section>
             </main>

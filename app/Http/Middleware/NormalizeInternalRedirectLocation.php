@@ -22,6 +22,7 @@ final class NormalizeInternalRedirectLocation
 
         $this->normalizeRedirectLocation($request, $response);
         $this->normalizeInertiaLocation($request, $response);
+        $this->preventInertiaRecoveryCaching($request, $response);
 
         return $response;
     }
@@ -137,6 +138,23 @@ final class NormalizeInternalRedirectLocation
         }
 
         return null;
+    }
+
+    private function preventInertiaRecoveryCaching(Request $request, Response $response): void
+    {
+        $status = $response->getStatusCode();
+
+        if (
+            $status !== 409
+            && ! $response->headers->has('X-Inertia-Location')
+            && ! ($status >= 500 && $request->headers->has('X-Inertia'))
+        ) {
+            return;
+        }
+
+        $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+        $response->headers->set('Pragma', 'no-cache');
+        $response->headers->set('Expires', '0');
     }
 
     /**

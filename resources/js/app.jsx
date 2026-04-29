@@ -93,24 +93,104 @@ function safeRoute(...args) {
 // If Ziggy is missing in a request, keep rendering with safe fallbacks.
 window.route = safeRoute;
 
+function safeStorage(name) {
+    try {
+        return window[name];
+    } catch {
+        return null;
+    }
+}
+
+function readInitialPage() {
+    try {
+        return JSON.parse(document.getElementById('app')?.dataset?.page || '{}');
+    } catch {
+        return {};
+    }
+}
+
+function currentInertiaUrl() {
+    const current = `${window.location.pathname}${window.location.search}`;
+
+    return current || '/';
+}
+
+function normalizeInertiaUrl(value) {
+    if (typeof value !== 'string' || value.trim() === '') {
+        return null;
+    }
+
+    try {
+        const parsed = new URL(value, window.location.origin);
+
+        return `${parsed.pathname}${parsed.search}` || '/';
+    } catch {
+        return value.startsWith('/') ? value : null;
+    }
+}
+
+function clearBrowserRuntimeState(version, force = false) {
+    const local = safeStorage('localStorage');
+    const key = `conecta:runtime-cleanup:${version}`;
+
+    if (!force && local?.getItem(key) === 'done') {
+        return Promise.resolve();
+    }
+
+    const markDone = () => {
+        local?.setItem(key, 'done');
+    };
+
+    const serviceWorkerCleanup = 'serviceWorker' in navigator
+        ? navigator.serviceWorker.getRegistrations()
+            .then((registrations) => Promise.all(
+                registrations.map((registration) => registration.unregister()),
+            ))
+        : Promise.resolve();
+
+    const cacheCleanup = 'caches' in window
+        ? window.caches.keys().then((keys) => Promise.all(
+            keys.map((keyName) => window.caches.delete(keyName)),
+        ))
+        : Promise.resolve();
+
+    return Promise.allSettled([serviceWorkerCleanup, cacheCleanup]).then(markDone);
+}
+
+function recoverMismatchedInertiaPage(initialPage) {
+    const expected = normalizeInertiaUrl(initialPage?.url);
+
+    if (expected === null || expected === currentInertiaUrl()) {
+        return false;
+    }
+
+    const version = initialPage?.version || 'unknown';
+    const session = safeStorage('sessionStorage');
+    const recoverKey = `conecta:inertia-url-recovery:${version}:${window.location.pathname}`;
+
+    if (session?.getItem(recoverKey) === 'attempted') {
+        return false;
+    }
+
+    session?.setItem(recoverKey, 'attempted');
+
+    const next = new URL(window.location.href);
+    next.searchParams.set('__client_recover', String(Date.now()));
+    clearBrowserRuntimeState(version, true).finally(() => {
+        window.location.replace(next.toString());
+    });
+
+    return true;
+}
+
 if (typeof window !== 'undefined') {
     const isLocalBrowser = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+    const initialPage = readInitialPage();
+    const runtimeVersion = initialPage?.version || 'unknown';
 
-    if (isLocalBrowser && 'serviceWorker' in navigator) {
+    if (!recoverMismatchedInertiaPage(initialPage)) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.getRegistrations().then((registrations) => {
-                registrations.forEach((registration) => {
-                    registration.unregister();
-                });
-            });
-
-            if ('caches' in window) {
-                window.caches.keys().then((keys) => {
-                    keys.forEach((key) => {
-                        window.caches.delete(key);
-                    });
-                });
-            }
+            clearBrowserRuntimeState(runtimeVersion, isLocalBrowser);
         });
     }
 }
