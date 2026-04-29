@@ -5,10 +5,16 @@ declare(strict_types=1);
 namespace App\Filament\Pages;
 
 use App\Domain\Identity\Enums\UserRole;
+use App\Domain\TenantGovernance\Enums\BusinessType;
+use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Models\User;
 use App\Settings\GeneralSettings;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TagsInput;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -81,6 +87,7 @@ class ManageGeneralSettings extends Page implements HasForms
             'support_email' => $settings->support_email,
             'maintenance_mode' => $settings->maintenance_mode,
             'allow_registrations' => $settings->allow_registrations,
+            'feature_rollouts' => $settings->feature_rollouts,
         ]);
     }
 
@@ -200,6 +207,49 @@ class ManageGeneralSettings extends Page implements HasForms
                                             ->offColor('danger'),
                                     ])->columns(2),
                             ]),
+                        Tab::make('Rollouts')
+                            ->icon('heroicon-o-rocket-launch')
+                            ->schema([
+                                Section::make('Activacion controlada por tenant')
+                                    ->description('Publica codigo apagado por defecto y activa features solo para tenants o grupos seguros.')
+                                    ->schema([
+                                        Repeater::make('feature_rollouts')
+                                            ->label('Feature rollouts')
+                                            ->schema([
+                                                TextInput::make('key')
+                                                    ->label('Clave')
+                                                    ->placeholder('new_checkout')
+                                                    ->required()
+                                                    ->alphaDash()
+                                                    ->helperText('Usa una clave estable para consultar desde codigo o middleware.'),
+                                                Toggle::make('enabled')
+                                                    ->label('Activo')
+                                                    ->default(false)
+                                                    ->helperText('Si esta apagado, nadie accede aunque coincida el tenant.'),
+                                                TagsInput::make('tenant_slugs')
+                                                    ->label('Tenants permitidos')
+                                                    ->placeholder('audit-prod-20260424')
+                                                    ->helperText('Slugs exactos. Si un tenant esta aqui, gana sobre plan/rubro.'),
+                                                Select::make('plans')
+                                                    ->label('Planes permitidos')
+                                                    ->multiple()
+                                                    ->options($this->tenantPlanOptions()),
+                                                Select::make('business_types')
+                                                    ->label('Rubros permitidos')
+                                                    ->multiple()
+                                                    ->options($this->businessTypeOptions()),
+                                                Textarea::make('notes')
+                                                    ->label('Notas')
+                                                    ->rows(2)
+                                                    ->columnSpanFull()
+                                                    ->helperText('Motivo, alcance y criterio para ampliar rollout.'),
+                                            ])
+                                            ->columns(2)
+                                            ->defaultItems(0)
+                                            ->addActionLabel('Agregar rollout')
+                                            ->itemLabel(fn (array $state): ?string => $state['key'] ?? 'Feature rollout'),
+                                    ]),
+                            ]),
                     ])
                     ->columnSpanFull(),
             ])
@@ -223,6 +273,7 @@ class ManageGeneralSettings extends Page implements HasForms
         $settings->support_email = $data['support_email'];
         $settings->maintenance_mode = (bool) $data['maintenance_mode'];
         $settings->allow_registrations = (bool) $data['allow_registrations'];
+        $settings->feature_rollouts = $this->sanitizeRollouts($data['feature_rollouts'] ?? []);
 
         $settings->save();
 
@@ -242,6 +293,101 @@ class ManageGeneralSettings extends Page implements HasForms
                 ->color('success')
                 ->keyBindings(['mod+s'])
                 ->action('save'),
+        ];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function sanitizeRollouts(mixed $rollouts): array
+    {
+        if (! is_array($rollouts)) {
+            return [];
+        }
+
+        $sanitized = [];
+
+        foreach ($rollouts as $rollout) {
+            if (! is_array($rollout)) {
+                continue;
+            }
+
+            $key = strtolower(trim((string) ($rollout['key'] ?? '')));
+
+            if ($key === '') {
+                continue;
+            }
+
+            $sanitized[] = [
+                'key' => $key,
+                'enabled' => (bool) ($rollout['enabled'] ?? false),
+                'tenant_slugs' => $this->sanitizeStringList($rollout['tenant_slugs'] ?? []),
+                'plans' => $this->sanitizeStringList($rollout['plans'] ?? [], array_keys($this->tenantPlanOptions())),
+                'business_types' => $this->sanitizeStringList($rollout['business_types'] ?? [], array_keys($this->businessTypeOptions())),
+                'notes' => trim((string) ($rollout['notes'] ?? '')),
+            ];
+        }
+
+        return $sanitized;
+    }
+
+    /**
+     * @param  array<int, string>|null  $allowed
+     * @return array<int, string>
+     */
+    private function sanitizeStringList(mixed $values, ?array $allowed = null): array
+    {
+        if (! is_array($values)) {
+            return [];
+        }
+
+        $normalized = [];
+
+        foreach ($values as $value) {
+            if (! is_scalar($value)) {
+                continue;
+            }
+
+            $item = strtolower(trim((string) $value));
+
+            if ($item === '') {
+                continue;
+            }
+
+            if ($allowed !== null && ! in_array($item, $allowed, true)) {
+                continue;
+            }
+
+            $normalized[] = $item;
+        }
+
+        return array_values(array_unique($normalized));
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function tenantPlanOptions(): array
+    {
+        return [
+            TenantPlan::SEMILLA->value => 'Semilla',
+            TenantPlan::PRO->value => 'PRO',
+            TenantPlan::CRECIMIENTO->value => 'Crecimiento',
+            TenantPlan::COSECHA->value => 'Cosecha',
+            TenantPlan::ENTERPRISE->value => 'Enterprise',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function businessTypeOptions(): array
+    {
+        return [
+            BusinessType::RETAIL->value => 'Retail',
+            BusinessType::FOOD->value => 'Food',
+            BusinessType::SERVICE->value => 'Service',
+            BusinessType::HYBRID->value => 'Hybrid',
         ];
     }
 }

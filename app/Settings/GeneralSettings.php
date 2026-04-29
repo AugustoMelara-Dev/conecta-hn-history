@@ -61,6 +61,13 @@ class GeneralSettings extends BaseSettings
     public bool $allow_registrations;
 
     /**
+     * Operational release rollouts managed by the superadmin panel.
+     *
+     * @var array<int, array<string, mixed>>
+     */
+    public array $feature_rollouts = [];
+
+    /**
      * Grupo de configuraciones en la base de datos
      */
     public static function group(): string

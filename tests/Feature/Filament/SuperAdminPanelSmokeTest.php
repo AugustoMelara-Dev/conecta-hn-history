@@ -42,7 +42,8 @@ final class SuperAdminPanelSmokeTest extends TestCase
         $this->get(route('filament.admin.pages.manage-general-settings', [], false))
             ->assertOk()
             ->assertSee('Control de disponibilidad')
-            ->assertSee('Modo mantenimiento');
+            ->assertSee('Modo mantenimiento')
+            ->assertSee('Activacion controlada por tenant');
 
         $this->get(route('filament.admin.pages.billing', [], false))
             ->assertOk()
@@ -177,6 +178,14 @@ final class SuperAdminPanelSmokeTest extends TestCase
             ->set('data.support_email', 'soporte@conectahn.test')
             ->set('data.maintenance_mode', true)
             ->set('data.allow_registrations', false)
+            ->set('data.feature_rollouts', [[
+                'key' => 'new_checkout',
+                'enabled' => true,
+                'tenant_slugs' => ['audit-prod-20260424'],
+                'plans' => ['pro'],
+                'business_types' => ['service'],
+                'notes' => 'Validar con tenant beta antes de rollout global.',
+            ]])
             ->call('save')
             ->assertHasNoErrors();
 
@@ -194,6 +203,24 @@ final class SuperAdminPanelSmokeTest extends TestCase
         $this->assertSame('soporte@conectahn.test', $settings->support_email);
         $this->assertTrue($settings->maintenance_mode);
         $this->assertFalse($settings->allow_registrations);
+        $this->assertSame('new_checkout', $settings->feature_rollouts[0]['key']);
+        $this->assertTrue($settings->feature_rollouts[0]['enabled']);
+        $this->assertSame(['audit-prod-20260424'], $settings->feature_rollouts[0]['tenant_slugs']);
+        $this->assertSame(['pro'], $settings->feature_rollouts[0]['plans']);
+        $this->assertSame(['service'], $settings->feature_rollouts[0]['business_types']);
+    }
+
+    public function test_non_superadmin_cannot_access_general_settings_page(): void
+    {
+        $user = User::factory()->create([
+            'role' => UserRole::TENANT_OWNER,
+            'email' => 'owner-settings@example.com',
+        ]);
+
+        $this->actingAs($user);
+
+        $this->get(route('filament.admin.pages.manage-general-settings', [], false))
+            ->assertForbidden();
     }
 
     public function test_tenant_edit_page_renders_internal_timeline_tab(): void

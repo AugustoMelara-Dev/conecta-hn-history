@@ -69,6 +69,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenant.ownership' => \App\Http\Middleware\EnsureTenantOwnership::class, // Security: IDOR protection
             'idempotency' => \App\Http\Middleware\EnsureIdempotencyKey::class, // Metadata Transport
             'api.lifecycle' => \App\Http\Middleware\ApiLifecycleHeaders::class,
+            'feature.rollout' => \App\Http\Middleware\EnsureFeatureRolloutEnabled::class,
         ]);
 
         //
