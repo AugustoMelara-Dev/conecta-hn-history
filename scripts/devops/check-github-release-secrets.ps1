@@ -1,5 +1,5 @@
 param(
-    [string] $Repository = "VitoCode-Technologies/Vito-Business-OS"
+    [string] $Repository = "AugustoMelara-Dev/Vito-Business-OS"
 )
 
 Set-StrictMode -Version Latest
@@ -64,10 +64,24 @@ $results = @(
         "PROD_DB_DATABASE",
         "PROD_DB_USERNAME",
         "PROD_DB_PASSWORD",
+        "REDIS_URL",
         "PAYMENT_WEBHOOK_SECRET",
+        "SENTRY_LARAVEL_DSN",
+        "VITE_SENTRY_DSN",
+        "BETTER_STACK_SOURCE_TOKEN",
+        "BETTER_STACK_INGESTING_HOST",
+        "MAIL_FROM_ADDRESS",
+        "RESEND_API_KEY",
+        "RESEND_WEBHOOK_SECRET",
+        "WHATSAPP_CLOUD_ACCESS_TOKEN",
+        "WHATSAPP_CLOUD_PHONE_NUMBER_ID",
+        "WHATSAPP_CLOUD_VERIFY_TOKEN",
+        "WHATSAPP_CLOUD_APP_SECRET",
         "OPENAI_API_KEY",
         "TENANT_PRIVATE_QDRANT_URL",
-        "TENANT_PRIVATE_QDRANT_API_KEY"
+        "TENANT_PRIVATE_QDRANT_API_KEY",
+        "VAPID_PUBLIC_KEY",
+        "VAPID_PRIVATE_KEY"
     )
     Test-RequiredSecrets -Scope "staging" -Present $stagingAvailable -Required @(
         "STAGING_APP_KEY",
@@ -77,10 +91,24 @@ $results = @(
         "STAGING_DB_DATABASE",
         "STAGING_DB_USERNAME",
         "STAGING_DB_PASSWORD",
+        "STAGING_REDIS_URL",
         "STAGING_PAYMENT_WEBHOOK_SECRET",
+        "STAGING_SENTRY_LARAVEL_DSN",
+        "STAGING_VITE_SENTRY_DSN",
+        "STAGING_BETTER_STACK_SOURCE_TOKEN",
+        "STAGING_BETTER_STACK_INGESTING_HOST",
+        "STAGING_MAIL_FROM_ADDRESS",
+        "STAGING_RESEND_API_KEY",
+        "STAGING_RESEND_WEBHOOK_SECRET",
+        "STAGING_WHATSAPP_CLOUD_ACCESS_TOKEN",
+        "STAGING_WHATSAPP_CLOUD_PHONE_NUMBER_ID",
+        "STAGING_WHATSAPP_CLOUD_VERIFY_TOKEN",
+        "STAGING_WHATSAPP_CLOUD_APP_SECRET",
         "STAGING_OPENAI_API_KEY",
         "STAGING_TENANT_PRIVATE_QDRANT_URL",
-        "STAGING_TENANT_PRIVATE_QDRANT_API_KEY"
+        "STAGING_TENANT_PRIVATE_QDRANT_API_KEY",
+        "STAGING_VAPID_PUBLIC_KEY",
+        "STAGING_VAPID_PRIVATE_KEY"
     )
 )
 
