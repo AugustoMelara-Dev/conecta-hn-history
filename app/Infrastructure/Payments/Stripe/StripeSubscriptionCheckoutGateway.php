@@ -32,6 +32,7 @@ final class StripeSubscriptionCheckoutGateway implements SubscriptionCheckoutGat
         string $planIdentifier,
         string $priceExternalId,
         string $currency,
+        int $amountMinor,
         string $idempotencyKey,
         string $successUrl,
         string $cancelUrl,
@@ -41,10 +42,9 @@ final class StripeSubscriptionCheckoutGateway implements SubscriptionCheckoutGat
             $session = CheckoutSession::create([
                 'mode' => 'subscription',
                 'client_reference_id' => $tenantId,
-                'line_items' => [[
-                    'price' => $priceExternalId,
-                    'quantity' => 1,
-                ]],
+                'line_items' => [
+                    $this->lineItem($planIdentifier, $priceExternalId, $currency, $amountMinor),
+                ],
                 'success_url' => $successUrl,
                 'cancel_url' => $cancelUrl,
                 'metadata' => $metadata,
@@ -136,5 +136,32 @@ final class StripeSubscriptionCheckoutGateway implements SubscriptionCheckoutGat
 
             return SubscriptionPortalSessionResult::failure('Unable to create Stripe customer portal session.');
         }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function lineItem(string $planIdentifier, string $priceExternalId, string $currency, int $amountMinor): array
+    {
+        if (str_starts_with($priceExternalId, 'price_')) {
+            return [
+                'price' => $priceExternalId,
+                'quantity' => 1,
+            ];
+        }
+
+        return [
+            'price_data' => [
+                'currency' => strtolower($currency),
+                'product_data' => [
+                    'name' => 'Conecta '.$planIdentifier,
+                ],
+                'recurring' => [
+                    'interval' => 'month',
+                ],
+                'unit_amount' => $amountMinor,
+            ],
+            'quantity' => 1,
+        ];
     }
 }

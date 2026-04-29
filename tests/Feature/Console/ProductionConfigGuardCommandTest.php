@@ -28,6 +28,7 @@ final class ProductionConfigGuardCommandTest extends TestCase
             'services.stripe.key' => '',
             'services.stripe.secret' => '',
             'services.stripe.webhook_secret' => '',
+            'services.stripe.use_price_ids' => true,
             'services.stripe.prices.pro' => '',
             'mail.default' => 'log',
             'services.resend.key' => '',

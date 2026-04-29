@@ -10,13 +10,14 @@ use App\Domain\Billing\DTOs\SubscriptionPortalSessionResult;
 interface SubscriptionCheckoutGatewayInterface
 {
     /**
-     * @param array<string, string> $metadata
+     * @param  array<string, string>  $metadata
      */
     public function createCheckoutSession(
         string $tenantId,
         string $planIdentifier,
         string $priceExternalId,
         string $currency,
+        int $amountMinor,
         string $idempotencyKey,
         string $successUrl,
         string $cancelUrl,

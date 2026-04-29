@@ -65,6 +65,7 @@ final readonly class BillingCheckoutService
             planIdentifier: $plan->id,
             priceExternalId: $plan->externalGatewayId,
             currency: $currency ?: $plan->currency(),
+            amountMinor: $plan->priceInCents(),
             idempotencyKey: $clientIdempotencyKey,
             successUrl: $this->billingReturnUrl($tenantId, true),
             cancelUrl: $this->billingReturnUrl($tenantId, false),

@@ -47,10 +47,22 @@ test('billing plan repository uses admin configured plan prices', function () {
 
     Cache::forget('settings.general');
     BaseSettings::clearRuntimeCache();
+    config()->set('services.stripe.use_price_ids', false);
 
     $plan = (new ConfigPlanRepository)->findByIdentifier('pro');
 
     expect($plan)->not()->toBeNull()
         ->and($plan->price->amount)->toBe(64999)
-        ->and($plan->price->currency)->toBe('HNL');
+        ->and($plan->price->currency)->toBe('HNL')
+        ->and($plan->externalGatewayId)->toBe('plan_pro');
+});
+
+test('billing plan repository can opt into configured stripe price ids', function () {
+    config()->set('services.stripe.use_price_ids', true);
+    config()->set('services.stripe.prices.pro', 'price_configured_pro');
+
+    $plan = (new ConfigPlanRepository)->findByIdentifier('pro');
+
+    expect($plan)->not()->toBeNull()
+        ->and($plan->externalGatewayId)->toBe('price_configured_pro');
 });

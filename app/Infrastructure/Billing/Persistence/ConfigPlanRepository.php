@@ -67,7 +67,11 @@ final class ConfigPlanRepository implements PlanRepositoryInterface
 
     private function externalGatewayIdForPlan(TenantPlan $plan): string
     {
-        return (string) (config("services.stripe.prices.{$plan->value}") ?: 'plan_'.$plan->value);
+        if ((bool) config('services.stripe.use_price_ids', false)) {
+            return (string) (config("services.stripe.prices.{$plan->value}") ?: 'plan_'.$plan->value);
+        }
+
+        return 'plan_'.$plan->value;
     }
 
     private function configPriceMajor(string $plan, float $fallback): float

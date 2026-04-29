@@ -93,6 +93,7 @@ return [
         'key' => env('STRIPE_KEY'),
         'secret' => env('STRIPE_SECRET'),
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET', env('PAYMENT_WEBHOOK_SECRET')),
+        'use_price_ids' => env('STRIPE_USE_PRICE_IDS', false),
         'prices' => [
             'semilla' => env('STRIPE_PRICE_SEMILLA'),
             'pro' => env('STRIPE_PRICE_PRO', env('STRIPE_PRICE_ID')),

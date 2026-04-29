@@ -15,6 +15,7 @@ final class ManualSubscriptionCheckoutGateway implements SubscriptionCheckoutGat
         string $planIdentifier,
         string $priceExternalId,
         string $currency,
+        int $amountMinor,
         string $idempotencyKey,
         string $successUrl,
         string $cancelUrl,

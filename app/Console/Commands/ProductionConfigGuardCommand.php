@@ -156,16 +156,16 @@ final class ProductionConfigGuardCommand extends Command
         }
 
         if ($isReleaseEnvironment && $paymentProvider === 'stripe') {
+            $usesStripePriceIds = (bool) config('services.stripe.use_price_ids', false);
             $checked[] = 'STRIPE_KEY';
             $checked[] = 'STRIPE_SECRET';
             $checked[] = 'STRIPE_WEBHOOK_SECRET';
-            $checked[] = 'STRIPE_PRICE_PRO';
+            $checked[] = 'STRIPE_USE_PRICE_IDS';
 
             foreach ([
                 'STRIPE_KEY' => (string) config('services.stripe.key', ''),
                 'STRIPE_SECRET' => (string) config('services.stripe.secret', ''),
                 'STRIPE_WEBHOOK_SECRET' => (string) config('services.stripe.webhook_secret', ''),
-                'STRIPE_PRICE_PRO' => (string) config('services.stripe.prices.pro', ''),
             ] as $key => $value) {
                 if ($this->isBlankOrPlaceholder($value)) {
                     $violations[] = $this->violation(
@@ -173,6 +173,20 @@ final class ProductionConfigGuardCommand extends Command
                         $this->redact($value),
                         'rotated Stripe secret/price',
                         'Stripe cannot be marked active until its API, webhook, and SaaS subscription price values are present.'
+                    );
+                }
+            }
+
+            if ($usesStripePriceIds) {
+                $checked[] = 'STRIPE_PRICE_PRO';
+                $stripePricePro = (string) config('services.stripe.prices.pro', '');
+
+                if ($this->isBlankOrPlaceholder($stripePricePro)) {
+                    $violations[] = $this->violation(
+                        'STRIPE_PRICE_PRO',
+                        $this->redact($stripePricePro),
+                        'rotated Stripe price id',
+                        'Stripe price-id mode requires a real PRO Price ID. Otherwise leave STRIPE_USE_PRICE_IDS=false so Checkout uses the admin-configured amount.'
                     );
                 }
             }

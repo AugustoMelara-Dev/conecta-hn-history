@@ -64,6 +64,7 @@ final class BillingCheckoutServiceTest extends TestCase
         self::assertSame('cs_test_stripe-key-1', $repository->rows['intent-1']['gateway_transaction_id']);
         self::assertSame('intent-1', $checkoutGateway->lastMetadata['subscription_intent_id']);
         self::assertSame('plan_pro', $checkoutGateway->lastPriceExternalId);
+        self::assertSame(2900, $checkoutGateway->lastAmountMinor);
     }
 
     private function service(
@@ -111,7 +112,7 @@ final class InMemorySubscriptionIntentRepository implements SubscriptionIntentRe
         $key = $attributes['tenant_id'].'|'.$attributes['client_idempotency_key'];
 
         foreach ($this->rows as $row) {
-            if ($row['tenant_id'].'|'.$row['client_idempotency_key'] === $key) {
+            if ($key === $row['tenant_id'].'|'.$row['client_idempotency_key']) {
                 return false;
             }
         }
@@ -149,6 +150,8 @@ final class RecordingSubscriptionCheckoutGateway implements SubscriptionCheckout
 
     public string $lastPriceExternalId = '';
 
+    public int $lastAmountMinor = 0;
+
     /** @var array<string, string> */
     public array $lastMetadata = [];
 
@@ -157,6 +160,7 @@ final class RecordingSubscriptionCheckoutGateway implements SubscriptionCheckout
         string $planIdentifier,
         string $priceExternalId,
         string $currency,
+        int $amountMinor,
         string $idempotencyKey,
         string $successUrl,
         string $cancelUrl,
@@ -164,6 +168,7 @@ final class RecordingSubscriptionCheckoutGateway implements SubscriptionCheckout
     ): SubscriptionCheckoutSessionResult {
         $this->checkoutCalls++;
         $this->lastPriceExternalId = $priceExternalId;
+        $this->lastAmountMinor = $amountMinor;
         $this->lastMetadata = $metadata;
 
         return SubscriptionCheckoutSessionResult::requiresPayment(
