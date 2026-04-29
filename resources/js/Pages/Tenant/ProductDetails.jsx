@@ -236,7 +236,7 @@ export default function ProductDetails({ product }) {
         const image = imageRaw.startsWith('http') ? imageRaw : `${baseUrl}${imageRaw}`;
 
         // Canonical URL for the product
-        const url = `${baseUrl}/${tenant?.slug}/product/${product?.id}`;
+        const url = `${baseUrl}/t/${tenant?.slug}/product/${product?.id}`;
 
         const price = product?.price || 0;
 
@@ -477,7 +477,7 @@ export default function ProductDetails({ product }) {
 
     const handleGoToCheckout = () => {
         openCart();
-        router.visit(`/${tenant.slug}/checkout`);
+        router.visit(`/t/${tenant.slug}/checkout`);
     };
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -491,7 +491,7 @@ export default function ProductDetails({ product }) {
                     <AlertCircle className="h-16 w-16 mx-auto text-gray-300 mb-4" aria-hidden="true" />
                     <p className="text-gray-500 text-lg">Producto no encontrado.</p>
                     <Link
-                        href={`/${tenant.slug}`}
+                        href={tenant.slug ? `/t/${tenant.slug}` : '/'}
                         className="mt-4 inline-flex items-center gap-2 text-blue-600 hover:underline"
                     >
                         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
@@ -548,7 +548,7 @@ export default function ProductDetails({ product }) {
             <div className="max-w-7xl mx-auto px-4 py-6">
                 {/* Back Link */}
                 <Link
-                    href={`/${tenant.slug}`}
+                    href={tenant.slug ? `/t/${tenant.slug}` : '/'}
                     className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-6"
                 >
                     <ArrowLeft className="h-4 w-4 mr-2" aria-hidden="true" />

@@ -24,20 +24,21 @@
 
 import { useState, useRef, useEffect, useMemo, memo } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
-import { ShoppingBag, Plus } from 'lucide-react';
+import { CheckCircle, Plus, ShoppingBag } from 'lucide-react';
 import StoreLayout from '@/Layouts/StoreLayout';
 import useCartStore from '@/Stores/useCartStore';
 import useTenantContext from '@/Hooks/useTenantContext';
 import { formatCurrency } from '@/Utils/currency';
 import ImageWithFallback from '@/Components/ImageWithFallback';
 import Toast from '@/Components/Toast';
+import { ActionFeedback, EmptyState, LoadingState } from '@/Components/Feedback/UXStates';
 
 /**
  * ProductCard - Atomic product display with separated click areas
  * Memoized to prevent unnecessary re-renders in large catalogs
  */
-const ProductCard = memo(function ProductCard({ product, tenant, onQuickAdd, isAddingDisabled }) {
-    const productUrl = `/${tenant.slug}/product/${product.id}`;
+const ProductCard = memo(function ProductCard({ product, tenant, onQuickAdd, isAddingDisabled, recentlyAdded }) {
+    const productUrl = `/t/${tenant.slug}/product/${product.id}`;
     const isOutOfStock = product.manage_stock && product.stock_quantity <= 0;
 
     return (
@@ -130,15 +131,47 @@ const ProductCard = memo(function ProductCard({ product, tenant, onQuickAdd, isA
                                 '--tw-ring-color': tenant.primary_color,
                             }}
                             aria-label={`Agregar ${product.name} al carrito`}
+                            data-testid={`store-add-to-cart-${product.id}`}
                         >
-                            <Plus className="h-5 w-5" aria-hidden="true" />
+                            {recentlyAdded ? (
+                                <CheckCircle className="h-5 w-5" aria-hidden="true" />
+                            ) : (
+                                <Plus className="h-5 w-5" aria-hidden="true" />
+                            )}
                         </button>
                     )}
                 </div>
+                <ActionFeedback active={recentlyAdded} className="mt-3" testId={`store-add-feedback-${product.id}`}>
+                    Agregado al carrito
+                </ActionFeedback>
             </div>
         </div>
     );
 });
+
+function StoreBreadcrumbs({ tenant }) {
+    const tenantHref = tenant.slug ? `/t/${tenant.slug}` : '/';
+
+    return (
+        <nav aria-label="Ubicación" className="mx-auto max-w-7xl px-4 pt-5 text-sm sm:px-6 lg:px-8">
+            <ol className="flex flex-wrap items-center gap-2 text-slate-500">
+                <li>
+                    <Link href="/" className="font-medium transition hover:text-slate-900">
+                        Inicio
+                    </Link>
+                </li>
+                <li aria-hidden="true">/</li>
+                <li>
+                    <Link href={tenantHref} className="font-medium transition hover:text-slate-900">
+                        {tenant.name || 'Negocio'}
+                    </Link>
+                </li>
+                <li aria-hidden="true">/</li>
+                <li className="font-semibold text-slate-900">Catálogo</li>
+            </ol>
+        </nav>
+    );
+}
 
 /**
  * StoreHome - Main Catalog Page
@@ -154,6 +187,8 @@ export default function StoreHome({ sections = [] }) {
     const [toast, setToast] = useState(null);
     const toastTimeoutRef = useRef(null);
     const toastCountRef = useRef(0); // Accumulator for rapid adds
+    const [isHydrated, setIsHydrated] = useState(false);
+    const [recentlyAddedProductId, setRecentlyAddedProductId] = useState(null);
 
     // ═══════════════════════════════════════════════════════════════════════
     // SEO: Prepare OpenGraph metadata for home page
@@ -180,6 +215,8 @@ export default function StoreHome({ sections = [] }) {
     // CLEANUP: Clear toast timeout on unmount to prevent memory leak
     // ═══════════════════════════════════════════════════════════════════════
     useEffect(() => {
+        setIsHydrated(true);
+
         return () => {
             if (toastTimeoutRef.current) {
                 clearTimeout(toastTimeoutRef.current);
@@ -202,7 +239,7 @@ export default function StoreHome({ sections = [] }) {
             toastCountRef.current += 1;
             const count = toastCountRef.current;
             const displayMessage = count > 1
-                ? `Producto agregado ×${count}`
+                ? `Producto agregado x${count}`
                 : message;
             setToast({ message: displayMessage, type });
         } else {
@@ -237,7 +274,7 @@ export default function StoreHome({ sections = [] }) {
     const handleQuickAdd = (product) => {
         // If product has modifiers, navigate to detail page (SPA-compliant)
         if (product.modifier_groups?.length > 0) {
-            router.visit(`/${tenant.slug}/product/${product.id}`);
+            router.visit(`/t/${tenant.slug}/product/${product.id}`);
             return;
         }
 
@@ -262,6 +299,8 @@ export default function StoreHome({ sections = [] }) {
 
         // All validations passed - add to cart
         addItem(product, 1, [], '');
+        setRecentlyAddedProductId(product.id);
+        window.setTimeout(() => setRecentlyAddedProductId(null), 1200);
         openCart();
         showToast('Producto agregado al carrito', 'success', true); // isAddAction = true
     };
@@ -305,6 +344,8 @@ export default function StoreHome({ sections = [] }) {
             {/* ═══════════════════════════════════════════════════════════════
                 HERO SECTION: Smart Banner with Gradient Fallback
             ═══════════════════════════════════════════════════════════════ */}
+            <StoreBreadcrumbs tenant={tenant} />
+
             <section className="relative">
                 {tenant.banner_url ? (
                     <div className="aspect-[21/9] w-full overflow-hidden">
@@ -342,13 +383,22 @@ export default function StoreHome({ sections = [] }) {
                 CATALOG SECTIONS: With scroll-margin for Browser-Native offset
             ═══════════════════════════════════════════════════════════════ */}
             <div className="max-w-7xl mx-auto px-4 py-8">
-                {sections.length === 0 ? (
-                    <div className="text-center py-16">
-                        <ShoppingBag className="h-16 w-16 mx-auto text-gray-300 mb-4" aria-hidden="true" />
-                        <p className="text-gray-500 text-lg">
-                            No hay productos disponibles en este momento.
-                        </p>
-                    </div>
+                {!isHydrated ? (
+                    <LoadingState
+                        title="Preparando catálogo"
+                        description="Estamos cargando productos, imágenes y categorías del negocio."
+                        testId="store-home-loading"
+                    />
+                ) : sections.length === 0 ? (
+                    <EmptyState
+                        icon={ShoppingBag}
+                        eyebrow="Catálogo"
+                        title="Este negocio todavía no tiene productos publicados"
+                        description="Puedes volver más tarde o contactar al negocio si necesitas consultar disponibilidad."
+                        actionLabel="Volver al inicio del negocio"
+                        actionHref={tenant.slug ? `/t/${tenant.slug}` : '/'}
+                        testId="store-empty-state"
+                    />
                 ) : (
                     sections.map((section) => (
                         <section
@@ -373,16 +423,24 @@ export default function StoreHome({ sections = [] }) {
                                         product={product}
                                         tenant={tenant}
                                         onQuickAdd={handleQuickAdd}
-                                        isAddingDisabled={false}
+                                        isAddingDisabled={recentlyAddedProductId === product.id}
+                                        recentlyAdded={recentlyAddedProductId === product.id}
                                     />
                                 ))}
                             </div>
 
                             {/* Empty Section State */}
                             {(!section.products || section.products.length === 0) && (
-                                <p className="text-gray-400 text-center py-8">
-                                    No hay productos en esta categoría.
-                                </p>
+                                <EmptyState
+                                    icon={ShoppingBag}
+                                    eyebrow={section.name}
+                                    title="No hay productos en esta categoría"
+                                    description="Revisa otra categoría o vuelve más tarde cuando el negocio publique más opciones."
+                                    actionLabel="Ver catálogo completo"
+                                    actionHref={tenant.slug ? `/t/${tenant.slug}` : '/'}
+                                    className="py-10"
+                                    testId={`store-section-empty-${section.id}`}
+                                />
                             )}
                         </section>
                     ))

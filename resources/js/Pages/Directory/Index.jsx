@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { ArrowRight, Filter, MapPin, Search, Sparkles, X } from 'lucide-react';
+import { AlertCircle, ArrowRight, Filter, MapPin, Search, Sparkles, X } from 'lucide-react';
 import PublicLayout from '@/Layouts/PublicLayout';
+import { ActionableAlert, EmptyState as UXEmptyState, LoadingState } from '@/Components/Feedback/UXStates';
 import { PUBLIC_DISPLAY_FONT } from '@/lib/publicTypography';
 import {
     getTenantInitials,
@@ -79,34 +80,17 @@ function DirectoryCard({ tenant }) {
 
 function EmptyState({ filters, onClear }) {
     return (
-        <div className="rounded-[34px] border border-dashed border-stone-300 bg-white px-8 py-16 text-center shadow-sm">
-            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#f3f3f1]">
-                <Search className="h-8 w-8 text-slate-400" />
-            </div>
-            <h3 className="mt-6 text-2xl font-semibold text-slate-950" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                {filters.search ? `No encontramos "${filters.search}"` : 'No hay resultados con esos filtros'}
-            </h3>
-            <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-slate-600">
-                Ajusta ciudad, categoria o termino de busqueda. La ruta sigue siendo `/directorio`, pero esta ya es la vista completa de Negocios para filtrar y comparar.
-            </p>
-            <div className="mt-8 flex flex-col justify-center gap-4 sm:flex-row">
-                <button
-                    type="button"
-                    onClick={onClear}
-                    className="inline-flex items-center justify-center gap-2 rounded-full border border-stone-300 px-6 py-3 text-sm font-semibold text-slate-700 transition hover:border-stone-400 hover:bg-stone-50"
-                >
-                    <X className="h-4 w-4" />
-                    Limpiar filtros
-                </button>
-                <Link
-                    href={route('tenant.register')}
-                    className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-                >
-                    Registrar mi negocio
-                    <ArrowRight className="h-4 w-4" />
-                </Link>
-            </div>
-        </div>
+        <UXEmptyState
+            icon={Search}
+            eyebrow="Directorio"
+            title={filters.search ? `No encontramos "${filters.search}"` : 'No hay resultados con esos filtros'}
+            description="Ajusta ciudad, categoría o término de búsqueda. También puedes registrar tu negocio si todavía no aparece en el directorio."
+            actionLabel="Registrar mi negocio"
+            actionHref={route('tenant.register')}
+            secondaryLabel="Limpiar filtros"
+            onSecondaryAction={onClear}
+            testId="directory-empty-state"
+        />
     );
 }
 
@@ -398,14 +382,22 @@ function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
             </form>
 
             {guideError ? (
-                <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800" data-testid="directory-guide-error">
-                    <p className="font-semibold">{guideError.message}</p>
+                <ActionableAlert
+                    icon={AlertCircle}
+                    tone={guideError.status === 429 ? 'warning' : 'error'}
+                    title={guideError.status === 429 ? 'Límite diario alcanzado' : 'No pudimos consultar la guía'}
+                    actionLabel="Ocultar aviso"
+                    onAction={() => setGuideError(null)}
+                    className="mt-4"
+                    testId="directory-guide-error"
+                >
+                    <p>{guideError.message}</p>
                     {guideError.status === 429 ? (
                         <p className="mt-1">
-                            Te desbloqueas en {formatQuotaResetAt(guideError.resetAt)}. Puedes volver manana o seguir explorando sin guia.
+                            Te desbloqueas en {formatQuotaResetAt(guideError.resetAt)}. Puedes volver mañana o seguir explorando sin guía.
                         </p>
                     ) : null}
-                </div>
+                </ActionableAlert>
             ) : null}
 
             {quotaUsed !== undefined && quotaUsed !== null ? (
@@ -501,12 +493,20 @@ function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
                     </form>
 
                     {chatError ? (
-                        <div className="mt-4 rounded-3xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100" data-testid="directory-guide-chat-error">
-                            <p className="font-semibold">{chatError.message}</p>
+                        <ActionableAlert
+                            icon={AlertCircle}
+                            tone={chatError.status === 429 ? 'warning' : 'error'}
+                            title={chatError.status === 429 ? 'Sin consultas por hoy' : 'El chat no respondió'}
+                            actionLabel="Editar pregunta"
+                            onAction={() => setChatError(null)}
+                            className="mt-4 border-rose-300/30 bg-rose-500/10 text-rose-100"
+                            testId="directory-guide-chat-error"
+                        >
+                            <p>{chatError.message}</p>
                             {chatError.status === 429 ? (
                                 <p className="mt-1">Tu cuota vuelve en {formatQuotaResetAt(chatError.resetAt)}.</p>
                             ) : null}
-                        </div>
+                        </ActionableAlert>
                     ) : null}
 
                     {chatAnswer ? (
@@ -531,6 +531,7 @@ export default function DirectoryIndex({ tenants, categories = [], cities = [], 
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
     const [cityTerm, setCityTerm] = useState(filters.city || '');
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [isFiltering, setIsFiltering] = useState(false);
 
     const activeCategoryLabel = useMemo(() => (
         categories.find((category) => category.slug === filters.category)?.name || 'Todo Negocios'
@@ -539,10 +540,13 @@ export default function DirectoryIndex({ tenants, categories = [], cities = [], 
     const quickCities = useMemo(() => cities.slice(0, 6), [cities]);
 
     const applyFilters = (nextFilters) => {
+        setIsFiltering(true);
         router.get(route('directory.index'), cleanParams(nextFilters), {
             preserveState: true,
             preserveScroll: true,
             replace: true,
+            onFinish: () => setIsFiltering(false),
+            onError: () => setIsFiltering(false),
         });
     };
 
@@ -575,6 +579,8 @@ export default function DirectoryIndex({ tenants, categories = [], cities = [], 
     };
 
     const hasFilters = Boolean(filters.search || filters.category || filters.city);
+    const isSearchPending = searchTerm !== (filters.search || '');
+    const isDirectoryLoading = isFiltering || isSearchPending;
 
     return (
         <PublicLayout>
@@ -696,6 +702,13 @@ export default function DirectoryIndex({ tenants, categories = [], cities = [], 
                         </div>
 
                         <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
+                            {isDirectoryLoading ? (
+                                <LoadingState
+                                    variant="inline"
+                                    title="Actualizando resultados"
+                                    testId="directory-filter-loading"
+                                />
+                            ) : null}
                             <span className="rounded-full bg-white px-4 py-2 font-semibold text-slate-700">
                                 {items.length} resultados
                             </span>
@@ -717,13 +730,29 @@ export default function DirectoryIndex({ tenants, categories = [], cities = [], 
             <section className="bg-[#f3f3f1] py-16">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     {items.length > 0 ? (
-                        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-                            {items.map((tenant) => (
-                                <DirectoryCard key={tenant.id} tenant={tenant} />
-                            ))}
-                        </div>
+                        isDirectoryLoading ? (
+                            <LoadingState
+                                title="Actualizando directorio"
+                                description="Estamos aplicando tus filtros sin cambiar la página completa."
+                                testId="directory-results-loading"
+                            />
+                        ) : (
+                            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+                                {items.map((tenant) => (
+                                    <DirectoryCard key={tenant.id} tenant={tenant} />
+                                ))}
+                            </div>
+                        )
                     ) : (
-                        <EmptyState filters={filters} onClear={clearFilters} />
+                        isDirectoryLoading ? (
+                            <LoadingState
+                                title="Buscando negocios"
+                                description="Estamos revisando ciudad, categoría y término de búsqueda."
+                                testId="directory-results-loading"
+                            />
+                        ) : (
+                            <EmptyState filters={filters} onClear={clearFilters} />
+                        )
                     )}
 
                     {tenants?.links && items.length > 0 ? (

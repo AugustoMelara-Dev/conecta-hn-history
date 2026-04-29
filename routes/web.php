@@ -183,6 +183,8 @@ require __DIR__.'/auth.php';
 // Original subdomain logic preserved (commented) in routes/public.php.
 Route::prefix('/t/{tenant:slug}')->group(function () {
     Route::get('/', [TenantMicrositeController::class, 'show'])->name('tenant.microsite.show');
+    Route::get('/product/{product}', [TenantMicrositeController::class, 'product'])->name('tenant.product.show');
+    Route::get('/checkout', [TenantMicrositeController::class, 'checkout'])->name('tenant.checkout');
 
     Route::prefix('book')->group(function () {
         Route::get('/', [BookingController::class, 'index'])->name('public.booking.index');

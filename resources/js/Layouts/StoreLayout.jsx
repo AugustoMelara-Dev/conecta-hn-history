@@ -296,7 +296,7 @@ export default function StoreLayout({ children, className = '' }) {
 
                                                     {/* Checkout Button */}
                                                     <Link
-                                                        href={tenant.slug ? `/${tenant.slug}/checkout` : '/checkout'}
+                                                        href={tenant.slug ? `/t/${tenant.slug}/checkout` : '/checkout'}
                                                         onClick={closeCart}
                                                         className="w-full flex items-center justify-center gap-2 px-6 py-3 text-white font-medium rounded-lg transition-all hover:opacity-90"
                                                         style={{ backgroundColor: primaryColor }}

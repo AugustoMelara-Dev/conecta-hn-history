@@ -2,6 +2,19 @@ import { expect, test } from '@playwright/test';
 import { officialFixtures, officialRoutes } from './support/fixtures';
 
 test.describe('Checkout journey', () => {
+    test('checkout shows an empty cart state instead of redirecting immediately', async ({ page }) => {
+        await page.addInitScript(() => {
+            localStorage.clear();
+            sessionStorage.clear();
+        });
+
+        await page.goto(`${officialRoutes.productMicrosite}/checkout`, { waitUntil: 'domcontentloaded' });
+
+        await expect(page.getByTestId('checkout-empty-cart')).toBeVisible();
+        await expect(page.getByRole('link', { name: /ver catalogo|ver catálogo/i })).toBeVisible();
+        await expect(page).toHaveURL(/\/checkout/);
+    });
+
     test('visitor can create an order from storefront cart', async ({ page }) => {
         await page.addInitScript(() => {
             localStorage.clear();
@@ -47,12 +60,18 @@ test.describe('Checkout journey', () => {
             await page.getByTestId('checkout-phone-input').or(page.locator('input[name="phone"], #phone')).first().fill('9999-2222');
             await page.getByTestId('checkout-notes-input').or(page.locator('textarea[name="notes"], #notes')).first().fill('Pedido creado desde Playwright.');
 
+            await page.route('**/api/orders', async (route) => {
+                await new Promise((resolve) => setTimeout(resolve, 500));
+                await route.fallback();
+            });
+
             const orderResponsePromise = page.waitForResponse((response) =>
                 response.request().method() === 'POST'
                 && response.url().includes('/api/orders')
             );
 
             await page.getByTestId('checkout-submit').or(page.getByRole('button', { name: /confirmar|enviar|crear pedido|pagar/i })).click();
+            await expect(page.getByTestId('checkout-submit').or(page.getByRole('button', { name: /procesando|guardando/i }))).toBeDisabled();
             const orderResponse = await orderResponsePromise;
 
             expect(orderResponse.ok()).toBeTruthy();

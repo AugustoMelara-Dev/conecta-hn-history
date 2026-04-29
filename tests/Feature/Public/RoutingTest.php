@@ -55,6 +55,26 @@ final class RoutingTest extends TestCase
     }
 
     #[Test]
+    public function renders_tenant_checkout_via_t_prefix(): void
+    {
+        $user = User::factory()->create();
+        Tenant::factory()->create([
+            'user_id' => $user->id,
+            'slug' => 'checkout-barbershop',
+        ]);
+
+        app(TenantContext::class)->reset();
+
+        $response = $this->get('/t/checkout-barbershop/checkout');
+
+        $response->assertStatus(200);
+        $response->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('Tenant/Checkout')
+            ->where('tenant.slug', 'checkout-barbershop')
+        );
+    }
+
+    #[Test]
     public function tenant_microsite_exposes_business_type_aware_props(): void
     {
         $user = User::factory()->create();
@@ -323,5 +343,20 @@ final class RoutingTest extends TestCase
         ]);
 
         self::assertStringContainsString('/t/my-business', route('tenant.microsite.show', $tenant->slug));
+    }
+
+    #[Test]
+    public function generates_correct_url_for_tenant_checkout_route(): void
+    {
+        self::assertStringContainsString('/t/my-checkout-business/checkout', route('tenant.checkout', 'my-checkout-business'));
+    }
+
+    #[Test]
+    public function generates_correct_url_for_tenant_product_route(): void
+    {
+        self::assertStringContainsString('/t/my-product-business/product/123', route('tenant.product.show', [
+            'tenant' => 'my-product-business',
+            'product' => 123,
+        ]));
     }
 }

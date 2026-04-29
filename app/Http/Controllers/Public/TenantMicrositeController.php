@@ -158,6 +158,71 @@ final class TenantMicrositeController extends Controller
         }
     }
 
+    public function checkout(Request $request, string $tenantSlug, TenantContext $tenantContext): Response
+    {
+        $tenant = $this->loadTenantForMicrosite($tenantSlug, $tenantContext);
+        if (! $tenant) {
+            abort(404);
+        }
+
+        try {
+            $this->visibilityService->check($tenant);
+        } catch (TenantNotFoundException) {
+            abort(404);
+        } catch (Throwable $exception) {
+            report($exception);
+
+            $status = (string) ($tenant->status ?? '');
+            $isActive = (bool) ($tenant->is_active ?? false);
+
+            if (! ($isActive && $status === 'approved')) {
+                abort(404);
+            }
+        }
+
+        return Inertia::render('Tenant/Checkout', [
+            'tenant' => $this->safeTransformTenant($tenant),
+            'canonicalUrl' => route('tenant.checkout', ['tenant' => $tenant->slug]),
+        ]);
+    }
+
+    public function product(Request $request, string $tenantSlug, int $product, TenantContext $tenantContext): Response
+    {
+        $tenant = $this->loadTenantForMicrosite($tenantSlug, $tenantContext);
+        if (! $tenant) {
+            abort(404);
+        }
+
+        try {
+            $this->visibilityService->check($tenant);
+        } catch (TenantNotFoundException) {
+            abort(404);
+        } catch (Throwable $exception) {
+            report($exception);
+
+            $status = (string) ($tenant->status ?? '');
+            $isActive = (bool) ($tenant->is_active ?? false);
+
+            if (! ($isActive && $status === 'approved')) {
+                abort(404);
+            }
+        }
+
+        $tenantData = $this->safeTransformTenant($tenant);
+        $productData = collect($tenantData['products'] ?? [])
+            ->first(fn (array $item): bool => (int) ($item['id'] ?? 0) === $product);
+
+        if (! $productData) {
+            abort(404);
+        }
+
+        return Inertia::render('Tenant/ProductDetails', [
+            'tenant' => $tenantData,
+            'product' => $productData,
+            'canonicalUrl' => route('tenant.product.show', ['tenant' => $tenant->slug, 'product' => $product]),
+        ]);
+    }
+
     private function loadTenantForMicrosite(string $tenantSlug, TenantContext $tenantContext): ?object
     {
         $tenantLookup = Tenant::query()

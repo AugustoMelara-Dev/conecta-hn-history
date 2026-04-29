@@ -22,7 +22,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import {
     ArrowLeft,
     ShoppingCart,
@@ -45,6 +45,31 @@ import { formatCurrency } from '@/Utils/currency';
 import { validateHondurasPhone } from '@/Utils/validators';
 import ImageWithFallback from '@/Components/ImageWithFallback';
 import Toast from '@/Components/Toast';
+import { ActionableAlert, EmptyState, LoadingState } from '@/Components/Feedback/UXStates';
+
+function CheckoutBreadcrumbs({ tenant }) {
+    const tenantHref = tenant.slug ? `/t/${tenant.slug}` : '/';
+
+    return (
+        <nav aria-label="Ubicación" className="mb-6 text-sm">
+            <ol className="flex flex-wrap items-center gap-2 text-gray-500">
+                <li>
+                    <Link href={tenantHref} className="font-medium transition hover:text-gray-900">
+                        Inicio del negocio
+                    </Link>
+                </li>
+                <li aria-hidden="true">/</li>
+                <li>
+                    <Link href={tenantHref} className="font-medium transition hover:text-gray-900">
+                        Catálogo
+                    </Link>
+                </li>
+                <li aria-hidden="true">/</li>
+                <li className="font-semibold text-gray-900">Checkout</li>
+            </ol>
+        </nav>
+    );
+}
 
 /**
  * CartItemRow - Single item in order summary with self-healing image
@@ -145,26 +170,13 @@ export default function Checkout() {
         getGrandTotal,
         isSubmitting,
         submitError,
+        submitDiagnostic,
         submitOrder,
         clearError,
     } = useCartStore();
 
     const subtotal = getSubtotal();
     const grandTotal = getGrandTotal();
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // EMPTY CART DEFENSE: Redirect if cart becomes empty
-    // Waits for tenant initialization to prevent premature redirect
-    // ═══════════════════════════════════════════════════════════════════════
-    useEffect(() => {
-        if (isInitialized && items.length === 0 && !isSubmitting && tenant.slug) {
-            const timeout = setTimeout(() => {
-                router.visit(`/${tenant.slug}`);
-            }, 100);
-
-            return () => clearTimeout(timeout);
-        }
-    }, [items.length, isSubmitting, tenant.slug, isInitialized]);
 
     // ═══════════════════════════════════════════════════════════════════════
     // PHONE VALIDATION: Using centralized validator from Utils/validators
@@ -319,6 +331,7 @@ export default function Checkout() {
             if (customerPhone && customerPhone.trim().length >= 8) {
                 handlePhoneValidation(customerPhone);
             }
+            showToast('Completa los campos requeridos para confirmar el pedido.', 'warning');
             return;
         }
 
@@ -353,28 +366,38 @@ export default function Checkout() {
     };
 
     // ═══════════════════════════════════════════════════════════════════════
-    // EMPTY CART STATE (Fallback before redirect)
+    // EMPTY CART STATE
     // ═══════════════════════════════════════════════════════════════════════
+    if (!isInitialized) {
+        return (
+            <StoreLayout>
+                <Head title="Checkout" />
+                <div className="max-w-7xl mx-auto px-4 py-16">
+                    <LoadingState
+                        title="Preparando checkout"
+                        description="Estamos sincronizando el negocio y tu carrito antes de mostrar el formulario."
+                        testId="checkout-loading-state"
+                    />
+                </div>
+            </StoreLayout>
+        );
+    }
+
     if (items.length === 0) {
         return (
             <StoreLayout>
                 <Head title="Checkout" />
-                <div className="max-w-7xl mx-auto px-4 py-16 text-center">
-                    <ShoppingCart className="h-20 w-20 mx-auto text-gray-300 mb-4" aria-hidden="true" />
-                    <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                        Tu carrito está vacío
-                    </h1>
-                    <p className="text-gray-500 mb-6">
-                        Agrega productos para continuar con tu pedido.
-                    </p>
-                    <Link
-                        href={`/${tenant.slug || ''}`}
-                        className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-white font-medium transition-all hover:opacity-90"
-                        style={{ backgroundColor: primaryColor }}
-                    >
-                        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-                        Ver catálogo
-                    </Link>
+                <div className="max-w-7xl mx-auto px-4 py-16">
+                    <CheckoutBreadcrumbs tenant={tenant} />
+                    <EmptyState
+                        icon={ShoppingCart}
+                        eyebrow="Checkout"
+                        title="Tu carrito está vacío"
+                        description="Agrega productos desde el catálogo del negocio para continuar con tu pedido."
+                        actionLabel="Ver catálogo"
+                        actionHref={tenant.slug ? `/t/${tenant.slug}` : '/'}
+                        testId="checkout-empty-cart"
+                    />
                 </div>
             </StoreLayout>
         );
@@ -395,9 +418,11 @@ export default function Checkout() {
             )}
 
             <div className="max-w-7xl mx-auto px-4 py-6">
+                <CheckoutBreadcrumbs tenant={tenant} />
+
                 {/* Back Link */}
                 <Link
-                    href={`/${tenant.slug}`}
+                    href={tenant.slug ? `/t/${tenant.slug}` : '/'}
                     className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-6"
                 >
                     <ArrowLeft className="h-4 w-4 mr-2" aria-hidden="true" />
@@ -653,13 +678,26 @@ export default function Checkout() {
 
                                 {/* Error Message with ref for scroll */}
                                 {submitError && (
-                                    <div
-                                        ref={errorRef}
-                                        role="alert"
-                                        className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2"
-                                    >
-                                        <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" aria-hidden="true" />
-                                        <p className="text-sm text-red-700">{submitError}</p>
+                                    <div ref={errorRef}>
+                                        <ActionableAlert
+                                            icon={AlertCircle}
+                                            tone="error"
+                                            title="No pudimos confirmar el pedido"
+                                            actionLabel="Revisar datos"
+                                            onAction={() => errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                                            className="mt-4"
+                                            testId="checkout-submit-error"
+                                        >
+                                            <p>{submitError}</p>
+                                            {submitDiagnostic?.recommended_action ? (
+                                                <p className="mt-1">{submitDiagnostic.recommended_action}</p>
+                                            ) : (
+                                                <p className="mt-1">Verifica los datos del cliente e intenta nuevamente.</p>
+                                            )}
+                                            {submitDiagnostic?.trace_id ? (
+                                                <p className="mt-2 text-xs font-semibold">REF soporte: {submitDiagnostic.trace_id}</p>
+                                            ) : null}
+                                        </ActionableAlert>
                                     </div>
                                 )}
 
@@ -667,6 +705,7 @@ export default function Checkout() {
                                 <button
                                     type="submit"
                                     disabled={!isFormValid || isSubmitting}
+                                    data-testid="checkout-submit"
                                     className={`w-full mt-6 flex items-center justify-center gap-2 px-6 py-4 text-white font-bold rounded-xl transition-all
                                         ${(!isFormValid || isSubmitting)
                                             ? 'opacity-50 cursor-not-allowed'
@@ -679,7 +718,7 @@ export default function Checkout() {
                                     {isSubmitting ? (
                                         <>
                                             <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
-                                            Procesando...
+                                            Guardando pedido...
                                         </>
                                     ) : (
                                         <>
