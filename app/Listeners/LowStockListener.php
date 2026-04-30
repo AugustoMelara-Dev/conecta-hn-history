@@ -41,7 +41,7 @@ final class LowStockListener
     public function handle(LowStockThresholdReached $event): void
     {
         $product = $event->product;
-        $productSku = $product->getAttribute('sku');
+        $productSku = $product->getRawOriginal('sku');
         $tenantIdString = (string) $product->tenant_id;
         $cacheKey = "low_stock_alert:{$product->getKey()}:".now()->format('Y-m-d');
 
@@ -56,7 +56,7 @@ final class LowStockListener
                 'product_name' => (string) $product->name,
                 'current_stock' => $event->currentStock,
                 'threshold' => $event->threshold,
-                'severity' => $event->currentStock <= 0 ? 'out_of_stock' : 'low',
+                'severity' => $event->currentStock <= 0 ? 'critical' : 'warning',
                 'tenant_id' => $tenantIdString,
             ]);
         }
@@ -71,7 +71,7 @@ final class LowStockListener
             productSku: is_string($productSku) && $productSku !== '' ? $productSku : null,
             currentStock: (float) $event->currentStock,
             threshold: (float) $event->threshold,
-            severity: $event->currentStock <= 0 ? 'out_of_stock' : 'low',
+            severity: $event->currentStock <= 0 ? 'critical' : 'warning',
             occurredAt: now()->toImmutable(),
         ));
     }
