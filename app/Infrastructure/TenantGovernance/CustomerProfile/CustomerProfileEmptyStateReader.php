@@ -13,7 +13,7 @@ final class CustomerProfileEmptyStateReader
     {
         return [
             'badge' => 'CRM',
-            'heading' => 'Todavia no hay clientes consolidados',
+            'heading' => 'Todavía no hay clientes consolidados',
             'description' => 'Cuando entren pedidos, citas o prospectos con contacto, el CRM armara la ficha automaticamente.',
         ];
     }

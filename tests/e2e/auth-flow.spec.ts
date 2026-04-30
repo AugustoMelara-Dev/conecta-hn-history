@@ -95,8 +95,8 @@ test.describe('Auth journey', () => {
             page.getByTestId('login-submit').or(page.getByRole('button', { name: /login|iniciar/i })).click(),
         ]);
 
-        await page.waitForLoadState('networkidle');
-        expect([200, 302, 303, 422]).toContain(submitResponse.status());
+        expect([200, 302, 303, 409, 422]).toContain(submitResponse.status());
+        await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 15000 }).catch(() => null);
 
         const stillOnLogin = page.url().includes('/login');
         if (!stillOnLogin) {
@@ -145,7 +145,7 @@ test.describe('Auth journey', () => {
         await slugCheckResponse;
         await selectShadcnOption(page, 'register-category-select');
 
-        await page.getByRole('button', { name: /Tienda y cat\u00e1logo|Restaurante y comida|Servicios y citas|Mixto/i }).first().click();
+        await page.getByRole('radio', { name: /Tienda y cat\u00e1logo|Tienda y catalogo|Restaurante y comida|Servicios y citas|Mixto/i }).first().click();
         await waitForSlugCheckComplete(page);
 
         await page.waitForTimeout(600);

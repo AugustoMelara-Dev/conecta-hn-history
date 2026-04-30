@@ -390,7 +390,7 @@ class ManageBilling extends Page implements HasForms, HasTable
                     ->action(fn (SubscriptionPayment $record) => $this->downloadReceipt($record)),
             ])
             ->emptyState(fn () => view('filament.app.components.table-empty-state', [
-                'heading' => 'Todavia no tienes pagos registrados',
+                'heading' => 'Todavía no tienes pagos registrados',
                 'description' => 'Cuando un pago sea aprobado o rechazado, aqui veras el historial y podras descargar el recibo.',
             ]));
     }

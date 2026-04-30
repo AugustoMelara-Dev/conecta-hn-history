@@ -573,7 +573,7 @@ final class TenantGrowthSignalsReader
             'topLeadSource' => 'Sin datos',
             'topSalesChannel' => 'Sin datos',
             'topOfferLabel' => 'Sin datos',
-            'topOfferCopy' => 'Todavia no hay suficiente actividad reciente para destacar una oferta.',
+            'topOfferCopy' => 'Todavía no hay suficiente actividad reciente para destacar una oferta.',
             'vipCustomersCount' => 0,
             'dormantCustomersCount' => 0,
             'notes7dCount' => 0,
@@ -767,14 +767,14 @@ final class TenantGrowthSignalsReader
         if ($topProduct === null) {
             return [
                 'topOfferLabel' => 'Sin datos',
-                'topOfferCopy' => 'Todavia no hay suficiente actividad reciente para destacar una oferta.',
+                'topOfferCopy' => 'Todavía no hay suficiente actividad reciente para destacar una oferta.',
             ];
         }
 
         return [
             'topOfferLabel' => (string) data_get($topProduct, 'offer_name', 'Producto'),
             'topOfferCopy' => (int) data_get($topProduct, 'units', 0) > 0
-                ? ((int) data_get($topProduct, 'units', 0)).' unidades movieron '.$this->formatCurrency((float) data_get($topProduct, 'revenue', 0)).' en los ultimos 30 dias.'
+                ? ((int) data_get($topProduct, 'units', 0)).' unidades movieron '.$this->formatCurrency((float) data_get($topProduct, 'revenue', 0)).' en los últimos 30 días.'
                 : 'Tu catalogo ya muestra una oferta dominante.',
         ];
     }
@@ -798,13 +798,13 @@ final class TenantGrowthSignalsReader
         if ($topService === null || (int) data_get($topService, 'units', 0) <= 0) {
             return [
                 'topOfferLabel' => 'Sin datos',
-                'topOfferCopy' => 'Todavia no hay suficiente actividad reciente para destacar una oferta.',
+                'topOfferCopy' => 'Todavía no hay suficiente actividad reciente para destacar una oferta.',
             ];
         }
 
         return [
             'topOfferLabel' => (string) data_get($topService, 'offer_name', 'Servicio'),
-            'topOfferCopy' => (int) data_get($topService, 'units', 0).' reservas recientes apuntan a esta oferta como la de mayor traccion.',
+            'topOfferCopy' => (int) data_get($topService, 'units', 0).' reservas recientes apuntan a esta oferta como la de mayor tracción.',
         ];
     }
 }

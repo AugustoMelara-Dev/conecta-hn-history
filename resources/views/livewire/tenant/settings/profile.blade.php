@@ -27,7 +27,7 @@
                     wire:click="save"
                     wire:loading.attr="disabled"
                     wire:loading.class="opacity-50"
-                    class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-lg shadow-blue-500/25 transition-all"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-lg shadow-blue-500/25 transition-colors"
                 >
                     <span wire:loading.remove>Guardar Cambios</span>
                     <span wire:loading class="flex items-center gap-2">
@@ -256,7 +256,7 @@
                             wire:click="$set('schedule.{{ $day }}.isOpen', {{ ($schedule[$day]['isOpen'] ?? false) ? 'false' : 'true' }})"
                             class="relative w-12 h-7 rounded-full transition-colors {{ ($schedule[$day]['isOpen'] ?? false) ? 'bg-emerald-500' : 'bg-gray-300' }}"
                         >
-                            <span class="absolute top-1 {{ ($schedule[$day]['isOpen'] ?? false) ? 'right-1' : 'left-1' }} w-5 h-5 bg-white rounded-full shadow transition-all"></span>
+                            <span class="absolute top-1 {{ ($schedule[$day]['isOpen'] ?? false) ? 'right-1' : 'left-1' }} w-5 h-5 bg-white rounded-full shadow transition-transform"></span>
                         </button>
 
                         {{-- Status Text --}}

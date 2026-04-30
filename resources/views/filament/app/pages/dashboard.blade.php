@@ -1,5 +1,8 @@
 <x-filament-panels::page>
     <div class="biz-shell">
+        @include('filament.app.pages.dashboard._business-overview')
+
+        {{--
         <div class="biz-card">
             <div class="biz-grid-two">
                 <div class="biz-stack">
@@ -74,7 +77,7 @@
                         </div>
 
                         <div class="biz-button-row">
-                            <a href="{{ $publicUrl }}" target="_blank" class="biz-button">Abrir mi página</a>
+                            <a href="{{ $publicUrl }}" target="_blank" rel="noopener noreferrer" class="biz-button" aria-label="Abrir mi página en una pestaña nueva">Abrir mi página</a>
                             <a href="{{ $profileUrl }}" class="biz-button-secondary">Configurar negocio</a>
                             <a href="{{ $growthUrl }}" class="biz-button-secondary">Centro de crecimiento</a>
                             <a href="{{ $operationsUrl }}" class="biz-button-secondary">Centro operativo</a>
@@ -85,6 +88,7 @@
                 </div>
             </div>
         </div>
+        --}}
 
         <div class="biz-card">
             <div class="biz-grid-two">
@@ -108,7 +112,15 @@
                                 {{ $activationProgress >= 80 ? 'Fuerte' : ($activationProgress >= 50 ? 'En progreso' : 'Inicial') }}
                             </x-filament::badge>
                         </div>
-                        <div class="biz-progress" style="margin-top: 0.9rem;">
+                        <div
+                            class="biz-progress biz-mt-4"
+                            role="progressbar"
+                            aria-label="Progreso de activación"
+                            aria-valuemin="0"
+                            aria-valuemax="100"
+                            aria-valuenow="{{ $activationProgress }}"
+                            aria-valuetext="{{ $activationProgress }}% completado"
+                        >
                             <div
                                 class="biz-progress-bar {{ $activationProgress < 50 ? 'biz-progress-bar-danger' : ($activationProgress < 80 ? 'biz-progress-bar-warning' : '') }}"
                                 style="width: {{ max(6, $activationProgress) }}%;"
@@ -117,16 +129,22 @@
                     </div>
 
                     <div class="biz-button-row">
-                        <a href="{{ $nextBestAction['href'] ?? '#' }}" class="biz-button">
+                        @if (($nextBestAction['href'] ?? null) !== null)
+                            <a href="{{ $nextBestAction['href'] }}" class="biz-button">
                             {{ $nextBestAction['title'] ?? 'Continuar activación' }}
-                        </a>
+                            </a>
+                        @else
+                            <span class="biz-button-secondary" aria-disabled="true">
+                                Activación al día
+                            </span>
+                        @endif
                     </div>
                 </div>
 
                 <div class="biz-stack">
                     <div>
                         <p class="biz-kicker">Checklist persistente</p>
-                        <h3 class="biz-heading" style="font-size: 1.15rem;">Hitos verificables</h3>
+                        <h3 class="biz-heading biz-heading-sm">Hitos verificables</h3>
                     </div>
 
                     <div class="biz-list">
@@ -141,9 +159,11 @@
                                 </div>
                             </div>
                         @empty
-                            <div class="biz-empty-state">
-                                <p class="biz-muted">No encontramos hitos todavía. Refresca y vuelve a intentar.</p>
-                            </div>
+                            @include('filament.app.components.table-empty-state', [
+                                'badge' => 'Checklist',
+                                'heading' => 'No encontramos hitos todavía',
+                                'description' => 'Refresca el panel o continúa con la siguiente acción recomendada.',
+                            ])
                         @endforelse
                     </div>
                 </div>
@@ -155,9 +175,9 @@
                 <div class="biz-split">
                     <div>
                         <p class="biz-kicker">Mesa operativa con SLA</p>
-                        <h2 class="biz-heading">Cola viva para seguimiento, agenda y renovacion</h2>
+                        <h2 class="biz-heading">Cola viva para seguimiento, agenda y renovación</h2>
                         <p class="biz-muted">
-                            Aqui ves lo que ya disparo el negocio en tiempo real: leads, citas, recuperacion, recompra y renovaciones con responsable sugerido.
+                            Aquí ves lo que ya disparó el negocio en tiempo real: leads, citas, recuperación, recompra y renovaciónes con responsable sugerido.
                         </p>
                     </div>
 
@@ -180,7 +200,7 @@
                     <div class="biz-stat">
                         <p class="biz-stat-label">SLA vencido</p>
                         <p class="biz-stat-value">{{ $overduePlaybookTasksCount }}</p>
-                        <p class="biz-stat-copy">Casos que merecen atencion inmediata.</p>
+                        <p class="biz-stat-copy">Casos que merecen atención inmediata.</p>
                     </div>
                 </div>
 
@@ -208,10 +228,10 @@
                     <div class="biz-card-accent">
                         <div class="biz-stack">
                             <div>
-                                <p class="biz-kicker">Operacion lista</p>
-                                <h3 class="biz-heading" style="font-size: 1.15rem;">Tu cola esta despejada</h3>
+                                <p class="biz-kicker">Operación lista</p>
+                                <h3 class="biz-heading biz-heading-sm">Tu cola está despejada</h3>
                                 <p class="biz-muted">
-                                    Cuando entre un lead, una cita, una recompra o una renovacion, aparecera aqui con SLA y responsable sugerido.
+                                    Cuando entre un lead, una cita, una recompra o una renovación, aparecerá aquí con SLA y responsable sugerido.
                                 </p>
                             </div>
                         </div>
@@ -244,7 +264,15 @@
                             </x-filament::badge>
                         </div>
 
-                        <div class="biz-progress" style="margin-top: 0.9rem;">
+                        <div
+                            class="biz-progress biz-mt-4"
+                            role="progressbar"
+                            aria-label="Score de salud del negocio"
+                            aria-valuemin="0"
+                            aria-valuemax="100"
+                            aria-valuenow="{{ $healthScore }}"
+                            aria-valuetext="{{ $healthScore }} de 100"
+                        >
                             <div
                                 class="biz-progress-bar {{ $healthScore < 50 ? 'biz-progress-bar-danger' : ($healthScore < 80 ? 'biz-progress-bar-warning' : '') }}"
                                 style="width: {{ max(6, $healthCompletionPercent) }}%;"
@@ -302,7 +330,7 @@
                         <div class="biz-stack">
                             <div>
                                 <p class="biz-kicker">Empuje comercial</p>
-                                <h3 class="biz-heading" style="font-size: 1.15rem;">Nudges de crecimiento</h3>
+                                <h3 class="biz-heading biz-heading-sm">Nudges de crecimiento</h3>
                             </div>
 
                             <div class="biz-actions">
@@ -349,7 +377,7 @@
                             } }}">
                                 {{ match ($maturityStage) {
                                     'scale' => 'Escala',
-                                    'traction' => 'Traccion',
+                                    'traction' => 'Tracción',
                                     default => 'Arranque',
                                 } }}
                             </x-filament::badge>
@@ -443,7 +471,7 @@
                     </div>
 
                     <div class="biz-button-row">
-                        <a href="{{ $publicUrl }}" target="_blank" class="biz-button">Ver mi micrositio</a>
+                        <a href="{{ $publicUrl }}" target="_blank" rel="noopener noreferrer" class="biz-button" aria-label="Ver mi micrositio en una pestaña nueva">Ver mi micrositio</a>
                         <a href="{{ $profileUrl }}" class="biz-button-secondary">Ajustar perfil</a>
                     </div>
                 </div>

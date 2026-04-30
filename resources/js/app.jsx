@@ -9,8 +9,7 @@ import { createRoot } from 'react-dom/client';
 import { route } from 'ziggy-js';
 import { initializeTheme } from '@/Stores/useThemeStore';
 
-// Global Toast System
-import { ToastProvider } from '@/Components/Toast/ToastProvider';
+import { Toaster } from '@/Components/ui/sonner';
 
 const routeFallbacks = {
     home: '/',
@@ -223,7 +222,7 @@ createInertiaApp({
         root.render(
             <Sentry.ErrorBoundary fallback={null}>
                 <App {...props} />
-                <ToastProvider />
+                <Toaster richColors position="top-center" />
             </Sentry.ErrorBoundary>
         );
     },

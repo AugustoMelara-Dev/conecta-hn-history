@@ -37,8 +37,16 @@ final class SurfaceSplitBootstrapAdapterTest extends TestCase
         self::assertSame('business_app', data_get($payload, 'context.home_surface'));
         self::assertSame('https://app.vitobusinessos.com', data_get($payload, 'origins.business_app'));
         self::assertSame(
-            route('filament.app.pages.dashboard', ['tenant' => 'comedor-central'], false),
+            route('filament.app.resources.orders.index', ['tenant' => 'comedor-central'], false),
             $this->redirectForPath($payload, '/workspace/orders')
+        );
+        self::assertSame(
+            route('filament.app.pages.manage-marketing', ['tenant' => 'comedor-central'], false),
+            $this->redirectForPath($payload, '/workspace/marketing')
+        );
+        self::assertSame(
+            route('filament.app.tenant.profile', ['tenant' => 'comedor-central'], false),
+            $this->redirectForPath($payload, '/workspace/landing-page')
         );
     }
 

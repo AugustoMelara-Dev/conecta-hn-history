@@ -348,7 +348,7 @@ final class ConfigRubroManifestReader implements RubroManifestReaderInterface
             return 'Servicios disponibles';
         }
 
-        return $businessType === 'food' ? 'Menu disponible' : 'Catalogo publico';
+        return $businessType === 'food' ? 'Menú disponible' : 'Catálogo público';
     }
 
     /**

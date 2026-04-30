@@ -115,7 +115,7 @@ final class TenantCampaignWorkspaceReader
             ->all();
 
         if ($playbooks === []) {
-            return 'Todavia no hay playbooks de cadence sugeridos para este rubro.';
+            return 'Todavía no hay playbooks de cadence sugeridos para este rubro.';
         }
 
         $items = collect($playbooks)->map(function (array $playbook): string {

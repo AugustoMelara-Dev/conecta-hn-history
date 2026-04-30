@@ -12,42 +12,9 @@ import {
     User2,
     X,
 } from 'lucide-react';
+import { toast as sonnerToast } from 'sonner';
 import SupportDiagnosticCard from '@/Components/SupportDiagnosticCard';
 import { PUBLIC_BODY_FONT, PUBLIC_DISPLAY_FONT, PUBLIC_LABEL_FONT } from '@/lib/publicTypography';
-
-function Toast({ message, type = 'success', onClose }) {
-    useEffect(() => {
-        const timer = window.setTimeout(onClose, 4500);
-
-        return () => window.clearTimeout(timer);
-    }, [onClose]);
-
-    const tones = {
-        success: 'border-slate-300 bg-white text-slate-950',
-        error: 'border-slate-950 bg-slate-950 text-white',
-        info: 'border-slate-300 bg-white text-slate-950',
-    };
-
-    return (
-        <div
-            className={`fixed bottom-6 right-6 z-50 max-w-sm rounded-3xl border px-5 py-4 shadow-2xl ${tones[type]}`}
-            aria-live="polite"
-            role="status"
-        >
-            <div className="flex items-start gap-3">
-                <div className="mt-1 h-2.5 w-2.5 rounded-full bg-current opacity-70" />
-                <div className="flex-1 text-sm font-semibold">{message}</div>
-                <button
-                    type="button"
-                    onClick={onClose}
-                    className="text-sm opacity-60 transition hover:opacity-100 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-200"
-                >
-                    Cerrar
-                </button>
-            </div>
-        </div>
-    );
-}
 
 function BrandMark() {
     return (
@@ -477,7 +444,6 @@ function DiscoveryDock() {
 export default function PublicLayout({ children, hideFooter = false }) {
     const page = usePage();
     const { flash } = page.props;
-    const [toast, setToast] = useState(null);
     const isRegistrationFlow = route().current('tenant.register');
 
     const showDiscoveryDock = useMemo(() => (
@@ -490,13 +456,13 @@ export default function PublicLayout({ children, hideFooter = false }) {
 
     useEffect(() => {
         if (flash?.success) {
-            setToast({ message: flash.success, type: 'success' });
+            sonnerToast.success(flash.success);
         } else if (flash?.error) {
-            setToast({ message: flash.error, type: 'error' });
+            sonnerToast.error(flash.error);
         } else if (flash?.info) {
-            setToast({ message: flash.info, type: 'info' });
+            sonnerToast.info(flash.info);
         }
-    }, [flash]);
+    }, [flash?.error, flash?.info, flash?.success]);
 
     return (
         <div className={`min-h-screen bg-white text-slate-900 ${showDiscoveryDock ? 'pb-24 md:pb-0' : ''}`} style={{ fontFamily: PUBLIC_BODY_FONT }}>
@@ -512,9 +478,6 @@ export default function PublicLayout({ children, hideFooter = false }) {
             {!hideFooter ? <Footer /> : null}
             {showDiscoveryDock ? <DiscoveryDock /> : null}
 
-            {toast ? (
-                <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
-            ) : null}
             {flash?.diagnostic ? (
                 <div className="fixed bottom-24 left-4 right-4 z-40 mx-auto max-w-3xl md:bottom-6">
                     <SupportDiagnosticCard diagnostic={flash.diagnostic} />

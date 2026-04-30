@@ -1,17 +1,29 @@
 /**
- * ProductModal - Modifier Selection Modal for Pro Tier
- * 
- * Features:
- * - Modifier group selection (single or multiple)
- * - Quantity adjustment
- * - Notes field
- * - Real-time price calculation
- * - Accessibility compliant (dialog pattern)
+ * ProductModal - Modifier Selection Modal for Pro Tier.
  */
 
-import { useState, useEffect, Fragment } from 'react';
-import { Dialog, Transition } from '@headlessui/react';
-import { X, Minus, Plus, Check, ShoppingCart } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Minus, Plus, ShoppingCart } from 'lucide-react';
+
+import { Badge } from '@/Components/ui/badge';
+import { Button } from '@/Components/ui/button';
+import { Checkbox } from '@/Components/ui/checkbox';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/Components/ui/dialog';
+import {
+    Field,
+    FieldDescription,
+    FieldGroup,
+    FieldLabel,
+} from '@/Components/ui/field';
+import { RadioGroup, RadioGroupItem } from '@/Components/ui/radio-group';
+import { Textarea } from '@/Components/ui/textarea';
 import { cn } from '@/lib/utils';
 
 export default function ProductModal({
@@ -24,14 +36,12 @@ export default function ProductModal({
     const [selectedModifiers, setSelectedModifiers] = useState([]);
     const [notes, setNotes] = useState('');
 
-    // Reset state when modal opens
     useEffect(() => {
         if (isOpen) {
             setQuantity(1);
             setSelectedModifiers([]);
             setNotes('');
 
-            // Pre-select default modifiers
             if (product?.modifier_groups) {
                 const defaults = [];
                 product.modifier_groups.forEach(group => {
@@ -53,51 +63,63 @@ export default function ProductModal({
 
     const handleModifierToggle = (group, option) => {
         setSelectedModifiers(prev => {
-            // For single-select groups, replace any existing selection
             if (group.type === 'single') {
                 return [
-                    ...prev.filter(m => m.groupId !== group.id),
+                    ...prev.filter(modifier => modifier.groupId !== group.id),
                     {
                         groupId: group.id,
                         groupName: group.name,
                         optionId: option.id,
                         name: option.name,
                         price: option.price,
-                    }
+                    },
                 ];
             }
 
-            // For multi-select, toggle
-            const exists = prev.find(m => m.groupId === group.id && m.optionId === option.id);
+            const exists = prev.find(
+                modifier => modifier.groupId === group.id && modifier.optionId === option.id
+            );
+
             if (exists) {
-                return prev.filter(m => !(m.groupId === group.id && m.optionId === option.id));
-            } else {
-                // Check max selections
-                const groupSelections = prev.filter(m => m.groupId === group.id);
-                if (group.max_selections && groupSelections.length >= group.max_selections) {
-                    return prev; // Can't add more
-                }
-                return [
-                    ...prev,
-                    {
-                        groupId: group.id,
-                        groupName: group.name,
-                        optionId: option.id,
-                        name: option.name,
-                        price: option.price,
-                    }
-                ];
+                return prev.filter(
+                    modifier => !(modifier.groupId === group.id && modifier.optionId === option.id)
+                );
             }
+
+            const groupSelections = prev.filter(modifier => modifier.groupId === group.id);
+            if (group.max_selections && groupSelections.length >= group.max_selections) {
+                return prev;
+            }
+
+            return [
+                ...prev,
+                {
+                    groupId: group.id,
+                    groupName: group.name,
+                    optionId: option.id,
+                    name: option.name,
+                    price: option.price,
+                },
+            ];
         });
     };
 
     const isOptionSelected = (groupId, optionId) => {
-        return selectedModifiers.some(m => m.groupId === groupId && m.optionId === optionId);
+        return selectedModifiers.some(
+            modifier => modifier.groupId === groupId && modifier.optionId === optionId
+        );
+    };
+
+    const getSelectedOptionId = groupId => {
+        return String(selectedModifiers.find(modifier => modifier.groupId === groupId)?.optionId ?? '');
     };
 
     const calculateTotal = () => {
         const basePrice = product?.price || 0;
-        const modifiersTotal = selectedModifiers.reduce((sum, m) => sum + (m.price || 0), 0);
+        const modifiersTotal = selectedModifiers.reduce(
+            (sum, modifier) => sum + (modifier.price || 0),
+            0
+        );
         return (basePrice + modifiersTotal) * quantity;
     };
 
@@ -105,189 +127,240 @@ export default function ProductModal({
         onConfirm(quantity, selectedModifiers, notes);
     };
 
-    // Check if required modifiers are selected
     const isValid = () => {
         if (!product?.modifier_groups) return true;
 
         return product.modifier_groups.every(group => {
             if (!group.is_required) return true;
-            return selectedModifiers.some(m => m.groupId === group.id);
+            return selectedModifiers.some(modifier => modifier.groupId === group.id);
         });
     };
 
     if (!product) return null;
 
+    const hasModifiers = Boolean(product.modifier_groups?.length);
+
     return (
-        <Transition appear show={isOpen} as={Fragment}>
-            <Dialog as="div" className="relative z-50" onClose={onClose}>
-                {/* Backdrop */}
-                <Transition.Child
-                    as={Fragment}
-                    enter="ease-out duration-300"
-                    enterFrom="opacity-0"
-                    enterTo="opacity-100"
-                    leave="ease-in duration-200"
-                    leaveFrom="opacity-100"
-                    leaveTo="opacity-0"
-                >
-                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
-                </Transition.Child>
+        <Dialog
+            open={isOpen}
+            onOpenChange={open => {
+                if (!open) {
+                    onClose();
+                }
+            }}
+        >
+            <DialogContent className="max-h-[92vh] overflow-hidden p-0 sm:max-w-lg">
+                <div className="relative h-48 overflow-hidden bg-muted">
+                    {product.image ? (
+                        <img
+                            src={product.image}
+                            alt={product.name}
+                            className="h-full w-full object-cover"
+                        />
+                    ) : (
+                        <div className="flex h-full items-center justify-center text-muted-foreground">
+                            <ShoppingCart className="size-10" aria-hidden="true" />
+                        </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-transparent" />
+                </div>
 
-                {/* Modal Container */}
-                <div className="fixed inset-0 overflow-y-auto">
-                    <div className="flex min-h-full items-end sm:items-center justify-center p-0 sm:p-4">
-                        <Transition.Child
-                            as={Fragment}
-                            enter="ease-out duration-300"
-                            enterFrom="opacity-0 translate-y-full sm:translate-y-4 sm:scale-95"
-                            enterTo="opacity-100 translate-y-0 sm:scale-100"
-                            leave="ease-in duration-200"
-                            leaveFrom="opacity-100 translate-y-0 sm:scale-100"
-                            leaveTo="opacity-0 translate-y-full sm:translate-y-4 sm:scale-95"
-                        >
-                            <Dialog.Panel className="w-full sm:max-w-lg transform overflow-hidden rounded-t-3xl sm:rounded-3xl bg-slate-900 border border-white/10 shadow-2xl transition-all">
-                                {/* Header with Image */}
-                                <div className="relative h-48 bg-slate-800 overflow-hidden">
-                                    <img
-                                        src={product.image}
-                                        alt={product.name}
-                                        className="w-full h-full object-cover opacity-80"
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent" />
+                <DialogHeader className="px-5 pt-5 text-left">
+                    <div className="flex items-start justify-between gap-3 pr-8">
+                        <div className="grid gap-2">
+                            <DialogTitle className="text-xl">{product.name}</DialogTitle>
+                            <DialogDescription>
+                                {product.description || 'Personaliza este producto antes de agregarlo al carrito.'}
+                            </DialogDescription>
+                        </div>
+                        <Badge variant="secondary" className="shrink-0">
+                            {product.formatted_price}
+                        </Badge>
+                    </div>
+                </DialogHeader>
 
-                                    {/* Close button */}
-                                    <button
-                                        onClick={onClose}
-                                        className="absolute top-4 right-4 w-10 h-10 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-colors"
-                                    >
-                                        <X className="w-5 h-5" />
-                                    </button>
-
-                                    {/* Product info overlay */}
-                                    <div className="absolute bottom-4 left-4 right-4">
-                                        <Dialog.Title className="text-xl font-bold text-white">
-                                            {product.name}
-                                        </Dialog.Title>
-                                        <p className="text-slate-300 text-sm mt-1">{product.description}</p>
-                                        <p className="mt-2 text-lg font-bold text-white">{product.formatted_price}</p>
+                <div className="max-h-[42vh] overflow-y-auto px-5 py-4">
+                    <FieldGroup className="gap-5">
+                        {hasModifiers ? (
+                            product.modifier_groups.map(group => (
+                                <Field
+                                    key={group.id}
+                                    aria-required={group.is_required ? 'true' : undefined}
+                                    className="rounded-lg border bg-card p-3"
+                                >
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="grid gap-1">
+                                            <FieldLabel asChild>
+                                                <span>{group.name}</span>
+                                            </FieldLabel>
+                                            <FieldDescription>
+                                                {group.type === 'multiple' && group.max_selections
+                                                    ? `Elige hasta ${group.max_selections} opciones.`
+                                                    : 'Elige una opción.'}
+                                            </FieldDescription>
+                                        </div>
+                                        {group.is_required ? (
+                                            <Badge variant="outline">Requerido</Badge>
+                                        ) : null}
                                     </div>
-                                </div>
 
-                                {/* Modifier Groups */}
-                                <div className="max-h-[40vh] overflow-y-auto p-4 space-y-6">
-                                    {product.modifier_groups?.map(group => (
-                                        <div key={group.id} className="space-y-3">
-                                            <div className="flex items-center justify-between">
-                                                <h3 className="font-semibold text-white">
-                                                    {group.name}
-                                                    {group.is_required && (
-                                                        <span className="ml-2 text-xs text-rose-400">*Requerido</span>
-                                                    )}
-                                                </h3>
-                                                {group.type === 'multiple' && group.max_selections && (
-                                                    <span className="text-xs text-slate-400">
-                                                        Máx: {group.max_selections}
-                                                    </span>
-                                                )}
-                                            </div>
+                                    {group.type === 'single' ? (
+                                        <RadioGroup
+                                            value={getSelectedOptionId(group.id)}
+                                            onValueChange={value => {
+                                                const option = group.options?.find(
+                                                    item => String(item.id) === value
+                                                );
+                                                if (option) {
+                                                    handleModifierToggle(group, option);
+                                                }
+                                            }}
+                                        >
+                                            {group.options?.map(option => {
+                                                const optionId = `modifier-${group.id}-${option.id}`;
 
-                                            <div className="space-y-2">
-                                                {group.options?.map(option => (
-                                                    <button
+                                                return (
+                                                    <label
                                                         key={option.id}
-                                                        type="button"
-                                                        onClick={() => handleModifierToggle(group, option)}
+                                                        htmlFor={optionId}
                                                         className={cn(
-                                                            "w-full flex items-center justify-between rounded-xl border p-3 transition-all",
+                                                            'flex cursor-pointer items-center justify-between gap-3 rounded-md border p-3 text-sm',
                                                             isOptionSelected(group.id, option.id)
-                                                                ? "border-white bg-white/10 text-white"
-                                                                : "border-white/5 bg-slate-800/50 text-slate-300 hover:border-white/20"
+                                                                ? 'border-primary bg-primary/5'
+                                                                : 'border-border bg-background hover:bg-muted'
                                                         )}
                                                     >
-                                                        <div className="flex items-center gap-3">
-                                                            <div className={cn(
-                                                                "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors",
-                                                                isOptionSelected(group.id, option.id)
-                                                                    ? "border-white bg-white"
-                                                                    : "border-slate-500"
-                                                            )}>
-                                                                {isOptionSelected(group.id, option.id) && (
-                                                                    <Check className="w-3 h-3 text-slate-950" />
-                                                                )}
-                                                            </div>
-                                                            <span className="font-medium">{option.name}</span>
-                                                        </div>
-                                                        <span className={cn(
-                                                            "text-sm",
-                                                            option.price > 0 ? "text-white" : "text-slate-500"
-                                                        )}>
+                                                        <span className="flex min-w-0 items-center gap-3">
+                                                            <RadioGroupItem
+                                                                id={optionId}
+                                                                value={String(option.id)}
+                                                            />
+                                                            <span className="truncate font-medium">{option.name}</span>
+                                                        </span>
+                                                        <span className="shrink-0 text-muted-foreground">
                                                             {option.formatted_price}
                                                         </span>
-                                                    </button>
-                                                ))}
-                                            </div>
+                                                    </label>
+                                                );
+                                            })}
+                                        </RadioGroup>
+                                    ) : (
+                                        <div className="grid gap-2">
+                                            {group.options?.map(option => {
+                                                const selected = isOptionSelected(group.id, option.id);
+                                                const groupSelections = selectedModifiers.filter(
+                                                    modifier => modifier.groupId === group.id
+                                                );
+                                                const maxReached = Boolean(
+                                                    group.max_selections &&
+                                                        groupSelections.length >= group.max_selections
+                                                );
+                                                const disabled = !selected && maxReached;
+                                                const optionId = `modifier-${group.id}-${option.id}`;
+
+                                                return (
+                                                    <label
+                                                        key={option.id}
+                                                        htmlFor={optionId}
+                                                        className={cn(
+                                                            'flex items-center justify-between gap-3 rounded-md border p-3 text-sm',
+                                                            disabled
+                                                                ? 'cursor-not-allowed opacity-60'
+                                                                : 'cursor-pointer hover:bg-muted',
+                                                            selected
+                                                                ? 'border-primary bg-primary/5'
+                                                                : 'border-border bg-background'
+                                                        )}
+                                                    >
+                                                        <span className="flex min-w-0 items-center gap-3">
+                                                            <Checkbox
+                                                                id={optionId}
+                                                                checked={selected}
+                                                                disabled={disabled}
+                                                                onCheckedChange={() => handleModifierToggle(group, option)}
+                                                            />
+                                                            <span className="truncate font-medium">{option.name}</span>
+                                                        </span>
+                                                        <span className="shrink-0 text-muted-foreground">
+                                                            {option.formatted_price}
+                                                        </span>
+                                                    </label>
+                                                );
+                                            })}
                                         </div>
-                                    ))}
+                                    )}
+                                </Field>
+                            ))
+                        ) : (
+                            <Field className="rounded-lg border bg-card p-3">
+                                <FieldLabel>Sin modificadores</FieldLabel>
+                                <FieldDescription>
+                                    Este producto se agregará al carrito sin opciones adicionales.
+                                </FieldDescription>
+                            </Field>
+                        )}
 
-                                    {/* Notes */}
-                                    <div className="space-y-2">
-                                        <label className="block text-sm font-medium text-slate-300">
-                                            Notas especiales (opcional)
-                                        </label>
-                                        <textarea
-                                            value={notes}
-                                            onChange={(e) => setNotes(e.target.value)}
-                                            placeholder="Ej: Sin cebolla, extra salsa..."
-                                            className="w-full resize-none rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-white/20"
-                                            rows={2}
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Footer: Quantity + Add to Cart */}
-                                <div className="p-4 border-t border-white/10 bg-slate-900/50">
-                                    <div className="flex items-center gap-4">
-                                        {/* Quantity Selector */}
-                                        <div className="flex items-center gap-2 bg-slate-800 rounded-xl border border-white/10">
-                                            <button
-                                                type="button"
-                                                onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                                                className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
-                                            >
-                                                <Minus className="w-4 h-4" />
-                                            </button>
-                                            <span className="w-8 text-center font-bold text-white">{quantity}</span>
-                                            <button
-                                                type="button"
-                                                onClick={() => setQuantity(q => q + 1)}
-                                                className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
-                                            >
-                                                <Plus className="w-4 h-4" />
-                                            </button>
-                                        </div>
-
-                                        {/* Add to Cart Button */}
-                                        <button
-                                            type="button"
-                                            onClick={handleConfirm}
-                                            disabled={!isValid()}
-                                            className={cn(
-                                                "flex-1 py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all",
-                                                isValid()
-                                                    ? "bg-white text-slate-950 shadow-lg hover:bg-slate-200"
-                                                    : "cursor-not-allowed bg-slate-700 text-slate-400"
-                                            )}
-                                        >
-                                            <ShoppingCart className="w-5 h-5" />
-                                            <span>Agregar L. {calculateTotal().toFixed(2)}</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            </Dialog.Panel>
-                        </Transition.Child>
-                    </div>
+                        <Field>
+                            <FieldLabel htmlFor={`product-notes-${product.id}`}>
+                                Notas especiales
+                            </FieldLabel>
+                            <Textarea
+                                id={`product-notes-${product.id}`}
+                                name="product_notes"
+                                value={notes}
+                                onChange={event => setNotes(event.target.value)}
+                                placeholder="Ej: sin cebolla, extra salsa..."
+                                rows={3}
+                            />
+                            <FieldDescription>
+                                Opcional. El negocio verá esta nota junto al pedido.
+                            </FieldDescription>
+                        </Field>
+                    </FieldGroup>
                 </div>
-            </Dialog>
-        </Transition>
+
+                <DialogFooter className="border-t bg-muted/40 px-5 py-4 sm:justify-between">
+                    <div className="flex w-full items-center gap-3">
+                        <div className="flex items-center rounded-md border bg-background">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                aria-label="Restar una unidad"
+                                onClick={() => setQuantity(current => Math.max(1, current - 1))}
+                            >
+                                <Minus className="size-4" aria-hidden="true" />
+                            </Button>
+                            <span
+                                className="min-w-10 text-center text-sm font-semibold"
+                                aria-live="polite"
+                                aria-label={`${quantity} unidades`}
+                            >
+                                {quantity}
+                            </span>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                aria-label="Sumar una unidad"
+                                onClick={() => setQuantity(current => current + 1)}
+                            >
+                                <Plus className="size-4" aria-hidden="true" />
+                            </Button>
+                        </div>
+
+                        <Button
+                            type="button"
+                            onClick={handleConfirm}
+                            disabled={!isValid()}
+                            className="min-w-0 flex-1"
+                        >
+                            <ShoppingCart className="size-4" aria-hidden="true" />
+                            <span className="truncate">Agregar L. {calculateTotal().toFixed(2)}</span>
+                        </Button>
+                    </div>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 }

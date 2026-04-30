@@ -31,18 +31,18 @@ return [
         ],
         'food_growth' => [
             'team_title' => 'Equipo recomendado para comida',
-            'team_copy' => 'La operacion mejora cuando caja, cocina y promociones se reparten con responsabilidad clara.',
+            'team_copy' => 'La operación mejora cuando caja, cocina y promociones se reparten con responsabilidad clara.',
             'team_playbook' => [
                 ['eyebrow' => 'Hoy', 'title' => 'Caja o pedidos', 'copy' => 'Alguien debe confirmar ordenes y sostener atencion al cliente con ritmo.', 'role' => Role::OPERATOR->value, 'when' => 'Desde el primer flujo de pedidos', 'route_key' => 'team'],
-                ['eyebrow' => 'Siguiente', 'title' => 'Lider de cocina u operacion', 'copy' => 'Coordina menu, tiempos de respuesta y orden diario.', 'role' => Role::MANAGER->value, 'when' => 'Cuando ya mueves volumen o varias categorias', 'route_key' => 'team'],
+                ['eyebrow' => 'Siguiente', 'title' => 'Líder de cocina u operación', 'copy' => 'Coordina menú, tiempos de respuesta y orden diario.', 'role' => Role::MANAGER->value, 'when' => 'Cuando ya mueves volumen o varias categorías', 'route_key' => 'team'],
                 ['eyebrow' => 'Escala', 'title' => 'Marketing y recompra', 'copy' => 'Sostiene promos, especiales y comunicacion para que la marca vuelva a vender.', 'role' => Role::ADMIN->value, 'when' => 'Cuando quieres subir ticket y recurrencia', 'route_key' => 'team'],
             ],
             'automation_title' => 'Automatizaciones comerciales para comida',
             'automation_copy' => 'En comida, la automatizacion debe proteger velocidad y recompra antes que complejidad.',
             'automation_playbook' => [
                 ['eyebrow' => 'Promos', 'title' => 'Especiales de la semana', 'copy' => 'Mueve lunch menus, combos y platos gancho con cadencia semanal.', 'trigger' => 'Nuevo menu o promo activa', 'state' => 'food_sales_base', 'route_key' => 'marketing'],
-                ['eyebrow' => 'Pedidos', 'title' => 'Reactivacion por WhatsApp', 'copy' => 'Recupera clientes que ya compraron o preguntaron pero aun no vuelven.', 'trigger' => 'Dias sin recompra', 'state' => 'audience_ready', 'route_key' => 'marketing'],
-                ['eyebrow' => 'Operacion', 'title' => 'Recordatorio de horario y cobertura', 'copy' => 'Reduce friccion cuando cambian horarios, delivery o pickup.', 'trigger' => 'Cambio operativo o alta demanda', 'state' => 'service_channel', 'route_key' => 'profile'],
+                ['eyebrow' => 'Pedidos', 'title' => 'Reactivación por WhatsApp', 'copy' => 'Recupera clientes que ya compraron o preguntaron pero aún no vuelven.', 'trigger' => 'Días sin recompra', 'state' => 'audience_ready', 'route_key' => 'marketing'],
+                ['eyebrow' => 'Operación', 'title' => 'Recordatorio de horario y cobertura', 'copy' => 'Reduce fricción cuando cambian horarios, delivery o pickup.', 'trigger' => 'Cambio operativo o alta demanda', 'state' => 'service_channel', 'route_key' => 'profile'],
             ],
         ],
         'service_growth' => [

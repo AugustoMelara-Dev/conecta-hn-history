@@ -103,7 +103,7 @@
 
                         <button
                             wire:click="$set('showPaymentModal', true)"
-                            class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5"
+                            class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-transform hover:-translate-y-0.5"
                         >
                             🚀 Contratar Plan PRO
                         </button>
@@ -287,7 +287,7 @@
                             <button
                                 wire:click="reportPayment"
                                 wire:loading.attr="disabled"
-                                class="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-lg disabled:opacity-50 transition-all"
+                                class="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-lg disabled:opacity-50 transition-colors"
                             >
                                 <span wire:loading.remove>Enviar Reporte</span>
                                 <span wire:loading>Enviando...</span>

@@ -95,7 +95,7 @@ final class SuperAdminDashboardAssembler
             [
                 'label' => 'SLA vencido',
                 'count' => (int) ($counts['overduePlaybookCount'] ?? 0),
-                'copy' => 'Playbooks ya vencidos que deberian estar en manos de alguien hoy.',
+                'copy' => 'Playbooks ya vencidos que deberían estar en manos de alguien hoy.',
                 'href' => (string) ($urls['operations'] ?? '#'),
                 'tone' => (int) ($counts['overduePlaybookCount'] ?? 0) > 0 ? 'danger' : 'success',
             ],

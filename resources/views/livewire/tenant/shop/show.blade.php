@@ -33,7 +33,7 @@
 
         {{-- Top Nav (Back Button) --}}
         <div class="absolute top-0 left-0 right-0 p-4 flex items-center justify-between z-10">
-            <a href="{{ route('pages.directory') }}" class="p-2 bg-black/30 backdrop-blur-md rounded-full text-white hover:bg-black/50 transition-all">
+            <a href="{{ route('pages.directory') }}" class="p-2 bg-black/30 backdrop-blur-md rounded-full text-white hover:bg-black/50 transition-colors" aria-label="Volver al directorio">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
             </a>
             @if($tenant->is_pro)
@@ -132,7 +132,7 @@
                         <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden group hover:shadow-md transition-shadow">
                             <div class="aspect-square bg-gray-100 relative overflow-hidden">
                                 @if($product->image_path)
-                                    <img src="{{ Storage::url($product->image_path) }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                                    <img src="{{ Storage::url($product->image_path) }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="{{ $product->name }}">
                                 @else
                                     <div class="w-full h-full flex items-center justify-center text-gray-300 bg-gray-50">
                                         <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
@@ -143,6 +143,7 @@
                                     <button 
                                         @click="$store.cart.add({{ Js::from(['id' => $product->id, 'name' => $product->name, 'price' => $product->price, 'image' => $product->image_path]) }});"
                                         class="absolute bottom-2 right-2 w-9 h-9 bg-white rounded-full shadow-lg flex items-center justify-center text-indigo-600 hover:bg-indigo-600 hover:text-white transition-colors"
+                                        aria-label="Agregar {{ $product->name }} al carrito"
                                     >
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                                     </button>
@@ -228,7 +229,7 @@
         >
             <button 
                 @click="$store.cart.openModal = true"
-                class="w-full bg-gray-900 text-white p-4 rounded-2xl shadow-2xl flex items-center justify-between hover:scale-[1.02] active:scale-95 transition-all"
+                class="w-full bg-gray-900 text-white p-4 rounded-2xl shadow-2xl flex items-center justify-between hover:scale-[1.02] active:scale-95 transition-transform"
             >
                 <div class="flex items-center gap-3">
                     <div class="bg-emerald-500 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">
@@ -266,7 +267,7 @@
                             <div class="flex h-full flex-col overflow-y-scroll bg-white shadow-xl">
                                 <div class="px-6 py-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
                                     <h2 class="text-xl font-bold text-gray-900" id="slide-over-title">Tu Pedido</h2>
-                                    <button @click="$store.cart.openModal = false" class="text-gray-400 hover:text-gray-500">
+                                    <button @click="$store.cart.openModal = false" class="text-gray-400 hover:text-gray-500" aria-label="Cerrar carrito">
                                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                                     </button>
                                 </div>
@@ -286,7 +287,7 @@
                                             <li class="flex py-6">
                                                 <div class="h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
                                                     <template x-if="item.image">
-                                                        <img :src="'/storage/' + item.image" class="h-full w-full object-cover object-center">
+                                                        <img :src="'/storage/' + item.image" class="h-full w-full object-cover object-center" :alt="item.name">
                                                     </template>
                                                     <template x-if="!item.image">
                                                         <div class="h-full w-full flex items-center justify-center text-gray-300">
@@ -303,9 +304,9 @@
                                                     </div>
                                                     <div class="flex flex-1 items-end justify-between text-sm">
                                                         <div class="flex items-center border rounded-lg bg-gray-50">
-                                                            <button @click="$store.cart.decrement(item.id)" class="px-3 py-1 text-gray-600 hover:bg-gray-200 rounded-l-lg">-</button>
+                                                            <button @click="$store.cart.decrement(item.id)" class="px-3 py-1 text-gray-600 hover:bg-gray-200 rounded-l-lg" :aria-label="'Reducir cantidad de ' + item.name">-</button>
                                                             <span class="px-2 font-medium" x-text="item.qty"></span>
-                                                            <button @click="$store.cart.increment(item.id)" class="px-3 py-1 text-gray-600 hover:bg-gray-200 rounded-r-lg">+</button>
+                                                            <button @click="$store.cart.increment(item.id)" class="px-3 py-1 text-gray-600 hover:bg-gray-200 rounded-r-lg" :aria-label="'Aumentar cantidad de ' + item.name">+</button>
                                                         </div>
                                                         <button @click="$store.cart.remove(item.id)" type="button" class="font-medium text-red-500 hover:text-red-600 bg-red-50 px-3 py-1 rounded-lg">Eliminar</button>
                                                     </div>
@@ -323,7 +324,7 @@
                                     <button 
                                         @click="$store.cart.checkout()"
                                         :disabled="$store.cart.items.length === 0"
-                                        class="flex w-full items-center justify-center rounded-xl border border-transparent bg-emerald-600 px-6 py-4 text-base font-medium text-white shadow-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all gap-2"
+                                        class="flex w-full items-center justify-center rounded-xl border border-transparent bg-emerald-600 px-6 py-4 text-base font-medium text-white shadow-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors gap-2"
                                     >
                                         <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg>
                                         Pedir por WhatsApp

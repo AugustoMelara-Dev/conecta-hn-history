@@ -69,14 +69,14 @@ final readonly class TenantPlanPresentationReader
             'productSlotsRemaining' => $productSlotsRemaining,
             'catalogCopy' => $isCatalogUnlimited
                 ? 'Catalogo ampliado para publicar mas productos, imagenes y merchandising.'
-                : 'Modo esencial para operar con un catalogo acotado mientras validas traccion.',
+                : 'Modo esencial para operar con un catálogo acotado mientras validas tracción.',
             'catalogStatusCopy' => $this->catalogStatusCopy($productCount, $productLimit),
             'marketingCopy' => $hasMarketingSuite
-                ? 'Suite comercial activa para QR, WhatsApp, campanas y seguimiento.'
-                : 'Activa PRO para desbloquear QR, campanas y una narrativa comercial mas fuerte.',
+                ? 'Suite comercial activa para QR, WhatsApp, campañas y seguimiento.'
+                : 'Activa PRO para desbloquear QR, campañas y una narrativa comercial más fuerte.',
             'brandingCopy' => $hasAdvancedBranding
                 ? 'Personalizacion visual avanzada ya habilitada para tu micrositio.'
-                : 'Activa PRO para desbloquear branding avanzado, portada y una presencia mas solida.',
+                : 'Activa PRO para desbloquear branding avanzado, portada y una presencia más sólida.',
             'followersCopy' => $hasFollowerInsights
                 ? 'Tu audiencia ya esta disponible con detalle completo para operar seguimiento.'
                 : 'En el plan Base mantienes el conteo general. El detalle completo se habilita al activar PRO.',

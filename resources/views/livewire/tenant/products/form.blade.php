@@ -56,7 +56,7 @@
                                 type="text"
                                 id="name"
                                 placeholder="Ej: Hamburguesa Clásica"
-                                class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all
+                                class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors
                                     @error('name') border-red-300 bg-red-50 @enderror"
                             />
                             @error('name')
@@ -78,7 +78,7 @@
                                     step="0.01"
                                     min="0"
                                     placeholder="0.00"
-                                    class="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all
+                                    class="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors
                                         @error('price') border-red-300 bg-red-50 @enderror"
                                 />
                             </div>
@@ -97,7 +97,7 @@
                                 id="description"
                                 rows="3"
                                 placeholder="Describe tu producto..."
-                                class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none
+                                class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors resize-none
                                     @error('description') border-red-300 bg-red-50 @enderror"
                             ></textarea>
                             @error('description')
@@ -118,7 +118,7 @@
                                     wire:click="$toggle('is_visible')"
                                     class="relative w-12 h-7 rounded-full transition-colors {{ $is_visible ? 'bg-emerald-500' : 'bg-gray-300' }}"
                                 >
-                                    <span class="absolute top-1 {{ $is_visible ? 'right-1' : 'left-1' }} w-5 h-5 bg-white rounded-full shadow transition-all"></span>
+                                    <span class="absolute top-1 {{ $is_visible ? 'right-1' : 'left-1' }} w-5 h-5 bg-white rounded-full shadow transition-transform"></span>
                                 </button>
                             </div>
 
@@ -212,7 +212,7 @@
                                     class="relative w-12 h-7 rounded-full transition-colors {{ $is_featured ? 'bg-amber-500' : 'bg-gray-300' }}"
                                     {{ !$this->isPro ? 'disabled' : '' }}
                                 >
-                                    <span class="absolute top-1 {{ $is_featured ? 'right-1' : 'left-1' }} w-5 h-5 bg-white rounded-full shadow transition-all"></span>
+                                    <span class="absolute top-1 {{ $is_featured ? 'right-1' : 'left-1' }} w-5 h-5 bg-white rounded-full shadow transition-transform"></span>
                                 </button>
                             </div>
 
@@ -228,7 +228,7 @@
                                     class="relative w-12 h-7 rounded-full transition-colors {{ $is_new ? 'bg-blue-500' : 'bg-gray-300' }}"
                                     {{ !$this->isPro ? 'disabled' : '' }}
                                 >
-                                    <span class="absolute top-1 {{ $is_new ? 'right-1' : 'left-1' }} w-5 h-5 bg-white rounded-full shadow transition-all"></span>
+                                    <span class="absolute top-1 {{ $is_new ? 'right-1' : 'left-1' }} w-5 h-5 bg-white rounded-full shadow transition-transform"></span>
                                 </button>
                             </div>
                         </div>
@@ -346,7 +346,7 @@
                     type="submit"
                     wire:loading.attr="disabled"
                     wire:loading.class="opacity-50 cursor-wait"
-                    class="inline-flex items-center justify-center gap-2 px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 transition-all"
+                    class="inline-flex items-center justify-center gap-2 px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 transition-colors"
                 >
                     <span wire:loading.remove>
                         {{ $isEditing ? 'Guardar Cambios' : 'Crear Producto' }}
@@ -369,7 +369,7 @@
             <div class="fixed inset-0 bg-gray-500/75 transition-opacity" wire:click="$set('showCategoryModal', false)"></div>
 
             <div class="flex min-h-full items-center justify-center p-4">
-                <div class="relative bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 transform transition-all">
+                <div class="relative bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 transform transition-transform">
                     <h3 class="text-lg font-bold text-gray-900 mb-4">Nueva Categoría</h3>
                     
                     <div class="mb-4">

@@ -16,19 +16,16 @@ import {
 import AuthSplitLayout, {
     AuthAsideCard,
 } from "@/Components/Auth/AuthSplitLayout"
-import { Button } from "@/Components/ui/button"
-import { Checkbox } from "@/Components/ui/checkbox"
-import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/Components/ui/field"
-import { Input } from "@/Components/ui/input"
-import { Progress } from "@/Components/ui/progress"
 import {
-    Select,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/Components/ui/select"
+    AccountStep,
+    BusinessStep,
+    LocationStep,
+    PlanSummaryStep,
+} from "@/Components/Auth/RegisterTenantWizardSteps"
+import { Alert, AlertDescription, AlertTitle } from "@/Components/ui/alert"
+import { Button } from "@/Components/ui/button"
+import { Card } from "@/Components/ui/card"
+import { Progress } from "@/Components/ui/progress"
 import {
     PUBLIC_BODY_FONT,
     PUBLIC_DISPLAY_FONT,
@@ -154,94 +151,6 @@ function StepPill({ step, index, currentStep, onClick }) {
     )
 }
 
-function PlanCard({ active, recommended = false, title, caption, price, bullets, onClick }) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            className={`relative rounded-[1.75rem] border p-6 text-left transition ${
-                active
-                    ? "border-slate-950 bg-slate-950 text-white"
-                    : "border-slate-200 bg-slate-50 text-slate-950 hover:border-slate-300 hover:bg-white"
-            }`}
-        >
-            {recommended ? (
-                <span
-                    className={`absolute left-6 top-0 -translate-y-1/2 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] ${active ? "bg-white text-slate-950" : "bg-slate-950 text-white"}`}
-                    style={{ fontFamily: PUBLIC_LABEL_FONT }}
-                >
-                    Recomendado
-                </span>
-            ) : null}
-
-            <div className="flex items-start justify-between gap-4">
-                <div>
-                    <p className="text-2xl font-extrabold tracking-tight" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                        {title}
-                    </p>
-                    <p
-                        className={`mt-1 text-[11px] font-bold uppercase tracking-[0.2em] ${active ? "text-slate-300" : "text-slate-500"}`}
-                        style={{ fontFamily: PUBLIC_LABEL_FONT }}
-                    >
-                        {caption}
-                    </p>
-                </div>
-                <div className="text-right">
-                    <p className="text-3xl font-extrabold tracking-tight">{price}</p>
-                    <span className={`mt-3 inline-flex h-6 w-6 items-center justify-center rounded-full border ${active ? "border-white bg-white text-slate-950" : "border-slate-300 bg-white"}`}>
-                        {active ? <Check className="h-3.5 w-3.5" /> : null}
-                    </span>
-                </div>
-            </div>
-
-            <div className="mt-6 space-y-3">
-                {bullets.map((bullet) => (
-                    <div key={bullet} className={`flex items-center gap-2 text-sm ${active ? "text-slate-100" : "text-slate-700"}`}>
-                        <CheckCircle2 className="h-4 w-4" />
-                        <span>{bullet}</span>
-                    </div>
-                ))}
-            </div>
-        </button>
-    )
-}
-
-function BusinessTypeCard({ active, title, description, capabilities, examples, onClick }) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            className={`rounded-[1.5rem] border p-5 text-left transition ${
-                active
-                    ? "border-slate-950 bg-slate-950 text-white"
-                    : "border-slate-200 bg-slate-50 text-slate-950 hover:border-slate-300 hover:bg-white"
-            }`}
-        >
-            <div className="space-y-2">
-                <p className="text-lg font-extrabold tracking-tight" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                    {title}
-                </p>
-                <p className={`text-sm leading-7 ${active ? "text-slate-200" : "text-slate-600"}`}>
-                    {description}
-                </p>
-            </div>
-
-            <div className="mt-4 space-y-2">
-                {capabilities.slice(0, 3).map((capability) => (
-                    <div key={capability} className={`flex items-center gap-2 text-sm ${active ? "text-slate-100" : "text-slate-700"}`}>
-                        <CheckCircle2 className="h-4 w-4" />
-                        <span>{capability}</span>
-                    </div>
-                ))}
-            </div>
-
-            <p className={`mt-4 text-xs font-semibold uppercase tracking-[0.18em] ${active ? "text-slate-300" : "text-slate-500"}`} style={{ fontFamily: PUBLIC_LABEL_FONT }}>
-                Ideal para: {examples.join(", ")}
-            </p>
-        </button>
-    )
-}
-
 function SummaryRow({ label, value }) {
     return (
         <div className="flex items-start justify-between gap-4 rounded-xl bg-slate-50 px-4 py-3">
@@ -265,6 +174,7 @@ export function RegisterTenantWizard({
     const [slugTouched, setSlugTouched] = useState(false)
     const [businessTypeTouched, setBusinessTypeTouched] = useState(false)
     const [localErrors, setLocalErrors] = useState({})
+    const [pendingFocusField, setPendingFocusField] = useState(null)
     const [slugState, setSlugState] = useState({
         status: "idle",
                 message: "La URL se revisa en vivo mientras escribes.",
@@ -386,7 +296,12 @@ export function RegisterTenantWizard({
         if (typeof window === "undefined") return
 
         window.requestAnimationFrame(() => {
-            const node = document.getElementById(field)
+            const fallbackId = field === "business_type"
+                ? `business-type-${data.business_type}`
+                : field === "selected_plan"
+                    ? `plan-${data.selected_plan}`
+                    : field
+            const node = document.getElementById(field) || document.getElementById(fallbackId)
             if (node && typeof node.focus === "function") {
                 node.focus()
             }
@@ -397,8 +312,22 @@ export function RegisterTenantWizard({
         const firstServerError = Object.keys(errors)[0]
         if (firstServerError) {
             setStep(FIELD_TO_STEP[firstServerError] ?? 0)
+            setPendingFocusField(firstServerError)
         }
     }, [errors])
+
+    useEffect(() => {
+        if (!pendingFocusField) {
+            return
+        }
+
+        if ((FIELD_TO_STEP[pendingFocusField] ?? 0) !== step) {
+            return
+        }
+
+        focusField(pendingFocusField)
+        setPendingFocusField(null)
+    }, [pendingFocusField, step])
 
     useEffect(() => {
         if (slugTouched) {
@@ -518,7 +447,7 @@ export function RegisterTenantWizard({
             errorFor(field) ? "border-rose-300 focus-visible:ring-rose-200" : ""
         }`
 
-    const validateStep = (targetStep) => {
+    const validateStep = (targetStep, { focus = false } = {}) => {
         const nextErrors = {}
         const slug = slugify(data.slug)
 
@@ -558,21 +487,27 @@ export function RegisterTenantWizard({
             return { ...next, ...nextErrors }
         })
 
+        const firstInvalid = (fields || []).find((field) => Boolean(nextErrors[field]))
+        if (focus && firstInvalid) {
+            setPendingFocusField(firstInvalid)
+        }
+
         return Object.keys(nextErrors).length === 0
     }
 
     const submit = (event) => {
         if (event) event.preventDefault()
-        if (!validateStep(step)) {
-            const firstInvalid = (STEP_FIELDS[step] || []).find((field) => Boolean(errorFor(field)))
-            if (firstInvalid) focusField(firstInvalid)
+        if (!validateStep(step, { focus: true })) {
             return
         }
 
         post(registerStoreEndpoint, {
             onError: (serverErrors) => {
                 const firstField = Object.keys(serverErrors)[0]
-                if (firstField) setStep(FIELD_TO_STEP[firstField] ?? 0)
+                if (firstField) {
+                    setStep(FIELD_TO_STEP[firstField] ?? 0)
+                    setPendingFocusField(firstField)
+                }
             },
         })
     }
@@ -653,7 +588,7 @@ export function RegisterTenantWizard({
             }
         >
             <section className="w-full max-w-3xl" style={{ fontFamily: PUBLIC_BODY_FONT }}>
-                <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.06)] sm:p-8">
+                <Card className="rounded-[2rem] border-slate-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.06)] sm:p-8">
                     <div className="space-y-4">
                         <div className="space-y-2">
                             <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
@@ -675,9 +610,12 @@ export function RegisterTenantWizard({
                     </div>
 
                     {!canSubmit ? (
-                        <div className="mt-8 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                            No pudimos cargar ciudades o categorías. Recarga la página e inténtalo de nuevo.
-                        </div>
+                        <Alert variant="destructive" className="mt-8 rounded-2xl border-rose-200 bg-rose-50 text-rose-700">
+                            <AlertTitle>Datos incompletos</AlertTitle>
+                            <AlertDescription>
+                                No pudimos cargar ciudades o categorías. Recarga la página e inténtalo de nuevo.
+                            </AlertDescription>
+                        </Alert>
                     ) : null}
 
                     <div className="mt-8">
@@ -692,306 +630,64 @@ export function RegisterTenantWizard({
 
                         <form onSubmit={submit}>
                             {step === 0 ? (
-                                <FieldGroup>
-                                    <Field>
-                                        <FieldLabel htmlFor="business_name">Nombre comercial</FieldLabel>
-                                        <Input id="business_name" name="business_name" autoComplete="organization" value={data.business_name} onChange={(event) => updateField("business_name", event.target.value)} placeholder="Ej. Cafe La Esperanza" className={inputClass("business_name")} />
-                                        {errorFor("business_name") ? <FieldDescription className="text-rose-600">{errorFor("business_name")}</FieldDescription> : null}
-                                    </Field>
-
-                                    <Field>
-                                        <div className="flex items-center justify-between gap-3">
-                                            <FieldLabel htmlFor="slug">URL personalizada</FieldLabel>
-                                            <span
-                                                data-testid="register-slug-status"
-                                                className={`text-[11px] font-bold uppercase tracking-[0.18em] ${slugState.status === "available" ? "text-slate-950" : slugState.status === "unavailable" || slugState.status === "error" ? "text-rose-600" : "text-slate-400"}`}
-                                                style={{ fontFamily: PUBLIC_LABEL_FONT }}
-                                            >
-                                                {slugState.status === "available" ? "Disponible" : slugState.status === "checking" ? "Revisando" : slugState.status === "unavailable" ? "Ocupada" : "Pendiente"}
-                                            </span>
-                                        </div>
-                                        <div className={`grid h-12 grid-cols-[minmax(90px,auto)_auto_1fr] items-center gap-1 rounded-xl border bg-slate-50 px-3 text-sm transition focus-within:ring-4 ${
-                                            errorFor("slug")
-                                                ? "border-rose-300 focus-within:border-rose-300 focus-within:ring-rose-200"
-                                                : "border-slate-200 focus-within:border-slate-950 focus-within:ring-slate-300"
-                                        }`}>
-                                            <span className="truncate text-xs text-slate-500" title={slugBaseHost}>
-                                                {slugBaseHost}
-                                            </span>
-                                            <span className="text-xs text-slate-400">/t/</span>
-                                            <Input id="slug" name="slug" data-testid="register-slug-input" autoComplete="off"
-                                                value={data.slug}
-                                                onChange={(event) => {
-                                                    setSlugTouched(true)
-                                                    updateField("slug", slugify(event.target.value))
-                                                }}
-                                                placeholder="tunegocio"
-                                                className="h-full w-full border-0 bg-transparent px-1 text-slate-950 shadow-none placeholder:text-slate-400 focus-visible:ring-0 focus-visible:ring-offset-0"
-                                            />
-                                        </div>
-                                        <FieldDescription aria-live="polite" className={slugState.status === "unavailable" || slugState.status === "error" ? "text-rose-600" : "text-slate-500"}>
-                                            {errorFor("slug") || slugState.message}
-                                        </FieldDescription>
-                                        {crossSurfaceHost ? (
-                                            <FieldDescription className="text-slate-500">
-                                                Tu panel opera en {registrationHost} y tu micrositio público se publica en {slugBaseHost}/t/...
-                                            </FieldDescription>
-                                        ) : null}
-                                        {slugState.suggestions?.length ? (
-                                            <div className="space-y-2">
-                                                <p className="text-xs font-semibold text-slate-500">Opciones sugeridas:</p>
-                                                <div className="flex flex-wrap gap-2">
-                                                    {slugState.suggestions.map((suggestion) => (
-                                                        <Button key={suggestion} type="button" variant="outline" onClick={() => { setSlugTouched(true); updateField("slug", suggestion) }} className="h-8 rounded-full border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:border-slate-300 hover:text-slate-950">
-                                                            {suggestion}
-                                                        </Button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        ) : null}
-                                    </Field>
-
-                                    <Field>
-                                        <FieldLabel htmlFor="category_id">Categoría</FieldLabel>
-                                        <Select
-                                            value={selectedCategoryValue}
-                                            onValueChange={(value) => updateField("category_id", value === "none" ? "" : value)}
-                                        >
-                                            <SelectTrigger
-                                                id="category_id"
-                                                data-testid="register-category-select"
-                                                aria-invalid={Boolean(errorFor("category_id"))}
-                                                className={`h-12 rounded-xl border-slate-200 bg-slate-50 px-4 text-slate-950 focus:ring-4 focus:ring-slate-300 ${errorFor("category_id") ? "border-rose-300 focus:ring-rose-200" : ""}`}
-                                            >
-                                                <SelectValue placeholder="Selecciona una categoría" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectGroup>
-                                                    <SelectItem value="none">Selecciona una categoría</SelectItem>
-                                                    {categories.map((item) => (
-                                                        <SelectItem key={item.id} value={String(item.id)}>{item.name}</SelectItem>
-                                                    ))}
-                                                </SelectGroup>
-                                            </SelectContent>
-                                        </Select>
-                                        {errorFor("category_id") ? <FieldDescription className="text-rose-600">{errorFor("category_id")}</FieldDescription> : null}
-                                    </Field>
-
-                                    <Field>
-                                        <div className="space-y-2">
-                                            <FieldLabel>Tipo de negocio</FieldLabel>
-                                            <FieldDescription>
-                                                Elige la operación que mejor representa cómo vendes hoy.
-                                            </FieldDescription>
-                                        </div>
-
-                                        <div className="grid gap-4 xl:grid-cols-2">
-                                            {businessTypes.map((item) => (
-                                                <BusinessTypeCard
-                                                    key={item.value}
-                                                    active={data.business_type === item.value}
-                                                    title={item.label}
-                                                    description={item.description}
-                                                    capabilities={item.capabilities}
-                                                    examples={item.examples}
-                                                    onClick={() => {
-                                                        setBusinessTypeTouched(true)
-                                                        updateField("business_type", item.value)
-                                                        if (item.rubro_key) updateField("rubro_key", item.rubro_key)
-                                                    }}
-                                                />
-                                            ))}
-                                        </div>
-
-                                        {suggestedBusinessType && !businessTypeTouched ? (
-                                            <FieldDescription>
-                                                Te sugerimos <strong>{businessTypes.find((item) => item.value === suggestedBusinessType)?.label || "este tipo"}</strong> por la categoría que elegiste.
-                                            </FieldDescription>
-                                        ) : null}
-
-                                        {selectedSegment ? (
-                                            <div className="rounded-[1.75rem] border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-cyan-50 p-5 shadow-[0_20px_50px_rgba(16,185,129,0.08)]">
-                                                <div className="space-y-3">
-                                                    <div className="flex flex-wrap items-center gap-2">
-                                                        <span
-                                                            className="inline-flex rounded-full bg-slate-950 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-white"
-                                                            style={{ fontFamily: PUBLIC_LABEL_FONT }}
-                                                        >
-                                                            Segmento sugerido
-                                                        </span>
-                                                        <span
-                                                            className="inline-flex rounded-full border border-emerald-300 bg-emerald-100 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-700"
-                                                            style={{ fontFamily: PUBLIC_LABEL_FONT }}
-                                                        >
-                                                            {selectedSegment.label}
-                                                        </span>
-                                                    </div>
-
-                                                    <div className="space-y-2">
-                                                        <h3 className="text-xl font-extrabold tracking-tight text-slate-950" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                                                            {selectedSegment.onboardingTitle}
-                                                        </h3>
-                                                        <p className="text-sm leading-7 text-slate-600">
-                                                            {selectedSegment.onboardingCopy || selectedSegment.teaser}
-                                                        </p>
-                                                    </div>
-
-                                                    {selectedSegment.modules?.length ? (
-                                                        <div className="flex flex-wrap gap-2">
-                                                            {selectedSegment.modules.slice(0, 4).map((module) => (
-                                                                <span
-                                                                    key={module}
-                                                                    className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-700"
-                                                                >
-                                                                    {module}
-                                                                </span>
-                                                            ))}
-                                                        </div>
-                                                    ) : null}
-
-                                                    {segmentCandidates.length > 1 ? (
-                                                        <div className="space-y-2">
-                                                            <p
-                                                                className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500"
-                                                                style={{ fontFamily: PUBLIC_LABEL_FONT }}
-                                                            >
-                                                                Rutas cercanas para este rubro
-                                                            </p>
-                                                            <div className="flex flex-wrap gap-2">
-                                                                {segmentCandidates.slice(1).map((segment) => (
-                                                                    <span
-                                                                        key={segment.key}
-                                                                        className="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600"
-                                                                    >
-                                                                        {segment.label}
-                                                                    </span>
-                                                                ))}
-                                                            </div>
-                                                        </div>
-                                                    ) : null}
-                                                </div>
-                                            </div>
-                                        ) : null}
-
-                                        {errorFor("business_type") ? <FieldDescription className="text-rose-600">{errorFor("business_type")}</FieldDescription> : null}
-                                    </Field>
-                                </FieldGroup>
+                                <BusinessStep
+                                    data={data}
+                                    categories={categories}
+                                    businessTypes={businessTypes}
+                                    selectedCategoryValue={selectedCategoryValue}
+                                    slugBaseHost={slugBaseHost}
+                                    registrationHost={registrationHost}
+                                    crossSurfaceHost={crossSurfaceHost}
+                                    slugState={slugState}
+                                    errorFor={errorFor}
+                                    inputClass={inputClass}
+                                    updateField={updateField}
+                                    setSlugTouched={setSlugTouched}
+                                    suggestedBusinessType={suggestedBusinessType}
+                                    businessTypeTouched={businessTypeTouched}
+                                    setBusinessTypeTouched={setBusinessTypeTouched}
+                                    selectedSegment={selectedSegment}
+                                    segmentCandidates={segmentCandidates}
+                                    slugify={slugify}
+                                />
                             ) : null}
 
                             {step === 1 ? (
-                                <FieldGroup>
-                                    <Field>
-                                        <FieldLabel htmlFor="city_id">Ciudad</FieldLabel>
-                                        <Select
-                                            value={selectedCityValue}
-                                            onValueChange={(value) => updateField("city_id", value === "none" ? "" : value)}
-                                        >
-                                            <SelectTrigger
-                                                id="city_id"
-                                                data-testid="register-city-select"
-                                                aria-invalid={Boolean(errorFor("city_id"))}
-                                                className={`h-12 rounded-xl border-slate-200 bg-slate-50 px-4 text-slate-950 focus:ring-4 focus:ring-slate-300 ${errorFor("city_id") ? "border-rose-300 focus:ring-rose-200" : ""}`}
-                                            >
-                                                <SelectValue placeholder="Selecciona una ciudad" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectGroup>
-                                                    <SelectItem value="none">Selecciona una ciudad</SelectItem>
-                                                    {cities.map((item) => (
-                                                        <SelectItem key={item.id} value={String(item.id)}>{item.name}</SelectItem>
-                                                    ))}
-                                                </SelectGroup>
-                                            </SelectContent>
-                                        </Select>
-                                        {errorFor("city_id") ? <FieldDescription className="text-rose-600">{errorFor("city_id")}</FieldDescription> : null}
-                                    </Field>
-
-                                    <Field>
-                                        <FieldLabel htmlFor="whatsapp">WhatsApp</FieldLabel>
-                                        <Input id="whatsapp" name="whatsapp" type="tel" autoComplete="tel" inputMode="tel" value={data.whatsapp} onChange={(event) => updateField("whatsapp", event.target.value)} placeholder="+504 9999-9999" className={inputClass("whatsapp")} />
-                                        <FieldDescription>Opcional, pero ayuda a centralizar pedidos y contacto desde el inicio.</FieldDescription>
-                                    </Field>
-                                </FieldGroup>
+                                <LocationStep
+                                    data={data}
+                                    cities={cities}
+                                    selectedCityValue={selectedCityValue}
+                                    updateField={updateField}
+                                    errorFor={errorFor}
+                                    inputClass={inputClass}
+                                />
                             ) : null}
 
                             {step === 2 ? (
-                                <FieldGroup>
-                                    <Field>
-                                        <FieldLabel htmlFor="name">Nombre completo</FieldLabel>
-                                        <Input id="name" name="name" autoComplete="name" value={data.name} onChange={(event) => updateField("name", event.target.value)} placeholder="Nombre Apellido" className={inputClass("name")} />
-                                        {errorFor("name") ? <FieldDescription className="text-rose-600">{errorFor("name")}</FieldDescription> : null}
-                                    </Field>
-
-                                    <Field>
-                                        <FieldLabel htmlFor="email">Correo</FieldLabel>
-                                        <Input id="email" name="email" type="email" autoComplete="email" spellCheck={false} value={data.email} onChange={(event) => updateField("email", event.target.value)} placeholder="hola@tunegocio.hn" className={inputClass("email")} />
-                                        {errorFor("email") ? (
-                                            <FieldDescription className="text-rose-600">{errorFor("email")}</FieldDescription>
-                                        ) : (
-                                            <FieldDescription>Usaremos este correo para login, verificación y recuperación.</FieldDescription>
-                                        )}
-                                    </Field>
-
-                                    <div className="grid gap-4 md:grid-cols-2">
-                                        <Field>
-                                            <FieldLabel htmlFor="password">Contraseña</FieldLabel>
-                                            <Input id="password" name="password" type="password" autoComplete="new-password" value={data.password} onChange={(event) => updateField("password", event.target.value)} className={inputClass("password")} />
-                                            {errorFor("password") ? <FieldDescription className="text-rose-600">{errorFor("password")}</FieldDescription> : <FieldDescription>Mínimo 8 caracteres.</FieldDescription>}
-                                        </Field>
-
-                                        <Field>
-                                            <FieldLabel htmlFor="password_confirmation">Confirmar contraseña</FieldLabel>
-                                            <Input id="password_confirmation" name="password_confirmation" type="password" autoComplete="new-password" value={data.password_confirmation} onChange={(event) => updateField("password_confirmation", event.target.value)} className={inputClass("password_confirmation")} />
-                                            {errorFor("password_confirmation") ? <FieldDescription className="text-rose-600">{errorFor("password_confirmation")}</FieldDescription> : null}
-                                        </Field>
-                                    </div>
-                                </FieldGroup>
+                                <AccountStep
+                                    data={data}
+                                    updateField={updateField}
+                                    errorFor={errorFor}
+                                    inputClass={inputClass}
+                                />
                             ) : null}
 
                             {step === 3 ? (
-                                <FieldGroup>
-                                    <div className="grid gap-4 md:grid-cols-2">
-                                        <PlanCard active={data.selected_plan === "free"} title="Plan Basic" caption="Lo esencial para iniciar" price={`L. ${freePrice}`} bullets={["Perfil digital público", `Catálogo de ${freeLimit} productos`, "Panel base para operar"]} onClick={() => updateField("selected_plan", "free")} />
-                                        <PlanCard active={data.selected_plan === "pro"} recommended title="Plan Business Pro" caption="Potencia total" price={`L. ${proPrice}`} bullets={["Ventas ilimitadas", "Analíticas avanzadas", `Capacidad comercial de ${proLimit} productos`]} onClick={() => updateField("selected_plan", "pro")} />
-                                    </div>
-                                    {errorFor("selected_plan") ? <FieldDescription className="text-rose-600">{errorFor("selected_plan")}</FieldDescription> : null}
-
-                                    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr),300px]">
-                                        <div className="space-y-3 rounded-[1.75rem] border border-slate-200 bg-white p-5">
-                                            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500" style={{ fontFamily: PUBLIC_LABEL_FONT }}>Resumen de activación</p>
-                                            <SummaryRow label="Negocio" value={businessPreview} />
-                                            <SummaryRow label="URL" value={slugPreview} />
-                                            <SummaryRow label="Categoría" value={selectedCategory?.name || "Pendiente"} />
-                                            <SummaryRow label="Tipo" value={selectedBusinessType?.label || "Pendiente"} />
-                                            <SummaryRow label="Segmento" value={selectedSegment?.label || "Pendiente"} />
-                                            <SummaryRow label="Ciudad" value={selectedCity?.name || "Pendiente"} />
-                                            <SummaryRow label="Cuenta" value={data.email || "Sin correo aún"} />
-                                            <SummaryRow label="Plan" value={data.selected_plan === "pro" ? "Business Pro" : "Basic"} />
-                                        </div>
-
-                                        <div className="space-y-4">
-                                            <label className="flex items-start gap-3 rounded-[1.75rem] border border-slate-200 bg-slate-50 px-5 py-5">
-                                                <Checkbox
-                                                    data-testid="register-terms-checkbox"
-                                                    checked={data.terms_accepted}
-                                                    onCheckedChange={(checked) => updateField("terms_accepted", checked === true)}
-                                                    className="mt-1 border-slate-300 text-white data-[state=checked]:border-slate-950 data-[state=checked]:bg-slate-950"
-                                                />
-                                                <span className="text-sm leading-7 text-slate-600">
-                                                    Confirmo que tengo autorización para registrar este negocio y acepto los términos operativos de Vito Business OS.
-                                                </span>
-                                            </label>
-                                            {errorFor("terms_accepted") ? <FieldDescription className="text-rose-600">{errorFor("terms_accepted")}</FieldDescription> : null}
-
-                                            <div className="rounded-[1.75rem] bg-slate-950 px-5 py-6 text-white">
-                                                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-300" style={{ fontFamily: PUBLIC_LABEL_FONT }}>Lo que sucede al enviar</p>
-                                                <p className="mt-3 text-sm leading-7 text-slate-300">
-                                                    Creamos cuenta, negocio y acceso al panel en una sola pasada sobre el backend real.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </FieldGroup>
+                                <PlanSummaryStep
+                                    data={data}
+                                    freeLimit={freeLimit}
+                                    proLimit={proLimit}
+                                    freePrice={freePrice}
+                                    proPrice={proPrice}
+                                    businessPreview={businessPreview}
+                                    slugPreview={slugPreview}
+                                    selectedCategory={selectedCategory}
+                                    selectedBusinessType={selectedBusinessType}
+                                    selectedSegment={selectedSegment}
+                                    selectedCity={selectedCity}
+                                    errorFor={errorFor}
+                                    updateField={updateField}
+                                />
                             ) : null}
                         </form>
                     </div>
@@ -1011,7 +707,7 @@ export function RegisterTenantWizard({
                             </Button>
 
                             {step < STEPS.length - 1 ? (
-                                <Button type="button" data-testid="register-next-step" onClick={() => validateStep(step) && setStep((current) => current + 1)} disabled={processing || !canSubmit} className="h-12 rounded-xl bg-slate-950 text-white hover:bg-slate-800">
+                                <Button type="button" data-testid="register-next-step" onClick={() => validateStep(step, { focus: true }) && setStep((current) => current + 1)} disabled={processing || !canSubmit} className="h-12 rounded-xl bg-slate-950 text-white hover:bg-slate-800">
                                     Continuar
                                     <ArrowRight className="ml-2 h-4 w-4" />
                                 </Button>
@@ -1032,7 +728,7 @@ export function RegisterTenantWizard({
                             )}
                         </div>
                     </div>
-                </div>
+                </Card>
             </section>
         </AuthSplitLayout>
     )

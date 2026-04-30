@@ -148,6 +148,7 @@ function Pagination({ links }) {
                             ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                             : 'bg-gray-50 text-gray-400 cursor-not-allowed'
                         }`}
+                    // framework-pagination-html: Laravel paginator labels contain trusted arrow markup.
                     dangerouslySetInnerHTML={{ __html: link.label }}
                 />
             ))}

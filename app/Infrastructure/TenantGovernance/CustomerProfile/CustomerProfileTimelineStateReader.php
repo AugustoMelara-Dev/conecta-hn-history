@@ -19,7 +19,7 @@ final class CustomerProfileTimelineStateReader
     {
         if (! $profile instanceof CustomerProfile) {
             return [
-                'empty' => 'Todavia no hay timeline disponible.',
+                'empty' => 'Todavía no hay timeline disponible.',
                 'items' => [],
             ];
         }

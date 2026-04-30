@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { toast } from '@/Components/Toast'; // Assuming custom toast or use standard console.log if not present, but user context shows Toast directory
+import { toast } from '@/Components/Toast/index.js';
 
 /**
  * useAiGenerator - Optimistic UI & WebSocket Orchestrator

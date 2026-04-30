@@ -25,7 +25,7 @@ final class TenantCustomerProfilePresentationReader
 
     public function navigationBadgeTooltip(): string
     {
-        return 'Clientes con senal fuerte de reactivacion';
+        return 'Clientes con señal fuerte de reactivación';
     }
 
     /**

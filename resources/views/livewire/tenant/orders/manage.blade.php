@@ -21,7 +21,7 @@
                 </div>
                 <button
                     wire:click="$set('isCreating', true)"
-                    class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-lg shadow-blue-500/25 transition-all"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-lg shadow-blue-500/25 transition-colors"
                 >
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -227,7 +227,7 @@
             <div class="fixed inset-0 bg-gray-500/75 transition-opacity" wire:click="resetModal"></div>
 
             <div class="flex min-h-full items-center justify-center p-4">
-                <div class="relative bg-white rounded-2xl shadow-xl max-w-2xl w-full p-6 transform transition-all max-h-[90vh] overflow-y-auto">
+                <div class="relative bg-white rounded-2xl shadow-xl max-w-2xl w-full p-6 transform transition-transform max-h-[90vh] overflow-y-auto">
                     {{-- Header --}}
                     <div class="flex items-center justify-between mb-6">
                         <h3 class="text-xl font-bold text-gray-900">📦 Registrar Venta</h3>
@@ -330,7 +330,7 @@
                                 wire:click="createManualOrder"
                                 wire:loading.attr="disabled"
                                 @if(empty($cart)) disabled @endif
-                                class="w-full mt-4 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-lg shadow-emerald-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                class="w-full mt-4 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-lg shadow-emerald-500/25 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <span wire:loading.remove>Registrar Venta</span>
                                 <span wire:loading>Procesando...</span>

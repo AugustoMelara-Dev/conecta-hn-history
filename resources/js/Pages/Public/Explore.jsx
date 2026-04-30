@@ -12,7 +12,16 @@ import {
     Star,
 } from 'lucide-react';
 import PublicLayout from '@/Layouts/PublicLayout';
+import { Badge } from '@/Components/ui/badge';
 import { Button } from '@/Components/ui/button';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+} from '@/Components/ui/card';
 import { Input } from '@/Components/ui/input';
 import {
     Select,
@@ -184,24 +193,23 @@ function CategoryRail({ categories = [] }) {
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div className="mb-4 flex items-center justify-between gap-4">
                     <h2 className="text-sm font-semibold uppercase tracking-[0.26em] text-slate-500">Categorias</h2>
-                    <Link href={route('directory.index')} className="text-sm font-semibold text-slate-700 transition hover:text-slate-950">
-                        Ver todas
-                    </Link>
+                    <Button asChild variant="ghost" size="sm" className="rounded-full text-slate-700 hover:text-slate-950">
+                        <Link href={route('directory.index')}>Ver todas</Link>
+                    </Button>
                 </div>
 
                 <div className="flex gap-3 overflow-x-auto pb-2">
                     {categories.map((category, index) => (
-                        <Link
+                        <Button
                             key={category.slug}
-                            href={route('directory.index', { category: category.slug })}
-                            className={`whitespace-nowrap rounded-full border px-5 py-3 text-sm font-semibold transition ${
-                                index === 0
-                                    ? 'border-slate-950 bg-slate-950 text-white'
-                                    : 'border-stone-200 bg-white text-slate-700 hover:border-stone-300 hover:text-slate-950'
-                            }`}
+                            asChild
+                            variant={index === 0 ? 'default' : 'outline'}
+                            className="h-auto whitespace-nowrap rounded-full px-5 py-3 text-sm font-semibold transition-colors"
                         >
-                            {category.name}
-                        </Link>
+                            <Link href={route('directory.index', { category: category.slug })}>
+                                {category.name}
+                            </Link>
+                        </Button>
                     ))}
                 </div>
             </div>
@@ -232,10 +240,12 @@ function FeaturedSplit({ featuredTenants = [] }) {
                             Una capa mas editorial para que descubrir se sienta mas claro que abrir un directorio plano.
                         </p>
                     </div>
-                    <Link href={route('directory.index')} className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 transition hover:text-slate-950">
-                        Ir al buscador completo
-                        <ArrowRight className="h-4 w-4" />
-                    </Link>
+                    <Button asChild variant="ghost" className="rounded-full text-slate-700 hover:text-slate-950">
+                        <Link href={route('directory.index')}>
+                            Ir al buscador completo
+                            <ArrowRight data-icon="inline-end" aria-hidden="true" />
+                        </Link>
+                    </Button>
                 </div>
 
                 <div className="grid gap-6 md:grid-cols-12 md:auto-rows-fr">
@@ -245,10 +255,10 @@ function FeaturedSplit({ featuredTenants = [] }) {
                     >
                         <TenantImage tenant={heroTenant} className="aspect-[4/4.5] md:aspect-auto md:h-full" overlay />
                         <div className="absolute inset-x-0 bottom-0 p-6 sm:p-8">
-                            <div className="inline-flex items-center gap-2 rounded-full bg-white/90 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-950">
-                                <Sparkles className="h-3.5 w-3.5" />
+                            <Badge className="gap-2 rounded-full bg-white/90 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-950 hover:bg-white/90">
+                                <Sparkles data-icon="inline-start" aria-hidden="true" />
                                 Seleccion editorial
-                            </div>
+                            </Badge>
                             <h3
                                 className="mt-4 text-3xl font-semibold text-white"
                                 style={{ fontFamily: PUBLIC_DISPLAY_FONT }}
@@ -262,14 +272,14 @@ function FeaturedSplit({ featuredTenants = [] }) {
                                 )}
                             </p>
                             <div className="mt-5 flex flex-wrap items-center gap-4 text-white">
-                                <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold">
-                                    <MapPin className="h-4 w-4 text-white" />
+                                <Badge className="gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10">
+                                    <MapPin data-icon="inline-start" aria-hidden="true" />
                                     {resolveTenantCityName(heroTenant)}
-                                </span>
-                                <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold">
-                                    <Star className="h-4 w-4 fill-current text-amber-300" />
+                                </Badge>
+                                <Badge className="gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10">
+                                    <Star data-icon="inline-start" className="fill-current text-amber-300" aria-hidden="true" />
                                     {resolveTenantPlanLabel(heroTenant)}
-                                </span>
+                                </Badge>
                             </div>
                         </div>
                     </Link>
@@ -283,10 +293,10 @@ function FeaturedSplit({ featuredTenants = [] }) {
                             >
                                 <TenantImage tenant={tenant} className="aspect-[4/2.55]" overlay />
                                 <div className="absolute inset-x-0 bottom-0 p-5">
-                                    <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-white/85 px-3 py-1 text-[11px] font-semibold text-slate-700">
-                                        {index === 0 ? <MapPin className="h-3.5 w-3.5 text-slate-950" /> : <BadgeCheck className="h-3.5 w-3.5 text-slate-950" />}
+                                    <Badge className="mb-2 gap-2 rounded-full bg-white/85 px-3 py-1 text-[11px] font-semibold text-slate-700 hover:bg-white/85">
+                                        {index === 0 ? <MapPin data-icon="inline-start" aria-hidden="true" /> : <BadgeCheck data-icon="inline-start" aria-hidden="true" />}
                                         {index === 0 ? resolveTenantCityName(tenant) : 'Perfil destacado'}
-                                    </div>
+                                    </Badge>
                                     <h3 className="text-xl font-semibold text-white" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
                                         {tenant.name}
                                     </h3>
@@ -323,10 +333,12 @@ function BusinessGrid({ featuredTenants = [] }) {
                             Negocios nuevos con una presencia publica lista para explorar.
                         </p>
                     </div>
-                    <Link href={route('directory.index')} className="inline-flex items-center gap-2 rounded-full border border-stone-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-stone-300 hover:text-slate-950">
-                        Ver todos
-                        <ArrowRight className="h-4 w-4" />
-                    </Link>
+                    <Button asChild variant="outline" className="rounded-full border-stone-200 text-slate-700 hover:border-stone-300 hover:text-slate-950">
+                        <Link href={route('directory.index')}>
+                            Ver todos
+                            <ArrowRight data-icon="inline-end" aria-hidden="true" />
+                        </Link>
+                    </Button>
                 </div>
 
                 <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
@@ -334,46 +346,48 @@ function BusinessGrid({ featuredTenants = [] }) {
                         <Link
                             key={tenant.id}
                             href={route('tenant.microsite.show', { tenant: tenant.slug })}
-                            className="group flex h-full flex-col overflow-hidden rounded-[28px] border border-stone-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+                            className="group block h-full"
                         >
-                            <div className="relative">
-                                <TenantImage tenant={tenant} className="aspect-[4/3]" />
-                                <div className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/90 px-3 py-1 text-[11px] font-semibold text-slate-700">
-                                    <Sparkles className="h-3.5 w-3.5 text-slate-950" />
-                                    {resolveTenantPlanLabel(tenant)}
+                            <Card className="flex h-full flex-col overflow-hidden rounded-[28px] border-stone-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
+                                <div className="relative">
+                                    <TenantImage tenant={tenant} className="aspect-[4/3]" />
+                                    <Badge className="absolute left-4 top-4 gap-2 rounded-full border border-white/70 bg-white/90 px-3 py-1 text-[11px] font-semibold text-slate-700 hover:bg-white/90">
+                                        <Sparkles data-icon="inline-start" aria-hidden="true" />
+                                        {resolveTenantPlanLabel(tenant)}
+                                    </Badge>
                                 </div>
-                            </div>
 
-                            <div className="flex flex-1 flex-col p-5">
-                                <div className="flex items-start justify-between gap-3">
+                                <CardHeader className="flex-row items-start justify-between gap-3">
                                     <div>
-                                        <h3 className="text-lg font-semibold text-slate-950" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
+                                        <CardTitle className="text-lg font-semibold text-slate-950" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
                                             {tenant.name}
-                                        </h3>
-                                        <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                        </CardTitle>
+                                        <CardDescription className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                                             {resolveTenantCategoryName(tenant)}
-                                        </p>
+                                        </CardDescription>
                                     </div>
-                                    <span className="rounded-full bg-[#f3f3f1] px-2.5 py-1 text-xs font-bold text-slate-700">
+                                    <Badge className="rounded-full bg-[#f3f3f1] px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-[#f3f3f1]">
                                         Nuevo
-                                    </span>
-                                </div>
+                                    </Badge>
+                                </CardHeader>
 
-                                <p className="mt-4 text-sm leading-7 text-slate-600">
+                                <CardContent className="flex flex-1 flex-col">
+                                    <p className="text-sm leading-7 text-slate-600">
                                     {resolveTenantDescription(
                                         tenant,
                                         'Perfil activo dentro de Vito Business OS con salida a contacto, catalogo o reserva segun el tipo de negocio.',
                                     )}
-                                </p>
+                                    </p>
+                                </CardContent>
 
-                                <div className="mt-auto flex items-center justify-between gap-3 border-t border-stone-100 pt-4">
+                                <CardFooter className="mt-auto flex items-center justify-between gap-3 border-t border-stone-100 pt-4">
                                     <span className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
-                                        <Clock3 className="h-4 w-4 text-slate-950" />
+                                        <Clock3 data-icon="inline-start" aria-hidden="true" />
                                         {resolveTenantCityName(tenant)}
                                     </span>
                                     <span className="text-sm font-semibold text-slate-950">Ver perfil</span>
-                                </div>
-                            </div>
+                                </CardFooter>
+                            </Card>
                         </Link>
                     ))}
                 </div>
@@ -401,38 +415,44 @@ function GrowthBanner({ stats = {} }) {
                                 {stats?.total_tenants || 0}+ negocios ya entran con mejor presencia publica mientras la operacion interna se mantiene dentro del panel de Filament.
                             </p>
                             <div className="mt-6 flex flex-col gap-4 sm:flex-row">
-                                <Link
-                                    href={route('tenant.register')}
-                                    className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-7 py-4 text-base font-semibold text-slate-950 transition hover:bg-slate-100"
-                                >
-                                    Registrar mi negocio
-                                    <ArrowRight className="h-4 w-4" />
-                                </Link>
-                                <Link
-                                    href={route('directory.index')}
-                                    className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 px-7 py-4 text-base font-semibold text-white transition hover:border-white/30 hover:bg-white/5"
-                                >
-                                    Abrir buscador completo
-                                    <Search className="h-4 w-4" />
-                                </Link>
+                                <Button asChild size="lg" variant="secondary" className="rounded-full bg-white text-slate-950 hover:bg-slate-100">
+                                    <Link href={route('tenant.register')}>
+                                        Registrar mi negocio
+                                        <ArrowRight data-icon="inline-end" aria-hidden="true" />
+                                    </Link>
+                                </Button>
+                                <Button asChild size="lg" variant="outline" className="rounded-full border-white/15 bg-transparent text-white hover:border-white/30 hover:bg-white/5 hover:text-white">
+                                    <Link href={route('directory.index')}>
+                                        Abrir buscador completo
+                                        <Search data-icon="inline-end" aria-hidden="true" />
+                                    </Link>
+                                </Button>
                             </div>
                         </div>
 
                         <div className="grid min-w-[280px] gap-4 sm:grid-cols-2">
-                            <div className="rounded-[26px] border border-white/10 bg-white/5 p-5">
-                                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">Capa publica</p>
-                                <p className="mt-3 text-3xl font-semibold text-white" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
+                            <Card className="rounded-[26px] border-white/10 bg-white/5 p-5 text-white">
+                                <CardHeader className="p-0">
+                                    <CardDescription className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">Capa publica</CardDescription>
+                                    <CardTitle className="mt-3 text-3xl font-semibold text-white" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
                                     Unificada
-                                </p>
-                                <p className="mt-2 text-sm text-slate-400">Descubrir, buscar y aterrizar al negocio sin duplicar producto.</p>
-                            </div>
-                            <div className="rounded-[26px] border border-white/10 bg-white/5 p-5">
-                                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">Operacion</p>
-                                <p className="mt-3 text-3xl font-semibold text-white" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-0 pt-2">
+                                    <p className="text-sm text-slate-400">Descubrir, buscar y aterrizar al negocio sin duplicar producto.</p>
+                                </CardContent>
+                            </Card>
+                            <Card className="rounded-[26px] border-white/10 bg-white/5 p-5 text-white">
+                                <CardHeader className="p-0">
+                                    <CardDescription className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">Operacion</CardDescription>
+                                    <CardTitle className="mt-3 text-3xl font-semibold text-white" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
                                     Filament
-                                </p>
-                                <p className="mt-2 text-sm text-slate-400">Panel del negocio y admin sin inventar dashboards paralelos.</p>
-                            </div>
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-0 pt-2">
+                                    <p className="text-sm text-slate-400">Panel del negocio y admin sin inventar dashboards paralelos.</p>
+                                </CardContent>
+                            </Card>
                         </div>
                     </div>
                 </div>
@@ -469,28 +489,30 @@ function CitySection({ cities = [] }) {
                             <Link
                                 key={city.slug}
                                 href={route('city.show', { city: city.slug })}
-                                className="group relative overflow-hidden rounded-[26px] border border-stone-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+                                className="group block"
                             >
-                                <div className="relative aspect-[4/2.8] overflow-hidden bg-slate-950">
-                                    {visual ? (
-                                        <img src={visual} alt={city.name} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
-                                    ) : (
-                                        <div className="h-full w-full bg-[radial-gradient(circle_at_top_left,#d4d4d4,transparent_30%),radial-gradient(circle_at_bottom_right,#111827,transparent_34%),#0f172a]" />
-                                    )}
-                                    <div className="absolute inset-0 bg-black/35" />
-                                    <div className="absolute inset-x-0 bottom-0 p-5">
-                                        <div className="inline-flex items-center gap-2 text-sm text-slate-200">
-                                            <MapPin className="h-4 w-4" />
+                                <Card className="relative overflow-hidden rounded-[26px] border-stone-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
+                                    <div className="relative aspect-[4/2.8] overflow-hidden bg-slate-950">
+                                        {visual ? (
+                                            <img src={visual} alt={city.name} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+                                        ) : (
+                                            <div className="h-full w-full bg-[radial-gradient(circle_at_top_left,#d4d4d4,transparent_30%),radial-gradient(circle_at_bottom_right,#111827,transparent_34%),#0f172a]" />
+                                        )}
+                                        <div className="absolute inset-0 bg-black/35" />
+                                        <CardContent className="absolute inset-x-0 bottom-0 p-5">
+                                            <div className="inline-flex items-center gap-2 text-sm text-slate-200">
+                                                <MapPin data-icon="inline-start" aria-hidden="true" />
                                             {city.department || 'Honduras'}
-                                        </div>
-                                        <h3 className="mt-2 text-xl font-semibold text-white" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                                            {city.name}
-                                        </h3>
-                                        <p className="mt-1 text-sm text-white/75">
-                                            {city.tenants_count || 0} negocios activos
-                                        </p>
+                                            </div>
+                                            <CardTitle className="mt-2 text-xl font-semibold text-white" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
+                                                {city.name}
+                                            </CardTitle>
+                                            <CardDescription className="mt-1 text-sm text-white/75">
+                                                {city.tenants_count || 0} negocios activos
+                                            </CardDescription>
+                                        </CardContent>
                                     </div>
-                                </div>
+                                </Card>
                             </Link>
                         );
                     })}

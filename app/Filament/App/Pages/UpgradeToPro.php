@@ -51,7 +51,7 @@ class UpgradeToPro extends Page
                 'billingCta' => 'Activar PRO',
                 'priceLabel' => 'L. 99.00/mes',
                 'catalogCopy' => 'Catalogo ampliado para publicar mas productos, imagenes y merchandising.',
-                'marketingCopy' => 'Suite comercial activa para QR, WhatsApp, campanas y seguimiento.',
+                'marketingCopy' => 'Suite comercial activa para QR, WhatsApp, campañas y seguimiento.',
                 'brandingCopy' => 'Personalizacion visual avanzada ya habilitada para tu micrositio.',
                 'followersCopy' => 'Tu audiencia ya esta disponible con detalle completo para operar seguimiento.',
             ];
@@ -62,7 +62,7 @@ class UpgradeToPro extends Page
             'features' => [
                 [
                     'icon' => 'heroicon-o-chat-bubble-left-right',
-                    'title' => 'Integracion con WhatsApp',
+                    'title' => 'Integración con WhatsApp',
                     'description' => $plan['marketingCopy'],
                 ],
                 [
@@ -87,8 +87,8 @@ class UpgradeToPro extends Page
                 ],
                 [
                     'icon' => 'heroicon-o-chart-bar',
-                    'title' => 'Metricas avanzadas',
-                    'description' => 'Ten una lectura mas completa del rendimiento y la actividad del negocio.',
+                    'title' => 'Métricas avanzadas',
+                    'description' => 'Ten una lectura más completa del rendimiento y la actividad del negocio.',
                 ],
             ],
         ];

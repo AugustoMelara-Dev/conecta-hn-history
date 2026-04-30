@@ -39,7 +39,7 @@
                             <p class="biz-kicker">Palancas inmediatas</p>
                             <h2 class="biz-heading">CRM, analítica y ejecución</h2>
                             <p class="biz-muted">
-                                Usa este frente para decidir que mover primero, no solo para mirar datos.
+                                Usa este frente para decidir qué mover primero, no solo para mirar datos.
                             </p>
                         </div>
 
@@ -61,7 +61,7 @@
                 <div class="biz-stack">
                     <div>
                         <p class="biz-kicker">{{ $crmTitle }}</p>
-                        <h2 class="biz-heading">Pipeline y conversion</h2>
+                        <h2 class="biz-heading">Pipeline y conversión</h2>
                         <p class="biz-muted">{{ $crmCopy }}</p>
                     </div>
 
@@ -72,7 +72,7 @@
                                     <p class="biz-stat-label">{{ $metric['label'] }}</p>
                                     <x-filament::badge color="{{ $metric['color'] }}">{{ $metric['value'] }}</x-filament::badge>
                                 </div>
-                                <p class="biz-stat-copy" style="margin-top: 0.75rem;">{{ $metric['copy'] }}</p>
+                                <p class="biz-stat-copy biz-mt-3">{{ $metric['copy'] }}</p>
                             </div>
                         @endforeach
                     </div>
@@ -116,9 +116,9 @@
             <div class="biz-card">
                 <div class="biz-stack">
                     <div>
-                        <p class="biz-kicker">Analitica PYME profunda</p>
+                        <p class="biz-kicker">Analítica PYME profunda</p>
                         <h2 class="biz-heading">Recurrencia, entregabilidad y oferta top</h2>
-                        <p class="biz-muted">Lee si tu CRM esta llegando, si tus clientes regresan y que oferta esta empujando mas caja.</p>
+                        <p class="biz-muted">Lee si tu CRM está llegando, si tus clientes regresan y qué oferta está empujando más caja.</p>
                     </div>
 
                     <div class="biz-metrics">
@@ -164,10 +164,11 @@
                                 <p class="biz-muted">Cadencia: {{ $playbook['cadence'] }} / Disparo: {{ $playbook['trigger'] }}</p>
                             </a>
                         @empty
-                            <div class="biz-action">
-                                <p class="biz-action-title">Todavía no hay playbooks de cadence configurados</p>
-                                <p class="biz-action-copy">Define una cadencia básica por segmento y recompensa para sostener recompra, reactivación y upsell.</p>
-                            </div>
+                            @include('filament.app.components.table-empty-state', [
+                                'badge' => 'Cadencia',
+                                'heading' => 'Todavía no hay playbooks configurados',
+                                'description' => 'Define una cadencia básica por segmento y recompensa para sostener recompra, reactivación y upsell.',
+                            ])
                         @endforelse
                     </div>
 
@@ -182,9 +183,9 @@
         <div class="biz-card">
             <div class="biz-stack">
                 <div>
-                    <p class="biz-kicker">Analitica por plantilla</p>
+                    <p class="biz-kicker">Analítica por plantilla</p>
                     <h2 class="biz-heading">Que mensajes realmente estan moviendo reply y cierre</h2>
-                    <p class="biz-muted">Sirve para dejar de enviar por intuicion y empezar a repetir las secuencias que si convierten en revenue real.</p>
+                    <p class="biz-muted">Sirve para dejar de enviar por intuición y empezar a repetir las secuencias que sí convierten en revenue real.</p>
                 </div>
 
                 <div class="biz-actions">
@@ -197,7 +198,7 @@
                                 </div>
 
                                 <x-filament::badge color="{{ $item['conversions'] > 0 ? 'success' : ($item['replied'] > 0 ? 'info' : 'gray') }}">
-                                    {{ $item['closeRate'] }} conversion
+                                    {{ $item['closeRate'] }} cierre
                                 </x-filament::badge>
                             </div>
 
@@ -209,10 +210,11 @@
                             </p>
                         </div>
                     @empty
-                        <div class="biz-action">
-                            <p class="biz-action-title">Todavia no hay lectura por plantilla</p>
-                            <p class="biz-action-copy">Hace falta mas volumen reciente de mensajes para detectar copy ganador.</p>
-                        </div>
+                        @include('filament.app.components.table-empty-state', [
+                            'badge' => 'Plantillas',
+                            'heading' => 'Todavía no hay lectura por plantilla',
+                            'description' => 'Hace falta más volumen reciente de mensajes para detectar copy ganador.',
+                        ])
                     @endforelse
                 </div>
             </div>
@@ -221,9 +223,9 @@
         <div class="biz-card">
             <div class="biz-stack">
                 <div>
-                    <p class="biz-kicker">Analitica por secuencia</p>
+                    <p class="biz-kicker">Analítica por secuencia</p>
                     <h2 class="biz-heading">Que rutas del journey estan moviendo reply, cierre y revenue</h2>
-                    <p class="biz-muted">Sirve para entender si la secuencia correcta es seguimiento, loyalty, rescate o cierre premium, no solo que texto envio mas.</p>
+                    <p class="biz-muted">Sirve para entender si la secuencia correcta es seguimiento, loyalty, rescate o cierre premium, no solo qué texto envió más.</p>
                 </div>
 
                 <div class="biz-actions">
@@ -236,7 +238,7 @@
                                 </div>
 
                                 <x-filament::badge color="{{ $item['conversions'] > 0 ? 'success' : ($item['replied'] > 0 ? 'info' : 'gray') }}">
-                                    {{ $item['closeRate'] }} conversion
+                                    {{ $item['closeRate'] }} cierre
                                 </x-filament::badge>
                             </div>
 
@@ -248,10 +250,11 @@
                             </p>
                         </div>
                     @empty
-                        <div class="biz-action">
-                            <p class="biz-action-title">Todavia no hay lectura por secuencia</p>
-                            <p class="biz-action-copy">Hace falta que los journeys empiecen a recorrer rutas distintas para medir que secuencia gana por segmento y vertical.</p>
-                        </div>
+                        @include('filament.app.components.table-empty-state', [
+                            'badge' => 'Secuencias',
+                            'heading' => 'Todavía no hay lectura por secuencia',
+                            'description' => 'Hace falta que los journeys empiecen a recorrer rutas distintas para medir qué secuencia gana por segmento y vertical.',
+                        ])
                     @endforelse
                 </div>
             </div>
@@ -262,7 +265,7 @@
                 <div>
                     <p class="biz-kicker">Attribution multi-touch</p>
                     <h2 class="biz-heading">Que secuencias se estan llevando revenue real</h2>
-                    <p class="biz-muted">Aqui el revenue se reparte entre las rutas que tocaron una conversacion cerrada, para no mentirte con un falso last-touch.</p>
+                    <p class="biz-muted">Aquí el revenue se reparte entre las rutas que tocaron una conversación cerrada, para no mentirte con un falso last-touch.</p>
                 </div>
 
                 <div class="biz-actions">
@@ -275,7 +278,7 @@
                                 </div>
 
                                 <x-filament::badge color="{{ (float) $item['conversions'] >= 1 ? 'success' : 'info' }}">
-                                    {{ $item['conversions'] }} conv.
+                                    {{ $item['conversions'] }} {{ (float) $item['conversions'] === 1.0 ? 'conversión' : 'conversiones' }}
                                 </x-filament::badge>
                             </div>
 
@@ -285,10 +288,11 @@
                             </p>
                         </div>
                     @empty
-                        <div class="biz-action">
-                            <p class="biz-action-title">Todavia no hay attribution multi-touch suficiente</p>
-                            <p class="biz-action-copy">Hace falta mas recorrido de secuencias en conversaciones cerradas para repartir revenue con criterio.</p>
-                        </div>
+                        @include('filament.app.components.table-empty-state', [
+                            'badge' => 'Attribution',
+                            'heading' => 'Todavía no hay attribution multi-touch suficiente',
+                            'description' => 'Hace falta más recorrido de secuencias en conversaciones cerradas para repartir revenue con criterio.',
+                        ])
                     @endforelse
                 </div>
             </div>
@@ -298,8 +302,8 @@
             <div class="biz-stack">
                 <div>
                     <p class="biz-kicker">Rutas completas</p>
-                    <h2 class="biz-heading">Que conversaciones completas se estan llevando el revenue</h2>
-                    <p class="biz-muted">Aqui ya no se reparte solo por secuencia: ves la ruta completa que siguio una conversacion hasta cerrar.</p>
+                    <h2 class="biz-heading">Qué conversaciones completas se están llevando el revenue</h2>
+                    <p class="biz-muted">Aquí ya no se reparte solo por secuencia: ves la ruta completa que siguió una conversación hasta cerrar.</p>
                 </div>
 
                 <div class="biz-actions">
@@ -312,7 +316,7 @@
                                 </div>
 
                                 <x-filament::badge color="{{ $item['conversations'] > 1 ? 'success' : 'info' }}">
-                                    {{ $item['conversations'] }} conv.
+                                    {{ $item['conversations'] }} {{ (int) $item['conversations'] === 1 ? 'conversación' : 'conversaciones' }}
                                 </x-filament::badge>
                             </div>
 
@@ -322,10 +326,11 @@
                             </p>
                         </div>
                     @empty
-                        <div class="biz-action">
-                            <p class="biz-action-title">Todavia no hay rutas conversacionales cerradas</p>
-                            <p class="biz-action-copy">Hace falta mas recorrido de conversaciones multitoque para leer revenue por ruta completa.</p>
-                        </div>
+                        @include('filament.app.components.table-empty-state', [
+                            'badge' => 'Rutas',
+                            'heading' => 'Todavía no hay rutas conversacionales cerradas',
+                            'description' => 'Hace falta más recorrido de conversaciones multitoque para leer revenue por ruta completa.',
+                        ])
                     @endforelse
                 </div>
             </div>
@@ -336,7 +341,7 @@
                 <div>
                     <p class="biz-kicker">Revenue por outcomes reales</p>
                     <h2 class="biz-heading">Que secuencias estan cerrando compra, recuperando no-show y moviendo recompra</h2>
-                    <p class="biz-muted">Aqui ya no solo ves reply o click: ves outcomes de negocio reales ligados a la secuencia.</p>
+                    <p class="biz-muted">Aquí ya no solo ves reply o click: ves outcomes de negocio reales ligados a la secuencia.</p>
                 </div>
 
                 <div class="biz-actions">
@@ -360,10 +365,11 @@
                             </p>
                         </div>
                     @empty
-                        <div class="biz-action">
-                            <p class="biz-action-title">Todavia no hay outcomes reales suficientes por secuencia</p>
-                            <p class="biz-action-copy">Hace falta mas cierre, recuperacion o recompra real para abrir esta lectura.</p>
-                        </div>
+                        @include('filament.app.components.table-empty-state', [
+                            'badge' => 'Outcomes',
+                            'heading' => 'Todavía no hay outcomes reales suficientes por secuencia',
+                            'description' => 'Hace falta más cierre, recuperación o recompra real para abrir esta lectura.',
+                        ])
                     @endforelse
                 </div>
             </div>
@@ -374,8 +380,8 @@
                 <div class="biz-stack">
                     <div>
                         <p class="biz-kicker">Revenue atribuido por owner</p>
-                        <h2 class="biz-heading">Quien esta empujando las secuencias que si convierten</h2>
-                        <p class="biz-muted">Cruza revenue multi-touch con ownership para detectar quien mueve mejor cada ruta del CRM.</p>
+                        <h2 class="biz-heading">Quién está empujando las secuencias que sí convierten</h2>
+                        <p class="biz-muted">Cruza revenue multi-touch con ownership para detectar quién mueve mejor cada ruta del CRM.</p>
                     </div>
 
                     <div class="biz-actions">
@@ -388,7 +394,7 @@
                                     </div>
 
                                     <x-filament::badge color="{{ (float) $item['conversions'] >= 1 ? 'success' : 'info' }}">
-                                        {{ $item['conversions'] }} conv.
+                                        {{ $item['conversions'] }} {{ (float) $item['conversions'] === 1.0 ? 'conversión' : 'conversiones' }}
                                     </x-filament::badge>
                                 </div>
 
@@ -399,10 +405,11 @@
                                 </p>
                             </div>
                         @empty
-                            <div class="biz-action">
-                                <p class="biz-action-title">Todavia no hay lectura por owner y secuencia</p>
-                                <p class="biz-action-copy">Hace falta mas cierre multi-touch con ownership claro para comparar responsables.</p>
-                            </div>
+                            @include('filament.app.components.table-empty-state', [
+                                'badge' => 'Owners',
+                                'heading' => 'Todavía no hay lectura por owner y secuencia',
+                                'description' => 'Hace falta más cierre multi-touch con ownership claro para comparar responsables.',
+                            ])
                         @endforelse
                     </div>
                 </div>
@@ -413,7 +420,7 @@
                     <div>
                         <p class="biz-kicker">Revenue atribuido por sede</p>
                         <h2 class="biz-heading">Donde estan ganando mejor las secuencias</h2>
-                        <p class="biz-muted">Compara impacto real por ubicacion para operar CRM distribuido con mas criterio.</p>
+                        <p class="biz-muted">Compara impacto real por ubicación para operar CRM distribuido con más criterio.</p>
                     </div>
 
                     <div class="biz-actions">
@@ -426,7 +433,7 @@
                                     </div>
 
                                     <x-filament::badge color="{{ (float) $item['conversions'] >= 1 ? 'success' : 'info' }}">
-                                        {{ $item['conversions'] }} conv.
+                                        {{ $item['conversions'] }} {{ (float) $item['conversions'] === 1.0 ? 'conversión' : 'conversiones' }}
                                     </x-filament::badge>
                                 </div>
 
@@ -437,10 +444,11 @@
                                 </p>
                             </div>
                         @empty
-                            <div class="biz-action">
-                                <p class="biz-action-title">Todavia no hay lectura por sede y secuencia</p>
-                                <p class="biz-action-copy">Etiqueta mas cartera y conversacion por sede para comparar impacto real.</p>
-                            </div>
+                            @include('filament.app.components.table-empty-state', [
+                                'badge' => 'Sedes',
+                                'heading' => 'Todavía no hay lectura por sede y secuencia',
+                                'description' => 'Etiqueta más cartera y conversación por sede para comparar impacto real.',
+                            ])
                         @endforelse
                     </div>
                 </div>
@@ -451,8 +459,8 @@
             <div class="biz-stack">
                 <div>
                     <p class="biz-kicker">Revenue atribuido por canal</p>
-                    <h2 class="biz-heading">Que canal esta moviendo mejor cada secuencia</h2>
-                    <p class="biz-muted">Sirve para decidir donde empujar journeys, rescates y cierres con mas retorno real.</p>
+                    <h2 class="biz-heading">Qué canal está moviendo mejor cada secuencia</h2>
+                    <p class="biz-muted">Sirve para decidir dónde empujar journeys, rescates y cierres con más retorno real.</p>
                 </div>
 
                 <div class="biz-actions">
@@ -465,7 +473,7 @@
                                 </div>
 
                                 <x-filament::badge color="{{ (float) $item['conversions'] >= 1 ? 'success' : 'info' }}">
-                                    {{ $item['conversions'] }} conv.
+                                    {{ $item['conversions'] }} {{ (float) $item['conversions'] === 1.0 ? 'conversión' : 'conversiones' }}
                                 </x-filament::badge>
                             </div>
 
@@ -476,10 +484,11 @@
                             </p>
                         </div>
                     @empty
-                        <div class="biz-action">
-                            <p class="biz-action-title">Todavia no hay lectura por canal y secuencia</p>
-                            <p class="biz-action-copy">Hace falta mas volumen multi-touch para comparar WhatsApp, email y CRM con criterio.</p>
-                        </div>
+                        @include('filament.app.components.table-empty-state', [
+                            'badge' => 'Canales',
+                            'heading' => 'Todavía no hay lectura por canal y secuencia',
+                            'description' => 'Hace falta más volumen multi-touch para comparar WhatsApp, email y CRM con criterio.',
+                        ])
                     @endforelse
                 </div>
             </div>
@@ -489,8 +498,8 @@
             <div class="biz-card">
                 <div class="biz-stack">
                     <div>
-                        <p class="biz-kicker">Analitica conversacional por owner</p>
-                        <h2 class="biz-heading">Quien esta cerrando mejor la conversacion</h2>
+                        <p class="biz-kicker">Analítica conversacional por owner</p>
+                        <h2 class="biz-heading">Quién está cerrando mejor la conversación</h2>
                         <p class="biz-muted">Cruza volumen, conversiones, revenue, conversaciones esperando reply y velocidad inicial por responsable.</p>
                     </div>
 
@@ -517,10 +526,11 @@
                                 </p>
                             </div>
                         @empty
-                            <div class="biz-action">
-                                <p class="biz-action-title">Todavia no hay lectura conversacional por owner</p>
-                                <p class="biz-action-copy">Asigna ownership y trabaja mas replies desde la bandeja para abrir esta vista.</p>
-                            </div>
+                            @include('filament.app.components.table-empty-state', [
+                                'badge' => 'Owners',
+                                'heading' => 'Todavía no hay lectura conversacional por owner',
+                                'description' => 'Asigna ownership y trabaja más replies desde la bandeja para abrir esta vista.',
+                            ])
                         @endforelse
                     </div>
                 </div>
@@ -529,9 +539,9 @@
             <div class="biz-card">
                 <div class="biz-stack">
                     <div>
-                        <p class="biz-kicker">Analitica conversacional por sede</p>
-                        <h2 class="biz-heading">Donde se esta quedando o cerrando la conversacion</h2>
-                        <p class="biz-muted">Compara rapidez, conversiones, revenue y carga operativa entre sucursales o puntos de atencion.</p>
+                        <p class="biz-kicker">Analítica conversacional por sede</p>
+                        <h2 class="biz-heading">Dónde se está quedando o cerrando la conversación</h2>
+                        <p class="biz-muted">Compara rapidez, conversiones, revenue y carga operativa entre sucursales o puntos de atención.</p>
                     </div>
 
                     <div class="biz-actions">
@@ -557,10 +567,11 @@
                                 </p>
                             </div>
                         @empty
-                            <div class="biz-action">
-                                <p class="biz-action-title">Todavia no hay lectura conversacional por sede</p>
-                                <p class="biz-action-copy">Etiqueta mas clientes y conversaciones por sede para comparar operacion distribuida.</p>
-                            </div>
+                            @include('filament.app.components.table-empty-state', [
+                                'badge' => 'Sedes',
+                                'heading' => 'Todavía no hay lectura conversacional por sede',
+                                'description' => 'Etiqueta más clientes y conversaciones por sede para comparar operación distribuida.',
+                            ])
                         @endforelse
                     </div>
                 </div>
@@ -572,7 +583,7 @@
                 <div class="biz-split">
                     <div>
                         <p class="biz-kicker">Cohortes y LTV</p>
-                        <h2 class="biz-heading">Lectura de valor temprano y ritmo de repeticion</h2>
+                        <h2 class="biz-heading">Lectura de valor temprano y ritmo de repetición</h2>
                         <p class="biz-muted">Esto te dice si las cohortes nuevas se están activando bien y cuáles segmentos o canales dejan mejor valor.</p>
                     </div>
 
@@ -599,8 +610,8 @@
                     <div class="biz-split">
                         <div>
                             <p class="biz-kicker">Comparativa por owner</p>
-                            <h2 class="biz-heading">Quien esta sosteniendo cartera, revenue y SLA</h2>
-                            <p class="biz-muted">Lee carga activa, valor acumulado y repeticion por responsable.</p>
+                            <h2 class="biz-heading">Quién está sosteniendo cartera, revenue y SLA</h2>
+                            <p class="biz-muted">Lee carga activa, valor acumulado y repetición por responsable.</p>
                         </div>
 
                         <div class="biz-badge biz-badge-neutral">
@@ -630,10 +641,11 @@
                                 </p>
                             </div>
                         @empty
-                            <div class="biz-action">
-                                <p class="biz-action-title">Todavia no hay comparativa por owner</p>
-                                <p class="biz-action-copy">Asigna cartera y tareas para ver rendimiento comercial por responsable.</p>
-                            </div>
+                            @include('filament.app.components.table-empty-state', [
+                                'badge' => 'Owners',
+                                'heading' => 'Todavía no hay comparativa por owner',
+                                'description' => 'Asigna cartera y tareas para ver rendimiento comercial por responsable.',
+                            ])
                         @endforelse
                     </div>
                 </div>
@@ -644,7 +656,7 @@
                     <div>
                         <p class="biz-kicker">Comparativa por sede</p>
                         <h2 class="biz-heading">Donde se concentra mejor la continuidad comercial</h2>
-                        <p class="biz-muted">Compara revenue, clientes y carga operativa entre sucursales o puntos de atencion.</p>
+                        <p class="biz-muted">Compara revenue, clientes y carga operativa entre sucursales o puntos de atención.</p>
                     </div>
 
                     <div class="biz-actions">
@@ -669,10 +681,11 @@
                                 </p>
                             </div>
                         @empty
-                            <div class="biz-action">
-                                <p class="biz-action-title">Todavia no hay comparativa por sede</p>
-                                <p class="biz-action-copy">Etiquetar clientes y tareas por ubicacion va a abrir lectura real de operacion distribuida.</p>
-                            </div>
+                            @include('filament.app.components.table-empty-state', [
+                                'badge' => 'Sedes',
+                                'heading' => 'Todavía no hay comparativa por sede',
+                                'description' => 'Etiquetar clientes y tareas por ubicación va a abrir lectura real de operación distribuida.',
+                            ])
                         @endforelse
                     </div>
                 </div>
@@ -720,14 +733,14 @@
                 <div class="biz-stack">
                     <div>
                         <p class="biz-kicker">Contexto comercial</p>
-                        <h2 class="biz-heading">Lo que hoy esta empujando el negocio</h2>
+                        <h2 class="biz-heading">Lo que hoy está empujando el negocio</h2>
                     </div>
 
                     <div class="biz-list">
                         <div class="biz-checklist-item">
                             <div class="biz-checklist-index is-complete">1</div>
                             <div>
-                                <p class="biz-checklist-title">Fuente mas fuerte</p>
+                                <p class="biz-checklist-title">Fuente más fuerte</p>
                                 <p class="biz-checklist-copy">{{ $topLeadSource }}</p>
                             </div>
                         </div>
@@ -786,12 +799,11 @@
                                 <p class="biz-action-copy">{{ $item['copy'] }}</p>
                             </a>
                         @empty
-                            <div class="biz-action">
-                                <p class="biz-action-title">Tu frente de crecimiento esta ordenado</p>
-                                <p class="biz-action-copy">
-                                    Sigue usando prospectos, playbooks y campañas para no perder el ritmo comercial.
-                                </p>
-                            </div>
+                            @include('filament.app.components.table-empty-state', [
+                                'badge' => 'Crecimiento',
+                                'heading' => 'Tu frente de crecimiento está ordenado',
+                                'description' => 'Sigue usando prospectos, playbooks y campañas para no perder el ritmo comercial.',
+                            ])
                         @endforelse
                     </div>
                 </div>
@@ -799,4 +811,3 @@
         </div>
     </div>
 </x-filament-panels::page>
-

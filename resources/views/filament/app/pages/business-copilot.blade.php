@@ -5,22 +5,30 @@
                 <div class="biz-stack">
                     <div>
                         <p class="biz-kicker">IA privada del negocio</p>
-                        <h1 class="biz-title">Copiloto que lee tus datos, no el directorio publico</h1>
+                        <h1 class="biz-title">Copiloto que lee tus datos, no el directorio público</h1>
                         <p class="biz-copy">
-                            Pregunta por ventas, clientes, pedidos, catalogo, servicios y activacion. Las fuentes se filtran por tenant y quedan auditadas.
+                            Pregunta por ventas, clientes, pedidos, catálogo, servicios y activación. Las fuentes se filtran por tenant y quedan auditadas.
                         </p>
                     </div>
 
                     <form wire:submit="ask" class="biz-stack">
+                        <label for="business-copilot-question" class="sr-only">
+                            Pregunta para el copiloto privado
+                        </label>
                         <textarea
+                            id="business-copilot-question"
                             wire:model.defer="question"
                             rows="5"
                             class="fi-input block w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white shadow-sm outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/30"
-                            placeholder="Ej: Que productos deberia empujar hoy con lo que tengo configurado?"
+                            aria-describedby="business-copilot-question-help @error('question') business-copilot-question-error @enderror"
+                            placeholder="Ej: ¿Qué productos debería empujar hoy con lo que tengo configurado?"
                         ></textarea>
+                        <p id="business-copilot-question-help" class="biz-muted">
+                            Haz una pregunta concreta sobre ventas, clientes, pedidos, catálogo, servicios o activación.
+                        </p>
 
                         @error('question')
-                            <p class="biz-checklist-copy text-rose-300">{{ $message }}</p>
+                            <p id="business-copilot-question-error" class="biz-checklist-copy text-rose-300" role="alert">{{ $message }}</p>
                         @enderror
 
                         <div class="biz-button-row">
@@ -37,10 +45,10 @@
                 <div class="biz-card-accent">
                     <div class="biz-stack">
                         <div>
-                            <p class="biz-kicker">Preguntas utiles</p>
+                            <p class="biz-kicker">Preguntas útiles</p>
                             <h2 class="biz-heading">Empieza por decisiones operativas</h2>
                             <p class="biz-muted">
-                                Evita preguntas genericas. El valor esta en convertir datos privados en siguiente accion.
+                                Evita preguntas genéricas. El valor está en convertir datos privados en siguiente acción.
                             </p>
                         </div>
 
@@ -60,10 +68,10 @@
         <div class="biz-card" data-testid="business-copilot-diagnostic">
             <div class="biz-stack">
                 <div>
-                    <p class="biz-kicker">Autodiagnostico visible</p>
+                    <p class="biz-kicker">Autodiagnóstico visible</p>
                     <h2 class="biz-heading">Estado operativo del Copiloto</h2>
                     <p class="biz-muted">
-                        Esta tarjeta existe para que el negocio y soporte vean que esta pasando sin adivinar.
+                        Esta tarjeta existe para que el negocio y soporte vean qué está pasando sin adivinar.
                     </p>
                 </div>
 
@@ -74,11 +82,11 @@
                     </div>
                     <div class="biz-stat">
                         <p class="biz-stat-label">Causa probable</p>
-                        <p class="biz-stat-copy">{{ $probableCause ?: 'Aun no se ha ejecutado una consulta o reindexacion en esta sesion.' }}</p>
+                        <p class="biz-stat-copy">{{ $probableCause ?: 'Aún no se ha ejecutado una consulta o reindexación en esta sesión.' }}</p>
                     </div>
                     <div class="biz-stat">
-                        <p class="biz-stat-label">Accion recomendada</p>
-                        <p class="biz-stat-copy">{{ $recommendedAction ?: 'Haz una pregunta o reindexa conocimiento si acabas de cambiar catalogo, clientes o pedidos.' }}</p>
+                        <p class="biz-stat-label">Acción recomendada</p>
+                        <p class="biz-stat-copy">{{ $recommendedAction ?: 'Haz una pregunta o reindexa conocimiento si acabas de cambiar catálogo, clientes o pedidos.' }}</p>
                     </div>
                 </div>
 
@@ -109,7 +117,7 @@
                             <p class="biz-kicker">Fuentes</p>
                             <h2 class="biz-heading">Evidencia usada</h2>
                             <p class="biz-muted">
-                                Si una respuesta no trae fuentes, no la trates como decision final.
+                                Si una respuesta no trae fuentes, no la trates como decisión final.
                             </p>
                         </div>
 

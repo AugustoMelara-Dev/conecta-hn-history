@@ -12,6 +12,22 @@ use Illuminate\Http\Request;
 final class SurfaceSplitBootstrapAdapter
 {
     /**
+     * @var array<string, string>
+     */
+    private const BUSINESS_LEGACY_ROUTE_MAP = [
+        '/dashboard' => 'filament.app.pages.dashboard',
+        '/workspace/dashboard' => 'filament.app.pages.dashboard',
+        '/workspace/products' => 'filament.app.resources.products.index',
+        '/workspace/orders' => 'filament.app.resources.orders.index',
+        '/workspace/marketing' => 'filament.app.pages.manage-marketing',
+        '/workspace/reports' => 'filament.app.pages.growth-center',
+        '/workspace/settings' => 'filament.app.pages.settings',
+        '/workspace/billing' => 'filament.app.pages.manage-billing',
+        '/workspace/upgrade' => 'filament.app.pages.upgrade-to-pro',
+        '/workspace/landing-page' => 'filament.app.tenant.profile',
+    ];
+
+    /**
      * @return array{
      *     context: array{redirect_to: string, home_surface: string, audience: string},
      *     origins: array<string, string|null>,
@@ -24,14 +40,14 @@ final class SurfaceSplitBootstrapAdapter
     public function forUser(User $user, ?Request $request = null): array
     {
         $context = AuthRedirector::contextFor($user);
-        $businessDashboard = $this->businessDashboardFor($user);
+        $tenantSlug = $this->tenantSlugFor($user);
         $legacyPaths = [];
 
         foreach ($this->legacyPaths() as $legacyPath) {
             $legacyPaths[] = [
                 'path' => $legacyPath,
                 'status' => 'deprecated',
-                'redirect_to' => $this->redirectTargetFor($legacyPath, $context['redirect_to'], $businessDashboard),
+                'redirect_to' => $this->redirectTargetFor($legacyPath, $context['redirect_to'], $tenantSlug),
             ];
         }
 
@@ -71,24 +87,15 @@ final class SurfaceSplitBootstrapAdapter
         ));
     }
 
-    private function redirectTargetFor(string $legacyPath, string $defaultTarget, ?string $businessDashboard): string
+    private function redirectTargetFor(string $legacyPath, string $defaultTarget, ?string $tenantSlug): string
     {
-        if (str_starts_with($legacyPath, '/workspace/') && is_string($businessDashboard) && $businessDashboard !== '') {
-            return $businessDashboard;
+        $businessRoute = self::BUSINESS_LEGACY_ROUTE_MAP[$legacyPath] ?? null;
+
+        if ($businessRoute !== null && $tenantSlug !== null) {
+            return route($businessRoute, ['tenant' => $tenantSlug], false);
         }
 
         return $defaultTarget;
-    }
-
-    private function businessDashboardFor(User $user): ?string
-    {
-        $tenantSlug = $this->tenantSlugFor($user);
-
-        if ($tenantSlug === null) {
-            return null;
-        }
-
-        return AuthRedirector::appPanelDestinationFor($user);
     }
 
     private function tenantSlugFor(User $user): ?string

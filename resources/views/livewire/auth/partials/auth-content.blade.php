@@ -23,7 +23,7 @@
 <button
     wire:click="loginWithGoogle"
     type="button"
-    class="w-full flex items-center justify-center gap-3 px-4 py-3.5 bg-white border border-gray-300 rounded-xl shadow-sm hover:shadow-md hover:bg-gray-50 transition-all duration-200"
+    class="w-full flex items-center justify-center gap-3 px-4 py-3.5 bg-white border border-gray-300 rounded-xl shadow-sm hover:shadow-md hover:bg-gray-50 transition-shadow duration-200"
 >
     {{-- Google Logo SVG --}}
     <svg class="w-5 h-5" viewBox="0 0 24 24">
@@ -58,7 +58,7 @@
             type="email"
             placeholder="tu@email.com"
             autocomplete="email"
-            class="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder-gray-400
+            class="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors placeholder-gray-400
                 @error('email') border-red-300 bg-red-50 @enderror"
         />
         @error('email')
@@ -80,7 +80,7 @@
             :type="show ? 'text' : 'password'"
             placeholder="{{ $mode === 'login' ? 'Contraseña' : 'Crea una contraseña (8+ caracteres)' }}"
             autocomplete="{{ $mode === 'login' ? 'current-password' : 'new-password' }}"
-            class="w-full px-4 py-3.5 pr-12 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder-gray-400
+            class="w-full px-4 py-3.5 pr-12 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors placeholder-gray-400
                 @error('password') border-red-300 bg-red-50 @enderror"
         />
         <button
@@ -115,7 +115,7 @@
         type="submit"
         wire:loading.attr="disabled"
         wire:loading.class="opacity-50 cursor-wait"
-        class="w-full py-3.5 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 transition-all hover:shadow-xl active:scale-[0.98]"
+        class="w-full py-3.5 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 transition-shadow hover:shadow-xl active:scale-[0.98]"
     >
         <span wire:loading.remove>
             {{ $mode === 'login' ? 'Ingresar' : 'Crear cuenta' }}

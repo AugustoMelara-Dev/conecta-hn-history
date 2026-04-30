@@ -60,7 +60,7 @@ class BusinessCopilot extends Page
 
     /** @var list<string> */
     public array $suggestedQuestions = [
-        'Que productos o servicios deberia empujar hoy?',
+        '¿Qué productos o servicios debería empujar hoy?',
         'Que clientes o pedidos necesitan seguimiento?',
         'Que esta frenando mis ventas esta semana?',
         'Que debo configurar para que mi negocio aparezca mejor?',

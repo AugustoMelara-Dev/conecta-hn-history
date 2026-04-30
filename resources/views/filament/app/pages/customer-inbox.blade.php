@@ -41,12 +41,12 @@
                         <div class="biz-stat">
                             <p class="biz-stat-label">Vence hoy</p>
                             <p class="biz-stat-value">{{ $dueTodayCount }}</p>
-                            <p class="biz-stat-copy">Casos que conviene mover antes de cerrar el dia.</p>
+                            <p class="biz-stat-copy">Casos que conviene mover antes de cerrar el día.</p>
                         </div>
                         <div class="biz-stat">
                             <p class="biz-stat-label">Sin owner</p>
                             <p class="biz-stat-value">{{ $unassignedCount }}</p>
-                            <p class="biz-stat-copy">Conversaciones que todavia no tienen responsable claro.</p>
+                            <p class="biz-stat-copy">Conversaciones que todavía no tienen responsable claro.</p>
                         </div>
                     </div>
                 </div>
@@ -57,7 +57,7 @@
                             <p class="biz-kicker">Regla operativa</p>
                             <h2 class="biz-heading">Responder con contexto, mover el siguiente paso, dejar huella clara</h2>
                             <p class="biz-muted">
-                                Usa segmento, fidelidad, owner, sede y SLA para decidir el mejor toque y no solo el mas rapido.
+                                Usa segmento, fidelidad, owner, sede y SLA para decidir el mejor toque y no solo el más rápido.
                             </p>
                         </div>
 
@@ -71,8 +71,8 @@
                                 <p class="biz-action-copy">Usa bundle, reward o trato prioritario para mover continuidad real.</p>
                             </div>
                             <div class="biz-action">
-                                <p class="biz-action-title">Reactivacion</p>
-                                <p class="biz-action-copy">Baja friccion y deja un motivo concreto para volver esta semana.</p>
+                                <p class="biz-action-title">Reactivación</p>
+                                <p class="biz-action-copy">Baja fricción y deja un motivo concreto para volver esta semana.</p>
                             </div>
                         </div>
                     </div>
@@ -82,17 +82,17 @@
 
         <div class="biz-card">
             <div class="biz-stack">
-                <div class="biz-split" style="align-items: flex-end; gap: 1rem; flex-wrap: wrap;">
+                <div class="biz-split biz-split-end">
                     <div>
                         <p class="biz-kicker">Mesa operativa</p>
                         <h2 class="biz-heading">Cola, hilo y secuencia activa</h2>
                         <p class="biz-muted">
-                            Filtra por owner, sede, canal y lane del journey; luego trabaja la conversacion desde el hilo, no solo desde la tarjeta.
+                            Filtra por owner, sede, canal y lane del journey; luego trabaja la conversación desde el hilo, no solo desde la tarjeta.
                         </p>
                     </div>
 
-                    <div class="biz-grid-two" style="grid-template-columns: repeat(4, minmax(10rem, 1fr)); gap: 0.75rem; width: min(100%, 72rem);">
-                        <label class="biz-stack" style="gap: 0.35rem;">
+                    <div class="biz-grid-two biz-grid-filters">
+                        <label class="biz-stack biz-stack-xxs">
                             <span class="biz-muted">Vista</span>
                             <select wire:model.live="selectedScope" class="fi-input">
                                 <option value="all">Toda la cola</option>
@@ -101,7 +101,7 @@
                             </select>
                         </label>
 
-                        <label class="biz-stack" style="gap: 0.35rem;">
+                        <label class="biz-stack biz-stack-xxs">
                             <span class="biz-muted">Lane</span>
                             <select wire:model.live="selectedQueueLane" class="fi-input">
                                 <option value="all">Todo el journey</option>
@@ -112,7 +112,7 @@
                             </select>
                         </label>
 
-                        <label class="biz-stack" style="gap: 0.35rem;">
+                        <label class="biz-stack biz-stack-xxs">
                             <span class="biz-muted">Canal</span>
                             <select wire:model.live="selectedChannel" class="fi-input">
                                 <option value="all">Todos</option>
@@ -122,7 +122,7 @@
                             </select>
                         </label>
 
-                        <label class="biz-stack" style="gap: 0.35rem;">
+                        <label class="biz-stack biz-stack-xxs">
                             <span class="biz-muted">SLA</span>
                             <select wire:model.live="selectedSlaState" class="fi-input">
                                 <option value="all">Todo</option>
@@ -132,7 +132,7 @@
                             </select>
                         </label>
 
-                        <label class="biz-stack" style="gap: 0.35rem;">
+                        <label class="biz-stack biz-stack-xxs">
                             <span class="biz-muted">Owner</span>
                             <select wire:model.live="selectedOwnerId" class="fi-input">
                                 <option value="">Todos</option>
@@ -142,7 +142,7 @@
                             </select>
                         </label>
 
-                        <label class="biz-stack" style="gap: 0.35rem;">
+                        <label class="biz-stack biz-stack-xxs">
                             <span class="biz-muted">Sede</span>
                             <select wire:model.live="selectedLocationId" class="fi-input">
                                 <option value="">Todas</option>
@@ -152,7 +152,7 @@
                             </select>
                         </label>
 
-                        <label class="biz-stack" style="gap: 0.35rem;">
+                        <label class="biz-stack biz-stack-xxs">
                             <span class="biz-muted">Equipo</span>
                             <select wire:model.live="selectedAssignmentGroup" class="fi-input">
                                 <option value="all">Todos</option>
@@ -164,7 +164,7 @@
                     </div>
                 </div>
 
-                <div class="biz-grid-two" style="grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem;">
+                <div class="biz-grid-two biz-grid-four">
                     <div class="biz-card">
                         <div class="biz-stack">
                             <div>
@@ -183,7 +183,11 @@
                                         </p>
                                     </div>
                                 @empty
-                                    <p class="biz-muted">Todavia no hay conversaciones activas con lectura por canal.</p>
+                                    @include('filament.app.components.table-empty-state', [
+                                        'badge' => 'Canales',
+                                        'heading' => 'Todavía no hay lectura por canal',
+                                        'description' => 'Cuando entren conversaciones por WhatsApp, email o CRM, aquí verás carga, espera y vencimientos por canal.',
+                                    ])
                                 @endforelse
                             </div>
                         </div>
@@ -207,7 +211,11 @@
                                         </p>
                                     </div>
                                 @empty
-                                    <p class="biz-muted">Todavia no hay cartera suficiente para leer carga por owner.</p>
+                                    @include('filament.app.components.table-empty-state', [
+                                        'badge' => 'Owners',
+                                        'heading' => 'Todavía no hay carga por owner',
+                                        'description' => 'Cuando el equipo tome conversaciones, esta vista mostrará quién tiene cartera activa y dónde hay vencimientos.',
+                                    ])
                                 @endforelse
                             </div>
                         </div>
@@ -231,7 +239,11 @@
                                         </p>
                                     </div>
                                 @empty
-                                    <p class="biz-muted">Todavia no hay suficiente operacion para leer carga por equipo.</p>
+                                    @include('filament.app.components.table-empty-state', [
+                                        'badge' => 'Equipos',
+                                        'heading' => 'Todavía no hay carga por equipo',
+                                        'description' => 'Cuando agenda, ventas o soporte reciban casos, aquí aparecerá la distribución operativa.',
+                                    ])
                                 @endforelse
                             </div>
                         </div>
@@ -240,8 +252,8 @@
                     <div class="biz-card">
                         <div class="biz-stack">
                             <div>
-                                <p class="biz-kicker">Operacion por sede</p>
-                                <h3 class="biz-heading">Carga por ubicacion</h3>
+                                <p class="biz-kicker">Operación por sede</p>
+                                <h3 class="biz-heading">Carga por ubicación</h3>
                             </div>
 
                             <div class="biz-actions">
@@ -255,27 +267,32 @@
                                         </p>
                                     </div>
                                 @empty
-                                    <p class="biz-muted">Todavia no hay base suficiente por sede para leer operacion distribuida.</p>
+                                    @include('filament.app.components.table-empty-state', [
+                                        'badge' => 'Sedes',
+                                        'heading' => 'Todavía no hay operación por sede',
+                                        'description' => 'Cuando una ubicación empiece a concentrar conversaciones, esta lectura mostrará carga y vencimientos por sede.',
+                                    ])
                                 @endforelse
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="biz-grid-two" style="align-items: flex-start; gap: 1.25rem;">
+                <div class="biz-grid-two biz-grid-start">
                     <div class="biz-stack">
                         @if ($queue === [])
-                            <div class="biz-stat">
-                                <p class="biz-stat-label">Todo al dia</p>
-                                <p class="biz-stat-copy">No hay respuestas pendientes con este filtro.</p>
-                            </div>
+                            @include('filament.app.components.table-empty-state', [
+                                'badge' => 'Cola',
+                                'heading' => 'Todo al día',
+                                'description' => 'No hay respuestas pendientes con este filtro. Cambia la vista, canal, owner o SLA para revisar otra parte de la cola.',
+                            ])
                         @else
                             <div class="biz-actions">
                                 @foreach ($queue as $item)
-                                    <div class="biz-action" style="{{ $selectedConversationId === $item['id'] ? 'border-color: rgba(14,165,233,.4); box-shadow: 0 0 0 1px rgba(14,165,233,.2) inset;' : '' }}">
-                                        <div class="biz-stack" style="gap: 0.75rem;">
-                                            <div class="biz-split" style="gap: 0.75rem; align-items: flex-start;">
-                                                <div class="biz-stack" style="gap: 0.5rem; flex: 1 1 auto;">
+                                    <div class="biz-action {{ $selectedConversationId === $item['id'] ? 'is-selected' : '' }}">
+                                        <div class="biz-stack biz-stack-sm">
+                                            <div class="biz-split biz-split-start">
+                                                <div class="biz-stack biz-stack-xs biz-flex-1">
                                                     <div class="biz-button-row">
                                                         <span class="biz-badge biz-badge-neutral">{{ $item['channelLabel'] }}</span>
                                                         <span class="biz-badge {{ $item['priority'] === 'urgent' ? 'biz-badge-danger' : ($item['priority'] === 'high' ? 'biz-badge-warning' : 'biz-badge-neutral') }}">{{ $item['priorityLabel'] }}</span>
@@ -288,7 +305,7 @@
                                                         <p class="biz-action-copy">{{ $item['body'] }}</p>
                                                     </div>
 
-                                                    <div class="biz-stack" style="gap: 0.35rem;">
+                                                    <div class="biz-stack biz-stack-xxs">
                                                         <p class="biz-muted"><strong>Segmento:</strong> {{ $item['segmentLabel'] }} | <strong>Fidelidad:</strong> {{ $item['loyaltyTier'] }}</p>
                                                         <p class="biz-muted"><strong>Siguiente toque:</strong> {{ $item['nextTouch'] }}</p>
                                                         <p class="biz-muted"><strong>Movimiento loyalty:</strong> {{ $item['loyaltyMove'] }}</p>
@@ -299,7 +316,7 @@
                                                         <p class="biz-muted">
                                                             <strong>Operador actual:</strong> {{ $item['handledBy'] ?? 'Sin tomar' }}
                                                             @if ($item['nextActionAt'])
-                                                                | <strong>Proxima accion:</strong> {{ $item['nextActionAt'] }}
+                                                                | <strong>Próxima acción:</strong> {{ $item['nextActionAt'] }}
                                                             @endif
                                                             @if ($item['responseDueAt'])
                                                                 | <strong>SLA:</strong> {{ $item['responseDueAt'] }}
@@ -309,16 +326,21 @@
                                                     </div>
                                                 </div>
 
-                                                <div class="biz-button-row" style="justify-content: flex-end;">
-                                                    <x-filament::button color="{{ $selectedConversationId === $item['id'] ? 'info' : 'gray' }}" wire:click="selectConversation({{ $item['id'] }})">
+                                                <div class="biz-button-row biz-row-end">
+                                                    <x-filament::button
+                                                        color="{{ $selectedConversationId === $item['id'] ? 'info' : 'gray' }}"
+                                                        wire:click="selectConversation({{ $item['id'] }})"
+                                                        aria-label="Ver hilo de {{ $item['customerName'] }}"
+                                                        aria-pressed="{{ $selectedConversationId === $item['id'] ? 'true' : 'false' }}"
+                                                    >
                                                         Ver hilo
                                                     </x-filament::button>
                                                     <a href="{{ $item['profileUrl'] }}" class="biz-button-secondary">Abrir ficha</a>
                                                 </div>
                                             </div>
 
-                                            <div class="biz-grid-two" style="grid-template-columns: repeat(3, minmax(12rem, 1fr)); gap: 0.75rem;">
-                                                <label class="biz-stack" style="gap: 0.35rem;">
+                                            <div class="biz-grid-two biz-grid-three-wide">
+                                                <label class="biz-stack biz-stack-xxs">
                                                     <span class="biz-muted">Reasignar owner</span>
                                                     <select wire:change="reassignOwner({{ $item['id'] }}, $event.target.value)" class="fi-input">
                                                         <option value="">Sin owner</option>
@@ -328,7 +350,7 @@
                                                     </select>
                                                 </label>
 
-                                                <label class="biz-stack" style="gap: 0.35rem;">
+                                                <label class="biz-stack biz-stack-xxs">
                                                     <span class="biz-muted">Mover equipo</span>
                                                     <select wire:change="routeGroup({{ $item['id'] }}, $event.target.value)" class="fi-input">
                                                         <option value="">Sin equipo</option>
@@ -338,7 +360,7 @@
                                                     </select>
                                                 </label>
 
-                                                <label class="biz-stack" style="gap: 0.35rem;">
+                                                <label class="biz-stack biz-stack-xxs">
                                                     <span class="biz-muted">Mover sede</span>
                                                     <select wire:change="moveLocation({{ $item['id'] }}, $event.target.value)" class="fi-input">
                                                         <option value="">Sin sede</option>
@@ -349,14 +371,14 @@
                                                 </label>
                                             </div>
 
-                                            <div class="biz-button-row" style="justify-content: flex-end;">
+                                            <div class="biz-button-row biz-row-end">
                                                 @if ($item['status'] === 'open')
-                                                    <x-filament::button color="info" wire:click="take({{ $item['id'] }})">
+                                                    <x-filament::button color="info" wire:click="take({{ $item['id'] }})" aria-label="Tomar conversación de {{ $item['customerName'] }}">
                                                         Tomar
                                                     </x-filament::button>
                                                 @endif
                                                 @if ($item['status'] !== 'pending_customer')
-                                                    <x-filament::button color="success" wire:click="resolve({{ $item['id'] }})">
+                                                    <x-filament::button color="success" wire:click="resolve({{ $item['id'] }})" aria-label="Resolver conversación de {{ $item['customerName'] }}">
                                                         Resolver
                                                     </x-filament::button>
                                                 @endif
@@ -370,41 +392,42 @@
 
                     <div class="biz-stack">
                         @if ($selectedConversation === [])
-                            <div class="biz-stat">
-                                <p class="biz-stat-label">Selecciona un caso</p>
-                                <p class="biz-stat-copy">Abre una conversacion de la cola para trabajar el hilo, el journey y la respuesta sugerida desde aqui.</p>
-                            </div>
+                            @include('filament.app.components.table-empty-state', [
+                                'badge' => 'Hilo',
+                                'heading' => 'Selecciona un caso',
+                                'description' => 'Abre una conversación de la cola para trabajar el hilo, el journey y la respuesta sugerida desde aquí.',
+                            ])
                         @else
                             <div class="biz-card-accent">
                                 <div class="biz-stack">
-                                    <div class="biz-split" style="gap: 0.75rem; align-items: flex-start;">
-                                        <div class="biz-stack" style="gap: 0.5rem;">
+                                    <div class="biz-split biz-split-start">
+                                        <div class="biz-stack biz-stack-xs">
                                             <p class="biz-kicker">Hilo conversacional</p>
                                             <h2 class="biz-heading">{{ $selectedConversation['customerName'] }}</h2>
                                             <p class="biz-copy">{{ $selectedConversation['body'] }}</p>
                                         </div>
 
-                                        <div class="biz-button-row" style="justify-content: flex-end;">
+                                        <div class="biz-button-row biz-row-end">
                                             <span class="biz-badge {{ $selectedConversation['slaColor'] === 'danger' ? 'biz-badge-danger' : ($selectedConversation['slaColor'] === 'success' ? 'biz-badge-success' : 'biz-badge-neutral') }}">{{ $selectedConversation['slaLabel'] }}</span>
                                             <a href="{{ $selectedConversation['profileUrl'] }}" class="biz-button-secondary">Abrir ficha</a>
                                         </div>
                                     </div>
 
-                                    <div class="biz-metrics" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
+                                    <div class="biz-metrics">
                                         <div class="biz-stat">
                                             <p class="biz-stat-label">Ultimo cliente</p>
-                                            <p class="biz-stat-value" style="font-size: 1rem;">{{ $selectedConversation['threadSummary']['last_customer_message'] ?? 'Sin dato' }}</p>
-                                            <p class="biz-stat-copy">Ultima senal del cliente en este hilo.</p>
+                                            <p class="biz-stat-value biz-stat-value-sm">{{ $selectedConversation['threadSummary']['last_customer_message'] ?? 'Sin dato' }}</p>
+                                            <p class="biz-stat-copy">Última señal del cliente en este hilo.</p>
                                         </div>
                                         <div class="biz-stat">
                                             <p class="biz-stat-label">Ultimo equipo</p>
-                                            <p class="biz-stat-value" style="font-size: 1rem;">{{ $selectedConversation['threadSummary']['last_team_message'] ?? 'Sin dato' }}</p>
-                                            <p class="biz-stat-copy">Ultima respuesta o toque enviado desde tu negocio.</p>
+                                            <p class="biz-stat-value biz-stat-value-sm">{{ $selectedConversation['threadSummary']['last_team_message'] ?? 'Sin dato' }}</p>
+                                            <p class="biz-stat-copy">Última respuesta o toque enviado desde tu negocio.</p>
                                         </div>
                                         <div class="biz-stat">
                                             <p class="biz-stat-label">Respuestas abiertas</p>
                                             <p class="biz-stat-value">{{ $selectedConversation['threadSummary']['open_replies'] ?? 0 }}</p>
-                                            <p class="biz-stat-copy">Mensajes aun pidiendo accion del equipo.</p>
+                                            <p class="biz-stat-copy">Mensajes aún pidiendo acción del equipo.</p>
                                         </div>
                                         <div class="biz-stat">
                                             <p class="biz-stat-label">Esperando cliente</p>
@@ -413,7 +436,7 @@
                                         </div>
                                     </div>
 
-                                    <div class="biz-stack" style="gap: 0.35rem;">
+                                    <div class="biz-stack biz-stack-xxs">
                                         <p class="biz-muted"><strong>Segmento:</strong> {{ $selectedConversation['segmentLabel'] }} | <strong>Fidelidad:</strong> {{ $selectedConversation['loyaltyTier'] }}</p>
                                         <p class="biz-muted"><strong>Promesa del segmento:</strong> {{ $selectedConversation['segmentPromise'] }}</p>
                                         <p class="biz-muted"><strong>Siguiente toque:</strong> {{ $selectedConversation['nextTouch'] }}</p>
@@ -430,12 +453,12 @@
                                 </div>
                             </div>
 
-                            <div class="biz-grid-two" style="align-items: flex-start; gap: 1rem;">
+                            <div class="biz-grid-two biz-grid-start">
                                 <div class="biz-card">
                                     <div class="biz-stack">
                                     <div>
                                         <p class="biz-kicker">Journey activo</p>
-                                        <h3 class="biz-heading">Que deberia pasar ahora</h3>
+                                        <h3 class="biz-heading">Qué debería pasar ahora</h3>
                                     </div>
 
                                     @if ($selectedConversation['journeyRun'])
@@ -447,14 +470,14 @@
                                             </div>
                                             <p class="biz-action-title">{{ $selectedConversation['journeyRun']['currentStep'] ?? 'Sin paso activo' }}</p>
                                             <p class="biz-action-copy">
-                                                {{ $selectedConversation['journeyRun']['currentStepCopy'] ?? 'La secuencia ya esta sincronizada con el mejor siguiente paso para esta conversacion.' }}
+                                                {{ $selectedConversation['journeyRun']['currentStepCopy'] ?? 'La secuencia ya está sincronizada con el mejor siguiente paso para esta conversación.' }}
                                             </p>
                                             <p class="biz-muted"><strong>Ruta actual:</strong> {{ $selectedConversation['journeyRun']['currentBranchLabel'] ?? 'Ruta base' }} | <strong>Secuencia:</strong> {{ $selectedConversation['journeyRun']['currentSequenceLabel'] ?? 'Secuencia principal' }}</p>
                                             @if ($selectedConversation['journeyRun']['currentLane'])
                                                 <p class="biz-muted"><strong>Lane:</strong> {{ str($selectedConversation['journeyRun']['currentLane'])->replace('_', ' ')->title() }}</p>
                                             @endif
                                             @if ($selectedConversation['journeyRun']['nextActionAt'])
-                                                <p class="biz-muted"><strong>Siguiente accion:</strong> {{ $selectedConversation['journeyRun']['nextActionAt'] }}</p>
+                                                <p class="biz-muted"><strong>Siguiente acción:</strong> {{ $selectedConversation['journeyRun']['nextActionAt'] }}</p>
                                             @endif
                                             @if ($selectedConversation['journeyRun']['stepDueAt'])
                                                 <p class="biz-muted"><strong>Paso vence:</strong> {{ $selectedConversation['journeyRun']['stepDueAt'] }}</p>
@@ -466,10 +489,10 @@
                                                 <p class="biz-muted"><strong>Ruta siguiente:</strong> {{ $selectedConversation['journeyRun']['nextBranchLabel'] ?? 'Ruta base' }} | <strong>Secuencia siguiente:</strong> {{ $selectedConversation['journeyRun']['nextSequenceLabel'] ?? 'Sin siguiente secuencia' }}</p>
                                             @endif
                                             @if ($selectedConversation['journeyRun']['nextTriggerAt'])
-                                                <p class="biz-muted"><strong>Disparo automatico estimado:</strong> {{ $selectedConversation['journeyRun']['nextTriggerAt'] }}</p>
+                                                <p class="biz-muted"><strong>Disparo automático estimado:</strong> {{ $selectedConversation['journeyRun']['nextTriggerAt'] }}</p>
                                             @endif
                                             @if ($selectedConversation['journeyRun']['lastBusinessSignal'])
-                                                <p class="biz-muted"><strong>Ultima senal de negocio:</strong> {{ $selectedConversation['journeyRun']['lastBusinessSignal'] }}@if($selectedConversation['journeyRun']['lastBusinessSignalAt']) | {{ $selectedConversation['journeyRun']['lastBusinessSignalAt'] }}@endif</p>
+                                                <p class="biz-muted"><strong>Última señal de negocio:</strong> {{ $selectedConversation['journeyRun']['lastBusinessSignal'] }}@if($selectedConversation['journeyRun']['lastBusinessSignalAt']) | {{ $selectedConversation['journeyRun']['lastBusinessSignalAt'] }}@endif</p>
                                             @endif
                                             @if ($selectedConversation['journeyRun']['recommendedTemplateKey'])
                                                 <p class="biz-muted"><strong>Plantilla guia:</strong> {{ str($selectedConversation['journeyRun']['recommendedTemplateKey'])->replace('_', ' ')->replace('-', ' ')->title() }}</p>
@@ -478,7 +501,7 @@
                                     @endif
 
                                     @if ($selectedConversation['journey'] === [])
-                                        <p class="biz-muted">Este segmento no tiene un journey cargado todavia.</p>
+                                        <p class="biz-muted">Este segmento no tiene un journey cargado todavía.</p>
                                     @else
                                             <div class="biz-actions">
                                                 @foreach ($selectedConversation['journey'] as $step)
@@ -503,8 +526,8 @@
                                         <div class="biz-actions">
                                             @foreach ($selectedConversation['templates'] as $template)
                                                 <div class="biz-action">
-                                                    <div class="biz-split" style="gap: 0.75rem; align-items: flex-start;">
-                                                        <div class="biz-stack" style="gap: 0.35rem; flex: 1 1 auto;">
+                                                    <div class="biz-split biz-split-start">
+                                                        <div class="biz-stack biz-stack-xxs biz-flex-1">
                                                             <div class="biz-button-row">
                                                                 <span class="biz-badge biz-badge-neutral">{{ $template['channel_label'] }}</span>
                                                                 @if ($template['requires_marketing_opt_in'])
@@ -518,13 +541,13 @@
                                                             @endif
                                                         </div>
 
-                                                        <div class="biz-button-row" style="justify-content: flex-end;">
+                                                        <div class="biz-button-row biz-row-end">
                                                             @if ($template['available'])
-                                                                <x-filament::button color="info" wire:click="sendSuggestedReply({{ $selectedConversation['id'] }}, '{{ $template['key'] }}')">
+                                                                <x-filament::button color="info" wire:click="sendSuggestedReply({{ $selectedConversation['id'] }}, '{{ $template['key'] }}')" aria-label="Enviar plantilla {{ $template['label'] }} a {{ $selectedConversation['customerName'] }}">
                                                                     Enviar
                                                                 </x-filament::button>
                                                             @else
-                                                                <x-filament::button color="gray" disabled>
+                                                                <x-filament::button color="gray" disabled aria-label="Plantilla {{ $template['label'] }} no disponible para {{ $selectedConversation['customerName'] }}">
                                                                     No disponible
                                                                 </x-filament::button>
                                                             @endif
@@ -540,7 +563,7 @@
                             <div class="biz-card">
                                 <div class="biz-stack">
                                     <div>
-                                        <p class="biz-kicker">Operacion por cliente</p>
+                                        <p class="biz-kicker">Operación por cliente</p>
                                         <h3 class="biz-heading">Tarea y SLA</h3>
                                     </div>
 
@@ -568,7 +591,7 @@
                                             </p>
                                         </div>
                                     @else
-                                        <p class="biz-muted">Esta conversacion todavia no tiene una tarea ligada aparte del seguimiento base.</p>
+                                        <p class="biz-muted">Esta conversación todavía no tiene una tarea ligada aparte del seguimiento base.</p>
                                     @endif
                                 </div>
                             </div>
@@ -581,19 +604,23 @@
                                         <p class="biz-muted">Estas notas no se envian al cliente. Sirven para pasar contexto, decision y siguiente paso entre owner y sede.</p>
                                     </div>
 
-                                    <label class="biz-stack" style="gap: 0.5rem;">
+                                    <label class="biz-stack biz-stack-xs">
                                         <span class="biz-muted">Nueva nota interna</span>
                                         <textarea wire:model.defer="draftInternalNote" rows="4" class="fi-input" placeholder="Ejemplo: cliente listo para cierre si confirmamos stock en sucursal sur."></textarea>
                                     </label>
 
-                                    <div class="biz-button-row" style="justify-content: flex-end;">
-                                        <x-filament::button color="gray" wire:click="addInternalNote({{ $selectedConversation['id'] }})">
+                                    <div class="biz-button-row biz-row-end">
+                                        <x-filament::button color="gray" wire:click="addInternalNote({{ $selectedConversation['id'] }})" aria-label="Guardar nota interna para {{ $selectedConversation['customerName'] }}">
                                             Guardar nota interna
                                         </x-filament::button>
                                     </div>
 
                                     @if ($selectedConversation['internalNotes'] === [])
-                                        <p class="biz-muted">Todavia no hay notas internas separadas para esta conversacion.</p>
+                                        @include('filament.app.components.table-empty-state', [
+                                            'badge' => 'Notas',
+                                            'heading' => 'Todavía no hay notas internas',
+                                            'description' => 'Guarda contexto, decisión o siguiente paso para que otro owner pueda continuar sin perder información.',
+                                        ])
                                     @else
                                         <div class="biz-actions">
                                             @foreach ($selectedConversation['internalNotes'] as $item)
@@ -616,7 +643,11 @@
                                     </div>
 
                                     @if ($selectedConversation['threadItems'] === [])
-                                        <p class="biz-muted">Todavia no hay eventos suficientes para construir el hilo.</p>
+                                        @include('filament.app.components.table-empty-state', [
+                                            'badge' => 'Timeline',
+                                            'heading' => 'Todavía no hay eventos suficientes',
+                                            'description' => 'Cuando lleguen mensajes, notas o respuestas sugeridas, aquí se ordenará el historial del cliente.',
+                                        ])
                                     @else
                                         <div class="biz-actions">
                                             @foreach ($selectedConversation['threadItems'] as $item)

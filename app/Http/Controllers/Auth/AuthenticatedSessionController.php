@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 final class AuthenticatedSessionController extends Controller
 {
@@ -35,13 +36,19 @@ final class AuthenticatedSessionController extends Controller
     /**
      * Handle an incoming authentication request.
      */
-    public function store(LoginRequest $request): RedirectResponse
+    public function store(LoginRequest $request): RedirectResponse|SymfonyResponse
     {
         $request->authenticate();
 
         $request->session()->regenerate();
 
-        return redirect()->to(AuthRedirector::destinationFor($request->user()));
+        $destination = AuthRedirector::destinationFor($request->user());
+
+        if ($request->headers->has('X-Inertia')) {
+            return Inertia::location($destination);
+        }
+
+        return redirect()->to($destination);
     }
 
     /**

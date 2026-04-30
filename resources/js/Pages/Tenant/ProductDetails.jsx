@@ -20,13 +20,12 @@
  * - Product price metadata for commerce indexing
  */
 
-import { useState, useMemo, useRef, useEffect, memo } from 'react';
+import { useState, useMemo, memo } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
-import { RadioGroup } from '@headlessui/react';
+import { toast as sonnerToast } from 'sonner';
 import {
     ArrowLeft,
     ShoppingCart,
-    Check,
     Minus,
     Plus,
     AlertCircle,
@@ -36,13 +35,14 @@ import useCartStore from '@/Stores/useCartStore';
 import useTenantContext from '@/Hooks/useTenantContext';
 import { formatCurrency } from '@/Utils/currency';
 import ImageWithFallback from '@/Components/ImageWithFallback';
-import Toast from '@/Components/Toast';
 import { ActionableAlert, EmptyState } from '@/Components/Feedback/UXStates';
+import { Alert, AlertDescription, AlertTitle } from '@/Components/ui/alert';
 import { Badge } from '@/Components/ui/badge';
 import { Button } from '@/Components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Checkbox } from '@/Components/ui/checkbox';
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/Components/ui/field';
+import { RadioGroup, RadioGroupItem } from '@/Components/ui/radio-group';
 import { Separator } from '@/Components/ui/separator';
 import { Textarea } from '@/Components/ui/textarea';
 import { cn } from '@/lib/utils';
@@ -65,10 +65,24 @@ const ModifierGroupRadio = memo(function ModifierGroupRadio({
     selectedOption,
     onSelect,
     primaryColor,
+    invalid = false,
 }) {
+    const selectedValue = selectedOption === undefined || selectedOption === null
+        ? undefined
+        : String(selectedOption);
+
+    const handleValueChange = (value) => {
+        const matchedOption = group.options?.find((option) => String(option.id) === value);
+
+        if (matchedOption) {
+            onSelect(matchedOption.id);
+        }
+    };
+
     return (
         <FieldGroup
             className="gap-3"
+            data-invalid={invalid ? 'true' : undefined}
             style={{
                 '--product-accent': primaryColor,
                 '--product-accent-soft': `${primaryColor}12`,
@@ -83,49 +97,49 @@ const ModifierGroupRadio = memo(function ModifierGroupRadio({
                 )}
             </div>
 
-            <RadioGroup value={selectedOption} onChange={onSelect}>
-                <RadioGroup.Label className="sr-only">{group.name}</RadioGroup.Label>
-                <div className="grid gap-2">
-                    {group.options?.map((option) => (
-                        <RadioGroup.Option
+            <RadioGroup
+                value={selectedValue}
+                onValueChange={handleValueChange}
+                aria-label={group.name}
+                aria-invalid={invalid ? 'true' : undefined}
+                aria-describedby={invalid ? `modifier-group-${group.id}-error` : undefined}
+            >
+                {group.options?.map((option) => {
+                    const optionValue = String(option.id);
+                    const checked = selectedValue === optionValue;
+                    const radioId = `modifier-radio-${group.id}-${option.id}`;
+
+                    return (
+                        <label
                             key={option.id}
-                            value={option.id}
-                            data-testid={`product-modifier-radio-${group.id}-${option.id}`}
-                            className={({ checked }) => cn(
-                                'relative flex cursor-pointer rounded-lg border p-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                            htmlFor={radioId}
+                            className={cn(
+                                'flex cursor-pointer items-center justify-between gap-3 rounded-lg border p-4 transition-colors',
+                                'focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2',
                                 checked
                                     ? 'border-[color:var(--product-accent)] bg-[color:var(--product-accent-soft)]'
                                     : 'border-border hover:bg-muted',
                             )}
                         >
-                            {({ checked }) => (
-                                <div className="flex w-full items-center justify-between gap-3">
-                                    <div className="flex min-w-0 items-center">
-                                        <div
-                                            className={cn(
-                                                'mr-3 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
-                                                checked ? 'border-transparent' : 'border-border',
-                                            )}
-                                            style={{
-                                                backgroundColor: checked ? primaryColor : 'transparent',
-                                            }}
-                                        >
-                                            {checked && <Check className="h-3 w-3 text-white" data-icon aria-hidden="true" />}
-                                        </div>
-                                        <span className="min-w-0 font-medium text-foreground">
-                                            {option.name}
-                                        </span>
-                                    </div>
-                                    {option.price > 0 && (
-                                        <span className="shrink-0 text-sm text-muted-foreground">
-                                            + {formatCurrency(option.price)}
-                                        </span>
-                                    )}
-                                </div>
+                            <div className="flex min-w-0 items-center gap-3">
+                                <RadioGroupItem
+                                    id={radioId}
+                                    value={optionValue}
+                                    data-testid={`product-modifier-radio-${group.id}-${option.id}`}
+                                    className="shrink-0 data-[state=checked]:border-[color:var(--product-accent)] data-[state=checked]:text-[color:var(--product-accent)]"
+                                />
+                                <span className="min-w-0 font-medium text-foreground">
+                                    {option.name}
+                                </span>
+                            </div>
+                            {option.price > 0 && (
+                                <span className="shrink-0 text-sm text-muted-foreground">
+                                    + {formatCurrency(option.price)}
+                                </span>
                             )}
-                        </RadioGroup.Option>
-                    ))}
-                </div>
+                        </label>
+                    );
+                })}
             </RadioGroup>
         </FieldGroup>
     );
@@ -140,10 +154,12 @@ const ModifierGroupCheckbox = memo(function ModifierGroupCheckbox({
     selectedOptions = [],
     onToggle,
     primaryColor,
+    invalid = false,
 }) {
     return (
         <FieldGroup
             className="gap-3"
+            data-invalid={invalid ? 'true' : undefined}
             style={{
                 '--product-accent': primaryColor,
                 '--product-accent-soft': `${primaryColor}12`,
@@ -163,7 +179,13 @@ const ModifierGroupCheckbox = memo(function ModifierGroupCheckbox({
                 </span>
             </div>
 
-            <div className="grid gap-2" role="group" aria-label={group.name}>
+            <div
+                className="grid gap-2"
+                role="group"
+                aria-label={group.name}
+                aria-invalid={invalid ? 'true' : undefined}
+                aria-describedby={invalid ? `modifier-group-${group.id}-error` : undefined}
+            >
                 {group.options?.map((option) => {
                     const isSelected = selectedOptions.includes(option.id);
                     const isDisabled =
@@ -223,8 +245,6 @@ export default function ProductDetails({ product }) {
     const [modifiers, setModifiers] = useState({});
     const [quantity, setQuantity] = useState(1);
     const [notes, setNotes] = useState('');
-    const [toast, setToast] = useState(null);
-    const toastTimeoutRef = useRef(null);
 
     // Cart store - need items to check existing quantity
     const { items, addItem, openCart } = useCartStore();
@@ -254,16 +274,8 @@ export default function ProductDetails({ product }) {
     }, [product?.name, product?.description, product?.image, product?.price, product?.id, tenant?.logo, tenant?.slug]);
 
     // ═══════════════════════════════════════════════════════════════════════
-    // CLEANUP: Clear toast timeout on unmount
+    // Toast feedback now uses the app-level Sonner toaster.
     // ═══════════════════════════════════════════════════════════════════════
-    useEffect(() => {
-        return () => {
-            if (toastTimeoutRef.current) {
-                clearTimeout(toastTimeoutRef.current);
-            }
-        };
-    }, []);
-
     // ═══════════════════════════════════════════════════════════════════════
     // Calculate existing quantity in cart for this product
     // ═══════════════════════════════════════════════════════════════════════
@@ -369,6 +381,22 @@ export default function ProductDetails({ product }) {
         return true;
     }, [product?.modifier_groups, modifiers]);
 
+    const missingRequiredGroups = useMemo(() => {
+        if (!product?.modifier_groups) return [];
+
+        return product.modifier_groups.filter((group) => {
+            if (!group.required) return false;
+
+            const selection = modifiers[group.id];
+
+            if (group.max_selections === 1) {
+                return !selection;
+            }
+
+            return !selection || selection.length === 0;
+        });
+    }, [product?.modifier_groups, modifiers]);
+
     // ═══════════════════════════════════════════════════════════════════════
     // PRICE CALCULATION: Base + modifiers * quantity
     // ═══════════════════════════════════════════════════════════════════════
@@ -397,27 +425,16 @@ export default function ProductDetails({ product }) {
     }, [product, modifiers, quantity]);
 
     // ═══════════════════════════════════════════════════════════════════════
-    // TOAST HELPER with proper cleanup
+    // TOAST HELPER
     // ═══════════════════════════════════════════════════════════════════════
     const showToast = (message, type = 'success') => {
-        if (toastTimeoutRef.current) {
-            clearTimeout(toastTimeoutRef.current);
-        }
+        const notify = type === 'error'
+            ? sonnerToast.error
+            : type === 'warning'
+                ? sonnerToast.warning
+                : sonnerToast.success;
 
-        setToast({ message, type });
-
-        toastTimeoutRef.current = setTimeout(() => {
-            setToast(null);
-            toastTimeoutRef.current = null;
-        }, 3000);
-    };
-
-    const hideToast = () => {
-        if (toastTimeoutRef.current) {
-            clearTimeout(toastTimeoutRef.current);
-            toastTimeoutRef.current = null;
-        }
-        setToast(null);
+        notify(message);
     };
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -543,16 +560,6 @@ export default function ProductDetails({ product }) {
                 <meta name="twitter:image" content={seoData.image} />
             </Head>
 
-            {/* Accessible Toast Notification - Centralized component */}
-            {toast && (
-                <Toast
-                    message={toast.message}
-                    type={toast.type}
-                    onClose={hideToast}
-                    primaryColor={primaryColor}
-                />
-            )}
-
             <div
                 className="mx-auto max-w-7xl px-4 py-6"
                 style={{
@@ -649,6 +656,21 @@ export default function ProductDetails({ product }) {
                         </Card>
 
                         {/* Modifier Groups */}
+                        {missingRequiredGroups.length > 0 && (
+                            <Alert variant="warning" role="alert" data-testid="product-required-options-summary">
+                                <AlertCircle className="h-4 w-4" data-icon aria-hidden="true" />
+                                <AlertTitle>Faltan opciones requeridas</AlertTitle>
+                                <AlertDescription>
+                                    <p>Completa estos grupos antes de agregar el producto:</p>
+                                    <ul className="mt-2 grid list-disc gap-1 pl-5">
+                                        {missingRequiredGroups.map((group) => (
+                                            <li key={group.id}>{group.name}</li>
+                                        ))}
+                                    </ul>
+                                </AlertDescription>
+                            </Alert>
+                        )}
+
                         {product.modifier_groups?.map((group) => (
                             <Card key={group.id}>
                                 <CardContent className="p-5">
@@ -660,6 +682,7 @@ export default function ProductDetails({ product }) {
                                             handleRadioSelect(group.id, optionId)
                                         }
                                         primaryColor={primaryColor}
+                                        invalid={missingRequiredGroups.some((missingGroup) => missingGroup.id === group.id)}
                                     />
                                 ) : (
                                     <ModifierGroupCheckbox
@@ -673,7 +696,17 @@ export default function ProductDetails({ product }) {
                                             )
                                         }
                                         primaryColor={primaryColor}
+                                        invalid={missingRequiredGroups.some((missingGroup) => missingGroup.id === group.id)}
                                     />
+                                )}
+                                {missingRequiredGroups.some((missingGroup) => missingGroup.id === group.id) && (
+                                    <FieldDescription
+                                        id={`modifier-group-${group.id}-error`}
+                                        role="alert"
+                                        className="mt-3 text-destructive"
+                                    >
+                                        Selecciona al menos una opción para continuar.
+                                    </FieldDescription>
                                 )}
                                 </CardContent>
                             </Card>

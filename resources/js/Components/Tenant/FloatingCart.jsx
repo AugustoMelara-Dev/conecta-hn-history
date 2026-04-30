@@ -21,6 +21,16 @@ import { Button } from '@/Components/ui/button';
 import { ScrollArea } from '@/Components/ui/scroll-area';
 import { Separator } from '@/Components/ui/separator';
 import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/Components/ui/alert-dialog';
+import {
     Sheet,
     SheetContent,
     SheetDescription,
@@ -47,6 +57,7 @@ export default function FloatingCart() {
     const [step, setStep] = useState(STEPS.CART);
     const [errors, setErrors] = useState({});
     const [couponInput, setCouponInput] = useState('');
+    const [isClearCartDialogOpen, setIsClearCartDialogOpen] = useState(false);
 
     // Progressive Disclosure: Show coupon input only when user wants it
     // Initializes to true if a coupon is already applied (for consistency)
@@ -160,6 +171,12 @@ export default function FloatingCart() {
                 setErrors(result.validationErrors);
             }
         }
+    };
+
+    const handleClearCart = () => {
+        clearCart();
+        setIsClearCartDialogOpen(false);
+        setStep(STEPS.CART);
     };
 
     // Don't render button if cart is empty
@@ -312,7 +329,7 @@ export default function FloatingCart() {
                                                             type="button"
                                                             variant="ghost"
                                                             size="sm"
-                                                            onClick={clearCart}
+                                                            onClick={() => setIsClearCartDialogOpen(true)}
                                                             className="w-full"
                                                         >
                                                             Vaciar carrito
@@ -397,6 +414,29 @@ export default function FloatingCart() {
                     </div>
                 </SheetContent>
             </Sheet>
+
+            <AlertDialog
+                open={isClearCartDialogOpen}
+                onOpenChange={setIsClearCartDialogOpen}
+            >
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>¿Vaciar carrito?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Se quitarán todos los productos, modificadores y cupones aplicados. Esta acción no afecta pedidos ya enviados.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleClearCart}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            Vaciar carrito
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </>
     );
 }

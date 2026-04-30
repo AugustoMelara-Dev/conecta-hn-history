@@ -29,5 +29,9 @@ final class SurfaceManifestContractTest extends TestCase
         $legacyPaths = (array) data_get($manifest, 'compatibility.legacy_paths', []);
         self::assertContains('/dashboard', $legacyPaths);
         self::assertContains('/workspace/dashboard', $legacyPaths);
+        self::assertContains('/workspace/marketing', $legacyPaths);
+        self::assertContains('/workspace/reports', $legacyPaths);
+        self::assertContains('/workspace/upgrade', $legacyPaths);
+        self::assertContains('/workspace/landing-page', $legacyPaths);
     }
 }

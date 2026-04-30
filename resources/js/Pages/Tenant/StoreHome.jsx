@@ -14,7 +14,7 @@
  * - Prevents overselling via frontend guard
  *
  * OPTIMIZATIONS:
- * - Centralized Toast component
+ * - Centralized sonner notifications
  * - Lazy loading for all images
  * - Memoized product cards for large catalogs
  *
@@ -25,12 +25,12 @@
 import { useState, useRef, useEffect, useMemo, memo } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import { CheckCircle, Plus, ShoppingBag } from 'lucide-react';
+import { toast as sonnerToast } from 'sonner';
 import StoreLayout from '@/Layouts/StoreLayout';
 import useCartStore from '@/Stores/useCartStore';
 import useTenantContext from '@/Hooks/useTenantContext';
 import { formatCurrency } from '@/Utils/currency';
 import ImageWithFallback from '@/Components/ImageWithFallback';
-import Toast from '@/Components/Toast';
 import { ActionFeedback, EmptyState, LoadingState } from '@/Components/Feedback/UXStates';
 import { Badge } from '@/Components/ui/badge';
 import { Button } from '@/Components/ui/button';
@@ -184,10 +184,9 @@ export default function StoreHome({ sections = [] }) {
     // Cart store for inventory validation
     const { items, addItem, openCart } = useCartStore();
 
-    // Toast state with timeout cleanup and accumulator for rapid adds
-    const [toast, setToast] = useState(null);
+    // Notification accumulator for rapid add-to-cart actions.
     const toastTimeoutRef = useRef(null);
-    const toastCountRef = useRef(0); // Accumulator for rapid adds
+    const toastCountRef = useRef(0);
     const [isHydrated, setIsHydrated] = useState(false);
     const [recentlyAddedProductId, setRecentlyAddedProductId] = useState(null);
 
@@ -213,7 +212,7 @@ export default function StoreHome({ sections = [] }) {
     }, [tenant.name, tenant.tagline, tenant.banner_url, tenant.logo, tenant.slug]);
 
     // ═══════════════════════════════════════════════════════════════════════
-    // CLEANUP: Clear toast timeout on unmount to prevent memory leak
+    // CLEANUP: Clear notification timeout on unmount to prevent memory leak
     // ═══════════════════════════════════════════════════════════════════════
     useEffect(() => {
         setIsHydrated(true);
@@ -226,7 +225,7 @@ export default function StoreHome({ sections = [] }) {
     }, []);
 
     /**
-     * Show toast notification with accumulator for rapid adds
+     * Show notification with accumulator for rapid adds
      * If user clicks quickly, shows "Producto agregado x3" instead of resetting
      */
     const showToast = (message, type = 'success', isAddAction = false) => {
@@ -242,31 +241,19 @@ export default function StoreHome({ sections = [] }) {
             const displayMessage = count > 1
                 ? `Producto agregado x${count}`
                 : message;
-            setToast({ message: displayMessage, type });
+            const notify = sonnerToast[type] ?? sonnerToast;
+            notify(displayMessage, { id: 'store-add-to-cart', duration: 3000 });
         } else {
-            // Reset counter for non-add toasts
             toastCountRef.current = 0;
-            setToast({ message, type });
+            const notify = sonnerToast[type] ?? sonnerToast;
+            notify(message, { duration: 3000 });
         }
 
         // Set new timeout and store reference
         toastTimeoutRef.current = setTimeout(() => {
-            setToast(null);
             toastTimeoutRef.current = null;
-            toastCountRef.current = 0; // Reset counter when toast hides
+            toastCountRef.current = 0;
         }, 3000);
-    };
-
-    /**
-     * Hide toast manually
-     */
-    const hideToast = () => {
-        if (toastTimeoutRef.current) {
-            clearTimeout(toastTimeoutRef.current);
-            toastTimeoutRef.current = null;
-        }
-        toastCountRef.current = 0;
-        setToast(null);
     };
 
     /**
@@ -331,16 +318,6 @@ export default function StoreHome({ sections = [] }) {
                 <meta name="twitter:description" content={seoData.description} />
                 <meta name="twitter:image" content={seoData.image} />
             </Head>
-
-            {/* Toast Notification - Centralized component */}
-            {toast && (
-                <Toast
-                    message={toast.message}
-                    type={toast.type}
-                    onClose={hideToast}
-                    primaryColor={primaryColor}
-                />
-            )}
 
             {/* ═══════════════════════════════════════════════════════════════
                 HERO SECTION: Smart Banner with Gradient Fallback

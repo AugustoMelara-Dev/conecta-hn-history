@@ -16,7 +16,18 @@
     }
   },
   "compatibility": {
-    "legacy_paths": ["/dashboard", "/workspace/dashboard", "/workspace/products", "/workspace/orders", "/workspace/settings", "/workspace/billing"],
+    "legacy_paths": [
+      "/dashboard",
+      "/workspace/dashboard",
+      "/workspace/products",
+      "/workspace/orders",
+      "/workspace/marketing",
+      "/workspace/reports",
+      "/workspace/settings",
+      "/workspace/billing",
+      "/workspace/upgrade",
+      "/workspace/landing-page"
+    ],
     "policy": "deprecated_redirect_only"
   }
 }

@@ -24,7 +24,7 @@
                     </div>
                     <div class="biz-stat">
                         <p class="biz-stat-label">Siguiente paso</p>
-                        <p class="biz-stat-value" style="font-size: 1.4rem;">Revision manual</p>
+                        <p class="biz-stat-value" style="font-size: 1.4rem;">Revisión manual</p>
                     </div>
                 </div>
             </div>
@@ -53,7 +53,7 @@
                         <div class="biz-stat">
                             <p class="biz-stat-label">Vigencia</p>
                             <p class="biz-stat-value" style="font-size: 1.45rem;">{{ $expiresAt ?? 'Sin fecha' }}</p>
-                            <p class="biz-stat-copy">{{ $daysRemaining > 0 ? $daysRemaining . ' dias restantes' : 'Revisar renovacion' }}</p>
+                            <p class="biz-stat-copy">{{ $daysRemaining > 0 ? $daysRemaining . ' días restantes' : 'Revisar renovación' }}</p>
                         </div>
                     </div>
                 </div>
@@ -75,7 +75,7 @@
             <div class="biz-card" wire:loading.class="opacity-80" wire:target="submitPayment">
                 <div class="biz-stack">
                     <div>
-                        <p class="biz-kicker">Activacion</p>
+                        <p class="biz-kicker">Activación</p>
                         <h1 class="biz-title">{{ $this->billingHeroTitle() }}</h1>
                         <p class="biz-copy">
                             {{ $this->billingHeroCopy() }}
@@ -86,9 +86,9 @@
 
                     <div class="biz-empty-state" style="padding: 1rem; text-align: left;">
                         <p class="biz-action-copy">
-                            Envia el comprobante desde el encabezado con <strong>Enviar pago a revisión</strong> para seguir el mismo flujo nativo del panel.
+                            Envía el comprobante desde el encabezado con <strong>Enviar pago a revisión</strong> para seguir el mismo flujo nativo del panel.
                         </p>
-                        <p class="biz-note" wire:loading wire:target="submitPayment">Enviando comprobante...</p>
+                        <p class="biz-note" wire:loading wire:target="submitPayment">Enviando comprobante…</p>
                     </div>
                 </div>
             </div>
@@ -108,16 +108,16 @@
 
                     <div class="biz-list">
                         <div class="biz-stat">
-                            <p class="biz-action-title">Catalogo ampliado</p>
-                            <p class="biz-action-copy">{{ $planPresentation['catalogCopy'] ?? 'Aprovecha mejor tu vitrina y organiza el contenido con mas flexibilidad.' }}</p>
+                            <p class="biz-action-title">Catálogo ampliado</p>
+                            <p class="biz-action-copy">{{ $planPresentation['catalogCopy'] ?? 'Aprovecha mejor tu vitrina y organiza el contenido con más flexibilidad.' }}</p>
                         </div>
                         <div class="biz-stat">
                             <p class="biz-action-title">Herramientas de marketing</p>
-                            <p class="biz-action-copy">{{ $planPresentation['marketingCopy'] ?? 'Genera QR, personaliza WhatsApp y prepara campanas cuando tu plan lo permita.' }}</p>
+                            <p class="biz-action-copy">{{ $planPresentation['marketingCopy'] ?? 'Genera QR, personaliza WhatsApp y prepara campañas cuando tu plan lo permita.' }}</p>
                         </div>
                         <div class="biz-stat">
                             <p class="biz-action-title">Audiencia y seguimiento</p>
-                            <p class="biz-action-copy">{{ $planPresentation['followersCopy'] ?? 'Consulta mejor tu audiencia y centraliza la operacion del negocio.' }}</p>
+                            <p class="biz-action-copy">{{ $planPresentation['followersCopy'] ?? 'Consulta mejor tu audiencia y centraliza la operación del negocio.' }}</p>
                         </div>
                     </div>
                 </div>

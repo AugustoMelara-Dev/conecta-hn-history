@@ -174,12 +174,78 @@
     gap: 0.9rem;
 }
 
+.biz-stack-xxs {
+    gap: 0.35rem;
+}
+
+.biz-stack-xs {
+    gap: 0.5rem;
+}
+
+.biz-stack-sm {
+    gap: 0.75rem;
+}
+
+.biz-stack-center {
+    align-items: center;
+    text-align: center;
+}
+
 .biz-split {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     gap: 1rem;
     flex-wrap: wrap;
+}
+
+.biz-split-start {
+    align-items: flex-start;
+}
+
+.biz-split-end {
+    align-items: flex-end;
+}
+
+.biz-row-end {
+    justify-content: flex-end;
+}
+
+.biz-row-center {
+    justify-content: center;
+}
+
+.biz-flex-1 {
+    flex: 1 1 auto;
+}
+
+.biz-grid-start {
+    align-items: flex-start;
+}
+
+.biz-grid-filters {
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    gap: 0.75rem;
+    width: min(100%, 72rem);
+}
+
+.biz-grid-four {
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+
+.biz-grid-three-wide {
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    gap: 0.75rem;
+}
+
+@media (min-width: 1024px) {
+    .biz-grid-four {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .biz-grid-three-wide {
+        grid-template-columns: repeat(3, minmax(12rem, 1fr));
+    }
 }
 
 .biz-action {
@@ -196,6 +262,19 @@
     border-color: rgba(16, 185, 129, 0.36);
     background: rgba(255, 255, 255, 0.08);
     transform: translateY(-1px);
+}
+
+.biz-action:focus-visible,
+.biz-button:focus-visible,
+.biz-button-secondary:focus-visible,
+.fi-input:focus-visible {
+    outline: 2px solid var(--biz-success-soft);
+    outline-offset: 3px;
+}
+
+.biz-action.is-selected {
+    border-color: rgba(14, 165, 233, 0.4);
+    box-shadow: inset 0 0 0 1px rgba(14, 165, 233, 0.2);
 }
 
 .biz-button-row,
@@ -320,6 +399,22 @@
 
 .biz-progress-bar-danger {
     background: var(--biz-danger);
+}
+
+.biz-mt-3 {
+    margin-top: 0.75rem;
+}
+
+.biz-mt-4 {
+    margin-top: 0.9rem;
+}
+
+.biz-heading-sm {
+    font-size: 1.15rem;
+}
+
+.biz-stat-value-sm {
+    font-size: 1rem;
 }
 
 .biz-icon-circle {

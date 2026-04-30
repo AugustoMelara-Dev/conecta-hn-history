@@ -3,45 +3,44 @@ import { Head } from '@inertiajs/react';
 import TenantLayout from '@/Layouts/TenantLayout';
 import CouponCard from '@/Components/Marketing/CouponCard';
 import StatCard from '@/Components/Stats/StatCard';
+import { Alert, AlertDescription } from '@/Components/ui/alert';
+import { Button } from '@/Components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/Components/ui/dialog';
 
 function MarketingReadOnlyModal({ isOpen, onClose }) {
-    if (!isOpen) return null;
-
     return (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-            <div className="fixed inset-0 bg-gray-500/75 transition-opacity" onClick={onClose} />
-            <div className="flex min-h-full items-center justify-center p-4">
-                <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-                    <div className="mb-6 flex items-center justify-between">
-                        <h3 className="text-xl font-bold text-gray-900">Marketing en modo lectura</h3>
-                        <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-                            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
-
-                    <div className="space-y-4">
-                        <p className="text-sm leading-6 text-gray-600">
-                            Este workspace legacy queda disponible solo para consulta en el launch actual.
-                            La gestion operativa de campanas y automatizaciones vive en el panel principal.
-                        </p>
-                        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Marketing en modo lectura</DialogTitle>
+                    <DialogDescription>
+                        Este workspace legacy queda disponible solo para consulta en el launch actual.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4">
+                    <p className="text-sm leading-6 text-muted-foreground">
+                        La gestión operativa de campañas y automatizaciones vive en el panel principal.
+                    </p>
+                    <Alert variant="warning">
+                        <AlertDescription>
                             Dejamos esta vista sin escritura para evitar endpoints rotos o flujos a medio implementar.
-                        </div>
-                        <div className="flex justify-end pt-2">
-                            <button
-                                type="button"
-                                onClick={onClose}
-                                className="rounded-xl bg-gray-100 px-4 py-3 font-medium text-gray-700 hover:bg-gray-200"
-                            >
-                                Entendido
-                            </button>
-                        </div>
-                    </div>
+                        </AlertDescription>
+                    </Alert>
                 </div>
-            </div>
-        </div>
+                <DialogFooter>
+                    <Button type="button" variant="outline" onClick={onClose}>
+                        Entendido
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 }
 

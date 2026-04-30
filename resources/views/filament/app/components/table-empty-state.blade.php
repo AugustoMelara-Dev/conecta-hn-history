@@ -6,10 +6,10 @@
     $buttonUrl = $buttonUrl ?? null;
 @endphp
 
-<div class="biz-empty-state">
-    <div class="biz-stack" style="text-align: center;">
+<div class="biz-empty-state" role="status" aria-live="polite">
+    <div class="biz-stack biz-stack-center">
         @if ($badge)
-            <div style="display: flex; justify-content: center;">
+            <div class="biz-button-row biz-row-center">
                 <span class="biz-badge biz-badge-success">{{ $badge }}</span>
             </div>
         @endif
@@ -21,7 +21,7 @@
         @endif
 
         @if ($buttonLabel && $buttonUrl)
-            <div class="biz-button-row" style="justify-content: center;">
+            <div class="biz-button-row biz-row-center">
                 <a href="{{ $buttonUrl }}" class="biz-button">{{ $buttonLabel }}</a>
             </div>
         @endif

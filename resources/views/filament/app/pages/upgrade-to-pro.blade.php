@@ -10,7 +10,7 @@
                     <div class="biz-badge biz-badge-warning">{{ $plan['marketingLabel'] }}</div>
 
                     <div>
-                        <h1 class="biz-title">Desbloquea mas herramientas para tu negocio</h1>
+                        <h1 class="biz-title">Desbloquea más herramientas para tu negocio</h1>
                         <p class="biz-copy">
                             {{ $plan['marketingCopy'] }} {{ $plan['brandingCopy'] }}
                         </p>
@@ -26,7 +26,7 @@
                         </div>
 
                         <p class="biz-muted">
-                            La activacion y el envio del comprobante se gestionan desde la seccion de Suscripcion.
+                            La activación y el envío del comprobante se gestionan desde la sección de Suscripción.
                         </p>
 
                         <div class="biz-button-row">

@@ -79,7 +79,7 @@ final class CustomerInboxPageTest extends TestCase
             'priority' => 'high',
             'source_channel' => 'whatsapp',
             'requires_follow_up' => true,
-            'body' => 'Quiero agendar manana por la tarde.',
+            'body' => 'Quiero agendar mañana por la tarde.',
             'next_action_at' => now()->addHours(6),
             'response_due_at' => now()->addHours(2),
         ]);
@@ -91,7 +91,7 @@ final class CustomerInboxPageTest extends TestCase
             ->assertOk()
             ->assertSee('Bandeja de respuestas')
             ->assertSee('Ana Castillo')
-            ->assertSee('Quiero agendar manana por la tarde.')
+            ->assertSee('Quiero agendar mañana por la tarde.')
             ->assertSee('Recurrente')
             ->assertSee('Sucursal Norte')
             ->assertSee($user->name)
@@ -102,7 +102,7 @@ final class CustomerInboxPageTest extends TestCase
             ->assertSee('Carga por canal')
             ->assertSee('Carga por equipo')
             ->assertSee('Carga por owner')
-            ->assertSee('Carga por ubicacion')
+            ->assertSee('Carga por ubicación')
             ->assertSee('Sin owner', false);
 
         Livewire::test(CustomerInbox::class)
@@ -203,7 +203,7 @@ final class CustomerInboxPageTest extends TestCase
             ->assertSee('Journey activo')
             ->assertSee('Carga por equipo')
             ->assertSee('Ruta actual')
-            ->assertSee('Disparo automatico estimado');
+            ->assertSee('Disparo automático estimado');
 
         $note->refresh();
 

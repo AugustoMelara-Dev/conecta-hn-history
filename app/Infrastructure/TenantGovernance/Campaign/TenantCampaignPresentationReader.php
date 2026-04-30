@@ -66,7 +66,7 @@ final class TenantCampaignPresentationReader
     {
         return [
             1 => 'Diaria',
-            3 => 'Cada 3 dias',
+            3 => 'Cada 3 días',
             7 => 'Semanal',
             14 => 'Quincenal',
             30 => 'Mensual',
@@ -75,7 +75,7 @@ final class TenantCampaignPresentationReader
 
     public function cadencePlaybookDescription(): string
     {
-        return 'Usa estas cadencias como punto de partida para campanas de recompra, reactivacion o upsell.';
+        return 'Usa estas cadencias como punto de partida para campañas de recompra, reactivación o upsell.';
     }
 
     public function audienceSummary(Campaign $campaign): string
@@ -101,7 +101,7 @@ final class TenantCampaignPresentationReader
     public function dispatchDescription(Campaign $campaign): string
     {
         return $campaign->usesCadence()
-            ? 'Se lanzara ahora y, como tiene cadencia activa, seguira corriendo con la repeticion configurada.'
+            ? 'Se lanzará ahora y, como tiene cadencia activa, seguirá corriendo con la repetición configurada.'
             : 'Se enviara esta campana a la audiencia filtrada. Continuamos?';
     }
 

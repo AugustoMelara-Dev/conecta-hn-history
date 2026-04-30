@@ -21,8 +21,9 @@
  * - GTM/fbq integration for conversion pixels
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
+import { toast as sonnerToast } from 'sonner';
 import {
     ArrowLeft,
     ShoppingCart,
@@ -44,13 +45,13 @@ import useTenantContext from '@/Hooks/useTenantContext';
 import { formatCurrency } from '@/Utils/currency';
 import { validateHondurasPhone } from '@/Utils/validators';
 import ImageWithFallback from '@/Components/ImageWithFallback';
-import Toast from '@/Components/Toast';
 import { ActionableAlert, EmptyState, LoadingState } from '@/Components/Feedback/UXStates';
 import { Button } from '@/Components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/Components/ui/field';
 import { Input } from '@/Components/ui/input';
 import { Progress } from '@/Components/ui/progress';
+import { RadioGroup, RadioGroupItem } from '@/Components/ui/radio-group';
 import { Textarea } from '@/Components/ui/textarea';
 import { cn } from '@/lib/utils';
 
@@ -141,21 +142,7 @@ export default function Checkout() {
     const [phoneError, setPhoneError] = useState('');
     // Phone validation success state (for positive feedback)
     const [isPhoneValid, setIsPhoneValid] = useState(false);
-
-    // Toast state with timeout ref for cleanup
-    const [toast, setToast] = useState(null);
-    const toastTimeoutRef = useRef(null);
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // CLEANUP: Clear toast timeout on unmount
-    // ═══════════════════════════════════════════════════════════════════════
-    useEffect(() => {
-        return () => {
-            if (toastTimeoutRef.current) {
-                clearTimeout(toastTimeoutRef.current);
-            }
-        };
-    }, []);
+    const [hasSubmitAttempted, setHasSubmitAttempted] = useState(false);
 
     // ═══════════════════════════════════════════════════════════════════════
     // GLOBAL STORE BINDING: No local state - everything from Zustand
@@ -251,6 +238,13 @@ export default function Checkout() {
         return true;
     }, [items.length, customerName, customerPhone, deliveryType, customerAddress]);
 
+    const isCustomerNameInvalid = hasSubmitAttempted && (!customerName || customerName.trim().length < 2);
+    const isCustomerPhoneMissing = hasSubmitAttempted && (!customerPhone || customerPhone.trim().length < 8);
+    const isCustomerPhoneInvalid = Boolean(phoneError) || isCustomerPhoneMissing;
+    const isDeliveryAddressInvalid = hasSubmitAttempted
+        && deliveryType === 'delivery'
+        && (!customerAddress || customerAddress.trim().length < 5);
+
     // ═══════════════════════════════════════════════════════════════════════
     // BEACON TELEMETRY: Send conversion event with graceful degradation
     // ═══════════════════════════════════════════════════════════════════════
@@ -299,26 +293,14 @@ export default function Checkout() {
         }
     };
 
-    // Toast helpers with timeout cleanup
     const showToast = (message, type = 'success') => {
-        if (toastTimeoutRef.current) {
-            clearTimeout(toastTimeoutRef.current);
-        }
+        const notify = type === 'error'
+            ? sonnerToast.error
+            : type === 'warning'
+                ? sonnerToast.warning
+                : sonnerToast.success;
 
-        setToast({ message, type });
-
-        toastTimeoutRef.current = setTimeout(() => {
-            setToast(null);
-            toastTimeoutRef.current = null;
-        }, 4000);
-    };
-
-    const hideToast = () => {
-        if (toastTimeoutRef.current) {
-            clearTimeout(toastTimeoutRef.current);
-            toastTimeoutRef.current = null;
-        }
-        setToast(null);
+        notify(message);
     };
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -326,6 +308,7 @@ export default function Checkout() {
     // ═══════════════════════════════════════════════════════════════════════
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setHasSubmitAttempted(true);
 
         // ═══════════════════════════════════════════════════════════════════
         // GUARD CLAUSE: Prevent race condition
@@ -416,16 +399,6 @@ export default function Checkout() {
         <StoreLayout>
             <Head title="Finalizar Pedido" />
 
-            {/* Toast Notification - Centralized component */}
-            {toast && (
-                <Toast
-                    message={toast.message}
-                    type={toast.type}
-                    onClose={hideToast}
-                    primaryColor={primaryColor}
-                />
-            )}
-
             <div className="max-w-7xl mx-auto px-4 py-6">
                 <CheckoutBreadcrumbs tenant={tenant} />
 
@@ -466,47 +439,61 @@ export default function Checkout() {
                                 <CardContent>
                                     <FieldGroup className="gap-5">
                                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                            <Field>
+                                            <Field data-invalid={isCustomerNameInvalid ? 'true' : undefined}>
                                                 <FieldLabel htmlFor="name">Nombre *</FieldLabel>
                                                 <Input
                                                     type="text"
                                                     id="name"
+                                                    name="customer_name"
                                                     data-testid="checkout-name-input"
                                                     value={customerName}
                                                     onChange={(e) => setCustomerName(e.target.value)}
                                                     onBlur={(e) => setCustomerName(e.target.value.trim())}
                                                     placeholder="Tu nombre"
-                                                    className="h-12"
+                                                    className={cn('h-12', isCustomerNameInvalid && 'border-destructive focus-visible:ring-destructive')}
                                                     required
                                                     minLength={2}
                                                     maxLength={100}
                                                     aria-required="true"
                                                     aria-label="Nombre completo"
+                                                    aria-invalid={isCustomerNameInvalid ? 'true' : 'false'}
+                                                    aria-describedby={isCustomerNameInvalid ? 'name-error' : undefined}
                                                     autoComplete="name"
                                                 />
+                                                {isCustomerNameInvalid ? (
+                                                    <FieldDescription
+                                                        id="name-error"
+                                                        role="alert"
+                                                        className="text-destructive"
+                                                    >
+                                                        Ingresa tu nombre completo para preparar el pedido.
+                                                    </FieldDescription>
+                                                ) : null}
                                             </Field>
 
-                                            <Field>
+                                            <Field data-invalid={isCustomerPhoneInvalid ? 'true' : undefined}>
                                                 <FieldLabel htmlFor="phone">Teléfono *</FieldLabel>
                                                 <div className="relative">
                                                     <Phone className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" data-icon aria-hidden="true" />
                                                     <Input
                                                         type="tel"
                                                         id="phone"
+                                                        name="customer_phone"
                                                         data-testid="checkout-phone-input"
                                                         value={customerPhone}
                                                         onChange={handlePhoneChange}
                                                         onBlur={handlePhoneBlur}
                                                         placeholder="9999-1234"
-                                                        className={cn('h-12 pl-10 pr-10', phoneError && 'border-destructive focus-visible:ring-destructive')}
+                                                        className={cn('h-12 pl-10 pr-10', isCustomerPhoneInvalid && 'border-destructive focus-visible:ring-destructive')}
                                                         required
                                                         minLength={8}
                                                         maxLength={15}
                                                         aria-required="true"
                                                         aria-label="Número de teléfono celular"
-                                                        aria-invalid={phoneError ? 'true' : 'false'}
-                                                        aria-describedby={phoneError ? 'phone-error' : 'phone-help'}
+                                                        aria-invalid={isCustomerPhoneInvalid ? 'true' : 'false'}
+                                                        aria-describedby={isCustomerPhoneInvalid ? 'phone-error' : 'phone-help'}
                                                         autoComplete="tel"
+                                                        inputMode="tel"
                                                     />
                                                     {isPhoneValid && !phoneError && (
                                                         <CheckCircle
@@ -516,7 +503,7 @@ export default function Checkout() {
                                                         />
                                                     )}
                                                 </div>
-                                                {phoneError ? (
+                                                {isCustomerPhoneInvalid ? (
                                                     <FieldDescription
                                                         id="phone-error"
                                                         role="alert"
@@ -524,7 +511,7 @@ export default function Checkout() {
                                                         className="flex items-center gap-1 text-destructive"
                                                     >
                                                         <AlertCircle className="h-4 w-4 shrink-0" data-icon aria-hidden="true" />
-                                                        <span>{phoneError}</span>
+                                                        <span>{phoneError || 'Ingresa un teléfono válido para coordinar tu pedido.'}</span>
                                                     </FieldDescription>
                                                 ) : (
                                                     <FieldDescription id="phone-help">
@@ -541,6 +528,7 @@ export default function Checkout() {
                                                 <Input
                                                     type="email"
                                                     id="email"
+                                                    name="customer_email"
                                                     value={customerEmail}
                                                     onChange={(e) => setCustomerEmail(e.target.value)}
                                                     onBlur={(e) => setCustomerEmail(e.target.value.trim())}
@@ -549,6 +537,7 @@ export default function Checkout() {
                                                     maxLength={100}
                                                     aria-label="Correo electrónico"
                                                     autoComplete="email"
+                                                    inputMode="email"
                                                 />
                                             </div>
                                         </Field>
@@ -566,64 +555,85 @@ export default function Checkout() {
                                 </CardHeader>
                                 <CardContent>
                                     <FieldGroup className="gap-5">
-                                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Método de entrega">
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                onClick={() => setDeliveryType('pickup')}
+                                        <RadioGroup
+                                            name="delivery_type"
+                                            value={deliveryType}
+                                            onValueChange={setDeliveryType}
+                                            className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+                                            aria-label="Método de entrega"
+                                        >
+                                            <label
+                                                htmlFor="delivery-pickup"
                                                 className={cn(
-                                                    'h-auto justify-start gap-3 rounded-lg border p-4 text-left',
+                                                    'flex cursor-pointer items-center gap-3 rounded-lg border p-4 text-left transition-colors',
+                                                    'focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2',
                                                     deliveryType === 'pickup' && 'border-[color:var(--checkout-accent)] bg-[color:var(--checkout-accent-soft)] text-foreground'
                                                 )}
-                                                role="radio"
-                                                aria-checked={deliveryType === 'pickup'}
-                                                aria-label="Recoger en tienda"
                                             >
+                                                <RadioGroupItem
+                                                    id="delivery-pickup"
+                                                    value="pickup"
+                                                    className="shrink-0 data-[state=checked]:border-[color:var(--checkout-accent)] data-[state=checked]:text-[color:var(--checkout-accent)]"
+                                                />
                                                 <Store className="h-5 w-5 shrink-0" data-icon aria-hidden="true" />
                                                 <span className="min-w-0 font-medium">Recoger en tienda</span>
-                                            </Button>
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                onClick={() => setDeliveryType('delivery')}
+                                            </label>
+                                            <label
+                                                htmlFor="delivery-address"
                                                 className={cn(
-                                                    'h-auto justify-start gap-3 rounded-lg border p-4 text-left',
+                                                    'flex cursor-pointer items-center gap-3 rounded-lg border p-4 text-left transition-colors',
+                                                    'focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2',
                                                     deliveryType === 'delivery' && 'border-[color:var(--checkout-accent)] bg-[color:var(--checkout-accent-soft)] text-foreground'
                                                 )}
-                                                role="radio"
-                                                aria-checked={deliveryType === 'delivery'}
-                                                aria-label="Delivery a domicilio"
                                             >
+                                                <RadioGroupItem
+                                                    id="delivery-address"
+                                                    value="delivery"
+                                                    className="shrink-0 data-[state=checked]:border-[color:var(--checkout-accent)] data-[state=checked]:text-[color:var(--checkout-accent)]"
+                                                />
                                                 <Truck className="h-5 w-5 shrink-0" data-icon aria-hidden="true" />
                                                 <span className="min-w-0 font-medium">Delivery a domicilio</span>
-                                            </Button>
-                                        </div>
+                                            </label>
+                                        </RadioGroup>
 
                                         {deliveryType === 'delivery' && (
-                                            <Field>
+                                            <Field data-invalid={isDeliveryAddressInvalid ? 'true' : undefined}>
                                                 <FieldLabel htmlFor="address">Dirección de entrega *</FieldLabel>
                                                 <div className="relative">
                                                     <MapPin className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" data-icon aria-hidden="true" />
                                                     <Textarea
                                                         id="address"
+                                                        name="customer_address"
                                                         data-testid="checkout-address-input"
                                                         value={customerAddress}
                                                         onChange={(e) => setCustomerAddress(e.target.value)}
                                                         onBlur={(e) => setCustomerAddress(e.target.value.trim())}
                                                         placeholder="Colonia, calle, número de casa, referencias..."
                                                         rows={3}
-                                                        className="pl-10"
+                                                        className={cn('pl-10', isDeliveryAddressInvalid && 'border-destructive focus-visible:ring-destructive')}
                                                         required={deliveryType === 'delivery'}
                                                         minLength={5}
                                                         maxLength={300}
                                                         aria-required="true"
                                                         aria-label="Dirección de entrega"
+                                                        aria-invalid={isDeliveryAddressInvalid ? 'true' : 'false'}
+                                                        aria-describedby={isDeliveryAddressInvalid ? 'address-error' : 'address-help'}
                                                         autoComplete="street-address"
                                                     />
                                                 </div>
-                                                <FieldDescription>
-                                                    Incluye una referencia clara para facilitar la entrega.
-                                                </FieldDescription>
+                                                {isDeliveryAddressInvalid ? (
+                                                    <FieldDescription
+                                                        id="address-error"
+                                                        role="alert"
+                                                        className="text-destructive"
+                                                    >
+                                                        Agrega una dirección o referencia de al menos 5 caracteres.
+                                                    </FieldDescription>
+                                                ) : (
+                                                    <FieldDescription id="address-help">
+                                                        Incluye una referencia clara para facilitar la entrega.
+                                                    </FieldDescription>
+                                                )}
                                             </Field>
                                         )}
                                     </FieldGroup>
@@ -643,6 +653,7 @@ export default function Checkout() {
                                         <FieldLabel htmlFor="checkout-notes">Indicaciones para el negocio</FieldLabel>
                                         <Textarea
                                             id="checkout-notes"
+                                            name="customer_notes"
                                             data-testid="checkout-notes-input"
                                             value={customerNotes}
                                             onChange={(e) => setCustomerNotes(e.target.value)}

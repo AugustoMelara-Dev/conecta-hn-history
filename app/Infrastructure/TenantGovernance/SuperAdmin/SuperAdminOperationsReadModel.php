@@ -449,14 +449,14 @@ final class SuperAdminOperationsReadModel
         }
 
         if ($segmentConversions > 0) {
-            return $segmentConversions.' PRO este mes en '.$segmentLabel.'. Usa esa senal para priorizar el upsell.';
+            return $segmentConversions.' PRO este mes en '.$segmentLabel.'. Usa esa señal para priorizar el upsell.';
         }
 
         if ($ownerConversions > 0) {
             return 'Owner con '.$ownerConversions.' conversiones PRO este mes. Conviene acelerar este playbook.';
         }
 
-        return 'Sin conversiones PRO este mes en este vertical. Valida propuesta antes de empujar expansion.';
+        return 'Sin conversiones PRO este mes en este vertical. Valida propuesta antes de empujar expansión.';
     }
 
     private function playbookTone(OperationalPlaybookTask $task): string

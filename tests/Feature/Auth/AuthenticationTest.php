@@ -95,6 +95,40 @@ class AuthenticationTest extends TestCase
         );
     }
 
+    public function test_tenant_owner_inertia_login_uses_location_for_filament_panel(): void
+    {
+        config([
+            'app.platform_directory_url' => 'https://www.vitobusinessos.com',
+            'app.platform_app_url' => 'https://app.vitobusinessos.com',
+        ]);
+
+        $tenantOwner = User::factory()->create([
+            'role' => UserRole::TENANT_OWNER,
+        ]);
+        $tenant = Tenant::factory()->create([
+            'user_id' => $tenantOwner->id,
+            'slug' => 'mi-negocio',
+        ]);
+        $tenantOwner->forceFill(['tenant_id' => $tenant->id])->save();
+        $token = 'auth-login-inertia-tenant-token';
+
+        $response = $this
+            ->withHeaders(['X-Inertia' => 'true'])
+            ->withSession(['_token' => $token])
+            ->post('/login', [
+                '_token' => $token,
+                'email' => $tenantOwner->email,
+                'password' => 'password',
+            ]);
+
+        $this->assertAuthenticated();
+        $response->assertStatus(409);
+        $response->assertHeader(
+            'X-Inertia-Location',
+            'https://app.vitobusinessos.com'.route('filament.app.pages.dashboard', ['tenant' => 'mi-negocio'], false)
+        );
+    }
+
     public function test_super_admins_are_redirected_to_the_filament_admin_panel_after_login(): void
     {
         $superAdmin = User::factory()->create([

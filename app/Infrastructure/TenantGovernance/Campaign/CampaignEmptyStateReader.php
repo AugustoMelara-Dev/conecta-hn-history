@@ -13,8 +13,8 @@ final class CampaignEmptyStateReader
     {
         return [
             'badge' => 'Marketing PRO',
-            'heading' => 'Todavia no has creado campanas',
-            'description' => 'Crea campanas por segmento, tier, reward, sede y owner usando la base real de tu CRM.',
+            'heading' => 'Todavía no has creado campañas',
+            'description' => 'Crea campañas por segmento, tier, reward, sede y owner usando la base real de tu CRM.',
             'buttonLabel' => 'Crear campana',
         ];
     }

@@ -3,9 +3,10 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { AlertCircle, ArrowRight, Filter, MapPin, Search, Sparkles, X } from 'lucide-react';
 import PublicLayout from '@/Layouts/PublicLayout';
 import { ActionableAlert, EmptyState as UXEmptyState, LoadingState } from '@/Components/Feedback/UXStates';
+import { Alert, AlertDescription, AlertTitle } from '@/Components/ui/alert';
 import { Badge } from '@/Components/ui/badge';
 import { Button } from '@/Components/ui/button';
-import { Card } from '@/Components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Input } from '@/Components/ui/input';
 import {
     Select,
@@ -15,6 +16,13 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/Components/ui/select';
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+} from '@/Components/ui/sheet';
 import { Textarea } from '@/Components/ui/textarea';
 import { PUBLIC_DISPLAY_FONT } from '@/lib/publicTypography';
 import { cn } from '@/lib/utils';
@@ -39,55 +47,58 @@ function DirectoryCard({ tenant }) {
     return (
         <Link
             href={route('tenant.microsite.show', { tenant: tenant.slug })}
-            className="group flex h-full flex-col overflow-hidden rounded-[32px] border border-stone-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-slate-950/8"
+            className="group block h-full"
         >
-            <div className="relative aspect-[4/3] overflow-hidden bg-stone-100">
-                {visual ? (
-                    <img src={visual} alt={tenant.name} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
-                ) : (
-                    <div className="flex h-full items-center justify-center bg-slate-950 text-3xl font-semibold text-white">
-                        {getTenantInitials(tenant)}
+            <Card className="flex h-full flex-col overflow-hidden rounded-[32px] border-stone-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-slate-950/8">
+                <div className="relative aspect-[4/3] overflow-hidden bg-stone-100">
+                    {visual ? (
+                        <img src={visual} alt={tenant.name} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+                    ) : (
+                        <div className="flex h-full items-center justify-center bg-slate-950 text-3xl font-semibold text-white">
+                            {getTenantInitials(tenant)}
+                        </div>
+                    )}
+                    <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-slate-950/65 to-transparent" />
+                    <Badge className="absolute left-4 top-4 gap-2 rounded-full border border-white/60 bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-white/90">
+                        <Sparkles data-icon="inline-start" aria-hidden="true" />
+                        {resolveTenantPlanLabel(tenant)}
+                    </Badge>
+                </div>
+
+                <CardContent className="flex flex-1 flex-col gap-4 p-5 sm:p-6">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Badge className="rounded-full bg-[#f3f3f1] px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-[#f3f3f1]">
+                            {resolveTenantCategoryName(tenant)}
+                        </Badge>
+                        <Badge className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-stone-100">
+                            {resolveTenantCityName(tenant)}
+                        </Badge>
                     </div>
-                )}
-                <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-slate-950/65 to-transparent" />
-                <Badge className="absolute left-4 top-4 gap-2 rounded-full border border-white/60 bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-white/90">
-                    <Sparkles data-icon="inline-start" aria-hidden="true" />
-                    {resolveTenantPlanLabel(tenant)}
-                </Badge>
-            </div>
 
-            <div className="flex flex-1 flex-col gap-4 p-5 sm:p-6">
-                <div className="flex flex-wrap items-center gap-2">
-                    <Badge className="rounded-full bg-[#f3f3f1] px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-[#f3f3f1]">
-                        {resolveTenantCategoryName(tenant)}
-                    </Badge>
-                    <Badge className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-stone-100">
-                        {resolveTenantCityName(tenant)}
-                    </Badge>
-                </div>
+                    <div>
+                        <h3 className="text-xl font-semibold text-slate-950" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
+                            {tenant.name}
+                        </h3>
+                        <p className="mt-3 text-sm leading-7 text-slate-600">
+                            {resolveTenantDescription(
+                                tenant,
+                                'Negocio local con presencia activa dentro de Vito Business OS y una salida clara hacia contacto, pedido o reserva.',
+                            )}
+                        </p>
+                    </div>
 
-                <div>
-                    <h3 className="text-xl font-semibold text-slate-950" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                        {tenant.name}
-                    </h3>
-                    <p className="mt-3 text-sm leading-7 text-slate-600">
-                        {resolveTenantDescription(
-                            tenant,
-                            'Negocio local con presencia activa dentro de Vito Business OS y una salida clara hacia contacto, pedido o reserva.',
-                        )}
-                    </p>
-                </div>
+                </CardContent>
 
-                <div className="mt-auto flex items-center justify-between gap-3 border-t border-stone-100 pt-4">
+                <CardFooter className="mt-auto flex items-center justify-between gap-3 border-t border-stone-100 pt-4">
                     <span className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
-                        <MapPin className="h-4 w-4 text-slate-950" aria-hidden="true" />
+                        <MapPin data-icon="inline-start" aria-hidden="true" />
                         {resolveTenantCityName(tenant)}
                     </span>
                     <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#f3f3f1] text-slate-700 transition group-hover:bg-slate-950 group-hover:text-white">
                         <ArrowRight className="h-4 w-4" aria-hidden="true" />
                     </span>
-                </div>
-            </div>
+                </CardFooter>
+            </Card>
         </Link>
     );
 }
@@ -330,63 +341,67 @@ function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
 
     if (!authUser) {
         return (
-            <div className="mt-8 rounded-[28px] border border-stone-200 bg-white px-5 py-5 sm:px-6">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Guía personalizada</p>
-                <h2 className="mt-2 text-xl font-semibold text-slate-950" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                    Inicia sesión para usar la guía (5 consultas al día)
-                </h2>
-                <p className="mt-2 text-sm text-slate-600">
-                    La guía te recomienda negocios y productos con tu presupuesto, ciudad y categoría.
-                </p>
-                <div className="mt-4">
-                    <Link
-                        href={route('login')}
-                        className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
-                    >
-                        Entrar como cliente
-                        <ArrowRight className="h-4 w-4" />
-                    </Link>
-                </div>
-            </div>
+            <Card className="mt-8 rounded-[28px]">
+                <CardHeader>
+                    <Badge variant="secondary" className="w-fit rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em]">
+                        Guía personalizada
+                    </Badge>
+                    <CardTitle className="text-xl">
+                        Inicia sesión para usar la guía (5 consultas al día)
+                    </CardTitle>
+                    <CardDescription>
+                        La guía te recomienda negocios y productos con tu presupuesto, ciudad y categoría.
+                    </CardDescription>
+                </CardHeader>
+                <CardFooter>
+                    <Button asChild>
+                        <Link href={route('login')}>
+                            Entrar como cliente
+                            <ArrowRight data-icon="inline-end" aria-hidden="true" />
+                        </Link>
+                    </Button>
+                </CardFooter>
+            </Card>
         );
     }
 
     if (!isCustomer) {
         return (
-            <div className="mt-8 rounded-[28px] border border-amber-200 bg-amber-50 px-5 py-5 sm:px-6">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Guía personalizada</p>
-                <h2 className="mt-2 text-xl font-semibold text-amber-900" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                    Disponible solo para cuentas de cliente
-                </h2>
-                <p className="mt-2 text-sm text-amber-800/90">
-                    Tu cuenta actual es operativa para panel interno. Usa una cuenta de cliente para consultas del directorio.
-                </p>
-            </div>
+            <Alert variant="warning" className="mt-8 rounded-[28px] px-5 py-5 sm:px-6">
+                <AlertTitle className="text-xs uppercase tracking-[0.2em]">Guía personalizada</AlertTitle>
+                <AlertDescription className="mt-2">
+                    <span className="block text-xl font-semibold">Disponible solo para cuentas de cliente</span>
+                    <span className="mt-2 block">
+                        Tu cuenta actual es operativa para panel interno. Usa una cuenta de cliente para consultas del directorio.
+                    </span>
+                </AlertDescription>
+            </Alert>
         );
     }
 
     return (
-        <Card className="mt-8 rounded-[28px] border-stone-200 bg-white px-5 py-5 shadow-sm sm:px-6">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Card className="mt-8 rounded-[28px]">
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Guía personalizada</p>
-                    <h2 className="mt-2 text-xl font-semibold text-slate-950" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                        Recomendaciones por presupuesto
-                    </h2>
-                    <p className="mt-1 text-sm text-slate-600">
+                    <Badge variant="secondary" className="w-fit rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em]">
+                        Guía personalizada
+                    </Badge>
+                    <CardTitle className="mt-3 text-xl">Recomendaciones por presupuesto</CardTitle>
+                    <CardDescription className="mt-1">
                         Plan gratis: {quotaLimit} consultas por día.
-                    </p>
+                    </CardDescription>
                 </div>
-                <Badge className="rounded-full bg-[#f3f3f1] px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-[#f3f3f1]" data-testid="directory-guide-quota">
+                <Badge variant="outline" className="rounded-full px-4 py-2 text-sm font-semibold" data-testid="directory-guide-quota">
                     {quotaRemaining !== undefined && quotaRemaining !== null
                         ? `Consultas restantes: ${quotaRemaining}/${quotaLimit}`
                         : `Consultas restantes: ${quotaLimit}/${quotaLimit}`}
                 </Badge>
-            </div>
+            </CardHeader>
 
-            <form onSubmit={runGuide} className="mt-5 grid gap-3 sm:grid-cols-[180px,1fr,auto]">
+            <CardContent className="grid gap-5">
+            <form onSubmit={runGuide} className="grid gap-3 sm:grid-cols-[180px,1fr,auto]">
                 <div>
-                    <label htmlFor="directory-guide-budget" className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    <label htmlFor="directory-guide-budget" className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                         Presupuesto (L)
                     </label>
                     <Input
@@ -397,20 +412,22 @@ function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
                         step="1"
                         value={budget}
                         onChange={(event) => setBudget(event.target.value)}
-                        className="h-12 rounded-2xl border-stone-200 bg-[#f3f3f1] px-4 text-sm text-slate-900 focus-visible:ring-slate-950"
+                        inputMode="numeric"
+                        autoComplete="off"
+                        className="h-12 rounded-2xl"
                         data-testid="directory-guide-budget-input"
                     />
                 </div>
-                <div className="self-end rounded-2xl border border-stone-200 bg-[#f3f3f1] px-4 py-3 text-sm text-slate-600">
+                <div className="self-end rounded-2xl border bg-muted px-4 py-3 text-sm text-muted-foreground">
                     Filtro actual: {filters.category || 'todas las categorías'} · {cityTerm || filters.city || 'todas las ciudades'}
                 </div>
                 <Button
                     type="submit"
                     disabled={isSubmitting}
-                    className="self-end h-12 rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
+                    className="self-end h-12 rounded-2xl px-5 text-sm font-semibold"
                     data-testid="directory-guide-submit"
                 >
-                    {isSubmitting ? 'Consultando...' : 'Pedir guía'}
+                    {isSubmitting ? 'Consultando…' : 'Pedir guía'}
                 </Button>
             </form>
 
@@ -434,30 +451,30 @@ function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
             ) : null}
 
             {quotaUsed !== undefined && quotaUsed !== null ? (
-                <p className="mt-3 text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                     Usadas hoy: {quotaUsed}/{quotaLimit}
                     {quotaResetAt ? ` · Reinicio: ${formatQuotaResetAt(quotaResetAt)}` : ''}
                 </p>
             ) : null}
 
             {diagnostic ? (
-                <div className="mt-4 grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-700 sm:grid-cols-3">
+                <Alert className="grid gap-3 rounded-2xl sm:grid-cols-3">
                     <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Estado</p>
-                        <p className="mt-1 font-semibold text-slate-900">{diagnostic.status}</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Estado</p>
+                        <p className="mt-1 font-semibold">{diagnostic.status}</p>
                     </div>
                     <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Causa probable</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Causa probable</p>
                         <p className="mt-1">{diagnostic.probable_cause}</p>
                     </div>
                     <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Acción</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Acción</p>
                         <p className="mt-1">{diagnostic.recommended_action}</p>
                         {diagnostic.trace_id ? (
-                            <p className="mt-2 text-xs text-slate-500">REF: {diagnostic.trace_id}</p>
+                            <p className="mt-2 text-xs text-muted-foreground">REF: {diagnostic.trace_id}</p>
                         ) : null}
                     </div>
-                </div>
+                </Alert>
             ) : null}
 
             {guideResults.length > 0 ? (
@@ -474,18 +491,18 @@ function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
                             <Link
                                 key={`${tenant.slug}-${index}`}
                                 href={route('tenant.microsite.show', { tenant: tenant.slug })}
-                                className="rounded-2xl border border-stone-200 bg-[#f8f8f6] px-4 py-4 transition hover:border-stone-300 hover:bg-white"
+                                className="rounded-2xl border bg-card px-4 py-4 text-card-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                 data-testid="directory-guide-result"
                             >
-                                <p className="text-sm font-semibold text-slate-900">{tenant.name}</p>
-                                <p className="mt-1 text-xs uppercase tracking-[0.12em] text-slate-500">
+                                <p className="text-sm font-semibold">{tenant.name}</p>
+                                <p className="mt-1 text-xs uppercase tracking-[0.12em] text-muted-foreground">
                                     {resolveTenantCategoryName(tenant)} · {resolveTenantCityName(tenant)}
                                 </p>
                                 {entry?.reason ? (
-                                    <p className="mt-2 text-sm text-slate-600">{entry.reason}</p>
+                                    <p className="mt-2 text-sm text-muted-foreground">{entry.reason}</p>
                                 ) : null}
                                 {priceRange?.min !== undefined && priceRange?.max !== undefined ? (
-                                    <p className="mt-2 text-sm font-semibold text-slate-700">
+                                    <p className="mt-2 text-sm font-semibold">
                                         Rango sugerido: L {priceRange.min} - L {priceRange.max}
                                     </p>
                                 ) : null}
@@ -495,14 +512,14 @@ function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
                 </div>
             ) : null}
 
-            <div className="mt-6 overflow-hidden rounded-[28px] border border-slate-900/10 bg-slate-950 text-white shadow-2xl shadow-slate-950/10">
+            <div className="overflow-hidden rounded-[28px] border bg-primary text-primary-foreground shadow-2xl shadow-primary/10">
                 <div className="relative px-5 py-5 sm:px-6">
-                    <div className="pointer-events-none absolute right-0 top-0 h-32 w-32 rounded-full bg-lime-300/20 blur-3xl" />
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-lime-200">Chat IA del directorio</p>
-                    <h3 className="mt-2 text-2xl font-semibold" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
+                    <div className="pointer-events-none absolute right-0 top-0 h-32 w-32 rounded-full bg-primary-foreground/10 blur-3xl" />
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary-foreground/75">Chat IA del directorio</p>
+                    <h3 className="mt-2 text-2xl font-semibold">
                         Pregunta como hablaría un cliente real
                     </h3>
-                    <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
+                    <p className="mt-2 max-w-2xl text-sm leading-6 text-primary-foreground/75">
                         Ejemplo: "tengo 100 lps y quiero comer algo en Tegucigalpa". El chat responde con negocios publicados, presupuesto y trazabilidad.
                     </p>
 
@@ -511,17 +528,19 @@ function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
                             value={chatPrompt}
                             onChange={(event) => setChatPrompt(event.target.value)}
                             rows={3}
-                            className="min-h-[96px] rounded-3xl border-white/10 bg-white/10 px-4 py-3 text-sm leading-6 text-white placeholder:text-slate-400 focus-visible:ring-lime-200"
-                            placeholder="Que puedo comprar con 100 lps?"
+                            name="directory_guide_chat_prompt"
+                            className="min-h-[96px] rounded-3xl border-primary-foreground/15 bg-primary-foreground/10 px-4 py-3 text-sm leading-6 text-primary-foreground placeholder:text-primary-foreground/55 focus-visible:ring-primary-foreground"
+                            placeholder="¿Qué puedo comprar con 100 lps?"
                             data-testid="directory-guide-chat-input"
                         />
                         <Button
                             type="submit"
                             disabled={isChatting || !chatPrompt.trim()}
-                            className="rounded-3xl bg-lime-200 px-6 py-3 text-sm font-black text-slate-950 transition-colors hover:bg-lime-100 disabled:cursor-not-allowed disabled:opacity-60"
+                            variant="secondary"
+                            className="rounded-3xl px-6 py-3 text-sm font-black"
                             data-testid="directory-guide-chat-submit"
                         >
-                            {isChatting ? 'Pensando...' : 'Preguntar'}
+                            {isChatting ? 'Pensando…' : 'Preguntar'}
                         </Button>
                     </form>
 
@@ -543,16 +562,17 @@ function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
                     ) : null}
 
                     {chatAnswer ? (
-                        <div className="mt-4 rounded-3xl border border-white/10 bg-white px-5 py-4 text-slate-900" data-testid="directory-guide-chat-answer">
-                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Respuesta</p>
+                        <div className="mt-4 rounded-3xl border bg-background px-5 py-4 text-foreground" data-testid="directory-guide-chat-answer">
+                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Respuesta</p>
                             <p className="mt-2 text-sm leading-7">{chatAnswer}</p>
                             {chatMeta?.trace_id ? (
-                                <p className="mt-3 text-xs font-semibold text-slate-500">REF soporte: {chatMeta.trace_id}</p>
+                                <p className="mt-3 text-xs font-semibold text-muted-foreground">REF soporte: {chatMeta.trace_id}</p>
                             ) : null}
                         </div>
                     ) : null}
                 </div>
             </div>
+            </CardContent>
         </Card>
     );
 }
@@ -800,13 +820,30 @@ export default function DirectoryIndex({ tenants, categories = [], cities = [], 
                                     .replace('Next', 'Siguiente');
 
                                 return (
-                                    <Link
-                                        key={index}
-                                        href={link.url || '#'}
-                                        className={`rounded-full px-4 py-2 text-sm font-semibold transition ${link.active ? 'bg-slate-950 text-white' : 'border border-stone-200 bg-white text-slate-700 hover:border-stone-300'} ${!link.url ? 'pointer-events-none opacity-50' : ''}`}
-                                    >
-                                        {label}
-                                    </Link>
+                                    link.url ? (
+                                        <Button
+                                            key={index}
+                                            asChild
+                                            variant={link.active ? 'default' : 'outline'}
+                                            size="sm"
+                                            className="rounded-full border-stone-200 px-4 text-sm font-semibold"
+                                        >
+                                            <Link href={link.url}>
+                                                {label}
+                                            </Link>
+                                        </Button>
+                                    ) : (
+                                        <Button
+                                            key={index}
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            disabled
+                                            className="rounded-full border-stone-200 px-4 text-sm font-semibold"
+                                        >
+                                            {label}
+                                        </Button>
+                                    )
                                 );
                             })}
                         </div>
@@ -814,68 +851,68 @@ export default function DirectoryIndex({ tenants, categories = [], cities = [], 
                 </div>
             </section>
 
-            {mobileOpen ? (
-                <div className="fixed inset-0 z-50 lg:hidden">
-                    <button type="button" aria-label="Cerrar filtros" className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
-                    <div className="absolute inset-x-0 bottom-0 rounded-t-[32px] border border-stone-200 bg-white p-6 shadow-2xl">
-                        <div className="flex items-center justify-between">
-                            <h2 className="text-lg font-semibold text-slate-950" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                                Filtros
-                            </h2>
-                            <Button type="button" variant="outline" size="icon" aria-label="Cerrar filtros" onClick={() => setMobileOpen(false)} className="rounded-full border-stone-200 text-slate-600">
-                                <X data-icon="icon" aria-hidden="true" />
-                            </Button>
+            <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+                <SheetContent
+                    side="bottom"
+                    className="max-h-[85vh] overflow-y-auto rounded-t-[32px] border-stone-200 p-6 lg:hidden"
+                >
+                    <SheetHeader className="pr-8 text-left">
+                        <SheetTitle className="text-lg font-semibold text-slate-950" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
+                            Filtros
+                        </SheetTitle>
+                        <SheetDescription>
+                            Ajusta ciudad y categoría para encontrar negocios disponibles.
+                        </SheetDescription>
+                    </SheetHeader>
+
+                    <div className="mt-6 flex flex-col gap-5">
+                        <div>
+                            <label className="text-sm font-semibold text-slate-700">Ciudad</label>
+                            <Select value={cityTerm || 'all'} onValueChange={(value) => setCity(value === 'all' ? '' : value)}>
+                                <SelectTrigger aria-label="Filtrar por ciudad en móvil" className="mt-2 h-12 rounded-2xl border-stone-200 bg-[#f3f3f1] text-sm text-slate-900 focus:ring-slate-950">
+                                    <SelectValue placeholder="Todas las ciudades" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectGroup>
+                                        <SelectItem value="all">Todas las ciudades</SelectItem>
+                                        {cities.map((city) => (
+                                            <SelectItem key={city.id} value={city.slug}>{city.name}</SelectItem>
+                                        ))}
+                                    </SelectGroup>
+                                </SelectContent>
+                            </Select>
                         </div>
 
-                        <div className="mt-6 flex flex-col gap-5">
-                            <div>
-                                <label className="text-sm font-semibold text-slate-700">Ciudad</label>
-                                <Select value={cityTerm || 'all'} onValueChange={(value) => setCity(value === 'all' ? '' : value)}>
-                                    <SelectTrigger aria-label="Filtrar por ciudad en móvil" className="mt-2 h-12 rounded-2xl border-stone-200 bg-[#f3f3f1] text-sm text-slate-900 focus:ring-slate-950">
-                                        <SelectValue placeholder="Todas las ciudades" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectGroup>
-                                            <SelectItem value="all">Todas las ciudades</SelectItem>
-                                            {cities.map((city) => (
-                                                <SelectItem key={city.id} value={city.slug}>{city.name}</SelectItem>
-                                            ))}
-                                        </SelectGroup>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            <div>
-                                <label className="text-sm font-semibold text-slate-700">Categoria</label>
-                                <div className="mt-3 flex flex-wrap gap-2">
-                                    <FilterButton active={!filters.category} onClick={() => setCategory('')}>
-                                        Todo
+                        <div>
+                            <label className="text-sm font-semibold text-slate-700">Categoría</label>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                                <FilterButton active={!filters.category} onClick={() => setCategory('')}>
+                                    Todo
+                                </FilterButton>
+                                {categories.map((category) => (
+                                    <FilterButton
+                                        key={category.id}
+                                        onClick={() => setCategory(category.slug)}
+                                        active={filters.category === category.slug}
+                                    >
+                                        {category.name}
                                     </FilterButton>
-                                    {categories.map((category) => (
-                                        <FilterButton
-                                            key={category.id}
-                                            onClick={() => setCategory(category.slug)}
-                                            active={filters.category === category.slug}
-                                        >
-                                            {category.name}
-                                        </FilterButton>
-                                    ))}
-                                </div>
+                                ))}
                             </div>
-
-                            <Button
-                                type="button"
-                                onClick={clearFilters}
-                                variant="outline"
-                                className="w-full rounded-full border-stone-300 px-6 py-3 text-sm font-semibold text-slate-700"
-                            >
-                                <X data-icon="inline-start" aria-hidden="true" />
-                                Limpiar filtros
-                            </Button>
                         </div>
+
+                        <Button
+                            type="button"
+                            onClick={clearFilters}
+                            variant="outline"
+                            className="w-full rounded-full border-stone-300 px-6 py-3 text-sm font-semibold text-slate-700"
+                        >
+                            <X data-icon="inline-start" aria-hidden="true" />
+                            Limpiar filtros
+                        </Button>
                     </div>
-                </div>
-            ) : null}
+                </SheetContent>
+            </Sheet>
         </PublicLayout>
     );
 }

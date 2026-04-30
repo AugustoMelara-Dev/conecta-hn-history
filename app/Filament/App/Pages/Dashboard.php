@@ -144,7 +144,7 @@ class Dashboard extends \Filament\Pages\Page
 
     public string $maturityLabel = 'Arranque';
 
-    public string $maturityTitle = 'Tu operacion todavia esta en fase de arranque';
+    public string $maturityTitle = 'Tu operación todavía está en fase de arranque';
 
     public string $maturityCopy = '';
 
@@ -352,7 +352,7 @@ class Dashboard extends \Filament\Pages\Page
         $config = config("business-types.options.{$this->businessType}", []);
 
         $this->businessTypeLabel = (string) ($presentation['label'] ?? $config['label'] ?? 'Negocio');
-        $this->businessTypeDescription = (string) ($presentation['description'] ?? $config['description'] ?? 'Organiza tu operacion desde una base clara.');
+        $this->businessTypeDescription = (string) ($presentation['description'] ?? $config['description'] ?? 'Organiza tu operación desde una base clara.');
         $this->businessTypeCapabilities = collect($config['capabilities'] ?? [])
             ->filter(static fn (mixed $item): bool => is_string($item) && $item !== '')
             ->values()
@@ -525,17 +525,17 @@ class Dashboard extends \Filament\Pages\Page
         if ($this->healthScore >= 75 && $readyWorkspaceCount >= 3 && ($this->isPro || $readyAutomationCount >= 2)) {
             $this->maturityStage = 'scale';
             $this->maturityLabel = 'Escala';
-            $this->maturityTitle = 'Tu operacion ya tiene base para escalar';
+            $this->maturityTitle = 'Tu operación ya tiene base para escalar';
             $this->maturityCopy = 'Ya no estas armando el negocio: ahora te conviene estandarizar equipo, seguimiento y marketing para crecer sin perder consistencia.';
         } elseif ($this->healthScore >= 45 && $readyWorkspaceCount >= 2) {
             $this->maturityStage = 'traction';
             $this->maturityLabel = 'Traccion';
-            $this->maturityTitle = 'Tu operacion ya entro en fase de traccion';
+            $this->maturityTitle = 'Tu operación ya entró en fase de tracción';
             $this->maturityCopy = 'El negocio ya se siente mas real. Ahora el salto importante es repartir responsabilidades y convertir el seguimiento en rutina.';
         } else {
             $this->maturityStage = 'launch';
             $this->maturityLabel = 'Arranque';
-            $this->maturityTitle = 'Tu operacion todavia esta en fase de arranque';
+            $this->maturityTitle = 'Tu operación todavía está en fase de arranque';
             $this->maturityCopy = 'La prioridad sigue siendo activar lo esencial del rubro, cerrar bien el primer flujo comercial y evitar que todo dependa de memoria.';
         }
 
@@ -556,7 +556,7 @@ class Dashboard extends \Filament\Pages\Page
             return;
         }
 
-        $this->maturityNextStep = 'Siguiente salto: convierte tu operacion en una maquina repetible con equipo claro, seguimiento y marketing disciplinado.';
+        $this->maturityNextStep = 'Siguiente salto: convierte tu operación en una máquina repetible con equipo claro, seguimiento y marketing disciplinado.';
     }
 
     private function planMetricValue(): string
@@ -843,8 +843,8 @@ class Dashboard extends \Filament\Pages\Page
             $definition = [
                 'route_key' => $definition,
                 'state' => $definition,
-                'title' => \Illuminate\Support\Str::of($definition)->replace('_', ' ')->title()->value(),
-                'copy' => 'Modulo recomendado por RubroManifest para este tipo de negocio.',
+                'title' => $this->workspaceModuleTitle($definition),
+                'copy' => 'Módulo recomendado por RubroManifest para este tipo de negocio.',
             ];
         }
 
@@ -865,6 +865,19 @@ class Dashboard extends \Filament\Pages\Page
             'stateLabel' => $ready ? 'Listo' : 'Pendiente',
             'stateColor' => $ready ? 'success' : 'warning',
         ];
+    }
+
+    private function workspaceModuleTitle(string $module): string
+    {
+        return match ($module) {
+            'profile' => 'Perfil',
+            'catalog' => 'Catálogo',
+            'payments' => 'Pagos',
+            'whatsapp' => 'WhatsApp',
+            'marketing' => 'Marketing',
+            'team' => 'Equipo',
+            default => \Illuminate\Support\Str::of($module)->replace('_', ' ')->title()->value(),
+        };
     }
 
     /**

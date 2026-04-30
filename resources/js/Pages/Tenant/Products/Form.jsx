@@ -17,6 +17,16 @@
 import { useState, useRef } from 'react';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import TenantLayout from '@/Layouts/TenantLayout';
+import { Button } from '@/Components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/Components/ui/dialog';
+import { Input } from '@/Components/ui/input';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
@@ -275,6 +285,7 @@ export default function ProductForm({ product, sections = [], stockOptions = {},
                                                     onClick={() => setShowCategoryModal(true)}
                                                     className="px-4 py-3 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-colors"
                                                     title="Nueva categoría"
+                                                    aria-label="Crear nueva categoría"
                                                 >
                                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -436,45 +447,39 @@ export default function ProductForm({ product, sections = [], stockOptions = {},
                     </form>
                 </main>
 
-                {/* Category Modal */}
-                {showCategoryModal && (
-                    <div className="fixed inset-0 z-50 overflow-y-auto">
-                        <div className="fixed inset-0 bg-gray-500/75 transition-opacity" onClick={() => setShowCategoryModal(false)} />
-                        <div className="flex min-h-full items-center justify-center p-4">
-                            <div className="relative bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
-                                <h3 className="text-lg font-bold text-gray-900 mb-4">Nueva Categoría</h3>
-                                <div className="mb-4">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Nombre</label>
-                                    <input
-                                        type="text"
-                                        value={newCategoryName}
-                                        onChange={(e) => setNewCategoryName(e.target.value)}
-                                        onKeyDown={(e) => e.key === 'Enter' && handleCreateCategory()}
-                                        placeholder="Ej: Postres"
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500"
-                                        autoFocus
-                                    />
-                                </div>
-                                <div className="flex gap-3">
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowCategoryModal(false)}
-                                        className="flex-1 px-4 py-2.5 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 font-medium"
-                                    >
-                                        Cancelar
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={handleCreateCategory}
-                                        className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium"
-                                    >
-                                        Crear
-                                    </button>
-                                </div>
-                            </div>
+                <Dialog open={showCategoryModal} onOpenChange={setShowCategoryModal}>
+                    <DialogContent className="sm:max-w-sm">
+                        <DialogHeader>
+                            <DialogTitle>Nueva Categoría</DialogTitle>
+                            <DialogDescription>
+                                Crea una sección para organizar mejor tus productos visibles.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-2">
+                            <label htmlFor="new-category-name" className="text-sm font-medium">
+                                Nombre
+                            </label>
+                            <Input
+                                id="new-category-name"
+                                name="new_category_name"
+                                type="text"
+                                value={newCategoryName}
+                                onChange={(e) => setNewCategoryName(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleCreateCategory()}
+                                placeholder="Ej: Postres"
+                                autoFocus
+                            />
                         </div>
-                    </div>
-                )}
+                        <DialogFooter>
+                            <Button type="button" variant="outline" onClick={() => setShowCategoryModal(false)}>
+                                Cancelar
+                            </Button>
+                            <Button type="button" onClick={handleCreateCategory}>
+                                Crear
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
         </TenantLayout>
     );

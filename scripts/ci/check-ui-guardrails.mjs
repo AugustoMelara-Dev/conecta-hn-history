@@ -85,6 +85,143 @@ const debtRules = [
     },
 ];
 
+const surfaceBudgets = [
+    {
+        id: 'public',
+        label: 'Public acquisition React surfaces',
+        paths: [
+            'resources/js/Pages/Welcome.jsx',
+            'resources/js/Pages/Public/Explore.jsx',
+            'resources/js/Pages/Directory/Index.jsx',
+            'resources/js/Pages/Legal/',
+            'resources/js/Layouts/PublicLayout.jsx',
+            'resources/js/Components/Organisms/SmartNavbar.jsx',
+            'resources/js/Components/Feedback/',
+            'resources/js/Components/Public/',
+        ],
+        budgets: {
+            'raw-tailwind-colors': 10,
+            'space-axis-utilities': 4,
+            'transition-all': 4,
+            'outline-none': 4,
+            'inline-style': 7,
+            'manual-modal-shells': 0,
+            'html-injection': 0,
+        },
+    },
+    {
+        id: 'microsite',
+        label: 'Microsite, storefront, checkout, and booking React surfaces',
+        paths: [
+            'resources/js/Pages/Tenant/Show.jsx',
+            'resources/js/Pages/Tenant/StoreHome.jsx',
+            'resources/js/Pages/Tenant/ProductDetails.jsx',
+            'resources/js/Pages/Tenant/Checkout.jsx',
+            'resources/js/Pages/Public/Book/',
+            'resources/js/Components/Tenant/',
+        ],
+        budgets: {
+            'raw-tailwind-colors': 9,
+            'space-axis-utilities': 1,
+            'transition-all': 5,
+            'outline-none': 2,
+            'inline-style': 6,
+            'manual-modal-shells': 0,
+            'html-injection': 1,
+        },
+    },
+    {
+        id: 'auth-profile',
+        label: 'Authentication, registration, account, and buyer profile surfaces',
+        paths: [
+            'resources/js/Pages/Auth/',
+            'resources/js/Components/Auth/',
+            'resources/js/Pages/Profile/',
+            'resources/js/Pages/Buyer/Profile.jsx',
+        ],
+        budgets: {
+            'raw-tailwind-colors': 15,
+            'space-axis-utilities': 7,
+            'transition-all': 0,
+            'outline-none': 2,
+            'inline-style': 2,
+            'manual-modal-shells': 0,
+            'html-injection': 0,
+        },
+    },
+    {
+        id: 'app-panel',
+        label: 'Filament business app panel surfaces',
+        paths: [
+            'resources/views/filament/app/',
+            'app/Filament/App/',
+            'resources/css/filament/shared/',
+        ],
+        budgets: {
+            'raw-tailwind-colors': 2,
+            'space-axis-utilities': 1,
+            'transition-all': 0,
+            'outline-none': 1,
+            'inline-style': 0,
+            'manual-modal-shells': 0,
+            'html-injection': 0,
+        },
+    },
+    {
+        id: 'admin-panel',
+        label: 'Filament super-admin panel surfaces',
+        paths: [
+            'resources/views/filament/pages/',
+            'resources/views/filament/resources/',
+            'resources/views/filament/widgets/',
+            'resources/views/filament/auth/',
+            'resources/views/filament/components/',
+            'resources/views/filament/qr-card.blade.php',
+            'app/Filament/Resources/',
+            'app/Filament/Pages/',
+            'app/Filament/Widgets/',
+            'app/Filament/Auth/',
+        ],
+        budgets: {
+            'raw-tailwind-colors': 2,
+            'space-axis-utilities': 0,
+            'transition-all': 0,
+            'outline-none': 0,
+            'inline-style': 0,
+            'manual-modal-shells': 0,
+            'html-injection': 0,
+        },
+    },
+    {
+        id: 'legacy',
+        label: 'Legacy workspace, Livewire, and compatibility surfaces',
+        paths: [
+            'resources/views/livewire/',
+            'resources/views/components/',
+            'resources/views/layouts/',
+            'resources/js/Pages/Tenant/Products/',
+            'resources/js/Pages/Tenant/Settings/',
+            'resources/js/Pages/Tenant/Billing/',
+            'resources/js/Pages/Tenant/Orders/',
+            'resources/js/Pages/Tenant/Reports/',
+            'resources/js/Pages/Tenant/Marketing/',
+            'resources/js/Pages/Tenant/Dashboard.jsx',
+            'resources/js/Pages/Tenant/Upgrade.jsx',
+            'resources/js/Pages/UserDashboard.jsx',
+            'resources/js/Pages/AuthDemo.jsx',
+        ],
+        budgets: {
+            'raw-tailwind-colors': 38,
+            'space-axis-utilities': 23,
+            'transition-all': 26,
+            'outline-none': 3,
+            'inline-style': 3,
+            'manual-modal-shells': 6,
+            'html-injection': 1,
+        },
+    },
+];
+
 const zeroToleranceRules = [
     {
         id: 'visible-mojibake',
@@ -150,6 +287,11 @@ function walk(dir, extensions = ['.js', '.jsx', '.ts', '.tsx', '.php', '.blade.p
 
 function scanRule(rule) {
     const files = Array.from(new Set(rule.dirs.flatMap((dir) => walk(dir))));
+
+    return scanRuleInFiles(rule, files);
+}
+
+function scanRuleInFiles(rule, files) {
     const matches = [];
 
     for (const file of files) {
@@ -167,7 +309,7 @@ function scanRule(rule) {
 
         if (lineNumbers.length > 0) {
             matches.push({
-                file: toPosix(path.relative(root, file)),
+                file: path.isAbsolute(file) ? toPosix(path.relative(root, file)) : toPosix(file),
                 lines: lineNumbers,
             });
         }
@@ -181,6 +323,35 @@ function formatExamples(matches) {
         .slice(0, 8)
         .map((match) => `  - ${match.file}:${match.lines[0]}`)
         .join('\n');
+}
+
+function matchesSurface(file, surface) {
+    return surface.paths.some((surfacePath) => file === surfacePath || file.startsWith(surfacePath));
+}
+
+function surfaceFiles(surface) {
+    const files = [];
+
+    for (const surfacePath of surface.paths) {
+        const absolutePath = path.join(root, surfacePath);
+
+        if (!fs.existsSync(absolutePath)) {
+            continue;
+        }
+
+        if (fs.statSync(absolutePath).isFile()) {
+            files.push(surfacePath);
+            continue;
+        }
+
+        files.push(...walk(surfacePath));
+    }
+
+    return Array.from(new Set(files));
+}
+
+function scanSurfaceRule(rule, surface) {
+    return scanRuleInFiles(rule, surfaceFiles(surface)).filter((match) => matchesSurface(match.file, surface));
 }
 
 const failures = [];
@@ -198,6 +369,32 @@ for (const rule of debtRules) {
             rule.guidance,
             formatExamples(matches),
         ].filter(Boolean).join('\n'));
+    }
+}
+
+console.log('\nSurface UI budgets:');
+
+for (const surface of surfaceBudgets) {
+    for (const rule of debtRules) {
+        const maxFiles = surface.budgets[rule.id];
+
+        if (typeof maxFiles !== 'number') {
+            continue;
+        }
+
+        const matches = scanSurfaceRule(rule, surface);
+        const count = matches.length;
+        const status = count <= maxFiles ? 'ok' : 'fail';
+
+        console.log(`${status.toUpperCase()} ${surface.id}:${rule.id}: ${count}/${maxFiles} files`);
+
+        if (count > maxFiles) {
+            failures.push([
+                `${surface.label} exceeded ${rule.label} surface budget (${count}/${maxFiles}).`,
+                rule.guidance,
+                formatExamples(matches),
+            ].filter(Boolean).join('\n'));
+        }
     }
 }
 

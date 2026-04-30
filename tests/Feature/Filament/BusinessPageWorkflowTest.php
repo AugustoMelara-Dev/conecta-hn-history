@@ -230,7 +230,7 @@ final class BusinessPageWorkflowTest extends TestCase
 
         $this->get(route('filament.app.pages.upgrade-to-pro', ['tenant' => $tenant->slug], false))
             ->assertOk()
-            ->assertSee('Desbloquea mas herramientas para tu negocio')
+            ->assertSee('Desbloquea más herramientas para tu negocio')
             ->assertSee('Activar PRO');
 
         $this->get(route('filament.app.resources.followers.index', ['tenant' => $tenant->slug], false))

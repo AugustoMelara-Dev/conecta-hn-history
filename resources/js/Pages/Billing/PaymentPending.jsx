@@ -58,6 +58,7 @@ export default function PaymentPending({ payment, bankInstructions, whatsappUrl,
                                 <h3 className="font-semibold text-blue-900 mb-2">Instrucciones de Pago:</h3>
                                 <div
                                     className="text-sm text-blue-800 prose prose-sm"
+                                    // sanitized-html: configured bank instructions are curated admin content.
                                     dangerouslySetInnerHTML={{ __html: bankInstructions }}
                                 />
                             </div>

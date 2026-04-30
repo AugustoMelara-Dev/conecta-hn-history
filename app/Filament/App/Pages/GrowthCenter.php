@@ -146,7 +146,7 @@ class GrowthCenter extends Page
 
     public string $topOfferLabel = 'Sin datos';
 
-    public string $topOfferCopy = 'Todavia no hay suficiente actividad reciente para destacar una oferta.';
+    public string $topOfferCopy = 'Todavía no hay suficiente actividad reciente para destacar una oferta.';
 
     public int $vipCustomersCount = 0;
 
@@ -369,11 +369,11 @@ class GrowthCenter extends Page
         $this->headline = (string) ($this->growthProfile['headline'] ?? 'CRM y crecimiento');
         $this->copy = (string) ($this->growthProfile['copy'] ?? 'Ordena tu pipeline, entiende tu negocio y activa crecimiento con mejor disciplina.');
         $this->crmTitle = (string) ($this->growthProfile['crm_title'] ?? 'Pipeline comercial');
-        $this->crmCopy = (string) ($this->growthProfile['crm_copy'] ?? 'Mide oportunidades, velocidad de respuesta y conversion.');
+        $this->crmCopy = (string) ($this->growthProfile['crm_copy'] ?? 'Mide oportunidades, velocidad de respuesta y conversión.');
         $this->analyticsTitle = (string) ($this->growthProfile['analytics_title'] ?? 'Analitica PYME');
         $this->analyticsCopy = (string) ($this->growthProfile['analytics_copy'] ?? 'Lee ventas, recompra y audiencias con criterio de negocio.');
         $this->automationTitle = (string) ($this->growthProfile['automation_title'] ?? 'Automatizaciones externas');
-        $this->automationCopy = (string) ($this->growthProfile['automation_copy'] ?? 'Activa automatizaciones segun tu rubro y el estado real de tu operacion.');
+        $this->automationCopy = (string) ($this->growthProfile['automation_copy'] ?? 'Activa automatizaciones según tu rubro y el estado real de tu operación.');
 
         $this->loadSignals($tenant);
         $this->buildRevenueMetrics();
@@ -412,10 +412,10 @@ class GrowthCenter extends Page
             : 0.0;
 
         $this->revenueMetrics = [
-            $this->metric('Ventas 30 dias', $this->formatCurrency($this->grossSales30d), "{$this->orders30d} operaciones registradas en el periodo."),
+            $this->metric('Ventas 30 días', $this->formatCurrency($this->grossSales30d), "{$this->orders30d} operaciones registradas en el periodo."),
             $this->metric('Ticket promedio', $this->formatCurrency($this->averageTicket30d), 'Una lectura rapida para ver si estas vendiendo mejor o solo mas.'),
-            $this->metric('Ingreso recurrente', $this->formatCurrency($this->repeatRevenue30d), $this->repeatRevenue30d > 0 ? 'Caja reciente movida por clientes que ya regresaron al menos una vez.' : 'Todavia no hay ingreso recurrente fuerte en el periodo.'),
-            $this->metric('Captura de leads', $leadCaptureRate.'%', $this->visits30d > 0 ? "Con {$this->visits30d} visitas unicas recientes." : 'Todavia no hay trafico sincronizado suficiente.'),
+            $this->metric('Ingreso recurrente', $this->formatCurrency($this->repeatRevenue30d), $this->repeatRevenue30d > 0 ? 'Caja reciente movida por clientes que ya regresaron al menos una vez.' : 'Todavía no hay ingreso recurrente fuerte en el período.'),
+            $this->metric('Captura de leads', $leadCaptureRate.'%', $this->visits30d > 0 ? "Con {$this->visits30d} visitas únicas recientes." : 'Todavía no hay tráfico sincronizado suficiente.'),
             $this->metric('Clientes que vuelven', $this->recurrenceRate.'%', $this->repeatCustomerCount > 0 ? "{$this->repeatCustomerCount} clientes ya repitieron." : 'Aun no tienes recompra identificada.'),
         ];
     }
@@ -429,30 +429,30 @@ class GrowthCenter extends Page
             $this->pipelineMetric('Nuevos', (string) $this->newLeadsCount, 'Oportunidades esperando primera respuesta.', 'warning'),
             $this->pipelineMetric('Contactados', (string) $this->contactedLeadsCount, 'Prospectos en seguimiento activo.', 'info'),
             $this->pipelineMetric('Cerrados', (string) $this->closedLeadsCount, 'Conversiones que ya movieron negocio.', 'success'),
-            $this->pipelineMetric('Cierre', $closeRate.'%', "Origen mas fuerte: {$this->topLeadSource}.", $closeRate >= 25 ? 'success' : 'gray'),
+            $this->pipelineMetric('Cierre', $closeRate.'%', "Origen más fuerte: {$this->topLeadSource}.", $closeRate >= 25 ? 'success' : 'gray'),
         ];
     }
 
     private function buildCustomerSignals(): void
     {
         $this->customerSignals = [
-            $this->metric('Clientes CRM', (string) $this->crmProfilesCount, $this->crmProfilesCount > 0 ? 'Ya tienes fichas listas para seguimiento y reactivacion.' : 'Todavia no hay clientes consolidados en CRM.'),
-            $this->metric('Seguidores', (string) $this->followersCount, $this->followersCount > 0 ? 'Tu audiencia ya existe y se puede nutrir.' : 'Todavia no hay audiencia guardada en PRO.'),
+            $this->metric('Clientes CRM', (string) $this->crmProfilesCount, $this->crmProfilesCount > 0 ? 'Ya tienes fichas listas para seguimiento y reactivación.' : 'Todavía no hay clientes consolidados en CRM.'),
+            $this->metric('Seguidores', (string) $this->followersCount, $this->followersCount > 0 ? 'Tu audiencia ya existe y se puede nutrir.' : 'Todavía no hay audiencia guardada en PRO.'),
             $this->metric('Waitlist activa', (string) $this->waitlistCount, $this->waitlistCount > 0 ? 'Hay demanda esperando huecos u oferta.' : 'No hay espera activa en este momento.'),
-            $this->metric('Campanas 30 dias', (string) $this->campaignsSent30d, $this->campaignsSent30d > 0 ? 'Ya tienes empuje comercial reciente.' : 'Aun no has activado una campana reciente.'),
-            $this->metric('Contactos enviados', (string) $this->touchpoints30d, $this->touchpoints30d > 0 ? 'Tu CRM ya esta ejecutando seguimiento auditable.' : 'Todavia no has movido seguimientos desde el CRM.'),
+            $this->metric('Campañas 30 días', (string) $this->campaignsSent30d, $this->campaignsSent30d > 0 ? 'Ya tienes empuje comercial reciente.' : 'Aún no has activado una campaña reciente.'),
+            $this->metric('Contactos enviados', (string) $this->touchpoints30d, $this->touchpoints30d > 0 ? 'Tu CRM ya está ejecutando seguimiento auditable.' : 'Todavía no has movido seguimientos desde el CRM.'),
             $this->metric('Retries pendientes', (string) $this->dueTouchpointRetriesCount, $this->dueTouchpointRetriesCount > 0 ? 'Hay contactos listos para reintento automatico o manual.' : 'La cola de retries esta sana en este momento.'),
             $this->metric('Bandeja abierta', (string) $this->openRepliesCount, $this->openRepliesCount > 0 ? 'Conversaciones esperando respuesta o cierre humano.' : 'No hay replies pendientes en la cola activa.'),
-            $this->metric('Journeys activos', (string) $this->journeysReadyCount, $this->journeysReadyCount > 0 ? 'Secuencias de retencion ya vivas dentro del CRM.' : 'Todavia no hay secuencias activas listas para operar.'),
+            $this->metric('Journeys activos', (string) $this->journeysReadyCount, $this->journeysReadyCount > 0 ? 'Secuencias de retención ya vivas dentro del CRM.' : 'Todavía no hay secuencias activas listas para operar.'),
             $this->metric('Journeys en rescate', (string) $this->stalledJourneysCount, $this->stalledJourneysCount > 0 ? 'Secuencias esperando un rescate humano para no perder continuidad.' : 'No hay secuencias trabadas en este momento.'),
-            $this->metric('Canjeables hoy', (string) $this->redeemableCustomersCount, $this->redeemableCustomersCount > 0 ? 'Clientes que ya pueden canjear una recompensa visible.' : 'Todavia no hay clientes listos para un canje inmediato.'),
-            $this->metric('Listos para campana', (string) $this->campaignReadyCustomersCount, $this->campaignReadyCustomersCount > 0 ? 'Base con opt-in y canal util para una campana segmentada.' : 'Todavia falta base con permiso claro para campanas CRM.'),
-            $this->metric('Con owner', (string) $this->assignedCustomersCount, $this->assignedCustomersCount > 0 ? 'Clientes ya asignados a alguien del equipo para continuidad.' : 'Todavia no has repartido cartera entre el equipo.'),
-            $this->metric('Con sede', (string) $this->locatedCustomersCount, $this->locatedCustomersCount > 0 ? 'Clientes ya conectados a una sucursal o punto de atencion.' : 'Todavia no hay base suficiente etiquetada por sede.'),
-            $this->metric('Reactivar', (string) $this->reactivationPoolCount, $this->reactivationPoolCount > 0 ? 'Clientes con senales para volver a tocar.' : 'La base reciente no muestra fuga grande todavia.'),
-            $this->metric('Reactivados 30 dias', (string) $this->reactivatedCustomers30d, $this->reactivatedCustomers30d > 0 ? 'Clientes que ya respondieron a una nueva activacion reciente.' : 'Aun no tienes reactivaciones recientes registradas.'),
-            $this->metric('Segmento que reactiva', $this->topReactivationSegment, $this->reactivatedCustomers30d > 0 ? 'El segmento que mas esta volviendo despues de tus journeys y follow-up.' : 'Todavia no hay suficiente reactivacion para detectar un segmento ganador.'),
-            $this->metric('Tier con fidelidad', (string) $this->loyaltyReadyCustomersCount, $this->loyaltyReadyCustomersCount > 0 ? 'Clientes listos para beneficios, bundles o continuidad.' : 'Todavia no hay base suficiente para fidelidad segmentada.'),
+            $this->metric('Canjeables hoy', (string) $this->redeemableCustomersCount, $this->redeemableCustomersCount > 0 ? 'Clientes que ya pueden canjear una recompensa visible.' : 'Todavía no hay clientes listos para un canje inmediato.'),
+            $this->metric('Listos para campaña', (string) $this->campaignReadyCustomersCount, $this->campaignReadyCustomersCount > 0 ? 'Base con opt-in y canal útil para una campaña segmentada.' : 'Todavía falta base con permiso claro para campañas CRM.'),
+            $this->metric('Con owner', (string) $this->assignedCustomersCount, $this->assignedCustomersCount > 0 ? 'Clientes ya asignados a alguien del equipo para continuidad.' : 'Todavía no has repartido cartera entre el equipo.'),
+            $this->metric('Con sede', (string) $this->locatedCustomersCount, $this->locatedCustomersCount > 0 ? 'Clientes ya conectados a una sucursal o punto de atención.' : 'Todavía no hay base suficiente etiquetada por sede.'),
+            $this->metric('Reactivar', (string) $this->reactivationPoolCount, $this->reactivationPoolCount > 0 ? 'Clientes con señales para volver a tocar.' : 'La base reciente no muestra fuga grande todavía.'),
+            $this->metric('Reactivados 30 días', (string) $this->reactivatedCustomers30d, $this->reactivatedCustomers30d > 0 ? 'Clientes que ya respondieron a una nueva activación reciente.' : 'Aún no tienes reactivaciones recientes registradas.'),
+            $this->metric('Segmento que reactiva', $this->topReactivationSegment, $this->reactivatedCustomers30d > 0 ? 'El segmento que más está volviendo después de tus journeys y follow-up.' : 'Todavía no hay suficiente reactivación para detectar un segmento ganador.'),
+            $this->metric('Tier con fidelidad', (string) $this->loyaltyReadyCustomersCount, $this->loyaltyReadyCustomersCount > 0 ? 'Clientes listos para beneficios, bundles o continuidad.' : 'Todavía no hay base suficiente para fidelidad segmentada.'),
         ];
     }
 
@@ -460,21 +460,21 @@ class GrowthCenter extends Page
     {
         $this->engagementMetrics = [
             $this->metric('Oferta top', $this->topOfferLabel, $this->topOfferCopy),
-            $this->metric('LTV inicial', $this->formatCurrency($this->averageInitialLtv), $this->averageInitialLtv > 0 ? 'Promedio del valor capturado en los primeros 30 dias desde la primera conversion.' : 'Aun no hay conversion suficiente para estimar LTV inicial.'),
-            $this->metric('Recurrencia', $this->recurrenceRate.'%', $this->repeatCustomerCount > 0 ? "{$this->repeatCustomerCount} clientes ya compraron o reservaron mas de una vez." : 'Todavia no se ve repeticion fuerte en la base.'),
+            $this->metric('LTV inicial', $this->formatCurrency($this->averageInitialLtv), $this->averageInitialLtv > 0 ? 'Promedio del valor capturado en los primeros 30 días desde la primera conversión.' : 'Aún no hay conversión suficiente para estimar LTV inicial.'),
+            $this->metric('Recurrencia', $this->recurrenceRate.'%', $this->repeatCustomerCount > 0 ? "{$this->repeatCustomerCount} clientes ya compraron o reservaron más de una vez." : 'Todavía no se ve repetición fuerte en la base.'),
             $this->metric('Canal dominante', $this->topAcquisitionChannel, 'La entrada que mas clientes reales esta trayendo al CRM hoy.'),
             $this->metric('Segmento dominante', $this->topCustomerSegment, 'El grupo que hoy concentra mas clientes dentro del CRM.'),
             $this->metric('Segmento con mejor LTV', $this->topLtvSegment, 'El cluster que hoy deja mas valor acumulado por cliente.'),
             $this->metric('Canal con mejor LTV', $this->topLtvChannel, 'La entrada que esta trayendo clientes con mejor vida util.'),
-            $this->metric('Primer respuesta', $this->averageFirstResponseMinutes > 0 ? $this->averageFirstResponseMinutes.' min' : 'Sin datos', $this->averageFirstResponseMinutes > 0 ? 'Tiempo medio entre reply del cliente y primer movimiento del equipo.' : 'Todavia no hay conversaciones respondidas para medir velocidad.'),
-            $this->metric('Tasa de respuesta', $this->responseRate30d.'%', $this->responseRate30d > 0 ? 'Porcentaje de conversaciones recientes donde el equipo alcanzo primera respuesta.' : 'Todavia no hay suficiente volumen conversacional para medir respuesta.'),
+            $this->metric('Primera respuesta', $this->averageFirstResponseMinutes > 0 ? $this->averageFirstResponseMinutes.' min' : 'Sin datos', $this->averageFirstResponseMinutes > 0 ? 'Tiempo medio entre reply del cliente y primer movimiento del equipo.' : 'Todavía no hay conversaciones respondidas para medir velocidad.'),
+            $this->metric('Tasa de respuesta', $this->responseRate30d.'%', $this->responseRate30d > 0 ? 'Porcentaje de conversaciones recientes donde el equipo alcanzó primera respuesta.' : 'Todavía no hay suficiente volumen conversacional para medir respuesta.'),
             $this->metric('SLA vencido', (string) $this->breachedRepliesCount, $this->breachedRepliesCount > 0 ? 'Casos de conversacion ya fuera de tiempo comercial.' : 'No hay replies vencidos en este momento.'),
             $this->metric('Entrega de email', $this->deliveryRate30d.'%', $this->touchpoints30d > 0 ? "{$this->touchpointsDelivered30d} contactos llegaron a bandeja de entrada." : 'Aun no hay seguimiento suficiente para medir entrega.'),
-            $this->metric('Apertura de email', $this->openRate30d.'%', $this->touchpointsOpened30d > 0 ? "{$this->touchpointsOpened30d} contactos ya abrieron tus mensajes." : 'Todavia no hay aperturas registradas por proveedor.'),
-            $this->metric('Respuestas por WhatsApp', (string) $this->whatsAppReplies30d, $this->whatsAppTouchpoints30d > 0 ? "{$this->whatsAppReplies30d} conversaciones devolvieron respuesta reciente." : 'Todavia no hay conversaciones de WhatsApp suficientes para medir respuesta.'),
-            $this->metric('Plantilla que mas convierte', $this->topTemplateLabel, $this->touchpoints30d > 0 ? 'Es la plantilla con mejor senal reciente de respuesta o cierre dentro del CRM.' : 'Todavia no hay suficiente volumen para detectar una plantilla ganadora.'),
+            $this->metric('Apertura de email', $this->openRate30d.'%', $this->touchpointsOpened30d > 0 ? "{$this->touchpointsOpened30d} contactos ya abrieron tus mensajes." : 'Todavía no hay aperturas registradas por proveedor.'),
+            $this->metric('Respuestas por WhatsApp', (string) $this->whatsAppReplies30d, $this->whatsAppTouchpoints30d > 0 ? "{$this->whatsAppReplies30d} conversaciones devolvieron respuesta reciente." : 'Todavía no hay conversaciones de WhatsApp suficientes para medir respuesta.'),
+            $this->metric('Plantilla que más convierte', $this->topTemplateLabel, $this->touchpoints30d > 0 ? 'Es la plantilla con mejor señal reciente de respuesta o cierre dentro del CRM.' : 'Todavía no hay suficiente volumen para detectar una plantilla ganadora.'),
             $this->metric('Canal que mas cierra', $this->topClosingChannel, $this->resolvedReplies30d > 0 ? 'Es el canal que mas conversaciones esta cerrando en el periodo reciente.' : 'Aun no hay suficientes cierres recientes para detectar un canal dominante.'),
-            $this->metric('Revenue con uplift PRO', $this->formatCurrency($this->upgradeAssistedRevenue30d), $this->upgradeAssistedRevenue30d > 0 ? "Revenue atribuido a secuencias apoyadas por el upgrade reciente del negocio en {$this->segmentLabel}." : 'Todavia no se detecta uplift de revenue ligado al upgrade reciente del negocio.'),
+            $this->metric('Revenue con uplift PRO', $this->formatCurrency($this->upgradeAssistedRevenue30d), $this->upgradeAssistedRevenue30d > 0 ? "Revenue atribuido a secuencias apoyadas por el upgrade reciente del negocio en {$this->segmentLabel}." : 'Todavía no se detecta uplift de revenue ligado al upgrade reciente del negocio.'),
             $this->metric('Retries programados', (string) $this->scheduledTouchpointRetriesCount, $this->scheduledTouchpointRetriesCount > 0 ? 'La cola ya tiene reintentos futuros listos para ejecutar.' : 'No hay reintentos en espera ahora mismo.'),
         ];
     }
@@ -482,14 +482,14 @@ class GrowthCenter extends Page
     private function buildCohortMetrics(): void
     {
         $this->cohortMetrics = [
-            $this->metric('Cohorte actual', (string) $this->currentCohortCustomersCount, $this->currentCohortCustomersCount > 0 ? 'Clientes captados en el mes actual que ya entraron al CRM.' : 'Todavia no hay clientes nuevos en la cohorte del mes.'),
+            $this->metric('Cohorte actual', (string) $this->currentCohortCustomersCount, $this->currentCohortCustomersCount > 0 ? 'Clientes captados en el mes actual que ya entraron al CRM.' : 'Todavía no hay clientes nuevos en la cohorte del mes.'),
             $this->metric('Cohorte previa', (string) $this->previousCohortCustomersCount, $this->previousCohortCustomersCount > 0 ? 'Base del mes anterior para comparar velocidad de activacion.' : 'Aun no hay cohorte previa suficiente para comparar.'),
-            $this->metric('Repeat rate cohorte', $this->cohortRepeatRate.'%', $this->currentCohortCustomersCount > 0 ? 'Mide cuantos clientes del mes actual ya dieron una segunda compra o cita.' : 'Necesitas clientes nuevos para medir repeticion temprana.'),
+            $this->metric('Repeat rate cohorte', $this->cohortRepeatRate.'%', $this->currentCohortCustomersCount > 0 ? 'Mide cuántos clientes del mes actual ya dieron una segunda compra o cita.' : 'Necesitas clientes nuevos para medir repetición temprana.'),
             $this->metric('LTV cohorte actual', $this->formatCurrency($this->cohortLtv), $this->cohortLtv > 0 ? 'Valor medio acumulado que ya deja la cohorte del mes.' : 'Aun no hay gasto suficiente en la cohorte actual.'),
             $this->metric('Canal loyalty dominante', $this->topLoyaltyChannel, $this->hasLoyaltyProgram ? 'Canal que mas sostiene interaccion en clientes con fidelidad activa.' : 'Activa fidelidad para detectar el canal que mejor sostiene continuidad.'),
-            $this->metric('Canjes 30 dias', (string) $this->loyaltyRedeems30d, $this->loyaltyRedeems30d > 0 ? 'Clientes que ya canjearon beneficios en el periodo reciente.' : 'Todavia no hay canjes recientes conectados a tus campanas.'),
-            $this->metric('Campanas programadas', (string) $this->scheduledCampaignsCount, $this->scheduledCampaignsCount > 0 ? 'Ya tienes empujes preparados para sostener la cadencia comercial.' : 'Todavia no hay envios agendados saliendo solos.'),
-            $this->metric('Cadencias activas', (string) $this->recurringCampaignsCount, $this->recurringCampaignsCount > 0 ? 'Campanas que siguen operando con repeticion configurada.' : 'Todavia no has encendido campanas recurrentes por segmento.'),
+            $this->metric('Canjes 30 días', (string) $this->loyaltyRedeems30d, $this->loyaltyRedeems30d > 0 ? 'Clientes que ya canjearon beneficios en el periodo reciente.' : 'Todavía no hay canjes recientes conectados a tus campañas.'),
+            $this->metric('Campañas programadas', (string) $this->scheduledCampaignsCount, $this->scheduledCampaignsCount > 0 ? 'Ya tienes empujes preparados para sostener la cadencia comercial.' : 'Todavía no hay envíos agendados saliendo solos.'),
+            $this->metric('Cadencias activas', (string) $this->recurringCampaignsCount, $this->recurringCampaignsCount > 0 ? 'Campañas que siguen operando con repetición configurada.' : 'Todavía no has encendido campañas recurrentes por segmento.'),
         ];
     }
 
@@ -553,23 +553,23 @@ class GrowthCenter extends Page
     private function buildGrowthActions(): void
     {
         $actions = [
-            $this->action('Abrir clientes', 'Trabaja fichas, notas, segmentos y reactivacion desde un CRM unificado.', $this->customersUrl),
+            $this->action('Abrir clientes', 'Trabaja fichas, notas, segmentos y reactivación desde un CRM unificado.', $this->customersUrl),
             $this->action('Ver contactos', 'Audita correos, seguimientos y entregas del negocio.', $this->contactsUrl),
-            $this->action('Abrir campanas', 'Programa cadencias por segmento, owner, sede y reward desde el CRM.', $this->campaignsUrl),
+            $this->action('Abrir campañas', 'Programa cadencias por segmento, owner, sede y reward desde el CRM.', $this->campaignsUrl),
             $this->action('Bandeja de respuestas', 'Mueve replies, opt-in y seguimiento humano desde una sola cola.', $this->inboxUrl),
             $this->action('Abrir prospectos', 'Ordena pipeline, fuentes y estado de cierre.', $this->leadsUrl),
-            $this->action('Ir a marketing', 'Ajusta CTA, QR, WhatsApp y campanas.', $this->marketingUrl),
+            $this->action('Ir a marketing', 'Ajusta CTA, QR, WhatsApp y campañas.', $this->marketingUrl),
             $this->action('Ver centro operativo', 'Convierte automatizaciones en cola con SLA.', $this->operationsUrl),
         ];
 
         if ($this->businessType === BusinessType::SERVICE->value) {
             $actions[] = $this->action('Ver agenda', 'Usa citas y asistencia como motor de continuidad.', $this->appointmentsUrl);
         } else {
-            $actions[] = $this->action('Ver pedidos', 'Une conversion con ticket y recompra.', $this->ordersUrl);
+            $actions[] = $this->action('Ver pedidos', 'Une conversión con ticket y recompra.', $this->ordersUrl);
         }
 
         if ($this->hasLoyaltyFeature) {
-            $actions[] = $this->action('Audiencia y fidelidad', 'Mueve seguidores, loyalty y reactivacion con mas criterio.', $this->hasLoyaltyProgram ? $this->loyaltyUrl : $this->followersUrl);
+            $actions[] = $this->action('Audiencia y fidelidad', 'Mueve seguidores, loyalty y reactivación con más criterio.', $this->hasLoyaltyProgram ? $this->loyaltyUrl : $this->followersUrl);
         }
 
         $this->growthActions = array_slice($actions, 0, 7);
@@ -584,7 +584,7 @@ class GrowthCenter extends Page
         }
 
         if ($this->visits30d >= 20 && ($this->newLeadsCount + $this->contactedLeadsCount + $this->closedLeadsCount) === 0) {
-            $queue[] = $this->priority('Cierra mejor tu captura', 'Ya hay trafico, pero casi no estas convirtiendo visitas en conversaciones.', $this->marketingUrl, 'warning');
+            $queue[] = $this->priority('Cierra mejor tu captura', 'Ya hay tráfico, pero casi no estás convirtiendo visitas en conversaciones.', $this->marketingUrl, 'warning');
         }
 
         if ($this->repeatCustomerCount > 0 && ! $this->hasLoyaltyProgram && $this->hasLoyaltyFeature) {
@@ -596,11 +596,11 @@ class GrowthCenter extends Page
         }
 
         if ($this->hasCampaignFeature && $this->campaignReadyCustomersCount > 0 && $this->recurringCampaignsCount === 0) {
-            $queue[] = $this->priority('Enciende una cadencia recurrente', 'Ya tienes base con permiso claro, pero ninguna campana recurrente sosteniendo recompra o reactivacion.', $this->campaignsUrl, 'warning');
+            $queue[] = $this->priority('Enciende una cadencia recurrente', 'Ya tienes base con permiso claro, pero ninguna campaña recurrente sosteniendo recompra o reactivación.', $this->campaignsUrl, 'warning');
         }
 
         if ($this->hasLoyaltyProgram && $this->redeemableCustomersCount > 0 && $this->rewardCampaignsCount === 0) {
-            $queue[] = $this->priority('Activa rewards en campanas', 'Tienes clientes listos para canjear, pero ninguna campana esta empujando ese momento de conversion.', $this->campaignsUrl, 'info');
+            $queue[] = $this->priority('Activa rewards en campañas', 'Tienes clientes listos para canjear, pero ninguna campaña está empujando ese momento de conversión.', $this->campaignsUrl, 'info');
         }
 
         if ($this->overduePlaybooksCount > 0) {
@@ -616,7 +616,7 @@ class GrowthCenter extends Page
         }
 
         if ($this->breachedRepliesCount > 0) {
-            $queue[] = $this->priority('Rescata conversaciones vencidas', 'Ya tienes replies fuera de SLA. Conviene responder antes de empujar mas campanas o follow-up.', $this->inboxUrl, 'danger');
+            $queue[] = $this->priority('Rescata conversaciones vencidas', 'Ya tienes replies fuera de SLA. Conviene responder antes de empujar más campañas o follow-up.', $this->inboxUrl, 'danger');
         } elseif ($this->openRepliesCount > 0) {
             $queue[] = $this->priority('Responde tu bandeja', 'Hay conversaciones abiertas en CRM que conviene cerrar antes de lanzar mas automatizaciones.', $this->inboxUrl, 'danger');
         }

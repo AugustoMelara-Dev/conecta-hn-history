@@ -2028,7 +2028,7 @@ return [
                 'recommended_modules' => ['profile', 'catalog', 'payments', 'whatsapp'],
                 'health_checks' => ['has_profile', 'has_products', 'has_payment_method'],
                 'playbook_steps' => [
-                    ['title' => 'Publica tu catalogo ganador', 'copy' => 'Empieza por los productos que mas convierten o mas margen dejan.'],
+                    ['title' => 'Publica tu catálogo ganador', 'copy' => 'Empieza por los productos que más convierten o más margen dejan.'],
                     ['title' => 'Une cobro y contacto', 'copy' => 'Activa el canal de cierre antes de mandar trafico al negocio.'],
                     ['title' => 'Valida la vitrina publica', 'copy' => 'Revisa que el micrositio realmente explique que vendes y como comprar.'],
                 ],
@@ -2079,7 +2079,7 @@ return [
                 ],
             ],
             'business_app' => [
-                'dashboard_title' => 'Tu centro operativo para menu y pedidos',
+                'dashboard_title' => 'Tu centro operativo para menú y pedidos',
                 'dashboard_copy' => 'El panel debe ayudarte a vender mas rapido, rotar productos y sostener servicio diario.',
                 'workspace_title' => 'Frentes criticos para cocina y venta',
                 'workspace_copy' => 'Estos espacios reducen friccion entre menu, pedidos, horarios y recompra.',

@@ -32,8 +32,12 @@ return [
         '/workspace/dashboard',
         '/workspace/products',
         '/workspace/orders',
+        '/workspace/marketing',
+        '/workspace/reports',
         '/workspace/settings',
         '/workspace/billing',
+        '/workspace/upgrade',
+        '/workspace/landing-page',
     ],
 
     'migration_phase' => env('SURFACE_SPLIT_PHASE', 'strangler_v1'),

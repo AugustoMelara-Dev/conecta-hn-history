@@ -43,7 +43,7 @@ final class SuperAdminPanelSmokeTest extends TestCase
             ->assertOk()
             ->assertSee('Control de disponibilidad')
             ->assertSee('Modo mantenimiento')
-            ->assertSee('Activacion controlada por tenant');
+            ->assertSee('Activación controlada por tenant');
 
         $this->get(route('filament.admin.pages.billing', [], false))
             ->assertOk()
@@ -78,7 +78,7 @@ final class SuperAdminPanelSmokeTest extends TestCase
         ]);
         $assignee = User::factory()->create([
             'role' => UserRole::STAFF,
-            'name' => 'Daniel Operacion Negocio',
+            'name' => 'Daniel Operación Negocio',
             'email' => 'daniel.negocio@example.com',
         ]);
         $city = City::factory()->create([
@@ -146,7 +146,7 @@ final class SuperAdminPanelSmokeTest extends TestCase
             ->assertSee('Flagship Mobile Tower')
             ->assertSee('Responder cotizacion premium')
             ->assertSee('Andrea Seguimiento')
-            ->assertSee('Daniel Operacion Negocio')
+            ->assertSee('Daniel Operación Negocio')
             ->assertSee('Vista por owner')
             ->assertSee('Riesgo de churn')
             ->assertSee('Metas mensuales por vertical')

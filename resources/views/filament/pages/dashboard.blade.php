@@ -1,5 +1,8 @@
 <x-filament-panels::page>
     <div class="biz-shell">
+        @include('filament.pages.dashboard._control-tower')
+
+        {{--
         <div class="biz-card-accent">
             <div class="biz-grid-two">
                 <div class="biz-stack">
@@ -56,6 +59,7 @@
                 </div>
             </div>
         </div>
+        --}}
 
         <div class="biz-metrics">
             <div class="biz-stat">
@@ -126,7 +130,7 @@
                         <p class="biz-kicker">Colas globales</p>
                         <h2 class="biz-heading">Colas globales por impacto</h2>
                         <p class="biz-muted">
-                            La vista ejecutiva para decidir donde invertir soporte, operaciones y seguimiento.
+                            La vista ejecutiva para decidir dónde invertir soporte, operaciones y seguimiento.
                         </p>
                     </div>
 
@@ -383,7 +387,7 @@
                         @include('filament.app.components.table-empty-state', [
                             'badge' => 'SLA',
                             'heading' => 'La cartera está al día',
-                            'description' => 'Cuando un toque se atrase o una cuenta de alto riesgo quede sin movimiento, caera en este backlog.',
+                            'description' => 'Cuando un toque se atrase o una cuenta de alto riesgo quede sin movimiento, caerá en este backlog.',
                             'buttonLabel' => 'Abrir negocios',
                             'buttonUrl' => $tenantsUrl,
                         ])
@@ -429,7 +433,7 @@
                         <p class="biz-kicker">Churn</p>
                         <h2 class="biz-heading">Riesgo de churn</h2>
                         <p class="biz-muted">
-                            Cuentas que pueden enfriarse, cortarse o caer si soporte y comercial no actuan a tiempo.
+                            Cuentas que pueden enfriarse, cortarse o caer si soporte y comercial no actúan a tiempo.
                         </p>
                     </div>
 
@@ -557,7 +561,7 @@
                         <p class="biz-kicker">Cohortes por plan</p>
                         <h2 class="biz-heading">Cohortes por plan</h2>
                         <p class="biz-muted">
-                            Mira que planes ya tienen expansion lista, cuales concentran watchlist y donde ya hubo cierres PRO.
+                            Mira que planes ya tienen expansion lista, cuáles concentran watchlist y dónde ya hubo cierres PRO.
                         </p>
                     </div>
 
@@ -599,7 +603,7 @@
                         <p class="biz-kicker">Revenue ops</p>
                         <h2 class="biz-heading">Cohortes de activación</h2>
                         <p class="biz-muted">
-                            Mide si las cuentas nuevas realmente logran pasar de alta a operacion y PRO.
+                            Mide si las cuentas nuevas realmente logran pasar de alta a operación y PRO.
                         </p>
                     </div>
 
@@ -1024,7 +1028,7 @@
                         <p class="biz-kicker">Canales</p>
                         <h2 class="biz-heading">Cohortes por canal</h2>
                         <p class="biz-muted">
-                            Lectura por canal de cierre real para entender donde hay traccion y donde falta puente comercial.
+                            Lectura por canal de cierre real para entender dónde hay tracción y dónde falta puente comercial.
                         </p>
                     </div>
 

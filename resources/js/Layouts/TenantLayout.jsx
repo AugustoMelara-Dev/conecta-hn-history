@@ -11,11 +11,17 @@ import {
     Package,
     ReceiptText,
     Settings,
-    X,
 } from 'lucide-react';
+import { toast as sonnerToast } from 'sonner';
 import { useWebSocketNotifications } from '@/Hooks/useWebSocketNotifications';
-import { ToastContainer } from '@/Components/Toast/ToastContainer';
 import { NotificationBell } from '@/Components/NotificationBell';
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+} from '@/Components/ui/sheet';
 
 const iconMap = {
     billing: CreditCard,
@@ -65,39 +71,31 @@ function UserAvatar({ auth }) {
 }
 
 function MobileNavDialog({ open, onClose, sections, isPro }) {
-    if (!open) {
-        return null;
-    }
-
     return (
-        <div className="fixed inset-0 z-40 md:hidden" role="dialog" aria-modal="true" aria-label="Navegacion del negocio">
-            <button
-                type="button"
-                onClick={onClose}
-                className="absolute inset-0 bg-slate-950/45"
-                aria-label="Cerrar menu lateral"
-            />
-
-            <aside className="relative h-full w-72 overflow-y-auto border-r border-slate-200 bg-white p-4 shadow-2xl">
-                <div className="flex items-center justify-between">
+        <Sheet
+            open={open}
+            onOpenChange={(nextOpen) => {
+                if (!nextOpen) {
+                    onClose();
+                }
+            }}
+        >
+            <SheetContent side="left" className="w-72 p-4 md:hidden">
+                <SheetHeader className="text-left">
                     <AppBrand isPro={isPro} />
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2"
-                        aria-label="Cerrar menu lateral"
-                    >
-                        <X className="h-5 w-5" aria-hidden="true" />
-                    </button>
-                </div>
+                    <SheetTitle className="sr-only">Navegación del negocio</SheetTitle>
+                    <SheetDescription className="sr-only">
+                        Menú principal de administración del negocio.
+                    </SheetDescription>
+                </SheetHeader>
 
-                <nav className="mt-8 space-y-6" aria-label="Navegacion principal">
+                <nav className="mt-8 flex flex-col gap-6" aria-label="Navegación principal">
                     {sections.map((section) => (
                         <div key={section.title}>
                             <h2 className="px-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
                                 {section.title}
                             </h2>
-                            <div className="mt-2 space-y-1">
+                            <div className="mt-2 flex flex-col gap-1">
                                 {section.items.map((item) => (
                                     <NavItem key={item.label} item={item} onNavigate={onClose} />
                                 ))}
@@ -105,8 +103,8 @@ function MobileNavDialog({ open, onClose, sections, isPro }) {
                         </div>
                     ))}
                 </nav>
-            </aside>
-        </div>
+            </SheetContent>
+        </Sheet>
     );
 }
 
@@ -168,36 +166,6 @@ function NavItem({ item, onNavigate }) {
             />
             <span className="min-w-0 truncate">{item.label}</span>
         </Link>
-    );
-}
-
-function Toast({ message, type = 'success' }) {
-    const [visible, setVisible] = useState(true);
-
-    useEffect(() => {
-        const timeout = setTimeout(() => setVisible(false), 4000);
-        return () => clearTimeout(timeout);
-    }, []);
-
-    if (!visible || !message) {
-        return null;
-    }
-
-    const colors = {
-        error: 'bg-red-600',
-        info: 'bg-blue-600',
-        success: 'bg-emerald-600',
-        warning: 'bg-amber-600',
-    };
-
-    return (
-        <div
-            role="status"
-            aria-live="polite"
-            className={`fixed bottom-4 right-4 z-50 rounded-2xl px-5 py-3 text-sm font-medium text-white shadow-2xl ${colors[type] ?? colors.success}`}
-        >
-            {message}
-        </div>
     );
 }
 
@@ -309,22 +277,20 @@ export default function TenantLayout({ children }) {
         return baseSections;
     }, [dashboardHref, isPro, manageBillingHref, marketingHref, ordersHref, productsHref, publicProfileHref, reportsHref, settingsHref]);
 
-    const { toasts, removeToast } = useWebSocketNotifications(auth?.user);
+    useWebSocketNotifications(auth?.user);
 
     useEffect(() => {
-        if (!sidebarOpen) {
-            return undefined;
-        }
+        const notifications = [
+            [flash?.message, flash?.type ?? 'success'],
+            [flash?.success, 'success'],
+            [flash?.error, 'error'],
+        ].filter(([message]) => Boolean(message));
 
-        const handleKeyDown = (event) => {
-            if (event.key === 'Escape') {
-                setSidebarOpen(false);
-            }
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [sidebarOpen]);
+        notifications.forEach(([message, type]) => {
+            const notify = sonnerToast[type] ?? sonnerToast;
+            notify(message);
+        });
+    }, [flash?.error, flash?.message, flash?.success, flash?.type]);
 
     return (
         <div className="flex h-screen overflow-hidden bg-slate-50 antialiased">
@@ -391,7 +357,7 @@ export default function TenantLayout({ children }) {
                             type="button"
                             onClick={() => setSidebarOpen(true)}
                             className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 md:hidden"
-                            aria-label="Abrir menu lateral"
+                            aria-label="Abrir menú lateral"
                         >
                             <LayoutPanelLeft className="h-5 w-5" aria-hidden="true" />
                         </button>
@@ -418,10 +384,6 @@ export default function TenantLayout({ children }) {
                 </main>
             </div>
 
-            {flash?.message ? <Toast message={flash.message} type={flash.type} /> : null}
-            {flash?.success ? <Toast message={flash.success} type="success" /> : null}
-            {flash?.error ? <Toast message={flash.error} type="error" /> : null}
-            <ToastContainer toasts={toasts} onDismiss={removeToast} />
         </div>
     );
 }

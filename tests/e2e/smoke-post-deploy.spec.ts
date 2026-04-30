@@ -49,14 +49,14 @@ test.describe('Smoke post-deploy @smoke', () => {
             page.getByTestId('login-submit').or(page.getByRole('button', { name: /login|iniciar/i })).click(),
         ]);
 
-        await page.waitForLoadState('networkidle');
+        await page.waitForURL(/\/app(?:\/|$)/, { timeout: 20_000 });
 
         if (page.url().includes('/login')) {
             await expect(page.locator('body')).not.toContainText(/500|server error|internal server error/i);
             throw new Error('Owner fixture authentication did not leave /login.');
         }
 
-        await expect(page).toHaveURL(/\/app(?:\/|$)/, { timeout: 20_000 });
+        await expect(page).toHaveURL(/\/app(?:\/|$)/);
     });
 
     test('critical storefronts render without fatal errors', async ({ page }) => {

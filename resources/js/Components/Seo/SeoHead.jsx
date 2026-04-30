@@ -38,6 +38,7 @@ export default function SeoHead({
     const jsonLdScript = schema ? (
         <script
             type="application/ld+json"
+            // trusted-jsonld: structured schema is serialized locally, not raw HTML.
             dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
         />
     ) : null;
