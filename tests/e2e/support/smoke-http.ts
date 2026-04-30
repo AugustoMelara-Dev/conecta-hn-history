@@ -20,10 +20,22 @@ export async function gotoWithRetries(
     let latestResponse: Response | null = null;
 
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
-        latestResponse = await page.goto(path, {
-            waitUntil: 'domcontentloaded',
-            timeout: responseTimeoutMs,
-        });
+        try {
+            latestResponse = await page.goto(path, {
+                waitUntil: 'domcontentloaded',
+                timeout: responseTimeoutMs,
+            });
+        } catch {
+            latestResponse = null;
+
+            if (attempt === attempts) {
+                break;
+            }
+
+            await page.waitForTimeout(delayMs);
+            continue;
+        }
+
         const status = latestResponse?.status() ?? 0;
         const shouldRetry = !latestResponse || TRANSIENT_HTTP_STATUSES.has(status);
 

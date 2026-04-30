@@ -61,7 +61,7 @@ class ServiceProviderResource extends Resource
                             ->email()
                             ->maxLength(255),
                         TextInput::make('phone')
-                            ->label('Telefono')
+                            ->label('Teléfono')
                             ->tel(),
                         Toggle::make('is_active')
                             ->label('Disponible para Reservas')
@@ -99,7 +99,7 @@ class ServiceProviderResource extends Resource
                     ->label('Email')
                     ->icon('heroicon-o-envelope'),
                 Tables\Columns\TextColumn::make('phone')
-                    ->label('Telefono')
+                    ->label('Teléfono')
                     ->icon('heroicon-o-phone'),
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Disponible')

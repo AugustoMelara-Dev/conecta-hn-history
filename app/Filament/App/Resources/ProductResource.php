@@ -300,7 +300,7 @@ class ProductResource extends Resource
                             ->required(),
 
                         // Selector de seccion para negocios PRO.
-                        // Incluye scoping por tenant y creacion rapida.
+                        // Incluye scoping por tenant y creación rápida.
                         Forms\Components\Select::make('menu_section_id')
                             // Solo visible para negocios con organizacion de menu.
                             ->visible(fn (): bool => static::currentTenantHasCapability(Capability::MENU_MODIFIERS))
@@ -341,7 +341,7 @@ class ProductResource extends Resource
 
                         // Campo senuelo para plan Base con upsell a PRO.
                         Forms\Components\Select::make('menu_section_id_locked')
-                            // Mostrar version bloqueada cuando el tenant no tenga esta capacidad.
+                            // Mostrar versión bloqueada cuando el tenant no tenga esta capacidad.
                             ->visible(fn (): bool => ! static::currentTenantHasCapability(Capability::MENU_MODIFIERS))
 
                             // Estado bloqueado.
@@ -362,7 +362,7 @@ class ProductResource extends Resource
                     ->columns(2)
                     ->collapsible(),
 
-                // Seccion 4: control de estado.
+                // Sección 4: control de estado.
                 Section::make('Control')
                     ->schema([
                         Forms\Components\Toggle::make('is_visible')
@@ -371,7 +371,7 @@ class ProductResource extends Resource
                             ->helperText('Desactiva para ocultar temporalmente'),
 
                         Forms\Components\Toggle::make('is_featured')
-                            ->label('Producto Destacado')
+                            ->label('Producto destacado')
                             ->default(false)
                             ->visible(fn (): bool => static::currentTenantIsPro())
                             ->helperText('Aparecerá primero en tu catálogo'),
@@ -413,7 +413,7 @@ class ProductResource extends Resource
                                     <div class="flex items-center gap-3 p-3 bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-lg border border-purple-200 dark:border-purple-700">
                                         <span class="text-sm font-semibold text-purple-700 dark:text-purple-300">TOP</span>
                                         <div>
-                                            <p class="font-semibold text-purple-800 dark:text-purple-200">Productos Destacados</p>
+                                            <p class="font-semibold text-purple-800 dark:text-purple-200">Productos destacados</p>
                                             <p class="text-sm text-purple-600 dark:text-purple-400">Muestra tus mejores productos primero</p>
                                         </div>
                                     </div>
@@ -516,7 +516,7 @@ class ProductResource extends Resource
                     ->visible(fn (): bool => static::currentTenantHasCapability(Capability::MENU_MODIFIERS))
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                // Toggles rapidos para visibilidad y destacado.
+                // Toggles rápidos para visibilidad y destacado.
                 Tables\Columns\ToggleColumn::make('is_visible')
                     ->label('Visible')
                     ->onColor('success')
@@ -595,7 +595,7 @@ class ProductResource extends Resource
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
 
-                    // Accion masiva para mover productos entre secciones.
+                    // Acción masiva para mover productos entre secciones.
                     BulkAction::make('assign_section')
                         ->label('Mover a Sección')
                         ->icon('heroicon-o-folder-arrow-down')
@@ -628,7 +628,7 @@ class ProductResource extends Resource
                             $sectionId = $data['menu_section_id'];
                             $count = $records->count();
 
-                            // Actualizacion masiva eficiente.
+                            // Actualización masiva eficiente.
                             $records->each(function ($record) use ($sectionId) {
                                 $record->update(['menu_section_id' => $sectionId]);
                             });

@@ -61,7 +61,7 @@ class ListProducts extends ListTenantRecords
 
                     Notification::make()
                         ->danger()
-                        ->title('Llegaste al limite del catalogo')
+                        ->title('Llegaste al límite del catálogo')
                         ->body("Ya usaste {$limitInfo['limit']} productos. {$plan['catalogStatusCopy']}")
                         ->persistent()
                         ->actions([

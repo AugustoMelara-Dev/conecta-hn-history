@@ -8,6 +8,7 @@ import {
     FieldLabel,
 } from "@/Components/ui/field"
 import { Input } from "@/Components/ui/input"
+import { Spinner } from "@/Components/ui/spinner"
 import { cn } from "@/lib/utils"
 
 export function ConfirmPasswordForm({ className, ...props }) {
@@ -30,14 +31,14 @@ export function ConfirmPasswordForm({ className, ...props }) {
         <form onSubmit={submit} className={cn("flex flex-col gap-6", className)} {...props}>
             <FieldGroup>
                 <div className="flex flex-col items-center gap-1 text-center">
-                    <h1 className="text-2xl font-bold text-slate-950">Confirm your password</h1>
+                    <h1 className="text-2xl font-bold text-slate-950">Confirma tu contraseña</h1>
                     <p className="text-sm text-balance text-slate-500">
-                        This is a secure area of the application. Please confirm your password before continuing.
+                        Esta zona protege información sensible. Confirma tu contraseña para continuar.
                     </p>
                 </div>
 
                 <Field>
-                    <FieldLabel htmlFor="password">Password</FieldLabel>
+                    <FieldLabel htmlFor="password">Contraseña</FieldLabel>
                     <Input
                         id="password"
                         type="password"
@@ -46,13 +47,18 @@ export function ConfirmPasswordForm({ className, ...props }) {
                         autoComplete="current-password"
                         value={data.password}
                         onChange={(event) => setData("password", event.target.value)}
+                        aria-invalid={Boolean(errors.password)}
+                        aria-describedby={errors.password ? "confirm-password-error" : undefined}
+                        data-testid="confirm-password-input"
                         className={cn(
                             inputClassName,
                             errors.password && "border-rose-300 focus-visible:ring-rose-200"
                         )}
                     />
                     {errors.password ? (
-                        <FieldDescription className="text-rose-600">{errors.password}</FieldDescription>
+                        <FieldDescription id="confirm-password-error" className="text-rose-600">
+                            {errors.password}
+                        </FieldDescription>
                     ) : null}
                 </Field>
 
@@ -60,9 +66,11 @@ export function ConfirmPasswordForm({ className, ...props }) {
                     <Button
                         type="submit"
                         disabled={processing}
+                        data-testid="confirm-password-submit"
                         className="w-full bg-slate-950 text-white hover:bg-slate-800"
                     >
-                        {processing ? "Confirming..." : "Confirm"}
+                        {processing ? <Spinner className="mr-2" /> : null}
+                        {processing ? "Confirmando..." : "Confirmar"}
                     </Button>
                 </Field>
             </FieldGroup>

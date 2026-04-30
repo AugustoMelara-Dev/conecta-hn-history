@@ -321,8 +321,8 @@ class CustomerTouchpointResource extends Resource
             ->bulkActions([])
             ->emptyState(fn () => view('filament.app.components.table-empty-state', [
                 'badge' => 'Automatizacion',
-                'heading' => 'Todavia no hay contactos registrados',
-                'description' => 'Aqui apareceran emails, WhatsApp, plantillas, intentos y retries del CRM del negocio.',
+                'heading' => 'Todavía no hay contactos registrados',
+                'description' => 'Aquí aparecerán emails, WhatsApp, plantillas, intentos y retries del CRM del negocio.',
             ]));
     }
 

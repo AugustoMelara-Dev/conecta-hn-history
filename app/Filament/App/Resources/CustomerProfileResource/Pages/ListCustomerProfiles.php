@@ -72,12 +72,12 @@ class ListCustomerProfiles extends ListTenantRecords
                         ->send();
                 }),
             Action::make('reactivationBatch')
-                ->label('Lanzar reactivacion')
+                ->label('Lanzar reactivación')
                 ->icon('heroicon-o-bolt')
                 ->color('warning')
                 ->requiresConfirmation()
-                ->modalHeading('Lanzar lote de reactivacion')
-                ->modalDescription('Envias correos de reactivacion al pool mas caliente del CRM y cada entrega queda auditada.')
+                ->modalHeading('Lanzar lote de reactivación')
+                ->modalDescription('Envías correos de reactivación al grupo más caliente del CRM y cada entrega queda auditada.')
                 ->action(function (): void {
                     $tenant = Filament::getTenant();
 
@@ -139,7 +139,7 @@ class ListCustomerProfiles extends ListTenantRecords
 
     public function getSubheading(): string
     {
-        return 'Ficha unificada con historial, segmentos y senales de reactivacion.';
+        return 'Ficha unificada con historial, segmentos y señales de reactivación.';
     }
 
     private function hasAnyCustomerActivity(string $tenantId): bool

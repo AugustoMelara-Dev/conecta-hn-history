@@ -17,9 +17,9 @@ final class Billing extends Page
 {
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-credit-card';
 
-    protected static ?string $navigationLabel = 'Facturacion';
+    protected static ?string $navigationLabel = 'Facturación';
 
-    protected static ?string $title = 'Facturacion de la plataforma';
+    protected static ?string $title = 'Facturación de la plataforma';
 
     protected static ?string $slug = 'billing';
 
@@ -196,7 +196,7 @@ final class Billing extends Page
                 ->groupBy(function (Tenant $tenant): string {
                     $category = $tenant->category;
 
-                    return $category instanceof \App\Models\Category ? (string) $category->name : 'Sin categoria';
+                    return $category instanceof \App\Models\Category ? (string) $category->name : 'Sin categoría';
                 })
                 ->map(function ($group, string $name): array {
                     $total = $group->count();

@@ -1,6 +1,7 @@
 import { Head, Link, useForm, usePage } from "@inertiajs/react"
 import { MailCheck, RefreshCcw } from "lucide-react"
 
+import { Alert, AlertDescription, AlertTitle } from "@/Components/ui/alert"
 import { Button } from "@/Components/ui/button"
 import {
     Card,
@@ -34,7 +35,7 @@ export default function VerifyEmail({ status }) {
                     <Card className="border-slate-200 bg-white text-slate-950 shadow-xl shadow-slate-200/60">
                         <CardHeader>
                             <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
-                                <MailCheck className="h-6 w-6" />
+                                <MailCheck className="h-6 w-6" aria-hidden="true" />
                             </div>
                             <CardTitle className="text-2xl font-semibold text-slate-950">
                                 Verifica tu correo
@@ -50,9 +51,12 @@ export default function VerifyEmail({ status }) {
                         <CardContent>
                             <FieldGroup>
                                 {status === "verification-link-sent" ? (
-                                    <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-                                        Te enviamos un nuevo enlace de verificación.
-                                    </div>
+                                    <Alert variant="success" aria-live="polite" data-testid="verify-email-feedback">
+                                        <AlertTitle>Correo reenviado</AlertTitle>
+                                        <AlertDescription>
+                                            Te enviamos un nuevo enlace de verificación. Revisa también spam o promociones.
+                                        </AlertDescription>
+                                    </Alert>
                                 ) : null}
 
                                 <Field>
@@ -60,10 +64,12 @@ export default function VerifyEmail({ status }) {
                                         <Button
                                             type="submit"
                                             disabled={processing}
+                                            data-testid="verify-email-resend"
                                             className="w-full bg-slate-950 text-white hover:bg-slate-800"
                                         >
                                             <RefreshCcw
                                                 className={`mr-2 h-4 w-4 ${processing ? "animate-spin" : ""}`}
+                                                aria-hidden="true"
                                             />
                                             {processing ? "Enviando..." : "Reenviar correo de verificación"}
                                         </Button>
@@ -76,6 +82,7 @@ export default function VerifyEmail({ status }) {
                                     <Button
                                         variant="outline"
                                         type="button"
+                                        data-testid="verify-email-logout"
                                         className="w-full border-slate-200 bg-white text-slate-950 hover:bg-slate-50"
                                         asChild
                                     >

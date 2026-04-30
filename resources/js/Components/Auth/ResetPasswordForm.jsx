@@ -1,5 +1,6 @@
 import { Link, useForm } from "@inertiajs/react"
 
+import { Alert, AlertDescription, AlertTitle } from "@/Components/ui/alert"
 import { Button } from "@/Components/ui/button"
 import {
     Field,
@@ -41,6 +42,15 @@ export function ResetPasswordForm({ token, email, className, ...props }) {
                     </p>
                 </div>
 
+                {errors.token ? (
+                    <Alert variant="destructive" aria-live="assertive" data-testid="reset-password-token-error">
+                        <AlertTitle>El enlace no se pudo validar</AlertTitle>
+                        <AlertDescription>
+                            {errors.token} Solicita un enlace nuevo para proteger tu cuenta.
+                        </AlertDescription>
+                    </Alert>
+                ) : null}
+
                 <Field>
                     <FieldLabel htmlFor="email">Correo</FieldLabel>
                     <Input
@@ -50,13 +60,18 @@ export function ResetPasswordForm({ token, email, className, ...props }) {
                         required
                         value={data.email}
                         onChange={(event) => setData("email", event.target.value)}
+                        aria-invalid={Boolean(errors.email)}
+                        aria-describedby={errors.email ? "reset-password-email-error" : undefined}
+                        data-testid="reset-password-email-input"
                         className={cn(
                             inputClassName,
                             errors.email && "border-rose-300 focus-visible:ring-rose-200"
                         )}
                     />
                     {errors.email ? (
-                        <FieldDescription className="text-rose-600">{errors.email}</FieldDescription>
+                        <FieldDescription id="reset-password-email-error" className="text-rose-600">
+                            {errors.email}
+                        </FieldDescription>
                     ) : null}
                 </Field>
 
@@ -69,15 +84,22 @@ export function ResetPasswordForm({ token, email, className, ...props }) {
                         required
                         value={data.password}
                         onChange={(event) => setData("password", event.target.value)}
+                        aria-invalid={Boolean(errors.password)}
+                        aria-describedby={errors.password ? "reset-password-password-error" : "reset-password-password-hint"}
+                        data-testid="reset-password-password-input"
                         className={cn(
                             inputClassName,
                             errors.password && "border-rose-300 focus-visible:ring-rose-200"
                         )}
                     />
                     {errors.password ? (
-                        <FieldDescription className="text-rose-600">{errors.password}</FieldDescription>
+                        <FieldDescription id="reset-password-password-error" className="text-rose-600">
+                            {errors.password}
+                        </FieldDescription>
                     ) : (
-                        <FieldDescription>Debe tener al menos 8 caracteres.</FieldDescription>
+                        <FieldDescription id="reset-password-password-hint">
+                            Debe tener al menos 8 caracteres.
+                        </FieldDescription>
                     )}
                 </Field>
 
@@ -90,13 +112,18 @@ export function ResetPasswordForm({ token, email, className, ...props }) {
                         required
                         value={data.password_confirmation}
                         onChange={(event) => setData("password_confirmation", event.target.value)}
+                        aria-invalid={Boolean(errors.password_confirmation)}
+                        aria-describedby={
+                            errors.password_confirmation ? "reset-password-confirmation-error" : undefined
+                        }
+                        data-testid="reset-password-confirmation-input"
                         className={cn(
                             inputClassName,
                             errors.password_confirmation && "border-rose-300 focus-visible:ring-rose-200"
                         )}
                     />
                     {errors.password_confirmation ? (
-                        <FieldDescription className="text-rose-600">
+                        <FieldDescription id="reset-password-confirmation-error" className="text-rose-600">
                             {errors.password_confirmation}
                         </FieldDescription>
                     ) : null}
@@ -106,6 +133,7 @@ export function ResetPasswordForm({ token, email, className, ...props }) {
                     <Button
                         type="submit"
                         disabled={processing}
+                        data-testid="reset-password-submit"
                         className="w-full bg-slate-950 text-white hover:bg-slate-800"
                     >
                         {processing ? <Spinner className="mr-2" /> : null}

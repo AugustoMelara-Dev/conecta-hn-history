@@ -28,7 +28,7 @@ class LeadForm
                             ->maxLength(255)
                             ->placeholder('cliente@correo.com'),
                         TextInput::make('phone')
-                            ->label('Telefono')
+                            ->label('Teléfono')
                             ->tel()
                             ->maxLength(30)
                             ->placeholder('9999-9999'),

@@ -1,6 +1,7 @@
 import { Link, useForm } from "@inertiajs/react"
+import { MailCheck } from "lucide-react"
 
-import { Alert, AlertDescription } from "@/Components/ui/alert"
+import { Alert, AlertDescription, AlertTitle } from "@/Components/ui/alert"
 import { Button } from "@/Components/ui/button"
 import {
     Field,
@@ -39,8 +40,14 @@ export function ForgotPasswordForm({ status = null, className, ...props }) {
                 </div>
 
                 {status ? (
-                    <Alert data-testid="forgot-password-feedback">
-                        <AlertDescription>{status}</AlertDescription>
+                    <Alert variant="success" aria-live="polite" data-testid="forgot-password-feedback">
+                        <div className="flex gap-3">
+                            <MailCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                            <div>
+                                <AlertTitle>Revisa tu correo</AlertTitle>
+                                <AlertDescription>{status}</AlertDescription>
+                            </div>
+                        </div>
                     </Alert>
                 ) : null}
 
@@ -55,13 +62,18 @@ export function ForgotPasswordForm({ status = null, className, ...props }) {
                         required
                         value={data.email}
                         onChange={(event) => setData("email", event.target.value)}
+                        aria-invalid={Boolean(errors.email)}
+                        aria-describedby={errors.email ? "forgot-password-email-error" : undefined}
+                        data-testid="forgot-password-email-input"
                         className={cn(
                             inputClassName,
                             errors.email && "border-rose-300 focus-visible:ring-rose-200"
                         )}
                     />
                     {errors.email ? (
-                        <FieldDescription className="text-rose-600">{errors.email}</FieldDescription>
+                        <FieldDescription id="forgot-password-email-error" className="text-rose-600">
+                            {errors.email}
+                        </FieldDescription>
                     ) : null}
                 </Field>
 

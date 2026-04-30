@@ -59,14 +59,14 @@ class ServiceResource extends Resource
     {
         return $schema
             ->schema([
-                Section::make('Detalles del Servicio')
+                Section::make('Detalles del servicio')
                     ->schema([
                         TextInput::make('name')
-                            ->label('Nombre del Servicio')
+                            ->label('Nombre del servicio')
                             ->required()
                             ->maxLength(255),
                         Textarea::make('description')
-                            ->label('Descripcion')
+                            ->label('Descripción')
                             ->rows(3)
                             ->columnSpanFull(),
                         Grid::make(2)
@@ -77,7 +77,7 @@ class ServiceResource extends Resource
                                     ->prefix('L.')
                                     ->required(),
                                 TextInput::make('duration_minutes')
-                                    ->label('Duracion')
+                                    ->label('Duración')
                                     ->numeric()
                                     ->suffix('minutos')
                                     ->required()
@@ -85,7 +85,7 @@ class ServiceResource extends Resource
                                     ->minValue(5)
                                     ->default(30),
                                 TextInput::make('buffer_before')
-                                    ->label('Margen Antes (Preparacion)')
+                                    ->label('Margen antes (preparación)')
                                     ->numeric()
                                     ->suffix('minutos')
                                     ->required()
@@ -93,7 +93,7 @@ class ServiceResource extends Resource
                                     ->minValue(0)
                                     ->default(0),
                                 TextInput::make('buffer_after')
-                                    ->label('Margen Despues (Limpieza)')
+                                    ->label('Margen después (limpieza)')
                                     ->numeric()
                                     ->suffix('minutos')
                                     ->required()
@@ -101,7 +101,7 @@ class ServiceResource extends Resource
                                     ->minValue(0),
                             ]),
                         Toggle::make('is_active')
-                            ->label('Servicio Activo')
+                            ->label('Servicio activo')
                             ->default(true),
                     ]),
             ]);
@@ -119,7 +119,7 @@ class ServiceResource extends Resource
                 Tables\Columns\TextColumn::make('formatted_price')
                     ->label('Precio'),
                 Tables\Columns\TextColumn::make('formatted_duration')
-                    ->label('Duracion')
+                    ->label('Duración')
                     ->badge()
                     ->color('info'),
                 Tables\Columns\IconColumn::make('is_active')

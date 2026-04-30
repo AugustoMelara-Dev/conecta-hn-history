@@ -13,7 +13,7 @@ class ListOperationalPlaybookTasks extends ListTenantRecords
 
     public function getSubheading(): ?string
     {
-        return 'Aqui ejecutas leads, citas, recuperacion, recompra y renovacion con responsable y SLA claros.';
+        return 'Aquí ejecutas leads, citas, recuperación, recompra y renovación con responsable y SLA claros.';
     }
 
     protected function getHeaderActions(): array

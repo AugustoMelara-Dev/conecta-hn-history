@@ -54,7 +54,7 @@ class DynamicRecordResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Operacion';
+        return 'Operación';
     }
 
     public static function getNavigationSort(): ?int
@@ -177,7 +177,7 @@ class DynamicRecordResource extends Resource
                         if (! $template instanceof DynamicPrintTemplate) {
                             Notification::make()
                                 ->title('No hay plantilla publicada')
-                                ->body('Publica una plantilla para esta entidad y accion default.')
+                                ->body('Publica una plantilla para esta entidad y acción predeterminada.')
                                 ->warning()
                                 ->send();
 

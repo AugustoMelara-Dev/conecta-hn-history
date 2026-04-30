@@ -4,7 +4,7 @@
             <div class="biz-stack">
                 <div class="biz-split">
                     <div>
-                        <p class="biz-kicker">Activacion 7 dias</p>
+                        <p class="biz-kicker">Activación 7 días</p>
                         <h3 class="biz-heading">Tu ruta de arranque en Vito Business OS</h3>
                         <p class="biz-kicker">{{ $businessLabel ?? 'Negocio' }} · Rol: {{ $roleLabel }} · Contexto: {{ $moduleLabel ?? 'General' }}</p>
                         <p class="biz-copy">{{ $nextAction['copy'] ?? 'Avanza con el siguiente paso recomendado.' }}</p>
@@ -23,7 +23,7 @@
 
                 <div class="biz-button-row">
                     <a href="{{ $nextAction['href'] ?? '#' }}" class="biz-button">
-                        {{ $nextAction['title'] ?? 'Continuar activacion' }}
+                        {{ $nextAction['title'] ?? 'Continuar activación' }}
                     </a>
                 </div>
 
@@ -33,7 +33,7 @@
                             <div class="biz-checklist-item">
                                 <div class="biz-checklist-index is-pending">?</div>
                                 <div>
-                                    <p class="biz-checklist-title">{{ $tip['title'] ?? 'Guia rapida' }}</p>
+                                    <p class="biz-checklist-title">{{ $tip['title'] ?? 'Guía rápida' }}</p>
                                     <p class="biz-checklist-copy">{{ $tip['copy'] ?? '' }}</p>
                                 </div>
                             </div>

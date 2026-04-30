@@ -84,7 +84,7 @@ class CampaignResource extends Resource
     {
         return $schema
             ->schema([
-                Section::make('Detalles de la campana')
+                Section::make('Detalles de la campaña')
                     ->description('Disena el mensaje y define si sale por email o por WhatsApp.')
                     ->schema([
                         Grid::make(2)
@@ -111,7 +111,7 @@ class CampaignResource extends Resource
                             ->label('Mensaje')
                             ->required()
                             ->rows(8)
-                            ->placeholder('Escribe el mensaje principal o el contexto comercial de esta campana.')
+                            ->placeholder('Escribe el mensaje principal o el contexto comercial de esta campaña.')
                             ->columnSpanFull(),
                         Grid::make(2)
                             ->schema([
@@ -145,7 +145,7 @@ class CampaignResource extends Resource
                                     ->options(static::rewardOptions())
                                     ->searchable()
                                     ->placeholder('Sin reward especial')
-                                    ->helperText('Si eliges uno, la campana puede empujar un canje o una meta clara de puntos.')
+                                    ->helperText('Si eliges uno, la campaña puede empujar un canje o una meta clara de puntos.')
                                     ->native(false),
                                 Forms\Components\Toggle::make('only_redeemable_rewards')
                                     ->label('Solo clientes listos para canjear')
@@ -175,7 +175,7 @@ class CampaignResource extends Resource
                                 Forms\Components\DateTimePicker::make('scheduled_at')
                                     ->label('Primer envio')
                                     ->seconds(false)
-                                    ->helperText('Si queda vacio, la campana se guarda en borrador hasta lanzarla manualmente.'),
+                                    ->helperText('Si queda vacío, la campaña se guarda en borrador hasta lanzarla manualmente.'),
                                 Forms\Components\Toggle::make('is_recurring')
                                     ->label('Cadencia recurrente')
                                     ->inline(false),
@@ -272,7 +272,7 @@ class CampaignResource extends Resource
                     ->icon('heroicon-o-paper-airplane')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->modalHeading('Despachar campana')
+                    ->modalHeading('Despachar campaña')
                     ->visible(fn (Campaign $record): bool => static::actionReader()->canDispatch($record))
                     ->modalDescription(fn (Campaign $record): string => static::actionReader()->dispatchDescription($record))
                     ->action(function (Campaign $record): void {

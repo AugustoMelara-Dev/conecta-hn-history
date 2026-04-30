@@ -210,7 +210,7 @@ class ManageGeneralSettings extends Page implements HasForms
                         Tab::make('Rollouts')
                             ->icon('heroicon-o-rocket-launch')
                             ->schema([
-                                Section::make('Activacion controlada por tenant')
+                                Section::make('Activación controlada por tenant')
                                     ->description('Publica codigo apagado por defecto y activa features solo para tenants o grupos seguros.')
                                     ->schema([
                                         Repeater::make('feature_rollouts')
@@ -221,15 +221,15 @@ class ManageGeneralSettings extends Page implements HasForms
                                                     ->placeholder('new_checkout')
                                                     ->required()
                                                     ->alphaDash()
-                                                    ->helperText('Usa una clave estable para consultar desde codigo o middleware.'),
+                                                    ->helperText('Usa una clave estable para consultar desde código o middleware.'),
                                                 Toggle::make('enabled')
                                                     ->label('Activo')
                                                     ->default(false)
-                                                    ->helperText('Si esta apagado, nadie accede aunque coincida el tenant.'),
+                                                    ->helperText('Si está apagado, nadie accede aunque coincida el tenant.'),
                                                 TagsInput::make('tenant_slugs')
                                                     ->label('Tenants permitidos')
                                                     ->placeholder('audit-prod-20260424')
-                                                    ->helperText('Slugs exactos. Si un tenant esta aqui, gana sobre plan/rubro.'),
+                                                    ->helperText('Slugs exactos. Si un tenant está aquí, gana sobre plan/rubro.'),
                                                 Select::make('plans')
                                                     ->label('Planes permitidos')
                                                     ->multiple()

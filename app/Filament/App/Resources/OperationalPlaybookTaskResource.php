@@ -80,7 +80,7 @@ class OperationalPlaybookTaskResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Operacion';
+        return 'Operación';
     }
 
     public static function getNavigationSort(): ?int
@@ -221,7 +221,7 @@ class OperationalPlaybookTaskResource extends Resource
                         'leads' => 'Captacion',
                         'appointments' => 'Agenda',
                         'retention' => 'Retencion',
-                        'billing' => 'Renovacion',
+                        'billing' => 'Renovación',
                     ]),
                 Tables\Filters\SelectFilter::make('assigned_user_id')
                     ->label('Responsable')
@@ -330,9 +330,9 @@ class OperationalPlaybookTaskResource extends Resource
             ])
             ->defaultSort('due_at')
             ->emptyState(fn () => view('filament.app.components.table-empty-state', [
-                'badge' => 'Operacion',
-                'heading' => 'Todavia no tienes playbooks activos',
-                'description' => 'Los leads, citas, abandonos, recompras y renovaciones iran cayendo aqui con responsable sugerido y SLA.',
+                'badge' => 'Operación',
+                'heading' => 'Todavía no tienes playbooks activos',
+                'description' => 'Los leads, citas, abandonos, recompras y renovaciones irán cayendo aquí con responsable sugerido y SLA.',
                 'buttonLabel' => 'Volver al escritorio',
                 'buttonUrl' => route('filament.app.pages.dashboard', ['tenant' => static::getTenantRecord()?->slug], false),
             ]));

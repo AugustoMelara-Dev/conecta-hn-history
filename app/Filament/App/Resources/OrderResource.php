@@ -277,7 +277,7 @@ class OrderResource extends Resource
                                     ->weight('bold')
                                     ->size('lg'),
                                 TextEntry::make('customer_phone')
-                                    ->label('Telefono')
+                                    ->label('Teléfono')
                                     ->icon('heroicon-o-phone')
                                     ->copyable(),
                                 TextEntry::make('customer_email')
@@ -285,7 +285,7 @@ class OrderResource extends Resource
                                     ->icon('heroicon-o-envelope')
                                     ->visible(fn (mixed $state): bool => filled($state)),
                                 TextEntry::make('delivery_address')
-                                    ->label('Direccion')
+                                    ->label('Dirección')
                                     ->icon('heroicon-o-map-pin')
                                     ->visible(fn (mixed $state): bool => filled($state))
                                     ->columnSpanFull(),

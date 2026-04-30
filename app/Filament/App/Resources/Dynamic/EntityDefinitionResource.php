@@ -50,7 +50,7 @@ class EntityDefinitionResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Configuracion';
+        return 'Configuración';
     }
 
     public static function getNavigationSort(): ?int
@@ -129,7 +129,7 @@ class EntityDefinitionResource extends Resource
                         ->label('Bloqueado')
                         ->default(false),
                     Textarea::make('description')
-                        ->label('Descripcion')
+                        ->label('Descripción')
                         ->rows(3)
                         ->columnSpanFull(),
                 ])

@@ -50,7 +50,7 @@ class DynamicPrintTemplateResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Configuracion';
+        return 'Configuración';
     }
 
     public static function getNavigationSort(): ?int
@@ -133,7 +133,7 @@ class DynamicPrintTemplateResource extends Resource
                         ->label('Whitelist placeholders')
                         ->placeholder('record.custom_field'),
                     Textarea::make('description')
-                        ->label('Descripcion')
+                        ->label('Descripción')
                         ->rows(3)
                         ->columnSpanFull(),
                     Textarea::make('blocks_json')

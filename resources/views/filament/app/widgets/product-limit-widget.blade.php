@@ -7,7 +7,7 @@
 
                     <div>
                         <p class="biz-kicker">Capacidad</p>
-                        <h3 class="biz-heading">Catalogo sin limite operativo</h3>
+                        <h3 class="biz-heading">Catálogo sin límite operativo</h3>
                         <p class="biz-copy">
                             {{ $this->catalogStatusCopy }}
                         </p>

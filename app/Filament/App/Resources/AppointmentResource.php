@@ -34,7 +34,7 @@ class AppointmentResource extends Resource
 
     protected static string|\UnitEnum|null $navigationGroup = 'Servicios';
 
-    protected static ?string $navigationLabel = 'Agenda de Citas';
+    protected static ?string $navigationLabel = 'Agenda de citas';
 
     protected static ?int $navigationSort = 3;
 
@@ -61,14 +61,14 @@ class AppointmentResource extends Resource
     {
         return $schema
             ->schema([
-                Section::make('Detalles de la Cita')
+                Section::make('Detalles de la cita')
                     ->schema([
                         Forms\Components\Select::make('user_id')
-                            ->label('Cliente Registrado')
+                            ->label('Cliente registrado')
                             ->relationship('user', 'name')
                             ->searchable()
                             ->preload()
-                            ->helperText('Dejar vacio para clientes sin cuenta'),
+                            ->helperText('Dejar vacío para clientes sin cuenta'),
 
                         Grid::make(2)
                             ->schema([
@@ -77,7 +77,7 @@ class AppointmentResource extends Resource
                                     ->maxLength(255),
 
                                 Forms\Components\TextInput::make('customer_phone')
-                                    ->label('Telefono')
+                                    ->label('Teléfono')
                                     ->tel(),
                             ]),
 
@@ -110,7 +110,7 @@ class AppointmentResource extends Resource
                         Grid::make(2)
                             ->schema([
                                 Forms\Components\DateTimePicker::make('scheduled_at')
-                                    ->label('Hora de Inicio')
+                                    ->label('Hora de inicio')
                                     ->required()
                                     ->seconds(false)
                                     ->reactive()
@@ -129,7 +129,7 @@ class AppointmentResource extends Resource
                                     }),
 
                                 Forms\Components\DateTimePicker::make('end_at')
-                                    ->label('Hora de Fin')
+                                    ->label('Hora de fin')
                                     ->required()
                                     ->seconds(false),
                             ]),
@@ -147,7 +147,7 @@ class AppointmentResource extends Resource
                             ->native(false),
 
                         Forms\Components\Textarea::make('staff_notes')
-                            ->label('Notas Internas')
+                            ->label('Notas internas')
                             ->rows(2)
                             ->columnSpanFull(),
                     ])
@@ -212,7 +212,7 @@ class AppointmentResource extends Resource
                     ->action(fn (Appointment $record): bool => $record->complete()),
 
                 Action::make('no_show')
-                    ->label('No Asistio')
+                    ->label('No asistió')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
                     ->visible(fn (Appointment $record): bool => in_array($record->status, [Appointment::STATUS_PENDING, Appointment::STATUS_CONFIRMED], true))

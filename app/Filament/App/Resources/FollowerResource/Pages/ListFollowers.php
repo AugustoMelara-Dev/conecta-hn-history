@@ -16,7 +16,7 @@ class ListFollowers extends ListTenantRecords
         $plan = FollowerResource::getPlanPresentation();
 
         if (($plan['hasFollowerInsights'] ?? false) === true) {
-            return $plan['followersCopy'] ?? 'Aqui veras la audiencia que ya sigue tu negocio.';
+            return $plan['followersCopy'] ?? 'Aquí verás la audiencia que ya sigue tu negocio.';
         }
 
         return $plan['followersCopy'] ?? 'En plan Base mantienes el conteo general. El detalle completo de seguidores se habilita con PRO.';

@@ -61,7 +61,7 @@ class LoyaltyRewardResource extends Resource
                             ->maxLength(255),
 
                         Textarea::make('description')
-                            ->label('Descripcion')
+                            ->label('Descripción')
                             ->maxLength(65535)
                             ->columnSpanFull(),
 

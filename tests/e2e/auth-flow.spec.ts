@@ -4,13 +4,19 @@ import { officialFixtures } from './support/fixtures';
 
 const isSmokeMode = process.env.E2E_MODE === 'smoke';
 
-async function waitForSelectOptions(selectLocator) {
+async function selectShadcnOption(page, triggerTestId, index = 1) {
+    const trigger = page.getByTestId(triggerTestId);
+    await expect(trigger).toBeVisible({ timeout: 10000 });
+    await trigger.click();
+
     await expect.poll(async () => {
-        return await selectLocator.locator('option').count();
+        return await page.getByRole('option').count();
     }, {
         timeout: 15000,
         message: 'Expected select options to be loaded.',
     }).toBeGreaterThan(1);
+
+    await page.getByRole('option').nth(index).click();
 }
 
 async function waitForSlugCheckComplete(page) {
@@ -38,7 +44,7 @@ async function waitForSlugCheckComplete(page) {
 
 async function goToLocationStep(page) {
     const continueButton = page.getByRole('button', { name: /Continuar/i }).last();
-    const citySelect = page.locator('#city_id');
+    const citySelect = page.getByTestId('register-city-select');
 
     for (let attempt = 0; attempt < 4; attempt += 1) {
         await continueButton.click();
@@ -137,9 +143,7 @@ test.describe('Auth journey', () => {
         await slugInput.fill(slug);
         await slugInput.blur();
         await slugCheckResponse;
-        const categorySelect = page.locator('#category_id');
-        await waitForSelectOptions(categorySelect);
-        await categorySelect.selectOption({ index: 1 });
+        await selectShadcnOption(page, 'register-category-select');
 
         await page.getByRole('button', { name: /Tienda y cat\u00e1logo|Restaurante y comida|Servicios y citas|Mixto/i }).first().click();
         await waitForSlugCheckComplete(page);
@@ -147,8 +151,7 @@ test.describe('Auth journey', () => {
         await page.waitForTimeout(600);
         const citySelect = await goToLocationStep(page);
         await expect(citySelect).toBeVisible({ timeout: 10000 });
-        await waitForSelectOptions(citySelect);
-        await citySelect.selectOption({ index: 1 });
+        await selectShadcnOption(page, 'register-city-select');
         await page.getByRole('button', { name: /Continuar/i }).last().click();
 
         await page.locator('#name').fill('Registro E2E Owner');
@@ -157,7 +160,7 @@ test.describe('Auth journey', () => {
         await page.locator('#password_confirmation').fill('password');
         await page.getByRole('button', { name: /Continuar/i }).last().click();
 
-        await page.locator('input[type="checkbox"]').first().check();
+        await page.getByTestId('register-terms-checkbox').click();
         await page.getByRole('button', { name: /Crear negocio|Crear cuenta/i }).click();
 
         await page.waitForURL((url) => !url.pathname.includes('/registrar-negocio'), { timeout: 30000 });

@@ -37,7 +37,7 @@ class TasksRelationManager extends RelationManager
         return $schema
             ->schema([
                 Forms\Components\TextInput::make('title')
-                    ->label('Titulo')
+                    ->label('Título')
                     ->required()
                     ->maxLength(255),
                 Forms\Components\Textarea::make('body')
@@ -51,7 +51,7 @@ class TasksRelationManager extends RelationManager
                                 'follow_up' => 'Seguimiento',
                                 'sale' => 'Venta',
                                 'service' => 'Servicio',
-                                'reactivation' => 'Reactivacion',
+                                'reactivation' => 'Reactivación',
                                 'retention' => 'Retencion',
                             ])
                             ->default('follow_up')

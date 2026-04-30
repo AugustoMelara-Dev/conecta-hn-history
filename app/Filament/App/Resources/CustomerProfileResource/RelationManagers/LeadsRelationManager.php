@@ -33,7 +33,7 @@ class LeadsRelationManager extends RelationManager
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => match ($state) {
                         'whatsapp_click' => 'WhatsApp',
-                        'catalog' => 'Catalogo',
+                        'catalog' => 'Catálogo',
                         'website' => 'Sitio web',
                         'manual' => 'Manual',
                         null, '' => 'Manual',

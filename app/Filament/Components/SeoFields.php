@@ -14,33 +14,33 @@ class SeoFields
 {
     public static function make(string $imageDirectory = 'seo'): Section
     {
-        return Section::make('Optimizacion SEO')
-            ->description('Configura como aparece esta pagina en Google y redes sociales.')
+        return Section::make('Optimización SEO')
+            ->description('Configura cómo aparece esta página en Google y redes sociales.')
             ->icon('heroicon-o-magnifying-glass')
             ->collapsed()
             ->schema([
                 TextInput::make('seo_title')
-                    ->label('Titulo SEO')
-                    ->placeholder('Titulo optimizado para Google (max. 60 caracteres)')
+                    ->label('Título SEO')
+                    ->placeholder('Título optimizado para Google (max. 60 caracteres)')
                     ->maxLength(70)
                     ->live()
                     ->helperText(fn (?string $state): string => self::getCharacterCountHelper($state, 60, 'Zona segura: 60 caracteres'))
                     ->hint(fn (?string $state): string => self::getCharacterCountBadge($state, 60)),
                 Textarea::make('seo_description')
-                    ->label('Meta Descripcion')
-                    ->placeholder('Descripcion breve para resultados de busqueda (max. 160 caracteres)')
+                    ->label('Meta descripción')
+                    ->placeholder('Descripción breve para resultados de búsqueda (max. 160 caracteres)')
                     ->rows(3)
                     ->maxLength(170)
                     ->live()
                     ->helperText(fn (?string $state): string => self::getCharacterCountHelper($state, 160, 'Zona segura: 160 caracteres'))
                     ->hint(fn (?string $state): string => self::getCharacterCountBadge($state, 160)),
                 TagsInput::make('seo_keywords')
-                    ->label('Palabras Clave')
+                    ->label('Palabras clave')
                     ->placeholder('Presiona Enter para agregar')
                     ->separator(',')
                     ->helperText('Palabras clave separadas por comas.'),
                 FileUpload::make('og_image')
-                    ->label('Imagen para Redes Sociales')
+                    ->label('Imagen para redes sociales')
                     ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                     ->maxSize(2048)
                     ->image()
@@ -50,7 +50,7 @@ class SeoFields
                     ->imageCropAspectRatio('1200:630')
                     ->imageResizeTargetWidth('1200')
                     ->imageResizeTargetHeight('630')
-                    ->helperText('Tamano recomendado: 1200x630px.'),
+                    ->helperText('Tamaño recomendado: 1200x630px.'),
             ]);
     }
 

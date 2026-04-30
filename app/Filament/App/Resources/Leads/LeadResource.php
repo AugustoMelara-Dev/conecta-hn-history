@@ -65,7 +65,7 @@ class LeadResource extends Resource
                     ->placeholder('Sin correo')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('phone')
-                    ->label('Telefono')
+                    ->label('Teléfono')
                     ->placeholder('Sin teléfono')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('product.name')

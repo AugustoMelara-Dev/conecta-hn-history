@@ -132,7 +132,7 @@ class CustomerProfileResource extends Resource
         return $schema
             ->schema([
                 Section::make('Ficha del cliente')
-                    ->description('Resumen unificado para ventas, servicio y reactivacion.')
+                    ->description('Resumen unificado para ventas, servicio y reactivación.')
                     ->schema([
                         Grid::make(3)
                             ->schema([
@@ -145,7 +145,7 @@ class CustomerProfileResource extends Resource
                                     ->disabled()
                                     ->dehydrated(false),
                                 Forms\Components\TextInput::make('phone')
-                                    ->label('Telefono')
+                                    ->label('Teléfono')
                                     ->disabled()
                                     ->dehydrated(false),
                             ]),
@@ -225,7 +225,7 @@ class CustomerProfileResource extends Resource
                     ]),
 
                 Section::make('Vista 360 del cliente')
-                    ->description('Aqui se juntan operaciones, conversaciones, valor y continuidad en una sola lectura.')
+                    ->description('Aquí se juntan operaciones, conversaciones, valor y continuidad en una sola lectura.')
                     ->schema([
                         Forms\Components\Placeholder::make('customer_workspace_summary')
                             ->label(static::workspacePlaceholderReader()->workspaceLabel())
@@ -235,8 +235,8 @@ class CustomerProfileResource extends Resource
                             ->content(fn (?CustomerProfile $record): HtmlString|string => static::timelineContent($record)),
                     ]),
 
-                Section::make('Operacion comercial')
-                    ->description('Campos editables para seguimiento, segmentacion y activacion.')
+                Section::make('Operación comercial')
+                    ->description('Campos editables para seguimiento, segmentación y activación.')
                     ->schema([
                         Grid::make(3)
                             ->schema([
@@ -351,7 +351,7 @@ class CustomerProfileResource extends Resource
                     ->badge()
                     ->toggleable(),
                 Tables\Columns\TextColumn::make('reactivation_score')
-                    ->label('Reactivacion')
+                    ->label('Reactivación')
                     ->badge()
                     ->state(fn (CustomerProfile $record): string => static::tablePresentationReader()->reactivationLabel($record))
                     ->color(fn (CustomerProfile $record): string => static::tablePresentationReader()->reactivationTone($record)),
@@ -385,7 +385,7 @@ class CustomerProfileResource extends Resource
                     ->label('Sede')
                     ->options(static::locationOptions()),
                 Tables\Filters\Filter::make('reactivation')
-                    ->label('Solo reactivacion')
+                    ->label('Solo reactivación')
                     ->query(fn ($query) => $query->where('reactivation_score', '>=', 65)),
                 Tables\Filters\Filter::make('loyalty_ready')
                     ->label('Listos para fidelidad')
@@ -466,7 +466,7 @@ class CustomerProfileResource extends Resource
                     ->icon('heroicon-o-bolt')
                     ->color('warning')
                     ->requiresConfirmation()
-                    ->modalHeading('Lanzar reactivacion')
+                    ->modalHeading('Lanzar reactivación')
                     ->modalDescription(static::tableActionReader()->reactivationDescription())
                     ->visible(fn (CustomerProfile $record): bool => static::tableActionReader()->canTriggerReactivation($record))
                     ->action(function (CustomerProfile $record): void {

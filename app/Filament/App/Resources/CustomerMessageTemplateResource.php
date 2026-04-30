@@ -90,7 +90,7 @@ class CustomerMessageTemplateResource extends Resource
         return $schema
             ->schema([
                 Section::make('Contexto de la plantilla')
-                    ->description('Define a quien aplica, por que canal sale y si debe overridear una respuesta del sistema.')
+                    ->description('Define a quién aplica, por qué canal sale y si debe reemplazar una respuesta del sistema.')
                     ->schema([
                         Grid::make(2)
                             ->schema([
@@ -108,7 +108,7 @@ class CustomerMessageTemplateResource extends Resource
                                         ? str($state)->trim()->replace(' ', '_')->replace('-', '_')->lower()->value()
                                         : null),
                                 Forms\Components\Textarea::make('description')
-                                    ->label('Descripcion')
+                                    ->label('Descripción')
                                     ->rows(2)
                                     ->columnSpanFull(),
                                 Forms\Components\Select::make('channel')
@@ -167,7 +167,7 @@ class CustomerMessageTemplateResource extends Resource
                             ->maxLength(120),
                     ]),
                 Section::make('Proveedor y control')
-                    ->description('Configura template provider, variables y limites basicos de uso.')
+                    ->description('Configura proveedor de plantilla, variables y límites básicos de uso.')
                     ->schema([
                         Grid::make(2)
                             ->schema([
@@ -285,7 +285,7 @@ class CustomerMessageTemplateResource extends Resource
         return [
             'vip' => 'VIP',
             'repeat' => 'Recurrente',
-            'reactivation' => 'Reactivacion',
+            'reactivation' => 'Reactivación',
             'booked_service' => 'Con citas',
             'active' => 'Activo',
             'prospect' => 'Prospecto',
@@ -320,6 +320,6 @@ class CustomerMessageTemplateResource extends Resource
         $sent = (clone $query)->where('status', CustomerTouchpoint::STATUS_SENT)->count();
         $replied = (clone $query)->where('delivery_status', CustomerTouchpoint::DELIVERY_REPLIED)->count();
 
-        return "{$sent} envios / {$replied} replies en 30 dias";
+        return "{$sent} envíos / {$replied} respuestas en 30 días";
     }
 }

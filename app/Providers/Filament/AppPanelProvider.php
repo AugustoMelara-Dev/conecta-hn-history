@@ -29,8 +29,8 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 /**
  * Panel operativo para negocios.
  *
- * Priorizamos navegacion clara, tiempos cortos y una experiencia solida
- * en movil para duenos de negocio que gestionan su operacion desde el telefono.
+ * Priorizamos navegación clara, tiempos cortos y una experiencia sólida
+ * en móvil para dueños de negocio que gestionan su operación desde el teléfono.
  */
 class AppPanelProvider extends PanelProvider
 {
@@ -66,17 +66,17 @@ class AppPanelProvider extends PanelProvider
             ->darkMode(true)
             ->navigationGroups([
                 NavigationGroup::make()->label('Ventas'),
-                NavigationGroup::make()->label('Catalogo'),
+                NavigationGroup::make()->label('Catálogo'),
                 NavigationGroup::make()->label('Servicios'),
                 NavigationGroup::make()->label('Marketing'),
                 NavigationGroup::make()->label('Marketing PRO'),
-                NavigationGroup::make()->label('Operacion'),
+                NavigationGroup::make()->label('Operación'),
                 NavigationGroup::make()->label('Inventario'),
-                NavigationGroup::make()->label('Configuracion'),
+                NavigationGroup::make()->label('Configuración'),
                 NavigationGroup::make()->label('Cuenta'),
             ])
             ->navigationItems([
-                NavigationItem::make('Ver mi sitio publico')
+                NavigationItem::make('Ver mi sitio público')
                     ->url(fn () => $this->getTenantPublicUrl())
                     ->icon('heroicon-o-arrow-top-right-on-square')
                     ->group('Ventas')

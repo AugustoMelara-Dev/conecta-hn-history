@@ -71,7 +71,7 @@ class OptionGroupsRelationManager extends RelationManager
                             ->numeric()
                             ->minValue(1)
                             ->placeholder('Sin límite')
-                            ->helperText('Dejar vacio para ilimitado.')
+                                    ->helperText('Dejar vacío para ilimitado.')
                             ->visible(fn (Get $get): bool => $get('type') === 'multiple'),
                         TextInput::make('sort_order')
                             ->label('Orden de Aparicion')

@@ -76,7 +76,7 @@ class TenantUserResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Configuracion';
+        return 'Configuración';
     }
 
     public static function getNavigationSort(): ?int
@@ -88,7 +88,7 @@ class TenantUserResource extends Resource
     {
         return $schema
             ->schema([
-                Section::make('Informacion del miembro')
+                Section::make('Información del miembro')
                     ->icon('heroicon-o-user')
                     ->columns(2)
                     ->schema([
@@ -118,11 +118,11 @@ class TenantUserResource extends Resource
                                     ->maxLength(255)
                                     ->unique('users', 'email'),
                                 TextInput::make('password')
-                                    ->label('Contrasena temporal')
+                                    ->label('Contraseña temporal')
                                     ->password()
                                     ->required()
                                     ->minLength(8)
-                                    ->helperText('Se guarda de forma segura y la persona podra cambiarla luego.'),
+                                    ->helperText('Se guarda de forma segura y la persona podrá cambiarla luego.'),
                             ])
                             ->createOptionUsing(function (array $data): string {
                                 $passwordHasher = app(PasswordHasherInterface::class);
@@ -188,7 +188,7 @@ class TenantUserResource extends Resource
                             ->columnSpan(1),
                     ]),
 
-                Section::make('Informacion de acceso')
+                Section::make('Información de acceso')
                     ->icon('heroicon-o-information-circle')
                     ->visible(fn (?TenantMembership $record): bool => $record !== null)
                     ->columns(2)
@@ -284,7 +284,7 @@ class TenantUserResource extends Resource
                     ->visible(fn (TenantMembership $record): bool => ! $record->isOwner()),
             ])
             ->emptyState(fn () => view('filament.app.components.table-empty-state', [
-                'heading' => 'Todavia no has agregado miembros',
+                'heading' => 'Todavía no has agregado miembros',
                 'description' => static::getEmptyStateDescription(),
                 'buttonLabel' => 'Agregar miembro',
                 'buttonUrl' => static::getUrl('create'),
@@ -322,7 +322,7 @@ class TenantUserResource extends Resource
         $value = $role instanceof Role ? $role->value : (string) $role;
 
         return match ($value) {
-            Role::OWNER->value => 'Dueno',
+            Role::OWNER->value => 'Dueño',
             Role::ADMIN->value => 'Admin',
             Role::MANAGER->value => 'Manager',
             Role::OPERATOR->value => 'Operador',
@@ -349,12 +349,12 @@ class TenantUserResource extends Resource
         $summary = static::getActivePresetSummary();
         $teamSummary = static::getVerticalTeamSummary();
 
-        if ($summary === 'Sin presets adicionales para este negocio.' && $teamSummary === 'Sin recomendacion vertical todavia.') {
+        if ($summary === 'Sin presets adicionales para este negocio.' && $teamSummary === 'Sin recomendación vertical todavía.') {
             return 'Asigna un rol base y, si aplica, un perfil operativo por rubro.';
         }
 
         $combined = collect([$summary, $teamSummary])
-            ->filter(static fn (string $item): bool => ! in_array($item, ['Sin presets adicionales para este negocio.', 'Sin recomendacion vertical todavia.'], true))
+            ->filter(static fn (string $item): bool => ! in_array($item, ['Sin presets adicionales para este negocio.', 'Sin recomendación vertical todavía.'], true))
             ->implode(' ');
 
         return $combined !== '' ? $combined : 'Asigna un rol base y, si aplica, un perfil operativo por rubro.';
@@ -363,7 +363,7 @@ class TenantUserResource extends Resource
     public static function getPresetHelperText(): string
     {
         if (static::getPresetOptions() === []) {
-            return 'Este rubro todavia no tiene perfiles operativos extra.';
+            return 'Este rubro todavía no tiene perfiles operativos extra.';
         }
 
         return 'Los perfiles operativos agregan permisos finos para que cada vertical trabaje con claridad.';
@@ -419,7 +419,7 @@ class TenantUserResource extends Resource
             ->all();
 
         if ($teamPlaybook === []) {
-            return 'Sin recomendacion vertical todavia.';
+            return 'Sin recomendación vertical todavía.';
         }
 
         return 'Equipo sugerido por rubro: '.implode(', ', $teamPlaybook).'.';
@@ -429,7 +429,7 @@ class TenantUserResource extends Resource
     {
         $teamSummary = static::getVerticalTeamSummary();
 
-        if (in_array($teamSummary, ['Sin contexto de tenant.', 'Sin recomendacion vertical todavia.'], true)) {
+        if (in_array($teamSummary, ['Sin contexto de tenant.', 'Sin recomendación vertical todavía.'], true)) {
             return 'Agrega personas y dales un rol claro dentro del negocio.';
         }
 
@@ -505,7 +505,7 @@ class TenantUserResource extends Resource
     protected static function getPresetDescription(?string $presetKey): string
     {
         if (! is_string($presetKey) || trim($presetKey) === '') {
-            return 'Usa el rol base si todavia no necesitas permisos finos por vertical.';
+            return 'Usa el rol base si todavía no necesitas permisos finos por vertical.';
         }
 
         $tenant = static::getTenantRecord();

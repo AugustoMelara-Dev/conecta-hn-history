@@ -9,7 +9,7 @@ use Filament\Widgets\ChartWidget;
 
 class AcquisitionGrowthChart extends ChartWidget
 {
-    protected ?string $heading = 'Curva de Crecimiento de Adquisicion';
+    protected ?string $heading = 'Curva de crecimiento de adquisición';
 
     protected static ?int $sort = 2;
 
@@ -25,9 +25,9 @@ class AcquisitionGrowthChart extends ChartWidget
     protected function getFilters(): ?array
     {
         return [
-            '30' => 'Ultimos 30 dias',
-            '60' => 'Ultimos 60 dias',
-            '90' => 'Ultimos 90 dias',
+            '30' => 'Últimos 30 días',
+            '60' => 'Últimos 60 días',
+            '90' => 'Últimos 90 días',
         ];
     }
 
@@ -47,7 +47,7 @@ class AcquisitionGrowthChart extends ChartWidget
         return [
             'datasets' => [
                 [
-                    'label' => 'Nuevos Negocios',
+                    'label' => 'Nuevos negocios',
                     'data' => $data->pluck('count'),
                     'borderColor' => '#10b981',
                     'backgroundColor' => 'rgba(16, 185, 129, 0.1)',

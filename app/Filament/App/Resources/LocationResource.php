@@ -70,7 +70,7 @@ class LocationResource extends Resource
     {
         return $schema
             ->schema([
-                Section::make('Informacion de la sucursal')
+                Section::make('Información de la sucursal')
                     ->icon('heroicon-o-map')
                     ->columns(2)
                     ->schema([
@@ -98,19 +98,19 @@ class LocationResource extends Resource
                                         : $rule;
                                 }
                             )
-                            ->helperText('Se usa para URLs y resolucion amigable de la sucursal.'),
+                            ->helperText('Se usa para URLs y resolución amigable de la sucursal.'),
 
                         TextInput::make('contact_name')
                             ->label('Contacto')
                             ->maxLength(255),
 
                         TextInput::make('phone')
-                            ->label('Telefono')
+                            ->label('Teléfono')
                             ->tel()
                             ->maxLength(50),
 
                         Textarea::make('address')
-                            ->label('Direccion')
+                            ->label('Dirección')
                             ->rows(3)
                             ->columnSpanFull(),
 
@@ -158,7 +158,7 @@ class LocationResource extends Resource
                     ->copyable(),
 
                 Tables\Columns\TextColumn::make('phone')
-                    ->label('Telefono')
+                    ->label('Teléfono')
                     ->toggleable(),
 
                 Tables\Columns\IconColumn::make('is_primary')

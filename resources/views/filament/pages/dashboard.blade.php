@@ -155,7 +155,7 @@
                         <p class="biz-kicker">SLA por equipo</p>
                         <h2 class="biz-heading">Equipos operativos y riesgo de ejecución</h2>
                         <p class="biz-muted">
-                            Una lectura rapida por lane para saber donde falta respuesta, owner interno o disciplina.
+                            Una lectura rápida por lane para saber dónde falta respuesta, owner interno o disciplina.
                         </p>
                     </div>
 
@@ -216,7 +216,7 @@
                         </div>
                     @else
                         @include('filament.app.components.table-empty-state', [
-                            'badge' => 'Operacion',
+                            'badge' => 'Operación',
                             'heading' => 'Todavía no hay casos calientes',
                             'description' => 'Cuando los tenants disparen leads, citas, recompras o renovaciones, caerán aquí con SLA.',
                             'buttonLabel' => 'Abrir mesa operativa',
@@ -258,7 +258,7 @@
                         @include('filament.app.components.table-empty-state', [
                             'badge' => 'Equipo',
                             'heading' => 'Todavía no hay responsables cargados',
-                            'description' => 'Cuando los playbooks empiecen a repartirse entre equipos, veras la carga aqui.',
+                            'description' => 'Cuando los playbooks empiecen a repartirse entre equipos, verás la carga aquí.',
                             'buttonLabel' => 'Abrir mesa operativa',
                             'buttonUrl' => $operationsUrl,
                         ])
@@ -292,7 +292,7 @@
                                             {{ $owner['account_count'] }} cuentas
                                         </x-filament::badge>
                                     </div>
-                                    <p class="biz-muted">Watchlist: {{ $owner['watch_count'] }} | Renovacion: {{ $owner['renewal_count'] }} | SLA vencido: {{ $owner['overdue_count'] }}</p>
+                                    <p class="biz-muted">Watchlist: {{ $owner['watch_count'] }} | Renovación: {{ $owner['renewal_count'] }} | SLA vencido: {{ $owner['overdue_count'] }}</p>
                                 </a>
                             @endforeach
                         </div>
@@ -382,7 +382,7 @@
                     @else
                         @include('filament.app.components.table-empty-state', [
                             'badge' => 'SLA',
-                            'heading' => 'La cartera esta al dia',
+                            'heading' => 'La cartera está al día',
                             'description' => 'Cuando un toque se atrase o una cuenta de alto riesgo quede sin movimiento, caera en este backlog.',
                             'buttonLabel' => 'Abrir negocios',
                             'buttonUrl' => $tenantsUrl,
@@ -397,7 +397,7 @@
                         <p class="biz-kicker">Embudo</p>
                         <h2 class="biz-heading">Embudo comercial entre tenants</h2>
                         <p class="biz-muted">
-                            Lectura de red para entender donde esta el portfolio: alta, onboarding, operacion, upsell, renovacion o riesgo.
+                            Lectura de red para entender dónde está el portfolio: alta, onboarding, operación, upsell, renovación o riesgo.
                         </p>
                     </div>
 
@@ -456,7 +456,7 @@
                         @include('filament.app.components.table-empty-state', [
                             'badge' => 'Churn',
                             'heading' => 'No hay alertas fuertes ahora mismo',
-                            'description' => 'Cuando una cuenta premium, inactiva o suspendida suba de riesgo, la veras aqui.',
+                            'description' => 'Cuando una cuenta premium, inactiva o suspendida suba de riesgo, la verás aquí.',
                             'buttonLabel' => 'Ver facturacion',
                             'buttonUrl' => $billingUrl,
                         ])
@@ -500,7 +500,7 @@
                         @include('filament.app.components.table-empty-state', [
                             'badge' => 'Comercial',
                             'heading' => 'Todavía no hay follow-up activo',
-                            'description' => 'Cuando los tenants generen leads o recompras, apareceran aqui con prioridad y responsable.',
+                            'description' => 'Cuando los tenants generen leads o recompras, aparecerán aquí con prioridad y responsable.',
                             'buttonLabel' => 'Abrir mesa operativa',
                             'buttonUrl' => $operationsUrl,
                         ])
@@ -516,7 +516,7 @@
                         <p class="biz-kicker">Metas mensuales por vertical</p>
                         <h2 class="biz-heading">Metas mensuales por vertical</h2>
                         <p class="biz-muted">
-                            Cruza target, pipeline y conversiones PRO reales para saber donde crecer con mas precision.
+                            Cruza target, pipeline y conversiones PRO reales para saber dónde crecer con más precisión.
                         </p>
                     </div>
 
@@ -543,7 +543,7 @@
                         @include('filament.app.components.table-empty-state', [
                             'badge' => 'Verticales',
                             'heading' => 'Todavía no hay metas por vertical',
-                            'description' => 'Cuando la red gane volumen por segmento, aqui veras targets reales contra conversiones PRO del mes.',
+                            'description' => 'Cuando la red gane volumen por segmento, aquí verás targets reales contra conversiones PRO del mes.',
                             'buttonLabel' => 'Abrir facturacion',
                             'buttonUrl' => $billingUrl,
                         ])
@@ -575,7 +575,7 @@
                                             {{ number_format($cohort['count']) }} cuentas
                                         </x-filament::badge>
                                     </div>
-                                    <p class="biz-muted">Expansion: {{ $cohort['expansion'] }} | Watchlist: {{ $cohort['watch'] }}</p>
+                                    <p class="biz-muted">Expansión: {{ $cohort['expansion'] }} | Watchlist: {{ $cohort['watch'] }}</p>
                                 </a>
                             @endforeach
                         </div>
@@ -583,7 +583,7 @@
                         @include('filament.app.components.table-empty-state', [
                             'badge' => 'Planes',
                             'heading' => 'Todavía no hay cohortes por plan',
-                            'description' => 'Cuando la base tenga mas mezcla de planes y upgrades, aqui veras el movimiento real por cartera.',
+                            'description' => 'Cuando la base tenga más mezcla de planes y upgrades, aquí verás el movimiento real por cartera.',
                             'buttonLabel' => 'Abrir facturacion',
                             'buttonUrl' => $billingUrl,
                         ])
@@ -597,7 +597,7 @@
                 <div class="biz-stack">
                     <div>
                         <p class="biz-kicker">Revenue ops</p>
-                        <h2 class="biz-heading">Cohortes de activacion</h2>
+                        <h2 class="biz-heading">Cohortes de activación</h2>
                         <p class="biz-muted">
                             Mide si las cuentas nuevas realmente logran pasar de alta a operacion y PRO.
                         </p>
@@ -638,7 +638,7 @@
                         @include('filament.app.components.table-empty-state', [
                             'badge' => 'Revenue ops',
                             'heading' => 'Todavía no hay cohortes visibles',
-                            'description' => 'Cuando entre mas base, aqui veras si activacion y upgrade realmente estan avanzando.',
+                            'description' => 'Cuando entre más base, aquí verás si activación y upgrade realmente están avanzando.',
                             'buttonLabel' => 'Abrir negocios',
                             'buttonUrl' => $tenantsUrl,
                         ])
@@ -680,7 +680,7 @@
                         @include('filament.app.components.table-empty-state', [
                             'badge' => 'Expansión',
                             'heading' => 'Todavía no hay segmentos listos para crecer',
-                            'description' => 'Cuando la red tenga base con oferta, canal de cierre y contexto comercial, aqui veras la mejor expansion por vertical.',
+                            'description' => 'Cuando la red tenga base con oferta, canal de cierre y contexto comercial, aquí verás la mejor expansión por vertical.',
                             'buttonLabel' => 'Abrir negocios',
                             'buttonUrl' => $tenantsUrl,
                         ])
@@ -714,7 +714,7 @@
                                             {{ number_format($vertical['count']) }} cuentas
                                         </x-filament::badge>
                                     </div>
-                                    <p class="biz-muted">Criticas: {{ $vertical['critical'] }} | Suspendidas: {{ $vertical['suspended'] }} | Renovacion: {{ $vertical['renewal'] }}</p>
+                                    <p class="biz-muted">Críticas: {{ $vertical['critical'] }} | Suspendidas: {{ $vertical['suspended'] }} | Renovación: {{ $vertical['renewal'] }}</p>
                                 </a>
                             @endforeach
                         </div>
@@ -722,7 +722,7 @@
                         @include('filament.app.components.table-empty-state', [
                             'badge' => 'Churn',
                             'heading' => 'Todavía no hay verticales en observación',
-                            'description' => 'Cuando un segmento concentre cuentas frias, vencidas o suspendidas, aparecera aqui con contexto comercial.',
+                            'description' => 'Cuando un segmento concentre cuentas frías, vencidas o suspendidas, aparecerá aquí con contexto comercial.',
                             'buttonLabel' => 'Abrir facturacion',
                             'buttonUrl' => $billingUrl,
                         ])
@@ -736,7 +736,7 @@
                         <p class="biz-kicker">Uplift por vertical</p>
                         <h2 class="biz-heading">Revenue asistido por journeys</h2>
                         <p class="biz-muted">
-                            Compara que verticales estan cerrando mas revenue asistido por conversaciones, journeys y secuencias CRM.
+                            Compara qué verticales están cerrando más revenue asistido por conversaciones, journeys y secuencias CRM.
                         </p>
                     </div>
 
@@ -762,8 +762,8 @@
                     @else
                         @include('filament.app.components.table-empty-state', [
                             'badge' => 'Uplift',
-                            'heading' => 'Todavia no hay uplift comparativo por vertical',
-                            'description' => 'Cuando la red tenga revenue asistido por journeys, aqui veras que verticales cierran mejor y con que ruta.',
+                            'heading' => 'Todavía no hay uplift comparativo por vertical',
+                            'description' => 'Cuando la red tenga revenue asistido por journeys, aquí verás qué verticales cierran mejor y con qué ruta.',
                             'buttonLabel' => 'Abrir mesa operativa',
                             'buttonUrl' => $operationsUrl,
                         ])
@@ -777,7 +777,7 @@
                         <p class="biz-kicker">Playbooks</p>
                         <h2 class="biz-heading">Playbooks revenue ops</h2>
                         <p class="biz-muted">
-                            La mesa viva de activacion, expansion y renovacion para operar la red como un revenue engine.
+                            La mesa viva de activación, expansión y renovación para operar la red como un revenue engine.
                         </p>
                     </div>
 
@@ -822,7 +822,7 @@
                         <p class="biz-kicker">Rutas CRM</p>
                         <h2 class="biz-heading">Paths multitoque de la red</h2>
                         <p class="biz-muted">
-                            No solo mide plantillas o secuencias sueltas: aqui ves la ruta conversacional completa que termina moviendo revenue entre tenants.
+                            No solo mide plantillas o secuencias sueltas: aquí ves la ruta conversacional completa que termina moviendo revenue entre tenants.
                         </p>
                     </div>
 
@@ -848,8 +848,8 @@
                     @else
                         @include('filament.app.components.table-empty-state', [
                             'badge' => 'Rutas',
-                            'heading' => 'Todavia no hay rutas multitoque visibles',
-                            'description' => 'Cuando las conversaciones empiecen a cerrar con secuencias completas, aqui veras los paths dominantes de la red.',
+                            'heading' => 'Todavía no hay rutas multitoque visibles',
+                            'description' => 'Cuando las conversaciones empiecen a cerrar con secuencias completas, aquí verás los paths dominantes de la red.',
                             'buttonLabel' => 'Abrir mesa operativa',
                             'buttonUrl' => $operationsUrl,
                         ])
@@ -865,7 +865,7 @@
                         <p class="biz-kicker">Metas por owner</p>
                         <h2 class="biz-heading">Metas por owner</h2>
                         <p class="biz-muted">
-                            Que tan bien esta cubierta la cartera mas sensible por cada responsable interno.
+                            Qué tan bien está cubierta la cartera más sensible por cada responsable interno.
                         </p>
                     </div>
 
@@ -891,7 +891,7 @@
                         @include('filament.app.components.table-empty-state', [
                             'badge' => 'Owners',
                             'heading' => 'Todavía no hay metas por owner',
-                            'description' => 'Cuando la red tenga cartera activa con motions reales, aqui veras la cobertura por responsable.',
+                            'description' => 'Cuando la red tenga cartera activa con motions reales, aquí verás la cobertura por responsable.',
                             'buttonLabel' => 'Abrir mesa operativa',
                             'buttonUrl' => $operationsUrl,
                         ])
@@ -901,7 +901,7 @@
                         <p class="biz-kicker">Cohortes por owner</p>
                         <h3 class="biz-heading">Cohortes por owner</h3>
                         <p class="biz-muted">
-                            Cruza cartera, expansion y cierres PRO del mes para ver quien esta convirtiendo de verdad.
+                            Cruza cartera, expansión y cierres PRO del mes para ver quién está convirtiendo de verdad.
                         </p>
                     </div>
 
@@ -919,7 +919,7 @@
                                             {{ number_format($cohort['count']) }} cuentas
                                         </x-filament::badge>
                                     </div>
-                                    <p class="biz-muted">Expansion: {{ $cohort['expansion'] }} | Watchlist: {{ $cohort['watch'] }}</p>
+                                    <p class="biz-muted">Expansión: {{ $cohort['expansion'] }} | Watchlist: {{ $cohort['watch'] }}</p>
                                 </a>
                             @endforeach
                         </div>
@@ -927,7 +927,7 @@
                         @include('filament.app.components.table-empty-state', [
                             'badge' => 'Owner',
                             'heading' => 'Todavía no hay cohortes por owner',
-                            'description' => 'Cuando soporte comercial cierre conversiones y cartera por responsable, veras la lectura aqui.',
+                            'description' => 'Cuando soporte comercial cierre conversiones y cartera por responsable, verás la lectura aquí.',
                             'buttonLabel' => 'Abrir mesa operativa',
                             'buttonUrl' => $operationsUrl,
                         ])
@@ -983,7 +983,7 @@
                         <p class="biz-kicker">Ciudades</p>
                         <h2 class="biz-heading">Cohortes por ciudad</h2>
                         <p class="biz-muted">
-                            Donde la red esta activando mejor, donde ya hay expansion y donde conviene intervenir antes.
+                            Dónde la red está activando mejor, dónde ya hay expansión y dónde conviene intervenir antes.
                         </p>
                     </div>
 
@@ -1001,7 +1001,7 @@
                                             {{ number_format($cohort['count']) }} cuentas
                                         </x-filament::badge>
                                     </div>
-                                    <p class="biz-muted">Expansion: {{ $cohort['expansion'] }} | PRO: {{ $cohort['pro'] }} | PRO este mes: {{ $cohort['converted'] }}</p>
+                                    <p class="biz-muted">Expansión: {{ $cohort['expansion'] }} | PRO: {{ $cohort['pro'] }} | PRO este mes: {{ $cohort['converted'] }}</p>
                                     <p class="biz-note">Watchlist: {{ $cohort['watch'] }}</p>
                                 </a>
                             @endforeach
@@ -1010,7 +1010,7 @@
                         @include('filament.app.components.table-empty-state', [
                             'badge' => 'Ciudades',
                             'heading' => 'Todavía no hay cohortes por ciudad',
-                            'description' => 'Cuando la red gane base geografica, aqui veras que plazas activan y escalan mejor.',
+                            'description' => 'Cuando la red gane base geográfica, aquí verás qué plazas activan y escalan mejor.',
                             'buttonLabel' => 'Abrir negocios',
                             'buttonUrl' => $tenantsUrl,
                         ])
@@ -1050,7 +1050,7 @@
                         @include('filament.app.components.table-empty-state', [
                             'badge' => 'Canales',
                             'heading' => 'Todavía no hay cohortes por canal',
-                            'description' => 'Cuando los negocios dejen mas puentes de cierre claros, aqui veras el impacto por canal.',
+                            'description' => 'Cuando los negocios dejen más puentes de cierre claros, aquí verás el impacto por canal.',
                             'buttonLabel' => 'Abrir negocios',
                             'buttonUrl' => $tenantsUrl,
                         ])
@@ -1064,9 +1064,9 @@
                 <div class="biz-stack">
                     <div>
                         <p class="biz-kicker">Finanzas</p>
-                        <h2 class="biz-heading">Ultimos movimientos reportados</h2>
+                        <h2 class="biz-heading">Últimos movimientos reportados</h2>
                         <p class="biz-muted">
-                            Una lectura rapida para saber si soporte financiero va al dia.
+                            Una lectura rápida para saber si soporte financiero va al día.
                         </p>
                     </div>
 
@@ -1144,7 +1144,7 @@
                         </a>
 
                         <a href="{{ $settingsUrl }}" class="biz-action">
-                            <p class="biz-action-title">Configuracion global</p>
+                            <p class="biz-action-title">Configuración global</p>
                             <p class="biz-action-copy">Precio PRO, soporte y reglas centrales del sistema.</p>
                         </a>
                     </div>

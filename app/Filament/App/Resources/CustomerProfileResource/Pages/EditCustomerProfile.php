@@ -94,7 +94,7 @@ class EditCustomerProfile extends EditTenantRecord
                         Notification::make()
                             ->title('No se pudo fusionar')
                             ->danger()
-                            ->body('El perfil duplicado ya no esta disponible dentro de este negocio.')
+                            ->body('El perfil duplicado ya no está disponible dentro de este negocio.')
                             ->send();
 
                         return;
