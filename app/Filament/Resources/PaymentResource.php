@@ -291,6 +291,10 @@ class PaymentResource extends Resource
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
                     ->visible(fn (SubscriptionPayment $record) => $record->isPending())
+                    ->requiresConfirmation()
+                    ->modalHeading('Rechazar pago reportado')
+                    ->modalDescription('Esta acción rechazará el pago, notificará al negocio y no activará el plan PRO.')
+                    ->modalSubmitActionLabel('Sí, rechazar pago')
                     ->form([
                         Forms\Components\Textarea::make('rejection_reason')
                             ->label('Motivo del Rechazo')

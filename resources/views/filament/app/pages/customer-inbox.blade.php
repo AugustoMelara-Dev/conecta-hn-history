@@ -342,32 +342,59 @@
                                             <div class="biz-grid-two biz-grid-three-wide">
                                                 <label class="biz-stack biz-stack-xxs">
                                                     <span class="biz-muted">Reasignar owner</span>
-                                                    <select wire:change="reassignOwner({{ $item['id'] }}, $event.target.value)" class="fi-input">
+                                                    <select wire:model.live="pendingOwnerIds.{{ $item['id'] }}" class="fi-input">
                                                         <option value="">Sin owner</option>
                                                         @foreach ($teamOptions as $userId => $label)
                                                             <option value="{{ $userId }}" @selected($item['assignedUserId'] === (string) $userId)>{{ $label }}</option>
                                                         @endforeach
                                                     </select>
+                                                    <x-filament::button
+                                                        size="sm"
+                                                        color="gray"
+                                                        wire:click="applyOwnerChange({{ $item['id'] }})"
+                                                        wire:confirm="¿Confirmas cambiar el owner de este caso?"
+                                                        aria-label="Aplicar cambio de owner para {{ $item['customerName'] }}"
+                                                    >
+                                                        Aplicar
+                                                    </x-filament::button>
                                                 </label>
 
                                                 <label class="biz-stack biz-stack-xxs">
                                                     <span class="biz-muted">Mover equipo</span>
-                                                    <select wire:change="routeGroup({{ $item['id'] }}, $event.target.value)" class="fi-input">
+                                                    <select wire:model.live="pendingGroupIds.{{ $item['id'] }}" class="fi-input">
                                                         <option value="">Sin equipo</option>
                                                         @foreach ($assignmentGroupOptions as $groupKey => $label)
                                                             <option value="{{ $groupKey }}" @selected($item['assignmentGroup'] === (string) $groupKey)>{{ $label }}</option>
                                                         @endforeach
                                                     </select>
+                                                    <x-filament::button
+                                                        size="sm"
+                                                        color="gray"
+                                                        wire:click="applyGroupChange({{ $item['id'] }})"
+                                                        wire:confirm="¿Confirmas mover este caso a otro equipo?"
+                                                        aria-label="Aplicar cambio de equipo para {{ $item['customerName'] }}"
+                                                    >
+                                                        Aplicar
+                                                    </x-filament::button>
                                                 </label>
 
                                                 <label class="biz-stack biz-stack-xxs">
                                                     <span class="biz-muted">Mover sede</span>
-                                                    <select wire:change="moveLocation({{ $item['id'] }}, $event.target.value)" class="fi-input">
+                                                    <select wire:model.live="pendingLocationIds.{{ $item['id'] }}" class="fi-input">
                                                         <option value="">Sin sede</option>
                                                         @foreach ($locationOptions as $locationId => $label)
                                                             <option value="{{ $locationId }}" @selected($item['locationId'] === (string) $locationId)>{{ $label }}</option>
                                                         @endforeach
                                                     </select>
+                                                    <x-filament::button
+                                                        size="sm"
+                                                        color="gray"
+                                                        wire:click="applyLocationChange({{ $item['id'] }})"
+                                                        wire:confirm="¿Confirmas mover este caso de sede?"
+                                                        aria-label="Aplicar cambio de sede para {{ $item['customerName'] }}"
+                                                    >
+                                                        Aplicar
+                                                    </x-filament::button>
                                                 </label>
                                             </div>
 
@@ -378,7 +405,7 @@
                                                     </x-filament::button>
                                                 @endif
                                                 @if ($item['status'] !== 'pending_customer')
-                                                    <x-filament::button color="success" wire:click="resolve({{ $item['id'] }})" aria-label="Resolver conversación de {{ $item['customerName'] }}">
+                                                    <x-filament::button color="success" wire:click="resolve({{ $item['id'] }})" wire:confirm="¿Confirmas resolver este caso y sacarlo de la cola activa?" aria-label="Resolver conversación de {{ $item['customerName'] }}">
                                                         Resolver
                                                     </x-filament::button>
                                                 @endif
@@ -543,7 +570,7 @@
 
                                                         <div class="biz-button-row biz-row-end">
                                                             @if ($template['available'])
-                                                                <x-filament::button color="info" wire:click="sendSuggestedReply({{ $selectedConversation['id'] }}, '{{ $template['key'] }}')" aria-label="Enviar plantilla {{ $template['label'] }} a {{ $selectedConversation['customerName'] }}">
+                                                                <x-filament::button color="info" wire:click="sendSuggestedReply({{ $selectedConversation['id'] }}, '{{ $template['key'] }}')" wire:confirm="¿Confirmas enviar esta plantilla al cliente?" aria-label="Enviar plantilla {{ $template['label'] }} a {{ $selectedConversation['customerName'] }}">
                                                                     Enviar
                                                                 </x-filament::button>
                                                             @else

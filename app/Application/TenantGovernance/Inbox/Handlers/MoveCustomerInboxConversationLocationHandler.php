@@ -8,6 +8,8 @@ use App\Application\TenantGovernance\Contracts\TenantCustomerInboxNoteFinderInte
 use App\Application\TenantGovernance\Inbox\Commands\MoveCustomerInboxConversationLocationCommand;
 use App\Domain\TenantGovernance\Services\CustomerConversationOpsManager;
 use App\Models\CustomerNote;
+use App\Models\Location;
+use RuntimeException;
 
 final readonly class MoveCustomerInboxConversationLocationHandler
 {
@@ -24,6 +26,23 @@ final readonly class MoveCustomerInboxConversationLocationHandler
             return null;
         }
 
+        if (! $this->locationBelongsToTenant($command->tenantId, $command->locationId)) {
+            throw new RuntimeException('La sede seleccionada no pertenece a este negocio.');
+        }
+
         return $this->ops->moveToLocation($note, $command->locationId, $command->actorUserId);
+    }
+
+    private function locationBelongsToTenant(string $tenantId, ?string $locationId): bool
+    {
+        if (! filled($locationId)) {
+            return true;
+        }
+
+        return Location::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->whereKey($locationId)
+            ->exists();
     }
 }

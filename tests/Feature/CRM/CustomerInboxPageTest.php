@@ -222,6 +222,76 @@ final class CustomerInboxPageTest extends TestCase
         $this->assertFalse($note->requires_follow_up);
     }
 
+    public function test_customer_inbox_blocks_cross_tenant_owner_and_location_assignment(): void
+    {
+        [$user, $tenant] = $this->makeTenantOwner('crm-inbox-tenant-guard');
+
+        $allowedTeammate = User::factory()->create([
+            'tenant_id' => $tenant->id,
+        ]);
+
+        TenantUser::query()->withoutGlobalScopes()->forceCreate([
+            'tenant_id' => $tenant->getKey(),
+            'user_id' => $allowedTeammate->getKey(),
+            'role' => TenantRole::MANAGER->value,
+        ]);
+
+        $location = Location::query()->create([
+            'tenant_id' => $tenant->getKey(),
+            'name' => 'Sucursal Centro',
+            'slug' => 'centro',
+            'is_active' => true,
+        ]);
+
+        $profile = CustomerProfile::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->getKey(),
+            'assigned_user_id' => $user->getKey(),
+            'location_id' => $location->getKey(),
+            'name' => 'Cliente Guardado',
+            'preferred_channel' => 'whatsapp',
+            'customer_segment' => 'prospect',
+            'loyalty_tier' => 'base',
+        ]);
+
+        $note = CustomerNote::query()->withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->getKey(),
+            'customer_profile_id' => $profile->getKey(),
+            'assigned_user_id' => $user->getKey(),
+            'location_id' => $location->getKey(),
+            'note_type' => 'inbound_reply',
+            'status' => 'open',
+            'priority' => 'normal',
+            'source_channel' => 'whatsapp',
+            'requires_follow_up' => true,
+            'body' => 'Necesito seguimiento.',
+        ]);
+
+        [$outsider, $outsiderTenant] = $this->makeTenantOwner('crm-inbox-outsider');
+        $outsiderLocation = Location::query()->create([
+            'tenant_id' => $outsiderTenant->getKey(),
+            'name' => 'Sucursal Externa',
+            'slug' => 'externa',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($user);
+        $this->setAppPanelTenantContext($tenant);
+
+        Livewire::test(CustomerInbox::class)
+            ->call('reassignOwner', $note->getKey(), (string) $outsider->getKey())
+            ->call('moveLocation', $note->getKey(), (string) $outsiderLocation->getKey());
+
+        $note->refresh();
+        $this->assertSame((string) $user->getKey(), (string) $note->assigned_user_id);
+        $this->assertSame((string) $location->getKey(), (string) $note->location_id);
+
+        Livewire::test(CustomerInbox::class)
+            ->call('reassignOwner', $note->getKey(), (string) $allowedTeammate->getKey());
+
+        $note->refresh();
+        $this->assertSame((string) $allowedTeammate->getKey(), (string) $note->assigned_user_id);
+    }
+
     protected function tearDown(): void
     {
         Filament::setTenant(null, isQuiet: true);

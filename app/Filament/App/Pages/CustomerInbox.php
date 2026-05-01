@@ -89,6 +89,15 @@ class CustomerInbox extends Page
     /** @var array<string, string> */
     public array $assignmentGroupOptions = [];
 
+    /** @var array<int|string, string|null> */
+    public array $pendingOwnerIds = [];
+
+    /** @var array<int|string, string|null> */
+    public array $pendingLocationIds = [];
+
+    /** @var array<int|string, string|null> */
+    public array $pendingGroupIds = [];
+
     /** @var list<array{label:string,total:int,waiting:int,breached:int}> */
     public array $channelOverview = [];
 
@@ -256,14 +265,24 @@ class CustomerInbox extends Page
         }
 
         $normalizedUserId = filled($userId) ? (string) $userId : null;
-        $updated = app(ReassignCustomerInboxConversationHandler::class)->handle(
-            new ReassignCustomerInboxConversationCommand(
-                tenantId: (string) $tenant->getKey(),
-                noteId: $noteId,
-                ownerUserId: $normalizedUserId,
-                actorUserId: auth()->id() !== null ? (string) auth()->id() : null,
-            ),
-        );
+        try {
+            $updated = app(ReassignCustomerInboxConversationHandler::class)->handle(
+                new ReassignCustomerInboxConversationCommand(
+                    tenantId: (string) $tenant->getKey(),
+                    noteId: $noteId,
+                    ownerUserId: $normalizedUserId,
+                    actorUserId: auth()->id() !== null ? (string) auth()->id() : null,
+                ),
+            );
+        } catch (\Throwable $exception) {
+            Notification::make()
+                ->title('No se pudo actualizar')
+                ->danger()
+                ->body($exception->getMessage())
+                ->send();
+
+            return;
+        }
 
         if (! $updated instanceof CustomerNote) {
             return;
@@ -279,6 +298,12 @@ class CustomerInbox extends Page
             ->send();
     }
 
+    public function applyOwnerChange(int $noteId): void
+    {
+        $pending = $this->pendingOwnerIds[$noteId] ?? null;
+        $this->reassignOwner($noteId, filled($pending) ? (string) $pending : null);
+    }
+
     public function moveLocation(int $noteId, ?string $locationId = null): void
     {
         $tenant = Filament::getTenant();
@@ -288,14 +313,24 @@ class CustomerInbox extends Page
         }
 
         $normalizedLocationId = filled($locationId) ? (string) $locationId : null;
-        $updated = app(MoveCustomerInboxConversationLocationHandler::class)->handle(
-            new MoveCustomerInboxConversationLocationCommand(
-                tenantId: (string) $tenant->getKey(),
-                noteId: $noteId,
-                locationId: $normalizedLocationId,
-                actorUserId: auth()->id() !== null ? (string) auth()->id() : null,
-            ),
-        );
+        try {
+            $updated = app(MoveCustomerInboxConversationLocationHandler::class)->handle(
+                new MoveCustomerInboxConversationLocationCommand(
+                    tenantId: (string) $tenant->getKey(),
+                    noteId: $noteId,
+                    locationId: $normalizedLocationId,
+                    actorUserId: auth()->id() !== null ? (string) auth()->id() : null,
+                ),
+            );
+        } catch (\Throwable $exception) {
+            Notification::make()
+                ->title('No se pudo actualizar')
+                ->danger()
+                ->body($exception->getMessage())
+                ->send();
+
+            return;
+        }
 
         if (! $updated instanceof CustomerNote) {
             return;
@@ -309,6 +344,12 @@ class CustomerInbox extends Page
             ->success()
             ->body($normalizedLocationId !== null ? 'La conversacion ya esta ligada a otra sede.' : 'La conversacion quedo sin sede asignada.')
             ->send();
+    }
+
+    public function applyLocationChange(int $noteId): void
+    {
+        $pending = $this->pendingLocationIds[$noteId] ?? null;
+        $this->moveLocation($noteId, filled($pending) ? (string) $pending : null);
     }
 
     public function routeGroup(int $noteId, ?string $group = null): void
@@ -341,6 +382,12 @@ class CustomerInbox extends Page
             ->success()
             ->body($normalizedGroup !== null ? 'La conversacion ya cambio de equipo operativo.' : 'La conversacion quedo sin equipo asignado.')
             ->send();
+    }
+
+    public function applyGroupChange(int $noteId): void
+    {
+        $pending = $this->pendingGroupIds[$noteId] ?? null;
+        $this->routeGroup($noteId, filled($pending) ? (string) $pending : null);
     }
 
     public function sendSuggestedReply(int $noteId, string $templateKey): void
@@ -479,8 +526,33 @@ class CustomerInbox extends Page
         $this->ownerOverview = $result['ownerOverview'];
         $this->locationOverview = $result['locationOverview'];
         $this->queue = $result['queue'];
+        $this->hydratePendingAssignments();
         $this->selectedConversationId = $result['selectedConversationId'];
         $this->selectedConversation = $result['selectedConversation'];
+    }
+
+    private function hydratePendingAssignments(): void
+    {
+        foreach ($this->queue as $item) {
+            $noteId = (int) ($item['id'] ?? 0);
+            if ($noteId <= 0) {
+                continue;
+            }
+
+            $assignedUserId = isset($item['assignedUserId']) && $item['assignedUserId'] !== ''
+                ? (string) $item['assignedUserId']
+                : null;
+            $locationId = isset($item['locationId']) && $item['locationId'] !== ''
+                ? (string) $item['locationId']
+                : null;
+            $group = isset($item['assignmentGroup']) && $item['assignmentGroup'] !== ''
+                ? (string) $item['assignmentGroup']
+                : null;
+
+            $this->pendingOwnerIds[$noteId] = $assignedUserId;
+            $this->pendingLocationIds[$noteId] = $locationId;
+            $this->pendingGroupIds[$noteId] = $group;
+        }
     }
 
     private function refreshSelectedConversation(): void

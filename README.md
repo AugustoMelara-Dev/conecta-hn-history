@@ -1,11 +1,11 @@
 # Vito Business OS
 
-Vito Business OS es una plataforma SaaS multi-tenant para comercio local, catalogos, pedidos, citas, marketing y operacion de negocios. Este repositorio concentra el sitio publico, los micrositios de negocio, las apps operativas, los paneles Filament, las APIs y la capa de contratos del sistema.
+Vito Business OS (Conecta HN en su evolucion comercial) es una plataforma SaaS multi-tenant para comercio local, catalogos, pedidos, citas, marketing y operacion de negocios. Este repositorio concentra el sitio publico, los micrositios de negocio, las apps operativas, los paneles Filament, las APIs y la capa de contratos del sistema.
 
 Este README documenta el estado actual del proyecto al 2026-04-26.
 
-> Nota de rebrand
-> El producto ya se documenta aqui como `Vito Business OS`, pero el codebase todavia conserva mucho naming heredado de `Vito Business OS` en vistas, componentes, configs, correos, textos, providers y metadatos. Este README deja el nuevo nombre como referencia funcional, pero no implica que todo el repo ya fue renombrado.
+> Nota de marca y alcance
+> El producto comercial actual se opera como Conecta HN, pero el codebase y varios artefactos todavia conservan naming `Vito Business OS` en vistas, componentes, configs, correos, providers y metadatos. Este README documenta el alcance funcional real actual y no debe leerse como promesa de roadmap no implementado.
 
 ## Operacion y auditoria (No-MVP)
 
@@ -69,11 +69,27 @@ Hoy el proyecto ya incluye:
 - Reservas y citas con servicios, proveedores, slots, confirmacion y recordatorios.
 - Cupones, campanas, anuncios, followers, loyalty, notificaciones y reportes exportables.
 - Tracking auxiliar para WhatsApp, llamadas, mapas, geolocalizacion y analitica publica.
-- AI para optimizar perfiles con control de presupuesto y auditoria de consumo.
+- AI para optimizar perfiles con control de presupuesto y auditoria de consumo (sujeto a configuracion de entorno e integraciones activas).
 - Realtime, broadcast y PWA con Reverb, Echo, Web Push y `vite-plugin-pwa`.
 - Contratos con JSON Schema, Swagger UI, tipos TypeScript generados y proto gRPC.
 - Operacion endurecida con outbox transaccional, idempotencia, signed downloads, uploads firmados, response cache, health checks, workers y scheduler.
 - Soporte operativo con shadow login / impersonation y tenancy por path en local mas soporte por subdominio en configuracion.
+
+## Alcance CRM actual (honesto)
+
+El alcance CRM activo hoy es operativo parcial:
+
+- perfiles de clientes (`CustomerProfile`)
+- inbox y conversaciones operativas (`CustomerInbox`)
+- notas y tareas de seguimiento (`CustomerNote`, `CustomerTask`)
+- touchpoints y campanas donde la configuracion del tenant lo habilita
+
+No debe interpretarse como CRM enterprise completo con pipeline/stages/deals/opportunities formales si esas capacidades no existen como dominio activo en este repositorio. Esas piezas se consideran roadmap hasta implementacion verificable.
+
+## Estado de readiness comercial
+
+- Este repositorio tiene capacidades de produccion en varias superficies, pero el estado "release-ready" depende de gates operativos (smokes desplegados, secretos, colas, storage, observabilidad y checks de CI).
+- Las capacidades de Growth, AI y RAG requieren datos, jobs y configuracion de integraciones (por ejemplo keys y vector store) para operar de forma verificable en cada entorno.
 
 ## Stack actual
 

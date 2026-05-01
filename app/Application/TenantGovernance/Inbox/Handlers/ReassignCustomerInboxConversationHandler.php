@@ -8,6 +8,8 @@ use App\Application\TenantGovernance\Contracts\TenantCustomerInboxNoteFinderInte
 use App\Application\TenantGovernance\Inbox\Commands\ReassignCustomerInboxConversationCommand;
 use App\Domain\TenantGovernance\Services\CustomerConversationOpsManager;
 use App\Models\CustomerNote;
+use App\Models\TenantUser;
+use RuntimeException;
 
 final readonly class ReassignCustomerInboxConversationHandler
 {
@@ -24,6 +26,23 @@ final readonly class ReassignCustomerInboxConversationHandler
             return null;
         }
 
+        if (! $this->ownerBelongsToTenant($command->tenantId, $command->ownerUserId)) {
+            throw new RuntimeException('El owner seleccionado no pertenece a este negocio.');
+        }
+
         return $this->ops->reassign($note, $command->ownerUserId, $command->actorUserId);
+    }
+
+    private function ownerBelongsToTenant(string $tenantId, ?string $ownerUserId): bool
+    {
+        if (! filled($ownerUserId)) {
+            return true;
+        }
+
+        return TenantUser::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->where('user_id', $ownerUserId)
+            ->exists();
     }
 }

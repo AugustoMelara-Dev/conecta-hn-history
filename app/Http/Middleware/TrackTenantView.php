@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Models\Tenant;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redis;
@@ -26,7 +27,7 @@ class TrackTenantView
         }
 
         // Get tenant from route parameter
-        $tenant = $request->route('tenant');
+        $tenant = $this->resolveTenantFromRoute($request->route('tenant'));
 
         if (! $tenant) {
             return $response;
@@ -75,5 +76,21 @@ class TrackTenantView
         }
 
         return $response;
+    }
+
+    private function resolveTenantFromRoute(mixed $tenant): ?Tenant
+    {
+        if ($tenant instanceof Tenant) {
+            return $tenant;
+        }
+
+        if (! is_string($tenant) || trim($tenant) === '') {
+            return null;
+        }
+
+        return Tenant::query()
+            ->withoutGlobalScopes()
+            ->where('slug', $tenant)
+            ->first();
     }
 }
