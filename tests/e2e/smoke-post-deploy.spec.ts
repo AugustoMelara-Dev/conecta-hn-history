@@ -38,6 +38,14 @@ test.describe('Smoke post-deploy @smoke', () => {
         await expect(page.getByTestId('login-password-input').or(page.locator('#password'))).toBeVisible();
     });
 
+    test('email verification entrypoint does not fatal', async ({ page }) => {
+        const response = await page.goto('/verify-email', { waitUntil: 'domcontentloaded' });
+
+        expect(response?.status()).toBeLessThan(500);
+        await expect(page.locator('body')).not.toContainText(/500|server error|internal server error/i);
+        await expect(page).toHaveURL(/\/(verify-email|login)(?:\?|$)/);
+    });
+
     test('owner login lands in business app', async ({ page }) => {
         await page.goto('/login', { waitUntil: 'domcontentloaded' });
 
