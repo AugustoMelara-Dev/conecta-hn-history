@@ -1,3 +1,4 @@
+// Deprecated: use '@/Components/ui/button' with AlertDialog for destructive actions.
 export default function DangerButton({
     className = '',
     disabled,

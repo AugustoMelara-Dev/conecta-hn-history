@@ -1,3 +1,4 @@
+// Deprecated: use '@/Components/ui/button' variants for new React surfaces.
 export default function SecondaryButton({
     type = 'button',
     className = '',

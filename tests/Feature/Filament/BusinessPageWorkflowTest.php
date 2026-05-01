@@ -9,6 +9,7 @@ use App\Domain\Access\Enums\Permission;
 use App\Domain\Identity\Enums\UserRole;
 use App\Domain\TenantGovernance\Enums\Capability;
 use App\Filament\App\Pages\EditTenantProfile;
+use App\Filament\App\Pages\GrowthCenter;
 use App\Filament\App\Pages\ManageBilling;
 use App\Filament\App\Pages\ManageMarketing;
 use App\Filament\App\Pages\Settings;
@@ -445,6 +446,29 @@ final class BusinessPageWorkflowTest extends TestCase
             ->assertSee('Agenda lista')
             ->assertSee('Cohortes y LTV')
             ->assertSee('Entrega de email');
+    }
+
+    public function test_growth_center_renders_pending_badge_instead_of_clickable_hash_cta(): void
+    {
+        [$user, $tenant] = $this->makeTenantOwner(
+            isPro: true,
+            slug: 'growth-center-pending-cta',
+            businessType: 'retail',
+        );
+
+        $this->actingAs($user);
+        $this->setAppPanelTenantContext($tenant);
+
+        Livewire::test(GrowthCenter::class)
+            ->set('growthActions', [
+                [
+                    'title' => 'Accion sin ruta',
+                    'copy' => 'CTA pendiente.',
+                    'href' => '#',
+                ],
+            ])
+            ->assertSee('Pendiente de configuracion')
+            ->assertDontSee('href="#"', false);
     }
 
     public function test_owner_can_save_business_settings_from_filament_page(): void

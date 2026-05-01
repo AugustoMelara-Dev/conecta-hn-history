@@ -18,15 +18,30 @@ final class CommercialNarrativeGuardTest extends TestCase
         self::assertIsString($welcome);
         self::assertIsString($prTemplate);
 
-        self::assertStringContainsString('micrositio publico', $welcome);
-        self::assertStringContainsString('billing y cobros', mb_strtolower($welcome));
-        self::assertStringNotContainsString('landing builder', mb_strtolower($welcome));
+        $normalizedWelcome = $this->normalizeSearchText($welcome);
+
+        self::assertStringContainsString('micrositio publico', $normalizedWelcome);
+        self::assertStringContainsString('billing y cobros', $normalizedWelcome);
+        self::assertStringNotContainsString('landing builder', $normalizedWelcome);
         self::assertStringNotContainsString('99%', $welcome);
         self::assertStringNotContainsString('24/7', $welcome);
-        self::assertStringNotContainsString('facturacion fiscal integrada', mb_strtolower($welcome));
+        self::assertStringNotContainsString('facturacion fiscal integrada', $normalizedWelcome);
 
         self::assertStringContainsString('Startup Release Checklist', $prTemplate);
         self::assertStringContainsString('Commercial copy matches shipped product today', $prTemplate);
         self::assertStringContainsString('No reopens legacy writes or new active flows under `/workspace`', $prTemplate);
+    }
+
+    private function normalizeSearchText(string $value): string
+    {
+        return strtr(mb_strtolower($value), [
+            'á' => 'a',
+            'é' => 'e',
+            'í' => 'i',
+            'ó' => 'o',
+            'ú' => 'u',
+            'ü' => 'u',
+            'ñ' => 'n',
+        ]);
     }
 }

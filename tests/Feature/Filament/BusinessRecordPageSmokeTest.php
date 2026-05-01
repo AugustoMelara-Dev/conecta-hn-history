@@ -99,22 +99,24 @@ final class BusinessRecordPageSmokeTest extends TestCase
 
         $customerProfile = CustomerProfile::query()->firstOrFail();
 
-        $this->get(route('filament.app.resources.customer-profiles.edit', ['tenant' => $tenant->slug, 'record' => $customerProfile], false))
+        $customerResponse = $this->get(route('filament.app.resources.customer-profiles.edit', ['tenant' => $tenant->slug, 'record' => $customerProfile], false))
             ->assertOk()
             ->assertSee('Vista 360 del cliente')
             ->assertSee('Timeline 360')
-            ->assertSee('Operacion comercial')
             ->assertSee('Historial de pedidos')
             ->assertSee('Historial de prospectos')
             ->assertSee('Historial de contactos')
             ->assertSee('Tareas y SLA')
             ->assertSee('Notas del cliente');
 
-        $this->get(route('filament.app.resources.campaigns.edit', ['tenant' => $tenant->slug, 'record' => $campaign], false))
+        self::assertStringContainsString('operacion comercial', $this->normalizeSearchText((string) $customerResponse->getContent()));
+
+        $campaignResponse = $this->get(route('filament.app.resources.campaigns.edit', ['tenant' => $tenant->slug, 'record' => $campaign], false))
             ->assertOk()
-            ->assertSee('Detalles de la campana')
             ->assertSee('Playbooks sugeridos por tu vertical')
             ->assertSee('Campana QA');
+
+        self::assertStringContainsString('detalles de la campana', $this->normalizeSearchText((string) $campaignResponse->getContent()));
     }
 
     protected function tearDown(): void
@@ -164,5 +166,18 @@ final class BusinessRecordPageSmokeTest extends TestCase
         Filament::setCurrentPanel('app');
         Filament::setTenant($tenant, isQuiet: true);
         $this->actingAsTenant((string) $tenant->getKey());
+    }
+
+    private function normalizeSearchText(string $value): string
+    {
+        return strtr(mb_strtolower($value), [
+            'á' => 'a',
+            'é' => 'e',
+            'í' => 'i',
+            'ó' => 'o',
+            'ú' => 'u',
+            'ü' => 'u',
+            'ñ' => 'n',
+        ]);
     }
 }

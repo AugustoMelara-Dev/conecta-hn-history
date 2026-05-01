@@ -1,3 +1,4 @@
+// Deprecated: use FieldLabel from '@/Components/ui/field' for new React surfaces.
 export default function InputLabel({
     value,
     className = '',

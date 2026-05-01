@@ -1,3 +1,4 @@
+// Deprecated: use '@/Components/ui/button' for new React surfaces.
 export default function PrimaryButton({
     className = '',
     disabled,
