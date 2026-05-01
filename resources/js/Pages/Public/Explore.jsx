@@ -7,11 +7,11 @@ import {
     Clock3,
     MapPin,
     Search,
-    SlidersHorizontal,
     Sparkles,
     Star,
 } from 'lucide-react';
 import PublicLayout from '@/Layouts/PublicLayout';
+import PublicSearchShell from '@/Components/Public/PublicSearchShell';
 import { Badge } from '@/Components/ui/badge';
 import { Button } from '@/Components/ui/button';
 import {
@@ -22,15 +22,6 @@ import {
     CardHeader,
     CardTitle,
 } from '@/Components/ui/card';
-import { Input } from '@/Components/ui/input';
-import {
-    Select,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/Components/ui/select';
 import { PUBLIC_DISPLAY_FONT } from '@/lib/publicTypography';
 import {
     getTenantInitials,
@@ -116,68 +107,34 @@ function TopSearch({ searchQuery, setSearchQuery, cities = [] }) {
                     </Button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="mt-8 rounded-[32px] border border-stone-200 bg-[#f3f3f1] p-3 shadow-sm" data-testid="explore-search-form">
-                    <div className="grid gap-3 lg:grid-cols-[1.2fr,0.42fr,auto,auto]">
-                        <div className="relative">
-                            <label htmlFor="explore-search" className="sr-only">
-                                Buscar negocios, servicios o ubicaciones
-                            </label>
-                            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                            <Input
-                                id="explore-search"
-                                type="text"
-                                value={searchQuery}
-                                onChange={(event) => setSearchQuery(event.target.value)}
-                                placeholder="Buscar negocios, servicios o ubicaciones..."
-                                className="h-14 rounded-2xl border-stone-200 bg-white px-11 text-base text-slate-950 placeholder:text-slate-400 focus-visible:ring-slate-950"
-                                data-testid="explore-search-input"
-                            />
-                        </div>
-
-                        <div className="relative">
-                            <label htmlFor="explore-city" className="sr-only">
-                                Ciudad
-                            </label>
-                            <MapPin className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                            <Select value={cityFilter} onValueChange={setCityFilter}>
-                                <SelectTrigger
-                                    id="explore-city"
-                                    className="h-14 rounded-2xl border-stone-200 bg-white pl-11 text-sm text-slate-900 focus:ring-slate-950"
-                                    data-testid="explore-city-select"
-                                >
-                                    <SelectValue placeholder="Todo Honduras" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectGroup>
-                                        <SelectItem value="all">Todo Honduras</SelectItem>
-                                        {cities.map((city) => (
-                                            <SelectItem key={city.id} value={city.slug}>{city.name}</SelectItem>
-                                        ))}
-                                    </SelectGroup>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <Button
-                            type="submit"
-                            className="h-14 rounded-2xl bg-slate-950 px-6 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
-                            data-testid="explore-search-submit"
-                        >
-                            Buscar
-                        </Button>
-
-                        <Button
-                            asChild
-                            variant="outline"
-                            className="h-14 rounded-2xl border-stone-200 bg-white px-5 text-sm font-semibold text-slate-700 transition-colors hover:border-stone-300 hover:text-slate-950"
-                        >
-                            <Link href={route('directory.index')}>
-                                <SlidersHorizontal data-icon="inline-start" aria-hidden="true" />
-                                Filtros
-                            </Link>
-                        </Button>
-                    </div>
-                </form>
+                <div className="mt-8 rounded-[32px] border border-stone-200 bg-[#f3f3f1] p-3 shadow-sm">
+                    <PublicSearchShell
+                        onSubmit={handleSubmit}
+                        formTestId="explore-search-form"
+                        searchValue={searchQuery}
+                        onSearchChange={setSearchQuery}
+                        searchId="explore-search"
+                        searchTestId="explore-search-input"
+                        cityValue={cityFilter}
+                        onCityChange={setCityFilter}
+                        cityId="explore-city"
+                        cityPlaceholder="Todo Honduras"
+                        cityAllLabel="Todo Honduras"
+                        cityTestId="explore-city-select"
+                        cities={cities}
+                        showSubmit
+                        submitLabel="Buscar"
+                        submitTestId="explore-search-submit"
+                        showFiltersLink
+                        filtersHref={route('directory.index')}
+                        filtersLabel="Filtros"
+                        containerClassName="grid gap-3 lg:grid-cols-[1.2fr,0.42fr,auto,auto]"
+                        inputClassName="h-14 rounded-2xl border-stone-200 bg-white px-11 text-base text-slate-950 placeholder:text-slate-400 focus-visible:ring-slate-950"
+                        selectClassName="h-14 rounded-2xl border-stone-200 bg-white pl-11 text-sm text-slate-900 focus:ring-slate-950"
+                        submitClassName="h-14 rounded-2xl bg-slate-950 px-6 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
+                        filtersClassName="h-14 rounded-2xl border-stone-200 bg-white px-5 text-sm font-semibold text-slate-700 transition-colors hover:border-stone-300 hover:text-slate-950"
+                    />
+                </div>
             </div>
         </section>
     );

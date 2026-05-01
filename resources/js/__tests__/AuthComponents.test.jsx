@@ -78,6 +78,27 @@ describe("AuthGate Component", () => {
         expect(mockAction).toHaveBeenCalled()
         expect(useUIStore.getState().isLoginModalOpen).toBe(false)
     })
+
+    it("preserves the child click handler when authenticated", () => {
+        inertiaMock.pageProps = {
+            props: {
+                auth: { user: { id: 1, name: "Test User" } },
+            },
+        }
+        const childAction = vi.fn()
+        const gateAction = vi.fn()
+
+        render(
+            <AuthGate onAuth={gateAction}>
+                <button onClick={childAction}>Click Me</button>
+            </AuthGate>,
+        )
+
+        fireEvent.click(screen.getByText("Click Me"))
+
+        expect(childAction).toHaveBeenCalled()
+        expect(gateAction).toHaveBeenCalled()
+    })
 })
 
 describe("GlobalLoginModal Component", () => {
@@ -91,7 +112,7 @@ describe("GlobalLoginModal Component", () => {
     it("renders with quick access active by default", () => {
         render(<GlobalLoginModal />)
 
-        expect(screen.getByText("Acceso rápido")).toBeInTheDocument()
+        expect(screen.getByText(/Acceso r.pido/)).toBeInTheDocument()
         expect(screen.getByPlaceholderText(/nombre@negocio.hn/i)).toBeInTheDocument()
     })
 
@@ -101,7 +122,7 @@ describe("GlobalLoginModal Component", () => {
         render(<GlobalLoginModal />)
 
         expect(screen.getByLabelText("Correo")).toBeInTheDocument()
-        expect(screen.getByLabelText("Contraseña")).toBeInTheDocument()
+        expect(screen.getByLabelText(/Contrase.a/)).toBeInTheDocument()
     })
 
     it("captures identifier input for quick access", async () => {

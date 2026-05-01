@@ -1,6 +1,8 @@
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
+import { focusFirstInvalidField, FormRecoveryAlert } from '@/Components/Conversion/FormRecovery';
+import SelectableCard from '@/Components/Conversion/SelectableCard';
 import PublicLayout from '@/Layouts/PublicLayout';
 import SupportDiagnosticCard from '@/Components/SupportDiagnosticCard';
 import { Alert, AlertDescription, AlertTitle } from '@/Components/ui/alert';
@@ -107,6 +109,7 @@ export default function BookingWizard({ tenant, services, providers, preselected
     const [step, setStep] = useState(1);
     const [selectedService, setSelectedService] = useState(null);
     const [selectedProvider, setSelectedProvider] = useState(null);
+    const [hasSelectedProvider, setHasSelectedProvider] = useState(false);
     const [selectedDate, setSelectedDate] = useState('');
     const [availableSlots, setAvailableSlots] = useState([]);
     const [slotTimeline, setSlotTimeline] = useState([]);
@@ -205,10 +208,20 @@ export default function BookingWizard({ tenant, services, providers, preselected
         recommended_action: 'Revisa servicio, persona que atiende, fecha y hora antes de confirmar.',
         trace_id: null,
     } : null);
+    const bookingRecoveryMessages = [
+        errors.customer_name ? 'Agrega el nombre completo para confirmar la reserva.' : null,
+        errors.customer_phone ? 'Agrega un telefono valido para que el negocio pueda confirmar.' : null,
+        errors.customer_email ? 'Revisa el correo electronico.' : null,
+        errors.contact_consent ? 'Confirma la autorizacion de contacto.' : null,
+        errors.time ? 'Selecciona un horario disponible.' : null,
+        bookingFlowError ? 'Revisa servicio, persona que atiende, fecha y hora.' : null,
+    ];
+    const focusBookingFirstError = () => focusFirstInvalidField(document.querySelector('[data-testid="booking-step-confirm"]'));
 
     const handleServiceSelect = (service) => {
         setSelectedService(service);
         setSelectedProvider(null);
+        setHasSelectedProvider(false);
         setSelectedDate('');
         setAvailableSlots([]);
         setSlotTimeline([]);
@@ -224,6 +237,7 @@ export default function BookingWizard({ tenant, services, providers, preselected
 
     const handleProviderSelect = (provider) => {
         setSelectedProvider(provider);
+        setHasSelectedProvider(true);
         setSelectedDate('');
         setAvailableSlots([]);
         setSlotTimeline([]);
@@ -253,7 +267,9 @@ export default function BookingWizard({ tenant, services, providers, preselected
 
     const handleSubmit = (event) => {
         event.preventDefault();
-        post(route('public.booking.store', { tenant: tenant.slug }));
+        post(route('public.booking.store', { tenant: tenant.slug }), {
+            onError: () => window.setTimeout(focusBookingFirstError, 0),
+        });
     };
 
     const goBack = () => {
@@ -329,12 +345,11 @@ export default function BookingWizard({ tenant, services, providers, preselected
 
                                     <div className="mt-8 grid gap-4 lg:grid-cols-2">
                                         {services.map((service) => (
-                                            <button
+                                            <SelectableCard
                                                 key={service.id}
-                                                type="button"
-                                                onClick={() => handleServiceSelect(service)}
-                                                className="group rounded-lg border border-border bg-card p-5 text-left text-card-foreground shadow-sm transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                                data-testid={`booking-service-${service.id}`}
+                                                onSelect={() => handleServiceSelect(service)}
+                                                selected={data.service_id === service.id}
+                                                testId={`booking-service-${service.id}`}
                                             >
                                                 <div className="flex items-start justify-between gap-4">
                                                     <div>
@@ -351,7 +366,7 @@ export default function BookingWizard({ tenant, services, providers, preselected
                                                     <span className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-2"><Clock3 className="h-4 w-4" aria-hidden="true" />{service.duration_formatted}</span>
                                                     <span className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-2"><Sparkles className="h-4 w-4" aria-hidden="true" />Reserva en pocos pasos</span>
                                                 </div>
-                                            </button>
+                                            </SelectableCard>
                                         ))}
                                     </div>
                                 </section>
@@ -369,24 +384,23 @@ export default function BookingWizard({ tenant, services, providers, preselected
                                     <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">Si no tienes preferencia, el sistema puede avanzar con la primera persona disponible y mantener el flujo rápido.</p>
 
                                     <div className="mt-8 grid gap-4 lg:grid-cols-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => handleProviderSelect(null)}
-                                            className="rounded-lg border border-border bg-muted/50 p-5 text-left transition-colors hover:border-primary hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                            data-testid="booking-provider-any"
+                                        <SelectableCard
+                                            onSelect={() => handleProviderSelect(null)}
+                                            selected={hasSelectedProvider && selectedProvider === null && data.service_provider_id === null}
+                                            className="bg-muted/50 hover:bg-card"
+                                            testId="booking-provider-any"
                                         >
                                             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Opción rápida</p>
                                             <h3 className="mt-2 text-2xl font-black tracking-tight text-foreground">Sin preferencia</h3>
                                             <p className="mt-3 text-sm leading-7 text-muted-foreground">Avanza con la persona disponible para no detener la reserva.</p>
-                                        </button>
+                                        </SelectableCard>
 
                                         {providers.map((provider) => (
-                                            <button
+                                            <SelectableCard
                                                 key={provider.id}
-                                                type="button"
-                                                onClick={() => handleProviderSelect(provider)}
-                                                className="rounded-lg border border-border bg-card p-5 text-left text-card-foreground shadow-sm transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                                data-testid={`booking-provider-${provider.id}`}
+                                                onSelect={() => handleProviderSelect(provider)}
+                                                selected={data.service_provider_id === provider.id}
+                                                testId={`booking-provider-${provider.id}`}
                                             >
                                                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Especialista</p>
                                                 <h3 className="mt-2 text-2xl font-black tracking-tight text-foreground">{provider.name}</h3>
@@ -394,7 +408,7 @@ export default function BookingWizard({ tenant, services, providers, preselected
                                                     <UserRound className="h-4 w-4" aria-hidden="true" />
                                                     Disponible para agendar
                                                 </p>
-                                            </button>
+                                            </SelectableCard>
                                         ))}
                                     </div>
                                 </section>
@@ -460,27 +474,19 @@ export default function BookingWizard({ tenant, services, providers, preselected
                                                 </p>
                                                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                                                     {(slotTimeline.length > 0 ? slotTimeline : availableSlots).map((slot) => (
-                                                        <button
+                                                        <SelectableCard
                                                             key={`${slot.time}-${slot.available === false ? 'blocked' : 'free'}`}
-                                                            type="button"
-                                                            onClick={() => handleTimeSelect(slot)}
+                                                            onSelect={() => handleTimeSelect(slot)}
                                                             disabled={slot.available === false}
-                                                            aria-pressed={data.time === slot.time}
-                                                            className={cn(
-                                                                'rounded-lg border px-4 py-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                                                                slot.available === false
-                                                                    ? 'cursor-not-allowed border-border bg-muted text-muted-foreground opacity-70'
-                                                                    : data.time === slot.time
-                                                                        ? 'border-primary bg-primary text-primary-foreground'
-                                                                        : 'border-border bg-card text-card-foreground hover:border-primary'
-                                                            )}
-                                                            data-testid={`booking-slot-${slot.time.replace(':', '-')}`}
+                                                            selected={data.time === slot.time}
+                                                            className="px-4 py-4"
+                                                            testId={`booking-slot-${slot.time.replace(':', '-')}`}
                                                         >
                                                             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] opacity-70">
                                                                 {slot.available === false ? 'Ocupado' : 'Horario'}
                                                             </p>
                                                             <p className="mt-2 text-lg font-black">{slot.display}</p>
-                                                        </button>
+                                                        </SelectableCard>
                                                     ))}
                                                 </div>
                                             </div>
@@ -490,7 +496,7 @@ export default function BookingWizard({ tenant, services, providers, preselected
                             ) : null}
 
                             {services.length > 0 && step === 4 ? (
-                                <form onSubmit={handleSubmit} className="flex flex-col gap-6" data-testid="booking-step-confirm">
+                                <form onSubmit={handleSubmit} className="flex flex-col gap-6" data-testid="booking-step-confirm" noValidate>
                                     <Button type="button" variant="ghost" onClick={goBack} className="w-fit px-0 text-muted-foreground hover:text-foreground">
                                         <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                                         Cambiar horario
@@ -503,8 +509,14 @@ export default function BookingWizard({ tenant, services, providers, preselected
                                     </div>
 
                                     <FieldGroup>
+                                        <FormRecoveryAlert
+                                            messages={bookingRecoveryMessages}
+                                            onFocusFirstError={focusBookingFirstError}
+                                            testId="booking-recovery-alert"
+                                        />
+
                                         <div className="grid gap-5 md:grid-cols-2">
-                                            <Field>
+                                            <Field data-invalid={errors.customer_name ? 'true' : undefined}>
                                                 <FieldLabel htmlFor="customer_name">Nombre completo</FieldLabel>
                                                 <Input
                                                     id="customer_name"
@@ -519,10 +531,10 @@ export default function BookingWizard({ tenant, services, providers, preselected
                                                     aria-describedby={errors.customer_name ? 'customer-name-error' : undefined}
                                                     data-testid="booking-name-input"
                                                 />
-                                                {errors.customer_name ? <FieldDescription id="customer-name-error" className="text-destructive">{errors.customer_name}</FieldDescription> : null}
+                                                {errors.customer_name ? <FieldDescription id="customer-name-error" role="alert" className="text-destructive">{errors.customer_name}</FieldDescription> : null}
                                             </Field>
 
-                                            <Field>
+                                            <Field data-invalid={errors.customer_phone ? 'true' : undefined}>
                                                 <FieldLabel htmlFor="customer_phone">Teléfono</FieldLabel>
                                                 <Input
                                                     id="customer_phone"
@@ -538,10 +550,10 @@ export default function BookingWizard({ tenant, services, providers, preselected
                                                     aria-describedby={errors.customer_phone ? 'customer-phone-error' : undefined}
                                                     data-testid="booking-phone-input"
                                                 />
-                                                {errors.customer_phone ? <FieldDescription id="customer-phone-error" className="text-destructive">{errors.customer_phone}</FieldDescription> : null}
+                                                {errors.customer_phone ? <FieldDescription id="customer-phone-error" role="alert" className="text-destructive">{errors.customer_phone}</FieldDescription> : null}
                                             </Field>
 
-                                            <Field className="md:col-span-2">
+                                            <Field className="md:col-span-2" data-invalid={errors.customer_email ? 'true' : undefined}>
                                                 <FieldLabel htmlFor="customer_email">Correo electrónico</FieldLabel>
                                                 <Input
                                                     id="customer_email"
@@ -556,7 +568,7 @@ export default function BookingWizard({ tenant, services, providers, preselected
                                                     aria-describedby={errors.customer_email ? 'customer-email-error' : undefined}
                                                     data-testid="booking-email-input"
                                                 />
-                                                {errors.customer_email ? <FieldDescription id="customer-email-error" className="text-destructive">{errors.customer_email}</FieldDescription> : null}
+                                                {errors.customer_email ? <FieldDescription id="customer-email-error" role="alert" className="text-destructive">{errors.customer_email}</FieldDescription> : null}
                                             </Field>
 
                                             <Field className="md:col-span-2">
@@ -572,7 +584,7 @@ export default function BookingWizard({ tenant, services, providers, preselected
                                                 />
                                             </Field>
 
-                                            <Field className="md:col-span-2 rounded-lg border bg-muted/50 px-4 py-4">
+                                            <Field className="md:col-span-2 rounded-lg border bg-muted/50 px-4 py-4" data-invalid={errors.contact_consent ? 'true' : undefined}>
                                                 <label className="flex items-start gap-3 text-sm leading-7 text-foreground" htmlFor="contact_consent">
                                                     <Checkbox
                                                         id="contact_consent"
@@ -587,7 +599,7 @@ export default function BookingWizard({ tenant, services, providers, preselected
                                                         Confirmo que mis datos son reales y autorizo que este negocio me contacte por WhatsApp o correo para confirmar o reprogramar la cita.
                                                     </span>
                                                 </label>
-                                                {errors.contact_consent ? <FieldDescription id="contact-consent-error" className="text-destructive">{errors.contact_consent}</FieldDescription> : null}
+                                                {errors.contact_consent ? <FieldDescription id="contact-consent-error" role="alert" className="text-destructive">{errors.contact_consent}</FieldDescription> : null}
                                             </Field>
                                         </div>
                                     </FieldGroup>

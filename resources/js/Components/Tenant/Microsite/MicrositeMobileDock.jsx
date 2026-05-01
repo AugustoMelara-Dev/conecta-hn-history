@@ -25,14 +25,19 @@ function MobileDockAction({ href, label, icon: Icon, external = false, inertia =
     if (inertia) {
         return (
             <Button asChild variant="ghost" className={className}>
-                <Link href={href}>{content}</Link>
+                <Link href={href} aria-label={label}>{content}</Link>
             </Button>
         );
     }
 
     return (
         <Button asChild variant="ghost" className={className}>
-            <a href={href} target={external ? '_blank' : undefined} rel={external ? 'noopener noreferrer' : undefined}>
+            <a
+                href={href}
+                target={external ? '_blank' : undefined}
+                rel={external ? 'noopener noreferrer' : undefined}
+                aria-label={external ? `${label}, abre en una pestana nueva` : label}
+            >
                 {content}
             </a>
         </Button>
@@ -47,7 +52,7 @@ export default function MicrositeMobileDock({
     bookingUrl,
 }) {
     return (
-        <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur-xl md:hidden">
+        <nav aria-label="Acciones rapidas del micrositio" className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur-xl md:hidden">
             <div className="grid h-16 grid-cols-4">
                 <MobileDockAction href="#top" label="Inicio" icon={Store} />
                 <MobileDockAction href={primaryHref} label={primaryLabel} icon={ShoppingBag} />

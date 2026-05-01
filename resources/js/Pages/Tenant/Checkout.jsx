@@ -45,12 +45,14 @@ import useTenantContext from '@/Hooks/useTenantContext';
 import { formatCurrency } from '@/Utils/currency';
 import { validateHondurasPhone } from '@/Utils/validators';
 import ImageWithFallback from '@/Components/ImageWithFallback';
+import ConversionActionBar from '@/Components/Conversion/ConversionActionBar';
+import ConversionSummary from '@/Components/Conversion/ConversionSummary';
+import { focusFirstInvalidField, FormRecoveryAlert } from '@/Components/Conversion/FormRecovery';
 import { ActionableAlert, EmptyState, LoadingState } from '@/Components/Feedback/UXStates';
 import { Button } from '@/Components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/Components/ui/field';
 import { Input } from '@/Components/ui/input';
-import { Progress } from '@/Components/ui/progress';
 import { RadioGroup, RadioGroupItem } from '@/Components/ui/radio-group';
 import { Textarea } from '@/Components/ui/textarea';
 import { cn } from '@/lib/utils';
@@ -244,6 +246,19 @@ export default function Checkout() {
     const isDeliveryAddressInvalid = hasSubmitAttempted
         && deliveryType === 'delivery'
         && (!customerAddress || customerAddress.trim().length < 5);
+    const checkoutRecoveryMessages = [
+        isCustomerNameInvalid ? 'Agrega el nombre completo de quien recibe el pedido.' : null,
+        isCustomerPhoneInvalid ? (phoneError || 'Ingresa un telefono valido para coordinar el pedido.') : null,
+        isDeliveryAddressInvalid ? 'Agrega una direccion o referencia clara para el delivery.' : null,
+    ];
+    const focusCheckoutFirstError = () => focusFirstInvalidField(document.querySelector('[data-testid="checkout-form"]'));
+    const checkoutTotals = [
+        { label: 'Subtotal', value: formatCurrency(subtotal) },
+        { label: 'Total', value: formatCurrency(grandTotal), emphasis: true, accent: true },
+    ];
+    const checkoutProgressValue = isSubmitting ? 70 : isFormValid ? 100 : 45;
+    const checkoutProgressLabel = isSubmitting ? 'Enviando pedido' : 'Progreso del checkout';
+    const checkoutProgressStatus = isSubmitting ? 'Procesando' : isFormValid ? 'Listo' : 'Pendiente';
 
     // ═══════════════════════════════════════════════════════════════════════
     // BEACON TELEMETRY: Send conversion event with graceful degradation
@@ -323,6 +338,7 @@ export default function Checkout() {
             if (customerPhone && customerPhone.trim().length >= 8) {
                 handlePhoneValidation(customerPhone);
             }
+            window.setTimeout(focusCheckoutFirstError, 0);
             showToast('Completa los campos requeridos para confirmar el pedido.', 'warning');
             return;
         }
@@ -418,6 +434,7 @@ export default function Checkout() {
                 <form
                     onSubmit={handleSubmit}
                     noValidate
+                    data-testid="checkout-form"
                     style={{
                         '--checkout-accent': primaryColor,
                         '--checkout-accent-soft': `${primaryColor}12`,
@@ -428,6 +445,12 @@ export default function Checkout() {
                             LEFT: Customer Form
                         ═══════════════════════════════════════════════════ */}
                         <div className="grid gap-6 lg:col-span-2">
+                            <FormRecoveryAlert
+                                messages={checkoutRecoveryMessages}
+                                onFocusFirstError={focusCheckoutFirstError}
+                                testId="checkout-recovery-alert"
+                            />
+
                             {/* Customer Information */}
                             <Card>
                                 <CardHeader>
@@ -675,15 +698,14 @@ export default function Checkout() {
                             RIGHT: Order Summary
                         ═══════════════════════════════════════════════════ */}
                         <div className="lg:col-span-1">
-                            <Card className="sticky top-40">
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2 text-lg">
-                                        <ShoppingCart className="h-5 w-5 text-[color:var(--checkout-accent)]" data-icon aria-hidden="true" />
-                                        Resumen del pedido
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    {/* Cart Items */}
+                            <ConversionSummary
+                                icon={ShoppingCart}
+                                title="Resumen del pedido"
+                                totals={checkoutTotals}
+                                progressLabel={checkoutProgressLabel}
+                                progressStatus={checkoutProgressStatus}
+                                progressValue={checkoutProgressValue}
+                            >
                                     <div className="max-h-80 overflow-y-auto pr-1" role="list" aria-label="Productos en el carrito">
                                         {items.map((item) => (
                                             <CartItemRow
@@ -693,28 +715,6 @@ export default function Checkout() {
                                                 onRemove={removeItem}
                                             />
                                         ))}
-                                    </div>
-
-                                    {/* Totals */}
-                                    <div className="mt-4 grid gap-2 border-t border-border pt-4">
-                                        <div className="flex justify-between text-muted-foreground">
-                                            <span>Subtotal</span>
-                                            <span>{formatCurrency(subtotal)}</span>
-                                        </div>
-                                        <div className="flex justify-between text-xl font-bold text-foreground">
-                                            <span>Total</span>
-                                            <span className="text-[color:var(--checkout-accent)]">
-                                                {formatCurrency(grandTotal)}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-4" aria-live="polite">
-                                        <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
-                                            <span>{isSubmitting ? 'Enviando pedido' : 'Progreso del checkout'}</span>
-                                            <span>{isSubmitting ? 'Procesando' : isFormValid ? 'Listo' : 'Pendiente'}</span>
-                                        </div>
-                                        <Progress value={isSubmitting ? 70 : isFormValid ? 100 : 45} />
                                     </div>
 
                                 {/* Error Message with ref for scroll */}
@@ -742,34 +742,19 @@ export default function Checkout() {
                                     </div>
                                 )}
 
-                                {/* Submit Button */}
-                                <Button
-                                    type="submit"
+                                <ConversionActionBar
                                     disabled={!isFormValid || isSubmitting}
-                                    data-testid="checkout-submit"
-                                    className="mt-6 h-12 w-full gap-2 rounded-lg font-bold text-white hover:opacity-90"
+                                    busy={isSubmitting}
+                                    busyLabel="Guardando pedido..."
+                                    idleLabel="Confirmar Pedido"
+                                    icon={CheckCircle}
+                                    processingIcon={Loader2}
                                     style={{ backgroundColor: primaryColor }}
-                                    aria-label={isSubmitting ? 'Procesando pedido' : 'Confirmar pedido'}
-                                    aria-busy={isSubmitting}
+                                    testId="checkout-submit"
                                 >
-                                    {isSubmitting ? (
-                                        <>
-                                            <Loader2 className="h-5 w-5 animate-spin" data-icon aria-hidden="true" />
-                                            Guardando pedido...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <CheckCircle className="h-5 w-5" data-icon aria-hidden="true" />
-                                            Confirmar Pedido
-                                        </>
-                                    )}
-                                </Button>
-
-                                <p className="mt-4 text-center text-xs text-muted-foreground">
-                                    Al confirmar, serás redirigido a WhatsApp para finalizar tu pedido.
-                                </p>
-                                </CardContent>
-                            </Card>
+                                    Al confirmar, seras redirigido a WhatsApp para finalizar tu pedido.
+                                </ConversionActionBar>
+                            </ConversionSummary>
                         </div>
                     </div>
                 </form>

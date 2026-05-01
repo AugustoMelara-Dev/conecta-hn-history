@@ -1,14 +1,15 @@
 import React from 'react';
-import { AlertCircle, User, Package, Truck, Check, MapPin, Loader2, MessageCircle } from 'lucide-react';
+import { AlertCircle, User, Package, Truck, Check, MapPin, Loader2, MessageCircle, ShoppingCart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { calculateItemTotal } from '@/Stores/useCartStore';
 import SupportDiagnosticCard from '@/Components/SupportDiagnosticCard';
+import ConversionActionBar from '@/Components/Conversion/ConversionActionBar';
+import ConversionSummary from '@/Components/Conversion/ConversionSummary';
+import { focusFirstInvalidField, FormRecoveryAlert } from '@/Components/Conversion/FormRecovery';
 import { Alert, AlertDescription } from '@/Components/ui/alert';
 import { Button } from '@/Components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Field, FieldDescription, FieldLabel } from '@/Components/ui/field';
 import { Input } from '@/Components/ui/input';
-import { Separator } from '@/Components/ui/separator';
 import { Textarea } from '@/Components/ui/textarea';
 
 export default function CheckoutForm({
@@ -30,6 +31,16 @@ export default function CheckoutForm({
     submitDiagnostic,
     errors,
 }) {
+    const recoveryMessages = [
+        errors.customerName ? 'Agrega el nombre de quien recibe el pedido.' : null,
+        errors.customerPhone ? 'Agrega un telefono valido para coordinar el pedido.' : null,
+        errors.customerAddress ? 'Agrega una direccion o referencia clara para el delivery.' : null,
+    ];
+    const focusDrawerFirstError = () => focusFirstInvalidField(document.querySelector('[data-testid="cart-drawer"]'));
+    const drawerTotals = [
+        { label: 'Total', value: `L. ${grandTotal.toFixed(2)}`, emphasis: true },
+    ];
+
     return (
         <>
             <div className="min-h-0 flex-1 overflow-y-auto p-4">
@@ -44,6 +55,12 @@ export default function CheckoutForm({
                 ) : null}
 
                 <SupportDiagnosticCard diagnostic={submitDiagnostic} />
+
+                <FormRecoveryAlert
+                    messages={recoveryMessages}
+                    onFocusFirstError={focusDrawerFirstError}
+                    testId="cart-checkout-recovery-alert"
+                />
 
                 <Field>
                     <FieldLabel htmlFor="cart-checkout-name">
@@ -166,51 +183,39 @@ export default function CheckoutForm({
                     />
                 </Field>
 
-                <Card>
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-base">Resumen del pedido</CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid gap-2 text-sm">
+                <ConversionSummary
+                    icon={ShoppingCart}
+                    title="Resumen del pedido"
+                    totals={drawerTotals}
+                    className="shadow-sm"
+                    sticky={false}
+                >
+                    <div className="grid gap-2 text-sm">
                         {items.map((item) => (
                             <div key={item.id} className="flex justify-between gap-3 text-muted-foreground">
                                 <span className="min-w-0 truncate">{item.quantity}x {item.name}</span>
                                 <span className="shrink-0">L. {calculateItemTotal(item.price, item.quantity, item.selectedModifiers).toFixed(2)}</span>
                             </div>
                         ))}
-                        <Separator className="my-1" />
-                        <div className="flex justify-between font-bold text-foreground">
-                            <span>Total</span>
-                            <span>L. {grandTotal.toFixed(2)}</span>
-                        </div>
-                    </CardContent>
-                </Card>
+                    </div>
+                </ConversionSummary>
                 </div>
             </div>
 
             <div className="border-t bg-card p-4 text-card-foreground shadow-sm">
-                <Button
+                <ConversionActionBar
                     type="button"
-                    onClick={handleSubmitOrder}
                     disabled={isSubmitting}
-                    data-testid="checkout-submit"
-                    className="w-full"
+                    busy={isSubmitting}
+                    busyLabel="Procesando..."
+                    idleLabel="Confirmar pedido en WhatsApp"
+                    icon={MessageCircle}
+                    processingIcon={Loader2}
+                    testId="checkout-submit"
+                    onClick={handleSubmitOrder}
                 >
-                    {isSubmitting ? (
-                        <>
-                            <Loader2 className="h-5 w-5 animate-spin" data-icon aria-hidden="true" />
-                            Procesando...
-                        </>
-                    ) : (
-                        <>
-                            <MessageCircle className="h-5 w-5" data-icon aria-hidden="true" />
-                            Confirmar pedido en WhatsApp
-                        </>
-                    )}
-                </Button>
-
-                <p className="mt-3 text-center text-xs text-muted-foreground">
-                    Tu pedido se registrará y luego se abrirá WhatsApp para confirmar.
-                </p>
+                    Tu pedido se registrara y luego se abrira WhatsApp para confirmar.
+                </ConversionActionBar>
             </div>
         </>
     );

@@ -20,7 +20,7 @@ describe('UX state components', () => {
             <EmptyState
                 title="No hay productos"
                 description="Agrega productos para continuar."
-                actionLabel="Ver catálogo"
+                actionLabel="Ver catalogo"
                 actionHref="/demo"
                 secondaryLabel="Limpiar filtros"
                 onSecondaryAction={onSecondaryAction}
@@ -28,7 +28,7 @@ describe('UX state components', () => {
         );
 
         expect(screen.getByText('No hay productos')).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: /ver catálogo/i })).toHaveAttribute('href', '/demo');
+        expect(screen.getByRole('link', { name: /ver catalogo/i })).toHaveAttribute('href', '/demo');
 
         fireEvent.click(screen.getByRole('button', { name: /limpiar filtros/i }));
         expect(onSecondaryAction).toHaveBeenCalled();
@@ -39,12 +39,12 @@ describe('UX state components', () => {
 
         render(
             <ActionableAlert title="No pudimos confirmar" actionLabel="Revisar datos" onAction={onAction} tone="error">
-                Verifica el teléfono e intenta nuevamente.
+                Verifica el telefono e intenta nuevamente.
             </ActionableAlert>,
         );
 
         expect(screen.getByRole('alert')).toBeInTheDocument();
-        expect(screen.getByText(/verifica el teléfono/i)).toBeInTheDocument();
+        expect(screen.getByText(/verifica el telefono/i)).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: /revisar datos/i }));
         expect(onAction).toHaveBeenCalled();

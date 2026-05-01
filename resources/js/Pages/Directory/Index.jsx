@@ -1,21 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { AlertCircle, ArrowRight, Filter, MapPin, Search, Sparkles, X } from 'lucide-react';
+import { AlertCircle, ArrowRight, MapPin, Sparkles, X } from 'lucide-react';
 import PublicLayout from '@/Layouts/PublicLayout';
+import PublicSearchShell from '@/Components/Public/PublicSearchShell';
 import { ActionableAlert, EmptyState as UXEmptyState, LoadingState } from '@/Components/Feedback/UXStates';
 import { Alert, AlertDescription, AlertTitle } from '@/Components/ui/alert';
 import { Badge } from '@/Components/ui/badge';
 import { Button } from '@/Components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/Components/ui/card';
-import { Input } from '@/Components/ui/input';
-import {
-    Select,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/Components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
 import {
     Sheet,
     SheetContent,
@@ -656,53 +649,30 @@ export default function DirectoryIndex({ tenants, categories = [], cities = [], 
                         </p>
                     </div>
 
-                    <div className="mt-10 grid gap-4 lg:grid-cols-[1.15fr,0.45fr,auto]">
-                        <div className="relative">
-                            <label htmlFor="directory-search" className="sr-only">
-                                Buscar negocios, productos o servicios
-                            </label>
-                            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                            <Input
-                                id="directory-search"
-                                name="search"
-                                type="text"
-                                placeholder="Buscar negocios, productos o servicios..."
-                                value={searchTerm}
-                                onChange={(event) => setSearchTerm(event.target.value)}
-                                className="h-14 rounded-[24px] border-stone-200 bg-[#f3f3f1] px-11 text-base text-slate-950 placeholder:text-slate-400 focus-visible:ring-slate-950"
-                                data-testid="directory-search-input"
-                            />
-                        </div>
-
-                        <Select value={cityTerm || 'all'} onValueChange={(value) => setCity(value === 'all' ? '' : value)}>
-                            <SelectTrigger
-                                aria-label="Filtrar por ciudad"
-                                className="h-14 rounded-[24px] border-stone-200 bg-[#f3f3f1] px-4 text-base text-slate-900 focus:ring-slate-950"
-                                data-testid="directory-city-select"
-                            >
-                                <SelectValue placeholder="Todas las ciudades" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectGroup>
-                                    <SelectItem value="all">Todas las ciudades</SelectItem>
-                                    {cities.map((city) => (
-                                        <SelectItem key={city.id} value={city.slug}>{city.name}</SelectItem>
-                                    ))}
-                                </SelectGroup>
-                            </SelectContent>
-                        </Select>
-
-                        <Button
-                            type="button"
-                            onClick={() => setMobileOpen((value) => !value)}
-                            variant="outline"
-                            className="h-14 rounded-[24px] border-stone-200 bg-white px-5 text-sm font-semibold text-slate-700 transition-colors hover:border-stone-300 lg:hidden"
-                            data-testid="directory-mobile-filters"
-                        >
-                            <Filter data-icon="inline-start" aria-hidden="true" />
-                            Filtros
-                        </Button>
-                    </div>
+                    <PublicSearchShell
+                        searchValue={searchTerm}
+                        onSearchChange={setSearchTerm}
+                        searchId="directory-search"
+                        searchPlaceholder="Buscar negocios, productos o servicios..."
+                        searchLabel="Buscar negocios, productos o servicios"
+                        searchTestId="directory-search-input"
+                        cityValue={cityTerm || 'all'}
+                        onCityChange={(value) => setCity(value === 'all' ? '' : value)}
+                        cityId="directory-city"
+                        cityPlaceholder="Todas las ciudades"
+                        cityAllLabel="Todas las ciudades"
+                        cityTriggerLabel="Filtrar por ciudad"
+                        cityTestId="directory-city-select"
+                        cities={cities}
+                        showMobileFiltersButton
+                        onMobileFiltersClick={() => setMobileOpen((value) => !value)}
+                        mobileFiltersTestId="directory-mobile-filters"
+                        filtersLabel="Filtros"
+                        containerClassName="mt-10 grid gap-4 lg:grid-cols-[1.15fr,0.45fr,auto]"
+                        inputClassName="h-14 rounded-[24px] border-stone-200 bg-[#f3f3f1] px-11 text-base text-slate-950 placeholder:text-slate-400 focus-visible:ring-slate-950"
+                        selectClassName="h-14 rounded-[24px] border-stone-200 bg-[#f3f3f1] pl-11 text-base text-slate-900 focus:ring-slate-950"
+                        mobileFiltersClassName="h-14 rounded-[24px] border-stone-200 bg-white px-5 text-sm font-semibold text-slate-700 transition-colors hover:border-stone-300 lg:hidden"
+                    />
 
                     <div className="mt-6 flex flex-wrap gap-3">
                         <FilterButton active={!filters.category} onClick={() => setCategory('')} testId="directory-category-all">

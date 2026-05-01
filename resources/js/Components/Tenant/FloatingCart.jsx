@@ -15,6 +15,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ShoppingCart, ShoppingBag, ChevronLeft, Percent } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import useCartStore from '@/Stores/useCartStore';
+import { focusFirstInvalidField } from '@/Components/Conversion/FormRecovery';
 import { EmptyState } from '@/Components/Feedback/UXStates';
 import { Badge } from '@/Components/ui/badge';
 import { Button } from '@/Components/ui/button';
@@ -139,6 +140,9 @@ export default function FloatingCart() {
     const handleProceedToCheckout = () => {
         setStep(STEPS.CHECKOUT);
         setErrors({});
+        window.setTimeout(() => {
+            document.querySelector('[data-testid="checkout-name-input"]')?.focus();
+        }, 0);
     };
 
     const handleBackToCart = () => {
@@ -151,6 +155,7 @@ export default function FloatingCart() {
         const validation = validateCheckout();
         if (!validation.isValid) {
             setErrors(validation.errors);
+            window.setTimeout(() => focusFirstInvalidField(document.querySelector('[data-testid="cart-drawer"]')), 0);
             return;
         }
 
@@ -230,12 +235,18 @@ export default function FloatingCart() {
                 <SheetContent
                     side="right"
                     data-testid="cart-drawer"
+                    aria-busy={isSubmitting}
                     className="flex h-full w-full max-w-md flex-col gap-0 overflow-hidden p-0 sm:max-w-md"
                 >
                     <div className="flex h-full min-h-0 flex-col">
                         <span className="sr-only" aria-live="polite">
                             {totalItems} productos en el carrito
                         </span>
+                        {step === STEPS.CHECKOUT ? (
+                            <span className="sr-only" aria-live="polite">
+                                Completa los datos de entrega para finalizar el pedido.
+                            </span>
+                        ) : null}
                         {(submitError || couponError) ? (
                             <span className="sr-only" aria-live="assertive">
                                 {submitError || couponError}

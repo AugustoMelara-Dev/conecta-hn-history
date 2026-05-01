@@ -86,10 +86,12 @@ export default function ShopLayout({
                     {/* Cart Button (Desktop) */}
                     {isPro && showCart && (
                         <button
+                            type="button"
                             onClick={() => setIsCartOpen(true)}
+                            aria-label={`Abrir carrito (${cartItemCount} ${cartItemCount === 1 ? 'producto' : 'productos'})`}
                             className="relative p-2 text-slate-400 hover:text-white transition-colors"
                         >
-                            <ShoppingBag className="w-5 h-5" />
+                            <ShoppingBag className="w-5 h-5" aria-hidden="true" />
                             {cartItemCount > 0 && (
                                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
                                     {cartItemCount > 9 ? '9+' : cartItemCount}
@@ -133,28 +135,32 @@ export default function ShopLayout({
                     {/* Home */}
                     <Link
                         href={tenantSlug ? `/${tenantSlug}` : '#'}
+                        aria-label={`Ir al inicio de ${tenantName}`}
                         className="flex flex-col items-center gap-1 text-slate-400 hover:text-white transition-colors px-4 py-2"
                     >
-                        <Store className="w-5 h-5" />
+                        <Store className="w-5 h-5" aria-hidden="true" />
                         <span className="text-[10px] font-medium">Inicio</span>
                     </Link>
 
                     {/* Catalog (Scroll anchor) */}
                     <a
                         href="#catalogo"
+                        aria-label="Ir al catalogo de productos"
                         className="flex flex-col items-center gap-1 text-slate-400 hover:text-white transition-colors px-4 py-2"
                     >
-                        <Grid3X3 className="w-5 h-5" />
+                        <Grid3X3 className="w-5 h-5" aria-hidden="true" />
                         <span className="text-[10px] font-medium">Catálogo</span>
                     </a>
 
                     {/* Cart (Pro only) or Contact (Semilla) */}
                     {isPro ? (
                         <button
+                            type="button"
                             onClick={() => setIsCartOpen(true)}
+                            aria-label={`Abrir carrito (${cartItemCount} ${cartItemCount === 1 ? 'producto' : 'productos'})`}
                             className="relative flex flex-col items-center gap-1 text-slate-400 hover:text-white transition-colors px-4 py-2"
                         >
-                            <ShoppingBag className="w-5 h-5" />
+                            <ShoppingBag className="w-5 h-5" aria-hidden="true" />
                             {cartItemCount > 0 && (
                                 <span className="absolute top-0 right-2 bg-red-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
                                     {cartItemCount > 9 ? '9+' : cartItemCount}
@@ -165,9 +171,10 @@ export default function ShopLayout({
                     ) : (
                         <a
                             href={`tel:${whatsappNumber}`}
+                            aria-label={`Llamar a ${tenantName}`}
                             className="flex flex-col items-center gap-1 text-slate-400 hover:text-white transition-colors px-4 py-2"
                         >
-                            <Phone className="w-5 h-5" />
+                            <Phone className="w-5 h-5" aria-hidden="true" />
                             <span className="text-[10px] font-medium">Llamar</span>
                         </a>
                     )}
@@ -178,18 +185,20 @@ export default function ShopLayout({
                             href={whatsappUrl}
                             target="_blank"
                             rel="noopener noreferrer"
+                            aria-label={`Contactar a ${tenantName} por WhatsApp`}
                             className="flex flex-col items-center gap-1 px-4 py-2"
                             style={{ color: '#25D366' }}
                         >
-                            <MessageCircle className="w-5 h-5" />
+                            <MessageCircle className="w-5 h-5" aria-hidden="true" />
                             <span className="text-[10px] font-medium">WhatsApp</span>
                         </a>
                     ) : (
                         <a
                             href="#contacto"
+                            aria-label={`Ver ubicacion de ${tenantName}`}
                             className="flex flex-col items-center gap-1 text-slate-400 hover:text-white transition-colors px-4 py-2"
                         >
-                            <MapPin className="w-5 h-5" />
+                            <MapPin className="w-5 h-5" aria-hidden="true" />
                             <span className="text-[10px] font-medium">Ubicación</span>
                         </a>
                     )}

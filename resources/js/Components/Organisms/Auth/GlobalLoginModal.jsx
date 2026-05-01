@@ -18,6 +18,8 @@ export default function GlobalLoginModal() {
         password: "",
         remember: false,
     })
+    const emailErrorId = passwordForm.errors.email ? "modal-email-error" : undefined
+    const passwordErrorId = passwordForm.errors.password ? "modal-password-error" : undefined
 
     const handlePasswordLogin = (event) => {
         event.preventDefault()
@@ -50,11 +52,11 @@ export default function GlobalLoginModal() {
                 <Tabs value={loginView} onValueChange={setLoginView} className="w-full">
                     <TabsList className="grid w-full grid-cols-2">
                         <TabsTrigger value="password" className="gap-2">
-                            <Building2 className="h-4 w-4" />
+                            <Building2 className="h-4 w-4" aria-hidden="true" />
                             Acceso con correo
                         </TabsTrigger>
                         <TabsTrigger value="otp" className="gap-2">
-                            <Mail className="h-4 w-4" />
+                            <Mail className="h-4 w-4" aria-hidden="true" />
                             Acceso rápido
                         </TabsTrigger>
                     </TabsList>
@@ -66,14 +68,19 @@ export default function GlobalLoginModal() {
                                     <FieldLabel htmlFor="modal-email">Correo</FieldLabel>
                                     <Input
                                         id="modal-email"
+                                        data-testid="modal-login-email-input"
                                         type="email"
                                         value={passwordForm.data.email}
                                         onChange={(event) => passwordForm.setData("email", event.target.value)}
                                         required
                                         autoComplete="email"
+                                        aria-invalid={Boolean(passwordForm.errors.email)}
+                                        aria-describedby={emailErrorId}
                                     />
                                     {passwordForm.errors.email ? (
-                                        <FieldDescription className="text-rose-600">{passwordForm.errors.email}</FieldDescription>
+                                        <FieldDescription id="modal-email-error" role="alert" className="text-rose-600">
+                                            {passwordForm.errors.email}
+                                        </FieldDescription>
                                     ) : null}
                                 </Field>
 
@@ -81,18 +88,23 @@ export default function GlobalLoginModal() {
                                     <FieldLabel htmlFor="modal-password">Contraseña</FieldLabel>
                                     <Input
                                         id="modal-password"
+                                        data-testid="modal-login-password-input"
                                         type="password"
                                         value={passwordForm.data.password}
                                         onChange={(event) => passwordForm.setData("password", event.target.value)}
                                         required
                                         autoComplete="current-password"
+                                        aria-invalid={Boolean(passwordForm.errors.password)}
+                                        aria-describedby={passwordErrorId}
                                     />
                                     {passwordForm.errors.password ? (
-                                        <FieldDescription className="text-rose-600">{passwordForm.errors.password}</FieldDescription>
+                                        <FieldDescription id="modal-password-error" role="alert" className="text-rose-600">
+                                            {passwordForm.errors.password}
+                                        </FieldDescription>
                                     ) : null}
                                 </Field>
 
-                                <Button type="submit" className="w-full" disabled={passwordForm.processing}>
+                                <Button type="submit" data-testid="modal-login-submit" className="w-full" disabled={passwordForm.processing}>
                                     {passwordForm.processing ? <Spinner className="mr-2" /> : null}
                                     Iniciar sesión
                                 </Button>

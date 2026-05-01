@@ -77,22 +77,24 @@ export default function CategoryRail({ categories, activeCategory }) {
                 {/* Left Arrow */}
                 {showLeftArrow && (
                     <button
+                        type="button"
                         onClick={() => scroll('left')}
                         className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-background/80 backdrop-blur-sm border border-border rounded-full p-2 shadow-lg hover:bg-accent transition-all opacity-0 group-hover:opacity-100 duration-300 ml-2"
-                        aria-label="Scroll left"
+                        aria-label="Desplazar categorias a la izquierda"
                     >
-                        <ChevronLeft className="w-5 h-5 text-foreground" />
+                        <ChevronLeft className="w-5 h-5 text-foreground" aria-hidden="true" />
                     </button>
                 )}
 
                 {/* Right Arrow */}
                 {showRightArrow && (
                     <button
+                        type="button"
                         onClick={() => scroll('right')}
                         className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-background/80 backdrop-blur-sm border border-border rounded-full p-2 shadow-lg hover:bg-accent transition-all opacity-0 group-hover:opacity-100 duration-300 mr-2"
-                        aria-label="Scroll right"
+                        aria-label="Desplazar categorias a la derecha"
                     >
-                        <ChevronRight className="w-5 h-5 text-foreground" />
+                        <ChevronRight className="w-5 h-5 text-foreground" aria-hidden="true" />
                     </button>
                 )}
 
@@ -127,7 +129,7 @@ export default function CategoryRail({ categories, activeCategory }) {
                                         : "bg-card text-muted-foreground border-border hover:border-primary/50 hover:text-foreground hover:bg-accent/50"
                                 )}
                             >
-                                <IconComponent className={cn("w-4 h-4", isActive ? "text-primary-foreground" : "text-muted-foreground")} />
+                                <IconComponent className={cn("w-4 h-4", isActive ? "text-primary-foreground" : "text-muted-foreground")} aria-hidden="true" />
                                 {category.name}
                             </Link>
                         );

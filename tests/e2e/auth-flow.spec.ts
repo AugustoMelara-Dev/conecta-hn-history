@@ -100,12 +100,13 @@ test.describe('Auth journey', () => {
 
         const stillOnLogin = page.url().includes('/login');
         if (!stillOnLogin) {
-            await expect(page.locator('body')).not.toContainText(/500|server error/i);
+            await page.waitForLoadState('domcontentloaded', { timeout: 15_000 }).catch(() => null);
+            await expectNoFatalServerText(page);
             return;
         }
 
         // Validation UX can be inline or generic; the critical gate is no 5xx regression.
-        await expect(page.locator('body')).not.toContainText(/500|server error|internal server error/i);
+        await expectNoFatalServerText(page);
     });
 
     test('visitor can register a new tenant owner account', async ({ page }) => {

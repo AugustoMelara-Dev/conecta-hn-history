@@ -60,6 +60,7 @@ export default function CouponCard({ coupon, canManageCoupons = false, onToggle 
 
                     <button
                         onClick={handleCopy}
+                        aria-label={copied ? `Codigo ${coupon.code} copiado` : `Copiar codigo ${coupon.code}`}
                         className={`rounded-lg p-2 transition-all ${copied ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
                         title={copied ? 'Copiado' : 'Copiar codigo'}
                     >
@@ -98,6 +99,9 @@ export default function CouponCard({ coupon, canManageCoupons = false, onToggle 
                     <button
                         onClick={handleToggle}
                         disabled={isToggleDisabled}
+                        role="switch"
+                        aria-checked={Boolean(isActive)}
+                        aria-label={`${isActive ? 'Desactivar' : 'Activar'} cupón ${coupon.code}`}
                         title={canManageCoupons ? undefined : 'Gestion no disponible en esta vista'}
                         className={`relative h-7 w-12 rounded-full transition-colors ${isToggleDisabled ? 'cursor-not-allowed bg-gray-200' : isActive ? 'bg-emerald-500' : 'bg-gray-300'}`}
                     >

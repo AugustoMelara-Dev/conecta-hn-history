@@ -80,6 +80,8 @@ export default function StoreLayout({ children, className = '' }) {
                             onClick={toggleCart}
                             className="relative rounded-full"
                             aria-label={`Carrito de compras. ${totalItems} artículos`}
+                            aria-expanded={isCartOpen}
+                            aria-controls="store-cart-sheet"
                         >
                             <ShoppingCart data-icon aria-hidden="true" />
                             {totalItems > 0 ? (
@@ -108,6 +110,9 @@ export default function StoreLayout({ children, className = '' }) {
                 }}
             >
                 <SheetContent className="flex h-full w-full max-w-md flex-col p-0">
+                    <div id="store-cart-sheet" className="sr-only" aria-live="polite">
+                        {totalItems} articulos en el carrito
+                    </div>
                     <SheetHeader className="border-b px-4 py-4 pr-12 text-left">
                         <SheetTitle>
                             Tu carrito

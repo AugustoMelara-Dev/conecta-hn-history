@@ -43,6 +43,11 @@ export default function ReviewSection({ tenant, reviews = [] }) {
         });
     };
 
+    const ratingErrorId = errors.rating ? 'review-rating-error' : undefined;
+    const commentErrorId = [errors.comment ? 'review-comment-error' : null, errors.tenant_id ? 'review-tenant-error' : null]
+        .filter(Boolean)
+        .join(' ') || undefined;
+
     return (
         <div className="space-y-12">
             <div className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm shadow-slate-950/5 md:p-8">
@@ -53,32 +58,47 @@ export default function ReviewSection({ tenant, reviews = [] }) {
                 {auth.user ? (
                     <form onSubmit={submit} className="space-y-6">
                         {recentlySuccessful ? (
-                            <div className="rounded-[1.2rem] bg-slate-100 p-4 text-sm font-semibold text-slate-950">
+                            <div role="status" aria-live="polite" className="rounded-[1.2rem] bg-slate-100 p-4 text-sm font-semibold text-slate-950">
                                 Tu resena fue enviada y esta pendiente de moderacion. Gracias.
                             </div>
                         ) : null}
 
                         {errors.error ? (
-                            <div className="rounded-[1.2rem] border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-700">
+                            <div role="alert" className="rounded-[1.2rem] border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-700">
                                 {errors.error}
                             </div>
                         ) : null}
 
-                        <div>
-                            <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
+                        <fieldset>
+                            <legend className="mb-2 block text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
                                 Calificacion
-                            </label>
-                            <div className="flex gap-1">
+                            </legend>
+                            <div className="flex gap-1" role="radiogroup" aria-label="Calificacion de la resena" aria-describedby={ratingErrorId}>
                                 {[1, 2, 3, 4, 5].map((star) => (
                                     <button
                                         key={star}
                                         type="button"
+                                        role="radio"
+                                        aria-checked={data.rating === star}
+                                        aria-label={`${star} ${star === 1 ? 'estrella' : 'estrellas'}`}
                                         onClick={() => setData('rating', star)}
                                         onMouseEnter={() => setHoveredStar(star)}
                                         onMouseLeave={() => setHoveredStar(0)}
-                                        className="transition-transform hover:scale-110 focus:outline-none"
+                                        onKeyDown={(event) => {
+                                            if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
+                                                event.preventDefault();
+                                                setData('rating', Math.min(5, data.rating + 1));
+                                            }
+
+                                            if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
+                                                event.preventDefault();
+                                                setData('rating', Math.max(1, data.rating - 1));
+                                            }
+                                        }}
+                                        className="rounded-full p-1 transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2"
                                     >
                                         <Star
+                                            aria-hidden="true"
                                             className={`h-8 w-8 ${
                                                 star <= (hoveredStar || data.rating)
                                                     ? 'fill-slate-950 text-slate-950'
@@ -88,8 +108,8 @@ export default function ReviewSection({ tenant, reviews = [] }) {
                                     </button>
                                 ))}
                             </div>
-                            {errors.rating ? <p className="mt-1 text-xs font-semibold text-rose-600">{errors.rating}</p> : null}
-                        </div>
+                            {errors.rating ? <p id="review-rating-error" className="mt-1 text-xs font-semibold text-rose-600">{errors.rating}</p> : null}
+                        </fieldset>
 
                         <div>
                             <label htmlFor="comment" className="mb-2 block text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
@@ -100,11 +120,13 @@ export default function ReviewSection({ tenant, reviews = [] }) {
                                 rows="4"
                                 value={data.comment}
                                 onChange={(event) => setData('comment', event.target.value)}
+                                aria-invalid={Boolean(errors.comment || errors.tenant_id)}
+                                aria-describedby={commentErrorId}
                                 className="w-full resize-none rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4 text-slate-950 placeholder:text-slate-400 transition-all focus:border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-200"
                                 placeholder="Como fue tu experiencia con este negocio?"
                             />
-                            {errors.comment ? <p className="mt-1 text-xs font-semibold text-rose-600">{errors.comment}</p> : null}
-                            {errors.tenant_id ? <p className="mt-1 text-xs font-semibold text-rose-600">{errors.tenant_id}</p> : null}
+                            {errors.comment ? <p id="review-comment-error" className="mt-1 text-xs font-semibold text-rose-600">{errors.comment}</p> : null}
+                            {errors.tenant_id ? <p id="review-tenant-error" className="mt-1 text-xs font-semibold text-rose-600">{errors.tenant_id}</p> : null}
                         </div>
 
                         <button
