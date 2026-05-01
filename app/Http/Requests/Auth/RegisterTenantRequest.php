@@ -51,7 +51,7 @@ final class RegisterTenantRequest extends FormRequest
             'whatsapp' => $this->input('whatsapp', $this->input('whatsapp_number')),
             'selected_plan' => $this->input('selected_plan', $this->input('plan', 'free')),
             'business_type' => $businessType,
-            'privacy_accepted' => $this->input('privacy_accepted', $this->input('terms_accepted')),
+            'privacy_accepted' => $this->input('privacy_accepted'),
             'terms_version' => $this->input('terms_version', config('legal.current_versions.terms')),
             'privacy_version' => $this->input('privacy_version', config('legal.current_versions.privacy')),
         ]);

@@ -36,6 +36,7 @@ final class BusinessRegistrationTest extends TestCase
             'whatsapp' => '+50496321907',
             'selected_plan' => 'free',
             'terms_accepted' => '1',
+            'privacy_accepted' => '1',
         ]);
 
         $response->assertRedirect(route('verification.notice', [], false));

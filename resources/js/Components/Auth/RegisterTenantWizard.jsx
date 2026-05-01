@@ -43,7 +43,7 @@ const STEP_FIELDS = {
     0: ["business_name", "slug", "category_id", "business_type"],
     1: ["city_id", "whatsapp"],
     2: ["name", "email", "password", "password_confirmation"],
-    3: ["selected_plan", "terms_accepted"],
+    3: ["selected_plan", "terms_accepted", "privacy_accepted"],
 }
 
 const FIELD_TO_STEP = Object.entries(STEP_FIELDS).reduce((carry, [step, fields]) => {
@@ -195,6 +195,7 @@ export function RegisterTenantWizard({
         password_confirmation: "",
         selected_plan: "free",
         terms_accepted: false,
+        privacy_accepted: false,
     })
 
     const errorFor = (field) => localErrors[field] || errors[field] || null
@@ -478,6 +479,7 @@ export function RegisterTenantWizard({
         if (targetStep === 3) {
             if (!["free", "pro"].includes(data.selected_plan)) nextErrors.selected_plan = "Selecciona un plan válido."
             if (!data.terms_accepted) nextErrors.terms_accepted = "Debes aceptar los términos para continuar."
+            if (!data.privacy_accepted) nextErrors.privacy_accepted = "Debes aceptar la política de privacidad para continuar."
         }
 
         const fields = STEP_FIELDS[targetStep]
