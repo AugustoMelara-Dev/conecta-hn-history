@@ -480,6 +480,22 @@ export function PlanSummaryStep({
                         </span>
                     </label>
                     {errorFor("terms_accepted") ? <FieldDescription id={errorId("terms_accepted")} role="alert" className="text-destructive">{errorFor("terms_accepted")}</FieldDescription> : null}
+                    <label className="flex items-start gap-3 rounded-[1.75rem] border border-border bg-muted px-5 py-5">
+                        <Checkbox
+                            id="privacy_accepted"
+                            name="privacy_accepted"
+                            data-testid="register-privacy-checkbox"
+                            checked={data.privacy_accepted}
+                            onCheckedChange={(checked) => updateField("privacy_accepted", checked === true)}
+                            aria-invalid={Boolean(errorFor("privacy_accepted"))}
+                            aria-describedby={describedBy("privacy_accepted", errorFor, helpId("privacy_accepted"))}
+                            className="mt-1 border-input text-primary-foreground data-[state=checked]:border-primary data-[state=checked]:bg-primary"
+                        />
+                        <span id={helpId("privacy_accepted")} className="text-sm leading-7 text-muted-foreground">
+                            Acepto la política de privacidad y el tratamiento de datos para operar esta cuenta.
+                        </span>
+                    </label>
+                    {errorFor("privacy_accepted") ? <FieldDescription id={errorId("privacy_accepted")} role="alert" className="text-destructive">{errorFor("privacy_accepted")}</FieldDescription> : null}
 
                     <div className="rounded-[1.75rem] bg-primary px-5 py-6 text-primary-foreground">
                         <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary-foreground/70">Lo que sucede al enviar</p>
