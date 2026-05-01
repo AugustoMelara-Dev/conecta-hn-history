@@ -16,19 +16,20 @@ class EloquentCheckoutSessionAdapter implements CheckoutSessionPortInterface
         float $subtotal,
         string|int|null $userId
     ): void {
-        CheckoutSession::query()->withoutGlobalScopes()->updateOrCreate(
-            [
-                'tenant_id' => $tenantId,
-                'session_id' => $sessionId,
-            ],
-            [
-                'user_id' => $userId,
-                'items' => $items,
-                'subtotal' => $subtotal,
-                'last_active_at' => now(),
-                'status' => 'active',
-            ]
-        );
+        $session = CheckoutSession::query()->withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->where('session_id', $sessionId)
+            ->first() ?? new CheckoutSession;
+
+        $session->forceFill([
+            'tenant_id' => $tenantId,
+            'session_id' => $sessionId,
+            'user_id' => $userId,
+            'items' => $items,
+            'subtotal' => $subtotal,
+            'last_active_at' => now(),
+            'status' => 'active',
+        ])->save();
     }
 
     public function markAsAbandoned(int $timeoutMinutes): array

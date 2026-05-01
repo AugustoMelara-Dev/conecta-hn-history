@@ -62,8 +62,7 @@ final class CheckoutController extends Controller
         $sessionId = (string) Str::uuid();
         $nonce = Str::random(48);
 
-        CheckoutSession::query()->withoutGlobalScopes()->create([
-            'tenant_id' => $tenantId,
+        $checkoutSession = new CheckoutSession([
             'session_id' => $sessionId,
             'nonce_hash' => $this->hashCheckoutNonce($nonce),
             'user_id' => $request->user()?->id,
@@ -72,6 +71,8 @@ final class CheckoutController extends Controller
             'last_active_at' => now(),
             'status' => 'active',
         ]);
+
+        $checkoutSession->forceFill(['tenant_id' => $tenantId])->save();
 
         return response()->json([
             'success' => true,

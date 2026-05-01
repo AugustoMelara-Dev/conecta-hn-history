@@ -181,14 +181,18 @@ require __DIR__.'/auth.php';
 // TENANT MICROSITE - Path-Based Fallback (/t/{tenant:slug})
 // Replaces subdomain routing for local dev + Ziggy compatibility.
 // Original subdomain logic preserved (commented) in routes/public.php.
-Route::prefix('/t/{tenant:slug}')->group(function () {
+Route::prefix('/t/{tenant:slug}')
+    ->middleware(['track.tenant', 'track.tenant.visit'])
+    ->group(function () {
     Route::get('/', [TenantMicrositeController::class, 'show'])->name('tenant.microsite.show');
     Route::get('/product/{product}', [TenantMicrositeController::class, 'product'])->name('tenant.product.show');
     Route::get('/checkout', [TenantMicrositeController::class, 'checkout'])->name('tenant.checkout');
 
     Route::prefix('book')->group(function () {
         Route::get('/', [BookingController::class, 'index'])->name('public.booking.index');
-        Route::post('/', [BookingController::class, 'store'])->name('public.booking.store');
+        Route::post('/', [BookingController::class, 'store'])
+            ->middleware('throttle:public-booking')
+            ->name('public.booking.store');
         Route::post('/waitlist', [\App\Http\Controllers\Public\WaitlistController::class, 'store'])
             ->middleware('throttle:public-waitlist')
             ->name('public.booking.waitlist.store');
@@ -196,4 +200,4 @@ Route::prefix('/t/{tenant:slug}')->group(function () {
         Route::get('/slots', [BookingController::class, 'getSlots'])->name('public.booking.slots');
         Route::get('/success', [BookingController::class, 'success'])->name('public.booking.success');
     });
-});
+    });

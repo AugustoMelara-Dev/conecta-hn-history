@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use App\Models\Product;
 use App\Observers\ProductObserver;
-use Illuminate\Support\Facades\Cache;
+use App\Services\TenantCacheManager;
 
 function makeObservedProduct(int|string $tenantId): Product
 {
@@ -19,11 +19,12 @@ function makeObservedProduct(int|string $tenantId): Product
 test('saved flushes tenant-scoped product cache tags', function () {
     $product = makeObservedProduct('5');
 
-    Cache::shouldReceive('tags')
+    $cacheManager = Mockery::mock(TenantCacheManager::class);
+    $cacheManager->shouldReceive('rotateTenantVersion')
         ->once()
-        ->with(['products', 'products_tenant_5'])
-        ->andReturnSelf();
-    Cache::shouldReceive('flush')->once();
+        ->with('5')
+        ->andReturn(123);
+    app()->instance(TenantCacheManager::class, $cacheManager);
 
     $observer = new ProductObserver;
     $observer->saved($product);
@@ -32,11 +33,12 @@ test('saved flushes tenant-scoped product cache tags', function () {
 test('deleted flushes tenant-scoped product cache tags', function () {
     $product = makeObservedProduct('12');
 
-    Cache::shouldReceive('tags')
+    $cacheManager = Mockery::mock(TenantCacheManager::class);
+    $cacheManager->shouldReceive('rotateTenantVersion')
         ->once()
-        ->with(['products', 'products_tenant_12'])
-        ->andReturnSelf();
-    Cache::shouldReceive('flush')->once();
+        ->with('12')
+        ->andReturn(123);
+    app()->instance(TenantCacheManager::class, $cacheManager);
 
     $observer = new ProductObserver;
     $observer->deleted($product);
@@ -45,19 +47,20 @@ test('deleted flushes tenant-scoped product cache tags', function () {
 test('restored flushes tenant-scoped product cache tags', function () {
     $product = makeObservedProduct('3');
 
-    Cache::shouldReceive('tags')
+    $cacheManager = Mockery::mock(TenantCacheManager::class);
+    $cacheManager->shouldReceive('rotateTenantVersion')
         ->once()
-        ->with(['products', 'products_tenant_3'])
-        ->andReturnSelf();
-    Cache::shouldReceive('flush')->once();
+        ->with('3')
+        ->andReturn(123);
+    app()->instance(TenantCacheManager::class, $cacheManager);
 
     $observer = new ProductObserver;
     $observer->restored($product);
 });
 
-test('cache tags include tenant-specific key format', function () {
+test('product observer uses driver agnostic tenant version rotation', function () {
     $source = file_get_contents((string) (new ReflectionClass(ProductObserver::class))->getFileName());
 
-    expect($source)->toContain('products_tenant_{$product->tenant_id}');
-    expect($source)->toContain("'products'");
+    expect($source)->toContain('rotateTenantVersion($product->tenant_id)');
+    expect($source)->not->toContain('Cache::tags');
 });

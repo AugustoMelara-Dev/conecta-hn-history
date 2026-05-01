@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Catalog;
 
+use App\Application\Shared\Contracts\TenantCacheManagerInterface;
 use App\Domain\Catalog\Contracts\ProductCatalogReader;
 use App\Domain\Shared\Contracts\PaginatedResult;
 use App\Infrastructure\Shared\EloquentPaginatedResult;
@@ -21,10 +22,14 @@ final class CachedProductReader implements ProductCatalogReader
 {
     private const TTL_SECONDS = 3600; // 1 Hour
 
+    public function __construct(
+        private readonly TenantCacheManagerInterface $cacheManager,
+    ) {}
+
     public function getFeaturedProducts(int $tenantId, int $limit = 10): array
     {
-        return Cache::tags(["tenant_{$tenantId}_products"])->remember(
-            "tenant_{$tenantId}_featured_limit_{$limit}",
+        return Cache::remember(
+            $this->cacheManager->makeKey($tenantId, "featured_limit_{$limit}"),
             self::TTL_SECONDS,
             fn () => Product::where('tenant_id', $tenantId)
                 ->where('is_visible', true)
@@ -37,8 +42,8 @@ final class CachedProductReader implements ProductCatalogReader
 
     public function find(int $tenantId, int $productId): ?object
     {
-        return Cache::tags(["tenant_{$tenantId}_products"])->remember(
-            "tenant_{$tenantId}_product_id_{$productId}",
+        return Cache::remember(
+            $this->cacheManager->makeKey($tenantId, "product_id_{$productId}"),
             self::TTL_SECONDS,
             fn () => Product::where('tenant_id', $tenantId)
                 ->where('id', $productId)
@@ -50,8 +55,8 @@ final class CachedProductReader implements ProductCatalogReader
 
     public function getProductBySlug(int $tenantId, string $slug): ?Product
     {
-        return Cache::tags(["tenant_{$tenantId}_products"])->remember(
-            "tenant_{$tenantId}_product_slug_{$slug}",
+        return Cache::remember(
+            $this->cacheManager->makeKey($tenantId, "product_slug_{$slug}"),
             self::TTL_SECONDS,
             fn () => Product::where('tenant_id', $tenantId)
                 ->where('slug', $slug)
@@ -66,8 +71,8 @@ final class CachedProductReader implements ProductCatalogReader
         $filterHash = md5(json_encode($filters));
         $page = request()->get('page', 1);
 
-        $paginator = Cache::tags(["tenant_{$tenantId}_products"])->remember(
-            "tenant_{$tenantId}_search_{$filterHash}_page_{$page}_per_{$perPage}",
+        $paginator = Cache::remember(
+            $this->cacheManager->makeKey($tenantId, "search_{$filterHash}_page_{$page}_per_{$perPage}"),
             self::TTL_SECONDS,
             function () use ($tenantId, $filters, $perPage) {
                 $query = Product::query()

@@ -413,7 +413,20 @@ class InfrastructureServiceProvider extends ServiceProvider
             return Limit::perMinute(6)->by($tenantSlug.'|'.$request->ip());
         });
 
-        // 13. WEBHOOKS: allow provider retries/bursts while limiting noisy abuse.
+        // 13. PUBLIC BOOKING: protect appointment creation from spam without blocking normal customers.
+        RateLimiter::for('public-booking', function (Request $request) {
+            $tenant = $request->route('tenant');
+            $tenantSlug = is_object($tenant) && isset($tenant->slug)
+                ? (string) $tenant->slug
+                : (string) ($tenant ?: 'unknown');
+
+            return [
+                Limit::perMinute(8)->by('booking:tenant|'.$tenantSlug),
+                Limit::perMinute(3)->by('booking:ip|'.$tenantSlug.'|'.$request->ip()),
+            ];
+        });
+
+        // 14. WEBHOOKS: allow provider retries/bursts while limiting noisy abuse.
         RateLimiter::for('webhooks', function (Request $request) {
             $signature = (string) (
                 $request->header('x-signature')
@@ -432,12 +445,12 @@ class InfrastructureServiceProvider extends ServiceProvider
             return $limits;
         });
 
-        // 14. AI OPTIMIZATION: protect LLM cost even before budget enforcement.
+        // 15. AI OPTIMIZATION: protect LLM cost even before budget enforcement.
         RateLimiter::for('ai-optimization', function (Request $request) {
             return Limit::perMinute(10)->by($request->user()?->id ?: $request->ip());
         });
 
-        // 15. BUSINESS AI: private tenant RAG has both user and tenant buckets.
+        // 16. BUSINESS AI: private tenant RAG has both user and tenant buckets.
         RateLimiter::for('business-ai', function (Request $request) {
             $actor = (string) ($request->user()?->getAuthIdentifier() ?: $request->ip());
             $tenant = (string) ($request->user()?->tenant_id ?? 'no-tenant');
@@ -450,7 +463,7 @@ class InfrastructureServiceProvider extends ServiceProvider
             ];
         });
 
-        // 16. DIRECTORY GUIDE DAILY QUOTA (Freemium v1)
+        // 17. DIRECTORY GUIDE DAILY QUOTA (Freemium v1)
         // 5 calls/day per authenticated user_id with date-scoped key.
         RateLimiter::for('directory-guide-daily', function (Request $request) {
             $limit = GuideQuota::limit();
