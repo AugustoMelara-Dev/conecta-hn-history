@@ -87,9 +87,14 @@
     {{-- STICKY TABS --}}
     {{-- ═══════════════════════════════════════════════════════════════════════ --}}
     <div class="sticky top-0 bg-gray-50/95 backdrop-blur-sm z-40 border-b border-gray-200 mt-4">
-        <div class="flex items-center justify-around max-w-3xl mx-auto">
+        <div class="flex items-center justify-around max-w-3xl mx-auto" role="tablist" aria-label="Secciones de tienda">
             <button 
                 @click="activeTab = 'products'" 
+                id="shop-tab-products"
+                role="tab"
+                :aria-selected="activeTab === 'products'"
+                :tabindex="activeTab === 'products' ? '0' : '-1'"
+                aria-controls="shop-panel-products"
                 class="flex-1 py-3 text-sm font-semibold border-b-2 transition-colors duration-300"
                 :class="activeTab === 'products' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
             >
@@ -97,6 +102,11 @@
             </button>
             <button 
                 @click="activeTab = 'info'" 
+                id="shop-tab-info"
+                role="tab"
+                :aria-selected="activeTab === 'info'"
+                :tabindex="activeTab === 'info' ? '0' : '-1'"
+                aria-controls="shop-panel-info"
                 class="flex-1 py-3 text-sm font-semibold border-b-2 transition-colors duration-300"
                 :class="activeTab === 'info' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
             >
@@ -104,6 +114,11 @@
             </button>
             <button 
                 @click="activeTab = 'location'" 
+                id="shop-tab-location"
+                role="tab"
+                :aria-selected="activeTab === 'location'"
+                :tabindex="activeTab === 'location' ? '0' : '-1'"
+                aria-controls="shop-panel-location"
                 class="flex-1 py-3 text-sm font-semibold border-b-2 transition-colors duration-300"
                 :class="activeTab === 'location' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
             >
@@ -118,7 +133,7 @@
     <div class="max-w-3xl mx-auto px-4 py-6">
         
         {{-- PRODUCTS TAB --}}
-        <div x-show="activeTab === 'products'" x-transition.opacity.duration.300ms>
+        <div id="shop-panel-products" role="tabpanel" aria-labelledby="shop-tab-products" x-show="activeTab === 'products'" :tabindex="activeTab === 'products' ? '0' : '-1'" x-transition.opacity.duration.300ms>
             @if($products->isEmpty())
                 <div class="text-center py-12 bg-white rounded-2xl shadow-sm border border-gray-100">
                     <div class="inline-flex items-center justify-center w-20 h-20 bg-gray-50 rounded-full mb-4">
@@ -162,7 +177,7 @@
         </div>
 
         {{-- INFO TAB --}}
-        <div x-show="activeTab === 'info'" x-transition.opacity.duration.300ms style="display: none;">
+        <div id="shop-panel-info" role="tabpanel" aria-labelledby="shop-tab-info" x-show="activeTab === 'info'" :tabindex="activeTab === 'info' ? '0' : '-1'" x-transition.opacity.duration.300ms style="display: none;">
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
                 <div>
                     <h3 class="font-bold text-gray-900 mb-2">Sobre Nosotros</h3>
@@ -202,7 +217,7 @@
         </div>
 
         {{-- LOCATION TAB --}}
-        <div x-show="activeTab === 'location'" x-transition.opacity.duration.300ms style="display: none;">
+        <div id="shop-panel-location" role="tabpanel" aria-labelledby="shop-tab-location" x-show="activeTab === 'location'" :tabindex="activeTab === 'location' ? '0' : '-1'" x-transition.opacity.duration.300ms style="display: none;">
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden h-64 md:h-96 relative">
                  <iframe 
                     width="100%" 

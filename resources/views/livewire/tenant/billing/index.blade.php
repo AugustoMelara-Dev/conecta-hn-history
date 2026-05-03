@@ -218,12 +218,20 @@
         {{-- PAYMENT REPORT MODAL --}}
         {{-- ═══════════════════════════════════════════════════════════ --}}
         @if($showPaymentModal)
-            <div class="fixed inset-0 z-50 overflow-y-auto">
+            <div
+                class="fixed inset-0 z-50 overflow-y-auto"
+                x-data="{ open: true }"
+                x-trap.inert.noscroll="open"
+                @keydown.escape.window="open && $wire.set('showPaymentModal', false)"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="billing-payment-modal-title"
+            >
                 <div class="fixed inset-0 bg-gray-900/75 transition-opacity" wire:click="$set('showPaymentModal', false)"></div>
                 <div class="flex min-h-full items-center justify-center p-4">
-                    <div class="relative bg-white rounded-2xl shadow-xl max-w-lg w-full p-6">
+                    <div class="relative bg-white rounded-2xl shadow-xl max-w-lg w-full p-6" tabindex="-1" x-ref="paymentModalPanel" x-init="$nextTick(() => $refs.paymentModalPanel.focus())">
                         <div class="mb-6">
-                            <h3 class="text-xl font-bold text-gray-900">💸 Reportar Transferencia</h3>
+                            <h3 id="billing-payment-modal-title" class="text-xl font-bold text-gray-900">💸 Reportar Transferencia</h3>
                             <p class="text-sm text-gray-500 mt-1">Realiza la transferencia y luego completa este formulario.</p>
                         </div>
 
@@ -245,32 +253,32 @@
 
                         <div class="space-y-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Banco de Origen *</label>
-                                <select wire:model="bank" class="w-full rounded-xl border-gray-200 bg-gray-50 focus:ring-2 focus:ring-blue-500">
+                                <label for="billing-bank" class="block text-sm font-medium text-gray-700 mb-1">Banco de Origen *</label>
+                                <select id="billing-bank" wire:model="bank" aria-invalid="@error('bank') true @else false @enderror" aria-describedby="@error('bank') billing-bank-error @else null @enderror" class="w-full rounded-xl border-gray-200 bg-gray-50 focus:ring-2 focus:ring-blue-500">
                                     <option value="">Selecciona un banco</option>
                                     @foreach($this->bankOptions as $value => $label)
                                         <option value="{{ $value }}">{{ $label }}</option>
                                     @endforeach
                                 </select>
-                                @error('bank') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
+                                @error('bank') <span id="billing-bank-error" class="text-xs text-red-500">{{ $message }}</span> @enderror
                             </div>
 
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Número de Referencia *</label>
-                                <input wire:model="reference_number" type="text" class="w-full rounded-xl border-gray-200 bg-gray-50 focus:ring-2 focus:ring-blue-500" placeholder="Ej: 12345678">
-                                @error('reference_number') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
+                                <label for="billing-reference-number" class="block text-sm font-medium text-gray-700 mb-1">Número de Referencia *</label>
+                                <input id="billing-reference-number" wire:model="reference_number" type="text" aria-invalid="@error('reference_number') true @else false @enderror" aria-describedby="@error('reference_number') billing-reference-number-error @else null @enderror" class="w-full rounded-xl border-gray-200 bg-gray-50 focus:ring-2 focus:ring-blue-500" placeholder="Ej: 12345678">
+                                @error('reference_number') <span id="billing-reference-number-error" class="text-xs text-red-500">{{ $message }}</span> @enderror
                             </div>
 
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Monto Transferido (L.) *</label>
-                                <input wire:model="amount" type="number" step="0.01" class="w-full rounded-xl border-gray-200 bg-gray-50 focus:ring-2 focus:ring-blue-500">
-                                @error('amount') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
+                                <label for="billing-transfer-amount" class="block text-sm font-medium text-gray-700 mb-1">Monto Transferido (L.) *</label>
+                                <input id="billing-transfer-amount" wire:model="amount" type="number" step="0.01" aria-invalid="@error('amount') true @else false @enderror" aria-describedby="@error('amount') billing-transfer-amount-error @else null @enderror" class="w-full rounded-xl border-gray-200 bg-gray-50 focus:ring-2 focus:ring-blue-500">
+                                @error('amount') <span id="billing-transfer-amount-error" class="text-xs text-red-500">{{ $message }}</span> @enderror
                             </div>
 
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Foto del Comprobante *</label>
-                                <input wire:model="proof_photo" type="file" accept="image/*" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                                @error('proof_photo') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
+                                <label for="billing-proof-photo" class="block text-sm font-medium text-gray-700 mb-1">Foto del Comprobante *</label>
+                                <input id="billing-proof-photo" wire:model="proof_photo" type="file" accept="image/*" aria-invalid="@error('proof_photo') true @else false @enderror" aria-describedby="@error('proof_photo') billing-proof-photo-error @else null @enderror" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                                @error('proof_photo') <span id="billing-proof-photo-error" class="text-xs text-red-500">{{ $message }}</span> @enderror
 
                                 @if($proof_photo)
                                     <div class="mt-2">
@@ -281,7 +289,7 @@
                         </div>
 
                         <div class="mt-8 flex gap-3">
-                            <button wire:click="$set('showPaymentModal', false)" class="flex-1 py-3 text-gray-700 font-medium hover:bg-gray-100 rounded-xl transition-colors">
+                            <button type="button" wire:click="$set('showPaymentModal', false)" class="flex-1 py-3 text-gray-700 font-medium hover:bg-gray-100 rounded-xl transition-colors">
                                 Cancelar
                             </button>
                             <button
