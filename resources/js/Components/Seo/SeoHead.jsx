@@ -1,5 +1,7 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
+import { safeJsonLd } from '@/lib/safeJsonLd';
+import { PUBLIC_BRAND } from '@/lib/publicBrand';
 
 /**
  * SeoHead - Polimorphic SEO Component
@@ -25,7 +27,7 @@ export default function SeoHead({
     // ═══════════════════════════════════════════════════════════════════════
     // DEFAULTS & FALLBACKS
     // ═══════════════════════════════════════════════════════════════════════
-    const siteName = "Vito Business OS";
+    const siteName = PUBLIC_BRAND.name;
     // Fallback image prevents "Grey Card" in WhatsApp/iMessage
     const defaultImage = "/images/og-default.svg";
     const finalImage = image || defaultImage;
@@ -38,8 +40,8 @@ export default function SeoHead({
     const jsonLdScript = schema ? (
         <script
             type="application/ld+json"
-            // trusted-jsonld: structured schema is serialized locally, not raw HTML.
-            dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+            // trusted-jsonld: escape script-breaking chars before injection.
+            dangerouslySetInnerHTML={{ __html: safeJsonLd(schema) }}
         />
     ) : null;
 

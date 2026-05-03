@@ -1,4 +1,5 @@
 import { Head } from '@inertiajs/react';
+import { safeJsonLd } from '@/lib/safeJsonLd';
 
 export default function MicrositeSeoHead({
     pageTitle,
@@ -18,8 +19,8 @@ export default function MicrositeSeoHead({
             {seoStructuredData ? (
                 <script
                     type="application/ld+json"
-                    // trusted-jsonld: microsite schema is serialized structured data.
-                    dangerouslySetInnerHTML={{ __html: JSON.stringify(seoStructuredData) }}
+                    // trusted-jsonld: escape script-breaking chars before injection.
+                    dangerouslySetInnerHTML={{ __html: safeJsonLd(seoStructuredData) }}
                 />
             ) : null}
         </Head>
