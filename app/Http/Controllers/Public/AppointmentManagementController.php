@@ -7,8 +7,6 @@ namespace App\Http\Controllers\Public;
 use App\Application\Shared\Contracts\AppointmentRepositoryInterface;
 use App\Application\Shared\Contracts\CommandBusInterface;
 use App\Http\Controllers\Controller;
-use App\Models\Service;
-use App\Models\ServiceProvider;
 use App\Models\Tenant;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -43,9 +41,7 @@ final class AppointmentManagementController extends Controller
             abort(404, 'Appointment not found.');
         }
 
-        /** @var Service $service */
         $service = $appointment->service;
-        /** @var ServiceProvider $provider */
         $provider = $appointment->provider;
         /** @var Tenant $tenant */
         $tenant = $appointment->tenant;
@@ -55,8 +51,8 @@ final class AppointmentManagementController extends Controller
                 'id' => $appointment->id,
                 'status' => $appointment->status,
                 'customer_name' => $appointment->customer_name,
-                'service_name' => $service->name,
-                'provider_name' => $provider->name,
+                'service_name' => $service?->name ?? 'Servicio',
+                'provider_name' => $provider?->name ?? 'Proveedor',
                 'scheduled_at' => $appointment->scheduled_at->format('l, d M Y'),
                 'time' => $appointment->scheduled_at->format('h:i A'),
                 'can_cancel' => in_array($appointment->status, ['pending', 'confirmed']),
