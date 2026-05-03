@@ -10,6 +10,8 @@ use App\Models\Category;
 use App\Models\City;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
+use App\Models\TenantOnboardingState;
+use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Inertia\Testing\AssertableInertia;
 use PHPUnit\Framework\Attributes\Test;
@@ -90,6 +92,19 @@ final class RegistrationControllerTest extends TestCase
             'tenant_id' => $tenant->getKey(),
             'status' => 'pending',
         ]);
+        $owner = User::query()->where('email', 'ana@legalnorte.test')->firstOrFail();
+        $this->assertDatabaseHas('tenant_onboarding_states', [
+            'tenant_id' => (string) $tenant->getKey(),
+            'user_id' => (string) $owner->getKey(),
+            'role' => 'seller',
+        ]);
+        $onboardingState = TenantOnboardingState::query()
+            ->where('tenant_id', (string) $tenant->getKey())
+            ->where('user_id', (string) $owner->getKey())
+            ->firstOrFail();
+
+        $this->assertNotEmpty($onboardingState->next_action_key);
+        $this->assertNotEmpty($onboardingState->next_action_title);
         $this->assertDatabaseHas('legal_consents', [
             'tenant_id' => $tenant->getKey(),
             'terms_version' => config('legal.current_versions.terms'),
@@ -147,62 +162,56 @@ final class RegistrationControllerTest extends TestCase
     }
 
     #[Test]
-    public function registration_requires_explicit_privacy_acceptance(): void
+    public function registration_fails_without_terms_acceptance(): void
     {
         $category = Category::factory()->create(['name' => 'Servicios', 'slug' => 'servicios']);
         $city = City::factory()->create();
-        $token = 'registration-privacy-required-token';
 
-        $response = $this->from(route('tenant.register', [], false))
-            ->withSession(['_token' => $token])
-            ->post(route('tenant.register.store', [], false), [
-                '_token' => $token,
-                'business_name' => 'Privacidad Pendiente',
-                'slug' => 'privacidad-pendiente',
-                'name' => 'Ana Privada',
-                'email' => 'ana-privacy@example.test',
-                'password' => 'SecurePass123!',
-                'password_confirmation' => 'SecurePass123!',
-                'city_id' => $city->id,
-                'category_id' => $category->id,
-                'business_type' => 'service',
-                'rubro_key' => 'service_general',
-                'selected_plan' => 'free',
-                'terms_accepted' => true,
-                'privacy_accepted' => false,
-            ]);
+        $response = $this->from(route('tenant.register', [], false))->post(route('tenant.register.store', [], false), [
+            'business_name' => 'Legal Norte Terms',
+            'slug' => 'legal-norte-terms',
+            'name' => 'Ana Legal',
+            'email' => 'ana-terms@legalnorte.test',
+            'password' => 'SecurePass123!',
+            'password_confirmation' => 'SecurePass123!',
+            'city_id' => $city->id,
+            'category_id' => $category->id,
+            'business_type' => 'service',
+            'rubro_key' => 'service_general',
+            'selected_plan' => 'free',
+            'terms_accepted' => false,
+            'privacy_accepted' => true,
+        ]);
 
-        $response->assertSessionHasErrors('privacy_accepted');
+        $response->assertRedirect(route('tenant.register', [], false));
+        $response->assertSessionHasErrors('terms_accepted');
         $this->assertGuest();
     }
 
     #[Test]
-    public function registration_requires_explicit_terms_acceptance(): void
+    public function registration_fails_without_privacy_acceptance(): void
     {
         $category = Category::factory()->create(['name' => 'Servicios', 'slug' => 'servicios']);
         $city = City::factory()->create();
-        $token = 'registration-terms-required-token';
 
-        $response = $this->from(route('tenant.register', [], false))
-            ->withSession(['_token' => $token])
-            ->post(route('tenant.register.store', [], false), [
-                '_token' => $token,
-                'business_name' => 'Terminos Pendientes',
-                'slug' => 'terminos-pendientes',
-                'name' => 'Luis Terminos',
-                'email' => 'luis-terms@example.test',
-                'password' => 'SecurePass123!',
-                'password_confirmation' => 'SecurePass123!',
-                'city_id' => $city->id,
-                'category_id' => $category->id,
-                'business_type' => 'service',
-                'rubro_key' => 'service_general',
-                'selected_plan' => 'free',
-                'terms_accepted' => false,
-                'privacy_accepted' => true,
-            ]);
+        $response = $this->from(route('tenant.register', [], false))->post(route('tenant.register.store', [], false), [
+            'business_name' => 'Legal Norte Privacy',
+            'slug' => 'legal-norte-privacy',
+            'name' => 'Ana Legal',
+            'email' => 'ana-privacy@legalnorte.test',
+            'password' => 'SecurePass123!',
+            'password_confirmation' => 'SecurePass123!',
+            'city_id' => $city->id,
+            'category_id' => $category->id,
+            'business_type' => 'service',
+            'rubro_key' => 'service_general',
+            'selected_plan' => 'free',
+            'terms_accepted' => true,
+            'privacy_accepted' => false,
+        ]);
 
-        $response->assertSessionHasErrors('terms_accepted');
+        $response->assertRedirect(route('tenant.register', [], false));
+        $response->assertSessionHasErrors('privacy_accepted');
         $this->assertGuest();
     }
 }

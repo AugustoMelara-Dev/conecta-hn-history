@@ -24,6 +24,9 @@ Route::middleware('guest')->group(function () {
     Route::get('register', static fn () => redirect()->route('tenant.register'))
         ->name('register');
 
+    Route::get('register/onboarding/{user?}', static fn () => redirect()->route('tenant.register'))
+        ->name('register.onboarding');
+
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
         ->name('login');
 

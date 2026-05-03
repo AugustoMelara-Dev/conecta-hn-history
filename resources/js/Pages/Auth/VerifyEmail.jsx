@@ -1,5 +1,5 @@
 import { Head, Link, useForm, usePage } from "@inertiajs/react"
-import { MailCheck, RefreshCcw } from "lucide-react"
+import { ArrowRight, MailCheck, RefreshCcw } from "lucide-react"
 
 import { Alert, AlertDescription, AlertTitle } from "@/Components/ui/alert"
 import { Button } from "@/Components/ui/button"
@@ -17,7 +17,32 @@ import {
     FieldSeparator,
 } from "@/Components/ui/field"
 
-export default function VerifyEmail({ status }) {
+const COPY = {
+    headTitle: "Verificar correo",
+    title: "Confirma tu correo",
+    descriptionPrefix: "Te enviamos un enlace de verificación a",
+    descriptionSuffix: "Abre ese correo y vuelve aquí para continuar.",
+    resentTitle: "Enlace reenviado",
+    resentDescription: "Te enviamos un nuevo enlace de verificación.",
+    nextActionTitle: "Siguiente paso: {title}",
+    progressLabel: "Progreso de onboarding: {progress}%",
+    resendIdle: "Reenviar correo de verificación",
+    resendProcessing: "Reenviando...",
+    alternateAccount: "o usa otra cuenta",
+    logout: "Cerrar sesión",
+    footerDescription: "Si cambiaste de correo, cierra sesión y vuelve a ingresar con la cuenta correcta.",
+}
+
+function t(key, params = {}) {
+    const template = COPY[key] ?? key
+
+    return Object.entries(params).reduce(
+        (text, [paramKey, value]) => text.replace(`{${paramKey}}`, String(value)),
+        template,
+    )
+}
+
+export default function VerifyEmail({ status, onboardingNextAction = null }) {
     const { auth } = usePage().props
     const { post, processing } = useForm({})
 
@@ -28,7 +53,7 @@ export default function VerifyEmail({ status }) {
 
     return (
         <>
-            <Head title="Verifica tu correo | Vito Business OS" />
+            <Head title={t("headTitle")} />
 
             <div className="flex min-h-svh w-full items-center justify-center bg-[#f7f8fb] p-6 md:p-10">
                 <div className="w-full max-w-md">
@@ -38,23 +63,40 @@ export default function VerifyEmail({ status }) {
                                 <MailCheck className="h-6 w-6" aria-hidden="true" />
                             </div>
                             <CardTitle className="text-2xl font-semibold text-slate-950">
-                                Verifica tu correo
+                                {t("title")}
                             </CardTitle>
                             <CardDescription className="text-slate-500">
-                                Enviamos un enlace de verificación a{" "}
+                                {t("descriptionPrefix")}{" "}
                                 <span className="font-medium text-slate-950">
                                     {auth?.user?.email}
                                 </span>
-                                . Ábrelo para desbloquear el panel correcto de Vito Business OS.
+                                . {t("descriptionSuffix")}
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
                             <FieldGroup>
                                 {status === "verification-link-sent" ? (
                                     <Alert variant="success" aria-live="polite" data-testid="verify-email-feedback">
-                                        <AlertTitle>Correo reenviado</AlertTitle>
+                                        <AlertTitle>{t("resentTitle")}</AlertTitle>
                                         <AlertDescription>
-                                            Te enviamos un nuevo enlace de verificación. Revisa también spam o promociones.
+                                            {t("resentDescription")}
+                                        </AlertDescription>
+                                    </Alert>
+                                ) : null}
+
+                                {onboardingNextAction ? (
+                                    <Alert data-testid="verify-email-onboarding-next">
+                                        <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                                        <AlertTitle>
+                                            {t("nextActionTitle", { title: onboardingNextAction.title })}
+                                        </AlertTitle>
+                                        <AlertDescription>
+                                            {onboardingNextAction.copy}
+                                            {typeof onboardingNextAction.progress === "number" ? (
+                                                <span className="mt-2 block font-medium text-slate-700">
+                                                    {t("progressLabel", { progress: onboardingNextAction.progress })}
+                                                </span>
+                                            ) : null}
                                         </AlertDescription>
                                     </Alert>
                                 ) : null}
@@ -71,12 +113,12 @@ export default function VerifyEmail({ status }) {
                                                 className={`mr-2 h-4 w-4 ${processing ? "animate-spin" : ""}`}
                                                 aria-hidden="true"
                                             />
-                                            {processing ? "Enviando..." : "Reenviar correo de verificación"}
+                                            {processing ? t("resendProcessing") : t("resendIdle")}
                                         </Button>
                                     </form>
                                 </Field>
 
-                                <FieldSeparator>¿Necesitas otra cuenta?</FieldSeparator>
+                                <FieldSeparator>{t("alternateAccount")}</FieldSeparator>
 
                                 <Field>
                                     <Button
@@ -87,11 +129,11 @@ export default function VerifyEmail({ status }) {
                                         asChild
                                     >
                                         <Link href={route("logout")} method="post" as="button">
-                                            Cerrar sesión
+                                            {t("logout")}
                                         </Link>
                                     </Button>
                                     <FieldDescription className="text-center">
-                                        Verifica tu correo para continuar al panel que corresponde a tu cuenta.
+                                        {t("footerDescription")}
                                     </FieldDescription>
                                 </Field>
                             </FieldGroup>

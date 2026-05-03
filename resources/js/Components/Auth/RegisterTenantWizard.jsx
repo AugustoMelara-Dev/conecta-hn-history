@@ -122,15 +122,19 @@ function StepPill({ step, index, currentStep, onClick }) {
     const Icon = step.icon
     const active = index === currentStep
     const complete = index < currentStep
+    const locked = index > currentStep
 
     return (
         <button
             type="button"
             onClick={onClick}
+            disabled={locked}
+            aria-current={active ? "step" : undefined}
+            aria-disabled={locked ? "true" : undefined}
             className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-left transition ${
                 active
                     ? "border-slate-950 bg-slate-950 text-white"
-                    : complete
+                : complete
                         ? "border-slate-200 bg-slate-100 text-slate-950"
                         : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-950"
             }`}
@@ -147,6 +151,7 @@ function StepPill({ step, index, currentStep, onClick }) {
                 </span>
                 <span className="mt-1 block truncate text-sm font-semibold">{step.title}</span>
             </span>
+            {locked ? <span className="sr-only">Paso bloqueado hasta completar los anteriores.</span> : null}
         </button>
     )
 }
@@ -196,6 +201,8 @@ export function RegisterTenantWizard({
         selected_plan: "free",
         terms_accepted: false,
         privacy_accepted: false,
+        terms_version: settings?.legalVersions?.terms ?? "",
+        privacy_version: settings?.legalVersions?.privacy ?? "",
     })
 
     const errorFor = (field) => localErrors[field] || errors[field] || null
@@ -282,6 +289,8 @@ export function RegisterTenantWizard({
 
         return firstValidUrl(...candidates, "/registrar-negocio") || "/registrar-negocio"
     }, [])
+    const legalTermsUrl = useMemo(() => firstValidUrl(routeUrlIfExists("legal.terms"), "/legal/terms"), [])
+    const legalPrivacyUrl = useMemo(() => firstValidUrl(routeUrlIfExists("legal.privacy"), "/legal/privacy"), [])
     const businessPreview = data.business_name.trim() || "Tu negocio"
     const slugPreview = data.slug ? `${slugBaseHost}/t/${slugify(data.slug)}` : `${slugBaseHost}/t/tu-negocio`
     const progress = ((step + 1) / STEPS.length) * 100
@@ -541,7 +550,7 @@ export function RegisterTenantWizard({
                                 Lanza tu negocio en minutos con un registro guiado.
                             </h2>
                             <p className="max-w-lg text-base leading-7 text-slate-300 xl:text-lg">
-                                Definimos URL, perfil comercial, cuenta y plan en un solo flujo listo para producción.
+                                Definimos URL, perfil comercial, cuenta y plan en un solo flujo listo para empezar.
                             </p>
                         </div>
                     </div>
@@ -604,11 +613,14 @@ export function RegisterTenantWizard({
                             </p>
                         </div>
 
-                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4" aria-label="Progreso de registro por pasos">
                             {STEPS.map((item, index) => (
                                 <StepPill key={item.key} step={item} index={index} currentStep={step} onClick={() => index <= step && setStep(index)} />
                             ))}
                         </div>
+                        <p className="text-xs text-slate-500">
+                            Completa cada paso para desbloquear el siguiente.
+                        </p>
                     </div>
 
                     {!canSubmit ? (
@@ -689,6 +701,8 @@ export function RegisterTenantWizard({
                                     selectedCity={selectedCity}
                                     errorFor={errorFor}
                                     updateField={updateField}
+                                    legalTermsUrl={legalTermsUrl}
+                                    legalPrivacyUrl={legalPrivacyUrl}
                                 />
                             ) : null}
                         </form>

@@ -4,11 +4,13 @@ namespace Tests\Feature\Auth;
 
 use App\Domain\Identity\Enums\UserRole;
 use App\Models\Tenant;
+use App\Models\TenantOnboardingState;
 use App\Models\User;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
+use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
 
 class EmailVerificationTest extends TestCase
@@ -22,6 +24,40 @@ class EmailVerificationTest extends TestCase
         $response = $this->actingAs($user)->get('/verify-email');
 
         $response->assertStatus(200);
+    }
+
+    public function test_email_verification_screen_exposes_next_onboarding_action_for_new_owner(): void
+    {
+        $user = User::factory()->unverified()->create([
+            'role' => UserRole::TENANT_OWNER,
+        ]);
+        $tenant = Tenant::factory()->create([
+            'user_id' => $user->id,
+            'slug' => 'tienda-onboarding-email',
+        ]);
+        $user->forceFill(['tenant_id' => $tenant->id])->save();
+
+        TenantOnboardingState::query()->create([
+            'tenant_id' => (string) $tenant->id,
+            'user_id' => (string) $user->id,
+            'role' => 'seller',
+            'progress' => 20,
+            'next_action_key' => 'owner_catalog',
+            'next_action_title' => 'Publica tu primera oferta',
+            'next_action_copy' => 'Agrega un producto o servicio para que el perfil no quede vacio.',
+            'next_action_href' => '/app/tienda-onboarding-email/products',
+            'milestones' => [],
+        ]);
+
+        $this->actingAs($user)
+            ->get('/verify-email')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Auth/VerifyEmail')
+                ->where('onboardingNextAction.progress', 20)
+                ->where('onboardingNextAction.title', 'Publica tu primera oferta')
+                ->where('onboardingNextAction.href', '/app/tienda-onboarding-email/products')
+            );
     }
 
     public function test_email_can_be_verified(): void

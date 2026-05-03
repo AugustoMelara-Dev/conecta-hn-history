@@ -1,4 +1,4 @@
-import { CheckCircle2 } from "lucide-react"
+﻿import { CheckCircle2 } from "lucide-react"
 
 import { Button } from "@/Components/ui/button"
 import { Checkbox } from "@/Components/ui/checkbox"
@@ -149,7 +149,7 @@ export function BusinessStep({
         <FieldGroup>
             <Field data-invalid={errorFor("business_name") ? "true" : undefined}>
                 <FieldLabel htmlFor="business_name">Nombre comercial</FieldLabel>
-                <Input id="business_name" name="business_name" autoComplete="organization" value={data.business_name} onChange={(event) => updateField("business_name", event.target.value)} placeholder="Ej. Café La Esperanza" className={inputClass("business_name")} aria-invalid={Boolean(errorFor("business_name"))} aria-describedby={describedBy("business_name", errorFor)} />
+                <Input id="business_name" name="business_name" autoComplete="organization" value={data.business_name} onChange={(event) => updateField("business_name", event.target.value)} placeholder="Ej. Cafe La Esperanza" className={inputClass("business_name")} aria-invalid={Boolean(errorFor("business_name"))} aria-describedby={describedBy("business_name", errorFor)} />
                 {errorFor("business_name") ? <FieldDescription id={errorId("business_name")} role="alert" className="text-destructive">{errorFor("business_name")}</FieldDescription> : null}
             </Field>
 
@@ -189,7 +189,7 @@ export function BusinessStep({
                 </FieldDescription>
                 {crossSurfaceHost ? (
                     <FieldDescription className="text-muted-foreground">
-                        Tu panel opera en {registrationHost} y tu micrositio público se publica en {slugBaseHost}/t/...
+                        Tu panel opera en {registrationHost} y tu micrositio publico se publica en {slugBaseHost}/t/...
                     </FieldDescription>
                 ) : null}
                 {slugState.suggestions?.length ? (
@@ -207,7 +207,7 @@ export function BusinessStep({
             </Field>
 
             <Field data-invalid={errorFor("category_id") ? "true" : undefined}>
-                <FieldLabel htmlFor="category_id">Categoría</FieldLabel>
+                <FieldLabel htmlFor="category_id">Categoria</FieldLabel>
                 <Select
                     value={selectedCategoryValue}
                     onValueChange={(value) => updateField("category_id", value === "none" ? "" : value)}
@@ -219,11 +219,11 @@ export function BusinessStep({
                         aria-describedby={describedBy("category_id", errorFor)}
                         className={`h-12 rounded-xl border-border bg-muted px-4 text-foreground focus:ring-4 focus:ring-ring/30 ${errorFor("category_id") ? "border-destructive/50 focus:ring-destructive/20" : ""}`}
                     >
-                        <SelectValue placeholder="Selecciona una categoría" />
+                        <SelectValue placeholder="Selecciona una categoria" />
                     </SelectTrigger>
                     <SelectContent>
                         <SelectGroup>
-                            <SelectItem value="none">Selecciona una categoría</SelectItem>
+                            <SelectItem value="none">Selecciona una categoria</SelectItem>
                             {categories.map((item) => (
                                 <SelectItem key={item.id} value={String(item.id)}>{item.name}</SelectItem>
                             ))}
@@ -237,7 +237,7 @@ export function BusinessStep({
                 <div className="flex flex-col gap-2">
                     <FieldLabel>Tipo de negocio</FieldLabel>
                     <FieldDescription id={helpId("business_type")}>
-                        Elige la operación que mejor representa cómo vendes hoy.
+                        Elige la operacion que mejor representa como vendes hoy.
                     </FieldDescription>
                 </div>
 
@@ -270,7 +270,7 @@ export function BusinessStep({
 
                 {suggestedBusinessType && !businessTypeTouched ? (
                     <FieldDescription>
-                        Te sugerimos <strong>{businessTypes.find((item) => item.value === suggestedBusinessType)?.label || "este tipo"}</strong> por la categoría que elegiste.
+                        Te sugerimos <strong>{businessTypes.find((item) => item.value === suggestedBusinessType)?.label || "este tipo"}</strong> por la categoria que elegiste.
                     </FieldDescription>
                 ) : null}
 
@@ -399,19 +399,19 @@ export function AccountStep({ data, updateField, errorFor, inputClass }) {
                 {errorFor("email") ? (
                     <FieldDescription id={errorId("email")} role="alert" className="text-destructive">{errorFor("email")}</FieldDescription>
                 ) : (
-                    <FieldDescription id={helpId("email")}>Usaremos este correo para login, verificación y recuperación.</FieldDescription>
+                    <FieldDescription id={helpId("email")}>Usaremos este correo para login, verificacion y recuperacion.</FieldDescription>
                 )}
             </Field>
 
             <div className="grid gap-4 md:grid-cols-2">
                 <Field data-invalid={errorFor("password") ? "true" : undefined}>
-                    <FieldLabel htmlFor="password">Contraseña</FieldLabel>
+                    <FieldLabel htmlFor="password">Contrasena</FieldLabel>
                     <Input id="password" name="password" type="password" autoComplete="new-password" value={data.password} onChange={(event) => updateField("password", event.target.value)} className={inputClass("password")} aria-invalid={Boolean(errorFor("password"))} aria-describedby={describedBy("password", errorFor, helpId("password"))} />
-                    {errorFor("password") ? <FieldDescription id={errorId("password")} role="alert" className="text-destructive">{errorFor("password")}</FieldDescription> : <FieldDescription id={helpId("password")}>Mínimo 8 caracteres.</FieldDescription>}
+                    {errorFor("password") ? <FieldDescription id={errorId("password")} role="alert" className="text-destructive">{errorFor("password")}</FieldDescription> : <FieldDescription id={helpId("password")}>Minimo 8 caracteres.</FieldDescription>}
                 </Field>
 
                 <Field data-invalid={errorFor("password_confirmation") ? "true" : undefined}>
-                    <FieldLabel htmlFor="password_confirmation">Confirmar contraseña</FieldLabel>
+                    <FieldLabel htmlFor="password_confirmation">Confirmar contrasena</FieldLabel>
                     <Input id="password_confirmation" name="password_confirmation" type="password" autoComplete="new-password" value={data.password_confirmation} onChange={(event) => updateField("password_confirmation", event.target.value)} className={inputClass("password_confirmation")} aria-invalid={Boolean(errorFor("password_confirmation"))} aria-describedby={describedBy("password_confirmation", errorFor)} />
                     {errorFor("password_confirmation") ? <FieldDescription id={errorId("password_confirmation")} role="alert" className="text-destructive">{errorFor("password_confirmation")}</FieldDescription> : null}
                 </Field>
@@ -434,6 +434,8 @@ export function PlanSummaryStep({
     selectedCity,
     errorFor,
     updateField,
+    legalTermsUrl,
+    legalPrivacyUrl,
 }) {
     return (
         <FieldGroup>
@@ -442,24 +444,24 @@ export function PlanSummaryStep({
                 value={data.selected_plan}
                 onValueChange={(value) => updateField("selected_plan", value)}
                 className="grid gap-4 md:grid-cols-2"
-                aria-label="Plan de activación"
+                aria-label="Plan de activacion"
                 aria-describedby={describedBy("selected_plan", errorFor)}
             >
-                <PlanCard id="plan-free" value="free" active={data.selected_plan === "free"} title="Plan Basic" caption="Lo esencial para iniciar" price={`L. ${freePrice}`} bullets={["Perfil digital público", `Catálogo de ${freeLimit} productos`, "Panel base para operar"]} />
-                <PlanCard id="plan-pro" value="pro" active={data.selected_plan === "pro"} recommended title="Plan Business Pro" caption="Potencia total" price={`L. ${proPrice}`} bullets={["Ventas ilimitadas", "Analíticas avanzadas", `Capacidad comercial de ${proLimit} productos`]} />
+                <PlanCard id="plan-free" value="free" active={data.selected_plan === "free"} title="Plan Basic" caption="Lo esencial para iniciar" price={`L. ${freePrice}`} bullets={["Perfil digital publico", `Catalogo de ${freeLimit} productos`, "Panel base para operar"]} />
+                <PlanCard id="plan-pro" value="pro" active={data.selected_plan === "pro"} recommended title="Plan Business Pro" caption="Potencia total" price={`L. ${proPrice}`} bullets={["Ventas ilimitadas", "Analiticas avanzadas", `Capacidad comercial de ${proLimit} productos`]} />
             </RadioGroup>
             {errorFor("selected_plan") ? <FieldDescription id={errorId("selected_plan")} role="alert" className="text-destructive">{errorFor("selected_plan")}</FieldDescription> : null}
 
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr),300px]">
                 <div className="flex flex-col gap-3 rounded-[1.75rem] border border-border bg-background p-5">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Resumen de activación</p>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Resumen de activacion</p>
                     <SummaryRow label="Negocio" value={businessPreview} />
                     <SummaryRow label="URL" value={slugPreview} />
-                    <SummaryRow label="Categoría" value={selectedCategory?.name || "Pendiente"} />
+                    <SummaryRow label="Categoria" value={selectedCategory?.name || "Pendiente"} />
                     <SummaryRow label="Tipo" value={selectedBusinessType?.label || "Pendiente"} />
                     <SummaryRow label="Segmento" value={selectedSegment?.label || "Pendiente"} />
                     <SummaryRow label="Ciudad" value={selectedCity?.name || "Pendiente"} />
-                    <SummaryRow label="Cuenta" value={data.email || "Sin correo aún"} />
+                    <SummaryRow label="Cuenta" value={data.email || "Sin correo aun"} />
                     <SummaryRow label="Plan" value={data.selected_plan === "pro" ? "Business Pro" : "Basic"} />
                 </div>
 
@@ -476,10 +478,14 @@ export function PlanSummaryStep({
                             className="mt-1 border-input text-primary-foreground data-[state=checked]:border-primary data-[state=checked]:bg-primary"
                         />
                         <span id={helpId("terms_accepted")} className="text-sm leading-7 text-muted-foreground">
-                            Confirmo que tengo autorización para registrar este negocio y acepto los términos operativos de Vito Business OS.
+                            Confirmo que tengo autorización para registrar este negocio y acepto los {" "}
+                            <a href={legalTermsUrl} target="_blank" rel="noreferrer" className="font-semibold underline underline-offset-2">
+                                términos de servicio
+                            </a>.
                         </span>
                     </label>
                     {errorFor("terms_accepted") ? <FieldDescription id={errorId("terms_accepted")} role="alert" className="text-destructive">{errorFor("terms_accepted")}</FieldDescription> : null}
+
                     <label className="flex items-start gap-3 rounded-[1.75rem] border border-border bg-muted px-5 py-5">
                         <Checkbox
                             id="privacy_accepted"
@@ -492,7 +498,11 @@ export function PlanSummaryStep({
                             className="mt-1 border-input text-primary-foreground data-[state=checked]:border-primary data-[state=checked]:bg-primary"
                         />
                         <span id={helpId("privacy_accepted")} className="text-sm leading-7 text-muted-foreground">
-                            Acepto la política de privacidad y el tratamiento de datos para operar esta cuenta.
+                            Confirmo que leí y acepto la {" "}
+                            <a href={legalPrivacyUrl} target="_blank" rel="noreferrer" className="font-semibold underline underline-offset-2">
+                                política de privacidad
+                            </a>{" "}
+                            y el tratamiento de datos para esta cuenta.
                         </span>
                     </label>
                     {errorFor("privacy_accepted") ? <FieldDescription id={errorId("privacy_accepted")} role="alert" className="text-destructive">{errorFor("privacy_accepted")}</FieldDescription> : null}
@@ -508,3 +518,6 @@ export function PlanSummaryStep({
         </FieldGroup>
     )
 }
+
+
+

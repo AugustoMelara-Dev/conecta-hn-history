@@ -8,10 +8,13 @@ use App\Application\Shared\Contracts\CommandBusInterface;
 use App\Application\Shared\Contracts\ReferenceDataReaderInterface;
 use App\Application\TenantGovernance\Contracts\RubroManifestReaderInterface;
 use App\Domain\TenantGovernance\Enums\BusinessType;
+use App\Domain\TenantGovernance\Services\TenantOnboardingProgressService;
+use App\Domain\Shared\Services\TenantContext;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\RegisterTenantRequest;
 use App\Infrastructure\Tenant\Policies\SlugPolicy;
+use App\Models\Tenant;
 use App\Settings\GeneralSettings;
 use App\Support\Auth\AuthRedirector;
 use Illuminate\Contracts\Auth\StatefulGuard;
@@ -142,6 +145,7 @@ final class RegistrationController extends Controller
 
         $user = \App\Models\User::where('email', $result->ownerEmail)->firstOrFail();
         $this->guard->login($user);
+        $this->persistInitialOnboardingSnapshot($result->tenantId, $user);
 
         if ($result->requiresPayment && $result->paymentId !== null) {
             return redirect()
@@ -228,6 +232,36 @@ final class RegistrationController extends Controller
             return app(GeneralSettings::class);
         } catch (Throwable) {
             return null;
+        }
+    }
+
+    private function persistInitialOnboardingSnapshot(string $tenantId, \App\Models\User $user): void
+    {
+        try {
+            $tenant = Tenant::query()->whereKey($tenantId)->first();
+
+            if ($tenant instanceof Tenant) {
+                $tenantContext = app(TenantContext::class);
+                $shouldResetTenantContext = ! $tenantContext->isInitialized();
+
+                if ($shouldResetTenantContext) {
+                    $tenantContext->setTenant((string) $tenant->getKey());
+                }
+
+                try {
+                    app(TenantOnboardingProgressService::class)->persist($tenant, $user);
+                } finally {
+                    if ($shouldResetTenantContext) {
+                        $tenantContext->reset();
+                    }
+                }
+            }
+        } catch (Throwable $exception) {
+            if (app()->runningUnitTests()) {
+                throw $exception;
+            }
+
+            report($exception);
         }
     }
 }
