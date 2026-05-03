@@ -264,7 +264,7 @@
                                 Activar Ilimitado
                             </a>
                         @else
-                             <a href="/admin/products/create" wire:navigate class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-all">
+                             <a href="/app/products/create" wire:navigate class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-all">
                                 Añadir Producto
                             </a>
                         @endif
