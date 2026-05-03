@@ -14,7 +14,11 @@
     x-show="open"
     x-cloak
     class="fixed inset-0 z-50"
+    x-trap.inert.noscroll="open"
     @keydown.escape.window="open && $wire.closeModal()"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="auth-modal-title"
 >
     {{-- Backdrop con blur --}}
     <div 
@@ -42,6 +46,9 @@
             x-transition:leave-start="translate-y-0"
             x-transition:leave-end="translate-y-full"
             @click.stop
+            tabindex="-1"
+            x-ref="authMobilePanel"
+            x-init="$nextTick(() => $refs.authMobilePanel.focus())"
             class="bg-white rounded-t-3xl shadow-2xl max-h-[90vh] overflow-y-auto"
         >
             {{-- Handle de arrastre visual --}}
@@ -69,15 +76,20 @@
             x-transition:leave-start="opacity-100 scale-100"
             x-transition:leave-end="opacity-0 scale-95"
             @click.stop
+            tabindex="-1"
+            x-ref="authDesktopPanel"
+            x-init="$nextTick(() => $refs.authDesktopPanel.focus())"
             class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
         >
             {{-- Header con botón de cerrar --}}
             <div class="flex items-center justify-between p-5 border-b border-gray-100">
-                <h2 class="text-lg font-bold text-gray-900">
+                <h2 id="auth-modal-title" class="text-lg font-bold text-gray-900">
                     {{ $mode === 'login' ? 'Bienvenido de nuevo' : 'Crear cuenta' }}
                 </h2>
                 <button 
                     @click="$wire.closeModal()"
+                    type="button"
+                    aria-label="Cerrar modal de autenticacion"
                     class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
                 >
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
