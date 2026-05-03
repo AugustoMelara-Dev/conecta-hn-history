@@ -3,43 +3,28 @@ import { ArrowRight, MailCheck, RefreshCcw } from "lucide-react"
 
 import { Alert, AlertDescription, AlertTitle } from "@/Components/ui/alert"
 import { Button } from "@/Components/ui/button"
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/Components/ui/card"
-import {
-    Field,
-    FieldDescription,
-    FieldGroup,
-    FieldSeparator,
-} from "@/Components/ui/field"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/Components/ui/card"
+import { Field, FieldDescription, FieldGroup, FieldSeparator } from "@/Components/ui/field"
 
 const COPY = {
     headTitle: "Verificar correo",
     title: "Confirma tu correo",
-    descriptionPrefix: "Te enviamos un enlace de verificación a",
-    descriptionSuffix: "Abre ese correo y vuelve aquí para continuar.",
+    descriptionPrefix: "Te enviamos un enlace de verificacion a",
+    descriptionSuffix: "Abre ese correo y vuelve aqui para continuar.",
     resentTitle: "Enlace reenviado",
-    resentDescription: "Te enviamos un nuevo enlace de verificación.",
+    resentDescription: "Te enviamos un nuevo enlace de verificacion.",
     nextActionTitle: "Siguiente paso: {title}",
     progressLabel: "Progreso de onboarding: {progress}%",
-    resendIdle: "Reenviar correo de verificación",
+    resendIdle: "Reenviar correo de verificacion",
     resendProcessing: "Reenviando...",
     alternateAccount: "o usa otra cuenta",
-    logout: "Cerrar sesión",
-    footerDescription: "Si cambiaste de correo, cierra sesión y vuelve a ingresar con la cuenta correcta.",
+    logout: "Cerrar sesion",
+    footerDescription: "Si cambiaste de correo, cierra sesion y vuelve a ingresar con la cuenta correcta.",
 }
 
 function t(key, params = {}) {
     const template = COPY[key] ?? key
-
-    return Object.entries(params).reduce(
-        (text, [paramKey, value]) => text.replace(`{${paramKey}}`, String(value)),
-        template,
-    )
+    return Object.entries(params).reduce((text, [paramKey, value]) => text.replace(`{${paramKey}}`, String(value)), template)
 }
 
 export default function VerifyEmail({ status, onboardingNextAction = null }) {
@@ -62,15 +47,10 @@ export default function VerifyEmail({ status, onboardingNextAction = null }) {
                             <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
                                 <MailCheck className="h-6 w-6" aria-hidden="true" />
                             </div>
-                            <CardTitle className="text-2xl font-semibold text-slate-950">
-                                {t("title")}
-                            </CardTitle>
+                            <CardTitle className="text-2xl font-semibold text-slate-950">{t("title")}</CardTitle>
                             <CardDescription className="text-slate-500">
-                                {t("descriptionPrefix")}{" "}
-                                <span className="font-medium text-slate-950">
-                                    {auth?.user?.email}
-                                </span>
-                                . {t("descriptionSuffix")}
+                                {t("descriptionPrefix")} <span className="font-medium text-slate-950">{auth?.user?.email}</span>.{" "}
+                                {t("descriptionSuffix")}
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -78,18 +58,14 @@ export default function VerifyEmail({ status, onboardingNextAction = null }) {
                                 {status === "verification-link-sent" ? (
                                     <Alert variant="success" aria-live="polite" data-testid="verify-email-feedback">
                                         <AlertTitle>{t("resentTitle")}</AlertTitle>
-                                        <AlertDescription>
-                                            {t("resentDescription")}
-                                        </AlertDescription>
+                                        <AlertDescription>{t("resentDescription")}</AlertDescription>
                                     </Alert>
                                 ) : null}
 
                                 {onboardingNextAction ? (
                                     <Alert data-testid="verify-email-onboarding-next">
                                         <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                                        <AlertTitle>
-                                            {t("nextActionTitle", { title: onboardingNextAction.title })}
-                                        </AlertTitle>
+                                        <AlertTitle>{t("nextActionTitle", { title: onboardingNextAction.title })}</AlertTitle>
                                         <AlertDescription>
                                             {onboardingNextAction.copy}
                                             {typeof onboardingNextAction.progress === "number" ? (
@@ -132,9 +108,7 @@ export default function VerifyEmail({ status, onboardingNextAction = null }) {
                                             {t("logout")}
                                         </Link>
                                     </Button>
-                                    <FieldDescription className="text-center">
-                                        {t("footerDescription")}
-                                    </FieldDescription>
+                                    <FieldDescription className="text-center">{t("footerDescription")}</FieldDescription>
                                 </Field>
                             </FieldGroup>
                         </CardContent>

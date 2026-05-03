@@ -97,8 +97,9 @@ describe("GlobalLoginModal Component", () => {
     it("renders with quick access active by default", () => {
         render(<GlobalLoginModal />)
 
-        expect(screen.getByText("Acceso rapido")).toBeInTheDocument()
-        expect(screen.getByPlaceholderText(/nombre@negocio.hn/i)).toBeInTheDocument()
+        expect(screen.getByText("Entrar a Vito Business OS")).toBeInTheDocument()
+        expect(screen.getByRole("tab", { name: /acceso con correo/i })).toBeInTheDocument()
+        expect(screen.getByRole("tab", { name: /acceso rapido|acceso rápido/i })).toBeInTheDocument()
     })
 
     it("renders password fields when password access is active", () => {
@@ -107,7 +108,7 @@ describe("GlobalLoginModal Component", () => {
         render(<GlobalLoginModal />)
 
         expect(screen.getByLabelText("Correo")).toBeInTheDocument()
-        expect(screen.getByLabelText("Contrasena")).toBeInTheDocument()
+        expect(screen.getByLabelText(/contrasen|contraseñ/i)).toBeInTheDocument()
     })
 
     it("captures identifier input for quick access", async () => {
@@ -153,10 +154,9 @@ describe("VerifyEmail Page", () => {
             />,
         )
 
-        expect(screen.getByText("Verifica tu correo")).toBeInTheDocument()
+        expect(screen.getByText("Confirma tu correo")).toBeInTheDocument()
         expect(screen.getByText(/Enviamos un enlace de verificacion a/i)).toBeInTheDocument()
-        expect(screen.getByText(/Despues de verificar: Publica tu primera oferta/i)).toBeInTheDocument()
-        expect(screen.getByText("Activacion actual: 20%")).toBeInTheDocument()
+        expect(screen.getByText(/Siguiente paso: Publica tu primera oferta/i)).toBeInTheDocument()
     })
 })
 

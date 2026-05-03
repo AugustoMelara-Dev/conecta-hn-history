@@ -3,10 +3,10 @@ import { Head, Link } from '@inertiajs/react';
 import DOMPurify from 'dompurify';
 import GuestLayout from '@/Layouts/GuestLayout';
 import SupportDiagnosticCard from '@/Components/SupportDiagnosticCard';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/Components/ui/alert';
+import { Badge } from '@/Components/ui/badge';
+import { Button } from '@/Components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { t } from '@/lib/i18n';
 
 function normalizePaymentStatus(rawStatus) {
@@ -148,5 +148,4 @@ export default function PaymentPending({ payment, bankInstructions, whatsappUrl,
         </GuestLayout>
     );
 }
-
 
