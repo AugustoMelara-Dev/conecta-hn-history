@@ -8,7 +8,7 @@
                         <h1 class="biz-title">{{ $tenantName }}</h1>
                         <p class="biz-heading">Conversaciones que necesitan seguimiento humano</p>
                         <p class="biz-copy">
-                            Trabaja replies, ownership, segmento y continuidad desde una sola cola. La meta no es solo responder: es cerrar el siguiente paso correcto.
+                            Trabaja respuestas, responsable asignado, segmento y continuidad desde una sola cola. La meta no es solo responder: es cerrar el siguiente paso correcto.
                         </p>
                     </div>
 
@@ -87,7 +87,7 @@
                         <p class="biz-kicker">Mesa operativa</p>
                         <h2 class="biz-heading">Cola, hilo y secuencia activa</h2>
                         <p class="biz-muted">
-                            Filtra por owner, sede, canal y lane del journey; luego trabaja la conversación desde el hilo, no solo desde la tarjeta.
+                            Filtra por responsable, sede, canal y carril del recorrido; luego trabaja la conversación desde el hilo, no solo desde la tarjeta.
                         </p>
                     </div>
 
@@ -104,7 +104,7 @@
                         <label class="biz-stack biz-stack-xxs">
                             <span class="biz-muted">Lane</span>
                             <select wire:model.live="selectedQueueLane" class="fi-input">
-                                <option value="all">Todo el journey</option>
+                                <option value="all">Todo el recorrido</option>
                                 <option value="active">Primer toque</option>
                                 <option value="waiting_customer">Esperando cliente</option>
                                 <option value="stalled">Requiere rescate</option>
@@ -459,7 +459,7 @@
                                         <div class="biz-stat">
                                             <p class="biz-stat-label">Esperando cliente</p>
                                             <p class="biz-stat-value">{{ $selectedConversation['threadSummary']['pending_customer'] ?? 0 }}</p>
-                                            <p class="biz-stat-copy">Toques ya enviados que quedaron esperando reply.</p>
+                                            <p class="biz-stat-copy">Toques ya enviados que quedaron esperando respuesta.</p>
                                         </div>
                                     </div>
 
@@ -547,7 +547,7 @@
                                         <div>
                                             <p class="biz-kicker">Plantillas productizadas</p>
                                             <h3 class="biz-heading">Respuestas y siguiente paso</h3>
-                                            <p class="biz-muted">Usa la mejor salida para este segmento sin perder ownership, journey ni contexto del hilo.</p>
+                                            <p class="biz-muted">Usa la mejor salida para este segmento sin perder responsable asignado, recorrido ni contexto del hilo.</p>
                                         </div>
 
                                         <div class="biz-actions">

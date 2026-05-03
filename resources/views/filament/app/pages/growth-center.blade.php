@@ -208,8 +208,8 @@
             <div class="biz-stack">
                 <div>
                     <p class="biz-kicker">Analítica por plantilla</p>
-                    <h2 class="biz-heading">Que mensajes realmente estan moviendo reply y cierre</h2>
-                    <p class="biz-muted">Sirve para dejar de enviar por intuición y empezar a repetir las secuencias que sí convierten en revenue real.</p>
+                    <h2 class="biz-heading">Qué mensajes realmente están moviendo respuesta y cierre</h2>
+                    <p class="biz-muted">Sirve para dejar de enviar por intuición y empezar a repetir las secuencias que sí convierten en ingresos reales.</p>
                 </div>
 
                 <div class="biz-actions">
@@ -228,7 +228,7 @@
 
                             <p class="biz-muted">
                                 <strong>Envios:</strong> {{ $item['sent'] }}
-                                | <strong>Replies:</strong> {{ $item['replied'] }} ({{ $item['replyRate'] }})
+                                | <strong>Respuestas:</strong> {{ $item['replied'] }} ({{ $item['replyRate'] }})
                                 | <strong>Conversiones:</strong> {{ $item['conversions'] }}
                                 | <strong>Revenue:</strong> {{ $item['revenue'] }}
                             </p>
@@ -248,8 +248,8 @@
             <div class="biz-stack">
                 <div>
                     <p class="biz-kicker">Analítica por secuencia</p>
-                    <h2 class="biz-heading">Que rutas del journey estan moviendo señales reales</h2>
-                    <p class="biz-muted">Lectura parcial: ayuda a comparar reply, cierres y revenue cuando hay volumen suficiente.</p>
+                    <h2 class="biz-heading">Qué rutas del recorrido están moviendo señales reales</h2>
+                    <p class="biz-muted">Lectura parcial: ayuda a comparar respuestas, cierres e ingresos cuando hay volumen suficiente.</p>
                 </div>
 
                 <div class="biz-actions">
@@ -268,7 +268,7 @@
 
                             <p class="biz-muted">
                                 <strong>Envios:</strong> {{ $item['sent'] }}
-                                | <strong>Replies:</strong> {{ $item['replied'] }} ({{ $item['replyRate'] }})
+                                | <strong>Respuestas:</strong> {{ $item['replied'] }} ({{ $item['replyRate'] }})
                                 | <strong>Conversiones:</strong> {{ $item['conversions'] }}
                                 | <strong>Revenue:</strong> {{ $item['revenue'] }}
                             </p>
@@ -288,8 +288,8 @@
             <div class="biz-stack">
                 <div>
                     <p class="biz-kicker">Attribution multi-touch</p>
-                    <h2 class="biz-heading">Que secuencias se estan llevando revenue observado</h2>
-                    <p class="biz-muted">Es attribution parcial multi-touch: evita sobreinterpretar last-touch cuando todavía falta cobertura.</p>
+                    <h2 class="biz-heading">Qué secuencias se están llevando ingresos observados</h2>
+                    <p class="biz-muted">Es atribución parcial multi-touch: evita sobreinterpretar last-touch cuando todavía falta cobertura.</p>
                 </div>
 
                 <div class="biz-actions">
@@ -307,7 +307,7 @@
                             </div>
 
                             <p class="biz-muted">
-                                <strong>Replies:</strong> {{ $item['replies'] }}
+                                <strong>Respuestas:</strong> {{ $item['replies'] }}
                                 | <strong>Clicks/reads:</strong> {{ $item['clicks'] }}
                             </p>
                         </div>
@@ -364,8 +364,8 @@
             <div class="biz-stack">
                 <div>
                     <p class="biz-kicker">Revenue por outcomes reales</p>
-                    <h2 class="biz-heading">Que secuencias estan cerrando compra, recuperando no-show y moviendo recompra</h2>
-                    <p class="biz-muted">Aquí ya no solo ves reply o click: ves outcomes de negocio reales ligados a la secuencia.</p>
+                    <h2 class="biz-heading">Qué secuencias están cerrando compra, recuperando no-show y moviendo recompra</h2>
+                    <p class="biz-muted">Aquí ya no solo ves respuestas o clics: ves resultados de negocio reales ligados a la secuencia.</p>
                 </div>
 
                 <div class="biz-actions">
@@ -405,7 +405,7 @@
                     <div>
                         <p class="biz-kicker">Revenue atribuido por owner</p>
                         <h2 class="biz-heading">Quién está empujando las secuencias que sí convierten</h2>
-                        <p class="biz-muted">Cruza revenue multi-touch con ownership para detectar quién mueve mejor cada ruta del CRM.</p>
+                        <p class="biz-muted">Cruza ingresos multi-touch con responsable asignado para detectar quién mueve mejor cada ruta del CRM.</p>
                     </div>
 
                     <div class="biz-actions">
@@ -424,7 +424,7 @@
 
                                 <p class="biz-muted">
                                     <strong>Revenue:</strong> {{ $item['revenue'] }}
-                                    | <strong>Replies:</strong> {{ $item['replies'] }}
+                                    | <strong>Respuestas:</strong> {{ $item['replies'] }}
                                     | <strong>Clicks/reads:</strong> {{ $item['clicks'] }}
                                 </p>
                             </div>
@@ -432,7 +432,7 @@
                             @include('filament.app.components.table-empty-state', [
                                 'badge' => 'Owners',
                                 'heading' => 'Todavía no hay lectura por owner y secuencia',
-                                'description' => 'Hace falta más cierre multi-touch con ownership claro para comparar responsables.',
+                                'description' => 'Hace falta más cierre multi-touch con responsable asignado claro para comparar responsables.',
                             ])
                         @endforelse
                     </div>
@@ -463,7 +463,7 @@
 
                                 <p class="biz-muted">
                                     <strong>Revenue:</strong> {{ $item['revenue'] }}
-                                    | <strong>Replies:</strong> {{ $item['replies'] }}
+                                    | <strong>Respuestas:</strong> {{ $item['replies'] }}
                                     | <strong>Clicks/reads:</strong> {{ $item['clicks'] }}
                                 </p>
                             </div>
@@ -503,7 +503,7 @@
 
                             <p class="biz-muted">
                                 <strong>Revenue:</strong> {{ $item['revenue'] }}
-                                | <strong>Replies:</strong> {{ $item['replies'] }}
+                                | <strong>Respuestas:</strong> {{ $item['replies'] }}
                                 | <strong>Clicks/reads:</strong> {{ $item['clicks'] }}
                             </p>
                         </div>
@@ -524,7 +524,7 @@
                     <div>
                         <p class="biz-kicker">Analítica conversacional por owner</p>
                         <h2 class="biz-heading">Quién está cerrando mejor la conversación</h2>
-                        <p class="biz-muted">Cruza volumen, conversiones, revenue, conversaciones esperando reply y velocidad inicial por responsable.</p>
+                        <p class="biz-muted">Cruza volumen, conversiones, ingresos, conversaciones esperando respuesta y velocidad inicial por responsable.</p>
                     </div>
 
                     <div class="biz-actions">
@@ -553,7 +553,7 @@
                             @include('filament.app.components.table-empty-state', [
                                 'badge' => 'Owners',
                                 'heading' => 'Todavía no hay lectura conversacional por owner',
-                                'description' => 'Asigna ownership y trabaja más replies desde la bandeja para abrir esta vista.',
+                                'description' => 'Asigna responsable y trabaja más respuestas desde la bandeja para abrir esta vista.',
                             ])
                         @endforelse
                     </div>
@@ -815,7 +815,7 @@
                 <div class="biz-stack">
                     <div>
                         <p class="biz-kicker">Lo que conviene mover hoy</p>
-                        <h2 class="biz-heading">Cola ejecutiva del dueno</h2>
+                        <h2 class="biz-heading">Cola ejecutiva del dueño</h2>
                     </div>
 
                     <div class="biz-actions">
