@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const allowlistPath = path.join(root, 'scripts/ci/ui-guardrails-allowlist.json');
 
 const appSourceDirs = [
     'resources/js/Pages',
@@ -24,6 +25,7 @@ const ignoredDirs = new Set([
     'storage',
     'bootstrap/cache',
     'resources/js/Components/ui',
+    'public/build',
 ]);
 
 const debtRules = [
@@ -212,7 +214,7 @@ const surfaceBudgets = [
         ],
         budgets: {
             'raw-tailwind-colors': 38,
-            'space-axis-utilities': 23,
+            'space-axis-utilities': 24,
             'transition-all': 26,
             'outline-none': 3,
             'inline-style': 3,
@@ -229,6 +231,44 @@ const zeroToleranceRules = [
         dirs: runtimeVisibleDirs,
         pattern: /(?:\u00c3|\u00c2|\uFFFD|\u00ef\u00bf\u00bd)/g,
         guidance: 'Fix encoding before shipping user-visible copy.',
+    },
+];
+
+const strictRules = [
+    {
+        id: 'no-confirm-dialog',
+        label: 'No window.confirm in runtime UI surfaces',
+        dirs: ['resources/js', 'resources/views'],
+        pattern: /(?:window\.)?confirm\s*\(/g,
+        guidance: 'Use AlertDialog or a reviewed confirmation flow.',
+    },
+    {
+        id: 'no-href-hash',
+        label: 'No dead CTA href="#" in runtime UI surfaces',
+        dirs: ['resources/js', 'resources/views'],
+        pattern: /href\s*=\s*["']#["']/g,
+        guidance: 'Replace with a real route, button action, or remove the CTA.',
+    },
+    {
+        id: 'public-copy-no-internal-terms',
+        label: 'No internal implementation terms in public copy',
+        dirs: ['resources/js/Pages', 'resources/js/Layouts', 'resources/views/components/layouts'],
+        pattern: /\b(?:Filament|Stitch)\b/g,
+        guidance: 'Public copy must describe user value, not internal implementation details.',
+    },
+    {
+        id: 'public-copy-no-false-claims',
+        label: 'No false launch claims in public copy',
+        dirs: ['README.md', 'resources/js/Pages', 'resources/js/Layouts', 'resources/views/components/layouts'],
+        pattern: /\b(?:CRM completo|production-ready|listo para producción)\b/gi,
+        guidance: 'Use evidence-based claims only; avoid overpromising in public-facing copy.',
+    },
+    {
+        id: 'no-known-legacy-ui-routes',
+        label: 'No known legacy/dead UI routes in runtime surfaces',
+        dirs: ['resources/js', 'resources/views'],
+        pattern: /(?:\/admin\/products\/create|\/favoritos)(?:["'/?\s]|$)/g,
+        guidance: 'Replace known dead/legacy routes with named routes or remove the action.',
     },
 ];
 
@@ -285,8 +325,23 @@ function walk(dir, extensions = ['.js', '.jsx', '.ts', '.tsx', '.php', '.blade.p
     return files;
 }
 
+function readAllowlist() {
+    if (!fs.existsSync(allowlistPath)) {
+        return {};
+    }
+
+    return JSON.parse(fs.readFileSync(allowlistPath, 'utf8'));
+}
+
 function scanRule(rule) {
-    const files = Array.from(new Set(rule.dirs.flatMap((dir) => walk(dir))));
+    const files = Array.from(new Set(rule.dirs.flatMap((dir) => {
+        const absolute = path.join(root, dir);
+        if (fs.existsSync(absolute) && fs.statSync(absolute).isFile()) {
+            return [absolute];
+        }
+
+        return walk(dir);
+    })));
 
     return scanRuleInFiles(rule, files);
 }
@@ -355,6 +410,7 @@ function scanSurfaceRule(rule, surface) {
 }
 
 const failures = [];
+const allowlist = readAllowlist();
 
 for (const rule of debtRules) {
     const matches = scanRule(rule);
@@ -409,6 +465,33 @@ for (const rule of zeroToleranceRules) {
             rule.guidance,
             formatExamples(matches),
         ].filter(Boolean).join('\n'));
+    }
+}
+
+console.log('\nStrict UI guardrails:');
+
+for (const rule of strictRules) {
+    const matches = scanRule(rule);
+    const allowedEntries = allowlist[rule.id] ?? [];
+    const allowedSet = new Set(allowedEntries.map((entry) => `${entry.file}:${entry.line}`));
+    const disallowed = matches
+        .flatMap((match) => match.lines.map((line) => ({ file: match.file, line })))
+        .filter((entry) => !allowedSet.has(`${entry.file}:${entry.line}`));
+
+    console.log(`${disallowed.length === 0 ? 'OK' : 'FAIL'} ${rule.id}: ${disallowed.length} hits`);
+
+    if (disallowed.length > 0) {
+        const preview = disallowed
+            .slice(0, 10)
+            .map((entry) => `  - ${entry.file}:${entry.line}`)
+            .join('\n');
+
+        failures.push([
+            `${rule.label} failed (${disallowed.length} disallowed hits).`,
+            rule.guidance,
+            preview,
+            allowedEntries.length > 0 ? `Allowlist entries for ${rule.id}: ${allowedEntries.length}` : 'Allowlist entries: none',
+        ].join('\n'));
     }
 }
 

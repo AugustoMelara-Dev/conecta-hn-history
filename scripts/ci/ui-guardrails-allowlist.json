@@ -1,0 +1,80 @@
+{
+  "no-confirm-dialog": [],
+  "no-href-hash": [],
+  "public-copy-no-internal-terms": [
+    {
+      "file": "README.md",
+      "line": 3,
+      "reason": "Arquitectura interna documentada en README tecnico, no en UI publica runtime."
+    },
+    {
+      "file": "README.md",
+      "line": 67,
+      "reason": "Referencia operacional a paneles para runbooks de equipo."
+    },
+    {
+      "file": "README.md",
+      "line": 68,
+      "reason": "Referencia operacional a paneles para runbooks de equipo."
+    },
+    {
+      "file": "resources/js/Pages/Public/Explore.jsx",
+      "line": 98,
+      "reason": "Deuda legacy de copy publico pendiente de limpieza en PR de public copy."
+    },
+    {
+      "file": "resources/js/Pages/Public/Explore.jsx",
+      "line": 372,
+      "reason": "Deuda legacy de copy publico pendiente de limpieza en PR de public copy."
+    },
+    {
+      "file": "resources/js/Pages/Public/Explore.jsx",
+      "line": 406,
+      "reason": "Deuda legacy de copy publico pendiente de limpieza en PR de public copy."
+    },
+    {
+      "file": "resources/js/Pages/Directory/Index.jsx",
+      "line": 648,
+      "reason": "Deuda legacy de copy publico pendiente de limpieza en PR de public copy."
+    }
+  ],
+  "public-copy-no-false-claims": [
+    {
+      "file": "README.md",
+      "line": 84,
+      "reason": "Se usa para negar claim y exigir evidencia de release, no para prometer estado."
+    }
+  ],
+  "no-known-legacy-ui-routes": [
+    {
+      "file": "resources/js/Components/Organisms/MobileBottomNav.jsx",
+      "line": 29,
+      "reason": "Ruta valida de perfil buyer (`/mi-cuenta/favoritos`), detectada por substring de la regla."
+    },
+    {
+      "file": "resources/js/Components/Organisms/MobileBottomNav.jsx",
+      "line": 62,
+      "reason": "Comparacion de URL activa (`url.includes('/favoritos')`) sin CTA roto."
+    },
+    {
+      "file": "resources/js/Components/Organisms/MobileBottomNav.jsx",
+      "line": 42,
+      "reason": "Ruta legacy conocida pendiente de migracion en PR de navegacion movil."
+    },
+    {
+      "file": "resources/js/Components/Organisms/MobileBottomNav.jsx",
+      "line": 52,
+      "reason": "Ruta legacy conocida pendiente de migracion en PR de navegacion movil."
+    },
+    {
+      "file": "resources/js/Components/Organisms/MobileBottomNav.jsx",
+      "line": 54,
+      "reason": "Ruta legacy conocida pendiente de migracion en PR de navegacion movil."
+    },
+    {
+      "file": "resources/views/livewire/tenant/dashboard.blade.php",
+      "line": 267,
+      "reason": "Ruta legacy conocida en Blade pendiente de cleanup en PR de dashboard legacy."
+    }
+  ]
+}
