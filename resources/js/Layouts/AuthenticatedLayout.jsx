@@ -82,12 +82,16 @@ export default function AuthenticatedLayout({ header, children }) {
 
                         <div className="-me-2 flex items-center sm:hidden">
                             <button
+                                type="button"
                                 onClick={() =>
                                     setShowingNavigationDropdown(
                                         (previousState) => !previousState,
                                     )
                                 }
-                                className="inline-flex items-center justify-center rounded-md p-2 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:bg-gray-100 focus:text-gray-500 focus:outline-none dark:text-gray-500 dark:hover:bg-gray-900 dark:hover:text-gray-400 dark:focus:bg-gray-900 dark:focus:text-gray-400"
+                                aria-controls="mobile-auth-navigation"
+                                aria-expanded={showingNavigationDropdown}
+                                aria-label={showingNavigationDropdown ? 'Cerrar menu principal' : 'Abrir menu principal'}
+                                className="inline-flex items-center justify-center rounded-md p-2 text-gray-400 transition-colors duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:text-gray-500 dark:hover:bg-gray-900 dark:hover:text-gray-400"
                             >
                                 <svg
                                     className="h-6 w-6"
@@ -124,6 +128,7 @@ export default function AuthenticatedLayout({ header, children }) {
                 </div>
 
                 <div
+                    id="mobile-auth-navigation"
                     className={
                         (showingNavigationDropdown ? 'block' : 'hidden') +
                         ' sm:hidden'
