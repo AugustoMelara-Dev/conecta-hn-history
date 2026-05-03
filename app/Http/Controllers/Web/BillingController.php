@@ -8,6 +8,7 @@ use App\Domain\Billing\Enums\PaymentStatus;
 use App\Domain\Billing\Repositories\PaymentRepositoryInterface;
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
+use App\Models\TenantOnboardingState;
 use App\Models\User;
 use App\Settings\GeneralSettings;
 use App\Support\Diagnostics\SupportDiagnosticFactory;
@@ -84,6 +85,7 @@ final class BillingController extends Controller
             ],
             'bankInstructions' => $bankInstructions,
             'whatsappUrl' => $whatsappUrl,
+            'onboardingNextAction' => $this->onboardingNextActionFor($tenant, $user),
             'diagnostic' => $this->diagnostics->make(
                 'billing',
                 'Pago pendiente de validacion',
@@ -91,6 +93,29 @@ final class BillingController extends Controller
                 'Envia el comprobante por WhatsApp o correo e incluye la referencia de pago.'
             ),
         ]);
+    }
+
+    /**
+     * @return array{progress:int,title:string,copy:string,href:string}|null
+     */
+    private function onboardingNextActionFor(Tenant $tenant, User $user): ?array
+    {
+        $state = TenantOnboardingState::query()
+            ->where('tenant_id', (string) $tenant->getKey())
+            ->where('user_id', (string) $user->getKey())
+            ->latest()
+            ->first();
+
+        if (! $state instanceof TenantOnboardingState || blank($state->next_action_title)) {
+            return null;
+        }
+
+        return [
+            'progress' => (int) $state->progress,
+            'title' => (string) $state->next_action_title,
+            'copy' => (string) $state->next_action_copy,
+            'href' => (string) $state->next_action_href,
+        ];
     }
 
     /**
