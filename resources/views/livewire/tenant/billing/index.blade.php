@@ -226,13 +226,14 @@
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="billing-payment-modal-title"
+                aria-describedby="billing-payment-modal-description"
             >
                 <div class="fixed inset-0 bg-gray-900/75 transition-opacity" wire:click="$set('showPaymentModal', false)"></div>
                 <div class="flex min-h-full items-center justify-center p-4">
                     <div class="relative bg-white rounded-2xl shadow-xl max-w-lg w-full p-6" tabindex="-1" x-ref="paymentModalPanel" x-init="$nextTick(() => $refs.paymentModalPanel.focus())">
                         <div class="mb-6">
                             <h3 id="billing-payment-modal-title" class="text-xl font-bold text-gray-900">💸 Reportar Transferencia</h3>
-                            <p class="text-sm text-gray-500 mt-1">Realiza la transferencia y luego completa este formulario.</p>
+                            <p id="billing-payment-modal-description" class="text-sm text-gray-500 mt-1">Realiza la transferencia y luego completa este formulario.</p>
                         </div>
 
                         {{-- Bank Instructions --}}

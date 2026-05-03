@@ -230,6 +230,7 @@
             role="dialog"
             aria-modal="true"
             aria-labelledby="orders-pos-modal-title"
+            aria-describedby="orders-pos-modal-description"
         >
             {{-- Backdrop --}}
             <div class="fixed inset-0 bg-gray-500/75 transition-opacity" wire:click="resetModal"></div>
@@ -238,7 +239,10 @@
                 <div class="relative bg-white rounded-2xl shadow-xl max-w-2xl w-full p-6 transform transition-transform max-h-[90vh] overflow-y-auto" tabindex="-1" x-ref="posModalPanel" x-init="$nextTick(() => $refs.posModalPanel.focus())">
                     {{-- Header --}}
                     <div class="flex items-center justify-between mb-6">
-                        <h3 id="orders-pos-modal-title" class="text-xl font-bold text-gray-900">📦 Registrar Venta</h3>
+                        <div>
+                            <h3 id="orders-pos-modal-title" class="text-xl font-bold text-gray-900">📦 Registrar Venta</h3>
+                            <p id="orders-pos-modal-description" class="mt-1 text-sm text-gray-500">Agrega productos, valida datos del cliente y confirma el pedido.</p>
+                        </div>
                         <button wire:click="resetModal" type="button" aria-label="Cerrar modal de registro de venta" class="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
