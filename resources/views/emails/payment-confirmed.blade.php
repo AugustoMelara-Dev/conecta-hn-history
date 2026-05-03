@@ -22,39 +22,39 @@
     <div class="container">
         <div class="header">
             <div class="icon">✅</div>
-            <h1>Pago Confirmado</h1>
+            <h1>Pago confirmado</h1>
         </div>
-        
+
         <div class="content">
             <p>Hola <strong>{{ $tenant->user->name ?? 'Cliente' }}</strong>,</p>
-            
-            <p>Excelentes noticias! Tu pago ha sido verificado y confirmado exitosamente.</p>
-            
+
+            <p>Excelente noticia: tu pago fue verificado y confirmado correctamente.</p>
+
             <div class="highlight">
-                <h3>Tu Plan PRO esta Activo</h3>
+                <h3>Tu plan Pro está activo</h3>
                 <p>Ahora tienes acceso a todas las funcionalidades premium de Vito Business OS.</p>
             </div>
-            
+
             <div class="details">
                 <p><strong>Negocio:</strong> {{ $tenant->name }}</p>
-                <p><strong>Monto Pagado:</strong> L. {{ number_format($payment->amount, 2) }}</p>
-                <p><strong>Fecha de Activacion:</strong> {{ now()->format('d/m/Y') }}</p>
-                <p><strong>Valido Hasta:</strong> {{ optional($tenant->subscription_ends_at ?? $tenant->plan_expires_at)->format('d/m/Y') ?? 'N/A' }}</p>
+                <p><strong>Monto pagado:</strong> L. {{ number_format($payment->amount, 2) }}</p>
+                <p><strong>Fecha de activación:</strong> {{ now()->format('d/m/Y') }}</p>
+                <p><strong>Válido hasta:</strong> {{ optional($tenant->subscription_ends_at ?? $tenant->plan_expires_at)->format('d/m/Y') ?? 'N/A' }}</p>
             </div>
-            
-            <p>Con tu Plan PRO puedes:</p>
+
+            <p>Con tu plan Pro puedes:</p>
             <ul>
                 <li>Subir productos ilimitados</li>
                 <li>Personalizar colores y banner</li>
-                <li>Activar boton de WhatsApp</li>
+                <li>Activar botón de WhatsApp</li>
                 <li>Agregar redes sociales</li>
             </ul>
-            
+
             <center>
-                <a href="{{ config('app.url') }}/app" class="btn">Ir a mi Panel</a>
+                <a href="{{ config('app.url') }}/app" class="btn">Ir a mi panel</a>
             </center>
         </div>
-        
+
         <div class="footer">
             <p>Gracias por confiar en Vito Business OS</p>
             <p>© {{ date('Y') }} Vito Business OS. Todos los derechos reservados.</p>

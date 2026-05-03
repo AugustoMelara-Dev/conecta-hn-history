@@ -15,11 +15,10 @@
         }
         .container {
             max-width: 600px;
-            margin: 0 auto;
+            margin: 40px auto 0;
             background-color: #ffffff;
             padding: 40px;
             border-radius: 8px;
-            margin-top: 40px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
         .header {
@@ -73,25 +72,25 @@
             <div class="logo">C</div>
             <div class="title">Bienvenido a Vito Business OS</div>
         </div>
-        
+
         <div class="content">
             <p>Hola {{ $user->name }},</p>
-            
+
             <p>Gracias por unirte a <strong>Vito Business OS</strong>, la infraestructura digital que está transformando el comercio en Honduras.</p>
-            
+
             <p>Tu cuenta ha sido creada exitosamente. Ahora eres parte de una comunidad que valora el crecimiento, la transparencia y la conexión directa.</p>
-            
+
             @if($user->role === 'seller')
-            <p>Como negocio, ahora puedes activar tu micrositio publico, subir productos y gestionar tu operacion desde el panel oficial.</p>
+                <p>Como negocio, ahora puedes activar tu micrositio público, subir productos y gestionar tu operación desde el panel oficial.</p>
             @else
-            <p>Como usuario, ahora puedes explorar los mejores negocios locales, guardar tus favoritos y contactar directamente.</p>
+                <p>Como usuario, ahora puedes explorar los mejores negocios locales, guardar tus favoritos y contactar directamente.</p>
             @endif
-            
+
             <div style="text-align: center; margin-top: 30px;">
-                <a href="{{ url('/login') }}" class="button">Acceder a mi Cuenta</a>
+                <a href="{{ url('/login') }}" class="button">Acceder a mi cuenta</a>
             </div>
         </div>
-        
+
         <div class="footer">
             <p>© {{ date('Y') }} Vito Business OS. Todos los derechos reservados.</p>
             <p>Tegucigalpa, Honduras</p>
