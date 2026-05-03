@@ -1,0 +1,158 @@
+const messages = {
+    auth: {
+        verifyEmail: {
+            title: "Verifica tu correo",
+            headTitle: "Verifica tu correo | Vito Business OS",
+            descriptionPrefix: "Enviamos un enlace de verificacion a",
+            descriptionSuffix: "Abrelo para desbloquear el panel correcto de Vito Business OS.",
+            resentTitle: "Correo reenviado",
+            resentDescription: "Te enviamos un nuevo enlace de verificacion. Revisa tambien spam o promociones.",
+            nextActionTitle: "Despues de verificar: {title}",
+            progressLabel: "Activacion actual: {progress}%",
+            resendProcessing: "Enviando...",
+            resendIdle: "Reenviar correo de verificacion",
+            alternateAccount: "Necesitas otra cuenta?",
+            logout: "Cerrar sesion",
+            footerDescription: "Verifica tu correo para continuar al panel que corresponde a tu cuenta.",
+        },
+        login: {
+            headTitle: "Iniciar sesion | Vito Business OS",
+            metaDescription: "Accede a Vito Business OS para administrar operaciones, clientes y ventas desde un solo panel.",
+            backToSite: "Volver al sitio",
+            eyebrow: "Business Operating System",
+            heroTitle: "Una entrada limpia para operar tu negocio sin friccion.",
+            heroDescription: "Panel para owners, staff y clientes con redireccion por rol, tenant y verificacion de correo.",
+            proofBusinessPanel: "Panel negocio",
+            proofQuickAccess: "Acceso rapido",
+            proofVerifiedEmail: "Correo verificado",
+            mobileHome: "Inicio",
+            badge: "Acceso seguro",
+            title: "Entra a Vito Business OS",
+            description: "Usa contrasena para el panel de negocio o acceso rapido con correo y codigo.",
+            passwordTab: "Acceso con correo",
+            quickTab: "Acceso rapido",
+            email: "Correo",
+            password: "Contrasena",
+            forgotPassword: "Olvidaste tu contrasena?",
+            submitting: "Entrando...",
+            submit: "Iniciar sesion",
+            noAccount: "No tienes cuenta?",
+            registerBusiness: "Registrar negocio",
+            placeholderEmail: "nombre@negocio.hn",
+        },
+        forgotPassword: {
+            headTitle: "Recuperar acceso | Vito Business OS",
+            imageAlt: "Panel de recuperacion de acceso",
+            title: "Recupera tu acceso",
+            description: "Escribe tu correo y enviaremos un enlace seguro para cambiar la contrasena.",
+            successTitle: "Revisa tu correo",
+            email: "Correo",
+            placeholderEmail: "nombre@negocio.hn",
+            submitting: "Enviando...",
+            submit: "Enviar enlace",
+            separator: "Volver al acceso",
+            login: "Iniciar sesion",
+        },
+        globalLogin: {
+            title: "Entrar a Vito Business OS",
+            description: "Elige acceso con contrasena o enlace/codigo de respaldo.",
+            passwordTab: "Acceso con correo",
+            quickTab: "Acceso rapido",
+            email: "Correo",
+            password: "Contrasena",
+            submit: "Iniciar sesion",
+        },
+    },
+    billing: {
+        paymentPending: {
+            headTitle: "Completar pago | Vito Business OS",
+            initialLiveMessage: "Tu pago esta pendiente de validacion.",
+            updatedLiveMessage: "Pago pendiente. Envia el comprobante para continuar la validacion.",
+            approvedLiveMessage: "Pago aprobado. Ya puedes continuar en el panel.",
+            rejectedLiveMessage: "Pago rechazado. Abre billing oficial para reenviar tu comprobante.",
+            title: "Falta validar tu pago",
+            badge: "Pendiente",
+            approvedBadge: "Aprobado",
+            rejectedBadge: "Rechazado",
+            intro: "Tu negocio {tenantName} esta registrado. Este paso confirma la activacion de tu plan cuando el equipo valide el comprobante.",
+            reference: "Referencia",
+            amount: "Monto",
+            status: "Estado",
+            statusPendingReview: "Pendiente de revision",
+            paymentInstructions: "Instrucciones de pago",
+            whatsappAction: "Enviar comprobante por WhatsApp",
+            whatsappUnavailableTitle: "Soporte por WhatsApp no disponible",
+            whatsappUnavailableDescription:
+                "Envia el comprobante a soporte@vitobusinessos.com e incluye la referencia {reference}.",
+            noFakeApproval:
+                "No cerramos este estado hasta recibir validacion real. Si ya enviaste comprobante, el equipo te confirmara por correo.",
+            approvedStatus: "El pago ya fue aprobado. Puedes continuar con la configuracion del negocio en el panel.",
+            rejectedStatus: "El pago fue rechazado. Revisa soporte y reenviar comprobante desde billing oficial.",
+            nextActionEyebrow: "Siguiente paso recomendado",
+            progressLabel: "Avance actual: {progress}%",
+            nextActionCta: "Ver siguiente paso",
+        },
+    },
+    dashboard: {
+        fallback: {
+            headTitle: "Panel",
+            header: "Panel",
+            eyebrow: "Redireccion de panel",
+            title: "Tu panel principal depende de tu rol",
+            description:
+                "Los owners entran al panel operativo del negocio; los clientes usan su cuenta y el directorio. Esta pantalla no muestra datos de ejemplo.",
+            directoryAction: "Ir al directorio",
+        },
+        account: {
+            headTitle: "Mi cuenta",
+            headTitleFull: "Mi cuenta - Vito Business OS",
+            eyebrow: "Cuenta personal",
+            greeting: "Hola, {name}",
+            summary:
+                "Este panel solo muestra informacion real de tu cuenta. Los favoritos y negocios seguidos aparecen cuando los guardas desde el directorio.",
+            fullSummary: "Tus favoritos, negocios seguidos y accesos de cuenta aparecen aqui cuando existen datos reales.",
+            exploreDirectory: "Explorar directorio",
+            editProfile: "Editar perfil",
+            profile: "Perfil",
+            favorites: "Favoritos",
+            favoritesCount: "{count} guardados",
+            security: "Seguridad",
+            securityDescription: "Gestiona correo y contrasena",
+            activityEyebrow: "Actividad",
+            noActivityTitle: "No hay actividad reciente",
+            noActivityDescription:
+                "Cuando sigas negocios o guardes productos, apareceran aqui. No mostramos datos de ejemplo en cuentas reales.",
+            viewBusinesses: "Ver negocios",
+            favoriteProducts: "Productos favoritos",
+            savedBusinessFallback: "Negocio guardado",
+            noFavoritesTitle: "No tienes productos favoritos",
+            noFavoritesDescription: "Marca productos desde los micrositios para volver a ellos despues.",
+            followedBusinesses: "Negocios seguidos",
+            followedBusinessFallback: "Negocio seguido",
+            followingEyebrow: "Seguimiento",
+            noFollowingTitle: "Todavia no sigues negocios",
+            noFollowingDescription: "Sigue negocios desde el directorio para revisarlos con frecuencia.",
+            exploreBusinesses: "Explorar negocios",
+            businessSummary: "Resumen del negocio",
+            visitsSummary: "Visitas registradas: {visits}. Revisa el panel del negocio para analiticas completas.",
+            analyticsEyebrow: "Analiticas",
+            noAnalyticsTitle: "Todavia no hay estadisticas",
+            noAnalyticsDescription: "Cuando tu micrositio reciba visitas, el resumen aparecera aqui.",
+        },
+    },
+}
+
+export function t(key, replacements = {}) {
+    const value = key.split(".").reduce((current, segment) => current?.[segment], messages)
+
+    if (typeof value !== "string") {
+        return key
+    }
+
+    return Object.entries(replacements).reduce(
+        (message, [name, replacement]) => message.replaceAll(`{${name}}`, String(replacement)),
+        value,
+    )
+}
+
+export { messages }
