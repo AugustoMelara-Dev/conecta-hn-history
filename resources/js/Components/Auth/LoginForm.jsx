@@ -20,6 +20,7 @@ import {
 import { Input } from "@/Components/ui/input"
 import { Spinner } from "@/Components/ui/spinner"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/Components/ui/tabs"
+import { t } from "@/lib/i18n"
 import { cn } from "@/lib/utils"
 
 export function LoginForm({
@@ -47,14 +48,14 @@ export function LoginForm({
             <CardHeader className="space-y-3 border-b border-slate-100 bg-slate-50/70">
                 <div className="inline-flex w-fit items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600">
                     <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" />
-                    Acceso seguro
+                    {t("auth.login.badge")}
                 </div>
                 <div>
                     <CardTitle className="text-2xl font-semibold text-slate-950">
-                        Entra a Vito Business OS
+                        {t("auth.login.title")}
                     </CardTitle>
                     <CardDescription className="mt-2 text-slate-600">
-                        Usa contraseña para el panel de negocio o acceso rápido con correo y código.
+                        {t("auth.login.description")}
                     </CardDescription>
                 </div>
             </CardHeader>
@@ -63,11 +64,11 @@ export function LoginForm({
                     <TabsList className="grid w-full grid-cols-2">
                         <TabsTrigger value="password" className="gap-2">
                             <Building2 className="h-4 w-4" aria-hidden="true" />
-                            Acceso con correo
+                            {t("auth.login.passwordTab")}
                         </TabsTrigger>
                         <TabsTrigger value="quick" className="gap-2">
                             <Mail className="h-4 w-4" aria-hidden="true" />
-                            Acceso rápido
+                            {t("auth.login.quickTab")}
                         </TabsTrigger>
                     </TabsList>
 
@@ -80,13 +81,13 @@ export function LoginForm({
                                     </Alert>
                                 ) : null}
 
-                                <Field>
-                                    <FieldLabel htmlFor="email">Correo</FieldLabel>
+                                <Field data-invalid={errors.email ? "true" : undefined}>
+                                    <FieldLabel htmlFor="email">{t("auth.login.email")}</FieldLabel>
                                     <Input
                                         id="email"
                                         name="email"
                                         type="email"
-                                        placeholder="nombre@negocio.hn"
+                                        placeholder={t("auth.login.placeholderEmail")}
                                         autoComplete="email"
                                         spellCheck={false}
                                         required
@@ -94,24 +95,26 @@ export function LoginForm({
                                         value={data.email}
                                         onChange={(event) => setData("email", event.target.value)}
                                         data-testid="login-email-input"
+                                        aria-invalid={errors.email ? "true" : "false"}
+                                        aria-describedby={errors.email ? "login-email-error" : undefined}
                                         className={cn(errors.email && "border-rose-300 focus-visible:ring-rose-200")}
                                     />
                                     {errors.email ? (
-                                        <FieldDescription className="text-rose-600">
+                                        <FieldDescription id="login-email-error" role="alert" className="text-rose-600">
                                             {errors.email}
                                         </FieldDescription>
                                     ) : null}
                                 </Field>
 
-                                <Field>
+                                <Field data-invalid={errors.password ? "true" : undefined}>
                                     <div className="flex items-center">
-                                        <FieldLabel htmlFor="password">Contraseña</FieldLabel>
+                                        <FieldLabel htmlFor="password">{t("auth.login.password")}</FieldLabel>
                                         {canResetPassword ? (
                                             <Link
                                                 href={route("password.request")}
                                                 className="ml-auto text-sm text-slate-600 underline-offset-4 hover:text-slate-950 hover:underline"
                                             >
-                                                ¿Olvidaste tu contraseña?
+                                                {t("auth.login.forgotPassword")}
                                             </Link>
                                         ) : null}
                                     </div>
@@ -124,10 +127,12 @@ export function LoginForm({
                                         value={data.password}
                                         onChange={(event) => setData("password", event.target.value)}
                                         data-testid="login-password-input"
+                                        aria-invalid={errors.password ? "true" : "false"}
+                                        aria-describedby={errors.password ? "login-password-error" : undefined}
                                         className={cn(errors.password && "border-rose-300 focus-visible:ring-rose-200")}
                                     />
                                     {errors.password ? (
-                                        <FieldDescription className="text-rose-600">
+                                        <FieldDescription id="login-password-error" role="alert" className="text-rose-600">
                                             {errors.password}
                                         </FieldDescription>
                                     ) : null}
@@ -136,12 +141,12 @@ export function LoginForm({
                                 <Field>
                                     <Button type="submit" disabled={processing} data-testid="login-submit" className="w-full">
                                         {processing ? <Spinner className="mr-2" /> : null}
-                                        {processing ? "Entrando..." : "Iniciar sesión"}
+                                        {processing ? t("auth.login.submitting") : t("auth.login.submit")}
                                     </Button>
                                     <FieldDescription className="text-center">
-                                        ¿No tienes cuenta?{" "}
+                                        {t("auth.login.noAccount")}{" "}
                                         <Link href={route("tenant.register")} className="font-medium underline underline-offset-4">
-                                            Registrar negocio
+                                            {t("auth.login.registerBusiness")}
                                         </Link>
                                     </FieldDescription>
                                 </Field>

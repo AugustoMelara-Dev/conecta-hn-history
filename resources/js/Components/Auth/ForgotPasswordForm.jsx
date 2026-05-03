@@ -12,6 +12,7 @@ import {
 } from "@/Components/ui/field"
 import { Input } from "@/Components/ui/input"
 import { Spinner } from "@/Components/ui/spinner"
+import { t } from "@/lib/i18n"
 import { cn } from "@/lib/utils"
 
 export function ForgotPasswordForm({ status = null, className, ...props }) {
@@ -32,10 +33,10 @@ export function ForgotPasswordForm({ status = null, className, ...props }) {
             <FieldGroup>
                 <div className="flex flex-col items-center gap-1 text-center">
                     <h1 className="text-2xl font-bold text-slate-950" data-testid="forgot-password-heading">
-                        Recupera tu acceso
+                        {t("auth.forgotPassword.title")}
                     </h1>
                     <p className="text-sm text-balance text-slate-500">
-                        Escribe tu correo y enviaremos un enlace seguro para cambiar la contraseña.
+                        {t("auth.forgotPassword.description")}
                     </p>
                 </div>
 
@@ -44,7 +45,7 @@ export function ForgotPasswordForm({ status = null, className, ...props }) {
                         <div className="flex gap-3">
                             <MailCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                             <div>
-                                <AlertTitle>Revisa tu correo</AlertTitle>
+                                <AlertTitle>{t("auth.forgotPassword.successTitle")}</AlertTitle>
                                 <AlertDescription>{status}</AlertDescription>
                             </div>
                         </div>
@@ -52,11 +53,11 @@ export function ForgotPasswordForm({ status = null, className, ...props }) {
                 ) : null}
 
                 <Field>
-                    <FieldLabel htmlFor="email">Correo</FieldLabel>
+                    <FieldLabel htmlFor="email">{t("auth.forgotPassword.email")}</FieldLabel>
                     <Input
                         id="email"
                         type="email"
-                        placeholder="nombre@negocio.hn"
+                        placeholder={t("auth.forgotPassword.placeholderEmail")}
                         autoComplete="email"
                         autoFocus
                         required
@@ -85,11 +86,11 @@ export function ForgotPasswordForm({ status = null, className, ...props }) {
                         className="w-full bg-slate-950 text-white hover:bg-slate-800"
                     >
                         {processing ? <Spinner className="mr-2" /> : null}
-                        {processing ? "Enviando..." : "Enviar enlace"}
+                        {processing ? t("auth.forgotPassword.submitting") : t("auth.forgotPassword.submit")}
                     </Button>
                 </Field>
 
-                <FieldSeparator>Volver al acceso</FieldSeparator>
+                <FieldSeparator>{t("auth.forgotPassword.separator")}</FieldSeparator>
 
                 <Field>
                     <Button
@@ -98,7 +99,7 @@ export function ForgotPasswordForm({ status = null, className, ...props }) {
                         className="w-full border-slate-200 hover:bg-slate-50"
                         asChild
                     >
-                        <Link href={route("login")}>Iniciar sesión</Link>
+                        <Link href={route("login")}>{t("auth.forgotPassword.login")}</Link>
                     </Button>
                 </Field>
             </FieldGroup>

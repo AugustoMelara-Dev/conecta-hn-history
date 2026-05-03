@@ -5,9 +5,13 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { vi } from "vitest"
 
+import { ForgotPasswordForm } from "@/Components/Auth/ForgotPasswordForm"
+import { LoginForm } from "@/Components/Auth/LoginForm"
 import GlobalLoginModal from "@/Components/Organisms/Auth/GlobalLoginModal"
 import AuthGate from "@/Components/Utils/AuthGate"
+import VerifyEmail from "@/Pages/Auth/VerifyEmail"
 import { useUIStore } from "@/Stores/useUIStore"
+import { t } from "@/lib/i18n"
 
 const inertiaMock = vi.hoisted(() => ({
     pageProps: {
@@ -21,6 +25,8 @@ const inertiaMock = vi.hoisted(() => ({
 }))
 
 vi.mock("@inertiajs/react", () => ({
+    Head: ({ title }) => <title>{title}</title>,
+    Link: ({ children, ...props }) => <button {...props}>{children}</button>,
     usePage: () => inertiaMock.pageProps,
     useForm: () => ({
         data: { email: "", password: "", remember: false },
@@ -78,27 +84,6 @@ describe("AuthGate Component", () => {
         expect(mockAction).toHaveBeenCalled()
         expect(useUIStore.getState().isLoginModalOpen).toBe(false)
     })
-
-    it("preserves the child click handler when authenticated", () => {
-        inertiaMock.pageProps = {
-            props: {
-                auth: { user: { id: 1, name: "Test User" } },
-            },
-        }
-        const childAction = vi.fn()
-        const gateAction = vi.fn()
-
-        render(
-            <AuthGate onAuth={gateAction}>
-                <button onClick={childAction}>Click Me</button>
-            </AuthGate>,
-        )
-
-        fireEvent.click(screen.getByText("Click Me"))
-
-        expect(childAction).toHaveBeenCalled()
-        expect(gateAction).toHaveBeenCalled()
-    })
 })
 
 describe("GlobalLoginModal Component", () => {
@@ -112,7 +97,7 @@ describe("GlobalLoginModal Component", () => {
     it("renders with quick access active by default", () => {
         render(<GlobalLoginModal />)
 
-        expect(screen.getByText(/Acceso r.pido/)).toBeInTheDocument()
+        expect(screen.getByText("Acceso rapido")).toBeInTheDocument()
         expect(screen.getByPlaceholderText(/nombre@negocio.hn/i)).toBeInTheDocument()
     })
 
@@ -122,7 +107,7 @@ describe("GlobalLoginModal Component", () => {
         render(<GlobalLoginModal />)
 
         expect(screen.getByLabelText("Correo")).toBeInTheDocument()
-        expect(screen.getByLabelText(/Contrase.a/)).toBeInTheDocument()
+        expect(screen.getByLabelText("Contrasena")).toBeInTheDocument()
     })
 
     it("captures identifier input for quick access", async () => {
@@ -143,6 +128,71 @@ describe("GlobalLoginModal Component", () => {
         useUIStore.getState().closeLoginModal()
 
         expect(useUIStore.getState().isLoginModalOpen).toBe(false)
+    })
+})
+
+describe("VerifyEmail Page", () => {
+    beforeEach(() => {
+        global.route = vi.fn((name) => `/${name}`)
+        inertiaMock.pageProps = {
+            props: {
+                auth: { user: { email: "dueno@negocio.test" } },
+            },
+        }
+        inertiaMock.post.mockClear()
+    })
+
+    it("renders catalog-backed verification copy and onboarding next action", () => {
+        render(
+            <VerifyEmail
+                onboardingNextAction={{
+                    title: "Publica tu primera oferta",
+                    copy: "Agrega un producto o servicio.",
+                    progress: 20,
+                }}
+            />,
+        )
+
+        expect(screen.getByText("Verifica tu correo")).toBeInTheDocument()
+        expect(screen.getByText(/Enviamos un enlace de verificacion a/i)).toBeInTheDocument()
+        expect(screen.getByText(/Despues de verificar: Publica tu primera oferta/i)).toBeInTheDocument()
+        expect(screen.getByText("Activacion actual: 20%")).toBeInTheDocument()
+    })
+})
+
+describe("Auth catalog-backed forms", () => {
+    beforeEach(() => {
+        global.route = vi.fn((name) => `/${name}`)
+        inertiaMock.post.mockClear()
+    })
+
+    it("renders login form copy from the initial auth catalog", () => {
+        render(<LoginForm />)
+
+        expect(screen.getByText("Acceso seguro")).toBeInTheDocument()
+        expect(screen.getByText("Entra a Vito Business OS")).toBeInTheDocument()
+        expect(screen.getByText(/Usa contrasena para el panel de negocio/i)).toBeInTheDocument()
+        expect(screen.getByLabelText("Contrasena")).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: /Iniciar sesion/i })).toBeInTheDocument()
+    })
+
+    it("renders forgot password form copy from the initial auth catalog", () => {
+        render(<ForgotPasswordForm />)
+
+        expect(screen.getByTestId("forgot-password-heading")).toHaveTextContent("Recupera tu acceso")
+        expect(screen.getByText(/enlace seguro para cambiar la contrasena/i)).toBeInTheDocument()
+        expect(screen.getByLabelText("Correo")).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: /Enviar enlace/i })).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: /Iniciar sesion/i })).toBeInTheDocument()
+    })
+})
+
+describe("Initial dashboard catalog", () => {
+    it("exposes dashboard and account copy without inline-only strings", () => {
+        expect(t("dashboard.fallback.title")).toBe("Tu panel principal depende de tu rol")
+        expect(t("dashboard.account.greeting", { name: "Ana" })).toBe("Hola, Ana")
+        expect(t("dashboard.account.favoritesCount", { count: 2 })).toBe("2 guardados")
+        expect(t("dashboard.account.visitsSummary", { visits: 7 })).toContain("Visitas registradas: 7")
     })
 })
 

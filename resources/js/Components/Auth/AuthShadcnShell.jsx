@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils"
 export default function AuthShadcnShell({
     children,
     imageSrc = "/auth-side.svg",
-    imageAlt = "Image",
+    imageAlt = "",
     maxWidthClassName = "max-w-xs",
 }) {
     return (
