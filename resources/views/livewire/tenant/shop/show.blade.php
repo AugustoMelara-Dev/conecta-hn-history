@@ -13,7 +13,18 @@
     x-data="{ 
         activeTab: 'products',
         scrolled: false,
-        showCart: false
+        showCart: false,
+        activateTab(tab, panelId) {
+            this.activeTab = tab;
+            this.$nextTick(() => document.getElementById(panelId)?.focus());
+        },
+        focusSiblingTab(currentButton, direction) {
+            const tabs = Array.from(currentButton.closest('[role=tablist]')?.querySelectorAll('[role=tab]') ?? []);
+            const index = tabs.indexOf(currentButton);
+            if (index === -1 || tabs.length === 0) return;
+            const nextIndex = (index + direction + tabs.length) % tabs.length;
+            tabs[nextIndex]?.focus();
+        }
     }"
     @scroll.window="scrolled = window.scrollY > 50"
 >
@@ -89,7 +100,11 @@
     <div class="sticky top-0 bg-gray-50/95 backdrop-blur-sm z-40 border-b border-gray-200 mt-4">
         <div class="flex items-center justify-around max-w-3xl mx-auto" role="tablist" aria-label="Secciones de tienda">
             <button 
-                @click="activeTab = 'products'" 
+                @click="activateTab('products', 'shop-panel-products')" 
+                @keydown.enter.prevent="activateTab('products', 'shop-panel-products')"
+                @keydown.space.prevent="activateTab('products', 'shop-panel-products')"
+                @keydown.arrow-right.prevent="focusSiblingTab($el, 1)"
+                @keydown.arrow-left.prevent="focusSiblingTab($el, -1)"
                 id="shop-tab-products"
                 role="tab"
                 :aria-selected="activeTab === 'products'"
@@ -101,7 +116,11 @@
                 Uds ({{ $products->count() }})
             </button>
             <button 
-                @click="activeTab = 'info'" 
+                @click="activateTab('info', 'shop-panel-info')" 
+                @keydown.enter.prevent="activateTab('info', 'shop-panel-info')"
+                @keydown.space.prevent="activateTab('info', 'shop-panel-info')"
+                @keydown.arrow-right.prevent="focusSiblingTab($el, 1)"
+                @keydown.arrow-left.prevent="focusSiblingTab($el, -1)"
                 id="shop-tab-info"
                 role="tab"
                 :aria-selected="activeTab === 'info'"
@@ -113,7 +132,11 @@
                 Información
             </button>
             <button 
-                @click="activeTab = 'location'" 
+                @click="activateTab('location', 'shop-panel-location')" 
+                @keydown.enter.prevent="activateTab('location', 'shop-panel-location')"
+                @keydown.space.prevent="activateTab('location', 'shop-panel-location')"
+                @keydown.arrow-right.prevent="focusSiblingTab($el, 1)"
+                @keydown.arrow-left.prevent="focusSiblingTab($el, -1)"
                 id="shop-tab-location"
                 role="tab"
                 :aria-selected="activeTab === 'location'"

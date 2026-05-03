@@ -180,12 +180,29 @@
     {{-- ═══════════════════════════════════════════════════════════════════════ --}}
     <section 
         class="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm mt-6"
-        x-data="{ activeTab: '{{ $activeTab }}' }"
+        x-data="{ 
+            activeTab: '{{ $activeTab }}',
+            activateTab(tab, panelId) {
+                this.activeTab = tab;
+                this.$nextTick(() => document.getElementById(panelId)?.focus());
+            },
+            focusSiblingTab(currentButton, direction) {
+                const tabs = Array.from(currentButton.closest('[role=tablist]')?.querySelectorAll('[role=tab]') ?? []);
+                const index = tabs.indexOf(currentButton);
+                if (index === -1 || tabs.length === 0) return;
+                const nextIndex = (index + direction + tabs.length) % tabs.length;
+                tabs[nextIndex]?.focus();
+            }
+        }"
     >
         <div class="max-w-4xl mx-auto px-4">
             <nav class="flex gap-1 overflow-x-auto scrollbar-hide py-2" role="tablist" aria-label="Secciones del negocio">
                 <button 
-                    @click="activeTab = 'info'"
+                    @click="activateTab('info', 'tenant-panel-info')"
+                    @keydown.enter.prevent="activateTab('info', 'tenant-panel-info')"
+                    @keydown.space.prevent="activateTab('info', 'tenant-panel-info')"
+                    @keydown.arrow-right.prevent="focusSiblingTab($el, 1)"
+                    @keydown.arrow-left.prevent="focusSiblingTab($el, -1)"
                     id="tenant-tab-info"
                     role="tab"
                     :aria-selected="activeTab === 'info'"
@@ -199,7 +216,11 @@
 
                 @if($gallery->count() > 0 || $tenant->is_pro)
                 <button 
-                    @click="activeTab = 'gallery'"
+                    @click="activateTab('gallery', 'tenant-panel-gallery')"
+                    @keydown.enter.prevent="activateTab('gallery', 'tenant-panel-gallery')"
+                    @keydown.space.prevent="activateTab('gallery', 'tenant-panel-gallery')"
+                    @keydown.arrow-right.prevent="focusSiblingTab($el, 1)"
+                    @keydown.arrow-left.prevent="focusSiblingTab($el, -1)"
                     id="tenant-tab-gallery"
                     role="tab"
                     :aria-selected="activeTab === 'gallery'"
@@ -214,7 +235,11 @@
 
                 @if($tenant->is_pro && $products->count() > 0)
                 <button 
-                    @click="activeTab = 'products'"
+                    @click="activateTab('products', 'tenant-panel-products')"
+                    @keydown.enter.prevent="activateTab('products', 'tenant-panel-products')"
+                    @keydown.space.prevent="activateTab('products', 'tenant-panel-products')"
+                    @keydown.arrow-right.prevent="focusSiblingTab($el, 1)"
+                    @keydown.arrow-left.prevent="focusSiblingTab($el, -1)"
                     id="tenant-tab-products"
                     role="tab"
                     :aria-selected="activeTab === 'products'"
