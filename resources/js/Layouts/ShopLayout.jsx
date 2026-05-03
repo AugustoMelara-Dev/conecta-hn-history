@@ -88,8 +88,8 @@ export default function ShopLayout({
                         <button
                             type="button"
                             onClick={() => setIsCartOpen(true)}
-                            aria-label={`Abrir carrito (${cartItemCount} ${cartItemCount === 1 ? 'producto' : 'productos'})`}
-                            className="relative p-2 text-slate-400 hover:text-white transition-colors"
+                            aria-label={`Abrir carrito${cartItemCount > 0 ? `, ${cartItemCount} productos` : ''}`}
+                            className="relative rounded-md p-2 text-slate-400 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
                         >
                             <ShoppingBag className="w-5 h-5" aria-hidden="true" />
                             {cartItemCount > 0 && (
@@ -134,21 +134,19 @@ export default function ShopLayout({
                 <div className="flex items-center justify-around h-16">
                     {/* Home */}
                     <Link
-                        href={tenantSlug ? `/${tenantSlug}` : '#'}
-                        aria-label={`Ir al inicio de ${tenantName}`}
+                        href={tenantSlug ? `/t/${tenantSlug}` : '#'}
                         className="flex flex-col items-center gap-1 text-slate-400 hover:text-white transition-colors px-4 py-2"
                     >
-                        <Store className="w-5 h-5" aria-hidden="true" />
+                        <Store className="w-5 h-5" />
                         <span className="text-[10px] font-medium">Inicio</span>
                     </Link>
 
                     {/* Catalog (Scroll anchor) */}
                     <a
                         href="#catalogo"
-                        aria-label="Ir al catalogo de productos"
                         className="flex flex-col items-center gap-1 text-slate-400 hover:text-white transition-colors px-4 py-2"
                     >
-                        <Grid3X3 className="w-5 h-5" aria-hidden="true" />
+                        <Grid3X3 className="w-5 h-5" />
                         <span className="text-[10px] font-medium">Catálogo</span>
                     </a>
 
@@ -157,8 +155,8 @@ export default function ShopLayout({
                         <button
                             type="button"
                             onClick={() => setIsCartOpen(true)}
-                            aria-label={`Abrir carrito (${cartItemCount} ${cartItemCount === 1 ? 'producto' : 'productos'})`}
-                            className="relative flex flex-col items-center gap-1 text-slate-400 hover:text-white transition-colors px-4 py-2"
+                            aria-label={`Abrir carrito${cartItemCount > 0 ? `, ${cartItemCount} productos` : ''}`}
+                            className="relative flex flex-col items-center gap-1 rounded-lg px-4 py-2 text-slate-400 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
                         >
                             <ShoppingBag className="w-5 h-5" aria-hidden="true" />
                             {cartItemCount > 0 && (
@@ -171,10 +169,9 @@ export default function ShopLayout({
                     ) : (
                         <a
                             href={`tel:${whatsappNumber}`}
-                            aria-label={`Llamar a ${tenantName}`}
                             className="flex flex-col items-center gap-1 text-slate-400 hover:text-white transition-colors px-4 py-2"
                         >
-                            <Phone className="w-5 h-5" aria-hidden="true" />
+                            <Phone className="w-5 h-5" />
                             <span className="text-[10px] font-medium">Llamar</span>
                         </a>
                     )}
@@ -185,20 +182,18 @@ export default function ShopLayout({
                             href={whatsappUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            aria-label={`Contactar a ${tenantName} por WhatsApp`}
                             className="flex flex-col items-center gap-1 px-4 py-2"
                             style={{ color: '#25D366' }}
                         >
-                            <MessageCircle className="w-5 h-5" aria-hidden="true" />
+                            <MessageCircle className="w-5 h-5" />
                             <span className="text-[10px] font-medium">WhatsApp</span>
                         </a>
                     ) : (
                         <a
                             href="#contacto"
-                            aria-label={`Ver ubicacion de ${tenantName}`}
                             className="flex flex-col items-center gap-1 text-slate-400 hover:text-white transition-colors px-4 py-2"
                         >
-                            <MapPin className="w-5 h-5" aria-hidden="true" />
+                            <MapPin className="w-5 h-5" />
                             <span className="text-[10px] font-medium">Ubicación</span>
                         </a>
                     )}

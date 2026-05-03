@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 
 import { Eyebrow, SectionTitle } from './MicrositePrimitives';
+import { PUBLIC_BRAND } from '@/lib/publicBrand';
 import {
     MicrositeEmptyState,
     PaginationBar,
@@ -372,7 +373,7 @@ function InfoPanel({ tenant, isOpen, openingHours = [] }) {
                 <Eyebrow>Presentación</Eyebrow>
                 <SectionTitle className="mt-3 text-3xl">Sobre {tenant.name}</SectionTitle>
                 <CardDescription className="mt-6 whitespace-pre-line text-base leading-8">
-                    {tenant.about || tenant.description || 'Bienvenido a este negocio dentro de Vito Business OS.'}
+                    {tenant.about || tenant.description || `Bienvenido a este negocio dentro de ${PUBLIC_BRAND.name}.`}
                 </CardDescription>
             </Card>
 

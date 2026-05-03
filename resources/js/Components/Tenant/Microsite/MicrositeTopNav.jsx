@@ -2,6 +2,7 @@ import { Link } from '@inertiajs/react';
 import { ArrowUpRight, Store } from 'lucide-react';
 
 import { Button } from '@/Components/ui/button';
+import { PUBLIC_BRAND } from '@/lib/publicBrand';
 
 export default function MicrositeTopNav({
     isOwner = false,
@@ -9,7 +10,7 @@ export default function MicrositeTopNav({
     businessLabel = 'Negocios',
 }) {
     return (
-        <nav aria-label="Navegacion del micrositio" className="fixed inset-x-0 top-0 z-50 border-b border-border bg-background/84 backdrop-blur-[20px]">
+        <nav className="fixed inset-x-0 top-0 z-50 border-b border-border bg-background/84 backdrop-blur-[20px]">
             <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
                 <Button
                     asChild
@@ -25,12 +26,12 @@ export default function MicrositeTopNav({
                     <span
                         className="block font-headline text-lg font-extrabold tracking-tight text-foreground sm:text-xl"
                     >
-                        Vito Business OS
+                        {PUBLIC_BRAND.name}
                     </span>
                     <span
                         className="hidden font-label text-[10px] font-semibold uppercase tracking-[0.28em] text-muted-foreground sm:block"
                     >
-                        Vito Business OS
+                        {PUBLIC_BRAND.name}
                     </span>
                 </Link>
 

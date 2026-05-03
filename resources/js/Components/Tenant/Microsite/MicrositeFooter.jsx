@@ -2,6 +2,7 @@ import { Link } from '@inertiajs/react';
 import { ArrowUpRight, MessageCircle } from 'lucide-react';
 
 import { Button } from '@/Components/ui/button';
+import { PUBLIC_BRAND } from '@/lib/publicBrand';
 import { cn } from '@/lib/utils';
 
 export default function MicrositeFooter({
@@ -17,7 +18,7 @@ export default function MicrositeFooter({
                     <p
                         className="font-label text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground"
                     >
-                        Impulsado por Vito Business OS
+                        Impulsado por {PUBLIC_BRAND.name}
                     </p>
                     <h3
                         className="mt-3 font-headline text-2xl font-bold text-foreground"
