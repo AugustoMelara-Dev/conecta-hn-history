@@ -32,9 +32,8 @@ final class BillingController extends Controller
             'amount' => (float) $payment->amount,
             'status' => $payment->status,
             'created_at' => $payment->created_at->toIso8601String(),
-            'download_url' => $payment->receipt_path
-                ? route('tenant.billing.download-receipt', $payment->id)
-                : null,
+            // Legacy billing redirects to Filament; avoid generating an unregistered receipt route.
+            'download_url' => null,
         ]);
 
         return Inertia::render('Tenant/Billing/Index', [
