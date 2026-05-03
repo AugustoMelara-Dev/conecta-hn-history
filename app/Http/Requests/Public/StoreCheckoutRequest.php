@@ -71,10 +71,14 @@ final class StoreCheckoutRequest extends FormRequest
             $ownedCount = DB::table('products')
                 ->whereIn('id', $productIds->all())
                 ->where('tenant_id', $tenantId)
+                ->where('is_visible', true)
+                ->where('is_active', true)
+                ->whereIn('stock_status', ['in_stock', 'low_stock', 'on_backorder', 'pre_order'])
+                ->whereNull('deleted_at')
                 ->count();
 
             if ($ownedCount !== $productIds->count()) {
-                $validator->errors()->add('items', 'Todos los productos deben pertenecer al negocio seleccionado.');
+                $validator->errors()->add('items', 'Todos los productos deben pertenecer al negocio seleccionado y estar disponibles para compra.');
             }
         });
     }

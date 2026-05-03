@@ -405,18 +405,18 @@ const useCartStore = create(
                 set({ isApplyingCoupon: true, couponError: null });
 
                 try {
-                    const response = await axios.post('/api/coupons/verify', {
+                    const response = await axios.post('/api/v1/checkout/validate-coupon', {
                         tenant_id: state.tenantId,
                         code: code.trim().toUpperCase(),
-                        cart_subtotal: subtotal,
+                        cart_total: subtotal,
                     });
 
                     if (response.data.valid) {
                         set({
-                            couponCode: response.data.coupon_code,
+                            couponCode: response.data.code,
                             discountAmount: response.data.discount_amount,
-                            couponType: response.data.coupon_type,
-                            couponValue: response.data.coupon_value,
+                            couponType: response.data.discount_type,
+                            couponValue: response.data.coupon_value ?? null,
                             couponError: null,
                             isApplyingCoupon: false,
                         });
@@ -426,12 +426,13 @@ const useCartStore = create(
                             discountAmount: response.data.discount_amount,
                         };
                     } else {
-                        throw new Error(response.data.error || 'Cupón inválido');
+                        throw new Error(response.data.message || response.data.error || 'Cupon invalido');
                     }
                 } catch (error) {
-                    const errorMessage = error.response?.data?.error
+                    const errorMessage = error.response?.data?.message
+                        || error.response?.data?.error
                         || error.message
-                        || 'Error al validar cupón';
+                        || 'Error al validar cupon';
 
                     set({
                         couponCode: null,
@@ -483,10 +484,10 @@ const useCartStore = create(
                 const subtotal = get().getSubtotal();
 
                 try {
-                    const response = await axios.post('/api/coupons/verify', {
+                    const response = await axios.post('/api/v1/checkout/validate-coupon', {
                         tenant_id: tenantId,
                         code: couponCode,
-                        cart_subtotal: subtotal,
+                        cart_total: subtotal,
                     }, {
                         signal: controller.signal // Bind signal to axios
                     });
@@ -504,7 +505,7 @@ const useCartStore = create(
                             discountAmount: 0,
                             couponType: null,
                             couponValue: null,
-                            couponError: response.data.error,
+                            couponError: response.data.message || response.data.error,
                             revalidateController: null
                         });
                     }
@@ -753,9 +754,9 @@ const useCartStore = create(
                             price: item.price,
                             quantity: item.quantity,
                             options: item.selectedModifiers?.map(mod => ({
+                                option_id: mod.optionId,
                                 group: mod.groupName,
                                 option: mod.name,
-                                price: mod.price || 0,
                             })) || [],
                             notes: item.notes || null,
                         })),
