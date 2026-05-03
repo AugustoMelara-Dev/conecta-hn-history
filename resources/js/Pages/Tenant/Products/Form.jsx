@@ -1,8 +1,6 @@
-import { useRef, useState } from 'react';
+import { useState, useRef } from 'react';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { Image as ImageIcon, Plus, Upload, X } from 'lucide-react';
-
-import AppPageHeader from '@/Components/App/AppPageHeader';
+import { Plus } from 'lucide-react';
 import TenantLayout from '@/Layouts/TenantLayout';
 import { Button } from '@/Components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
@@ -14,36 +12,29 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/Components/ui/dialog';
-import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/Components/ui/field';
+import {
+    Field,
+    FieldDescription,
+    FieldGroup,
+    FieldLabel,
+} from '@/Components/ui/field';
 import { Input } from '@/Components/ui/input';
-import { Progress } from '@/Components/ui/progress';
 import {
     Select,
     SelectContent,
-    SelectGroup,
     SelectItem,
     SelectTrigger,
     SelectValue,
 } from '@/Components/ui/select';
-import { Spinner } from '@/Components/ui/spinner';
 import { Switch } from '@/Components/ui/switch';
 import { Textarea } from '@/Components/ui/textarea';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from '@/Components/ui/tooltip';
+import { LoadingState, FormSection, PageHeader, ResponsiveContainer, StatusBadge } from '@/Components/System';
+import { cn } from '@/lib/utils';
 
-const NO_SECTION = '__no_section__';
+const NO_CATEGORY_VALUE = '__none__';
 
 export default function ProductForm({ product, sections = [], stockOptions = {}, tenant }) {
-    const isEditing = Boolean(product);
-    const fileInputRef = useRef(null);
-    const replaceFileInputRef = useRef(null);
-    const [imagePreview, setImagePreview] = useState(product?.image_url || null);
-    const [showCategoryModal, setShowCategoryModal] = useState(false);
-    const [newCategoryName, setNewCategoryName] = useState('');
+    const isEditing = !!product;
 
     const { data, setData, post, processing, errors, progress } = useForm({
         name: product?.name || '',
@@ -58,9 +49,15 @@ export default function ProductForm({ product, sections = [], stockOptions = {},
         _method: isEditing ? 'PUT' : undefined,
     });
 
-    const handleImageChange = (event) => {
-        const file = event.target.files?.[0];
+    const [imagePreview, setImagePreview] = useState(product?.image_url || null);
+    const [showCategoryModal, setShowCategoryModal] = useState(false);
+    const [newCategoryName, setNewCategoryName] = useState('');
+    const fileInputRef = useRef(null);
 
+    const fieldErrorClass = 'border-destructive focus-visible:ring-destructive';
+
+    const handleImageChange = (e) => {
+        const file = e.target.files?.[0];
         if (!file) {
             return;
         }
@@ -72,20 +69,19 @@ export default function ProductForm({ product, sections = [], stockOptions = {},
     const handleRemoveImage = () => {
         setData('image', null);
         setImagePreview(null);
-
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
-
-        if (replaceFileInputRef.current) {
-            replaceFileInputRef.current.value = '';
-        }
     };
 
-    const handleSubmit = (event) => {
-        event.preventDefault();
+    const handleSubmit = (e) => {
+        e.preventDefault();
 
-        post(isEditing ? route('tenant.products.update', product.id) : route('tenant.products.store'), {
+        const url = isEditing
+            ? route('tenant.products.update', product.id)
+            : route('tenant.products.store');
+
+        post(url, {
             forceFormData: true,
             preserveScroll: true,
         });
@@ -105,7 +101,7 @@ export default function ProductForm({ product, sections = [], stockOptions = {},
                     setNewCategoryName('');
                     setShowCategoryModal(false);
                 },
-            },
+            }
         );
     };
 
@@ -113,320 +109,314 @@ export default function ProductForm({ product, sections = [], stockOptions = {},
         <TenantLayout>
             <Head title={isEditing ? 'Editar Producto' : 'Nuevo Producto'} />
 
-            <div className="min-h-screen bg-muted/30">
-                <AppPageHeader
+            <div className="min-h-screen bg-muted/20">
+                <PageHeader
                     title={isEditing ? 'Editar Producto' : 'Nuevo Producto'}
+                    subtitle="Completa la ficha comercial sin romper catalogo ni checkout."
                     backHref={route('tenant.products.index')}
                     backLabel="Volver a productos"
-                    meta={tenant?.is_pro ? (
-                        <span className="rounded-md bg-secondary px-2 py-1 text-xs font-medium text-secondary-foreground">
-                            PRO
-                        </span>
-                    ) : null}
-                    className="bg-white"
+                    badge={tenant?.is_pro ? <StatusBadge status="approved" label="PRO" /> : null}
                 />
 
-                <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-                    <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+                <ResponsiveContainer size="5xl" paddedY>
+                    <form onSubmit={handleSubmit} className="space-y-6" noValidate>
                         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                            <div className="flex flex-col gap-6 lg:col-span-2">
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle className="text-base">Informacion del producto</CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
+                            <div className="space-y-6 lg:col-span-2">
+                                <FormSection title="Informacion del producto">
                                         <FieldGroup>
-                                            <Field data-invalid={Boolean(errors.name)}>
+                                            <Field>
                                                 <FieldLabel htmlFor="name">Nombre del producto *</FieldLabel>
                                                 <Input
                                                     id="name"
-                                                    type="text"
+                                                    name="name"
                                                     value={data.name}
-                                                    onChange={(event) => setData('name', event.target.value)}
-                                                    placeholder="Ej: Hamburguesa clasica"
-                                                    aria-invalid={Boolean(errors.name)}
-                                                    aria-describedby={errors.name ? 'product-name-error' : undefined}
+                                                    onChange={(e) => setData('name', e.target.value)}
+                                                    placeholder="Ej: Hamburguesa clásica"
+                                                    maxLength={120}
+                                                    required
+                                                    aria-invalid={errors.name ? 'true' : 'false'}
+                                                    aria-describedby={errors.name ? 'name-error' : undefined}
+                                                    className={cn(errors.name && fieldErrorClass)}
                                                 />
-                                                {errors.name ? (
-                                                    <FieldDescription id="product-name-error" role="alert" className="text-destructive">
+                                                {errors.name && (
+                                                    <FieldDescription id="name-error" role="alert" className="text-destructive">
                                                         {errors.name}
                                                     </FieldDescription>
-                                                ) : null}
-                                            </Field>
-
-                                            <Field data-invalid={Boolean(errors.price)}>
-                                                <FieldLabel htmlFor="price">Precio (Lempiras) *</FieldLabel>
-                                                <div className="relative">
-                                                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
-                                                        L.
-                                                    </span>
-                                                    <Input
-                                                        id="price"
-                                                        type="number"
-                                                        step="0.01"
-                                                        min="0"
-                                                        value={data.price}
-                                                        onChange={(event) => setData('price', event.target.value)}
-                                                        placeholder="0.00"
-                                                        className="pl-10"
-                                                        aria-invalid={Boolean(errors.price)}
-                                                        aria-describedby={errors.price ? 'product-price-error' : undefined}
-                                                    />
-                                                </div>
-                                                {errors.price ? (
-                                                    <FieldDescription id="product-price-error" role="alert" className="text-destructive">
-                                                        {errors.price}
-                                                    </FieldDescription>
-                                                ) : null}
+                                                )}
                                             </Field>
 
                                             <Field>
-                                                <FieldLabel htmlFor="description">Descripcion</FieldLabel>
+                                                <FieldLabel htmlFor="price">Precio (Lempiras) *</FieldLabel>
+                                                <div className="relative">
+                                                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">L.</span>
+                                                    <Input
+                                                        id="price"
+                                                        name="price"
+                                                        type="number"
+                                                        inputMode="decimal"
+                                                        min="0"
+                                                        step="0.01"
+                                                        value={data.price}
+                                                        onChange={(e) => setData('price', e.target.value)}
+                                                        placeholder="0.00"
+                                                        required
+                                                        aria-invalid={errors.price ? 'true' : 'false'}
+                                                        aria-describedby={errors.price ? 'price-error' : undefined}
+                                                        className={cn('pl-10', errors.price && fieldErrorClass)}
+                                                    />
+                                                </div>
+                                                {errors.price && (
+                                                    <FieldDescription id="price-error" role="alert" className="text-destructive">
+                                                        {errors.price}
+                                                    </FieldDescription>
+                                                )}
+                                            </Field>
+
+                                            <Field>
+                                                <FieldLabel htmlFor="description">Descripción</FieldLabel>
                                                 <Textarea
                                                     id="description"
-                                                    rows={3}
+                                                    name="description"
+                                                    rows={4}
                                                     value={data.description}
-                                                    onChange={(event) => setData('description', event.target.value)}
-                                                    placeholder="Describe tu producto..."
+                                                    onChange={(e) => setData('description', e.target.value)}
+                                                    placeholder="Describe tu producto para que el cliente compre con confianza."
+                                                    maxLength={1000}
+                                                    aria-invalid={errors.description ? 'true' : 'false'}
+                                                    aria-describedby={errors.description ? 'description-error' : 'description-help'}
+                                                    className={cn(errors.description && fieldErrorClass)}
                                                 />
+                                                {errors.description ? (
+                                                    <FieldDescription id="description-error" role="alert" className="text-destructive">
+                                                        {errors.description}
+                                                    </FieldDescription>
+                                                ) : (
+                                                    <FieldDescription id="description-help">
+                                                        Incluye tamaño, ingredientes o variantes importantes.
+                                                    </FieldDescription>
+                                                )}
                                             </Field>
 
                                             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                                <Field className="rounded-lg border bg-muted/40 p-4">
-                                                    <div className="flex items-center justify-between gap-4">
+                                                <Card className="border-dashed">
+                                                    <CardContent className="flex items-center justify-between p-4">
                                                         <div>
-                                                            <FieldLabel htmlFor="product-visible">Visibilidad</FieldLabel>
-                                                            <FieldDescription>{data.is_visible ? 'Visible' : 'Oculto'}</FieldDescription>
+                                                            <p className="text-sm font-medium text-foreground">Visibilidad</p>
+                                                            <p className="text-xs text-muted-foreground">
+                                                                {data.is_visible ? 'Visible en catálogo público' : 'Oculto del catálogo público'}
+                                                            </p>
                                                         </div>
                                                         <Switch
-                                                            id="product-visible"
-                                                            checked={Boolean(data.is_visible)}
+                                                            checked={data.is_visible}
                                                             onCheckedChange={(checked) => setData('is_visible', checked)}
                                                             aria-label="Cambiar visibilidad del producto"
                                                         />
-                                                    </div>
-                                                </Field>
+                                                    </CardContent>
+                                                </Card>
 
-                                                <Field className="rounded-lg border bg-muted/40 p-4">
-                                                    <FieldLabel>Disponibilidad</FieldLabel>
-                                                    <Select value={data.stock_status} onValueChange={(value) => setData('stock_status', value)}>
-                                                        <SelectTrigger aria-label="Disponibilidad del producto">
-                                                            <SelectValue placeholder="Seleccionar disponibilidad" />
+                                                <Field>
+                                                    <FieldLabel htmlFor="stock-status">Disponibilidad</FieldLabel>
+                                                    <Select
+                                                        value={data.stock_status || 'in_stock'}
+                                                        onValueChange={(value) => setData('stock_status', value)}
+                                                    >
+                                                        <SelectTrigger id="stock-status" aria-label="Disponibilidad del producto">
+                                                            <SelectValue placeholder="Selecciona disponibilidad" />
                                                         </SelectTrigger>
                                                         <SelectContent>
-                                                            <SelectGroup>
-                                                                {Object.entries(stockOptions).map(([value, label]) => (
-                                                                    <SelectItem key={value} value={value}>{label}</SelectItem>
-                                                                ))}
-                                                            </SelectGroup>
+                                                            {Object.entries(stockOptions).map(([value, label]) => (
+                                                                <SelectItem key={value} value={value}>
+                                                                    {label}
+                                                                </SelectItem>
+                                                            ))}
                                                         </SelectContent>
                                                     </Select>
                                                 </Field>
                                             </div>
                                         </FieldGroup>
-                                    </CardContent>
-                                </Card>
+                                </FormSection>
 
-                                <Card className={!tenant?.is_pro ? 'opacity-75' : ''}>
-                                    <CardHeader>
-                                        <div className="flex items-center justify-between gap-4">
-                                            <CardTitle className="text-base">Organizacion y marketing</CardTitle>
-                                            {tenant?.is_pro ? (
-                                                <span className="rounded-md bg-secondary px-2 py-1 text-xs font-medium text-secondary-foreground">
-                                                    PRO
-                                                </span>
-                                            ) : null}
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent>
+                                <FormSection
+                                    title="Organizacion y marketing"
+                                    description={!tenant?.is_pro ? 'Disponible en plan PRO. Se conserva visible para mantener compatibilidad con formularios existentes.' : undefined}
+                                    className={cn(!tenant?.is_pro && 'opacity-80')}
+                                >
                                         <FieldGroup>
-                                            <Field data-disabled={!tenant?.is_pro}>
-                                                <FieldLabel>Categoria</FieldLabel>
-                                                <div className="flex gap-2">
+                                            <Field>
+                                                <FieldLabel htmlFor="menu-section">Categoría</FieldLabel>
+                                                <div className="flex flex-col gap-2 sm:flex-row">
                                                     <Select
+                                                        value={data.menu_section_id ? String(data.menu_section_id) : NO_CATEGORY_VALUE}
+                                                        onValueChange={(value) => setData('menu_section_id', value === NO_CATEGORY_VALUE ? '' : value)}
                                                         disabled={!tenant?.is_pro}
-                                                        value={String(data.menu_section_id || NO_SECTION)}
-                                                        onValueChange={(value) => setData('menu_section_id', value === NO_SECTION ? '' : value)}
                                                     >
-                                                        <SelectTrigger aria-label="Categoria del producto">
-                                                            <SelectValue placeholder="Sin categoria" />
+                                                        <SelectTrigger id="menu-section" className="w-full" aria-label="Categoría del producto">
+                                                            <SelectValue placeholder="Sin categoría" />
                                                         </SelectTrigger>
                                                         <SelectContent>
-                                                            <SelectGroup>
-                                                                <SelectItem value={NO_SECTION}>Sin categoria</SelectItem>
-                                                                {sections.map((section) => (
-                                                                    <SelectItem key={section.id} value={String(section.id)}>
-                                                                        {section.name}
-                                                                    </SelectItem>
-                                                                ))}
-                                                            </SelectGroup>
+                                                            <SelectItem value={NO_CATEGORY_VALUE}>Sin categoría</SelectItem>
+                                                            {sections.map((section) => (
+                                                                <SelectItem key={section.id} value={String(section.id)}>
+                                                                    {section.name}
+                                                                </SelectItem>
+                                                            ))}
                                                         </SelectContent>
                                                     </Select>
 
-                                                    {tenant?.is_pro ? (
-                                                        <TooltipProvider>
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                    <Button
-                                                                        type="button"
-                                                                        variant="outline"
-                                                                        size="icon"
-                                                                        aria-label="Crear nueva categoria"
-                                                                        onClick={() => setShowCategoryModal(true)}
-                                                                    >
-                                                                        <Plus aria-hidden="true" />
-                                                                    </Button>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent>Nueva categoria</TooltipContent>
-                                                            </Tooltip>
-                                                        </TooltipProvider>
-                                                    ) : null}
+                                                    {tenant?.is_pro && (
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            onClick={() => setShowCategoryModal(true)}
+                                                            className="shrink-0"
+                                                            aria-label="Crear nueva categoría"
+                                                        >
+                                                            <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
+                                                            Nueva
+                                                        </Button>
+                                                    )}
                                                 </div>
-                                                {!tenant?.is_pro ? (
-                                                    <FieldDescription>Activa PRO para organizar productos por secciones.</FieldDescription>
-                                                ) : null}
+                                                {errors.menu_section_id && (
+                                                    <FieldDescription className="text-destructive" role="alert">
+                                                        {errors.menu_section_id}
+                                                    </FieldDescription>
+                                                )}
                                             </Field>
 
-                                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                                <Field className="rounded-lg border bg-muted/40 p-4" data-disabled={!tenant?.is_pro}>
-                                                    <div className="flex items-center justify-between gap-4">
+                                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                                <Card className="border-dashed">
+                                                    <CardContent className="flex items-center justify-between p-4">
                                                         <div>
-                                                            <FieldLabel htmlFor="product-featured">Destacado</FieldLabel>
-                                                            <FieldDescription>Mostrar primero</FieldDescription>
+                                                            <p className="text-sm font-medium">Destacado</p>
+                                                            <p className="text-xs text-muted-foreground">Prioriza este producto en la vitrina.</p>
                                                         </div>
                                                         <Switch
-                                                            id="product-featured"
-                                                            checked={Boolean(data.is_featured)}
+                                                            checked={data.is_featured}
+                                                            onCheckedChange={(checked) => tenant?.is_pro && setData('is_featured', checked)}
                                                             disabled={!tenant?.is_pro}
-                                                            onCheckedChange={(checked) => setData('is_featured', checked)}
                                                             aria-label="Marcar producto como destacado"
                                                         />
-                                                    </div>
-                                                </Field>
-
-                                                <Field className="rounded-lg border bg-muted/40 p-4" data-disabled={!tenant?.is_pro}>
-                                                    <div className="flex items-center justify-between gap-4">
+                                                    </CardContent>
+                                                </Card>
+                                                <Card className="border-dashed">
+                                                    <CardContent className="flex items-center justify-between p-4">
                                                         <div>
-                                                            <FieldLabel htmlFor="product-new">Nuevo</FieldLabel>
-                                                            <FieldDescription>Badge Nuevo</FieldDescription>
+                                                            <p className="text-sm font-medium">Nuevo</p>
+                                                            <p className="text-xs text-muted-foreground">Muestra badge de novedad en catálogo.</p>
                                                         </div>
                                                         <Switch
-                                                            id="product-new"
-                                                            checked={Boolean(data.is_new)}
+                                                            checked={data.is_new}
+                                                            onCheckedChange={(checked) => tenant?.is_pro && setData('is_new', checked)}
                                                             disabled={!tenant?.is_pro}
-                                                            onCheckedChange={(checked) => setData('is_new', checked)}
                                                             aria-label="Marcar producto como nuevo"
                                                         />
-                                                    </div>
-                                                </Field>
+                                                    </CardContent>
+                                                </Card>
                                             </div>
                                         </FieldGroup>
-                                    </CardContent>
-                                </Card>
+                                </FormSection>
                             </div>
 
-                            <div className="flex flex-col gap-6">
+                            <div className="space-y-6">
                                 <Card>
                                     <CardHeader>
-                                        <CardTitle className="text-base">Imagen</CardTitle>
+                                        <CardTitle className="text-lg">Imagen</CardTitle>
                                     </CardHeader>
-                                    <CardContent className="flex flex-col gap-4">
+                                    <CardContent className="space-y-4">
                                         {imagePreview ? (
-                                            <div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
-                                                <img src={imagePreview} alt="Vista previa" className="h-full w-full object-cover" />
-                                                <TooltipProvider>
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <Button
-                                                                type="button"
-                                                                variant="destructive"
-                                                                size="icon"
-                                                                className="absolute right-2 top-2"
-                                                                aria-label="Quitar imagen"
-                                                                onClick={handleRemoveImage}
-                                                            >
-                                                                <X aria-hidden="true" />
-                                                            </Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent>Quitar imagen</TooltipContent>
-                                                    </Tooltip>
-                                                </TooltipProvider>
+                                            <div className="relative overflow-hidden rounded-lg border bg-muted">
+                                                <img
+                                                    src={imagePreview}
+                                                    alt="Vista previa del producto"
+                                                    className="aspect-square w-full object-cover"
+                                                />
+                                                <Button
+                                                    type="button"
+                                                    variant="destructive"
+                                                    size="sm"
+                                                    onClick={handleRemoveImage}
+                                                    className="absolute right-2 top-2"
+                                                >
+                                                    Quitar
+                                                </Button>
                                             </div>
                                         ) : (
-                                            <label className="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed bg-muted/40 text-muted-foreground transition-colors hover:bg-muted">
+                                            <label className="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed bg-muted/40 text-center transition-colors hover:bg-muted">
                                                 <input
                                                     ref={fileInputRef}
                                                     type="file"
                                                     accept="image/*"
                                                     onChange={handleImageChange}
                                                     className="sr-only"
+                                                    aria-label="Subir imagen del producto"
                                                 />
-                                                <ImageIcon aria-hidden="true" className="size-10" />
-                                                <span className="mt-2 text-sm font-medium">Subir imagen</span>
-                                                <span className="mt-1 text-xs">Max. 1MB</span>
+                                                <span className="text-sm font-medium text-foreground">Subir imagen</span>
+                                                <span className="text-xs text-muted-foreground">Máximo 1MB</span>
                                             </label>
                                         )}
 
-                                        {progress ? (
-                                            <div className="flex flex-col gap-2" aria-live="polite">
-                                                <Progress value={progress.percentage} aria-label={`Carga de imagen ${progress.percentage}%`} />
-                                                <p className="text-center text-xs text-muted-foreground">{progress.percentage}%</p>
-                                            </div>
-                                        ) : null}
+                                        {progress && (
+                                            <LoadingState variant="inline" title={`Subiendo imagen... ${progress.percentage}%`} />
+                                        )}
 
-                                        {errors.image ? (
-                                            <FieldDescription role="alert" className="text-destructive">
+                                        {errors.image && (
+                                            <FieldDescription className="text-destructive" role="alert">
                                                 {errors.image}
                                             </FieldDescription>
-                                        ) : null}
+                                        )}
 
-                                        {imagePreview ? (
-                                            <Button asChild variant="outline">
-                                                <label className="cursor-pointer">
-                                                    <input
-                                                        ref={replaceFileInputRef}
-                                                        type="file"
-                                                        accept="image/*"
-                                                        onChange={handleImageChange}
-                                                        className="sr-only"
-                                                    />
-                                                    <Upload data-icon="inline-start" aria-hidden="true" />
-                                                    Cambiar imagen
-                                                </label>
-                                            </Button>
-                                        ) : null}
+                                        {imagePreview && (
+                                            <label className="block">
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    onChange={handleImageChange}
+                                                    className="sr-only"
+                                                    aria-label="Cambiar imagen del producto"
+                                                />
+                                                <Button type="button" variant="outline" className="w-full" asChild>
+                                                    <span>Cambiar imagen</span>
+                                                </Button>
+                                            </label>
+                                        )}
                                     </CardContent>
                                 </Card>
                             </div>
                         </div>
 
-                        <div className="flex items-center justify-end gap-4 pt-4">
-                            <Button asChild variant="ghost">
+                        <div className="flex flex-col-reverse gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-end">
+                            <Button type="button" variant="ghost" asChild>
                                 <Link href={route('tenant.products.index')}>Cancelar</Link>
                             </Button>
-                            <Button type="submit" disabled={processing}>
-                                {processing ? <Spinner data-icon="inline-start" aria-hidden="true" /> : null}
-                                {processing ? 'Guardando...' : isEditing ? 'Guardar Cambios' : 'Crear Producto'}
+                            <Button
+                                type="submit"
+                                disabled={processing}
+                                className="w-full sm:w-auto"
+                            >
+                                {processing ? 'Guardando...' : isEditing ? 'Guardar cambios' : 'Crear producto'}
                             </Button>
                         </div>
                     </form>
-                </main>
+                </ResponsiveContainer>
 
                 <Dialog open={showCategoryModal} onOpenChange={setShowCategoryModal}>
                     <DialogContent className="sm:max-w-sm">
                         <DialogHeader>
-                            <DialogTitle>Nueva categoria</DialogTitle>
+                            <DialogTitle>Nueva categoría</DialogTitle>
                             <DialogDescription>
-                                Crea una seccion para organizar mejor tus productos visibles.
+                                Crea una sección para organizar tus productos visibles.
                             </DialogDescription>
                         </DialogHeader>
                         <Field>
                             <FieldLabel htmlFor="new-category-name">Nombre</FieldLabel>
                             <Input
                                 id="new-category-name"
+                                name="new_category_name"
+                                type="text"
                                 value={newCategoryName}
-                                onChange={(event) => setNewCategoryName(event.target.value)}
-                                placeholder="Ej: Entradas"
+                                onChange={(e) => setNewCategoryName(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleCreateCategory()}
+                                placeholder="Ej: Postres"
                                 autoFocus
                             />
                         </Field>
@@ -434,8 +424,8 @@ export default function ProductForm({ product, sections = [], stockOptions = {},
                             <Button type="button" variant="outline" onClick={() => setShowCategoryModal(false)}>
                                 Cancelar
                             </Button>
-                            <Button type="button" onClick={handleCreateCategory} disabled={!newCategoryName.trim()}>
-                                Crear categoria
+                            <Button type="button" onClick={handleCreateCategory}>
+                                Crear
                             </Button>
                         </DialogFooter>
                     </DialogContent>
