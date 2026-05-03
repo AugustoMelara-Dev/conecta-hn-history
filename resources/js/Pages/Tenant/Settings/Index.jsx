@@ -1,35 +1,20 @@
 import { useEffect, useState } from 'react';
 import { Head, useForm } from '@inertiajs/react';
-import { Camera, Lock, Settings, Upload } from 'lucide-react';
+import { Camera, Clock3, Globe, Lock, MapPin, MessageCircle, Phone, UserCircle } from 'lucide-react';
 
-import AppPageHeader from '@/Components/App/AppPageHeader';
-import TenantLayout from '@/Layouts/TenantLayout';
 import { Button } from '@/Components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
-import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/Components/ui/field';
 import { Input } from '@/Components/ui/input';
-import { Spinner } from '@/Components/ui/spinner';
-import { Switch } from '@/Components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
 import { Textarea } from '@/Components/ui/textarea';
+import TenantLayout from '@/Layouts/TenantLayout';
+
+const TABS = [
+    { id: 'profile', label: 'Perfil', icon: UserCircle },
+    { id: 'schedule', label: 'Horarios', icon: Clock3 },
+    { id: 'security', label: 'Seguridad', icon: Lock },
+];
 
 const fieldErrorId = (field) => `${field}-error`;
-
-function describedBy(field, errors, helpId = null) {
-    return errors?.[field] ? fieldErrorId(field) : helpId;
-}
-
-function FieldError({ field, errors }) {
-    if (!errors?.[field]) {
-        return null;
-    }
-
-    return (
-        <FieldDescription id={fieldErrorId(field)} role="alert" className="text-destructive">
-            {errors[field]}
-        </FieldDescription>
-    );
-}
 
 function ProfileTab({ tenant }) {
     const { data, setData, post, processing, errors } = useForm({
@@ -47,271 +32,139 @@ function ProfileTab({ tenant }) {
         cover: null,
         _method: 'PUT',
     });
-
     const [logoPreview, setLogoPreview] = useState(tenant?.logo_url || null);
     const [coverPreview, setCoverPreview] = useState(tenant?.cover_url || null);
 
     useEffect(() => () => {
-        if (logoPreview?.startsWith('blob:')) {
-            URL.revokeObjectURL(logoPreview);
-        }
+        if (logoPreview?.startsWith('blob:')) URL.revokeObjectURL(logoPreview);
     }, [logoPreview]);
-
     useEffect(() => () => {
-        if (coverPreview?.startsWith('blob:')) {
-            URL.revokeObjectURL(coverPreview);
-        }
+        if (coverPreview?.startsWith('blob:')) URL.revokeObjectURL(coverPreview);
     }, [coverPreview]);
 
-    const handleLogoChange = (event) => {
-        const file = event.target.files?.[0];
-
-        if (!file) {
-            return;
-        }
-
+    const onLogoChange = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
         setData('logo', file);
+        if (logoPreview?.startsWith('blob:')) URL.revokeObjectURL(logoPreview);
         setLogoPreview(URL.createObjectURL(file));
     };
-
-    const handleCoverChange = (event) => {
-        const file = event.target.files?.[0];
-
-        if (!file) {
-            return;
-        }
-
+    const onCoverChange = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
         setData('cover', file);
+        if (coverPreview?.startsWith('blob:')) URL.revokeObjectURL(coverPreview);
         setCoverPreview(URL.createObjectURL(file));
     };
 
-    const handleSubmit = (event) => {
-        event.preventDefault();
-        post(route('tenant.settings.update-profile'), { forceFormData: true });
-    };
-
     return (
-        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-            <Card className="overflow-hidden">
-                <div className="relative h-40 bg-primary">
-                    {coverPreview ? (
-                        <img src={coverPreview} alt="Portada del negocio" className="h-full w-full object-cover" />
-                    ) : null}
-                    <Button asChild size="sm" variant="secondary" className="absolute bottom-3 right-3">
-                        <label className="cursor-pointer">
-                            <input
-                                id="cover-upload"
-                                name="cover"
-                                type="file"
-                                accept="image/*"
-                                onChange={handleCoverChange}
-                                className="sr-only"
-                                aria-label="Cambiar imagen de portada"
-                            />
-                            <Camera data-icon="inline-start" aria-hidden="true" />
-                            Cambiar portada
-                        </label>
-                    </Button>
-                </div>
-
-                <CardContent className="pt-0">
-                    <div className="relative -mt-12 mb-6 size-24 overflow-hidden rounded-lg border-4 border-background bg-primary text-primary-foreground shadow-lg">
-                        {logoPreview ? (
-                            <img src={logoPreview} alt="Logo del negocio" className="h-full w-full object-cover" />
-                        ) : (
-                            <div className="flex h-full w-full items-center justify-center text-2xl font-bold">
-                                {data.name?.substring(0, 2) || 'T'}
-                            </div>
-                        )}
-                        <Button asChild size="icon" className="absolute bottom-1 right-1 size-8" aria-label="Cambiar logotipo">
-                            <label className="cursor-pointer">
-                                <input
-                                    id="logo-upload"
-                                    name="logo"
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handleLogoChange}
-                                    className="sr-only"
-                                    aria-label="Cambiar logotipo"
-                                />
-                                <Upload aria-hidden="true" />
-                            </label>
-                        </Button>
+        <form
+            className="space-y-6"
+            onSubmit={(e) => {
+                e.preventDefault();
+                post(route('tenant.settings.update-profile'), { forceFormData: true });
+            }}
+        >
+            <Card>
+                <CardHeader><CardTitle>Identidad del negocio</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                            <label htmlFor="settings-cover" className="text-sm font-medium text-slate-700">Portada</label>
+                            <Input id="settings-cover" type="file" accept="image/*" onChange={onCoverChange} />
+                            {coverPreview ? <img src={coverPreview} alt="Vista previa de portada" className="h-24 w-full rounded-md object-cover" /> : null}
+                        </div>
+                        <div className="space-y-2">
+                            <label htmlFor="settings-logo" className="text-sm font-medium text-slate-700">Logo</label>
+                            <Input id="settings-logo" type="file" accept="image/*" onChange={onLogoChange} />
+                            {logoPreview ? <img src={logoPreview} alt="Vista previa de logo" className="h-24 w-24 rounded-md object-cover" /> : null}
+                        </div>
                     </div>
-
-                    <FieldGroup>
-                        <Field data-invalid={Boolean(errors.name)}>
-                            <FieldLabel htmlFor="settings-name">Nombre del negocio *</FieldLabel>
-                            <Input
-                                id="settings-name"
-                                name="name"
-                                type="text"
-                                autoComplete="organization"
-                                value={data.name}
-                                onChange={(event) => setData('name', event.target.value)}
-                                aria-invalid={Boolean(errors.name)}
-                                aria-describedby={describedBy('name', errors)}
-                            />
-                            <FieldError field="name" errors={errors} />
-                        </Field>
-
-                        <Field data-invalid={Boolean(errors.description)}>
-                            <FieldLabel htmlFor="settings-description">Descripcion corta</FieldLabel>
-                            <Textarea
-                                id="settings-description"
-                                name="description"
-                                rows={2}
-                                value={data.description}
-                                onChange={(event) => setData('description', event.target.value)}
-                                placeholder="Una frase que define tu negocio..."
-                                aria-invalid={Boolean(errors.description)}
-                                aria-describedby={describedBy('description', errors)}
-                            />
-                            <FieldError field="description" errors={errors} />
-                        </Field>
-
-                        <Field data-invalid={Boolean(errors.about)}>
-                            <FieldLabel htmlFor="settings-about">Nuestra historia</FieldLabel>
-                            <Textarea
-                                id="settings-about"
-                                name="about"
-                                rows={4}
-                                value={data.about}
-                                onChange={(event) => setData('about', event.target.value)}
-                                placeholder="Cuentale a tus clientes quienes son..."
-                                aria-invalid={Boolean(errors.about)}
-                                aria-describedby={describedBy('about', errors)}
-                            />
-                            <FieldError field="about" errors={errors} />
-                        </Field>
-                    </FieldGroup>
+                    <LabeledInput id="settings-name" label="Nombre del negocio" value={data.name} onChange={(v) => setData('name', v)} error={errors.name} required />
+                    <LabeledArea id="settings-description" label="Descripción corta" value={data.description} onChange={(v) => setData('description', v)} error={errors.description} rows={2} />
+                    <LabeledArea id="settings-about" label="Historia del negocio" value={data.about} onChange={(v) => setData('about', v)} error={errors.about} rows={4} />
                 </CardContent>
             </Card>
 
             <Card>
-                <CardHeader>
-                    <CardTitle className="text-base">Contacto y redes</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        <ContactField id="settings-phone" name="phone" label="Telefono" value={data.phone} onChange={(value) => setData('phone', value)} placeholder="+504 9999-9999" autoComplete="tel" inputMode="tel" error={errors.phone} />
-                        <ContactField id="settings-whatsapp" name="whatsapp_number" label="WhatsApp" value={data.whatsapp_number} onChange={(value) => setData('whatsapp_number', value)} placeholder="+504 9999-9999" autoComplete="tel" inputMode="tel" error={errors.whatsapp_number} />
-                        <div className="md:col-span-2">
-                            <ContactField id="settings-address" name="address" label="Direccion" value={data.address} onChange={(value) => setData('address', value)} placeholder="Colonia Kennedy, Tegucigalpa" autoComplete="street-address" error={errors.address} />
-                        </div>
-                        <ContactField id="settings-instagram" name="instagram_url" label="Instagram" value={data.instagram_url} onChange={(value) => setData('instagram_url', value)} type="url" inputMode="url" placeholder="https://instagram.com/tunegocio" error={errors.instagram_url} />
-                        <ContactField id="settings-facebook" name="facebook_url" label="Facebook" value={data.facebook_url} onChange={(value) => setData('facebook_url', value)} type="url" inputMode="url" placeholder="https://facebook.com/tunegocio" error={errors.facebook_url} />
-                        <ContactField id="settings-tiktok" name="tiktok_url" label="TikTok" value={data.tiktok_url} onChange={(value) => setData('tiktok_url', value)} type="url" inputMode="url" placeholder="https://tiktok.com/@tunegocio" error={errors.tiktok_url} />
-                        <ContactField id="settings-website" name="website_url" label="Sitio web" value={data.website_url} onChange={(value) => setData('website_url', value)} type="url" inputMode="url" placeholder="https://tunegocio.com" error={errors.website_url} />
+                <CardHeader><CardTitle>Contacto y redes</CardTitle></CardHeader>
+                <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <IconInput id="settings-phone" label="Teléfono" icon={Phone} value={data.phone} onChange={(v) => setData('phone', v)} error={errors.phone} />
+                    <IconInput id="settings-whatsapp" label="WhatsApp" icon={MessageCircle} value={data.whatsapp_number} onChange={(v) => setData('whatsapp_number', v)} error={errors.whatsapp_number} />
+                    <div className="md:col-span-2">
+                        <IconInput id="settings-address" label="Dirección" icon={MapPin} value={data.address} onChange={(v) => setData('address', v)} error={errors.address} />
                     </div>
+                    <IconInput id="settings-instagram" type="url" label="Instagram" icon={Camera} value={data.instagram_url} onChange={(v) => setData('instagram_url', v)} error={errors.instagram_url} />
+                    <IconInput id="settings-facebook" type="url" label="Facebook" icon={Globe} value={data.facebook_url} onChange={(v) => setData('facebook_url', v)} error={errors.facebook_url} />
+                    <IconInput id="settings-tiktok" type="url" label="TikTok" icon={Globe} value={data.tiktok_url} onChange={(v) => setData('tiktok_url', v)} error={errors.tiktok_url} />
+                    <IconInput id="settings-website" type="url" label="Sitio web" icon={Globe} value={data.website_url} onChange={(v) => setData('website_url', v)} error={errors.website_url} />
                 </CardContent>
             </Card>
 
             <div className="flex justify-end">
-                <Button type="submit" disabled={processing}>
-                    {processing ? <Spinner data-icon="inline-start" aria-hidden="true" /> : null}
-                    {processing ? 'Guardando...' : 'Guardar perfil'}
-                </Button>
+                <Button type="submit" disabled={processing}>{processing ? 'Guardando...' : 'Guardar perfil'}</Button>
             </div>
         </form>
     );
 }
 
 function ScheduleTab({ schedule: initialSchedule, dayLabels }) {
-    const { data, setData, put, processing, errors } = useForm({
-        schedule: initialSchedule || {},
-    });
-
-    const handleToggleDay = (day, checked) => {
-        setData('schedule', {
-            ...data.schedule,
-            [day]: { ...data.schedule[day], isOpen: checked },
-        });
-    };
-
-    const handleTimeChange = (day, field, value) => {
-        setData('schedule', {
-            ...data.schedule,
-            [day]: { ...data.schedule[day], [field]: value },
-        });
-    };
-
-    const handleSubmit = (event) => {
-        event.preventDefault();
-        put(route('tenant.settings.update-schedule'));
-    };
-
+    const { data, setData, put, processing } = useForm({ schedule: initialSchedule || {} });
     return (
-        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+        <form
+            onSubmit={(e) => {
+                e.preventDefault();
+                put(route('tenant.settings.update-schedule'));
+            }}
+            className="space-y-6"
+        >
             <Card>
-                <CardHeader>
-                    <CardTitle className="text-base">Horarios de atencion</CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-3">
-                    {Object.entries(dayLabels || {}).map(([day, label]) => {
-                        const isOpen = Boolean(data.schedule[day]?.isOpen);
-
-                        return (
-                            <div
-                                key={day}
-                                className="flex flex-col gap-3 rounded-lg border bg-muted/40 p-4 md:flex-row md:items-center"
-                            >
-                                <div className="flex min-w-36 items-center justify-between gap-3">
-                                    <span className="font-medium text-foreground">{label}</span>
-                                    <Switch
-                                        checked={isOpen}
-                                        onCheckedChange={(checked) => handleToggleDay(day, checked)}
-                                        aria-label={`${label}: ${isOpen ? 'abierto' : 'cerrado'}`}
-                                    />
-                                </div>
-
-                                <span className="text-sm text-muted-foreground">{isOpen ? 'Abierto' : 'Cerrado'}</span>
-
-                                <div className="grid flex-1 grid-cols-[1fr_auto_1fr] items-center gap-2 md:ml-auto md:max-w-sm">
-                                    <Input
-                                        id={`schedule-${day}-open`}
-                                        name={`schedule[${day}][open]`}
-                                        type="time"
-                                        value={data.schedule[day]?.open || ''}
-                                        onChange={(event) => handleTimeChange(day, 'open', event.target.value)}
-                                        disabled={!isOpen}
-                                        aria-label={`Hora de apertura de ${label}`}
-                                        aria-invalid={Boolean(errors[`schedule.${day}.open`])}
-                                        aria-describedby={errors[`schedule.${day}.open`] ? fieldErrorId(`schedule-${day}-open`) : undefined}
-                                    />
-                                    <span className="text-muted-foreground">-</span>
-                                    <Input
-                                        id={`schedule-${day}-close`}
-                                        name={`schedule[${day}][close]`}
-                                        type="time"
-                                        value={data.schedule[day]?.close || ''}
-                                        onChange={(event) => handleTimeChange(day, 'close', event.target.value)}
-                                        disabled={!isOpen}
-                                        aria-label={`Hora de cierre de ${label}`}
-                                        aria-invalid={Boolean(errors[`schedule.${day}.close`])}
-                                        aria-describedby={errors[`schedule.${day}.close`] ? fieldErrorId(`schedule-${day}-close`) : undefined}
-                                    />
-                                </div>
-
-                                <div className="sr-only" aria-live="polite">
-                                    {errors[`schedule.${day}.open`] ? (
-                                        <span id={fieldErrorId(`schedule-${day}-open`)}>{errors[`schedule.${day}.open`]}</span>
-                                    ) : null}
-                                    {errors[`schedule.${day}.close`] ? (
-                                        <span id={fieldErrorId(`schedule-${day}-close`)}>{errors[`schedule.${day}.close`]}</span>
-                                    ) : null}
-                                </div>
-                            </div>
-                        );
-                    })}
+                <CardHeader><CardTitle>Horarios de atención</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                    {Object.entries(dayLabels || {}).map(([day, label]) => (
+                        <div key={day} className="grid gap-3 rounded-lg border border-slate-200 p-3 md:grid-cols-[140px_1fr_1fr_1fr] md:items-center">
+                            <p className="text-sm font-medium text-slate-900">{label}</p>
+                            <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+                                <input
+                                    type="checkbox"
+                                    checked={Boolean(data.schedule?.[day]?.isOpen)}
+                                    onChange={() =>
+                                        setData('schedule', {
+                                            ...data.schedule,
+                                            [day]: { ...data.schedule?.[day], isOpen: !data.schedule?.[day]?.isOpen },
+                                        })
+                                    }
+                                />
+                                Abierto
+                            </label>
+                            <Input
+                                type="time"
+                                value={data.schedule?.[day]?.open || ''}
+                                disabled={!data.schedule?.[day]?.isOpen}
+                                onChange={(e) =>
+                                    setData('schedule', {
+                                        ...data.schedule,
+                                        [day]: { ...data.schedule?.[day], open: e.target.value },
+                                    })
+                                }
+                            />
+                            <Input
+                                type="time"
+                                value={data.schedule?.[day]?.close || ''}
+                                disabled={!data.schedule?.[day]?.isOpen}
+                                onChange={(e) =>
+                                    setData('schedule', {
+                                        ...data.schedule,
+                                        [day]: { ...data.schedule?.[day], close: e.target.value },
+                                    })
+                                }
+                            />
+                        </div>
+                    ))}
                 </CardContent>
             </Card>
-
             <div className="flex justify-end">
-                <Button type="submit" disabled={processing}>
-                    {processing ? <Spinner data-icon="inline-start" aria-hidden="true" /> : null}
-                    {processing ? 'Guardando...' : 'Guardar horarios'}
-                </Button>
+                <Button type="submit" disabled={processing}>{processing ? 'Guardando...' : 'Guardar horarios'}</Button>
             </div>
         </form>
     );
@@ -323,174 +176,99 @@ function SecurityTab() {
         password: '',
         password_confirmation: '',
     });
-
-    const handleSubmit = (event) => {
-        event.preventDefault();
-        put(route('password.update'), {
-            preserveScroll: true,
-            onSuccess: () => reset(),
-        });
-    };
-
     return (
-        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+        <form
+            className="space-y-6"
+            onSubmit={(e) => {
+                e.preventDefault();
+                put(route('password.update'), { preserveScroll: true, onSuccess: () => reset() });
+            }}
+        >
             <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base">
-                        <Lock aria-hidden="true" className="size-4" />
-                        Cambiar contrasena
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <FieldGroup className="max-w-md">
-                        <PasswordField
-                            id="settings-current-password"
-                            name="current_password"
-                            label="Contrasena actual"
-                            autoComplete="current-password"
-                            value={data.current_password}
-                            onChange={(value) => setData('current_password', value)}
-                            error={errors.current_password}
-                        />
-                        <PasswordField
-                            id="settings-password"
-                            name="password"
-                            label="Nueva contrasena"
-                            autoComplete="new-password"
-                            value={data.password}
-                            onChange={(value) => setData('password', value)}
-                            error={errors.password}
-                            help="Usa una contrasena segura para proteger el panel."
-                        />
-                        <PasswordField
-                            id="settings-password-confirmation"
-                            name="password_confirmation"
-                            label="Confirmar nueva contrasena"
-                            autoComplete="new-password"
-                            value={data.password_confirmation}
-                            onChange={(value) => setData('password_confirmation', value)}
-                            error={errors.password_confirmation}
-                        />
-                    </FieldGroup>
+                <CardHeader><CardTitle>Cambiar contraseña</CardTitle></CardHeader>
+                <CardContent className="max-w-md space-y-4">
+                    <LabeledInput id="settings-current-password" type="password" label="Contraseña actual" value={data.current_password} onChange={(v) => setData('current_password', v)} error={errors.current_password} />
+                    <LabeledInput id="settings-password" type="password" label="Nueva contraseña" value={data.password} onChange={(v) => setData('password', v)} error={errors.password} />
+                    <LabeledInput id="settings-password-confirmation" type="password" label="Confirmar nueva contraseña" value={data.password_confirmation} onChange={(v) => setData('password_confirmation', v)} error={errors.password_confirmation} />
                 </CardContent>
             </Card>
-
             <div className="flex justify-end">
-                <Button type="submit" disabled={processing}>
-                    {processing ? <Spinner data-icon="inline-start" aria-hidden="true" /> : null}
-                    {processing ? 'Actualizando...' : 'Actualizar contrasena'}
-                </Button>
+                <Button type="submit" disabled={processing}>{processing ? 'Actualizando...' : 'Actualizar contraseña'}</Button>
             </div>
         </form>
     );
 }
 
-function ContactField({
-    id,
-    name,
-    label,
-    value,
-    onChange,
-    type = 'text',
-    placeholder,
-    autoComplete,
-    inputMode,
-    error,
-}) {
+function IconInput({ id, label, icon: Icon, value, onChange, error, type = 'text' }) {
     return (
-        <Field data-invalid={Boolean(error)}>
-            <FieldLabel htmlFor={id}>{label}</FieldLabel>
-            <Input
-                id={id}
-                name={name}
-                type={type}
-                value={value}
-                onChange={(event) => onChange(event.target.value)}
-                placeholder={placeholder}
-                autoComplete={autoComplete}
-                inputMode={inputMode}
-                aria-invalid={Boolean(error)}
-                aria-describedby={error ? fieldErrorId(name) : undefined}
-            />
-            {error ? (
-                <FieldDescription id={fieldErrorId(name)} role="alert" className="text-destructive">
-                    {error}
-                </FieldDescription>
-            ) : null}
-        </Field>
+        <div className="space-y-2">
+            <label htmlFor={id} className="text-sm font-medium text-slate-700">{label}</label>
+            <div className="relative">
+                <Icon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+                <Input id={id} type={type} value={value || ''} onChange={(e) => onChange(e.target.value)} className="pl-9" aria-invalid={Boolean(error)} aria-describedby={error ? fieldErrorId(id) : undefined} />
+            </div>
+            {error ? <p id={fieldErrorId(id)} className="text-sm text-red-600">{error}</p> : null}
+        </div>
     );
 }
 
-function PasswordField({
-    id,
-    name,
-    label,
-    value,
-    onChange,
-    autoComplete,
-    error,
-    help,
-}) {
-    const helpId = help ? `${name}-help` : null;
-
+function LabeledInput({ id, label, value, onChange, error, type = 'text', required = false }) {
     return (
-        <Field data-invalid={Boolean(error)}>
-            <FieldLabel htmlFor={id}>{label}</FieldLabel>
-            <Input
-                id={id}
-                name={name}
-                type="password"
-                autoComplete={autoComplete}
-                value={value}
-                onChange={(event) => onChange(event.target.value)}
-                aria-invalid={Boolean(error)}
-                aria-describedby={error ? fieldErrorId(name) : helpId}
-            />
-            {error ? (
-                <FieldDescription id={fieldErrorId(name)} role="alert" className="text-destructive">
-                    {error}
-                </FieldDescription>
-            ) : help ? (
-                <FieldDescription id={helpId}>{help}</FieldDescription>
-            ) : null}
-        </Field>
+        <div className="space-y-2">
+            <label htmlFor={id} className="text-sm font-medium text-slate-700">{label}{required ? ' *' : ''}</label>
+            <Input id={id} type={type} value={value || ''} onChange={(e) => onChange(e.target.value)} aria-invalid={Boolean(error)} aria-describedby={error ? fieldErrorId(id) : undefined} />
+            {error ? <p id={fieldErrorId(id)} className="text-sm text-red-600">{error}</p> : null}
+        </div>
+    );
+}
+
+function LabeledArea({ id, label, value, onChange, error, rows = 3 }) {
+    return (
+        <div className="space-y-2">
+            <label htmlFor={id} className="text-sm font-medium text-slate-700">{label}</label>
+            <Textarea id={id} rows={rows} value={value || ''} onChange={(e) => onChange(e.target.value)} aria-invalid={Boolean(error)} aria-describedby={error ? fieldErrorId(id) : undefined} />
+            {error ? <p id={fieldErrorId(id)} className="text-sm text-red-600">{error}</p> : null}
+        </div>
     );
 }
 
 export default function SettingsIndex({ tenant, schedule, dayLabels }) {
     const [activeTab, setActiveTab] = useState('profile');
-
     return (
         <TenantLayout>
-            <Head title="Configuracion" />
-
-            <div className="min-h-screen bg-muted/30">
-                <AppPageHeader
-                    title="Configuracion"
-                    description="Mantiene el perfil, horarios y seguridad del negocio."
-                    meta={<Settings aria-hidden="true" className="size-5 text-muted-foreground" />}
-                    className="bg-white"
-                />
-
-                <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-                    <Tabs value={activeTab} onValueChange={setActiveTab}>
-                        <TabsList className="mb-6 grid h-auto w-full grid-cols-3" aria-label="Secciones de configuracion">
-                            <TabsTrigger value="profile">Perfil</TabsTrigger>
-                            <TabsTrigger value="schedule">Horarios</TabsTrigger>
-                            <TabsTrigger value="security">Seguridad</TabsTrigger>
-                        </TabsList>
-
-                        <TabsContent value="profile">
-                            <ProfileTab tenant={tenant} />
-                        </TabsContent>
-                        <TabsContent value="schedule">
-                            <ScheduleTab schedule={schedule} dayLabels={dayLabels} />
-                        </TabsContent>
-                        <TabsContent value="security">
-                            <SecurityTab />
-                        </TabsContent>
-                    </Tabs>
-                </main>
+            <Head title="Configuración" />
+            <div className="space-y-6">
+                <header className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <h1 className="text-2xl font-bold text-slate-900">Configuración</h1>
+                    <p className="mt-1 text-sm text-slate-600">Administra identidad, horarios y seguridad desde un flujo consistente.</p>
+                </header>
+                <Card>
+                    <CardContent className="pt-6">
+                        <nav className="grid grid-cols-1 gap-2 sm:grid-cols-3" role="tablist" aria-label="Secciones de configuración">
+                            {TABS.map((tab) => {
+                                const Icon = tab.icon;
+                                const isActive = activeTab === tab.id;
+                                return (
+                                    <button
+                                        key={tab.id}
+                                        type="button"
+                                        role="tab"
+                                        aria-selected={isActive}
+                                        aria-controls={`settings-panel-${tab.id}`}
+                                        onClick={() => setActiveTab(tab.id)}
+                                        className={`inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium ${isActive ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                                    >
+                                        <Icon className="h-4 w-4" aria-hidden="true" />
+                                        {tab.label}
+                                    </button>
+                                );
+                            })}
+                        </nav>
+                    </CardContent>
+                </Card>
+                <section id="settings-panel-profile" role="tabpanel" hidden={activeTab !== 'profile'}>{activeTab === 'profile' ? <ProfileTab tenant={tenant} /> : null}</section>
+                <section id="settings-panel-schedule" role="tabpanel" hidden={activeTab !== 'schedule'}>{activeTab === 'schedule' ? <ScheduleTab schedule={schedule} dayLabels={dayLabels} /> : null}</section>
+                <section id="settings-panel-security" role="tabpanel" hidden={activeTab !== 'security'}>{activeTab === 'security' ? <SecurityTab /> : null}</section>
             </div>
         </TenantLayout>
     );
