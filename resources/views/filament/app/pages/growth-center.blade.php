@@ -45,20 +45,20 @@
 
                         <div class="biz-actions">
                             @foreach ($growthActions as $action)
-                                @php($isPendingAction = blank($action['href'] ?? null) || ($action['href'] ?? null) === '#')
-                                @if ($isPendingAction)
-                                    <div class="biz-action opacity-70" aria-disabled="true">
-                                        <div class="biz-split">
-                                            <p class="biz-action-title">{{ $action['title'] }}</p>
-                                            <x-filament::badge color="warning">Pendiente de configuracion</x-filament::badge>
-                                        </div>
-                                        <p class="biz-action-copy">{{ $action['copy'] }}</p>
-                                    </div>
-                                @else
+                                @if ($action['enabled'])
                                     <a href="{{ $action['href'] }}" class="biz-action">
                                         <p class="biz-action-title">{{ $action['title'] }}</p>
                                         <p class="biz-action-copy">{{ $action['copy'] }}</p>
                                     </a>
+                                @else
+                                    <div class="biz-action opacity-75" aria-disabled="true">
+                                        <div class="biz-split">
+                                            <p class="biz-action-title">{{ $action['title'] }}</p>
+                                            <x-filament::badge color="warning">Bloqueado</x-filament::badge>
+                                        </div>
+                                        <p class="biz-action-copy">{{ $action['copy'] }}</p>
+                                        <p class="biz-muted">{{ $action['reason'] }}</p>
+                                    </div>
                                 @endif
                             @endforeach
                         </div>
@@ -89,8 +89,21 @@
                     </div>
 
                     <div class="biz-button-row">
-                        <a href="{{ $leadsUrl }}" class="biz-button">Abrir pipeline</a>
-                        <a href="{{ $operationsUrl }}" class="biz-button-secondary">Ver playbooks</a>
+                        @if (filled($leadsUrl))
+                            <a href="{{ $leadsUrl }}" class="biz-button">Abrir prospectos</a>
+                        @else
+                            <span class="biz-button opacity-75" aria-disabled="true">Prospectos no disponibles para tu rol</span>
+                        @endif
+                        @if (filled($dealsUrl))
+                            <a href="{{ $dealsUrl }}" class="biz-button-secondary">Ir a oportunidades</a>
+                        @else
+                            <span class="biz-button-secondary opacity-75" aria-disabled="true">Pipeline avanzado bloqueado por plan o permisos</span>
+                        @endif
+                        @if (filled($operationsUrl))
+                            <a href="{{ $operationsUrl }}" class="biz-button-secondary">Ver playbooks</a>
+                        @else
+                            <span class="biz-button-secondary opacity-75" aria-disabled="true">Playbooks no disponibles para tu rol</span>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -159,40 +172,21 @@
 
                     <div class="biz-actions">
                         @forelse ($cadencePlaybooks as $playbook)
-                            @php($isPendingPlaybook = blank($playbook['href'] ?? null) || ($playbook['href'] ?? null) === '#')
-                            @if ($isPendingPlaybook)
-                                <div class="biz-action opacity-70" aria-disabled="true">
-                                    <div class="biz-split">
-                                        <div>
-                                            <p class="biz-kicker">{{ $playbook['channel'] }}</p>
-                                            <p class="biz-action-title">{{ $playbook['title'] }}</p>
-                                        </div>
-
-                                        <x-filament::badge color="warning">
-                                            Pendiente de configuracion
-                                        </x-filament::badge>
+                            <a href="{{ $playbook['href'] }}" class="biz-action">
+                                <div class="biz-split">
+                                    <div>
+                                        <p class="biz-kicker">{{ $playbook['channel'] }}</p>
+                                        <p class="biz-action-title">{{ $playbook['title'] }}</p>
                                     </div>
 
-                                    <p class="biz-action-copy">{{ $playbook['copy'] }}</p>
-                                    <p class="biz-muted">Cadencia: {{ $playbook['cadence'] }} / Disparo: {{ $playbook['trigger'] }}</p>
+                                    <x-filament::badge color="{{ $playbook['statusColor'] }}">
+                                        {{ $playbook['statusLabel'] }}
+                                    </x-filament::badge>
                                 </div>
-                            @else
-                                <a href="{{ $playbook['href'] }}" class="biz-action">
-                                    <div class="biz-split">
-                                        <div>
-                                            <p class="biz-kicker">{{ $playbook['channel'] }}</p>
-                                            <p class="biz-action-title">{{ $playbook['title'] }}</p>
-                                        </div>
 
-                                        <x-filament::badge color="{{ $playbook['statusColor'] }}">
-                                            {{ $playbook['statusLabel'] }}
-                                        </x-filament::badge>
-                                    </div>
-
-                                    <p class="biz-action-copy">{{ $playbook['copy'] }}</p>
-                                    <p class="biz-muted">Cadencia: {{ $playbook['cadence'] }} / Disparo: {{ $playbook['trigger'] }}</p>
-                                </a>
-                            @endif
+                                <p class="biz-action-copy">{{ $playbook['copy'] }}</p>
+                                <p class="biz-muted">Cadencia: {{ $playbook['cadence'] }} / Disparo: {{ $playbook['trigger'] }}</p>
+                            </a>
                         @empty
                             @include('filament.app.components.table-empty-state', [
                                 'badge' => 'Cadencia',
@@ -254,8 +248,8 @@
             <div class="biz-stack">
                 <div>
                     <p class="biz-kicker">Analítica por secuencia</p>
-                    <h2 class="biz-heading">Que rutas del journey estan moviendo reply, cierre y revenue</h2>
-                    <p class="biz-muted">Sirve para entender si la secuencia correcta es seguimiento, loyalty, rescate o cierre premium, no solo qué texto envió más.</p>
+                    <h2 class="biz-heading">Que rutas del journey estan moviendo señales reales</h2>
+                    <p class="biz-muted">Lectura parcial: ayuda a comparar reply, cierres y revenue cuando hay volumen suficiente.</p>
                 </div>
 
                 <div class="biz-actions">
@@ -294,8 +288,8 @@
             <div class="biz-stack">
                 <div>
                     <p class="biz-kicker">Attribution multi-touch</p>
-                    <h2 class="biz-heading">Que secuencias se estan llevando revenue real</h2>
-                    <p class="biz-muted">Aquí el revenue se reparte entre las rutas que tocaron una conversación cerrada, para no mentirte con un falso last-touch.</p>
+                    <h2 class="biz-heading">Que secuencias se estan llevando revenue observado</h2>
+                    <p class="biz-muted">Es attribution parcial multi-touch: evita sobreinterpretar last-touch cuando todavía falta cobertura.</p>
                 </div>
 
                 <div class="biz-actions">
@@ -333,7 +327,7 @@
                 <div>
                     <p class="biz-kicker">Rutas completas</p>
                     <h2 class="biz-heading">Qué conversaciones completas se están llevando el revenue</h2>
-                    <p class="biz-muted">Aquí ya no se reparte solo por secuencia: ves la ruta completa que siguió una conversación hasta cerrar.</p>
+                    <p class="biz-muted">Se muestra cuando existe trazabilidad suficiente; no reemplaza reporting financiero completo.</p>
                 </div>
 
                 <div class="biz-actions">
@@ -738,39 +732,31 @@
 
                 <div class="biz-actions">
                     @foreach ($automationJourneys as $journey)
-                        @php($isPendingJourney = blank($journey['href'] ?? null) || ($journey['href'] ?? null) === '#')
-                        @if ($isPendingJourney)
-                            <div class="biz-action opacity-70" aria-disabled="true">
-                                <div class="biz-split">
-                                    <div>
-                                        <p class="biz-kicker">{{ $journey['eyebrow'] }}</p>
-                                        <p class="biz-action-title">{{ $journey['title'] }}</p>
-                                    </div>
-
-                                    <x-filament::badge color="warning">
-                                        Pendiente de configuracion
-                                    </x-filament::badge>
-                                </div>
-
-                                <p class="biz-action-copy">{{ $journey['copy'] }}</p>
-                                <p class="biz-muted">Canal: {{ $journey['channel'] }} / Disparo: {{ $journey['trigger'] }}</p>
-                            </div>
-                        @else
+                        @if (filled($journey['href']))
                             <a href="{{ $journey['href'] }}" class="biz-action">
-                                <div class="biz-split">
-                                    <div>
-                                        <p class="biz-kicker">{{ $journey['eyebrow'] }}</p>
-                                        <p class="biz-action-title">{{ $journey['title'] }}</p>
-                                    </div>
-
-                                    <x-filament::badge color="{{ $journey['statusColor'] }}">
-                                        {{ $journey['statusLabel'] }}
-                                    </x-filament::badge>
+                        @else
+                            <div class="biz-action opacity-75" aria-disabled="true">
+                        @endif
+                            <div class="biz-split">
+                                <div>
+                                    <p class="biz-kicker">{{ $journey['eyebrow'] }}</p>
+                                    <p class="biz-action-title">{{ $journey['title'] }}</p>
                                 </div>
 
-                                <p class="biz-action-copy">{{ $journey['copy'] }}</p>
-                                <p class="biz-muted">Canal: {{ $journey['channel'] }} / Disparo: {{ $journey['trigger'] }}</p>
+                                <x-filament::badge color="{{ $journey['statusColor'] }}">
+                                    {{ $journey['statusLabel'] }}
+                                </x-filament::badge>
+                            </div>
+
+                            <p class="biz-action-copy">{{ $journey['copy'] }}</p>
+                            <p class="biz-muted">Canal: {{ $journey['channel'] }} / Disparo: {{ $journey['trigger'] }}</p>
+                            @if (! filled($journey['href']))
+                                <p class="biz-muted">Ruta no disponible para tu plan o permisos actuales.</p>
+                            @endif
+                        @if (filled($journey['href']))
                             </a>
+                        @else
+                            </div>
                         @endif
                     @endforeach
                 </div>
@@ -834,30 +820,19 @@
 
                     <div class="biz-actions">
                         @forelse ($priorityQueue as $item)
-                            @php($isPendingPriority = blank($item['href'] ?? null) || ($item['href'] ?? null) === '#')
-                            @if ($isPendingPriority)
-                                <div class="biz-action opacity-70" aria-disabled="true">
-                                    <div class="biz-split">
-                                        <p class="biz-action-title">{{ $item['title'] }}</p>
-                                        <x-filament::badge color="warning">Pendiente de configuracion</x-filament::badge>
-                                    </div>
-                                    <p class="biz-action-copy">{{ $item['copy'] }}</p>
+                            <a href="{{ $item['href'] }}" class="biz-action">
+                                <div class="biz-split">
+                                    <p class="biz-action-title">{{ $item['title'] }}</p>
+                                    <x-filament::badge color="{{ $item['severity'] }}">
+                                        {{ match ($item['severity']) {
+                                            'danger' => 'Urgente',
+                                            'warning' => 'Clave',
+                                            default => 'Siguiente paso',
+                                        } }}
+                                    </x-filament::badge>
                                 </div>
-                            @else
-                                <a href="{{ $item['href'] }}" class="biz-action">
-                                    <div class="biz-split">
-                                        <p class="biz-action-title">{{ $item['title'] }}</p>
-                                        <x-filament::badge color="{{ $item['severity'] }}">
-                                            {{ match ($item['severity']) {
-                                                'danger' => 'Urgente',
-                                                'warning' => 'Clave',
-                                                default => 'Siguiente paso',
-                                            } }}
-                                        </x-filament::badge>
-                                    </div>
-                                    <p class="biz-action-copy">{{ $item['copy'] }}</p>
-                                </a>
-                            @endif
+                                <p class="biz-action-copy">{{ $item['copy'] }}</p>
+                            </a>
                         @empty
                             @include('filament.app.components.table-empty-state', [
                                 'badge' => 'Crecimiento',

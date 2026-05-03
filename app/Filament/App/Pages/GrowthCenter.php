@@ -17,6 +17,7 @@ use App\Domain\TenantGovernance\Services\BusinessSegmentResolver;
 use App\Filament\App\Resources\AppointmentResource;
 use App\Filament\App\Resources\CampaignResource;
 use App\Filament\App\Resources\CouponResource;
+use App\Filament\App\Resources\CrmDealResource;
 use App\Filament\App\Resources\CustomerProfileResource;
 use App\Filament\App\Resources\CustomerTouchpointResource;
 use App\Filament\App\Resources\FollowerResource;
@@ -58,7 +59,7 @@ class GrowthCenter extends Page
 
     public string $copy = '';
 
-    public string $crmTitle = 'Pipeline comercial';
+    public string $crmTitle = 'Seguimiento comercial';
 
     public string $crmCopy = '';
 
@@ -228,31 +229,34 @@ class GrowthCenter extends Page
 
     public int $locatedCustomersCount = 0;
 
-    public string $growthUrl = '#';
+    public string $growthUrl = '';
 
-    public string $leadsUrl = '#';
+    public string $leadsUrl = '';
 
-    public string $customersUrl = '#';
+    public string $customersUrl = '';
 
-    public string $contactsUrl = '#';
+    public string $contactsUrl = '';
 
-    public string $inboxUrl = '#';
+    public string $inboxUrl = '';
 
-    public string $marketingUrl = '#';
+    public string $marketingUrl = '';
 
-    public string $campaignsUrl = '#';
+    public string $campaignsUrl = '';
 
-    public string $ordersUrl = '#';
+    public string $ordersUrl = '';
 
-    public string $appointmentsUrl = '#';
+    public string $appointmentsUrl = '';
 
-    public string $followersUrl = '#';
+    public string $followersUrl = '';
 
-    public string $loyaltyUrl = '#';
+    public string $loyaltyUrl = '';
 
-    public string $couponsUrl = '#';
+    public string $couponsUrl = '';
 
-    public string $operationsUrl = '#';
+    public string $operationsUrl = '';
+
+    public string $dealsUrl = '';
+    public bool $canAccessCrmDeals = false;
 
     /** @var list<array{label: string, value: string, copy: string}> */
     public array $revenueMetrics = [];
@@ -307,7 +311,7 @@ class GrowthCenter extends Page
     /** @var list<array{name:string,total:int,closed:int,conversions:int,revenue:string,waiting:int,breached:int,avgFirstResponse:string,conversionRate:string}> */
     public array $locationConversationPerformance = [];
 
-    /** @var list<array{title: string, copy: string, href: string}> */
+    /** @var list<array{title: string, copy: string, href: string, enabled: bool, reason: string}> */
     public array $growthActions = [];
 
     /** @var list<array{title: string, copy: string, href: string, severity: string}> */
@@ -350,8 +354,8 @@ class GrowthCenter extends Page
         $this->leadsUrl = $this->safeResourceUrl(LeadResource::class, ['tenant' => $tenantSlug]);
         $this->customersUrl = $this->safeResourceUrl(CustomerProfileResource::class, ['tenant' => $tenantSlug]);
         $this->contactsUrl = $this->safeResourceUrl(CustomerTouchpointResource::class, ['tenant' => $tenantSlug]);
-        $this->inboxUrl = $this->safeRoute('filament.app.pages.customer-inbox', ['tenant' => $tenantSlug]);
-        $this->marketingUrl = $this->safeRoute('filament.app.pages.manage-marketing', ['tenant' => $tenantSlug]);
+        $this->inboxUrl = $this->safePageUrl(CustomerInbox::class, ['tenant' => $tenantSlug]);
+        $this->marketingUrl = $this->safePageUrl(ManageMarketing::class, ['tenant' => $tenantSlug]);
         $this->campaignsUrl = $this->safeResourceUrl(CampaignResource::class, ['tenant' => $tenantSlug]);
         $this->ordersUrl = $this->safeResourceUrl(OrderResource::class, ['tenant' => $tenantSlug]);
         $this->appointmentsUrl = $this->safeResourceUrl(AppointmentResource::class, ['tenant' => $tenantSlug]);
@@ -359,6 +363,8 @@ class GrowthCenter extends Page
         $this->loyaltyUrl = $this->safeResourceUrl(LoyaltyProgramResource::class, ['tenant' => $tenantSlug]);
         $this->couponsUrl = $this->safeResourceUrl(CouponResource::class, ['tenant' => $tenantSlug]);
         $this->operationsUrl = $this->safeResourceUrl(OperationalPlaybookTaskResource::class, ['tenant' => $tenantSlug]);
+        $this->dealsUrl = $this->safeResourceUrl(CrmDealResource::class, ['tenant' => $tenantSlug]);
+        $this->canAccessCrmDeals = $this->dealsUrl !== '';
 
         $resolver = app(BusinessSegmentResolver::class);
         $this->segmentKey = $resolver->resolveForTenant($tenant);
@@ -367,9 +373,14 @@ class GrowthCenter extends Page
         $this->growthProfile = app(BusinessGrowthBlueprint::class)->forTenant($tenant);
 
         $this->headline = (string) ($this->growthProfile['headline'] ?? 'CRM y crecimiento');
-        $this->copy = (string) ($this->growthProfile['copy'] ?? 'Ordena tu pipeline, entiende tu negocio y activa crecimiento con mejor disciplina.');
-        $this->crmTitle = (string) ($this->growthProfile['crm_title'] ?? 'Pipeline comercial');
-        $this->crmCopy = (string) ($this->growthProfile['crm_copy'] ?? 'Mide oportunidades, velocidad de respuesta y conversión.');
+        $this->copy = (string) ($this->growthProfile['copy'] ?? 'Ordena prospectos, clientes y seguimientos con mejor disciplina.');
+        $this->crmTitle = (string) ($this->growthProfile['crm_title'] ?? 'Seguimiento comercial');
+        $this->crmCopy = (string) ($this->growthProfile['crm_copy'] ?? 'Mide prospectos y seguimiento sin prometer un CRM completo.');
+        if (! $this->canAccessCrmDeals) {
+            $this->crmCopy = $this->canUpgradeToPro
+                ? 'Tu plan actual no incluye oportunidades CRM. Puedes operar prospectos y clientes; deals requiere upgrade y permiso.'
+                : 'Tu rol no tiene acceso a oportunidades CRM. Mantienes visibilidad de prospectos y clientes con permisos actuales.';
+        }
         $this->analyticsTitle = (string) ($this->growthProfile['analytics_title'] ?? 'Analitica PYME');
         $this->analyticsCopy = (string) ($this->growthProfile['analytics_copy'] ?? 'Lee ventas, recompra y audiencias con criterio de negocio.');
         $this->automationTitle = (string) ($this->growthProfile['automation_title'] ?? 'Automatizaciones externas');
@@ -553,11 +564,20 @@ class GrowthCenter extends Page
     private function buildGrowthActions(): void
     {
         $actions = [
-            $this->action('Abrir clientes', 'Trabaja fichas, notas, segmentos y reactivación desde un CRM unificado.', $this->customersUrl),
+            $this->action('Abrir clientes', 'CRM operativo parcial: fichas, notas y reactivacion por cliente.', $this->customersUrl),
             $this->action('Ver contactos', 'Audita correos, seguimientos y entregas del negocio.', $this->contactsUrl),
-            $this->action('Abrir campañas', 'Programa cadencias por segmento, owner, sede y reward desde el CRM.', $this->campaignsUrl),
+            $this->action('Abrir campañas', 'Programa cadencias por segmento y seguimiento sin prometer automatizaciones completas.', $this->campaignsUrl),
             $this->action('Bandeja de respuestas', 'Mueve replies, opt-in y seguimiento humano desde una sola cola.', $this->inboxUrl),
-            $this->action('Abrir prospectos', 'Ordena pipeline, fuentes y estado de cierre.', $this->leadsUrl),
+            $this->action('Abrir prospectos', 'Gestiona leads por estado, sin mezclarlo con pipeline de oportunidades.', $this->leadsUrl),
+            $this->action(
+                'Ir a oportunidades',
+                'Abre deals solo cuando el tenant tiene pipeline CRM habilitado.',
+                $this->dealsUrl,
+                $this->canAccessCrmDeals,
+                $this->canUpgradeToPro
+                    ? 'Requiere upgrade y feature CRM pipelines para este tenant.'
+                    : 'Requiere permiso de lectura sobre oportunidades CRM para tu rol.'
+            ),
             $this->action('Ir a marketing', 'Ajusta CTA, QR, WhatsApp y campañas.', $this->marketingUrl),
             $this->action('Ver centro operativo', 'Convierte automatizaciones en cola con SLA.', $this->operationsUrl),
         ];
@@ -693,7 +713,7 @@ class GrowthCenter extends Page
     {
         return match ($state) {
             'whatsapp_channel' => $this->readiness($this->hasWhatsApp, 'Canal listo', 'Configura WhatsApp'),
-            'whatsapp_and_leads' => $this->readiness($this->hasWhatsApp && ($this->newLeadsCount + $this->contactedLeadsCount + $this->closedLeadsCount) > 0, 'Lista para operar', 'Necesita canal y pipeline'),
+            'whatsapp_and_leads' => $this->readiness($this->hasWhatsApp && ($this->newLeadsCount + $this->contactedLeadsCount + $this->closedLeadsCount) > 0, 'Lista para operar', 'Necesita canal y prospectos activos'),
             'appointments_ready' => $this->readiness($this->appointments30d > 0 || $this->businessType === BusinessType::SERVICE->value, 'Agenda lista', 'Activa agenda o citas'),
             'mixed_activity' => $this->readiness(($this->orders30d + $this->appointments30d) > 0, 'Actividad lista', 'Necesita pedidos o citas'),
             'audience_ready' => $this->readiness(($this->followersCount + $this->newLeadsCount + $this->contactedLeadsCount + $this->closedLeadsCount) > 0, 'Audiencia lista', 'Necesita audiencia'),
@@ -744,7 +764,23 @@ class GrowthCenter extends Page
         try {
             return route($name, $parameters);
         } catch (\Throwable) {
-            return '#';
+            return '';
+        }
+    }
+
+    /**
+     * @param  class-string<\Filament\Pages\Page>  $page
+     */
+    private function safePageUrl(string $page, array $parameters = []): string
+    {
+        try {
+            if (method_exists($page, 'canAccess') && ! $page::canAccess()) {
+                return '';
+            }
+
+            return $page::getUrl($parameters);
+        } catch (\Throwable) {
+            return '';
         }
     }
 
@@ -754,9 +790,17 @@ class GrowthCenter extends Page
     private function safeResourceUrl(string $resource, array $parameters = []): string
     {
         try {
+            if (method_exists($resource, 'canAccess') && ! $resource::canAccess()) {
+                return '';
+            }
+
+            if (method_exists($resource, 'canViewAny') && ! $resource::canViewAny()) {
+                return '';
+            }
+
             return $resource::getUrl('index', $parameters);
         } catch (\Throwable) {
-            return '#';
+            return '';
         }
     }
 
@@ -777,11 +821,19 @@ class GrowthCenter extends Page
     }
 
     /**
-     * @return array{title: string, copy: string, href: string}
+     * @return array{title: string, copy: string, href: string, enabled: bool, reason: string}
      */
-    private function action(string $title, string $copy, string $href): array
+    private function action(string $title, string $copy, string $href, ?bool $enabled = null, string $reason = ''): array
     {
-        return compact('title', 'copy', 'href');
+        $isEnabled = $enabled ?? ($href !== '');
+
+        return [
+            'title' => $title,
+            'copy' => $copy,
+            'href' => $href,
+            'enabled' => $isEnabled,
+            'reason' => $isEnabled ? '' : ($reason !== '' ? $reason : 'No disponible para este tenant o para tu rol actual.'),
+        ];
     }
 
     /**

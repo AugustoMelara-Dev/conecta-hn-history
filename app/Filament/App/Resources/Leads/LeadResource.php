@@ -47,6 +47,31 @@ class LeadResource extends Resource
         return 4;
     }
 
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->can('viewAny', Lead::class) ?? false;
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->can('create', Lead::class) ?? false;
+    }
+
+    public static function canEdit($record): bool
+    {
+        return $record instanceof Lead && (auth()->user()?->can('update', $record) ?? false);
+    }
+
+    public static function canDelete($record): bool
+    {
+        return $record instanceof Lead && (auth()->user()?->can('delete', $record) ?? false);
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return static::canCreate();
+    }
+
     public static function form(Schema $schema): Schema
     {
         return LeadForm::configure($schema);
@@ -65,8 +90,8 @@ class LeadResource extends Resource
                     ->placeholder('Sin correo')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('phone')
-                    ->label('Teléfono')
-                    ->placeholder('Sin teléfono')
+                    ->label('Telefono')
+                    ->placeholder('Sin telefono')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('product.name')
                     ->label('Producto')
@@ -79,12 +104,25 @@ class LeadResource extends Resource
                         'whatsapp_click' => 'WhatsApp',
                         'manual' => 'Manual',
                         'website' => 'Sitio web',
-                        'catalog' => 'Catálogo',
+                        'catalog' => 'Catalogo',
                         null, '' => 'Manual',
                         default => ucfirst(str_replace('_', ' ', $state)),
                     })
                     ->color('gray')
                     ->toggleable(),
+                Tables\Columns\TextColumn::make('status')
+                    ->label('Estado')
+                    ->badge()
+                    ->formatStateUsing(static fn (?string $state): string => match ($state) {
+                        'new' => 'Nuevo',
+                        'contacted' => 'Contactado',
+                        'closed' => 'Cerrado',
+                        'lost' => 'Perdido',
+                        default => 'Nuevo',
+                    })
+                    ->color('gray')
+                    ->description('Solo lectura')
+                    ->visible(fn (): bool => ! static::canMutateLeadStatus()),
                 Tables\Columns\SelectColumn::make('status')
                     ->label('Estado')
                     ->options([
@@ -93,7 +131,8 @@ class LeadResource extends Resource
                         'closed' => 'Cerrado',
                         'lost' => 'Perdido',
                     ])
-                    ->selectablePlaceholder(false),
+                    ->selectablePlaceholder(false)
+                    ->visible(fn (): bool => static::canMutateLeadStatus()),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Fecha')
                     ->dateTime()
@@ -113,7 +152,7 @@ class LeadResource extends Resource
                     ->options([
                         'manual' => 'Manual',
                         'website' => 'Sitio web',
-                        'catalog' => 'Catálogo',
+                        'catalog' => 'Catalogo',
                         'whatsapp_click' => 'WhatsApp',
                     ]),
             ])
@@ -127,10 +166,10 @@ class LeadResource extends Resource
             ])
             ->emptyState(fn () => view('filament.app.components.table-empty-state', [
                 'badge' => 'Prospectos',
-                'heading' => 'Todavía no tienes prospectos',
-                'description' => 'Aquí verás los contactos manuales y también las consultas que entren desde tus canales públicos.',
-                'buttonLabel' => 'Crear prospecto',
-                'buttonUrl' => static::getUrl('create'),
+                'heading' => 'Todavia no tienes prospectos',
+                'description' => 'Aqui veras los contactos manuales y tambien las consultas que entren desde tus canales publicos.',
+                'buttonLabel' => static::canCreate() ? 'Crear prospecto' : null,
+                'buttonUrl' => static::canCreate() ? static::getUrl('create') : null,
             ]));
     }
 
@@ -149,4 +188,10 @@ class LeadResource extends Resource
             'edit' => Pages\EditLead::route('/{record}/edit'),
         ];
     }
+
+    private static function canMutateLeadStatus(): bool
+    {
+        return static::canCreate();
+    }
 }
+

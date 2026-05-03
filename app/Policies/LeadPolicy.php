@@ -4,15 +4,16 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Domain\Access\Enums\Permission;
+use App\Domain\TenantGovernance\Enums\Capability;
 use App\Models\Lead;
 use App\Models\User;
 
 /**
- * LeadPolicy - Tenant-Aware Authorization for Leads/Inquiries
+ * Tenant-aware authorization for leads/inquiries.
  *
- * ══════════════════════════════════════════════════════════════════════════════
- * SECURITY: Enforces tenant ownership for customer inquiry management
- * ══════════════════════════════════════════════════════════════════════════════
+ * View permissions follow the customer directory capability; mutations require
+ * marketing management permissions on the current tenant.
  */
 class LeadPolicy extends TenantAwarePolicy
 {
@@ -21,7 +22,7 @@ class LeadPolicy extends TenantAwarePolicy
      */
     public function viewAny(User $user): bool
     {
-        return $this->hasAnyTenant($user);
+        return $this->allows($user, Capability::CUSTOMER_DIRECTORY, Permission::CUSTOMERS_VIEW);
     }
 
     /**
@@ -29,7 +30,7 @@ class LeadPolicy extends TenantAwarePolicy
      */
     public function view(User $user, Lead $lead): bool
     {
-        return $this->ownsResource($user, $lead);
+        return $this->allows($user, Capability::CUSTOMER_DIRECTORY, Permission::CUSTOMERS_VIEW, $lead);
     }
 
     /**
@@ -37,7 +38,7 @@ class LeadPolicy extends TenantAwarePolicy
      */
     public function create(User $user): bool
     {
-        return $this->hasAnyTenant($user);
+        return $this->allows($user, Capability::NOTIFICATIONS_BASIC, Permission::MARKETING_MANAGE);
     }
 
     /**
@@ -45,7 +46,7 @@ class LeadPolicy extends TenantAwarePolicy
      */
     public function update(User $user, Lead $lead): bool
     {
-        return $this->ownsResource($user, $lead);
+        return $this->allows($user, Capability::NOTIFICATIONS_BASIC, Permission::MARKETING_MANAGE, $lead);
     }
 
     /**
@@ -53,7 +54,7 @@ class LeadPolicy extends TenantAwarePolicy
      */
     public function delete(User $user, Lead $lead): bool
     {
-        return $this->ownsResource($user, $lead);
+        return $this->allows($user, Capability::NOTIFICATIONS_BASIC, Permission::MARKETING_MANAGE, $lead);
     }
 
     /**
@@ -61,7 +62,7 @@ class LeadPolicy extends TenantAwarePolicy
      */
     public function restore(User $user, Lead $lead): bool
     {
-        return $this->ownsResource($user, $lead);
+        return $this->allows($user, Capability::NOTIFICATIONS_BASIC, Permission::MARKETING_MANAGE, $lead);
     }
 
     /**
@@ -69,6 +70,8 @@ class LeadPolicy extends TenantAwarePolicy
      */
     public function forceDelete(User $user, Lead $lead): bool
     {
-        return $this->ownsResource($user, $lead) && $this->isAdmin($user);
+        return $this->allows($user, Capability::NOTIFICATIONS_BASIC, Permission::MARKETING_MANAGE, $lead)
+            && $this->isTenantOwner($user);
     }
 }
+
