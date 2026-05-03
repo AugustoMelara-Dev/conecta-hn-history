@@ -53,16 +53,20 @@
 <form wire:submit="{{ $mode === 'login' ? 'login' : 'register' }}" class="space-y-4">
     {{-- Email --}}
     <div>
+        <label for="auth-modal-email" class="sr-only">Correo electrónico</label>
         <input
             wire:model="email"
             type="email"
+            id="auth-modal-email"
             placeholder="tu@email.com"
             autocomplete="email"
+            aria-invalid="@error('email') true @else false @enderror"
+            aria-describedby="@error('email') auth-modal-email-error @else null @enderror"
             class="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors placeholder-gray-400
                 @error('email') border-red-300 bg-red-50 @enderror"
         />
         @error('email')
-            <p class="mt-1.5 text-sm text-red-500 flex items-center gap-1">
+            <p id="auth-modal-email-error" class="mt-1.5 text-sm text-red-500 flex items-center gap-1" role="alert">
                 {{ $message }}
                 @if(str_contains($message, 'registrado'))
                     <button type="button" wire:click="switchToLogin" class="underline hover:text-red-700 font-medium">
@@ -75,17 +79,22 @@
 
     {{-- Password --}}
     <div x-data="{ show: false }" class="relative">
+        <label for="auth-modal-password" class="sr-only">Contraseña</label>
         <input
             wire:model="password"
             :type="show ? 'text' : 'password'"
+            id="auth-modal-password"
             placeholder="{{ $mode === 'login' ? 'Contraseña' : 'Crea una contraseña (8+ caracteres)' }}"
             autocomplete="{{ $mode === 'login' ? 'current-password' : 'new-password' }}"
+            aria-invalid="@error('password') true @else false @enderror"
+            aria-describedby="@error('password') auth-modal-password-error @else null @enderror"
             class="w-full px-4 py-3.5 pr-12 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors placeholder-gray-400
                 @error('password') border-red-300 bg-red-50 @enderror"
         />
         <button
             type="button"
             @click="show = !show"
+            :aria-label="show ? 'Ocultar contraseña' : 'Mostrar contraseña'"
             class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
         >
             <svg x-show="!show" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -97,7 +106,7 @@
             </svg>
         </button>
         @error('password')
-            <p class="mt-1.5 text-sm text-red-500">{{ $message }}</p>
+            <p id="auth-modal-password-error" class="mt-1.5 text-sm text-red-500" role="alert">{{ $message }}</p>
         @enderror
     </div>
 
