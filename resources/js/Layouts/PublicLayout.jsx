@@ -15,11 +15,12 @@ import {
 import { toast as sonnerToast } from 'sonner';
 import SupportDiagnosticCard from '@/Components/SupportDiagnosticCard';
 import { PUBLIC_BODY_FONT, PUBLIC_DISPLAY_FONT, PUBLIC_LABEL_FONT } from '@/lib/publicTypography';
+import { PUBLIC_BRAND, PUBLIC_BRAND_POLICY_NOTE } from '@/lib/publicBrand';
 
 function BrandMark() {
     return (
         <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-slate-950 text-sm font-semibold text-white shadow-lg shadow-slate-950/15">
-            VBO
+            {PUBLIC_BRAND.shortName}
         </div>
     );
 }
@@ -73,7 +74,7 @@ function Navbar() {
     const registrationLinks = [
         { href: route('home'), label: 'Beneficios', active: false, external: true },
         { href: `${route('home')}#pricing`, label: 'Precios', active: false, external: true },
-        { href: 'mailto:soporte@vitobusinessos.com', label: 'Soporte', active: false, external: true },
+        { href: `mailto:${PUBLIC_BRAND.supportEmail}`, label: 'Soporte', active: false, external: true },
     ];
     const links = isHome ? homeLinks : (isRegistrationFlow ? registrationLinks : defaultLinks);
     const headerClasses = isRegistrationFlow
@@ -99,11 +100,11 @@ function Navbar() {
                     {isHome ? null : <BrandMark />}
                     <div>
                         <p className={`${isHome ? 'text-2xl' : 'text-base'} font-extrabold tracking-tight text-slate-950`} style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                            Vito Business OS
+                            {PUBLIC_BRAND.name}
                         </p>
                         {!isHome ? (
                             <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-slate-500" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
-                                Vito Business OS
+                                {PUBLIC_BRAND.name}
                             </p>
                         ) : null}
                     </div>
@@ -136,7 +137,7 @@ function Navbar() {
                             value={search}
                             onChange={(event) => setSearch(event.target.value)}
                             placeholder="Busca negocios, rubros o ciudades..."
-                            className="w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
+                            className="w-full bg-transparent text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 placeholder:text-slate-400"
                         />
                         <button
                             type="submit"
@@ -188,14 +189,16 @@ function Navbar() {
                     type="button"
                     onClick={() => setMobileOpen((value) => !value)}
                     className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-stone-200 bg-white text-slate-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-200 lg:hidden"
-                    aria-label="Abrir menu"
+                    aria-label={mobileOpen ? 'Cerrar menu' : 'Abrir menu'}
+                    aria-expanded={mobileOpen}
+                    aria-controls="public-mobile-menu"
                 >
-                    {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                    {mobileOpen ? <X className="h-5 w-5" aria-hidden="true" /> : <Menu className="h-5 w-5" aria-hidden="true" />}
                 </button>
             </nav>
 
             {mobileOpen ? (
-                <div className="border-t border-stone-200 bg-white lg:hidden">
+                <div id="public-mobile-menu" className="border-t border-stone-200 bg-white lg:hidden">
                     <div className="mx-auto max-w-7xl space-y-4 px-4 py-4 sm:px-6">
                         <form onSubmit={searchBusinesses} className={isHome || isRegistrationFlow ? 'hidden' : ''}>
                             <div className="flex items-center rounded-2xl border border-stone-200 bg-white px-4 py-3">
@@ -210,7 +213,7 @@ function Navbar() {
                                     value={search}
                                     onChange={(event) => setSearch(event.target.value)}
                                     placeholder="Buscar negocios o servicios..."
-                                    className="w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
+                                    className="w-full bg-transparent text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 placeholder:text-slate-400"
                                 />
                             </div>
                         </form>
@@ -302,19 +305,19 @@ function Footer() {
     const { auth } = usePage().props;
 
     return (
-        <footer className="border-t border-slate-200 bg-slate-100">
+        <footer className="border-t border-slate-200 bg-slate-100" data-brand-policy={PUBLIC_BRAND_POLICY_NOTE}>
             <div className="mx-auto grid max-w-7xl grid-cols-2 gap-8 px-8 py-12 md:grid-cols-4">
                 <div className="col-span-2 md:col-span-1">
-                    <div className="text-xl font-bold text-slate-900" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>Vito Business OS</div>
+                    <div className="text-xl font-bold text-slate-900" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>{PUBLIC_BRAND.name}</div>
                     <p className="mt-4 text-sm leading-relaxed text-slate-500">
-                        La infraestructura digital para el comercio local en Honduras y la región.
+                        Plataforma para descubrir negocios locales y ayudarles a captar clientes con informacion clara.
                     </p>
                 </div>
 
                 <div>
                     <span className="mb-6 block text-xs font-bold uppercase tracking-[0.18em] text-slate-900" style={{ fontFamily: PUBLIC_LABEL_FONT }}>Producto</span>
                     <ul className="space-y-3 text-sm text-slate-500">
-                        <li><a href={`${route('home')}#features`} className="transition hover:underline">Sistema</a></li>
+                        <li><a href={`${route('home')}#features`} className="transition hover:underline">Funciones</a></li>
                         <li><a href={`${route('home')}#pricing`} className="transition hover:underline">Planes</a></li>
                         <li><Link href={route('public.explore')} className="transition hover:underline">Negocios</Link></li>
                         <li><Link href={route('tenant.register')} className="transition hover:underline">Registrar negocio</Link></li>
@@ -326,7 +329,7 @@ function Footer() {
                     <ul className="space-y-3 text-sm text-slate-500">
                         <li><a href={`${route('home')}#businesses`} className="transition hover:underline">Clientes</a></li>
                         <li><a href={`${route('home')}#faq`} className="transition hover:underline">FAQ</a></li>
-                        <li><a href="mailto:soporte@vitobusinessos.com" className="transition hover:underline">Soporte</a></li>
+                        <li><a href={`mailto:${PUBLIC_BRAND.supportEmail}`} className="transition hover:underline">Soporte</a></li>
                         {auth?.user ? (
                             <li><Link href={route('mi-cuenta.edit')} className="transition hover:underline">Mi cuenta</Link></li>
                         ) : (
@@ -338,11 +341,11 @@ function Footer() {
                 <div>
                     <span className="mb-6 block text-xs font-bold uppercase tracking-[0.18em] text-slate-900" style={{ fontFamily: PUBLIC_LABEL_FONT }}>Social</span>
                     <div className="flex gap-4">
-                        <a href="https://vitobusinessos.com" className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-slate-700 transition hover:bg-slate-300">
-                            <Compass className="h-4 w-4" />
+                        <a href={PUBLIC_BRAND.websiteUrl} target="_blank" rel="noopener noreferrer" aria-label={`Abrir sitio web de ${PUBLIC_BRAND.name}`} className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-slate-700 transition hover:bg-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2">
+                            <Compass className="h-4 w-4" aria-hidden="true" />
                         </a>
-                        <a href="https://wa.me/50499999999" className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-slate-700 transition hover:bg-slate-300">
-                            <MessageSquareMore className="h-4 w-4" />
+                        <a href={PUBLIC_BRAND.supportWhatsAppUrl} target="_blank" rel="noopener noreferrer" aria-label="Contactar soporte por WhatsApp" className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-slate-700 transition hover:bg-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2">
+                            <MessageSquareMore className="h-4 w-4" aria-hidden="true" />
                         </a>
                     </div>
                 </div>
@@ -351,7 +354,7 @@ function Footer() {
             <div className="border-t border-slate-200">
                 <div className="mx-auto max-w-7xl px-8 py-8">
                     <p className="text-center text-xs text-slate-500">
-                        &copy; {new Date().getFullYear()} Vito Business OS. Todos los derechos reservados.
+                        &copy; {new Date().getFullYear()} {PUBLIC_BRAND.name}. Todos los derechos reservados.
                     </p>
                 </div>
             </div>

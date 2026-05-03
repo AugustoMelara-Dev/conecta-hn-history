@@ -7,11 +7,11 @@ import {
     Clock3,
     MapPin,
     Search,
+    SlidersHorizontal,
     Sparkles,
     Star,
 } from 'lucide-react';
 import PublicLayout from '@/Layouts/PublicLayout';
-import PublicSearchShell from '@/Components/Public/PublicSearchShell';
 import { Badge } from '@/Components/ui/badge';
 import { Button } from '@/Components/ui/button';
 import {
@@ -22,7 +22,18 @@ import {
     CardHeader,
     CardTitle,
 } from '@/Components/ui/card';
+import { Input } from '@/Components/ui/input';
+import {
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/Components/ui/select';
 import { PUBLIC_DISPLAY_FONT } from '@/lib/publicTypography';
+import { PUBLIC_BRAND } from '@/lib/publicBrand';
+import PublicImage from '@/Components/Public/PublicImage';
 import {
     getTenantInitials,
     resolveTenantCategoryName,
@@ -54,7 +65,13 @@ function TenantImage({ tenant, className = '', overlay = false }) {
     if (visual) {
         return (
             <div className={`relative ${className}`}>
-                <img src={visual} alt={tenant.name} className="h-full w-full object-cover" />
+                <PublicImage
+                    src={visual}
+                    alt={`Imagen de ${tenant.name}`}
+                    width={960}
+                    height={720}
+                    className="h-full w-full object-cover"
+                />
                 {overlay ? <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/15 to-transparent" /> : null}
             </div>
         );
@@ -92,10 +109,10 @@ function TopSearch({ searchQuery, setSearchQuery, cities = [] }) {
                             className="mt-3 text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl"
                             style={{ fontFamily: PUBLIC_DISPLAY_FONT }}
                         >
-                            Descubre negocios locales desde una sola experiencia publica.
+                            Descubre negocios locales en una experiencia clara.
                         </h1>
                         <p className="mt-4 text-lg leading-8 text-slate-600">
-                            Esta vista toma la idea editorial de Stitch y la aterriza con datos reales: destacados, categorias, ciudades y salida clara al buscador completo.
+                            Explora negocios verificados por categoria, ciudad y perfil publico.
                         </p>
                     </div>
 
@@ -107,34 +124,68 @@ function TopSearch({ searchQuery, setSearchQuery, cities = [] }) {
                     </Button>
                 </div>
 
-                <div className="mt-8 rounded-[32px] border border-stone-200 bg-[#f3f3f1] p-3 shadow-sm">
-                    <PublicSearchShell
-                        onSubmit={handleSubmit}
-                        formTestId="explore-search-form"
-                        searchValue={searchQuery}
-                        onSearchChange={setSearchQuery}
-                        searchId="explore-search"
-                        searchTestId="explore-search-input"
-                        cityValue={cityFilter}
-                        onCityChange={setCityFilter}
-                        cityId="explore-city"
-                        cityPlaceholder="Todo Honduras"
-                        cityAllLabel="Todo Honduras"
-                        cityTestId="explore-city-select"
-                        cities={cities}
-                        showSubmit
-                        submitLabel="Buscar"
-                        submitTestId="explore-search-submit"
-                        showFiltersLink
-                        filtersHref={route('directory.index')}
-                        filtersLabel="Filtros"
-                        containerClassName="grid gap-3 lg:grid-cols-[1.2fr,0.42fr,auto,auto]"
-                        inputClassName="h-14 rounded-2xl border-stone-200 bg-white px-11 text-base text-slate-950 placeholder:text-slate-400 focus-visible:ring-slate-950"
-                        selectClassName="h-14 rounded-2xl border-stone-200 bg-white pl-11 text-sm text-slate-900 focus:ring-slate-950"
-                        submitClassName="h-14 rounded-2xl bg-slate-950 px-6 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
-                        filtersClassName="h-14 rounded-2xl border-stone-200 bg-white px-5 text-sm font-semibold text-slate-700 transition-colors hover:border-stone-300 hover:text-slate-950"
-                    />
-                </div>
+                <form onSubmit={handleSubmit} className="mt-8 rounded-[32px] border border-stone-200 bg-[#f3f3f1] p-3 shadow-sm" data-testid="explore-search-form">
+                    <div className="grid gap-3 lg:grid-cols-[1.2fr,0.42fr,auto,auto]">
+                        <div className="relative">
+                            <label htmlFor="explore-search" className="sr-only">
+                                Buscar negocios, servicios o ubicaciones
+                            </label>
+                            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                            <Input
+                                id="explore-search"
+                                type="text"
+                                value={searchQuery}
+                                onChange={(event) => setSearchQuery(event.target.value)}
+                                placeholder="Buscar negocios, servicios o ubicaciones..."
+                                className="h-14 rounded-2xl border-stone-200 bg-white px-11 text-base text-slate-950 placeholder:text-slate-400 focus-visible:ring-slate-950"
+                                data-testid="explore-search-input"
+                            />
+                        </div>
+
+                        <div className="relative">
+                            <label htmlFor="explore-city" className="sr-only">
+                                Ciudad
+                            </label>
+                            <MapPin className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                            <Select value={cityFilter} onValueChange={setCityFilter}>
+                                <SelectTrigger
+                                    id="explore-city"
+                                    className="h-14 rounded-2xl border-stone-200 bg-white pl-11 text-sm text-slate-900 focus:ring-slate-950"
+                                    data-testid="explore-city-select"
+                                >
+                                    <SelectValue placeholder="Todo Honduras" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectGroup>
+                                        <SelectItem value="all">Todo Honduras</SelectItem>
+                                        {cities.map((city) => (
+                                            <SelectItem key={city.id} value={city.slug}>{city.name}</SelectItem>
+                                        ))}
+                                    </SelectGroup>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <Button
+                            type="submit"
+                            className="h-14 rounded-2xl bg-slate-950 px-6 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
+                            data-testid="explore-search-submit"
+                        >
+                            Buscar
+                        </Button>
+
+                        <Button
+                            asChild
+                            variant="outline"
+                            className="h-14 rounded-2xl border-stone-200 bg-white px-5 text-sm font-semibold text-slate-700 transition-colors hover:border-stone-300 hover:text-slate-950"
+                        >
+                            <Link href={route('directory.index')}>
+                                <SlidersHorizontal data-icon="inline-start" aria-hidden="true" />
+                                Filtros
+                            </Link>
+                        </Button>
+                    </div>
+                </form>
             </div>
         </section>
     );
@@ -194,7 +245,7 @@ function FeaturedSplit({ featuredTenants = [] }) {
                             Destacados cerca de ti
                         </h2>
                         <p className="mt-2 text-sm text-slate-600">
-                            Una capa mas editorial para que descubrir se sienta mas claro que abrir un directorio plano.
+                            Seleccion destacada para encontrar opciones confiables con menos friccion.
                         </p>
                     </div>
                     <Button asChild variant="ghost" className="rounded-full text-slate-700 hover:text-slate-950">
@@ -287,7 +338,7 @@ function BusinessGrid({ featuredTenants = [] }) {
                             Recien integrados
                         </h2>
                         <p className="mt-2 text-sm text-slate-600">
-                            Negocios nuevos con una presencia publica lista para explorar.
+                            Negocios nuevos listos para recibir visitas y consultas.
                         </p>
                     </div>
                     <Button asChild variant="outline" className="rounded-full border-stone-200 text-slate-700 hover:border-stone-300 hover:text-slate-950">
@@ -332,7 +383,7 @@ function BusinessGrid({ featuredTenants = [] }) {
                                     <p className="text-sm leading-7 text-slate-600">
                                     {resolveTenantDescription(
                                         tenant,
-                                        'Perfil activo dentro de Vito Business OS con salida a contacto, catalogo o reserva segun el tipo de negocio.',
+                                        `Perfil activo en ${PUBLIC_BRAND.name} con salida a contacto, catalogo o reserva segun el tipo de negocio.`,
                                     )}
                                     </p>
                                 </CardContent>
@@ -366,10 +417,10 @@ function GrowthBanner({ stats = {} }) {
                                 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl"
                                 style={{ fontFamily: PUBLIC_DISPLAY_FONT }}
                             >
-                                Tu negocio deberia estar aqui tambien?
+                                Tu negocio puede aparecer aqui tambien
                             </h2>
                             <p className="mt-4 text-lg leading-8 text-slate-300">
-                                {stats?.total_tenants || 0}+ negocios ya entran con mejor presencia publica mientras la operacion interna se mantiene dentro del panel de Filament.
+                                {stats?.total_tenants || 0}+ negocios ya usan esta experiencia publica para captar clientes con informacion clara.
                             </p>
                             <div className="mt-6 flex flex-col gap-4 sm:flex-row">
                                 <Button asChild size="lg" variant="secondary" className="rounded-full bg-white text-slate-950 hover:bg-slate-100">
@@ -396,18 +447,18 @@ function GrowthBanner({ stats = {} }) {
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="p-0 pt-2">
-                                    <p className="text-sm text-slate-400">Descubrir, buscar y aterrizar al negocio sin duplicar producto.</p>
+                                    <p className="text-sm text-slate-400">Descubrir, buscar y llegar al negocio correcto desde una sola experiencia.</p>
                                 </CardContent>
                             </Card>
                             <Card className="rounded-[26px] border-white/10 bg-white/5 p-5 text-white">
                                 <CardHeader className="p-0">
                                     <CardDescription className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">Operacion</CardDescription>
                                     <CardTitle className="mt-3 text-3xl font-semibold text-white" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                                    Filament
+                                    Operacion centralizada
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="p-0 pt-2">
-                                    <p className="text-sm text-slate-400">Panel del negocio y admin sin inventar dashboards paralelos.</p>
+                                    <p className="text-sm text-slate-400">Gestion operativa y visibilidad publica alineadas para el negocio.</p>
                                 </CardContent>
                             </Card>
                         </div>
@@ -434,7 +485,7 @@ function CitySection({ cities = [] }) {
                         Explora por ciudad
                     </h2>
                     <p className="mt-2 text-sm text-slate-600">
-                        La misma experiencia publica baja de categoria a ciudad sin romper la navegacion.
+                        Navega por categoria y ciudad sin perder contexto.
                     </p>
                 </div>
 
@@ -451,7 +502,13 @@ function CitySection({ cities = [] }) {
                                 <Card className="relative overflow-hidden rounded-[26px] border-stone-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
                                     <div className="relative aspect-[4/2.8] overflow-hidden bg-slate-950">
                                         {visual ? (
-                                            <img src={visual} alt={city.name} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+                                            <PublicImage
+                                                src={visual}
+                                                alt={`Vista de ${city.name}`}
+                                                width={960}
+                                                height={600}
+                                                className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
+                                            />
                                         ) : (
                                             <div className="h-full w-full bg-[radial-gradient(circle_at_top_left,#d4d4d4,transparent_30%),radial-gradient(circle_at_bottom_right,#111827,transparent_34%),#0f172a]" />
                                         )}

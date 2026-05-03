@@ -1,14 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { AlertCircle, ArrowRight, MapPin, Sparkles, X } from 'lucide-react';
+import { AlertCircle, ArrowRight, Filter, MapPin, Search, Sparkles, X } from 'lucide-react';
 import PublicLayout from '@/Layouts/PublicLayout';
-import PublicSearchShell from '@/Components/Public/PublicSearchShell';
 import { ActionableAlert, EmptyState as UXEmptyState, LoadingState } from '@/Components/Feedback/UXStates';
 import { Alert, AlertDescription, AlertTitle } from '@/Components/ui/alert';
 import { Badge } from '@/Components/ui/badge';
 import { Button } from '@/Components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/Components/ui/card';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
+import { Input } from '@/Components/ui/input';
+import {
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/Components/ui/select';
 import {
     Sheet,
     SheetContent,
@@ -18,6 +25,8 @@ import {
 } from '@/Components/ui/sheet';
 import { Textarea } from '@/Components/ui/textarea';
 import { PUBLIC_DISPLAY_FONT } from '@/lib/publicTypography';
+import { PUBLIC_BRAND } from '@/lib/publicBrand';
+import PublicImage from '@/Components/Public/PublicImage';
 import { cn } from '@/lib/utils';
 import {
     getTenantInitials,
@@ -45,7 +54,13 @@ function DirectoryCard({ tenant }) {
             <Card className="flex h-full flex-col overflow-hidden rounded-[32px] border-stone-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-slate-950/8">
                 <div className="relative aspect-[4/3] overflow-hidden bg-stone-100">
                     {visual ? (
-                        <img src={visual} alt={tenant.name} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+                        <PublicImage
+                            src={visual}
+                            alt={`Imagen de ${tenant.name}`}
+                            width={960}
+                            height={720}
+                            className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
+                        />
                     ) : (
                         <div className="flex h-full items-center justify-center bg-slate-950 text-3xl font-semibold text-white">
                             {getTenantInitials(tenant)}
@@ -75,7 +90,7 @@ function DirectoryCard({ tenant }) {
                         <p className="mt-3 text-sm leading-7 text-slate-600">
                             {resolveTenantDescription(
                                 tenant,
-                                'Negocio local con presencia activa dentro de Vito Business OS y una salida clara hacia contacto, pedido o reserva.',
+                                `Negocio local con presencia activa en ${PUBLIC_BRAND.name} y una salida clara hacia contacto, pedido o reserva.`,
                             )}
                         </p>
                     </div>
@@ -121,7 +136,7 @@ function EmptyState({ filters, onClear }) {
             icon={Search}
             eyebrow="Directorio"
             title={filters.search ? `No encontramos "${filters.search}"` : 'No hay resultados con esos filtros'}
-            description="Ajusta ciudad, categoría o término de búsqueda. También puedes registrar tu negocio si todavía no aparece en el directorio."
+            description="Ajusta ciudad, categoria o termino de busqueda. Tambien puedes registrar tu negocio si todavia no aparece en el directorio."
             actionLabel="Registrar mi negocio"
             actionHref={route('tenant.register')}
             secondaryLabel="Limpiar filtros"
@@ -365,7 +380,7 @@ function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
                 <AlertDescription className="mt-2">
                     <span className="block text-xl font-semibold">Disponible solo para cuentas de cliente</span>
                     <span className="mt-2 block">
-                        Tu cuenta actual es operativa para panel interno. Usa una cuenta de cliente para consultas del directorio.
+                        Tu cuenta actual es de gestion operativa. Usa una cuenta de cliente para consultas del directorio.
                     </span>
                 </AlertDescription>
             </Alert>
@@ -633,7 +648,7 @@ export default function DirectoryIndex({ tenants, categories = [], cities = [], 
             <Head title={`Negocios ${activeCity ? `en ${activeCity.name}` : 'en Honduras'}`}>
                 <meta
                     name="description"
-                    content="Busca negocios en Honduras por ciudad, categoría o término de búsqueda desde la capa pública unificada de Vito Business OS."
+                    content={`Busca negocios en Honduras por ciudad, categoria o termino de busqueda desde la experiencia publica de ${PUBLIC_BRAND.name}.`}
                 />
             </Head>
 
@@ -642,37 +657,60 @@ export default function DirectoryIndex({ tenants, categories = [], cities = [], 
                     <div className="max-w-3xl">
                         <p className="text-sm font-semibold uppercase tracking-[0.28em] text-slate-500">Negocios</p>
                         <h1 className="mt-4 text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                            Busca por ciudad, categoría o servicio sin salirte de la misma experiencia pública.
+                            Busca por ciudad, categoria o servicio sin salir de la misma experiencia publica.
                         </h1>
                         <p className="mt-6 text-lg leading-8 text-slate-600">
-                            Este es el modo completo de resultados: aquí comparas, filtras y aterrizas al negocio correcto. La operación interna del negocio sigue en Filament.
+                            Compara, filtra y llega al negocio correcto con rutas claras de contacto, compra o reserva.
                         </p>
                     </div>
 
-                    <PublicSearchShell
-                        searchValue={searchTerm}
-                        onSearchChange={setSearchTerm}
-                        searchId="directory-search"
-                        searchPlaceholder="Buscar negocios, productos o servicios..."
-                        searchLabel="Buscar negocios, productos o servicios"
-                        searchTestId="directory-search-input"
-                        cityValue={cityTerm || 'all'}
-                        onCityChange={(value) => setCity(value === 'all' ? '' : value)}
-                        cityId="directory-city"
-                        cityPlaceholder="Todas las ciudades"
-                        cityAllLabel="Todas las ciudades"
-                        cityTriggerLabel="Filtrar por ciudad"
-                        cityTestId="directory-city-select"
-                        cities={cities}
-                        showMobileFiltersButton
-                        onMobileFiltersClick={() => setMobileOpen((value) => !value)}
-                        mobileFiltersTestId="directory-mobile-filters"
-                        filtersLabel="Filtros"
-                        containerClassName="mt-10 grid gap-4 lg:grid-cols-[1.15fr,0.45fr,auto]"
-                        inputClassName="h-14 rounded-[24px] border-stone-200 bg-[#f3f3f1] px-11 text-base text-slate-950 placeholder:text-slate-400 focus-visible:ring-slate-950"
-                        selectClassName="h-14 rounded-[24px] border-stone-200 bg-[#f3f3f1] pl-11 text-base text-slate-900 focus:ring-slate-950"
-                        mobileFiltersClassName="h-14 rounded-[24px] border-stone-200 bg-white px-5 text-sm font-semibold text-slate-700 transition-colors hover:border-stone-300 lg:hidden"
-                    />
+                    <div className="mt-10 grid gap-4 lg:grid-cols-[1.15fr,0.45fr,auto]">
+                        <div className="relative">
+                            <label htmlFor="directory-search" className="sr-only">
+                                Buscar negocios, productos o servicios
+                            </label>
+                            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                            <Input
+                                id="directory-search"
+                                name="search"
+                                type="text"
+                                placeholder="Buscar negocios, productos o servicios..."
+                                value={searchTerm}
+                                onChange={(event) => setSearchTerm(event.target.value)}
+                                className="h-14 rounded-[24px] border-stone-200 bg-[#f3f3f1] px-11 text-base text-slate-950 placeholder:text-slate-400 focus-visible:ring-slate-950"
+                                data-testid="directory-search-input"
+                            />
+                        </div>
+
+                        <Select value={cityTerm || 'all'} onValueChange={(value) => setCity(value === 'all' ? '' : value)}>
+                            <SelectTrigger
+                                aria-label="Filtrar por ciudad"
+                                className="h-14 rounded-[24px] border-stone-200 bg-[#f3f3f1] px-4 text-base text-slate-900 focus:ring-slate-950"
+                                data-testid="directory-city-select"
+                            >
+                                <SelectValue placeholder="Todas las ciudades" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectGroup>
+                                    <SelectItem value="all">Todas las ciudades</SelectItem>
+                                    {cities.map((city) => (
+                                        <SelectItem key={city.id} value={city.slug}>{city.name}</SelectItem>
+                                    ))}
+                                </SelectGroup>
+                            </SelectContent>
+                        </Select>
+
+                        <Button
+                            type="button"
+                            onClick={() => setMobileOpen((value) => !value)}
+                            variant="outline"
+                            className="h-14 rounded-[24px] border-stone-200 bg-white px-5 text-sm font-semibold text-slate-700 transition-colors hover:border-stone-300 lg:hidden"
+                            data-testid="directory-mobile-filters"
+                        >
+                            <Filter data-icon="inline-start" aria-hidden="true" />
+                            Filtros
+                        </Button>
+                    </div>
 
                     <div className="mt-6 flex flex-wrap gap-3">
                         <FilterButton active={!filters.category} onClick={() => setCategory('')} testId="directory-category-all">

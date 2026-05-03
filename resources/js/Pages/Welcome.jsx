@@ -20,6 +20,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from '@/Components/ui/badge';
 import { resolveTenantVisual } from '@/lib/tenantPresentation';
 import { PUBLIC_DISPLAY_FONT, PUBLIC_LABEL_FONT } from '@/lib/publicTypography';
+import { PUBLIC_BRAND } from '@/lib/publicBrand';
+import PublicImage from '@/Components/Public/PublicImage';
+import { safeJsonLd } from '@/lib/safeJsonLd';
 
 function formatCurrency(value) {
     return Number(value ?? 0).toLocaleString('es-HN', {
@@ -107,7 +110,7 @@ function DashboardHeroMockup() {
                                         </CardDescription>
                                     </div>
                                     <Badge className="rounded-2xl px-3 py-2 text-xs font-bold" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
-                                        LIVE
+                                        Vista referencial
                                     </Badge>
                                 </CardHeader>
                                 <CardContent className="px-4 pb-4 pt-0">
@@ -129,7 +132,7 @@ function DashboardHeroMockup() {
                                     {[
                                         ['Pedidos', '48 activos'],
                                         ['Conversion', '+18%'],
-                                        ['Clientes', '2.4k'],
+                                        ['Clientes', 'Seguimiento real'],
                                     ].map(([label, value]) => (
                                         <div key={label} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
                                             <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-300" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
@@ -173,20 +176,19 @@ function HeroSection() {
                 <div className="grid items-center gap-12 md:grid-cols-2">
                     <div className="flex flex-col gap-8">
                         <Badge variant="secondary" className="w-fit rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.22em]" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
-                            Vito Business OS
+                            {PUBLIC_BRAND.name}
                         </Badge>
 
                         <h1
                             className="text-5xl font-extrabold leading-[1.05] tracking-tight text-slate-950 md:text-7xl"
                             style={{ fontFamily: PUBLIC_DISPLAY_FONT }}
                         >
-                            El Sistema Operativo para{' '}
-                            <span className="text-slate-600">Negocios que Escalan.</span>
+                            Gestion y presencia digital{' '}
+                            <span className="text-slate-600">para negocios locales.</span>
                         </h1>
 
                         <p className="max-w-lg text-xl leading-relaxed text-slate-600">
-                            Gestiona catálogo, reservas, pedidos, CRM, billing y micrositio público desde un solo panel
-                            para negocios locales.
+                            Centraliza catalogo, reservas, pedidos y presencia publica en una experiencia clara para tu equipo y tus clientes.
                         </p>
 
                         <div className="flex flex-col gap-4 pt-4 sm:flex-row">
@@ -259,7 +261,7 @@ function BenefitsSection() {
                 <div className="mb-16">
                     <SectionTitle className="text-4xl">Todo lo que necesitas para operar</SectionTitle>
                     <p className="mt-4 max-w-xl text-slate-600">
-                        Catalogo, reservas, CRM, campañas, analytics y operacion integrados sin duplicar herramientas ni flujos.
+                        Catalogo, reservas, campanas, analytics y seguimiento de clientes integrados sin duplicar herramientas ni flujos.
                     </p>
                 </div>
 
@@ -269,16 +271,18 @@ function BenefitsSection() {
                             <div className="grid gap-4">
                                 <BarChart3 className="h-10 w-10 text-foreground" aria-hidden="true" />
                                 <CardTitle className="text-3xl font-bold text-foreground" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                                    Analytics y Growth Center
+                                    Reportes y seguimiento comercial
                                 </CardTitle>
                                 <CardDescription className="max-w-md text-base">
                                     Visualiza ventas, pedidos, crecimiento, embudos y señales operativas desde un solo panel.
                                 </CardDescription>
                             </div>
 
-                            <Button type="button" variant="link" className="mt-8 w-fit px-0 text-sm font-bold text-foreground" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
-                                Saber mas
-                                <ArrowRight data-icon="inline-end" aria-hidden="true" />
+                            <Button asChild variant="link" className="mt-8 w-fit px-0 text-sm font-bold text-foreground" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
+                                <Link href={route('public.explore')}>
+                                    Ver negocios activos
+                                    <ArrowRight data-icon="inline-end" aria-hidden="true" />
+                                </Link>
                             </Button>
                         </CardContent>
 
@@ -322,7 +326,15 @@ function BenefitsSection() {
 
 function IndustryVisual({ image }) {
     if (image) {
-        return <img src={image} alt="Industria destacada" className="h-full w-full object-cover" />;
+        return (
+            <PublicImage
+                src={image}
+                alt="Negocio destacado en la plataforma"
+                width={1200}
+                height={900}
+                className="h-full w-full object-cover"
+            />
+        );
     }
 
     return (
@@ -465,7 +477,7 @@ function PricingSection({ settings = {} }) {
                         </Badge>
                         <CardHeader className="p-10 pb-0">
                             <CardTitle className="text-2xl font-bold" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                                Plan Business Pro
+                                Plan Pro
                             </CardTitle>
                             <CardDescription className="text-slate-300">Para negocios en expansión.</CardDescription>
                         </CardHeader>
@@ -484,7 +496,7 @@ function PricingSection({ settings = {} }) {
                             <ul className="flex flex-col gap-4 text-sm">
                                 {[
                                     `Catálogo ilimitado o hasta ${proLimit} items`,
-                                    'Growth Center y exports',
+                                    'Reportes y exportaciones',
                                     'Marketing y cupones',
                                     'Branding del micrositio',
                                     'Operación multi-sede',
@@ -500,7 +512,7 @@ function PricingSection({ settings = {} }) {
                         <CardFooter className="p-10 pt-0">
                             <Button asChild variant="secondary" className="h-auto w-full rounded-xl bg-white py-4 text-center font-bold text-slate-950 hover:bg-slate-100">
                                 <Link href={route('tenant.register')}>
-                                    Obtener Pro Now
+                                    Ver plan Pro
                                 </Link>
                             </Button>
                         </CardFooter>
@@ -549,7 +561,7 @@ function SocialProofSection({ stats = {} }) {
 
                     <Card className="flex flex-col items-center justify-center rounded-[1.9rem] bg-background p-10 text-center shadow-sm">
                         <CardTitle className="mb-2 text-6xl font-extrabold text-muted-foreground" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                            CRM
+                            Clientes
                         </CardTitle>
                         <CardDescription className="text-sm font-bold uppercase tracking-[0.18em]" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
                             Seguimiento comercial
@@ -573,7 +585,7 @@ function FaqSection() {
         },
         {
             title: '¿Puedo usar mi propio dominio?',
-            body: 'Absolutamente. Puedes vincular tu dominio personalizado para que tu tienda digital y catálogo luzcan 100% profesionales bajo tu propia marca.',
+            body: 'Puedes vincular tu dominio personalizado para mantener tu marca en la experiencia pública.',
         },
     ];
 
@@ -606,7 +618,7 @@ function FinalCtaSection() {
                     Opera con un panel claro y una presencia pública profesional.
                 </h2>
                 <p className="mx-auto mb-12 max-w-2xl text-xl text-slate-300">
-                    Activa tu catálogo, reservas, CRM y micrositio sin promesas infladas ni superficies duplicadas.
+                    Activa tu catalogo, reservas, seguimiento de clientes y micrositio sin promesas infladas ni superficies duplicadas.
                 </p>
                 <div className="flex flex-col justify-center gap-6 sm:flex-row">
                     <Button asChild variant="secondary" className="h-auto rounded-xl bg-white px-10 py-5 text-lg font-bold text-slate-950 shadow-2xl hover:bg-slate-100">
@@ -615,8 +627,8 @@ function FinalCtaSection() {
                         </Link>
                     </Button>
                     <Button asChild variant="outline" className="h-auto rounded-xl border-white/20 bg-slate-950/20 px-10 py-5 text-lg font-bold text-white hover:bg-slate-800 hover:text-white">
-                        <a href="mailto:soporte@vitobusinessos.com?subject=Demo%20Vito%20Business%20OS">
-                            Agendar demo personalizada
+                        <a href={`mailto:${PUBLIC_BRAND.supportEmail}?subject=Consulta%20comercial%20${encodeURIComponent(PUBLIC_BRAND.name)}`}>
+                            Contactar por correo
                         </a>
                     </Button>
                 </div>
@@ -637,25 +649,25 @@ export default function Welcome({ newTenants = [], stats = {}, settings = {} }) 
     const schema = {
         '@context': 'https://schema.org',
         '@type': 'WebSite',
-        name: 'Vito Business OS',
+        name: PUBLIC_BRAND.name,
         url: homeUrl,
     };
 
     return (
         <PublicLayout>
-            <Head title="Vito Business OS | El Sistema Operativo para Negocios Locales">
+            <Head title={`${PUBLIC_BRAND.name} | Gestion digital para negocios locales`}>
                 <meta
                     name="description"
-                    content="Gestiona catálogo, reservas, pedidos, CRM, billing y micrositio público desde un solo panel para negocios locales."
+                    content="Centraliza catalogo, reservas, pedidos y presencia publica en una experiencia clara para negocios locales."
                 />
-                <meta property="og:title" content="Vito Business OS | El Sistema Operativo para Negocios Locales" />
+                <meta property="og:title" content={`${PUBLIC_BRAND.name} | Gestion digital para negocios locales`} />
                 <meta
                     property="og:description"
-                    content="Gestiona catálogo, reservas, pedidos, CRM, billing y micrositio público desde un solo panel para negocios locales."
+                    content="Centraliza catalogo, reservas, pedidos y presencia publica en una experiencia clara para negocios locales."
                 />
                 <meta property="og:type" content="website" />
                 <link rel="canonical" href={homeUrl} />
-                <script type="application/ld+json">{JSON.stringify(schema)}</script>
+                <script type="application/ld+json">{safeJsonLd(schema)}</script>
             </Head>
 
             <HeroSection />
