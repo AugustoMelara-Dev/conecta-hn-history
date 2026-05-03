@@ -4,6 +4,8 @@ use App\Http\Controllers\Api\V1\BusinessClaimController;
 use App\Http\Controllers\Api\V1\BusinessClaimDisputeController;
 use App\Http\Controllers\Api\V1\BusinessAiRagController;
 use App\Http\Controllers\Api\V1\CouponController;
+use App\Http\Controllers\Api\V1\Crm\CrmDealController;
+use App\Http\Controllers\Api\V1\Crm\CrmPipelineController;
 use App\Http\Controllers\Api\V1\DirectoryGuideController;
 use App\Http\Controllers\Api\V1\InteractionController;
 use App\Http\Controllers\Api\V1\OrderController;
@@ -15,21 +17,15 @@ use Illuminate\Support\Facades\Route;
 Route::post('/analytics/track', [\App\Http\Controllers\Api\V1\AnalyticsController::class, 'track'])
     ->middleware('throttle:api');
 
-// ═══════════════════════════════════════════════════════════════════════════
 // API V1 ROUTING GROUP
-// ═══════════════════════════════════════════════════════════════════════════
 Route::prefix('v1')->middleware('api.lifecycle:v1')->group(function () {
 
-    // ═══════════════════════════════════════════════════════════════════════════
     // PUBLIC REGISTRATION
-    // ═══════════════════════════════════════════════════════════════════════════
     Route::post('/register', \App\Infrastructure\Identity\Http\Controllers\RegisterUserController::class)
         ->middleware('throttle:api')
         ->name('api.register');
 
-    // ═══════════════════════════════════════════════════════════════════════════
     // AUTHENTICATED USER PROFILE
-    // ═══════════════════════════════════════════════════════════════════════════
     Route::get('/user', function (Request $request) {
         return $request->user();
     })->middleware(['auth:sanctum', 'throttle:api'])
@@ -47,9 +43,7 @@ Route::prefix('v1')->middleware('api.lifecycle:v1')->group(function () {
             ->name('api.push-subscriptions.destroy');
     });
 
-    // ═══════════════════════════════════════════════════════════════════════════
     // AUTHENTICATION: OTP Routes
-    // ═══════════════════════════════════════════════════════════════════════════
     Route::prefix('otp')->group(function () {
         Route::post('/generate', [OtpController::class, 'generate'])
             ->middleware(['throttle:api.otp-generation', 'idempotency']);
@@ -58,17 +52,13 @@ Route::prefix('v1')->middleware('api.lifecycle:v1')->group(function () {
             ->middleware('throttle:api.verification');
     });
 
-    // ═══════════════════════════════════════════════════════════════════════════
     // AUTHENTICATION: Social Login
-    // ═══════════════════════════════════════════════════════════════════════════
     Route::prefix('auth')->group(function () {
         Route::post('/social', [\App\Http\Controllers\Api\V1\AuthController::class, 'socialLogin'])
             ->middleware('throttle:api');
     });
 
-    // ═══════════════════════════════════════════════════════════════════════════
     // PUBLIC ANALYTICS: Tenant-Aware Protection
-    // ═══════════════════════════════════════════════════════════════════════════
     Route::post('/interactions', [InteractionController::class, 'store'])
         ->middleware('throttle:tenant-aware'); // REPLACED: analytics-protection -> tenant-aware
 
@@ -78,9 +68,7 @@ Route::prefix('v1')->middleware('api.lifecycle:v1')->group(function () {
     Route::post('/analytics/conversion', [\App\Http\Controllers\Api\V1\AnalyticsController::class, 'conversion'])
         ->middleware('throttle:api');
 
-    // ═══════════════════════════════════════════════════════════════════════════
     // PUBLIC CATALOG
-    // ═══════════════════════════════════════════════════════════════════════════
     Route::prefix('products')->group(function () {
         Route::get('/', [ProductController::class, 'index'])
             ->middleware(['throttle:api', 'cacheResponse:600']);
@@ -106,9 +94,7 @@ Route::prefix('v1')->middleware('api.lifecycle:v1')->group(function () {
     Route::post('/business-claims/{tenant:slug}/disputes', [BusinessClaimDisputeController::class, 'store'])
         ->middleware(['auth:sanctum', 'throttle:api']);
 
-    // ═══════════════════════════════════════════════════════════════════════════
     // PUBLIC COUPONS
-    // ═══════════════════════════════════════════════════════════════════════════
     Route::prefix('coupons')->group(function () {
         Route::post('/verify', [CouponController::class, 'verify'])
             ->middleware('throttle:api.verification');
@@ -117,9 +103,7 @@ Route::prefix('v1')->middleware('api.lifecycle:v1')->group(function () {
             ->middleware('throttle:api');
     });
 
-    // ═══════════════════════════════════════════════════════════════════════════
     // PUBLIC CHECKOUT
-    // ═══════════════════════════════════════════════════════════════════════════
     Route::post('/orders', [\App\Http\Controllers\Public\OrderController::class, 'store'])
         ->middleware('throttle:api.transactions');
 
@@ -147,9 +131,7 @@ Route::prefix('v1')->middleware('api.lifecycle:v1')->group(function () {
             ->name('checkout.remove-coupon');
     });
 
-    // ═══════════════════════════════════════════════════════════════════════════
     // PROTECTED TENANT ROUTES
-    // ═══════════════════════════════════════════════════════════════════════════
     Route::middleware(['auth:sanctum', 'tenant.ownership', 'throttle:api'])->group(function () {
         Route::prefix('orders')->group(function () {
             Route::get('/', [OrderController::class, 'index']);
@@ -179,11 +161,26 @@ Route::prefix('v1')->middleware('api.lifecycle:v1')->group(function () {
             Route::post('/sales', [\App\Http\Controllers\Api\V1\SalesExportController::class, 'store'])
                 ->name('api.exports.sales');
         });
+
+        Route::prefix('crm')->name('api.crm.')->group(function () {
+            Route::get('/pipelines', [CrmPipelineController::class, 'index'])
+                ->name('pipelines.index');
+            Route::get('/pipeline-summary', [CrmPipelineController::class, 'summary'])
+                ->name('pipeline-summary.show');
+            Route::get('/deals', [CrmDealController::class, 'index'])
+                ->name('deals.index');
+            Route::post('/deals', [CrmDealController::class, 'store'])
+                ->name('deals.store');
+            Route::patch('/deals/{deal}', [CrmDealController::class, 'update'])
+                ->name('deals.update');
+            Route::patch('/deals/{deal}/stage', [CrmDealController::class, 'moveStage'])
+                ->name('deals.stage.update');
+            Route::delete('/deals/{deal}', [CrmDealController::class, 'destroy'])
+                ->name('deals.destroy');
+        });
     });
 
-    // ═══════════════════════════════════════════════════════════════════════════
     // REPORT DOWNLOADS
-    // ═══════════════════════════════════════════════════════════════════════════
     Route::get('/reports/download/{path}', [\App\Http\Controllers\Api\V1\ReportDownloadController::class, 'download'])
         ->where('path', '.*')
         ->name('reports.download')
@@ -193,9 +190,7 @@ Route::prefix('v1')->middleware('api.lifecycle:v1')->group(function () {
         ->name('api.exports.download')
         ->middleware(['auth:sanctum', 'signed']);
 
-    // ═══════════════════════════════════════════════════════════════════════════
     // NOTIFICATIONS
-    // ═══════════════════════════════════════════════════════════════════════════
     Route::middleware(['auth:sanctum', 'throttle:api'])->prefix('notifications')->group(function () {
         Route::get('/', [\App\Http\Controllers\Api\V1\NotificationController::class, 'index']);
         Route::get('/count', [\App\Http\Controllers\Api\V1\NotificationController::class, 'count']);
@@ -203,9 +198,7 @@ Route::prefix('v1')->middleware('api.lifecycle:v1')->group(function () {
         Route::patch('/{id}/read', [\App\Http\Controllers\Api\V1\NotificationController::class, 'markAsRead']);
     });
 
-    // ═══════════════════════════════════════════════════════════════════════════
     // AI TOOLS
-    // ═══════════════════════════════════════════════════════════════════════════
     Route::middleware(['auth:sanctum', 'throttle:api'])->prefix('ai')->group(function () {
         Route::post('/generate', [\App\Http\Controllers\Api\V1\AiController::class, 'generate']);
         Route::post('/optimize-profile', [\App\Http\Controllers\Api\V1\AiOptimizationController::class, 'optimizeProfile'])
@@ -235,9 +228,7 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->prefix('notifications')->gr
 Route::post('/orders', [\App\Http\Controllers\Public\OrderController::class, 'store'])
     ->middleware('throttle:api.transactions');
 
-// ═══════════════════════════════════════════════════════════════════════════
 // WEBHOOKS (Legacy path maintained)
-// ═══════════════════════════════════════════════════════════════════════════
 Route::post('/webhooks/payment', [\App\Http\Controllers\Webhook\PaymentWebhookController::class, 'handle'])
     ->name('webhooks.payment')
     ->middleware('throttle:webhooks')
