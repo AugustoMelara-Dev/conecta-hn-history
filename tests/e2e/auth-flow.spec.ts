@@ -100,13 +100,13 @@ test.describe('Auth journey', () => {
 
         const stillOnLogin = page.url().includes('/login');
         if (!stillOnLogin) {
-            await page.waitForLoadState('domcontentloaded', { timeout: 15_000 }).catch(() => null);
-            await expectNoFatalServerText(page);
+            await page.waitForLoadState('domcontentloaded');
+            await expect(page.locator('body')).not.toContainText(/500|server error/i);
             return;
         }
 
         // Validation UX can be inline or generic; the critical gate is no 5xx regression.
-        await expectNoFatalServerText(page);
+        await expect(page.locator('body')).not.toContainText(/500|server error|internal server error/i);
     });
 
     test('visitor can register a new tenant owner account', async ({ page }) => {
@@ -162,9 +162,71 @@ test.describe('Auth journey', () => {
         await page.getByRole('button', { name: /Continuar/i }).last().click();
 
         await page.getByTestId('register-terms-checkbox').click();
+        await page.getByTestId('register-privacy-checkbox').click();
         await page.getByRole('button', { name: /Crear negocio|Crear cuenta/i }).click();
 
         await page.waitForURL((url) => !url.pathname.includes('/registrar-negocio'), { timeout: 30000 });
         expect(page.url().includes('/registrar-negocio')).toBeFalsy();
+    });
+
+    test('onboarding boundary preserves actionable recovery path (verify-email or billing)', async ({ page }) => {
+        test.setTimeout(150_000);
+
+        const suffix = Date.now();
+        const email = `onboarding.boundary.${suffix}@example.test`;
+        const slug = `onboarding-boundary-${suffix}`;
+
+        const registerResponse = await gotoWithRetries(page, '/registrar-negocio', {
+            attempts: 2,
+            delayMs: 600,
+            responseTimeoutMs: 8_000,
+        });
+        expectNon5xx(registerResponse, '/registrar-negocio');
+        await expectNoFatalServerText(page);
+
+        if (isSmokeMode) {
+            return;
+        }
+
+        await page.locator('#business_name').fill(`Onboarding Boundary ${suffix}`);
+        const slugInput = page.locator('#slug');
+        await slugInput.fill(slug);
+        await slugInput.blur();
+        await selectShadcnOption(page, 'register-category-select');
+        await page.getByRole('radio', { name: /Tienda y catálogo|Tienda y catalogo|Restaurante y comida|Servicios y citas|Mixto/i }).first().click();
+        await waitForSlugCheckComplete(page);
+
+        const citySelect = await goToLocationStep(page);
+        await expect(citySelect).toBeVisible({ timeout: 10000 });
+        await selectShadcnOption(page, 'register-city-select');
+        await page.getByRole('button', { name: /Continuar/i }).last().click();
+
+        await page.locator('#name').fill('Onboarding Boundary Owner');
+        await page.locator('#email').fill(email);
+        await page.locator('#password').fill('password');
+        await page.locator('#password_confirmation').fill('password');
+        await page.getByRole('button', { name: /Continuar/i }).last().click();
+
+        await page.getByTestId('register-terms-checkbox').click();
+        await page.getByTestId('register-privacy-checkbox').click();
+        await page.getByRole('button', { name: /Crear negocio|Crear cuenta/i }).click();
+
+        await page.waitForURL((url) => !url.pathname.includes('/registrar-negocio'), { timeout: 30000 });
+        const path = new URL(page.url()).pathname;
+
+        expect(
+            /\/verify-email|\/registro\/pago-pendiente|\/app\//.test(path),
+            `Unexpected onboarding boundary route: ${path}`
+        ).toBeTruthy();
+
+        if (path.includes('/verify-email')) {
+            await expect(page.getByTestId('verify-email-resend')).toBeVisible({ timeout: 10000 });
+            await expect(page.getByTestId('verify-email-onboarding-next')).toBeVisible({ timeout: 10000 });
+        }
+
+        if (path.includes('/registro/pago-pendiente')) {
+            await expect(page.locator('body')).toContainText(/pago|billing|factur/i, { timeout: 10000 });
+            await expect(page.locator('body')).toContainText(/siguiente|continuar|soporte|reintentar/i, { timeout: 10000 });
+        }
     });
 });

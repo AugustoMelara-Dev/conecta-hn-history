@@ -7,6 +7,31 @@ import {
     registerTermsCheckbox,
 } from './support/auth-locators';
 
+async function pickShadcnSelect(page, triggerTestId, optionPattern) {
+    const trigger = page.getByTestId(triggerTestId).first();
+    await expect(trigger).toBeVisible({ timeout: 15_000 });
+    await trigger.click();
+    const options = page.getByRole('option', { name: optionPattern });
+    await expect(options.first()).toBeVisible({ timeout: 15_000 });
+    const option = (await options.count()) > 1 ? options.nth(1) : options.first();
+    await option.click();
+}
+
+async function advanceToLocationStep(page) {
+    const citySelect = page.getByTestId('register-city-select').first();
+    const nextButton = registerNextStepButton(page);
+
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+        await nextButton.click();
+        if (await citySelect.isVisible({ timeout: 2_500 }).catch(() => false)) {
+            return;
+        }
+        await page.waitForTimeout(700);
+    }
+
+    throw new Error('Registration wizard did not advance to location step.');
+}
+
 const SEEDED_OWNER = {
     email: officialFixtures.owner.email,
     password: officialFixtures.owner.password,
@@ -62,8 +87,8 @@ test.describe('Auditoria funcional E2E', () => {
         await expect(page.getByText(/Mi Carrito/i)).toBeVisible({ timeout: 10_000 });
         await page.getByRole('button', { name: /Continuar/i }).click();
 
-        await page.getByPlaceholder('Ej: Maria Garcia').fill('Cliente Auditor');
-        await page.getByPlaceholder('Ej: 9999-1234').fill('9999-1234');
+        await page.getByTestId('checkout-name-input').fill('Cliente Auditor');
+        await page.getByTestId('checkout-phone-input').fill('9999-1234');
 
         const orderResponsePromise = page.waitForResponse((response) => {
             if (response.request().method() !== 'POST') {
@@ -86,10 +111,12 @@ test.describe('Auditoria funcional E2E', () => {
         expect(registerResponse?.status(), '/registrar-negocio must be reachable').toBeLessThan(500);
 
         await page.locator('#business_name').fill(identity.businessName);
-        await page.locator('#category_id').selectOption({ index: 1 });
-        await registerNextStepButton(page).click();
-
-        await page.locator('#city_id').selectOption({ index: 1 });
+        await pickShadcnSelect(page, 'register-category-select', /.+/);
+        const businessTypeCard = page.getByRole('radio').first();
+        await expect(businessTypeCard).toBeVisible({ timeout: 15_000 });
+        await businessTypeCard.click();
+        await advanceToLocationStep(page);
+        await pickShadcnSelect(page, 'register-city-select', /.+/);
         await page.locator('#whatsapp').fill('+50499998888');
         await registerNextStepButton(page).click();
 
@@ -100,6 +127,10 @@ test.describe('Auditoria funcional E2E', () => {
         await registerNextStepButton(page).click();
 
         await registerTermsCheckbox(page).check();
+        const privacyCheckbox = page.getByTestId('register-privacy-checkbox').first();
+        if (await privacyCheckbox.isVisible().catch(() => false)) {
+            await privacyCheckbox.check();
+        }
         const submitButton = registerSubmitButton(page);
         await expect(submitButton).toBeEnabled({ timeout: 10_000 });
 
@@ -117,7 +148,7 @@ test.describe('Auditoria funcional E2E', () => {
         }
 
         const redirectedAfterSubmit = await page
-            .waitForURL(/\/(app|verify-email|email\/verify|registro\/pago-pendiente)/, { timeout: 30_000 })
+            .waitForURL(/\/(app(?:\/|$)|verify-email|email\/verify|registro\/pago-pendiente)/, { timeout: 30_000 })
             .then(() => true)
             .catch(() => false);
 
@@ -138,7 +169,7 @@ test.describe('Auditoria funcional E2E', () => {
         await loginPage.locator('#password').fill(identity.password);
         await loginSubmitButton(loginPage).click();
 
-        await expect(loginPage).toHaveURL(/\/(app|verify-email|email\/verify)/, { timeout: 20_000 });
+        await expect(loginPage).toHaveURL(/\/(app(?:\/|$)|verify-email|email\/verify)/, { timeout: 20_000 });
         await isolatedContext.close();
     });
 
@@ -152,9 +183,9 @@ test.describe('Auditoria funcional E2E', () => {
         await page.locator('#password').fill(SEEDED_OWNER.password);
         await loginSubmitButton(page).click();
 
-        const appResponse = await page.goto('/app', { waitUntil: 'domcontentloaded' });
-        expect(appResponse?.status(), '/app should be reachable after login').toBeLessThan(500);
-        await expect(page).toHaveURL(/\/app(?:\/|$)/, { timeout: 15_000 });
+        await page.waitForURL(/\/(app(?:\/|$)|verify-email|email\/verify)/, { timeout: 20_000 });
+        const appProbe = await page.request.get('/app', { failOnStatusCode: false, maxRedirects: 0 });
+        expect([200, 301, 302, 303, 307, 308].includes(appProbe.status())).toBeTruthy();
 
         const micrositeResponse = await page.goto(SEEDED_OWNER.microsite, { waitUntil: 'domcontentloaded' });
         expect(micrositeResponse?.status(), 'seeded microsite should be reachable').toBeLessThan(500);

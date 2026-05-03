@@ -15,15 +15,25 @@ async function loginAs(page: Page, email: string, password: string): Promise<voi
     await page.waitForLoadState('networkidle');
 }
 
-async function waitForSelectOptions(page: Page, selector: string): Promise<void> {
-    await expect.poll(async () => page.locator(selector).locator('option').count(), {
+async function waitForSelectOptions(page: Page, testId: string): Promise<void> {
+    await expect.poll(async () => page.getByTestId(testId).count(), {
         timeout: 15_000,
-        message: `Expected ${selector} to have selectable options.`,
-    }).toBeGreaterThan(1);
+        message: `Expected ${testId} select trigger to be present.`,
+    }).toBeGreaterThan(0);
+}
+
+async function pickShadcnSelect(page: Page, testId: string): Promise<void> {
+    const trigger = page.getByTestId(testId).first();
+    await expect(trigger).toBeVisible({ timeout: 20_000 });
+    await trigger.click();
+    const options = page.getByRole('option');
+    await expect(options.first()).toBeVisible({ timeout: 15_000 });
+    const target = (await options.count()) > 1 ? options.nth(1) : options.first();
+    await target.click();
 }
 
 async function advanceToLocationStep(page: Page): Promise<void> {
-    const citySelect = page.locator('#city_id');
+    const citySelect = page.getByTestId('register-city-select');
 
     for (let attempt = 0; attempt < 6; attempt += 1) {
         await registerNextStepButton(page).click();
@@ -53,11 +63,11 @@ async function fillMinimalBusinessRegistration(page: Page): Promise<void> {
         await page.waitForTimeout(800);
     }
 
-    await waitForSelectOptions(page, '#category_id');
-    await page.locator('#category_id').selectOption({ index: 1 });
+    await waitForSelectOptions(page, 'register-category-select');
+    await pickShadcnSelect(page, 'register-category-select');
 
     const rubroButton = page
-        .getByRole('button', { name: /Tienda y cat[aá]logo|Restaurante y comida|Servicios y citas|Mixto/i })
+        .getByRole('radio')
         .first();
 
     if (await rubroButton.isVisible().catch(() => false)) {
@@ -65,10 +75,9 @@ async function fillMinimalBusinessRegistration(page: Page): Promise<void> {
     }
 
     await advanceToLocationStep(page);
-    await expect(page.locator('#city_id')).toBeVisible({ timeout: 20_000 });
-
-    await waitForSelectOptions(page, '#city_id');
-    await page.locator('#city_id').selectOption({ index: 1 });
+    await expect(page.getByTestId('register-city-select')).toBeVisible({ timeout: 20_000 });
+    await waitForSelectOptions(page, 'register-city-select');
+    await pickShadcnSelect(page, 'register-city-select');
     await page.locator('#whatsapp').fill('+50499997777');
     await registerNextStepButton(page).click();
 
@@ -79,6 +88,10 @@ async function fillMinimalBusinessRegistration(page: Page): Promise<void> {
     await registerNextStepButton(page).click();
 
     await registerTermsCheckbox(page).check();
+    const privacyCheckbox = page.getByTestId('register-privacy-checkbox').first();
+    if (await privacyCheckbox.isVisible().catch(() => false)) {
+        await privacyCheckbox.check();
+    }
     await expect(registerSubmitButton(page)).toBeEnabled({ timeout: 10_000 });
 }
 
@@ -181,7 +194,7 @@ test.describe('Vito Business OS critical journey', () => {
         await page.goto('/directorio?category=restaurantes&city=tegucigalpa', { waitUntil: 'domcontentloaded' });
         await expect(page.locator('body')).not.toContainText(/500|server error|internal server error/i);
         await expect(page.getByTestId('directory-guide-budget-input')).toHaveCount(0);
-        await expect(page.locator('body')).toContainText(/directorio|negocios|inicia sesi[oÃ³]n|cuenta|login/i, { timeout: 20_000 });
+        await expect(page.locator('body')).toContainText(/directorio|negocios|inicia sesi[oó]n|cuenta|login/i, { timeout: 20_000 });
 
         await loginAs(page, officialFixtures.owner.email, officialFixtures.owner.password);
         await page.goto('/directorio?category=restaurantes&city=tegucigalpa', { waitUntil: 'domcontentloaded' });
