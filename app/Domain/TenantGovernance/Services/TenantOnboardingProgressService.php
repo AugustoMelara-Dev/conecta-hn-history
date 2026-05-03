@@ -11,6 +11,7 @@ use App\Models\Tenant;
 use App\Models\TenantOnboardingState;
 use App\Models\User;
 use BackedEnum;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 
 final class TenantOnboardingProgressService
@@ -34,8 +35,10 @@ final class TenantOnboardingProgressService
         $businessType = $this->businessType($tenant);
         $manifestOnboarding = app(RubroManifestReaderInterface::class)->onboardingForTenant($tenant);
 
-        $hasCatalog = $tenant->products()->exists() || $tenant->services()->exists();
-        $hasSchedule = $tenant->openingHours()->exists() || filled($tenant->simple_schedule ?? null);
+        $hasCatalog = $tenant->products()->withoutGlobalScopes()->exists()
+            || $tenant->services()->withoutGlobalScopes()->exists();
+        $hasSchedule = $tenant->openingHours()->withoutGlobalScopes()->exists()
+            || filled($tenant->simple_schedule ?? null);
         $hasContactChannel = filled($tenant->whatsapp_number ?? null) || filled($tenant->phone ?? null);
         $hasProfileEssentials = filled($tenant->description ?? null) && filled($tenant->address ?? null);
         $hasMicrositeReady = $tenantSlug !== '' && (bool) ($tenant->is_active ?? false);
@@ -75,6 +78,13 @@ final class TenantOnboardingProgressService
     public function persist(Tenant $tenant, ?User $user = null, ?string $moduleContext = null): array
     {
         $snapshot = $this->buildForTenant($tenant, $user, $moduleContext);
+        $existingState = TenantOnboardingState::query()
+            ->where('tenant_id', (string) $tenant->getKey())
+            ->where('user_id', $user?->getKey())
+            ->where('role', $snapshot['role'])
+            ->first();
+        $snapshot['lastCompletedAt'] = $this->resolveLastCompletedAt($snapshot, $existingState);
+        $this->recordMilestoneEvents($tenant, $user, $snapshot, $existingState);
 
         TenantOnboardingState::updateOrCreate(
             [
@@ -94,6 +104,89 @@ final class TenantOnboardingProgressService
         );
 
         return $snapshot;
+    }
+
+    /** @param array<string, mixed> $snapshot */
+    private function recordMilestoneEvents(Tenant $tenant, ?User $user, array $snapshot, ?TenantOnboardingState $existingState): void
+    {
+        if (! DB::getSchemaBuilder()->hasTable('tenant_onboarding_milestone_events')) {
+            return;
+        }
+
+        $currentCompletedKeys = $this->completedMilestoneKeys((array) ($snapshot['milestones'] ?? []));
+        $previousCompletedKeys = $this->completedMilestoneKeys((array) ($existingState?->milestones ?? []));
+        $newlyCompletedKeys = collect($currentCompletedKeys)->diff($previousCompletedKeys)->values();
+        $regressedKeys = collect($previousCompletedKeys)->diff($currentCompletedKeys)->values();
+
+        if ($newlyCompletedKeys->isEmpty() && $regressedKeys->isEmpty()) {
+            return;
+        }
+
+        $now = now();
+        $base = [
+            'tenant_id' => (string) $tenant->getKey(),
+            'user_id' => $user?->getKey(),
+            'role' => (string) $snapshot['role'],
+            'snapshot_progress' => (int) $snapshot['progress'],
+            'occurred_at' => $now,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ];
+
+        $events = $newlyCompletedKeys
+            ->map(fn (string $key): array => $base + [
+                'milestone_key' => $key,
+                'event_type' => 'completed',
+                'metadata' => json_encode(['source' => 'snapshot_persist'], JSON_THROW_ON_ERROR),
+            ])
+            ->concat($regressedKeys->map(fn (string $key): array => $base + [
+                'milestone_key' => $key,
+                'event_type' => 'regressed',
+                'metadata' => json_encode(['source' => 'snapshot_persist'], JSON_THROW_ON_ERROR),
+            ]))
+            ->values()
+            ->all();
+
+        DB::table('tenant_onboarding_milestone_events')->insert($events);
+    }
+
+    /** @param array<string, mixed> $snapshot */
+    private function resolveLastCompletedAt(array $snapshot, ?TenantOnboardingState $existingState): ?Carbon
+    {
+        $currentCompletedKeys = $this->completedMilestoneKeys((array) ($snapshot['milestones'] ?? []));
+
+        if ($currentCompletedKeys === []) {
+            return $existingState?->last_completed_at;
+        }
+
+        if (! $existingState instanceof TenantOnboardingState) {
+            return now();
+        }
+
+        $previousCompletedKeys = $this->completedMilestoneKeys((array) ($existingState->milestones ?? []));
+        $hasNewCompletedMilestone = collect($currentCompletedKeys)
+            ->diff($previousCompletedKeys)
+            ->isNotEmpty();
+
+        if ($existingState->last_completed_at instanceof Carbon && ! $hasNewCompletedMilestone) {
+            return $existingState->last_completed_at;
+        }
+
+        return $hasNewCompletedMilestone ? now() : $existingState->last_completed_at;
+    }
+
+    /**
+     * @param array<int|string, mixed> $milestones
+     * @return list<string>
+     */
+    private function completedMilestoneKeys(array $milestones): array
+    {
+        return collect($milestones)
+            ->filter(fn (mixed $milestone): bool => is_array($milestone) && ($milestone['completed'] ?? false) === true)
+            ->map(fn (array $milestone): string => (string) ($milestone['key'] ?? ''))
+            ->filter()
+            ->values()
+            ->all();
     }
 
     /**
@@ -454,7 +547,7 @@ final class TenantOnboardingProgressService
         return Order::query()
             ->withoutGlobalScopes()
             ->where('tenant_id', $tenant->getKey())
-            ->exists() || $tenant->appointments()->exists();
+            ->exists() || $tenant->appointments()->withoutGlobalScopes()->exists();
     }
 
     /** @param array<string, mixed> $parameters */

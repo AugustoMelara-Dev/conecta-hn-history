@@ -23,6 +23,8 @@ class TenantOnboardingState extends Model
         'next_action_href',
         'milestones',
         'last_completed_at',
+        'first_run_started_at',
+        'first_run_dismissed_at',
     ];
 
     protected function casts(): array
@@ -31,6 +33,8 @@ class TenantOnboardingState extends Model
             'progress' => 'integer',
             'milestones' => 'array',
             'last_completed_at' => 'datetime',
+            'first_run_started_at' => 'datetime',
+            'first_run_dismissed_at' => 'datetime',
         ];
     }
 

@@ -8,13 +8,23 @@ use App\Domain\TenantGovernance\Services\TenantOnboardingProgressService;
 use App\Enums\UserRole;
 use App\Models\Product;
 use App\Models\Tenant;
+use App\Models\TenantOnboardingState;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 final class OnboardingProgressServiceTest extends TestCase
 {
     use DatabaseTransactions;
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
+    }
 
     public function test_persists_onboarding_progress_snapshot_for_tenant_owner(): void
     {
@@ -45,6 +55,95 @@ final class OnboardingProgressServiceTest extends TestCase
             'tenant_id' => (string) $tenant->id,
             'user_id' => (string) $owner->id,
             'role' => UserRole::TENANT_OWNER->value,
+        ]);
+    }
+
+    public function test_persist_keeps_last_completed_at_stable_without_new_completed_milestones(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-05-01 08:00:00'));
+
+        $owner = User::factory()->create([
+            'role' => UserRole::TENANT_OWNER->value,
+        ]);
+
+        $tenant = Tenant::factory()->forUser($owner)->create([
+            'description' => 'Tienda local con productos para el hogar.',
+            'address' => 'Tegucigalpa',
+            'whatsapp_number' => '+50499990000',
+            'is_active' => true,
+        ]);
+
+        $this->actingAsTenant((string) $tenant->id);
+        $service = app(TenantOnboardingProgressService::class);
+        $service->persist($tenant, $owner);
+
+        $firstState = TenantOnboardingState::query()
+            ->where('tenant_id', (string) $tenant->id)
+            ->where('user_id', (string) $owner->id)
+            ->where('role', UserRole::TENANT_OWNER->value)
+            ->firstOrFail();
+        $firstCompletedAt = $firstState->last_completed_at;
+
+        Carbon::setTestNow(Carbon::parse('2026-05-02 09:30:00'));
+        $service->persist($tenant->fresh(), $owner);
+
+        $secondState = $firstState->fresh();
+
+        self::assertInstanceOf(Carbon::class, $firstCompletedAt);
+        self::assertInstanceOf(Carbon::class, $secondState->last_completed_at);
+        self::assertTrue($firstCompletedAt->equalTo($secondState->last_completed_at));
+    }
+
+    public function test_persist_records_milestone_events_only_when_completion_changes(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-05-01 08:00:00'));
+
+        $owner = User::factory()->create([
+            'role' => UserRole::TENANT_OWNER->value,
+        ]);
+
+        $tenant = Tenant::factory()->forUser($owner)->create([
+            'description' => 'Ferreteria de barrio.',
+            'address' => 'Tegucigalpa',
+            'whatsapp_number' => '+50499991111',
+            'is_active' => true,
+        ]);
+
+        $this->actingAsTenant((string) $tenant->id);
+        $service = app(TenantOnboardingProgressService::class);
+        $service->persist($tenant, $owner);
+
+        $initialEvents = DB::table('tenant_onboarding_milestone_events')
+            ->where('tenant_id', (string) $tenant->id)
+            ->where('user_id', (string) $owner->id)
+            ->where('event_type', 'completed')
+            ->pluck('milestone_key')
+            ->all();
+
+        self::assertContains('owner_profile', $initialEvents);
+
+        Carbon::setTestNow(Carbon::parse('2026-05-01 09:00:00'));
+        $service->persist($tenant->fresh(), $owner);
+
+        self::assertSame(
+            count($initialEvents),
+            DB::table('tenant_onboarding_milestone_events')
+                ->where('tenant_id', (string) $tenant->id)
+                ->where('user_id', (string) $owner->id)
+                ->where('event_type', 'completed')
+                ->count(),
+        );
+
+        Carbon::setTestNow(Carbon::parse('2026-05-01 10:00:00'));
+        Product::factory()->forTenant($tenant)->create();
+        $service->persist($tenant->fresh(), $owner);
+
+        $this->assertDatabaseHas('tenant_onboarding_milestone_events', [
+            'tenant_id' => (string) $tenant->id,
+            'user_id' => (string) $owner->id,
+            'role' => UserRole::TENANT_OWNER->value,
+            'milestone_key' => 'owner_catalog',
+            'event_type' => 'completed',
         ]);
     }
 
