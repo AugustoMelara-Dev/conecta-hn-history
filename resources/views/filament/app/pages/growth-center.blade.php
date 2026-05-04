@@ -45,7 +45,11 @@
 
                         <div class="biz-actions">
                             @foreach ($growthActions as $action)
-                                @if ($action['enabled'])
+                                @php
+                                    $actionHref = trim((string) data_get($action, 'href', ''));
+                                    $actionEnabled = data_get($action, 'enabled', $actionHref !== '' && $actionHref !== '#');
+                                @endphp
+                                @if ($actionEnabled)
                                     <a href="{{ $action['href'] }}" class="biz-action">
                                         <p class="biz-action-title">{{ $action['title'] }}</p>
                                         <p class="biz-action-copy">{{ $action['copy'] }}</p>
@@ -54,10 +58,10 @@
                                     <div class="biz-action opacity-75" aria-disabled="true">
                                         <div class="biz-split">
                                             <p class="biz-action-title">{{ $action['title'] }}</p>
-                                            <x-filament::badge color="warning">Bloqueado</x-filament::badge>
+                                            <x-filament::badge color="warning">Pendiente de configuracion</x-filament::badge>
                                         </div>
                                         <p class="biz-action-copy">{{ $action['copy'] }}</p>
-                                        <p class="biz-muted">{{ $action['reason'] }}</p>
+                                        <p class="biz-muted">{{ data_get($action, 'reason', 'Activa este modulo para habilitar esta accion.') }}</p>
                                     </div>
                                 @endif
                             @endforeach

@@ -43,7 +43,9 @@ final class InventoryProductLocker
             ->where('tenant_id', $tenantId)
             ->where('is_visible', true)
             ->where('is_active', true)
-            ->whereIn('stock_status', ['in_stock', 'low_stock', 'on_backorder', 'pre_order'])
+            // Order mutations (consume/restock) must include out_of_stock rows.
+            // Restock starts from out_of_stock and should transition to in_stock.
+            ->whereIn('stock_status', ['in_stock', 'low_stock', 'on_backorder', 'pre_order', 'out_of_stock'])
             ->whereNull('deleted_at')
             ->orderBy('id')
             ->lockForUpdate()

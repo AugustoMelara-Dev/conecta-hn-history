@@ -14,7 +14,9 @@ export default function RegisterTenant(props) {
                 <link rel="canonical" href={route("tenant.register")} />
             </Head>
 
-            <RegisterTenantWizard {...props} />
+            <main role="main">
+                <RegisterTenantWizard {...props} />
+            </main>
         </>
     )
 }

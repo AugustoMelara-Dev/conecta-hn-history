@@ -32,6 +32,12 @@ enum Permission: string
     case PAYMENTS_RECORD = 'payments.record';
     case CUSTOMERS_VIEW = 'customers.view';
     case CUSTOMERS_EXPORT = 'customers.export';
+    case CRM_DEALS_VIEW = 'crm.deals.view';
+    case CRM_DEALS_CREATE = 'crm.deals.create';
+    case CRM_DEALS_UPDATE = 'crm.deals.update';
+    case CRM_DEALS_MOVE_STAGE = 'crm.deals.move_stage';
+    case CRM_DEALS_DELETE = 'crm.deals.delete';
+    case CRM_REPORTS_VIEW = 'crm.reports.view';
     case APPOINTMENTS_VIEW = 'appointments.view';
     case APPOINTMENTS_MANAGE = 'appointments.manage';
     case STAFF_VIEW = 'staff.view';

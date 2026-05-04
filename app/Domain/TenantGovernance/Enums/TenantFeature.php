@@ -9,6 +9,7 @@ enum TenantFeature: string
     case ADVANCED_CATALOG = 'advanced_catalog';
     case MARKETING_SUITE = 'marketing_suite';
     case MARKETING_CAMPAIGNS = 'marketing_campaigns';
+    case CRM_PIPELINES = 'crm_pipelines';
     case PROMOTIONAL_COUPONS = 'promotional_coupons';
     case LOYALTY_PROGRAM = 'loyalty_program';
     case LOYALTY_REWARDS = 'loyalty_rewards';

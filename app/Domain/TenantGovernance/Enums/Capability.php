@@ -15,6 +15,7 @@ enum Capability: string
     case CATALOG_BASIC = 'catalog_basic';
     case CHECKOUT_BASIC = 'checkout_basic';
     case CUSTOMER_DIRECTORY = 'customer_directory';
+    case CRM_PIPELINE_MANAGEMENT = 'crm_pipeline_management';
     case PAYMENTS_BASIC = 'payments_basic';
     case NOTIFICATIONS_BASIC = 'notifications_basic';
     case ANALYTICS_BASIC = 'analytics_basic';

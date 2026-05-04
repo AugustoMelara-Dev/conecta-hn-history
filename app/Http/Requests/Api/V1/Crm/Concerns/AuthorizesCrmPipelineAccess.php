@@ -24,7 +24,14 @@ trait AuthorizesCrmPipelineAccess
 
         $tenant = app(RequestTenantResolver::class)->resolve($this);
 
-        if (! $tenant instanceof Tenant || ! $tenant->hasFeature(TenantFeature::CRM_PIPELINES)) {
+        if (! $tenant instanceof Tenant) {
+            return false;
+        }
+
+        $hasCrmFeature = $tenant->hasFeature(TenantFeature::CRM_PIPELINES)
+            || $tenant->hasFeature(TenantFeature::MARKETING_SUITE);
+
+        if (! $hasCrmFeature) {
             return false;
         }
 

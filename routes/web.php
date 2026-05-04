@@ -7,6 +7,7 @@ use App\Http\Controllers\Public\ExploreController;
 use App\Http\Controllers\Public\InteractionController;
 use App\Http\Controllers\Public\LegalPageController;
 use App\Http\Controllers\Public\LocationController;
+use App\Http\Controllers\Public\BuyerController;
 use App\Http\Controllers\Public\TenantMicrositeController;
 use App\Http\Controllers\Public\WelcomeController;
 use App\Http\Controllers\Tenant\AnalyticsController;
@@ -101,6 +102,8 @@ Route::controller(\App\Http\Controllers\Web\RegistrationController::class)->grou
 
 // FAVORITES - Inertia-Compatible Toggle Controller
 Route::middleware('auth')->group(function () {
+    Route::get('/mi-cuenta/favoritos', [BuyerController::class, 'index'])->name('buyer.profile');
+
     Route::post('/favorites/toggle', \App\Http\Controllers\Public\ToggleFavoriteController::class)
         ->name('favorites.toggle');
 

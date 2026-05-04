@@ -13,6 +13,7 @@ return [
         Capability::CATALOG_BASIC->value,
         Capability::CHECKOUT_BASIC->value,
         Capability::CUSTOMER_DIRECTORY->value,
+        Capability::CRM_PIPELINE_MANAGEMENT->value,
         Capability::PAYMENTS_BASIC->value,
         Capability::NOTIFICATIONS_BASIC->value,
         Capability::ANALYTICS_BASIC->value,

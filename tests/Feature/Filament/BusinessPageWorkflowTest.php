@@ -240,7 +240,7 @@ final class BusinessPageWorkflowTest extends TestCase
 
         $this->get(route('filament.app.resources.leads.index', ['tenant' => $tenant->slug], false))
             ->assertOk()
-            ->assertSee('Todavía no tienes prospectos');
+            ->assertSeeText('Todavia no tienes prospectos');
     }
 
     public function test_pro_owner_pages_render_operational_copy_for_marketing_and_billing(): void
