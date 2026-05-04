@@ -21,6 +21,7 @@
                 </div>
                 <button
                     wire:click="$set('isCreating', true)"
+                    aria-label="Registrar venta manual"
                     class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-lg shadow-blue-500/25 transition-colors"
                 >
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -177,6 +178,7 @@
                                     @if(in_array($order->status, ['pending', 'confirmed', 'preparing']))
                                         <button
                                             wire:click="advanceOrder({{ $order->id }})"
+                                            aria-label="Avanzar estado del pedido {{ $order->order_number ?? '#'.$order->id }}"
                                             class="text-blue-600 hover:text-blue-800 font-medium"
                                         >
                                             Avanzar →
@@ -268,6 +270,7 @@
                                     @foreach($this->availableProducts as $product)
                                         <button
                                             wire:click="addToCart({{ $product->id }})"
+                                            aria-label="Agregar {{ $product->name }} al carrito de venta manual"
                                             class="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between"
                                         >
                                             <span class="font-medium text-gray-900">{{ $product->name }}</span>

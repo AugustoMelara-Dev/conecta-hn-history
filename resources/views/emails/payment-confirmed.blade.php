@@ -32,7 +32,7 @@
 
             <div class="highlight">
                 <h3>Tu plan Pro está activo</h3>
-                <p>Ahora tienes acceso a todas las funcionalidades premium de Vito Business OS.</p>
+                <p>Tu cuenta ya refleja los beneficios del plan Pro disponibles para tu negocio.</p>
             </div>
 
             <div class="details">
@@ -56,8 +56,8 @@
         </div>
 
         <div class="footer">
-            <p>Gracias por confiar en Vito Business OS</p>
-            <p>© {{ date('Y') }} Vito Business OS. Todos los derechos reservados.</p>
+            <p>Gracias por confiar en Conecta HN</p>
+            <p>© {{ date('Y') }} Conecta HN. Todos los derechos reservados.</p>
         </div>
     </div>
 </body>

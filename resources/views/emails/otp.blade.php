@@ -78,8 +78,8 @@
 <body>
     <div class="container">
         <div class="logo">
-            <h1>Vito Business OS</h1>
-            <p style="color: #64748b; margin: 0;">El sistema operativo para tu negocio</p>
+            <h1>Conecta HN</h1>
+            <p style="color: #64748b; margin: 0;">Herramientas digitales para negocios locales</p>
         </div>
 
         <h2 style="margin-top: 0;">Tu acceso está listo</h2>
@@ -110,7 +110,7 @@
         </div>
 
         <div class="footer">
-            <p>© {{ date('Y') }} Vito Business OS. Todos los derechos reservados.</p>
+            <p>© {{ date('Y') }} Conecta HN. Todos los derechos reservados.</p>
             <p>Este es un correo automático, por favor no respondas.</p>
         </div>
     </div>

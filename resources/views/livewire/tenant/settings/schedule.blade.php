@@ -1,4 +1,4 @@
-{{--
+﻿{{--
     Schedule Settings - Bifurcated UI
     
     FREE: Simple text input with upsell
@@ -11,16 +11,17 @@
         <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
                 <div class="flex items-center gap-3">
-                    <a href="{{ route('tenant.settings.profile') }}" wire:navigate class="text-gray-500 hover:text-gray-700">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <a href="{{ route('tenant.settings.profile') }}" wire:navigate aria-label="Volver al perfil del negocio" class="text-gray-500 hover:text-gray-700">
+                        <svg class="w-5 h-5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                         </svg>
                     </a>
-                    <h1 class="text-xl font-bold text-gray-900">🕐 Horarios</h1>
+                    <h1 class="text-xl font-bold text-gray-900">Horarios</h1>
                 </div>
                 <button
                     wire:click="save"
                     wire:loading.attr="disabled"
+                    aria-label="Guardar horarios del negocio"
                     class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-lg shadow-blue-500/25 transition-all"
                 >
                     <span wire:loading.remove>Guardar</span>
@@ -37,15 +38,18 @@
             {{-- ═══════════════════════════════════════════════════════════ --}}
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
                 <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Horario Visible</label>
+                    <label for="settings-simple-schedule" class="block text-sm font-medium text-gray-700 mb-1">Horario visible</label>
                     <input
+                        id="settings-simple-schedule"
                         wire:model="simpleSchedule"
                         type="text"
+                        aria-describedby="settings-simple-schedule-help @error('simpleSchedule') settings-simple-schedule-error @enderror"
+                        aria-invalid="@error('simpleSchedule') true @else false @enderror"
                         placeholder="Ej: Lun-Vie 8am a 5pm, Sáb 9am a 1pm"
                         class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
-                    <p class="mt-2 text-sm text-gray-500">Este texto aparecerá en tu tienda tal como lo escribas.</p>
-                    @error('simpleSchedule') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
+                    <p id="settings-simple-schedule-help" class="mt-2 text-sm text-gray-500">Este texto aparecerá en tu tienda tal como lo escribas.</p>
+                    @error('simpleSchedule') <p id="settings-simple-schedule-error" class="mt-1 text-sm text-red-500" role="alert">{{ $message }}</p> @enderror
                 </div>
             </div>
 
@@ -60,7 +64,7 @@
                     <div class="flex-1">
                         <h3 class="font-bold text-gray-900 mb-2">Automatiza tu estado con PRO</h3>
                         <p class="text-sm text-gray-600 mb-4">
-                            Tus clientes no saben si estás abierto en tiempo real. Con PRO, el sistema calcula automáticamente tu estado y muestra un badge pulsante.
+                            Con PRO puedes configurar horarios por día para mostrar un estado de abierto o cerrado según la información que registres.
                         </p>
 
                         {{-- Preview Badge --}}
@@ -70,18 +74,19 @@
                                     <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                                     <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
                                 </span>
-                                <span class="text-sm font-medium text-green-600">Abierto Ahora</span>
+                                <span class="text-sm font-medium text-green-600">Abierto ahora</span>
                                 <span class="text-xs text-gray-400">• Cierra a las 5:00 PM</span>
                             </div>
-                            <p class="text-xs text-gray-500 mt-2">Ejemplo de cómo se vería en tu tienda</p>
+                            <p class="text-xs text-gray-500 mt-2">Ejemplo visual de cómo se mostraría en tu tienda</p>
                         </div>
 
                         <a 
                             href="{{ route('tenant.billing.index') }}" 
                             wire:navigate
+                            aria-label="Ver opciones PRO para horarios del negocio"
                             class="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-colors"
                         >
-                            🔓 Activar PRO
+                            Ver opciones PRO
                         </a>
                     </div>
                 </div>
@@ -93,8 +98,8 @@
             {{-- ═══════════════════════════════════════════════════════════ --}}
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                 <div class="mb-6">
-                    <h2 class="font-semibold text-gray-900">Horarios por Día</h2>
-                    <p class="text-sm text-gray-500">Configura el horario de cada día. El sistema calculará automáticamente si estás "Abierto Ahora".</p>
+                    <h2 class="font-semibold text-gray-900">Horarios por día</h2>
+                    <p class="text-sm text-gray-500">Configura el horario de cada día. El estado público se mostrará según estos datos.</p>
                 </div>
 
                 <div class="space-y-3">
@@ -107,6 +112,9 @@
                             <button
                                 type="button"
                                 wire:click="$set('structuredSchedule.{{ $day }}.isOpen', {{ ($structuredSchedule[$day]['isOpen'] ?? false) ? 'false' : 'true' }})"
+                                role="switch"
+                                aria-checked="{{ ($structuredSchedule[$day]['isOpen'] ?? false) ? 'true' : 'false' }}"
+                                aria-label="{{ ($structuredSchedule[$day]['isOpen'] ?? false) ? 'Marcar '.$label.' como cerrado' : 'Marcar '.$label.' como abierto' }}"
                                 class="relative w-12 h-7 rounded-full transition-colors {{ ($structuredSchedule[$day]['isOpen'] ?? false) ? 'bg-emerald-500' : 'bg-gray-300' }}"
                             >
                                 <span class="absolute top-1 {{ ($structuredSchedule[$day]['isOpen'] ?? false) ? 'right-1' : 'left-1' }} w-5 h-5 bg-white rounded-full shadow transition-all"></span>
@@ -122,6 +130,7 @@
                                 <input
                                     type="time"
                                     wire:model="structuredSchedule.{{ $day }}.open"
+                                    aria-label="Hora de apertura para {{ $label }}"
                                     {{ !($structuredSchedule[$day]['isOpen'] ?? false) ? 'disabled' : '' }}
                                     class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm disabled:opacity-40 disabled:cursor-not-allowed"
                                 />
@@ -129,6 +138,7 @@
                                 <input
                                     type="time"
                                     wire:model="structuredSchedule.{{ $day }}.close"
+                                    aria-label="Hora de cierre para {{ $label }}"
                                     {{ !($structuredSchedule[$day]['isOpen'] ?? false) ? 'disabled' : '' }}
                                     class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm disabled:opacity-40 disabled:cursor-not-allowed"
                                 />
@@ -149,7 +159,7 @@
                             <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
                         </span>
                         <span class="text-sm text-blue-800">
-                            <strong>Automatizado:</strong> El badge "Abierto Ahora" se calculará en tiempo real para tus clientes.
+                            <strong>Horario publicado:</strong> El estado se mostrará con base en los horarios que guardes aquí.
                         </span>
                     </div>
                 </div>
