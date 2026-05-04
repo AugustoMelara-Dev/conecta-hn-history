@@ -10,5 +10,5 @@
 @endif
 
 Gracias,<br>
-{{ $tenant_name ?? 'Vito Business OS' }}
+{{ $tenant_name ?? 'Conecta HN' }}
 </x-mail::message>

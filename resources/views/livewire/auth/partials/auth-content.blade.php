@@ -167,8 +167,8 @@
 @if($mode === 'register')
     <p class="mt-4 text-center text-xs text-gray-400">
         Al crear una cuenta, aceptas nuestros
-        <a href="/terms" class="underline hover:text-gray-600">Términos</a>
+        <a href="{{ route('legal.terms') }}" class="underline hover:text-gray-600">Términos</a>
         y
-        <a href="/privacy" class="underline hover:text-gray-600">Privacidad</a>
+        <a href="{{ route('legal.privacy') }}" class="underline hover:text-gray-600">Privacidad</a>
     </p>
 @endif

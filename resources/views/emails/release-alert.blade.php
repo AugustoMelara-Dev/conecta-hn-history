@@ -1,4 +1,4 @@
-<p>Una feature protegida por rollout fallo en produccion.</p>
+<p>Una feature protegida por rollout falló en producción.</p>
 
 <ul>
     <li><strong>Feature:</strong> {{ $context['feature_key'] ?? 'unknown' }}</li>
@@ -9,4 +9,4 @@
     <li><strong>Error:</strong> {{ $context['exception_class'] ?? 'Throwable' }} - {{ $context['exception_message'] ?? 'Sin mensaje' }}</li>
 </ul>
 
-<p>Revisa Sentry/logs usando el trace id antes de activar la feature para mas tenants.</p>
+<p>Revisa Sentry/logs usando el trace id antes de activar la feature para más negocios.</p>
