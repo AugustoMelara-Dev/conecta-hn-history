@@ -7,6 +7,7 @@ namespace Tests\Feature\Api;
 use App\Domain\Access\Enums\Role;
 use App\Domain\Identity\Enums\UserRole;
 use App\Domain\TenantGovernance\Enums\TenantPlan;
+use App\Domain\TenantGovernance\Enums\TenantFeature;
 use App\Models\CrmDeal;
 use App\Models\CrmPipeline;
 use App\Models\CrmStage;
@@ -39,6 +40,9 @@ final class CrmPipelineApiTest extends TestCase
     {
         [$owner, $tenant] = $this->tenantOwner();
 
+        self::assertTrue($tenant->hasFeature(TenantFeature::MARKETING_SUITE));
+        self::assertFalse($tenant->hasFeature(TenantFeature::CRM_PIPELINES));
+
         Sanctum::actingAs($owner);
 
         $this->withHeader('X-Tenant-ID', (string) $tenant->getKey())
@@ -51,6 +55,22 @@ final class CrmPipelineApiTest extends TestCase
             'tenant_id' => (string) $tenant->getKey(),
             'key' => 'default',
         ]);
+    }
+
+    public function test_pro_tenant_is_forbidden_when_crm_related_features_do_not_resolve(): void
+    {
+        [$owner, $tenant] = $this->tenantOwner();
+
+        config()->set('tenant-features.features.marketing_suite.all_capabilities', ['service_packages']);
+
+        self::assertFalse($tenant->hasFeature(TenantFeature::MARKETING_SUITE));
+        self::assertFalse($tenant->hasFeature(TenantFeature::CRM_PIPELINES));
+
+        Sanctum::actingAs($owner);
+
+        $this->withHeader('X-Tenant-ID', (string) $tenant->getKey())
+            ->getJson('/api/v1/crm/pipelines')
+            ->assertForbidden();
     }
 
     public function test_tenant_can_create_update_and_move_a_deal_inside_its_pipeline(): void
