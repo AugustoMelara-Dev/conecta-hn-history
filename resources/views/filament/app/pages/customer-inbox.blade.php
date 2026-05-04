@@ -633,7 +633,7 @@
 
                                     <label class="biz-stack biz-stack-xs">
                                         <span class="biz-muted">Nueva nota interna</span>
-                                        <textarea wire:model.defer="draftInternalNote" rows="4" class="fi-input" placeholder="Ejemplo: cliente listo para cierre si confirmamos stock en sucursal sur."></textarea>
+                                        <textarea wire:model.defer="draftInternalNote" rows="4" class="fi-input" placeholder="Cliente listo para cierre cuando se confirme stock en sucursal sur."></textarea>
                                     </label>
 
                                     <div class="biz-button-row biz-row-end">

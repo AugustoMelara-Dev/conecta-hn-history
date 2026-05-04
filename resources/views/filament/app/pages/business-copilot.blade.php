@@ -21,7 +21,7 @@
                             rows="5"
                             class="fi-input block w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white shadow-sm outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/30"
                             aria-describedby="business-copilot-question-help @error('question') business-copilot-question-error @enderror"
-                            placeholder="Ej: ¿Qué productos debería empujar hoy con lo que tengo configurado?"
+                            placeholder="¿Qué productos debería impulsar hoy con la configuración actual?"
                         ></textarea>
                         <p id="business-copilot-question-help" class="biz-muted">
                             Haz una pregunta concreta sobre ventas, clientes, pedidos, catálogo, servicios o activación.
