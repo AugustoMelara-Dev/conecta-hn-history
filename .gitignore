@@ -172,3 +172,4 @@ bootstrap/cache/*.tmp
 /storage/testing/
 
 .vercel
+.codex-security-scans/
