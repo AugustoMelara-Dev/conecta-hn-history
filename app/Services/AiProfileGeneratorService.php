@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Application\Shared\Contracts\AiProfileGeneratorInterface;
 use Exception;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
@@ -27,7 +26,7 @@ use Illuminate\Support\Facades\Log;
  *   $service = app(AiProfileGeneratorService::class);
  *   $result = $service->generate($rawName, $rawDescription, $rawCategory);
  */
-class AiProfileGeneratorService implements AiProfileGeneratorInterface
+class AiProfileGeneratorService
 {
     // ═══════════════════════════════════════════════════════════════════════════════
     // CONFIGURATION CONSTANTS
@@ -181,10 +180,10 @@ PROMPT;
      */
     private function getApiKey(): string
     {
-        $apiKey = config('services.openai.api_key') ?: config('services.openai.key');
+        $apiKey = config('services.openai.key');
 
         if (empty($apiKey)) {
-            throw new Exception('OpenAI API key is not configured. Set OPENAI_API_KEY in .env');
+            throw new Exception('OpenAI API key is not configured. Set OPENAI_KEY in .env');
         }
 
         return $apiKey;
@@ -243,7 +242,6 @@ PROMPT;
 
         // Array - sanitize each element with HTML entity decoding
         $parsed['seo_keywords'] = $this->sanitizeKeywords($parsed['seo_keywords']);
-        $parsed['tags'] = $this->sanitizeKeywords($parsed['tags'] ?? $parsed['seo_keywords']);
 
         return $parsed;
     }
@@ -321,7 +319,7 @@ PROMPT;
                 'Content-Type' => 'application/json',
             ])
                 ->timeout(self::TIMEOUT_SECONDS)
-                ->retry(self::RETRY_ATTEMPTS, self::RETRY_DELAY_MS, function (\Throwable $exception): bool {
+                ->retry(self::RETRY_ATTEMPTS, self::RETRY_DELAY_MS, function (\Exception $exception) {
                     if ($exception instanceof ConnectionException) {
                         return true;
                     }
@@ -366,10 +364,7 @@ PROMPT;
         $errorBody = $response->body();
 
         if ($statusCode === 429) {
-            $retryAfterHeader = $response->header('Retry-After');
-            $retryAfter = $retryAfterHeader !== ''
-                ? (int) $retryAfterHeader
-                : 60;
+            $retryAfter = (int) ($response->header('Retry-After') ?? 60);
             $rateLimitUntil = now()->addSeconds($retryAfter);
             Cache::put(self::RATE_LIMIT_CACHE_KEY, $rateLimitUntil, $retryAfter);
 

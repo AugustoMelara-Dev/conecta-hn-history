@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Laravel\Scout\Searchable;
 
 /**
  * Product Model - E-Commerce Catalog Entity
@@ -48,9 +49,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * - Catalog API responses stay lightweight (no media table JOINs)
  * - Detail views get full gallery capabilities when needed
  * - Falls back gracefully if either strategy has no data
- *
- * @property string|null $moderation_note
- * @property \Illuminate\Support\Carbon|null $rejected_at
  */
 class Product extends Model implements \Spatie\MediaLibrary\HasMedia
 {
@@ -70,7 +68,7 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
     /** @var int Maximum impulse candidates to fetch before shuffling */
     public const IMPULSE_CANDIDATES_LIMIT = 50;
 
-    use BelongsToTenant, HasFactory, SoftDeletes, \Spatie\MediaLibrary\InteractsWithMedia;
+    use BelongsToTenant, HasFactory, Searchable, SoftDeletes, \Spatie\MediaLibrary\InteractsWithMedia;
 
     /**
      * Attributes to automatically append to JSON/Array serialization.
@@ -79,7 +77,7 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
      * The React frontend expects 'image_url' in every product object.
      * Without this, catalog grids would be "blind" (no visual data).
      *
-     * @var list<string>
+     * @var array<string>
      */
     protected $appends = [
         'image_url',
@@ -103,7 +101,6 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
         'price',
         // Inventory Management
         'manage_stock',
-        'unit_code',
         'stock_quantity',
         'low_stock_threshold',
         'allow_backorders',
@@ -127,7 +124,6 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
         'variants' => 'array',
         // Inventory
         'manage_stock' => 'boolean',
-        'unit_code' => 'string',
         'stock_quantity' => 'integer',
         'low_stock_threshold' => 'integer',
         'allow_backorders' => 'boolean',
@@ -160,17 +156,17 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
     {
         // 1. Minuatura cuadrada para Tablas/Grid (400x400)
         $this->addMediaConversion('thumb')
-            ->nonQueued()
             ->width(400)
             ->height(400)
-            ->sharpen(10); // Procesamiento síncrono para desarrollo (cambiar en prod)
+            ->sharpen(10)
+            ->nonQueued(); // Procesamiento síncrono para desarrollo (cambiar en prod)
 
         // 2. Versión WebP optimizada para Detalle (LCP)
         $this->addMediaConversion('optimized')
-            ->nonQueued()
             ->width(800)
             ->format('webp')
-            ->quality(80);
+            ->quality(80)
+            ->nonQueued();
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -331,10 +327,7 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
             ->orderByRaw('FIELD(id, '.$sanitizedIds.')')
             ->get();
 
-        /** @var \Illuminate\Database\Eloquent\Collection<int, static> $products */
-        $products = static::hydrate($rows->all());
-
-        return $products;
+        return static::hydrate($rows->toArray());
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -436,7 +429,7 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
         $paginator = $query->orderByDesc('created_at')->paginate(12);
 
         // Hydrate results to return actual Product models
-        $paginator->setCollection(static::hydrate($paginator->items()));
+        $paginator->setCollection(static::hydrate($paginator->items()->all()));
 
         return $paginator;
     }

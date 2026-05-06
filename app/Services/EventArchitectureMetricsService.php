@@ -74,14 +74,14 @@ class EventArchitectureMetricsService
         }
 
         // Rule 2: readonly
-        if (! $reflection->isReadOnly()) {
+        if (method_exists($reflection, 'isReadOnly') && ! $reflection->isReadOnly()) {
             $violations['readonly'] = 'Missing readonly keyword';
         }
 
         // Rule 3: Interface
         $interfaces = $reflection->getInterfaceNames();
-        $hasDomain = in_array('App\Domain\Shared\Contracts\Events\DomainEvent', $interfaces, true);
-        $hasAudit = in_array('App\Contracts\Events\AuditEvent', $interfaces, true);
+        $hasDomain = in_array('App\\Contracts\\Events\\DomainEvent', $interfaces, true);
+        $hasAudit = in_array('App\\Contracts\\Events\\AuditEvent', $interfaces, true);
 
         if (! $hasDomain && ! $hasAudit) {
             $violations['interface'] = 'Must implement DomainEvent or AuditEvent';
@@ -97,7 +97,7 @@ class EventArchitectureMetricsService
 
         // Rule 5: HasDomainMetadata trait
         $traits = $reflection->getTraitNames();
-        if (! in_array('App\Domain\Shared\Traits\HasDomainMetadata', $traits, true)) {
+        if (! in_array('App\\Traits\\HasDomainMetadata', $traits, true)) {
             $violations['metadata'] = 'Missing HasDomainMetadata trait';
         }
 

@@ -56,7 +56,7 @@ class ReportReadyNotification extends Notification implements ShouldQueue
             ->line("Tu **{$reportLabel}** para **{$this->tenantName}** está listo.")
             ->action('Descargar Reporte', $this->downloadUrl)
             ->line("⚠️ Este enlace expira el {$this->expiresAt->format('d/m/Y H:i')}.")
-            ->salutation('Vito Business OS - Tu plataforma de negocios');
+            ->salutation('Conecta HN - Tu plataforma de negocios');
     }
 
     /**
@@ -71,7 +71,7 @@ class ReportReadyNotification extends Notification implements ShouldQueue
             'report_type' => $this->reportType,
             'download_url' => $this->downloadUrl,
             'tenant_name' => $this->tenantName,
-            'expires_at' => $this->expiresAt->format(DATE_ATOM),
+            'expires_at' => $this->expiresAt->toIso8601String(),
         ];
     }
 }

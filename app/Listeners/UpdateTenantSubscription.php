@@ -4,14 +4,12 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
-use App\Domain\TenantGovernance\Enums\TenantPlan;
-use App\Domain\TenantGovernance\Services\CustomerJourneySignalRecorder;
 use App\Events\PaymentApproved;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Schema;
 
 /**
  * UpdateTenantSubscription - Transactional Listener with Zero-Tolerance Enforcement
@@ -26,8 +24,18 @@ use Illuminate\Support\Facades\Schema;
  * SECURITY: Uses row-level database locks to mathematically eliminate
  * race conditions when two admins approve payments simultaneously.
  */
-class UpdateTenantSubscription
+class UpdateTenantSubscription implements ShouldQueue
 {
+    /**
+     * Number of times the job may be attempted.
+     */
+    public int $tries = 3;
+
+    /**
+     * The number of seconds to wait before retrying.
+     */
+    public int $backoff = 5;
+
     /**
      * Handle the PaymentApproved event.
      *
@@ -41,9 +49,7 @@ class UpdateTenantSubscription
             // STEP 1: FETCH PAYMENT WITH LOCK AND VALIDATE STATE
             // Fail-fast: No silent failures, throw on invalid state
             // ═══════════════════════════════════════════════════════════════
-            $payment = SubscriptionPayment::query()
-                ->withoutGlobalScopes()
-                ->lockForUpdate()
+            $payment = SubscriptionPayment::lockForUpdate()
                 ->find($event->paymentId);
 
             if (! $payment) {
@@ -56,7 +62,7 @@ class UpdateTenantSubscription
             if ($payment->subscription_extended_at !== null) {
                 Log::warning('PaymentApproved: Idempotency guard triggered - already processed', [
                     'payment_id' => $event->paymentId,
-                    'tenant_id' => $event->tenantId()->toString(),
+                    'tenant_id' => $event->tenantId,
                     'original_extension_at' => $payment->subscription_extended_at,
                 ]);
 
@@ -76,14 +82,11 @@ class UpdateTenantSubscription
             // Pessimistic Locking: Concurrent processes will WAIT here
             // This mathematically eliminates race conditions
             // ═══════════════════════════════════════════════════════════════
-            $tenant = Tenant::query()
-                ->withoutGlobalScopes()
-                ->lockForUpdate()
-                ->find($event->tenantId()->toString());
+            $tenant = Tenant::lockForUpdate()->find($event->tenantId);
 
             if (! $tenant) {
                 throw new \RuntimeException(
-                    "PaymentApproved: Tenant ID {$event->tenantId()->toString()} not found. Data integrity compromised."
+                    "PaymentApproved: Tenant ID {$event->tenantId} not found. Data integrity compromised."
                 );
             }
 
@@ -91,11 +94,7 @@ class UpdateTenantSubscription
             // STEP 3: CALCULATE AND APPLY SUBSCRIPTION EXTENSION
             // Base date logic: extend from current end or start fresh from today
             // ═══════════════════════════════════════════════════════════════
-            $legacyPlanExpiresAt = Schema::hasColumn('tenants', 'plan_expires_at')
-                ? $tenant->getAttribute('plan_expires_at')
-                : null;
-
-            $baseDate = $tenant->subscription_ends_at ?? $legacyPlanExpiresAt ?? now();
+            $baseDate = $tenant->subscription_ends_at ?? now();
 
             // If subscription already expired, start from today
             if ($baseDate->isPast()) {
@@ -103,30 +102,13 @@ class UpdateTenantSubscription
             }
 
             $newEndDate = $baseDate->copy()->addDays($event->daysToAdd);
-            $rawPlanBeforeUpgrade = $tenant->getRawOriginal('plan_type');
-            $planBeforeUpgrade = match (true) {
-                $rawPlanBeforeUpgrade instanceof TenantPlan => $rawPlanBeforeUpgrade->value,
-                is_string($rawPlanBeforeUpgrade) => $rawPlanBeforeUpgrade,
-                default => '',
-            };
 
-            if ($planBeforeUpgrade === '') {
-                $planBeforeUpgrade = Tenant::PLAN_SEMILLA;
-            }
-
-            $tenantUpdates = [
-                'is_active' => true,
+            $tenant->update([
+                'is_pro' => true,
                 'subscription_status' => 'active',
                 'subscription_ends_at' => $newEndDate,
-                'next_billing_date' => $newEndDate->toDateString(),
-                'plan_type' => TenantPlan::PRO->value,
-            ];
-
-            if (Schema::hasColumn('tenants', 'plan_expires_at')) {
-                $tenantUpdates['plan_expires_at'] = $newEndDate;
-            }
-
-            $tenant->forceFill($tenantUpdates)->save();
+                'plan_type' => 'pro',
+            ]);
 
             // ═══════════════════════════════════════════════════════════════
             // STEP 4: MARK PAYMENT AS CONSUMED (Idempotency Flag)
@@ -134,29 +116,33 @@ class UpdateTenantSubscription
             // ═══════════════════════════════════════════════════════════════
             $payment->update([
                 'subscription_extended_at' => now(),
-                'plan_before_upgrade' => $planBeforeUpgrade,
             ]);
 
             Log::info('PaymentApproved: Subscription extended successfully', [
                 'payment_id' => $event->paymentId,
-                'tenant_id' => $event->tenantId()->toString(),
+                'tenant_id' => $event->tenantId,
                 'tenant_name' => $tenant->name,
-                'plan_before_upgrade' => $planBeforeUpgrade,
                 'days_added' => $event->daysToAdd,
                 'new_end_date' => $newEndDate->toDateString(),
                 'reviewer_id' => $event->reviewerId,
             ]);
-
-            app(CustomerJourneySignalRecorder::class)->recordForTenantActiveConversations(
-                $tenant->fresh(),
-                'tenant_upgrade',
-                [
-                    'payment_id' => (int) $payment->getKey(),
-                    'plan_before_upgrade' => $planBeforeUpgrade,
-                    'plan_after_upgrade' => 'pro',
-                    'days_added' => (int) $event->daysToAdd,
-                ],
-            );
         }, 3); // 3 retry attempts for deadlock recovery
+    }
+
+    /**
+     * Handle a job failure.
+     */
+    public function failed(PaymentApproved $event, \Throwable $exception): void
+    {
+        Log::critical('PaymentApproved: Listener FAILED - manual intervention required', [
+            'payment_id' => $event->paymentId,
+            'tenant_id' => $event->tenantId,
+            'reviewer_id' => $event->reviewerId,
+            'exception_class' => get_class($exception),
+            'exception_message' => $exception->getMessage(),
+            'exception_trace' => $exception->getTraceAsString(),
+        ]);
+
+        // TODO: Notify admin via Slack/Email about failed subscription extension
     }
 }

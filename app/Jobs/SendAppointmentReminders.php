@@ -4,11 +4,8 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
-use App\Domain\Contracts\AdminNotifier;
-use App\Domain\TenantGovernance\Services\OperationalPlaybookTaskManager;
 use App\Mail\AppointmentReminderMail;
 use App\Models\Appointment;
-use App\Models\Tenant;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -37,12 +34,8 @@ class SendAppointmentReminders implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function handle(
-        AdminNotifier $notifier,
-        ?OperationalPlaybookTaskManager $playbookTaskManager = null,
-    ): void {
-        $playbookTaskManager ??= app(OperationalPlaybookTaskManager::class);
-
+    public function handle(): void
+    {
         // Define the 24-hour window (23h to 24h from now)
         $windowStart = now()->addHours(23);
         $windowEnd = now()->addHours(24);
@@ -61,28 +54,23 @@ class SendAppointmentReminders implements ShouldQueue
 
         if ($appointments->isEmpty()) {
             Log::info('SendAppointmentReminders: No appointments in the 24h window.');
-
             return;
         }
 
         Log::info("SendAppointmentReminders: Processing {$appointments->count()} appointments.");
 
         foreach ($appointments as $appointment) {
-            $this->processReminder($appointment, $notifier, $playbookTaskManager);
+            $this->processReminder($appointment);
         }
     }
 
-    private function processReminder(
-        Appointment $appointment,
-        AdminNotifier $notifier,
-        OperationalPlaybookTaskManager $playbookTaskManager,
-    ): void {
+    private function processReminder(Appointment $appointment): void
+    {
         // Skip if no customer email
         if (empty($appointment->customer_email)) {
             Log::warning('SendAppointmentReminders: Skipped appointment (no email)', [
                 'appointment_id' => $appointment->id,
             ]);
-
             return;
         }
 
@@ -90,11 +78,10 @@ class SendAppointmentReminders implements ShouldQueue
         $appointment->loadMissing(['tenant', 'service', 'provider']);
 
         // Validate tenant relationship
-        if (! $appointment->tenant) {
+        if (!$appointment->tenant) {
             Log::critical('SendAppointmentReminders: Tenant relationship failed to load', [
                 'appointment_id' => $appointment->id,
             ]);
-
             return;
         }
 
@@ -104,16 +91,6 @@ class SendAppointmentReminders implements ShouldQueue
 
         // Mark as reminded (idempotency flag)
         $appointment->update(['reminder_sent_at' => now()]);
-
-        $tenant = $appointment->tenant;
-
-        $playbookTaskManager->syncForTrigger($tenant, 'appointment_reminder', [
-            'related' => $appointment,
-            'customer_name' => (string) ($appointment->customer_display_name ?? 'este cliente'),
-            'service_name' => (string) ($appointment->service->name ?? 'el servicio'),
-        ]);
-
-        $notifier->notifyAppointmentReminder($appointment);
 
         Log::info('SendAppointmentReminders: Reminder sent', [
             'appointment_id' => $appointment->id,

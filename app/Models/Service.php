@@ -11,13 +11,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Service Model - Bookable Service Definition
- *
+ * 
  * Represents a service that can be booked (time-based inventory).
  * Examples: "Men's Haircut - 30min - L.200", "Dental Cleaning - 60min - L.500"
- *
+ * 
  * PRICING: Stored as decimal(10,2) for currency precision.
  * DURATION: Stored in minutes to avoid timezone issues.
- *
+ * 
  * SECURITY: Uses BelongsToTenant for automatic tenant isolation.
  */
 class Service extends Model
@@ -28,19 +28,19 @@ class Service extends Model
         'name',
         'description',
         'duration_minutes',
-        'buffer_before',
-        'buffer_after',
         'price',
         'is_active',
     ];
 
     protected $casts = [
         'duration_minutes' => 'integer',
-        'buffer_before' => 'integer',
-        'buffer_after' => 'integer',
         'price' => 'decimal:2',
         'is_active' => 'boolean',
     ];
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // RELATIONSHIPS
+    // ═══════════════════════════════════════════════════════════════════════════
 
     /**
      * Get all appointments for this service.
@@ -50,6 +50,10 @@ class Service extends Model
         return $this->hasMany(Appointment::class);
     }
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SCOPES
+    // ═══════════════════════════════════════════════════════════════════════════
+
     /**
      * Scope to only active services.
      */
@@ -58,13 +62,9 @@ class Service extends Model
         return $query->where('is_active', true);
     }
 
-    /**
-     * Get the total duration of the service including buffers.
-     */
-    public function getTotalDurationAttribute(): int
-    {
-        return $this->duration_minutes + $this->buffer_before + $this->buffer_after;
-    }
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ACCESSORS
+    // ═══════════════════════════════════════════════════════════════════════════
 
     /**
      * Get formatted duration (e.g., "30 min", "1h 30min").
@@ -79,7 +79,7 @@ class Service extends Model
         } elseif ($hours > 0) {
             return "{$hours}h";
         }
-
+        
         return "{$minutes} min";
     }
 
@@ -88,6 +88,6 @@ class Service extends Model
      */
     public function getFormattedPriceAttribute(): string
     {
-        return 'L. '.number_format((float) $this->price, 2);
+        return 'L. ' . number_format((float) $this->price, 2);
     }
 }

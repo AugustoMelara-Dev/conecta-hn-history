@@ -31,12 +31,7 @@ trait GeneratesSignedDownloadUrls
      * @param  \DateTimeInterface  $expiresAt  When the URL should expire
      * @return string Signed download URL
      */
-    protected function generateDownloadUrl(
-        string $filename,
-        \DateTimeInterface $expiresAt,
-        int|string $tenantId,
-        int|string $userId,
-    ): string
+    protected function generateDownloadUrl(string $filename, \DateTimeInterface $expiresAt): string
     {
         // ═══════════════════════════════════════════════════════════════════════
         // SIGNED ROUTE: Works with local disk (no cloud dependency)
@@ -52,11 +47,7 @@ trait GeneratesSignedDownloadUrls
         return URL::temporarySignedRoute(
             'reports.download',          // Route name
             $expiresAt,                   // Expiration time
-            [
-                'path' => $filename,
-                'tenant' => (string) $tenantId,
-                'user' => (string) $userId,
-            ]
+            ['path' => $filename]         // Path parameter
         );
     }
 }

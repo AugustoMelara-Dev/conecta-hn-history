@@ -4,13 +4,10 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Domain\Sales\Contracts\OrderStateful;
-use App\Domain\Shared\ValueObjects\PhoneNumber;
 use App\Infrastructure\Persistence\Eloquent\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\LogOptions;
@@ -28,25 +25,10 @@ use Spatie\Activitylog\Traits\LogsActivity;
  *
  * SECURITY: Uses BelongsToTenant trait for automatic tenant isolation
  * COMPLIANCE: Uses LogsActivity trait for GDPR forensic audit trail
- *
- * @property int|string|null $user_id
- * @property string $status
- * @property string|null $payment_status
- * @property \Illuminate\Support\Carbon|null $paid_at
- * @property string|null $cancellation_reason
- * @property \Illuminate\Support\Carbon|null $cancelled_at
- * @property int|string|null $cancelled_by
- * @property-read Tenant $tenant
- * @property-read \Illuminate\Database\Eloquent\Collection<int, OrderItem> $items
  */
-class Order extends Model implements OrderStateful
+class Order extends Model
 {
     use BelongsToTenant, HasFactory, LogsActivity, SoftDeletes;
-
-    public function currentStatus(): string
-    {
-        return (string) $this->status;
-    }
 
     // ═══════════════════════════════════════════════════════════════════════
     // EAGER LOADING POLICY (N+1 Prevention)
@@ -118,8 +100,6 @@ class Order extends Model implements OrderStateful
         // FOREIGN KEYS (user_id is nullable, set by authenticated orders)
         // ═══════════════════════════════════════════════════════════════════════
         'user_id',
-        'customer_profile_id',
-        'location_id',
         'order_number',
         'tracking_uuid', // Real-time tracking token (UUID v4)
         // PII fields
@@ -192,16 +172,6 @@ class Order extends Model implements OrderStateful
         return $this->belongsTo(User::class);
     }
 
-    public function customerProfile(): BelongsTo
-    {
-        return $this->belongsTo(CustomerProfile::class);
-    }
-
-    public function location(): BelongsTo
-    {
-        return $this->belongsTo(Location::class);
-    }
-
     /**
      * Get the event history for this order (Event Sourcing).
      *
@@ -248,58 +218,6 @@ class Order extends Model implements OrderStateful
         return 'L. '.number_format((float) $this->total, 2);
     }
 
-    /**
-     * Legacy compatibility alias for canonical delivery_address.
-     */
-    public function getCustomerAddressAttribute(): ?string
-    {
-        return isset($this->attributes['delivery_address'])
-            ? (string) $this->attributes['delivery_address']
-            : null;
-    }
-
-    /**
-     * Legacy compatibility alias for canonical delivery_address.
-     */
-    public function setCustomerAddressAttribute(?string $value): void
-    {
-        $this->attributes['delivery_address'] = $value;
-    }
-
-    /**
-     * Legacy compatibility alias for canonical cancellation_reason.
-     */
-    public function getCancelReasonAttribute(): ?string
-    {
-        return isset($this->attributes['cancellation_reason'])
-            ? (string) $this->attributes['cancellation_reason']
-            : null;
-    }
-
-    /**
-     * Legacy compatibility alias for canonical cancellation_reason.
-     */
-    public function setCancelReasonAttribute(?string $value): void
-    {
-        $this->attributes['cancellation_reason'] = $value;
-    }
-
-    /**
-     * Legacy compatibility alias for canonical discount.
-     */
-    public function getDiscountAmountAttribute(): float
-    {
-        return (float) ($this->attributes['discount'] ?? 0);
-    }
-
-    /**
-     * Legacy compatibility alias for canonical discount.
-     */
-    public function setDiscountAmountAttribute(float|int|string|null $value): void
-    {
-        $this->attributes['discount'] = $value ?? 0;
-    }
-
     public function getStatusLabelAttribute(): string
     {
         return self::KANBAN_STATUSES[$this->status] ?? ucfirst($this->status);
@@ -307,21 +225,20 @@ class Order extends Model implements OrderStateful
 
     public function getStatusColorAttribute(): string
     {
-        $colors = [
+        return match ($this->status) {
             self::STATUS_PENDING => 'warning',
             self::STATUS_CONFIRMED => 'info',
             self::STATUS_PROCESSING => 'primary',
             self::STATUS_READY => 'success',
             self::STATUS_DELIVERED => 'gray',
             self::STATUS_CANCELLED => 'danger',
-        ];
-
-        return $colors[$this->status] ?? 'gray';
+            default => 'gray',
+        };
     }
 
     public function getItemsSummaryAttribute(): string
     {
-        return $this->items->map(function (OrderItem $item) {
+        return $this->items->map(function ($item) {
             return "{$item->quantity}x {$item->product_name}";
         })->implode(', ');
     }
@@ -352,11 +269,11 @@ class Order extends Model implements OrderStateful
      * @param  int  $tenantId  The tenant to generate order number for
      * @return string The next order number (e.g., "#1001")
      */
-    public static function generateOrderNumber(int|string $tenantId): string
+    public static function generateOrderNumber(int $tenantId): string
     {
         return \Illuminate\Support\Facades\DB::transaction(function () use ($tenantId) {
             // Acquire exclusive lock on tenant row to serialize order creation
-            $tenant = \App\Models\Tenant::whereKey($tenantId)->lockForUpdate()->first();
+            $tenant = \App\Models\Tenant::lockForUpdate()->find($tenantId);
 
             if (! $tenant) {
                 throw new \RuntimeException("Tenant {$tenantId} not found during order number generation");
@@ -401,7 +318,6 @@ class Order extends Model implements OrderStateful
         $lines[] = '📦 *Productos:*';
 
         foreach ($this->items as $item) {
-            /** @var OrderItem $item */
             $line = "• {$item->quantity}x {$item->product_name}";
             if ($item->options) {
                 $options = collect($item->options)->pluck('option')->implode(', ');
@@ -449,14 +365,30 @@ class Order extends Model implements OrderStateful
      */
     public function getWhatsAppUrl(): ?string
     {
-        $tenant = $this->tenant;
-        $phone = $tenant->whatsapp_number ?? $tenant->phone;
+        $phone = $this->tenant->whatsapp_number ?? $this->tenant->phone;
 
         if (! $phone) {
             return null;
         }
 
-        $cleanPhone = (new PhoneNumber($phone))->toInternationalDigits();
+        // ═══════════════════════════════════════════════════════════════════════
+        // STEP 1: Clean all non-numeric characters (dashes, spaces, parentheses)
+        // ═══════════════════════════════════════════════════════════════════════
+        $cleanPhone = preg_replace('/\D/', '', $phone);
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // STEP 2: HONDURAS LOCALIZATION - Auto-prepend country code
+        // ═══════════════════════════════════════════════════════════════════════
+        // Honduran mobile/landline numbers are exactly 8 digits.
+        // If user entered local format (e.g., "9999-9999" → "99999999"),
+        // we auto-prepend the country code 504 for WhatsApp compatibility.
+        //
+        // PASSTHROUGH: Numbers that are NOT 8 digits are left untouched.
+        // This preserves already-international numbers (11-12 digits) and
+        // prevents corrupting valid numbers from other countries.
+        if (strlen($cleanPhone) === 8) {
+            $cleanPhone = '504'.$cleanPhone;
+        }
 
         // ═══════════════════════════════════════════════════════════════════════
         // STEP 3: RFC 3986 compliant URL encoding
@@ -521,6 +453,23 @@ class Order extends Model implements OrderStateful
     public function wasPaid(): bool
     {
         return $this->payment_status === 'paid' && $this->paid_at !== null;
+    }
+
+    /**
+     * Transition to a new status.
+     *
+     * @deprecated Use OrderStateService::transition() instead.
+     *             This method bypasses FSM validation and is retained
+     *             only for backward compatibility during migration.
+     *
+     * @throws \RuntimeException Always throws to prevent bypass of FSM.
+     */
+    public function transitionTo(string $status): bool
+    {
+        throw new \RuntimeException(
+            'DEPRECATED: Use app(OrderStateService::class)->transition($order, $status) instead. '
+            .'Direct model transitions bypass FSM validation and side-effects.'
+        );
     }
 
     /**

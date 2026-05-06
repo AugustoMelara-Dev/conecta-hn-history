@@ -4,29 +4,22 @@ declare(strict_types=1);
 
 namespace App\Settings;
 
+use Spatie\LaravelSettings\Settings;
+
 /**
  * GeneralSettings - Torre de Control del Sistema
  *
  * DTO tipado para gestión centralizada de configuraciones.
  * Uso: app(GeneralSettings::class)->pro_plan_price
  */
-class GeneralSettings extends BaseSettings
+class GeneralSettings extends Settings
 {
     // ═══════════════════════════════════════════════════════════════════════
     // FINANZAS Y SUSCRIPCIONES
     // ═══════════════════════════════════════════════════════════════════════
 
-    /** Precio mensual del Plan Semilla en Lempiras */
-    public float $free_plan_price = 0.0;
-
     /** Precio mensual del Plan PRO en Lempiras */
-    public float $pro_plan_price = 499.0;
-
-    /** Precio de referencia del Plan PRO para mostrar descuento */
-    public float $pro_plan_original_price = 799.0;
-
-    /** Fee unico de setup asistido en Lempiras */
-    public float $setup_fee_price = 2500.0;
+    public float $pro_plan_price;
 
     /** Días de gracia antes de suspender servicio */
     public int $grace_period_days;
@@ -59,13 +52,6 @@ class GeneralSettings extends BaseSettings
 
     /** Permitir nuevos registros */
     public bool $allow_registrations;
-
-    /**
-     * Operational release rollouts managed by the superadmin panel.
-     *
-     * @var array<int, array<string, mixed>>
-     */
-    public array $feature_rollouts = [];
 
     /**
      * Grupo de configuraciones en la base de datos

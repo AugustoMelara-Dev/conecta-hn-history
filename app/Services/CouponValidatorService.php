@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Domain\Identity\Entities\UserEntity;
-use App\Domain\TenantGovernance\Entities\TenantEntity;
 use App\Exceptions\InvalidCouponException;
 use App\Models\Coupon;
 use App\Models\Tenant;
@@ -24,14 +22,14 @@ use Illuminate\Support\Facades\Log;
  * 3. TIMEZONE COMPLIANCE: All datetime checks use America/Tegucigalpa
  * 4. ATOMIC REDEMPTION: DB::transaction() ensures integrity
  * 5. DEFENSIVE CHECKS: Schema verification for optional columns
- * 6. STRICT CONTRACTS: Validation runs with explicit user and tenant context
+ * 6. GUEST SUPPORT: Null-safe user handling for anonymous checkout
  *
  * USAGE:
  *   $service = app(CouponValidatorService::class);
  *   $coupon = $service->validate('SAVE10', $user, 150.00, $tenant);
  *   $service->redeem($coupon, $user, $orderId);
  */
-final class CouponValidatorService implements \App\Application\Shared\Contracts\CouponValidatorInterface
+final class CouponValidatorService
 {
     /** @var string Honduras timezone for all datetime operations */
     private const TIMEZONE = 'America/Tegucigalpa';
@@ -50,19 +48,24 @@ final class CouponValidatorService implements \App\Application\Shared\Contracts\
     // ═══════════════════════════════════════════════════════════════════════════════
 
     /**
-     * Validate a coupon code for a user and cart total.
+     * Validate a coupon code for a user (or guest) and cart total.
+     *
+     * GUEST SUPPORT: User can be null for anonymous checkout flows.
+     * Per-user limits are handled defensively - if a coupon requires
+     * per-user tracking and user is null, validation fails with REQUIRE_LOGIN.
      *
      * @param  string  $code  Coupon code (case-insensitive)
-     * @param  UserEntity|User|null  $user  User attempting to use the coupon, or null for guest checkout
+     * @param  User|null  $user  User attempting to use the coupon (null for guests)
      * @param  float  $cartTotal  Current cart subtotal
-     * @param  TenantEntity|Tenant  $tenant  Tenant context for coupon isolation
+     * @param  Tenant|null  $tenant  Tenant context (required if user is null)
      * @return Coupon Valid coupon ready for redemption
      *
      * @throws InvalidCouponException If coupon is invalid for any reason
      */
-    public function validate(string $code, UserEntity|User|null $user, float $cartTotal, TenantEntity|Tenant $tenant): Coupon
+    public function validate(string $code, ?User $user, float $cartTotal, ?Tenant $tenant = null): Coupon
     {
-        $tenantId = $this->resolveTenantId($tenant);
+        // Resolve tenant ID (defensive: from user or explicit tenant)
+        $tenantId = $this->resolveTenantId($user, $tenant);
 
         // STEP 1: Find coupon by code (case-insensitive via model boot)
         $coupon = Coupon::where('code', strtoupper(trim($code)))
@@ -96,7 +99,8 @@ final class CouponValidatorService implements \App\Application\Shared\Contracts\
             'context' => 'coupon_validated',
             'coupon_id' => $coupon->id,
             'coupon_code' => $coupon->code,
-            'user_id' => $this->resolveUserId($user),
+            'user_id' => $user?->id,
+            'is_guest' => $user === null,
             'tenant_id' => $tenantId,
             'cart_total' => $cartTotal,
         ]);
@@ -111,17 +115,20 @@ final class CouponValidatorService implements \App\Application\Shared\Contracts\
     /**
      * Redeem a coupon atomically with pessimistic locking.
      *
+     * GUEST SUPPORT: If user is null, skips coupon_user pivot insertion
+     * but still increments global usage_count to track inventory.
+     *
      * CRITICAL: This method MUST use DB::transaction() and lockForUpdate()
      * to prevent race conditions during high-traffic checkout scenarios.
      *
      * @param  Coupon  $coupon  Previously validated coupon
-     * @param  UserEntity|User|null  $user  User redeeming the coupon
+     * @param  User|null  $user  User redeeming the coupon (null for guests)
      * @param  int|null  $orderId  Order ID (null during checkout, set on payment)
      *
      * @throws InvalidCouponException If coupon depleted during lock acquisition
      * @throws \Throwable On transaction failure
      */
-    public function redeem(Coupon $coupon, UserEntity|User|null $user, ?int $orderId = null): void
+    public function redeem(Coupon $coupon, ?User $user = null, ?int $orderId = null): void
     {
         DB::transaction(function () use ($coupon, $user, $orderId) {
             // STEP 1: Acquire exclusive lock on coupon row
@@ -137,34 +144,26 @@ final class CouponValidatorService implements \App\Application\Shared\Contracts\
                 throw InvalidCouponException::depleted($lockedCoupon->code);
             }
 
-            if ($this->hasCouponUserTable()) {
+            // STEP 3: Per-user tracking (ONLY if user is authenticated)
+            if ($user !== null && $this->hasCouponUserTable()) {
                 $maxUsesPerUser = $this->getMaxUsesPerUser($lockedCoupon);
-                $userId = $this->resolveUserId($user);
 
-                if ($userId === null) {
-                    if ($maxUsesPerUser > 0) {
-                        throw InvalidCouponException::requireLogin();
-                    }
-                } else {
-                    if ($maxUsesPerUser > 0) {
-                        $userUsageCount = DB::table('coupon_user')
-                            ->where('coupon_id', $lockedCoupon->id)
-                            ->where('user_id', $userId)
-                            ->count();
+                $userUsageCount = DB::table('coupon_user')
+                    ->where('coupon_id', $lockedCoupon->id)
+                    ->where('user_id', $user->id)
+                    ->count();
 
-                        if ($userUsageCount >= $maxUsesPerUser) {
-                            throw InvalidCouponException::userLimitReached($lockedCoupon->code);
-                        }
-                    }
-
-                    // Record redemption only when there is an authenticated actor to attribute it to.
-                    DB::table('coupon_user')->insert([
-                        'coupon_id' => $lockedCoupon->id,
-                        'user_id' => $userId,
-                        'order_id' => $orderId,
-                        'redeemed_at' => CarbonImmutable::now(self::TIMEZONE),
-                    ]);
+                if ($userUsageCount >= $maxUsesPerUser) {
+                    throw InvalidCouponException::userLimitReached($lockedCoupon->code);
                 }
+
+                // Record per-user redemption in pivot table
+                DB::table('coupon_user')->insert([
+                    'coupon_id' => $lockedCoupon->id,
+                    'user_id' => $user->id,
+                    'order_id' => $orderId,
+                    'redeemed_at' => CarbonImmutable::now(self::TIMEZONE),
+                ]);
             }
 
             // STEP 4: Increment global usage counter (ALWAYS, even for guests)
@@ -174,7 +173,8 @@ final class CouponValidatorService implements \App\Application\Shared\Contracts\
                 'context' => 'coupon_redeemed',
                 'coupon_id' => $lockedCoupon->id,
                 'coupon_code' => $lockedCoupon->code,
-                'user_id' => $this->resolveUserId($user),
+                'user_id' => $user?->id,
+                'is_guest' => $user === null,
                 'order_id' => $orderId,
                 'new_usage_count' => $lockedCoupon->usage_count,
             ]);
@@ -185,24 +185,23 @@ final class CouponValidatorService implements \App\Application\Shared\Contracts\
      * Link a pending redemption to a completed order.
      *
      * @param  Coupon  $coupon  The redeemed coupon
-     * @param  UserEntity|User|null  $user  The user who redeemed it
+     * @param  User|null  $user  The user who redeemed it (null for guests - no-op)
      * @param  int  $orderId  The completed order ID
      */
-    public function linkToOrder(Coupon $coupon, UserEntity|User|null $user, int $orderId): void
+    public function linkToOrder(Coupon $coupon, ?User $user, int $orderId): void
     {
-        if (! $this->hasCouponUserTable()) {
+        // Guests don't have pivot records to update
+        if ($user === null) {
             return;
         }
 
-        $userId = $this->resolveUserId($user);
-
-        if ($userId === null) {
+        if (! $this->hasCouponUserTable()) {
             return;
         }
 
         DB::table('coupon_user')
             ->where('coupon_id', $coupon->id)
-            ->where('user_id', $userId)
+            ->where('user_id', $user->id)
             ->whereNull('order_id')
             ->orderByDesc('redeemed_at')
             ->limit(1)
@@ -213,22 +212,63 @@ final class CouponValidatorService implements \App\Application\Shared\Contracts\
     // TENANT RESOLUTION - DEFENSIVE (GUEST COMPATIBLE)
     // ═══════════════════════════════════════════════════════════════════════════════
 
-    private function resolveTenantId(TenantEntity|Tenant $tenant): string
+    /**
+     * Resolve tenant ID from user or explicit tenant using multiple fallback strategies.
+     *
+     * GUEST SUPPORT: When user is null, requires explicit $tenant parameter.
+     *
+     * @throws InvalidCouponException If no tenant context can be determined
+     */
+    private function resolveTenantId(?User $user, ?Tenant $tenant = null): int
     {
-        if ($tenant instanceof TenantEntity) {
-            return $tenant->id();
+        // Strategy 0: Explicit tenant parameter (highest priority for guests)
+        if ($tenant !== null) {
+            return (int) $tenant->id;
         }
 
-        return (string) $tenant->getKey();
-    }
-
-    private function resolveUserId(UserEntity|User|null $user): ?string
-    {
-        if ($user === null) {
-            return null;
+        // Strategy 1: Filament context (works regardless of user)
+        if (class_exists(\Filament\Facades\Filament::class)) {
+            try {
+                $filamentTenant = \Filament\Facades\Filament::getTenant();
+                if ($filamentTenant !== null) {
+                    return (int) $filamentTenant->id;
+                }
+            } catch (\Throwable) {
+                // Filament not initialized
+            }
         }
 
-        return $user instanceof UserEntity ? $user->id() : (string) $user->getKey();
+        // Strategy 2: App container binding (set by TenantMiddleware)
+        if (app()->has('currentTenant')) {
+            $containerTenant = app('currentTenant');
+            if ($containerTenant !== null) {
+                return (int) $containerTenant->id;
+            }
+        }
+
+        // Strategy 3: User-based resolution (only if user is present)
+        if ($user !== null) {
+            // Direct tenant_id attribute on User
+            $tenantId = $user->getAttribute('tenant_id');
+            if ($tenantId !== null) {
+                return (int) $tenantId;
+            }
+
+            // User has tenants() relationship
+            if (method_exists($user, 'tenants')) {
+                $tenantId = $user->tenants()->value('id');
+                if ($tenantId !== null) {
+                    return (int) $tenantId;
+                }
+            }
+
+            // User has tenant() singular relationship
+            if (method_exists($user, 'tenant') && $user->tenant !== null) {
+                return (int) $user->tenant->id;
+            }
+        }
+
+        throw InvalidCouponException::noTenantContext();
     }
 
     // ═══════════════════════════════════════════════════════════════════════════════
@@ -318,25 +358,36 @@ final class CouponValidatorService implements \App\Application\Shared\Contracts\
     /**
      * Validate per-user usage limit.
      *
+     * GUEST HANDLING:
+     * - If user is null AND coupon has per-user limits, REQUIRE LOGIN
+     * - If user is null AND coupon has NO per-user limits, ALLOW (guest-friendly)
+     *
      * @throws InvalidCouponException
      */
-    private function validatePerUserUsage(Coupon $coupon, UserEntity|User|null $user): void
+    private function validatePerUserUsage(Coupon $coupon, ?User $user): void
     {
         $maxUsesPerUser = $this->getMaxUsesPerUser($coupon);
 
-        if ($maxUsesPerUser === 0) {
+        // GUEST GUARD: If coupon has per-user limits and user is null, require login
+        if ($user === null) {
+            // Check if this coupon actually has per-user restrictions
+            if ($maxUsesPerUser > 0) {
+                throw InvalidCouponException::requireLogin();
+            }
+
+            // No per-user limits, guests can proceed
             return;
         }
 
-        $userId = $this->resolveUserId($user);
-
-        if ($userId === null) {
-            throw InvalidCouponException::requireLogin();
+        // If max_uses_per_user is 0, treat as unlimited for authenticated users
+        if ($maxUsesPerUser === 0) {
+            return; // No per-user limit
         }
 
+        // Authenticated user: check actual usage
         $userUsageCount = DB::table('coupon_user')
             ->where('coupon_id', $coupon->id)
-            ->where('user_id', $userId)
+            ->where('user_id', $user->id)
             ->count();
 
         if ($userUsageCount >= $maxUsesPerUser) {

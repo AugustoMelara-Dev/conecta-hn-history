@@ -33,7 +33,7 @@ class WelcomeUserMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Bienvenido a Vito Business OS - Tu Infraestructura Digital',
+            subject: 'Bienvenido a Conecta HN - Tu Infraestructura Digital',
         );
     }
 

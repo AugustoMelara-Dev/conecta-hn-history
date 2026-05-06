@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Models\Payment;
 use App\Models\Tenant;
 use App\Models\User;
@@ -50,7 +49,7 @@ class TenantRegistrationService
         // Security
         'root', 'superadmin', 'moderator', 'mod', 'staff', 'team',
         // Brand
-        'conecta', 'vitobusinessos', 'vito-business-os', 'oficial', 'official',
+        'conecta', 'conectahn', 'conecta-hn', 'oficial', 'official',
         // Utilities
         'track', 'tracking', 'webhook', 'webhooks', 'callback', 'oauth',
         'payment', 'payments', 'pago', 'pagos', 'checkout', 'billing',
@@ -67,13 +66,13 @@ class TenantRegistrationService
     /**
      * Registration result DTO
      */
-    public User $user;
+    public readonly User $user;
 
-    public Tenant $tenant;
+    public readonly Tenant $tenant;
 
-    public ?Payment $payment = null;
+    public readonly ?Payment $payment;
 
-    public bool $hasPaidPlan = false;
+    public readonly bool $isPro;
 
     /**
      * 🛡️ Check if slug is reserved by system
@@ -164,8 +163,8 @@ class TenantRegistrationService
             }
 
             // 3. DETERMINE PLAN LIMITS
-            $selectedPaidPlan = ($data['selected_plan'] ?? 'free') === 'pro';
-            $productLimit = $selectedPaidPlan
+            $isPro = ($data['selected_plan'] ?? 'free') === 'pro';
+            $productLimit = $isPro
                 ? ($data['pro_product_limit'] ?? 100)
                 : ($data['free_product_limit'] ?? 10);
 
@@ -179,17 +178,16 @@ class TenantRegistrationService
                 'whatsapp_number' => $data['whatsapp'] ?? null,
                 'product_limit' => $productLimit,
                 // Plan-based state:
-                // Free: approved + active + semilla
+                // Free: approved + active + !pro
                 // PRO: pending + inactive (until paid) + pro
-                'is_active' => ! $selectedPaidPlan,
-                'status' => $selectedPaidPlan ? 'pending' : 'approved',
-                'plan_type' => $selectedPaidPlan ? TenantPlan::PRO->value : TenantPlan::SEMILLA->value,
-                'subscription_status' => 'inactive',
+                'is_active' => ! $isPro,
+                'is_pro' => $isPro,
+                'status' => $isPro ? 'pending' : 'approved',
             ]);
 
             // 5. CREATE PAYMENT (PRO only)
             $payment = null;
-            if ($selectedPaidPlan) {
+            if ($isPro) {
                 $payment = Payment::create([
                     'tenant_id' => $tenant->id,
                     'amount' => $data['pro_plan_price'] ?? 500.00,
@@ -204,7 +202,7 @@ class TenantRegistrationService
                 'user' => $user,
                 'tenant' => $tenant,
                 'payment' => $payment,
-                'hasPaidPlan' => $selectedPaidPlan,
+                'isPro' => $isPro,
             ];
         });
 
@@ -212,7 +210,7 @@ class TenantRegistrationService
         $this->user = $result['user'];
         $this->tenant = $result['tenant'];
         $this->payment = $result['payment'];
-        $this->hasPaidPlan = $result['hasPaidPlan'];
+        $this->isPro = $result['isPro'];
 
         return $this;
     }
@@ -222,7 +220,7 @@ class TenantRegistrationService
      */
     public function getRedirectRoute(): string
     {
-        if ($this->hasPaidPlan && $this->payment) {
+        if ($this->isPro && $this->payment) {
             return route('payment.pending', $this->payment->id);
         }
 
@@ -234,7 +232,7 @@ class TenantRegistrationService
      */
     public function getFlashMessage(): array
     {
-        if ($this->hasPaidPlan) {
+        if ($this->isPro) {
             return [
                 'type' => 'success',
                 'message' => '¡Negocio registrado! Completa el pago para activar tu cuenta.',

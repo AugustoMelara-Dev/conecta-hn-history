@@ -4,42 +4,40 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Infrastructure\Persistence\Eloquent\Traits\AllowsTrustedTenantAssignment;
 use App\Infrastructure\Persistence\Eloquent\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Appointment model for service bookings.
- *
- * Lifecycle:
- * pending -> confirmed -> completed
- * pending/confirmed -> cancelled or no_show
- *
- * @property-read User|null $user
- * @property-read Tenant|null $tenant
- * @property-read Service|null $service
- * @property-read ServiceProvider|null $provider
+ * Appointment Model - Service Booking Record
+ * 
+ * Represents a scheduled appointment linking:
+ * - A Customer (User or guest via customer_name/phone)
+ * - A Service (what is being performed)
+ * - A ServiceProvider (who performs it)
+ * - A Time Slot (when it happens)
+ * 
+ * STATUS LIFECYCLE:
+ * pending → confirmed → completed
+ *        ↘ cancelled
+ * 
+ * SECURITY: Uses BelongsToTenant for automatic tenant isolation.
  */
 class Appointment extends Model
 {
-    use AllowsTrustedTenantAssignment, BelongsToTenant, HasFactory;
+    use BelongsToTenant, HasFactory;
 
-    // Status constants
+    // ═══════════════════════════════════════════════════════════════════════════
+    // STATUS CONSTANTS
+    // ═══════════════════════════════════════════════════════════════════════════
     public const STATUS_PENDING = 'pending';
-
     public const STATUS_CONFIRMED = 'confirmed';
-
     public const STATUS_CANCELLED = 'cancelled';
-
     public const STATUS_COMPLETED = 'completed';
-
-    public const STATUS_NO_SHOW = 'no_show';
 
     protected $fillable = [
         'user_id',
-        'customer_profile_id',
         'service_id',
         'service_provider_id',
         'scheduled_at',
@@ -65,7 +63,9 @@ class Appointment extends Model
         'created' => \App\Events\Appointment\AppointmentCreated::class,
     ];
 
-    // Relationships
+    // ═══════════════════════════════════════════════════════════════════════════
+    // RELATIONSHIPS
+    // ═══════════════════════════════════════════════════════════════════════════
 
     /**
      * The customer who booked (nullable for walk-ins).
@@ -73,11 +73,6 @@ class Appointment extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
-    }
-
-    public function customerProfile(): BelongsTo
-    {
-        return $this->belongsTo(CustomerProfile::class);
     }
 
     /**
@@ -96,7 +91,9 @@ class Appointment extends Model
         return $this->belongsTo(ServiceProvider::class, 'service_provider_id');
     }
 
-    // Scopes
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SCOPES
+    // ═══════════════════════════════════════════════════════════════════════════
 
     /**
      * Filter by status.
@@ -112,8 +109,8 @@ class Appointment extends Model
     public function scopeUpcoming($query)
     {
         return $query->where('scheduled_at', '>=', now())
-            ->whereIn('status', [self::STATUS_PENDING, self::STATUS_CONFIRMED])
-            ->orderBy('scheduled_at');
+                     ->whereIn('status', [self::STATUS_PENDING, self::STATUS_CONFIRMED])
+                     ->orderBy('scheduled_at');
     }
 
     /**
@@ -132,20 +129,16 @@ class Appointment extends Model
         return $query->whereBetween('scheduled_at', [$start, $end]);
     }
 
-    // Accessors
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ACCESSORS
+    // ═══════════════════════════════════════════════════════════════════════════
 
     /**
-     * Get customer display name (user or guest).
+     * Get customer display name (User or guest).
      */
     public function getCustomerDisplayNameAttribute(): string
     {
-        $user = $this->user;
-
-        if ($user instanceof User) {
-            return $user->name;
-        }
-
-        return $this->customer_name ?? 'Cliente';
+        return $this->user?->name ?? $this->customer_name ?? 'Cliente';
     }
 
     /**
@@ -176,7 +169,9 @@ class Appointment extends Model
         };
     }
 
-    // Business logic
+    // ═══════════════════════════════════════════════════════════════════════════
+    // BUSINESS LOGIC
+    // ═══════════════════════════════════════════════════════════════════════════
 
     /**
      * Confirm this appointment.
@@ -188,7 +183,6 @@ class Appointment extends Model
         }
 
         $this->status = self::STATUS_CONFIRMED;
-
         return $this->save();
     }
 
@@ -202,7 +196,6 @@ class Appointment extends Model
         }
 
         $this->status = self::STATUS_CANCELLED;
-
         return $this->save();
     }
 
@@ -216,21 +209,6 @@ class Appointment extends Model
         }
 
         $this->status = self::STATUS_COMPLETED;
-
-        return $this->save();
-    }
-
-    /**
-     * Mark this appointment as no-show.
-     */
-    public function markAsNoShow(): bool
-    {
-        if (! in_array($this->status, [self::STATUS_PENDING, self::STATUS_CONFIRMED])) {
-            return false;
-        }
-
-        $this->status = self::STATUS_NO_SHOW;
-
         return $this->save();
     }
 

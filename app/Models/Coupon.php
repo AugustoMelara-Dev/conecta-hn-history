@@ -135,7 +135,7 @@ class Coupon extends Model
             return $this->value.'%';
         }
 
-        return 'L. '.number_format((float) $this->value, 2);
+        return 'L. '.number_format($this->value, 2);
     }
 
     public function getUsageDisplayAttribute(): string

@@ -5,38 +5,31 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Infrastructure\Persistence\Eloquent\Traits\BelongsToTenant;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 /**
  * SubscriptionPayment - Payment Transaction Record
  *
  * State machine: pending → approved/rejected
  *
- * @property string $id
- * @property string $tenant_id
+ * @property int $id
+ * @property int $tenant_id
  * @property float $amount
  * @property string $bank
  * @property string $reference_number
  * @property string $proof_path
  * @property string $status
  * @property string|null $admin_notes
- * @property string|null $reviewed_by
+ * @property int|null $reviewed_by
  * @property \Carbon\Carbon|null $reviewed_at
- * @property string|null $plan_before_upgrade
  *                                            SECURITY: Uses BelongsToTenant trait for automatic tenant isolation
  */
 class SubscriptionPayment extends Model
 {
-    use BelongsToTenant, HasFactory, HasUuids;
-
-    public $incrementing = false;
-
-    protected $keyType = 'string';
+    use BelongsToTenant, HasFactory;
 
     public const STATUS_PENDING = 'pending';
 
@@ -50,18 +43,9 @@ class SubscriptionPayment extends Model
         'reference_number',
         'proof_path',
         'status',
-        'idempotency_key',
-        'version',
         'admin_notes',
         'reviewed_by',
         'reviewed_at',
-        'subscription_extended_at',
-        'plan_before_upgrade',
-        'receipt_issued_at',
-        'refund_transaction_id',
-        'refund_amount',
-        'refunded_at',
-        'refund_reason',
     ];
 
     /**
@@ -73,26 +57,7 @@ class SubscriptionPayment extends Model
     protected $casts = [
         'amount' => 'decimal:2',
         'reviewed_at' => 'datetime',
-        'subscription_extended_at' => 'datetime',
-        'receipt_issued_at' => 'datetime',
-        'refunded_at' => 'datetime',
-        'plan_before_upgrade' => 'string',
-        'id' => 'string',
-        'version' => 'integer',
     ];
-
-    protected static function booted(): void
-    {
-        static::creating(function (self $payment): void {
-            if (blank($payment->idempotency_key)) {
-                $payment->idempotency_key = (string) Str::uuid();
-            }
-
-            if (! array_key_exists('version', $payment->getAttributes())) {
-                $payment->version = 1;
-            }
-        });
-    }
 
     // ═══════════════════════════════════════════════════════════════════════
     // RELATIONSHIPS
@@ -117,10 +82,8 @@ class SubscriptionPayment extends Model
             return null;
         }
 
-        $disk = (string) config('filesystems.payment_evidence_disk', 'media');
-
-        // Evidence must be read from the same durable private disk used to store it.
-        return Storage::disk($disk)->temporaryUrl(
+        // Generate temporary signed URL for private file
+        return Storage::disk('private')->temporaryUrl(
             $this->proof_path,
             now()->addMinutes(30)
         );
@@ -153,19 +116,15 @@ class SubscriptionPayment extends Model
      * This method follows Single Responsibility Principle:
      * - Only updates the payment's own state
      * - Dispatches PaymentApproved immutable DTO for side-effects
-     * - Uses primitive types (UUID strings, not models) for serialization safety
+     * - Uses primitive types (int, not models) for serialization safety
      * - The UpdateTenantSubscription listener handles subscription logic
      *   with pessimistic locking and idempotency guards
      *
-     * @param  string  $reviewerId  The admin who approved the payment
+     * @param  int  $reviewerId  The admin who approved the payment
      * @param  int  $daysToAdd  Number of subscription days to add (default: 30)
      */
-    public function approve(?string $reviewerId = null, int $daysToAdd = 30): void
+    public function approve(int $reviewerId, int $daysToAdd = 30): void
     {
-        if ($this->isApproved()) {
-            return;
-        }
-
         // Only update payment's own state (SRP compliance)
         $this->update([
             'status' => self::STATUS_APPROVED,
@@ -173,19 +132,20 @@ class SubscriptionPayment extends Model
             'reviewed_at' => now(),
         ]);
 
-        // Dispatch immutable event for downstream listeners and notifications.
-        event(\App\Events\PaymentApproved::fromPayment(
-            tenantId: (string) $this->tenant_id,
-            paymentId: (string) $this->id,
+        // Dispatch IMMUTABLE DTO event for decoupled subscription extension
+        // Uses factory method with primitives, not model objects
+        \App\Events\PaymentApproved::fromPayment(
+            tenantId: $this->tenant_id,
+            paymentId: $this->id,
             reviewerId: $reviewerId,
             daysToAdd: $daysToAdd
-        ));
+        )->dispatch();
     }
 
     /**
      * Reject payment with reason
      */
-    public function reject(string $reviewerId, string $reason): void
+    public function reject(int $reviewerId, string $reason): void
     {
         $this->update([
             'status' => self::STATUS_REJECTED,

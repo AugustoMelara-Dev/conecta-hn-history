@@ -25,8 +25,8 @@ final class TenantMismatchException extends DomainException
 {
     public function __construct(
         string $message = 'Conflicto de contexto de acceso a datos detectado',
-        private readonly string|int|null $expectedTenantId = null,
-        private readonly string|int|null $actualTenantId = null,
+        private readonly ?int $expectedTenantId = null,
+        private readonly ?int $actualTenantId = null,
         private readonly array $contextData = [],
         ?\Throwable $previous = null,
     ) {
@@ -56,12 +56,12 @@ final class TenantMismatchException extends DomainException
         return 'TENANT_MISMATCH';
     }
 
-    public function expectedTenantId(): string|int|null
+    public function expectedTenantId(): ?int
     {
         return $this->expectedTenantId;
     }
 
-    public function actualTenantId(): string|int|null
+    public function actualTenantId(): ?int
     {
         return $this->actualTenantId;
     }
@@ -73,7 +73,7 @@ final class TenantMismatchException extends DomainException
     /**
      * Factory: Create for order tenant mismatch.
      */
-    public static function forOrder(int $orderId, string|int $expectedTenantId, string|int|null $actualTenantId = null): self
+    public static function forOrder(int $orderId, int $expectedTenantId, ?int $actualTenantId = null): self
     {
         $actual = $actualTenantId !== null ? "actual: {$actualTenantId}" : 'no encontrado';
 
@@ -88,7 +88,7 @@ final class TenantMismatchException extends DomainException
     /**
      * Factory: Create for generic resource tenant mismatch.
      */
-    public static function forResource(string $resource, int|string $resourceId, string|int $expectedTenantId, string|int|null $actualTenantId = null): self
+    public static function forResource(string $resource, int $resourceId, int $expectedTenantId, ?int $actualTenantId = null): self
     {
         return new self(
             message: "Recurso {$resource} {$resourceId} no encontrado para el negocio {$expectedTenantId}",
@@ -101,7 +101,7 @@ final class TenantMismatchException extends DomainException
     /**
      * Factory: Create for cross-tenant access attempt.
      */
-    public static function crossTenantAccess(string|int $requestingTenantId, string|int $resourceTenantId, string $resourceType, int|string $resourceId): self
+    public static function crossTenantAccess(int $requestingTenantId, int $resourceTenantId, string $resourceType, int $resourceId): self
     {
         return new self(
             message: "Acceso cruzado denegado: Negocio {$requestingTenantId} intentó acceder a {$resourceType} {$resourceId} propiedad de {$resourceTenantId}",

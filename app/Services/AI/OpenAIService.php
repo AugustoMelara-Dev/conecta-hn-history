@@ -39,14 +39,11 @@ final class OpenAIService
 
     // Pricing Configuration (USD per 1M tokens) - GPT-4o
     private const PRICE_PER_1M_INPUT_TOKENS = 2.50;
-
     private const PRICE_PER_1M_OUTPUT_TOKENS = 10.00;
 
     // Estimación conservadora para reserva previa (margen de seguridad 20%)
     private const ESTIMATED_INPUT_TOKENS = 500;
-
     private const ESTIMATED_OUTPUT_TOKENS = 800;
-
     private const SAFETY_MARGIN = 1.2; // 20% buffer
 
     public function __construct(
@@ -93,12 +90,13 @@ final class OpenAIService
     public function generateStructuredProfile(
         string $businessName,
         string $description,
-        string $userId,
-        string $tenantId,
+        int $userId,
+        int $tenantId,
         ?string $targetAudience = null,
         ?string $tone = null,
         ?array $keywords = []
-    ): array {
+    ): array
+    {
         $estimatedCost = $this->estimateCost();
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -181,7 +179,7 @@ EOT;
                         throw new AiProviderUnavailableException("OpenAI Unavailable after {$attempts} attempts.", 0, $e);
                     }
 
-                    $sleepMs = self::RETRY_BACKOFF[$attempts - 1];
+                    $sleepMs = self::RETRY_BACKOFF[$attempts - 1] ?? 1000;
                     usleep($sleepMs * 1000);
                 } catch (Throwable $e) {
                     throw new AiProviderUnavailableException('Unexpected AI Service Failure: '.$e->getMessage(), 0, $e);
@@ -281,3 +279,4 @@ EOT;
         }
     }
 }
+

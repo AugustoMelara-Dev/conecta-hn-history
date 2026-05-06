@@ -61,6 +61,7 @@ class LogSalesExportActivity
             \Spatie\Activitylog\Facades\Activity::withoutLogs(function () use ($event) {
                 activity('export')
                     ->causedBy($event->userId)
+                    ->performedOn(null)
                     ->withProperties([
                         'export_id' => $event->exportId,
                         'tenant_id' => $event->tenantId->toString(),

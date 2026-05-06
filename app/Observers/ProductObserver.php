@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace App\Observers;
 
-use App\Events\CatalogPublishedChanged;
 use App\Models\Product;
-use App\Services\TenantCacheManager;
+use Illuminate\Support\Facades\Cache;
 
 class ProductObserver
 {
@@ -40,12 +39,7 @@ class ProductObserver
      */
     private function clearCache(Product $product): void
     {
-        app(TenantCacheManager::class)->rotateTenantVersion($product->tenant_id);
-
-        CatalogPublishedChanged::dispatch(
-            tenantId: (string) $product->tenant_id,
-            productId: (int) $product->getKey(),
-            source: 'product_observer',
-        );
+        // Surgical cache clearing using Tags
+        Cache::tags(['products', "products_tenant_{$product->tenant_id}"])->flush();
     }
 }

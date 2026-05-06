@@ -68,12 +68,6 @@ class LocationScope implements Scope
             return;
         }
 
-        // Public microsites must resolve globally by slug regardless of visitor city.
-        // Otherwise direct /t/{tenant} links can 404 when session city != tenant city.
-        if ($this->isMicrositeRoute()) {
-            return;
-        }
-
         // ═══════════════════════════════════════════════════════════════════════
         // GUARD 4: Session Availability Check (Defensive)
         // ═══════════════════════════════════════════════════════════════════════
@@ -177,20 +171,6 @@ class LocationScope implements Scope
                    request()->is('admin') ||
                    request()->is('app/*') ||
                    request()->is('app');
-        } catch (\Throwable $e) {
-            return false;
-        }
-    }
-
-    /**
-     * Skip location filtering for public microsite + booking routes.
-     */
-    protected function isMicrositeRoute(): bool
-    {
-        try {
-            return request()->is('t/*')
-                || request()->routeIs('tenant.microsite.show')
-                || request()->routeIs('public.booking.*');
         } catch (\Throwable $e) {
             return false;
         }

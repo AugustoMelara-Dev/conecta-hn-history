@@ -5,11 +5,8 @@ declare(strict_types=1);
 namespace App\Observers;
 
 use App\Domain\Identity\Enums\UserRole;
-use App\Events\CatalogPublishedChanged;
 use App\Models\Tenant;
-use App\Models\User;
 use App\Services\TenantCacheManager;
-use GdImage;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -33,7 +30,7 @@ class TenantObserver
         $user = $tenant->user;
 
         // Type-safe comparison using Enum
-        if ($user instanceof User && $user->role !== UserRole::TENANT_OWNER) {
+        if ($user && $user->role !== UserRole::TENANT_OWNER) {
             // Use Enum value for DB compatibility
             $user->update(['role' => UserRole::TENANT_OWNER]);
         }
@@ -55,13 +52,6 @@ class TenantObserver
         } catch (\Exception $e) {
             Log::warning("Cache invalidation failed for tenant {$tenant->id}: ".$e->getMessage());
         }
-
-        if ($tenant->wasChanged(['status', 'is_active', 'subscription_status', 'city_id', 'category_id', 'slug'])) {
-            CatalogPublishedChanged::dispatch(
-                tenantId: (string) $tenant->getKey(),
-                source: 'tenant_observer',
-            );
-        }
     }
 
     /**
@@ -79,7 +69,7 @@ class TenantObserver
                     $image = imagecreatefromstring(file_get_contents($fullPath));
 
                     if ($image !== false) {
-                        $hash = \kornrunner\Blurhash\Blurhash::encode($this->toPixelMatrix($image), 4, 3);
+                        $hash = \kornrunner\Blurhash\Blurhash::encode($image, 4, 3);
                         $tenant->updateQuietly(['blur_hash' => $hash]);
                         imagedestroy($image);
                     }
@@ -102,11 +92,6 @@ class TenantObserver
         } catch (\Exception $e) {
             Log::warning("Cache cleanup failed for deleted tenant {$tenant->id}: ".$e->getMessage());
         }
-
-        CatalogPublishedChanged::dispatch(
-            tenantId: (string) $tenant->getKey(),
-            source: 'tenant_deleted',
-        );
     }
 
     /**
@@ -119,11 +104,6 @@ class TenantObserver
         } catch (\Exception $e) {
             Log::warning("Cache rotation failed for restored tenant {$tenant->id}: ".$e->getMessage());
         }
-
-        CatalogPublishedChanged::dispatch(
-            tenantId: (string) $tenant->getKey(),
-            source: 'tenant_restored',
-        );
     }
 
     /**
@@ -147,32 +127,5 @@ class TenantObserver
     private function getCacheManager(): TenantCacheManager
     {
         return app(TenantCacheManager::class);
-    }
-
-    /**
-     * @return array<int, array<int, array{0: int, 1: int, 2: int}>>
-     */
-    private function toPixelMatrix(GdImage $image): array
-    {
-        $width = imagesx($image);
-        $height = imagesy($image);
-        $pixels = [];
-
-        for ($y = 0; $y < $height; $y++) {
-            $row = [];
-
-            for ($x = 0; $x < $width; $x++) {
-                $rgb = imagecolorat($image, $x, $y);
-                $row[] = [
-                    ($rgb >> 16) & 0xFF,
-                    ($rgb >> 8) & 0xFF,
-                    $rgb & 0xFF,
-                ];
-            }
-
-            $pixels[] = $row;
-        }
-
-        return $pixels;
     }
 }

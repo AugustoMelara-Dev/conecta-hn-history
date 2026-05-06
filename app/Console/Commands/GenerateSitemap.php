@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Models\Category;
 use App\Models\City;
 use App\Models\Tenant;
@@ -184,12 +183,7 @@ class GenerateSitemap extends Command
             }
 
             // Los negocios PRO tienen mayor prioridad
-            $planKey = $tenant->getRawOriginal('plan_type') ?: ($tenant->getAttributes()['plan_type'] ?? null);
-            $priority = match (true) {
-                $planKey instanceof TenantPlan && $planKey !== TenantPlan::SEMILLA => 0.9,
-                is_string($planKey) && $planKey !== '' && $planKey !== Tenant::PLAN_SEMILLA => 0.9,
-                default => 0.7,
-            };
+            $priority = $tenant->is_pro ? 0.9 : 0.7;
 
             $sitemap->add(
                 Url::create($url)

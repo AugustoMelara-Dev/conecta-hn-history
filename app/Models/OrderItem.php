@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -18,8 +17,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class OrderItem extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
         'order_id',
         'product_id',
@@ -29,8 +26,6 @@ class OrderItem extends Model
         'unit_price',    // Price with modifiers applied
         'total_price',   // unit_price * quantity
         'selected_options', // JSON with variant/addon selections
-        'line_total',
-        'options',
         'notes',
     ];
 
@@ -38,10 +33,8 @@ class OrderItem extends Model
         'product_price' => 'decimal:2',
         'unit_price' => 'decimal:2',
         'total_price' => 'decimal:2',
-        'line_total' => 'decimal:2',
         'quantity' => 'integer',
         'selected_options' => 'array',
-        'options' => 'array',
     ];
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -64,12 +57,12 @@ class OrderItem extends Model
 
     public function getFormattedUnitPriceAttribute(): string
     {
-        return 'L. '.number_format((float) $this->unit_price, 2);
+        return 'L. '.number_format($this->unit_price, 2);
     }
 
     public function getFormattedTotalPriceAttribute(): string
     {
-        return 'L. '.number_format((float) $this->total_price, 2);
+        return 'L. '.number_format($this->total_price, 2);
     }
 
     public function getOptionsDescriptionAttribute(): string
@@ -84,24 +77,6 @@ class OrderItem extends Model
             ->implode(', ');
     }
 
-    public function getOptionsAttribute($value): array
-    {
-        if ($value !== null) {
-            return is_array($value) ? $value : (json_decode((string) $value, true) ?: []);
-        }
-
-        return $this->selected_options ?? [];
-    }
-
-    public function getLineTotalAttribute($value): float
-    {
-        if ($value !== null) {
-            return (float) $value;
-        }
-
-        return (float) ($this->total_price ?? 0);
-    }
-
     // ═══════════════════════════════════════════════════════════════════════
     // FACTORY METHOD
     // ═══════════════════════════════════════════════════════════════════════
@@ -111,7 +86,7 @@ class OrderItem extends Model
      *
      * @param  array  $cartItem  Cart item from frontend
      */
-    public static function fromCartItem(array $cartItem): self
+    public static function fromCartItem(array $cartItem): static
     {
         $productPrice = (float) ($cartItem['price'] ?? 0);
         $quantity = (int) ($cartItem['quantity'] ?? 1);
@@ -120,7 +95,7 @@ class OrderItem extends Model
         $unitPrice = $productPrice + $optionsTotal;
         $totalPrice = $unitPrice * $quantity;
 
-        return new self([
+        return new static([
             'product_id' => $cartItem['product_id'] ?? $cartItem['id'] ?? null,
             'product_name' => $cartItem['name'] ?? 'Producto',
             'product_price' => $productPrice,

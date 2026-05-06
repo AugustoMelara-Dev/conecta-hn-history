@@ -45,29 +45,29 @@ trait HasDomainMetadata
     public readonly DateTimeImmutable $occurredAt;
 
     /**
-     * Resolve metadata for assignment inside the event constructor.
+     * Initialize metadata with auto-generated or restored values.
+     * Call this in the constructor for ALL events.
      *
-     * @return array{eventId: string, correlationId: string, occurredAt: DateTimeImmutable}
+     * @param  string|null  $correlationId  Pass existing ID to continue a trace chain
+     * @param  string|null  $restoredEventId  Pass existing eventId when deserializing
+     * @param  string|null  $restoredOccurredAt  Pass ISO timestamp when deserializing
      */
-    private static function resolveMetadata(
+    private function initMetadata(
         ?string $correlationId = null,
         ?string $restoredEventId = null,
         ?string $restoredOccurredAt = null
-    ): array {
+    ): void {
         // If restoring from primitives, use provided values
         if ($restoredEventId !== null) {
-            return [
-                'eventId' => $restoredEventId,
-                'correlationId' => $correlationId ?? $restoredEventId,
-                'occurredAt' => new DateTimeImmutable($restoredOccurredAt ?? 'now'),
-            ];
+            $this->eventId = $restoredEventId;
+            $this->correlationId = $correlationId ?? $restoredEventId;
+            $this->occurredAt = new DateTimeImmutable($restoredOccurredAt ?? 'now');
+        } else {
+            // New event: generate fresh metadata
+            $this->eventId = (string) Str::uuid();
+            $this->correlationId = $correlationId ?? (string) Str::uuid();
+            $this->occurredAt = new DateTimeImmutable;
         }
-
-        return [
-            'eventId' => (string) Str::uuid(),
-            'correlationId' => $correlationId ?? (string) Str::uuid(),
-            'occurredAt' => new DateTimeImmutable,
-        ];
     }
 
     /**

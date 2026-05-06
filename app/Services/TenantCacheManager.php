@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Application\Shared\Contracts\TenantCacheManagerInterface;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -29,7 +28,7 @@ use Illuminate\Support\Facades\Cache;
  *
  * COMPATIBILITY: Works with ALL cache drivers (file, database, redis, memcached).
  */
-class TenantCacheManager implements TenantCacheManagerInterface
+class TenantCacheManager
 {
     /**
      * Prefix for version keys to prevent collisions.

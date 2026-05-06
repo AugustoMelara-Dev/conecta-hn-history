@@ -26,7 +26,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $actor_id
  * @property \Carbon\Carbon $occurred_at
  */
-final class OrderEvent extends Model
+class OrderEvent extends Model
 {
     /**
      * Disable timestamps - we use occurred_at instead.
@@ -66,18 +66,13 @@ final class OrderEvent extends Model
         array $payload = [],
         User|int|null $actor = null
     ): static {
-        /** @var static $event */
-        $event = new self([
+        return static::create([
             'order_id' => $order->id,
             'event_type' => $eventType,
             'payload' => $payload,
             'actor_id' => $actor instanceof User ? $actor->id : $actor,
             'occurred_at' => now(),
         ]);
-
-        $event->save();
-
-        return $event;
     }
 
     // ═══════════════════════════════════════════════════════════════════════

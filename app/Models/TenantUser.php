@@ -96,7 +96,7 @@ class TenantUser extends Model
      */
     public function isAdmin(): bool
     {
-        return $this->role->isAdmin();
+        return $this->role?->isAdmin() ?? false;
     }
 
     // ═══ PERMISSION HELPERS ═══

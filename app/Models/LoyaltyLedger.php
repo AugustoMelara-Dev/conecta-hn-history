@@ -10,16 +10,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Loyalty Ledger Model - Transaction History
- *
+ * 
  * APPEND-ONLY ledger for loyalty point transactions.
  * Never update existing rows - insert corrections instead.
- *
+ * 
  * Transaction Types:
  * - earn: Points awarded from order completion
  * - redeem: Points spent on rewards
  * - expire: Points that have expired
  * - adjustment: Manual corrections by admin
- *
+ * 
  * INVARIANT: Points are INTEGER (no floating point math)
  * INVARIANT: User balance = SUM(amount) WHERE tenant_id = X
  */
@@ -28,11 +28,8 @@ class LoyaltyLedger extends Model
     use BelongsToTenant;
 
     public const TYPE_EARN = 'earn';
-
     public const TYPE_REDEEM = 'redeem';
-
     public const TYPE_EXPIRE = 'expire';
-
     public const TYPE_ADJUSTMENT = 'adjustment';
 
     protected $table = 'loyalty_ledger';
@@ -82,7 +79,7 @@ class LoyaltyLedger extends Model
     {
         return $query->where(function ($q) {
             $q->whereNull('expires_at')
-                ->orWhere('expires_at', '>', now());
+              ->orWhere('expires_at', '>', now());
         });
     }
 
@@ -92,7 +89,7 @@ class LoyaltyLedger extends Model
     public function scopeExpired($query)
     {
         return $query->where('type', self::TYPE_EARN)
-            ->whereNotNull('expires_at')
-            ->where('expires_at', '<=', now());
+                     ->whereNotNull('expires_at')
+                     ->where('expires_at', '<=', now());
     }
 }

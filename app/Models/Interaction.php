@@ -15,23 +15,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * WhatsApp clicks, calls, location views, cart additions.
  *
  * SECURITY: Uses BelongsToTenant trait for automatic tenant isolation
- *
- * @property string|null $session_id
- * @property string|null $ip_address
  */
 class Interaction extends Model
 {
     use BelongsToTenant;
 
     protected $fillable = [
-        'visitor_id',
-        'session_id',
         'product_id',
         'type',
-        'ip_address',
-        'user_agent',
-        'referrer',
-        'url',
         'metadata',
     ];
 
@@ -53,17 +44,11 @@ class Interaction extends Model
      * - Conversion events: conversion (generic), purchase (specific)
      */
     public const TYPE_WHATSAPP_CLICK = 'whatsapp_click';
-
     public const TYPE_CALL_CLICK = 'call';
-
     public const TYPE_LOCATION_VIEW = 'location_view';
-
     public const TYPE_CART_ADD = 'cart_add';
-
     public const TYPE_SOCIAL_SHARE = 'social_share';
-
     public const TYPE_CONVERSION = 'conversion';
-
     public const TYPE_PURCHASE = 'purchase';
 
     /**

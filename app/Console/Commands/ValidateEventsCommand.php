@@ -135,7 +135,7 @@ class ValidateEventsCommand extends Command
             $this->violations[] = "{$shortName}: Missing 'final' keyword";
         }
 
-        if (! $reflector->isReadOnly()) {
+        if (method_exists($reflector, 'isReadOnly') && ! $reflector->isReadOnly()) {
             $this->violations[] = "{$shortName}: Missing 'readonly' keyword";
         }
 
@@ -149,7 +149,7 @@ class ValidateEventsCommand extends Command
         $shortName = $reflector->getShortName();
         $interfaces = $reflector->getInterfaceNames();
 
-        $hasDomainEvent = in_array('App\\Domain\\Shared\\Contracts\\Events\\DomainEvent', $interfaces, true);
+        $hasDomainEvent = in_array('App\\Contracts\\Events\\DomainEvent', $interfaces, true);
         $hasAuditEvent = in_array('App\\Contracts\\Events\\AuditEvent', $interfaces, true);
 
         if (! $hasDomainEvent && ! $hasAuditEvent) {
@@ -191,10 +191,6 @@ class ValidateEventsCommand extends Command
             $type = $prop->getType();
 
             if ($type === null) {
-                continue;
-            }
-
-            if (! $type instanceof \ReflectionNamedType) {
                 continue;
             }
 

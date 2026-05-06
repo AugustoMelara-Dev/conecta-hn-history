@@ -47,7 +47,7 @@ class GenerateTypeScriptEnums extends Command
 
             foreach ($reflection->getCases() as $case) {
                 $name = $case->name;
-                $value = $case->getBackingValue();
+                $value = $case->getValue()->value;
 
                 // Indented Case
                 $buffer .= "    {$name} = '{$value}',\n";

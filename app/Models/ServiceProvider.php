@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Infrastructure\Persistence\Eloquent\Traits\BelongsToTenant;
-use Carbon\CarbonImmutable;
-use DateTimeImmutable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -14,15 +12,12 @@ use Spatie\OpeningHours\OpeningHours;
 
 /**
  * ServiceProvider Model - Staff/Resource Definition
- *
+ * 
  * Represents a person or resource that can perform services.
  * Each provider has their own schedule configuration that can
  * override tenant-level opening hours via spatie/opening-hours.
- *
+ * 
  * SECURITY: Uses BelongsToTenant for automatic tenant isolation.
- *
- * @property array<string, mixed>|null $schedule_config
- * @property-read Tenant $tenant
  */
 class ServiceProvider extends Model
 {
@@ -41,6 +36,10 @@ class ServiceProvider extends Model
         'is_active' => 'boolean',
     ];
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // RELATIONSHIPS
+    // ═══════════════════════════════════════════════════════════════════════════
+
     /**
      * Get all appointments for this provider.
      */
@@ -48,6 +47,10 @@ class ServiceProvider extends Model
     {
         return $this->hasMany(Appointment::class);
     }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SCOPES
+    // ═══════════════════════════════════════════════════════════════════════════
 
     /**
      * Scope to only active providers.
@@ -57,25 +60,36 @@ class ServiceProvider extends Model
         return $query->where('is_active', true);
     }
 
-    /**
-     * Check if provider is available at a specific time slot, accounting for buffers.
-     *
-     * @param  \DateTimeInterface  $start  The requested start time.
-     * @param  \DateTimeInterface  $end  The requested end time.
-     * @param  int  $bufferBefore  Minutes required before the appointment.
-     * @param  int  $bufferAfter  Minutes required after the appointment.
-     */
-    public function isAvailableAt(\DateTimeInterface $start, \DateTimeInterface $end, int $bufferBefore = 0, int $bufferAfter = 0): bool
-    {
-        $startAt = CarbonImmutable::instance(DateTimeImmutable::createFromInterface($start));
-        $endAt = CarbonImmutable::instance(DateTimeImmutable::createFromInterface($end));
-        $paddedStart = $startAt->subMinutes($bufferBefore);
-        $paddedEnd = $endAt->addMinutes($bufferAfter);
+    // ═══════════════════════════════════════════════════════════════════════════
+    // BUSINESS LOGIC
+    // ═══════════════════════════════════════════════════════════════════════════
 
-        return ! $this->appointments()
+    /**
+     * Check if provider is available at a specific time slot.
+     * 
+     * @param \DateTimeInterface $start
+     * @param \DateTimeInterface $end
+     * @return bool
+     */
+    public function isAvailableAt(\DateTimeInterface $start, \DateTimeInterface $end): bool
+    {
+        return !$this->appointments()
             ->where('status', '!=', 'cancelled')
-            ->where('scheduled_at', '<', $paddedEnd)
-            ->where('end_at', '>', $paddedStart)
+            ->where(function ($query) use ($start, $end) {
+                $query->where(function ($q) use ($start, $end) {
+                    // New appointment starts during existing
+                    $q->where('scheduled_at', '<=', $start)
+                      ->where('end_at', '>', $start);
+                })->orWhere(function ($q) use ($start, $end) {
+                    // New appointment ends during existing
+                    $q->where('scheduled_at', '<', $end)
+                      ->where('end_at', '>=', $end);
+                })->orWhere(function ($q) use ($start, $end) {
+                    // New appointment contains existing
+                    $q->where('scheduled_at', '>=', $start)
+                      ->where('end_at', '<=', $end);
+                });
+            })
             ->exists();
     }
 
@@ -83,13 +97,17 @@ class ServiceProvider extends Model
      * Get opening hours for this provider.
      *
      * HIERARCHY: Provider schedule_config > Tenant opening hours > Default 9-5
+     *
+     * @return OpeningHours
      */
     public function getOpeningHours(): OpeningHours
     {
-        if (! empty($this->schedule_config)) {
+        // Provider-specific schedule takes precedence
+        if (!empty($this->schedule_config)) {
             return OpeningHours::create($this->schedule_config);
         }
 
+        // Fall back to tenant's opening hours
         return $this->tenant->getOpeningHours();
     }
 }

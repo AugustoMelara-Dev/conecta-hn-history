@@ -11,12 +11,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Application\TenantGovernance\Contracts\CapabilityManagerInterface;
-use App\Application\TenantGovernance\Contracts\TenantFeatureAccessManagerInterface;
 use App\Domain\Shared\Traits\HasDomainEvents;
 use App\Domain\TenantGovernance\Enums\BusinessType;
-use App\Domain\TenantGovernance\Enums\Capability;
-use App\Domain\TenantGovernance\Enums\TenantFeature;
 use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Domain\TenantGovernance\Exceptions\TenantDomainException;
 use App\Scopes\LocationScope;
@@ -27,13 +23,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Str;
 use Spatie\Activitylog\LogOptions;
-use Spatie\Activitylog\Models\Activity as ActivityModel;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\OpeningHours\OpeningHours;
 
@@ -56,46 +47,6 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
     public const DEFAULT_BRAND_COLOR = '#2563EB';
 
     public const DEFAULT_SUBSCRIPTION_STATUS = 'active';
-
-    public const VERIFICATION_STATUS_PROVISIONAL = 'provisional';
-
-    public const VERIFICATION_STATUS_VERIFIED = 'verified';
-
-    public const VERIFICATION_STATUS_REJECTED = 'rejected';
-
-    public const CRM_STATUS_NEW = 'new';
-
-    public const CRM_STATUS_ONBOARDING = 'onboarding';
-
-    public const CRM_STATUS_ACTIVE = 'active';
-
-    public const CRM_STATUS_UPSELL = 'upsell';
-
-    public const CRM_STATUS_RENEWAL = 'renewal';
-
-    public const CRM_STATUS_AT_RISK = 'at_risk';
-
-    public const CRM_STATUS_PAUSED = 'paused';
-
-    public const CRM_PRIORITY_LOW = 'low';
-
-    public const CRM_PRIORITY_NORMAL = 'normal';
-
-    public const CRM_PRIORITY_HIGH = 'high';
-
-    public const CRM_PRIORITY_CRITICAL = 'critical';
-
-    public const CRM_TEAM_ACTIVATION = 'activation';
-
-    public const CRM_TEAM_GROWTH = 'growth';
-
-    public const CRM_TEAM_RETENTION = 'retention';
-
-    public const CRM_TEAM_BILLING = 'billing';
-
-    public const CRM_TEAM_SUPPORT = 'support';
-
-    public const DEFAULT_CRM_SLA_HOURS = 24;
 
     // ═══════════════════════════════════════════════════════════════════════════
     // SECURITY: Mass Assignment Protection
@@ -127,10 +78,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         'pickup_enabled',
         'minimum_order',
         'business_type',
-        'business_segment_key',
-        'rubro_key',
         // Premium Profile Fields (unlocked for microsite customization)
-        'logo_path',
         'about',
         'hero_image',
         'latitude',
@@ -148,12 +96,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         'subscription_ends_at',
         'plan_expires_at',
         'product_limit',
-        'verification_status',
-        'verified_at',
-        'verification_reviewed_at',
-        'verification_rejection_reason',
-        'publication_paused_at',
-        'publication_pause_reason',
+        'is_pro',
     ];
 
     protected $casts = [
@@ -165,20 +108,12 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         'plan_expires_at' => 'datetime',
         'next_billing_date' => 'date',
         'subscription_ends_at' => 'datetime',
-        'verified_at' => 'datetime',
-        'verification_reviewed_at' => 'datetime',
-        'publication_paused_at' => 'datetime',
         'payment_methods' => 'array',
         'delivery_enabled' => 'boolean',
         'pickup_enabled' => 'boolean',
         'minimum_order' => 'decimal:2',
         'is_ai_enhanced' => 'boolean',
         'landing_page_data' => 'array',
-        'crm_sla_hours' => 'integer',
-        'crm_watch_score' => 'integer',
-        'crm_next_follow_up_at' => 'datetime',
-        'crm_last_contacted_at' => 'datetime',
-        'crm_watch_flagged_at' => 'datetime',
         // TITANIUM UPGRADE: STRICT CASTING
         'plan_type' => TenantPlan::class,
         'business_type' => BusinessType::class,
@@ -257,8 +192,8 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         $this->is_ai_enhanced = true;
         $this->record(new \App\Domain\TenantGovernance\Events\TenantProfileEnhanced(
             tenant_id: (string) $this->id,
-            user_id: (string) $this->user_id,
-            occurredAt: now()->toDateTimeImmutable(),
+            user_id: (int) $this->user_id,
+            occurred_at: now()->toIso8601String(),
             enhanced_fields: $enhancedFields
         ));
     }
@@ -288,63 +223,48 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
 
     public function getIsProAttribute(): bool
     {
-        $rawAttributes = $this->getAttributes();
-        $rawPlanType = $rawAttributes['plan_type'] ?? null;
-        $rawSubscriptionStatus = (string) ($rawAttributes['subscription_status'] ?? self::DEFAULT_SUBSCRIPTION_STATUS);
+        // Handling Enum or String (if called before cast takes effect or legacy)
+        $value = $this->plan_type instanceof TenantPlan ? $this->plan_type->value : $this->plan_type;
 
-        $value = match (true) {
-            $rawPlanType instanceof TenantPlan => $rawPlanType->value,
-            is_string($rawPlanType) => $rawPlanType,
-            default => '',
-        };
-
-        if (! in_array($value, ['pro', self::PLAN_CRECIMIENTO, self::PLAN_COSECHA, 'enterprise'], true)) {
+        if (! in_array($value, ['pro', 'enterprise'])) {
             return false;
         }
 
-        if (in_array($rawSubscriptionStatus, ['past_due', 'canceled', 'inactive'], true)) {
+        if (in_array($this->subscription_status, ['past_due', 'canceled'])) {
             return false;
         }
 
-        if (! in_array($rawSubscriptionStatus, ['active', 'trial'], true)) {
+        if (! in_array($this->subscription_status, ['active', 'trial'])) {
             return false;
         }
 
-        $subscriptionEndsAt = $this->resolveSubscriptionEndsAt();
-
-        if ($subscriptionEndsAt === null) {
+        if ($this->subscription_ends_at === null) {
             return true;
         }
 
-        return $subscriptionEndsAt->isFuture();
+        return $this->subscription_ends_at->isFuture();
     }
 
     public function isSubscriptionActive(): bool
     {
-        $rawSubscriptionStatus = (string) ($this->getAttributes()['subscription_status'] ?? self::DEFAULT_SUBSCRIPTION_STATUS);
-
-        if ($rawSubscriptionStatus !== 'active') {
+        if ($this->subscription_status !== 'active') {
             return false;
         }
 
-        $subscriptionEndsAt = $this->resolveSubscriptionEndsAt();
-
-        if ($subscriptionEndsAt === null) {
+        if ($this->subscription_ends_at === null) {
             return true;
         }
 
-        return $subscriptionEndsAt->isFuture();
+        return $this->subscription_ends_at->isFuture();
     }
 
     public function getDaysUntilExpiryAttribute(): ?int
     {
-        $subscriptionEndsAt = $this->resolveSubscriptionEndsAt();
-
-        if ($subscriptionEndsAt === null) {
+        if ($this->subscription_ends_at === null) {
             return null;
         }
 
-        return (int) max(0, now()->diffInDays($subscriptionEndsAt, false));
+        return max(0, now()->diffInDays($this->subscription_ends_at, false));
     }
 
     public function isExpiringSoon(int $days = 7): bool
@@ -360,28 +280,19 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
 
     public function getSubscriptionStatusLabelAttribute(): string
     {
-        $status = (string) ($this->getAttributes()['subscription_status'] ?? 'inactive');
-
         $labels = [
             'active' => 'Activo',
             'trial' => 'Período de Prueba',
             'past_due' => 'Vencido',
             'canceled' => 'Cancelado',
-            'inactive' => 'Inactivo',
-            'pending' => 'Pendiente',
         ];
 
-        return $labels[$status] ?? Str::headline(str_replace('_', ' ', $status));
+        return $labels[$this->subscription_status] ?? 'Desconocido';
     }
 
     public function getPlanTypeLabelAttribute(): string
     {
-        $rawPlanType = $this->getAttributes()['plan_type'] ?? null;
-        $value = match (true) {
-            $rawPlanType instanceof TenantPlan => $rawPlanType->value,
-            is_string($rawPlanType) => $rawPlanType,
-            default => '',
-        };
+        $value = $this->plan_type instanceof TenantPlan ? $this->plan_type->value : $this->plan_type;
 
         $labels = [
             'semilla' => 'Plan Semilla',
@@ -389,142 +300,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
             'enterprise' => 'Plan Enterprise',
         ];
 
-        return $labels[$value] ?? 'Plan Semilla';
-    }
-
-    public function getCrmStatusLabelAttribute(): string
-    {
-        return match ((string) ($this->getAttributes()['crm_status'] ?? self::CRM_STATUS_NEW)) {
-            self::CRM_STATUS_ONBOARDING => 'En onboarding',
-            self::CRM_STATUS_ACTIVE => 'Operando',
-            self::CRM_STATUS_UPSELL => 'Upsell',
-            self::CRM_STATUS_RENEWAL => 'Renovacion',
-            self::CRM_STATUS_AT_RISK => 'En riesgo',
-            self::CRM_STATUS_PAUSED => 'Pausado',
-            default => 'Nuevo',
-        };
-    }
-
-    public function getCrmPriorityLabelAttribute(): string
-    {
-        return match ((string) ($this->getAttributes()['crm_priority'] ?? self::CRM_PRIORITY_NORMAL)) {
-            self::CRM_PRIORITY_LOW => 'Baja',
-            self::CRM_PRIORITY_HIGH => 'Alta',
-            self::CRM_PRIORITY_CRITICAL => 'Critica',
-            default => 'Normal',
-        };
-    }
-
-    public function getCrmTeamLabelAttribute(): string
-    {
-        return match ((string) ($this->getAttributes()['crm_team'] ?? self::CRM_TEAM_ACTIVATION)) {
-            self::CRM_TEAM_GROWTH => 'Growth',
-            self::CRM_TEAM_RETENTION => 'Retencion',
-            self::CRM_TEAM_BILLING => 'Cobros',
-            self::CRM_TEAM_SUPPORT => 'Soporte',
-            default => 'Activacion',
-        };
-    }
-
-    public function getCrmWatchLabelAttribute(): string
-    {
-        $score = (int) ($this->getAttributes()['crm_watch_score'] ?? 0);
-
-        if ($score >= 90) {
-            return 'Critico';
-        }
-
-        if ($score >= 80) {
-            return 'Alto';
-        }
-
-        if ($score >= 60) {
-            return 'En observacion';
-        }
-
-        return 'Sin alerta';
-    }
-
-    public function getBusinessSegmentLabelAttribute(): string
-    {
-        $segmentKey = (string) ($this->getAttributes()['business_segment_key'] ?? '');
-
-        if ($segmentKey === '') {
-            return 'General';
-        }
-
-        return app(\App\Application\TenantGovernance\Contracts\RubroManifestReaderInterface::class)
-            ->labelForRubroKey($segmentKey);
-    }
-
-    public function getPlanExpiresAtAttribute(mixed $value): ?Carbon
-    {
-        return $this->resolveDateAttribute($value) ?? $this->resolveSubscriptionEndsAt();
-    }
-
-    public function approveForOperations(): void
-    {
-        $this->forceFill([
-            'status' => 'approved',
-            'is_active' => true,
-        ])->save();
-    }
-
-    public function rejectForOperations(): void
-    {
-        $this->forceFill([
-            'status' => 'rejected',
-            'is_active' => false,
-        ])->save();
-    }
-
-    public function toggleOperationalStatus(): void
-    {
-        $this->forceFill([
-            'is_active' => ! (bool) $this->getAttribute('is_active'),
-        ])->save();
-    }
-
-    public function activateProManually(int $months): void
-    {
-        $baseDate = $this->resolveSubscriptionEndsAt() ?? now();
-
-        if ($baseDate->isPast()) {
-            $baseDate = now();
-        }
-
-        $this->forceFill([
-            'is_active' => true,
-            'plan_type' => TenantPlan::PRO->value,
-            'subscription_status' => 'active',
-            'subscription_ends_at' => $baseDate->copy()->addMonths($months),
-        ])->save();
-    }
-
-    /**
-     * Record an operational event without allowing audit issues to break admin flows.
-     *
-     * @param  array<string, mixed>  $properties
-     */
-    public function logOperationalEvent(string $description, ?User $actor = null, array $properties = []): void
-    {
-        try {
-            $activity = activity('operations')->performedOn($this);
-
-            if ($actor instanceof User) {
-                $activity->causedBy($actor);
-            }
-
-            $activity
-                ->event('operations')
-                ->withProperties(array_merge([
-                    'source' => 'superpanel',
-                    'ip' => request()->ip(),
-                ], $properties))
-                ->log($description);
-        } catch (\Throwable $exception) {
-            report($exception);
-        }
+        return $labels[$value] ?? 'Desconocido';
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -534,11 +310,8 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
     public function scopePublished($query)
     {
         return $query
-            ->where('status', 'approved')
             ->where('is_active', true)
-            ->whereIn('subscription_status', ['active', 'trial'])
-            ->where('verification_status', self::VERIFICATION_STATUS_VERIFIED)
-            ->whereNull('publication_paused_at');
+            ->where('subscription_status', 'active');
     }
 
     public function scopeInPriorityOrder($query)
@@ -604,8 +377,8 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
     public function getActivitylogOptions(): LogOptions
     {
         // FIXED: Only log attributes that are always present during model lifecycle.
-        // Removed: status (doesn't exist), plan_expires_at, subscription_ends_at,
-        // and other nullable/conditional fields that
+        // Removed: status (doesn't exist), plan_expires_at, subscription_ends_at, 
+        // is_pro (computed accessor), and other nullable/conditional fields that
         // cause MissingAttributeException during factory creation.
         return LogOptions::defaults()
             ->logOnly([
@@ -625,7 +398,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
             ->useLogName('negocios');
     }
 
-    public function tapActivity(ActivityModel $activity, string $eventName): void
+    public function tapActivity(\Spatie\Activitylog\Contracts\Activity $activity, string $eventName)
     {
         $activity->properties = $activity->properties->merge([
             'ip' => request()->ip(),
@@ -639,26 +412,6 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
-    }
-
-    public function crmOwner(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'crm_owner_id');
-    }
-
-    public function memberships(): HasMany
-    {
-        return $this->hasMany(TenantMembership::class);
-    }
-
-    public function locations(): HasMany
-    {
-        return $this->hasMany(Location::class);
-    }
-
-    public function primaryLocation(): HasOne
-    {
-        return $this->hasOne(Location::class)->where('is_primary', true);
     }
 
     public function category(): BelongsTo
@@ -691,24 +444,9 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         return $this->hasMany(Lead::class);
     }
 
-    public function customerProfiles(): HasMany
-    {
-        return $this->hasMany(CustomerProfile::class);
-    }
-
-    public function customerTouchpoints(): HasMany
-    {
-        return $this->hasMany(CustomerTouchpoint::class);
-    }
-
     public function reviews(): HasMany
     {
         return $this->hasMany(Review::class);
-    }
-
-    public function activityLogs(): MorphMany
-    {
-        return $this->morphMany(ActivityModel::class, 'subject')->latest('created_at');
     }
 
     public function tenantVisits(): HasMany
@@ -747,6 +485,8 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
      *
      * Converts the OpeningHour models into a format consumable by
      * spatie/opening-hours for availability calculations.
+     *
+     * @return OpeningHours
      */
     public function getOpeningHours(): OpeningHours
     {
@@ -754,7 +494,6 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         $dayMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
         foreach ($this->openingHours as $openingHour) {
-            /** @var OpeningHour $openingHour */
             $dayName = $dayMap[$openingHour->day_of_week] ?? null;
             if ($dayName === null) {
                 continue;
@@ -802,21 +541,6 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         return $this->hasMany(Appointment::class);
     }
 
-    public function dynamicEntityDefinitions(): HasMany
-    {
-        return $this->hasMany(\App\Models\Dynamic\EntityDefinition::class);
-    }
-
-    public function dynamicRecords(): HasMany
-    {
-        return $this->hasMany(\App\Models\Dynamic\DynamicRecord::class);
-    }
-
-    public function dynamicPrintTemplates(): HasMany
-    {
-        return $this->hasMany(\App\Models\Dynamic\DynamicPrintTemplate::class);
-    }
-
     public function getThemeConfigAttribute($value): array
     {
         $config = $value ? json_decode($value, true) : [];
@@ -838,94 +562,13 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         return $theme;
     }
 
-    /**
-     * Legacy compatibility layer for old UI/forms that still expect tenant-level
-     * `hours_data`, even though the canonical schedule now lives in `opening_hours`.
-     *
-     * @return array<int, array{day: string, open: string|null, close: string|null, is_closed: bool}>
-     */
-    public function getHoursDataAttribute(mixed $value): array
-    {
-        if (is_array($value)) {
-            return $value;
-        }
-
-        if (is_string($value) && trim($value) !== '') {
-            $decoded = json_decode($value, true);
-
-            if (is_array($decoded)) {
-                return $decoded;
-            }
-        }
-
-        $dayMap = [
-            0 => 'domingo',
-            1 => 'lunes',
-            2 => 'martes',
-            3 => 'miercoles',
-            4 => 'jueves',
-            5 => 'viernes',
-            6 => 'sabado',
-        ];
-
-        try {
-            return OpeningHour::query()
-                ->withoutGlobalScopes()
-                ->where('tenant_id', $this->getKey())
-                ->orderBy('day_of_week')
-                ->get()
-                ->map(static function (OpeningHour $openingHour) use ($dayMap): array {
-                    return [
-                        'day' => $dayMap[$openingHour->day_of_week] ?? 'lunes',
-                        'open' => $openingHour->getRawOpeningTime() !== null
-                            ? substr($openingHour->getRawOpeningTime(), 0, 5)
-                            : null,
-                        'close' => $openingHour->getRawClosingTime() !== null
-                            ? substr($openingHour->getRawClosingTime(), 0, 5)
-                            : null,
-                        'is_closed' => false,
-                    ];
-                })
-                ->values()
-                ->all();
-        } catch (\Throwable) {
-            return [];
-        }
-    }
-
-    private function resolveSubscriptionEndsAt(): ?Carbon
-    {
-        return $this->resolveDateAttribute($this->getAttributes()['subscription_ends_at'] ?? null);
-    }
-
-    private function resolveDateAttribute(mixed $value): ?Carbon
-    {
-        if ($value instanceof Carbon) {
-            return $value;
-        }
-
-        if ($value instanceof \DateTimeInterface) {
-            return Carbon::instance($value);
-        }
-
-        if (! is_string($value) || trim($value) === '') {
-            return null;
-        }
-
-        try {
-            return Carbon::parse($value);
-        } catch (\Throwable) {
-            return null;
-        }
-    }
-
     // ═══════════════════════════════════════════════════════════════════════════
     // FEATURE GATING
     // ═══════════════════════════════════════════════════════════════════════════
 
     public function getPublicMenuStructure(?int $productLimit = null): ?\Illuminate\Support\Collection
     {
-        if (! $this->isPaidPlan()) {
+        if (! $this->is_pro) {
             return null;
         }
 
@@ -947,25 +590,10 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
             ->where('is_visible', true)
             ->orderBy('name');
 
-        if (! $this->isPaidPlan()) {
+        if (! $this->is_pro) {
             $query->take($limit);
         }
 
         return $query->get();
-    }
-
-    public function hasCapability(Capability $capability): bool
-    {
-        return app(CapabilityManagerInterface::class)->has($this, $capability);
-    }
-
-    public function hasFeature(TenantFeature $feature): bool
-    {
-        return app(TenantFeatureAccessManagerInterface::class)->has($this, $feature);
-    }
-
-    private function isPaidPlan(): bool
-    {
-        return $this->getIsProAttribute();
     }
 }

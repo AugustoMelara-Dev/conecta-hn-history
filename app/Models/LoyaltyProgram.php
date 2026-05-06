@@ -10,12 +10,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Loyalty Program Model - Tenant Configuration
- *
+ * 
  * Defines the loyalty program settings for a tenant:
  * - Earn ratio (how much to spend per point)
  * - Redemption ratio (how many points per currency unit)
  * - Expiry policy
- *
+ * 
  * INVARIANT: One program per tenant (unique constraint)
  */
 class LoyaltyProgram extends Model
@@ -47,13 +47,13 @@ class LoyaltyProgram extends Model
 
     /**
      * Calculate points for a given order total.
-     *
-     * @param  float|string  $orderTotal  The order total in currency
+     * 
+     * @param float|string $orderTotal The order total in currency
      * @return int Points to award (always integer, floored)
      */
     public function calculatePoints(float|string $orderTotal): int
     {
-        if (! $this->is_active || $this->earn_ratio <= 0) {
+        if (!$this->is_active || $this->earn_ratio <= 0) {
             return 0;
         }
 
@@ -62,8 +62,8 @@ class LoyaltyProgram extends Model
 
     /**
      * Calculate currency value for given points.
-     *
-     * @param  int  $points  Points to convert
+     * 
+     * @param int $points Points to convert
      * @return float Currency value
      */
     public function calculateRedemptionValue(int $points): float

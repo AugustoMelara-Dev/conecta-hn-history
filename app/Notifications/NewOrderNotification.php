@@ -12,8 +12,6 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
-use NotificationChannels\WebPush\WebPushChannel;
-use NotificationChannels\WebPush\WebPushMessage;
 
 /**
  * NewOrderNotification - Tenant Alerting System
@@ -30,7 +28,7 @@ use NotificationChannels\WebPush\WebPushMessage;
  *
  * TRIGGER: Dispatched after Order::create() transaction commits in OrderController::store()
  */
-class NewOrderNotification extends Notification implements ShouldBroadcast, ShouldQueue
+class NewOrderNotification extends Notification implements ShouldQueue, ShouldBroadcast
 {
     use Queueable;
 
@@ -54,7 +52,7 @@ class NewOrderNotification extends Notification implements ShouldBroadcast, Shou
      */
     public function via(object $notifiable): array
     {
-        return ['database', 'mail', 'broadcast', WebPushChannel::class];
+        return ['database', 'mail', 'broadcast'];
     }
 
     /**
@@ -68,7 +66,7 @@ class NewOrderNotification extends Notification implements ShouldBroadcast, Shou
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('tenant.'.$this->order->tenant_id.'.admins'),
+            new PrivateChannel('tenant.' . $this->order->tenant_id . '.admins'),
         ];
     }
 
@@ -105,11 +103,11 @@ class NewOrderNotification extends Notification implements ShouldBroadcast, Shou
         $itemsCount = $this->order->items->count();
         $customerName = $this->order->customer_name ?? 'Cliente';
         $orderNumber = $this->order->order_number;
-        $formattedTotal = 'L. '.number_format((float) ($this->order->total ?? 0), 2);
-        $tenantName = $this->order->tenant->name;
+        $formattedTotal = $this->order->formatted_total;
+        $tenantName = $this->order->tenant?->name ?? 'Tu Negocio';
 
-        // Deep link to Filament Order Resource in the App Panel
-        $orderUrl = url("/app/orders/{$this->order->id}");
+        // Deep link to Filament Order Resource
+        $orderUrl = url("/admin/orders/{$this->order->id}/edit");
 
         return (new MailMessage)
             ->subject("🛒 Nuevo Pedido {$orderNumber} - {$tenantName}")
@@ -120,7 +118,7 @@ class NewOrderNotification extends Notification implements ShouldBroadcast, Shou
             ->line("**Total:** {$formattedTotal}")
             ->action('Ver Pedido', $orderUrl)
             ->line('Revisa tu panel de administración para gestionar este pedido.')
-            ->salutation('— Vito Business OS');
+            ->salutation('— Conecta HN');
     }
 
     /**
@@ -141,36 +139,14 @@ class NewOrderNotification extends Notification implements ShouldBroadcast, Shou
         // Defensive: Ensure relationships are loaded
         $this->order->loadMissing(['items']);
 
-        $formattedTotal = 'L. '.number_format((float) ($this->order->total ?? 0), 2);
-
         return [
             'order_id' => $this->order->id,
             'order_number' => $this->order->order_number,
-            'formatted_total' => $formattedTotal,
+            'formatted_total' => $this->order->formatted_total,
             'customer_name' => $this->order->customer_name ?? 'Cliente',
             'items_count' => $this->order->items->count(),
-            'action_url' => "/app/orders/{$this->order->id}",
-            'message' => "Nuevo pedido {$this->order->order_number} de {$this->order->customer_name} por {$formattedTotal}",
+            'action_url' => "/admin/orders/{$this->order->id}/edit",
+            'message' => "Nuevo pedido {$this->order->order_number} de {$this->order->customer_name} por {$this->order->formatted_total}",
         ];
-    }
-
-    /**
-     * Get the web push representation of the notification.
-     */
-    public function toWebPush(object $notifiable, $notification): WebPushMessage
-    {
-        $formattedTotal = 'L. '.number_format((float) ($this->order->total ?? 0), 2);
-        $orderUrl = url("/app/orders/{$this->order->id}");
-        $customerName = $this->order->customer_name ?? 'Cliente';
-
-        return (new WebPushMessage)
-            ->title('Nuevo pedido recibido')
-            ->icon('/favicon.ico')
-            ->body("{$this->order->order_number} de {$customerName} por {$formattedTotal}")
-            ->action('Abrir pedido', 'open_order')
-            ->data([
-                'url' => $orderUrl,
-                'order_id' => $this->order->id,
-            ]);
     }
 }

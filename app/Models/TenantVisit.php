@@ -46,20 +46,20 @@ class TenantVisit extends Model
      *
      * @param  string  $ip  Visitor IP address
      * @param  string  $userAgent  Browser user agent
-     * @param  string|int  $tenantId  Tenant being visited
+     * @param  int  $tenantId  Tenant being visited
      * @return string SHA-256 hash for session fingerprinting
      */
     public static function generateSessionHash(
         string $ip,
         string $userAgent,
-        string|int $tenantId
+        int $tenantId
     ): string {
         // DETERMINISM: Use UTC timezone explicitly to prevent DST/timezone issues
         $utcDate = now('UTC')->format('Y-m-d');
 
         // DECOUPLED: Use dedicated analytics salt, not app.key
         // This allows app key rotation without breaking historical analytics
-        $analyticsSalt = (string) config('services.analytics.salt', 'conecta-analytics-default-salt');
+        $analyticsSalt = config('services.analytics.salt', env('ANALYTICS_SALT', 'conecta-analytics-default-salt'));
 
         $dailySalt = $utcDate.$analyticsSalt;
 

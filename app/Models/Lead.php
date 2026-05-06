@@ -19,14 +19,9 @@ class Lead extends Model
     use BelongsToTenant, HasFactory;
 
     protected $fillable = [
-        'tenant_id',
-        'name',
-        'email',
-        'phone',
-        'customer_profile_id',
         'product_id',
-        'source',
-        'session_id',
+        'customer_name',
+        'customer_phone',
         'message',
         'status',
     ];
@@ -35,7 +30,16 @@ class Lead extends Model
      * SECURITY: Immutable ownership fields.
      * tenant_id is set automatically by BelongsToTenant trait on creation.
      */
-    protected $guarded = ['id', 'created_at', 'updated_at'];
+    protected $guarded = ['id', 'tenant_id', 'created_at', 'updated_at'];
+
+    /**
+     * PII ENCRYPTION: GDPR/Compliance - encrypted at rest.
+     * Customer contact data is encrypted in the database.
+     */
+    protected $casts = [
+        'customer_phone' => 'encrypted',
+        'message' => 'encrypted',
+    ];
 
     // ═══════════════════════════════════════════════════════════════════════
     // RELATIONSHIPS
@@ -45,30 +49,5 @@ class Lead extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
-    }
-
-    public function customerProfile(): BelongsTo
-    {
-        return $this->belongsTo(CustomerProfile::class);
-    }
-
-    public function getCustomerNameAttribute(): ?string
-    {
-        return $this->attributes['name'] ?? null;
-    }
-
-    public function setCustomerNameAttribute(?string $value): void
-    {
-        $this->attributes['name'] = $value;
-    }
-
-    public function getCustomerPhoneAttribute(): ?string
-    {
-        return $this->attributes['phone'] ?? null;
-    }
-
-    public function setCustomerPhoneAttribute(?string $value): void
-    {
-        $this->attributes['phone'] = $value;
     }
 }

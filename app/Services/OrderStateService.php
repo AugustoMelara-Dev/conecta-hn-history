@@ -4,11 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Application\Sales\Contracts\OrderStateServiceInterface;
-use App\Domain\Sales\Events\OrderCancelled;
-use App\Domain\Sales\Contracts\OrderStateful;
-use App\Domain\Shared\Contracts\EventDispatcherInterface;
-use App\Events\Order\OrderDelivered;
+use App\Contracts\Events\DomainEventBus;
+use App\Events\Order\OrderCancelled;
 use App\Exceptions\InvalidOrderTransitionException;
 use App\Models\Order;
 use App\Models\OrderEvent;
@@ -31,7 +28,7 @@ use Illuminate\Support\Facades\DB;
  * 2. Execute side-effects (restock on cancel, timestamp on deliver)
  * 3. Dispatch broadcasting events for real-time updates
  */
-class OrderStateService implements OrderStateServiceInterface
+class OrderStateService
 {
     /**
      * FSM TOPOLOGY: Defines allowed transitions from each state.
@@ -71,7 +68,8 @@ class OrderStateService implements OrderStateServiceInterface
      * This allows pure domain unit tests with InMemoryEventBus.
      */
     public function __construct(
-        private readonly EventDispatcherInterface $eventDispatcher,
+        private readonly InventoryManager $inventoryManager,
+        private readonly DomainEventBus $eventBus,
     ) {}
 
     /**
@@ -79,13 +77,9 @@ class OrderStateService implements OrderStateServiceInterface
      *
      * @throws InvalidOrderTransitionException If transition is not allowed
      */
-    public function transition(OrderStateful $order, string $newStatus): OrderStateful
+    public function transition(Order $order, string $newStatus): Order
     {
-        if (! $order instanceof Order) {
-            throw new \InvalidArgumentException('OrderStateService currently requires a persistable Eloquent order adapter.');
-        }
-
-        $currentStatus = $order->currentStatus();
+        $currentStatus = $order->status;
 
         // Validate transition is allowed
         $this->validateTransition($currentStatus, $newStatus);
@@ -245,17 +239,17 @@ class OrderStateService implements OrderStateServiceInterface
     {
         $event = match ($newStatus) {
             Order::STATUS_CANCELLED => OrderCancelled::create(
-                tenantId: (string) $order->tenant_id,
-                orderId: (int) $order->id,
-                orderNumber: (string) $order->order_number,
+                tenantId: $order->tenant_id,
+                orderId: $order->id,
+                orderNumber: $order->order_number,
                 reason: 'status_transition',
                 cancelledById: auth()->id(),
-                wasPaid: $order->wasPaid(),
+                wasPaid: $order->isPaid(),
             ),
-            Order::STATUS_DELIVERED => OrderDelivered::create(
-                tenantId: (string) $order->tenant_id,
-                orderId: (int) $order->id,
-                orderNumber: (string) $order->order_number,
+            Order::STATUS_DELIVERED => \App\Events\Order\OrderDelivered::create(
+                tenantId: $order->tenant_id,
+                orderId: $order->id,
+                orderNumber: $order->order_number,
             ),
             // NOTE: OrderPaid is dispatched from PaymentService, not here
             // NOTE: OrderShipped is dispatched from ShippingService, not here
@@ -263,7 +257,7 @@ class OrderStateService implements OrderStateServiceInterface
         };
 
         if ($event !== null) {
-            $this->eventDispatcher->dispatch($event);
+            $this->eventBus->publish($event);
         }
     }
 }

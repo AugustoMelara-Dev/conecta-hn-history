@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Infrastructure\Persistence\Eloquent\Traits\AllowsTrustedTenantAssignment;
 use App\Infrastructure\Persistence\Eloquent\Traits\BelongsToTenant;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
@@ -36,7 +35,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 class OpeningHour extends Model
 {
-    use AllowsTrustedTenantAssignment, BelongsToTenant;
+    use BelongsToTenant;
 
     /**
      * Business timezone - Honduras (UTC-6).
@@ -53,9 +52,10 @@ class OpeningHour extends Model
     /**
      * The attributes that are mass assignable.
      *
-     * @var list<string>
+     * @var array<int, string>
      */
     protected $fillable = [
+        'tenant_id',
         'day_of_week',
         'opening_time',
         'closing_time',
@@ -140,13 +140,7 @@ class OpeningHour extends Model
      */
     public function getRawOpeningTime(): ?string
     {
-        $value = $this->getRawOriginal('opening_time');
-
-        if ($value instanceof Carbon) {
-            return $value->format('H:i:s');
-        }
-
-        return is_string($value) ? $value : null;
+        return $this->getOriginal('opening_time');
     }
 
     /**
@@ -155,13 +149,7 @@ class OpeningHour extends Model
      */
     public function getRawClosingTime(): ?string
     {
-        $value = $this->getRawOriginal('closing_time');
-
-        if ($value instanceof Carbon) {
-            return $value->format('H:i:s');
-        }
-
-        return is_string($value) ? $value : null;
+        return $this->getOriginal('closing_time');
     }
 
     // ═══════════════════════════════════════════════════════════════════════

@@ -26,7 +26,7 @@ use Illuminate\Validation\ValidationException;
  * - Server-side price enforcement (ignores client prices)
  * - Throws ValidationException on parameter tampering attempts
  */
-class PriceCalculatorService implements \App\Application\Shared\Contracts\PriceCalculatorInterface
+class PriceCalculatorService
 {
     /**
      * Calculate composite prices for all cart items in a single batch.
@@ -118,7 +118,7 @@ class PriceCalculatorService implements \App\Application\Shared\Contracts\PriceC
      */
     protected function extractOptionIds(?array $options): array
     {
-        if (empty($options)) {
+        if (empty($options) || ! is_array($options)) {
             return [];
         }
 

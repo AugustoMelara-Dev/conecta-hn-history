@@ -22,12 +22,14 @@ class AppointmentConfirmationMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public function __construct(public Appointment $appointment) {}
+    public function __construct(public Appointment $appointment)
+    {
+    }
 
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Confirmación de Cita - '.$this->appointment->tenant->name,
+            subject: 'Confirmación de Cita - ' . $this->appointment->tenant->name,
         );
     }
 
@@ -40,19 +42,11 @@ class AppointmentConfirmationMail extends Mailable
                 'serviceName' => $this->appointment->service->name,
                 'date' => $this->appointment->scheduled_at->format('d/m/Y h:i A'),
                 'providerName' => $this->appointment->provider->name,
-                'managementUrl' => URL::temporarySignedRoute(
+                'managementUrl' => URL::signedRoute(
                     'public.appointment.manage',
-                    $this->managementUrlExpiresAt(),
                     ['appointment' => $this->appointment->id]
                 ),
             ],
         );
-    }
-
-    private function managementUrlExpiresAt(): \DateTimeInterface
-    {
-        $expiresAt = $this->appointment->scheduled_at->copy()->addDay();
-
-        return $expiresAt->greaterThan(now()->addDay()) ? $expiresAt : now()->addDay();
     }
 }

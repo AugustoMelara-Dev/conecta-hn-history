@@ -17,19 +17,21 @@ use Illuminate\Support\Facades\URL;
  *
  * Sent to customer_email 24 hours before the scheduled appointment.
  * Uses tenant branding and includes rebooking/cancellation links.
- *
+ * 
  * INVARIANT: Must include tenant->name in subject for multi-tenant isolation.
  */
 class AppointmentReminderMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public function __construct(public Appointment $appointment) {}
+    public function __construct(public Appointment $appointment)
+    {
+    }
 
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Recordatorio de Cita - '.$this->appointment->tenant->name,
+            subject: 'Recordatorio de Cita - ' . $this->appointment->tenant->name,
         );
     }
 
@@ -43,19 +45,11 @@ class AppointmentReminderMail extends Mailable
                 'date' => $this->appointment->scheduled_at->translatedFormat('l, d \d\e F \d\e Y'),
                 'time' => $this->appointment->scheduled_at->format('h:i A'),
                 'providerName' => $this->appointment->provider->name,
-                'managementUrl' => URL::temporarySignedRoute(
+                'managementUrl' => URL::signedRoute(
                     'public.appointment.manage',
-                    $this->managementUrlExpiresAt(),
                     ['appointment' => $this->appointment->id]
                 ),
             ],
         );
-    }
-
-    private function managementUrlExpiresAt(): \DateTimeInterface
-    {
-        $expiresAt = $this->appointment->scheduled_at->copy()->addDay();
-
-        return $expiresAt->greaterThan(now()->addHours(12)) ? $expiresAt : now()->addHours(12);
     }
 }

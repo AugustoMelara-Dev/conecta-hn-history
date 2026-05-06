@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Listeners\Security;
 
-use App\Application\Shared\DTOs\Mail\UserMailData;
 use App\Events\Broadcast\NewLoginDetectedBroadcast;
 use App\Events\Security\NewLoginDetected;
 use App\Mail\Security\LoginAlertMail;
@@ -24,7 +23,7 @@ final class SendLoginAlertListener implements ShouldQueue
     {
         // UUID STRING: Use toString() for tenant context
         return [
-            new \App\Infrastructure\Queue\Middleware\TenantQueueMiddleware($event->tenantId()?->toString()),
+            new \App\Domain\Shared\Middleware\TenantQueueMiddleware($event->tenantId()?->toString()),
         ];
     }
 
@@ -39,11 +38,7 @@ final class SendLoginAlertListener implements ShouldQueue
         if ($user) {
             // Send Email Alert
             Mail::to($user->email)->send(
-                new LoginAlertMail(
-                    UserMailData::fromUser($user),
-                    $event->ipAddress()->toString(),
-                    $event->occurredAt()->format(DATE_ATOM)
-                )
+                new LoginAlertMail($user, $event->ipAddress()->toString(), $event->occurredAt())
             );
         }
 

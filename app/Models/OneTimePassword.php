@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Infrastructure\Persistence\Eloquent\Traits\AllowsTrustedTenantAssignment;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -13,19 +12,10 @@ use Illuminate\Support\Facades\Hash;
 
 class OneTimePassword extends Model
 {
-    use AllowsTrustedTenantAssignment, HasFactory, HasUuids;
+    use HasFactory, HasUuids;
 
-    // VC-AUDIT-103: Allow only the fields the system needs during OTP creation.
-    protected $fillable = [
-        'user_id',
-        'identifier',
-        'code',
-        'type',
-        'ip_address',
-        'user_agent',
-        'expires_at',
-        'attempts',
-    ];
+    // VC-AUDIT-103: Hardened to prevent mass assignment of sensitive fields
+    protected $guarded = ['id', 'user_id', 'created_at', 'updated_at'];
 
     protected $casts = [
         'expires_at' => 'datetime',
@@ -40,12 +30,25 @@ class OneTimePassword extends Model
     }
 
     /**
+     * Hash the code before saving - REMOVED TO PREVENT DOUBLE HASHING
+     * The Repository handles hashing via HmacOtpHasher.
+     */
+    // public function setCodeAttribute($value): void ...
+
+    /**
      * Verify if the OTP is still valid
      */
     public function isValid(): bool
     {
         return $this->expires_at->isFuture();
     }
+
+    /**
+     * Verify the code against the hashed value
+     *
+     * @deprecated Use OtpHasherInterface::verify() instead.
+     */
+    // public function verifyCode(string $code): bool ...
 
     /**
      * Scope to get only valid (non-expired) OTPs

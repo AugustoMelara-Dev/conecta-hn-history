@@ -26,7 +26,7 @@ final class RecalculateStatsCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'vito:recalculate-stats';
+    protected $signature = 'connectahn:recalculate-stats';
 
     /**
      * The console command description.

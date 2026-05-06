@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
-use App\Events\Inventory\LowStockThresholdReached;
-use App\Models\Tenant;
-use App\Models\User;
+use App\Events\LowStockThresholdReached;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -35,7 +33,7 @@ final class SendLowStockNotification implements ShouldQueue
     {
         // UUID STRING: Use toString() for tenant context
         return [
-            new \App\Infrastructure\Queue\Middleware\TenantQueueMiddleware((string) $event->product->tenant_id),
+            new \App\Domain\Shared\Middleware\TenantQueueMiddleware($event->tenantId()->toString()),
         ];
     }
 
@@ -44,8 +42,8 @@ final class SendLowStockNotification implements ShouldQueue
      */
     public function handle(LowStockThresholdReached $event): void
     {
-        $productId = $event->product->id;
-        $tenantIdString = (string) $event->product->tenant_id;
+        $productId = $event->aggregateId();
+        $tenantIdString = $event->tenantId()->toString();
 
         // ═══════════════════════════════════════════════════════════════════════
         // SECURITY: EXPLICIT TENANT-SCOPED FETCH (NO GLOBAL SCOPE RELIANCE)
@@ -53,14 +51,14 @@ final class SendLowStockNotification implements ShouldQueue
         // CRITICAL: We NEVER use Product::find() in background jobs.
         // Background workers may not have the global tenant scope booted.
         // We always enforce tenant isolation at the SQL WHERE clause level.
-        $product = \App\Models\Product::withoutGlobalScopes()
+        $product = \App\Models\Product::query()
             ->where('id', $productId)
             ->where('tenant_id', $tenantIdString) // THE IMMUTABLE FIREWALL
             ->first();
 
         if (! $product) {
             // Check if product exists but belongs to different tenant (security probe)
-            $existsElsewhere = \App\Models\Product::withoutGlobalScopes()->where('id', $productId)->exists();
+            $existsElsewhere = \App\Models\Product::where('id', $productId)->exists();
 
             if ($existsElsewhere) {
                 // SECURITY ALERT: Cross-tenant access attempt blocked
@@ -81,6 +79,7 @@ final class SendLowStockNotification implements ShouldQueue
             return; // Graceful termination - do not retry malicious jobs
         }
 
+
         $newStock = $event->currentStock;
         $threshold = $event->threshold;
 
@@ -88,7 +87,7 @@ final class SendLowStockNotification implements ShouldQueue
         // ATOMIC LOCK: Prevents race condition duplicates
         // ═══════════════════════════════════════════════════════════════════════
         $cacheKey = "low_stock_alert_sent_{$productId}_".now()->format('Y-m-d');
-        $secondsUntilMidnight = (int) now()->endOfDay()->diffInSeconds(now());
+        $secondsUntilMidnight = now()->endOfDay()->diffInSeconds(now());
 
         // Try to acquire atomic lock - ABORT if already sent today
         if (! Cache::add($cacheKey, true, $secondsUntilMidnight)) {
@@ -104,7 +103,7 @@ final class SendLowStockNotification implements ShouldQueue
         // ═══════════════════════════════════════════════════════════════════════
         $tenant = $product->tenant;
 
-        if (! $tenant instanceof Tenant) {
+        if (! $tenant || ! $tenant->user) {
             Log::warning("LowStockNotification: No owner found for product #{$productId}");
 
             return;
@@ -112,18 +111,12 @@ final class SendLowStockNotification implements ShouldQueue
 
         $owner = $tenant->user;
 
-        if (! $owner instanceof User) {
-            Log::warning("LowStockNotification: No owner found for product #{$productId}");
-
-            return;
-        }
-
         Log::info("🚨 LOW STOCK ALERT: {$product->name}", [
             'product_id' => $product->id,
             'product_name' => $product->name,
             'current_stock' => $newStock,
             'threshold' => $threshold,
-            'tenant_id' => $tenantIdString,
+            'tenant_id' => $event->tenantId()->toString(),
             'owner_email' => $owner->email,
         ]);
 

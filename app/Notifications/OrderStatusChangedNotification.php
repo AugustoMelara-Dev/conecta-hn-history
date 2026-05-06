@@ -26,7 +26,7 @@ use Illuminate\Support\Facades\Log;
  * Gracefully aborts if customer_email is null/empty to prevent
  * queue worker exceptions.
  *
- * TRIGGER: Dispatched from OrderStateService::transition().
+ * TRIGGER: Dispatched from Order::transitionTo() method
  */
 class OrderStatusChangedNotification extends Notification implements ShouldQueue
 {
@@ -130,7 +130,7 @@ class OrderStatusChangedNotification extends Notification implements ShouldQueue
         $this->order->loadMissing(['tenant']);
 
         $orderNumber = $this->order->order_number;
-        $tenantName = $this->order->tenant->name;
+        $tenantName = $this->order->tenant?->name ?? 'Tu Negocio';
         $statusLabel = self::$statusLabels[$this->newStatus] ?? ucfirst($this->newStatus);
         $statusMessage = self::$statusMessages[$this->newStatus] ?? "Tu pedido ha sido actualizado a: {$statusLabel}";
 

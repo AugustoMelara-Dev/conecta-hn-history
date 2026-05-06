@@ -4,13 +4,10 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Application\Shared\DTOs\Mail\TenantMailData;
-use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Infrastructure\Jobs\Governance\AuditTenantLimits;
 use App\Mail\SubscriptionExpiredMail;
 use App\Mail\SubscriptionExpiringMail;
 use App\Models\Tenant;
-use App\Models\User;
 use App\Settings\GeneralSettings;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Mail;
@@ -27,13 +24,6 @@ use Illuminate\Support\Facades\Mail;
  */
 class ExpireSubscriptions extends Command
 {
-    /** @var array<int, string> */
-    private const PAID_PLAN_KEYS = [
-        TenantPlan::PRO->value,
-        Tenant::PLAN_CRECIMIENTO,
-        Tenant::PLAN_COSECHA,
-    ];
-
     /**
      * The name and signature of the console command.
      * --grace-days es una sobreescritura de emergencia (debugging)
@@ -50,7 +40,7 @@ class ExpireSubscriptions extends Command
     /**
      * Execute the console command.
      */
-    public function handle(): int
+    public function handle()
     {
         // ═══════════════════════════════════════════════════════════════════
         // INYECCION DE CONFIGURACION DESDE "TORRE DE CONTROL"
@@ -64,7 +54,7 @@ class ExpireSubscriptions extends Command
             : $settings->grace_period_days;
 
         $freeProductLimit = $settings->free_plan_product_limit;
-        $dryRun = (bool) $this->option('dry-run');
+        $dryRun = $this->option('dry-run');
 
         $this->info('═══════════════════════════════════════════════════════════');
         $this->info('   AUTOMATA DE SUSCRIPCIONES - '.now()->format('Y-m-d H:i:s'));
@@ -112,8 +102,7 @@ class ExpireSubscriptions extends Command
             $targetDate = now()->addDays($days)->startOfDay();
             $nextDay = $targetDate->copy()->endOfDay();
 
-            $tenants = Tenant::whereIn('plan_type', self::PAID_PLAN_KEYS)
-                ->where('subscription_status', 'active')
+            $tenants = Tenant::where('is_pro', true)
                 ->whereBetween('subscription_ends_at', [$targetDate, $nextDay])
                 ->with('user')
                 ->get();
@@ -121,18 +110,12 @@ class ExpireSubscriptions extends Command
             $this->info("  Vencen en {$days} dia(s): {$tenants->count()} tenant(s)");
 
             foreach ($tenants as $tenant) {
-                $user = $this->resolveTenantUser($tenant);
-
-                if ($user === null) {
-                    continue;
-                }
-
-                $this->line("    -> Alertando: {$tenant->name} ({$user->email})");
+                $this->line("    -> Alertando: {$tenant->name} ({$tenant->user->email})");
 
                 if (! $dryRun) {
                     try {
-                        Mail::to($user->email)->queue(
-                            new SubscriptionExpiringMail($this->toTenantMailData($tenant, $user), $days)
+                        Mail::to($tenant->user->email)->queue(
+                            new SubscriptionExpiringMail($tenant, $days)
                         );
                     } catch (\Exception $e) {
                         $this->error("    Error enviando email: {$e->getMessage()}");
@@ -154,8 +137,7 @@ class ExpireSubscriptions extends Command
         // Fecha limite = hoy - dias de gracia
         $cutoffDate = now()->subDays($graceDays);
 
-        $expiredTenants = Tenant::whereIn('plan_type', self::PAID_PLAN_KEYS)
-            ->where('subscription_status', 'active')
+        $expiredTenants = Tenant::where('is_pro', true)
             ->where('subscription_ends_at', '<', $cutoffDate)
             ->with('user')
             ->get();
@@ -174,11 +156,10 @@ class ExpireSubscriptions extends Command
 
         foreach ($expiredTenants as $tenant) {
             $expiredDaysAgo = $tenant->subscription_ends_at->diffInDays(now());
-            $user = $this->resolveTenantUser($tenant);
 
             $this->warn("  [{$tenant->id}] {$tenant->name}");
             $this->line("      Expiro hace: {$expiredDaysAgo} dias");
-            $this->line('      Email: '.($user instanceof User ? $user->email : 'sin usuario valido'));
+            $this->line("      Email: {$tenant->user->email}");
 
             if ($dryRun) {
                 $this->comment('      (Simulacion - sin cambios)');
@@ -189,26 +170,23 @@ class ExpireSubscriptions extends Command
             try {
                 // Soft Downgrade con limite dinamico
                 $tenant->update([
-                    'plan_type' => TenantPlan::SEMILLA->value,
-                    'subscription_status' => 'expired',
+                    'is_pro' => false,
                     'product_limit' => $freeProductLimit, // Limite desde GeneralSettings
                 ]);
 
                 // Disparar auditoria de limites
                 if (class_exists(AuditTenantLimits::class)) {
-                    AuditTenantLimits::dispatch();
+                    AuditTenantLimits::dispatch($tenant);
                 }
 
                 // Enviar notificacion de suspension
-                if ($user !== null) {
-                    try {
-                        Mail::to($user->email)->queue(
-                            new SubscriptionExpiredMail($this->toTenantMailData($tenant, $user))
-                        );
-                        $this->info('      Email de suspension enviado.');
-                    } catch (\Exception $e) {
-                        $this->error("      Error enviando email: {$e->getMessage()}");
-                    }
+                try {
+                    Mail::to($tenant->user->email)->queue(
+                        new SubscriptionExpiredMail($tenant)
+                    );
+                    $this->info('      Email de suspension enviado.');
+                } catch (\Exception $e) {
+                    $this->error("      Error enviando email: {$e->getMessage()}");
                 }
 
                 $downgraded++;
@@ -225,17 +203,5 @@ class ExpireSubscriptions extends Command
         $this->info('═══════════════════════════════════════════════════════════');
         $this->info("  RESUMEN: {$downgraded} degradados, {$errors} errores");
         $this->info('═══════════════════════════════════════════════════════════');
-    }
-
-    private function resolveTenantUser(Tenant $tenant): ?User
-    {
-        $user = $tenant->user;
-
-        return $user instanceof User ? $user : null;
-    }
-
-    private function toTenantMailData(Tenant $tenant, User $user): TenantMailData
-    {
-        return TenantMailData::fromTenant($tenant, (string) $user->email);
     }
 }
