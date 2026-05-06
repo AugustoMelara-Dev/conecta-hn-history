@@ -1,6 +1,6 @@
 # 🚀 DevOps - Production Infrastructure
 
-This directory contains Infrastructure as Code (IaC) configurations for deploying Vito Business OS to Ubuntu 22.04/24.04 LTS servers.
+This directory contains Infrastructure as Code (IaC) configurations for deploying Conecta HN to Ubuntu 22.04/24.04 LTS servers.
 
 ## 📁 Files
 
@@ -8,7 +8,7 @@ This directory contains Infrastructure as Code (IaC) configurations for deployin
 |------|---------|
 | `deploy.sh` | Atomic deployment script with zero-downtime |
 | `nginx_app.conf` | Nginx server block with security hardening |
-| `vito-worker.conf` | Supervisor configuration for background processes |
+| `conecta-worker.conf` | Supervisor configuration for background processes |
 
 ---
 
@@ -67,14 +67,14 @@ sudo mv composer.phar /usr/local/bin/composer
 ```bash
 sudo mkdir -p /var/www
 cd /var/www
-sudo git clone https://github.com/your-org/vito-business-os.git
-sudo chown -R www-data:www-data vito-business-os
+sudo git clone https://github.com/your-org/conecta-hn.git
+sudo chown -R www-data:www-data conecta-hn
 ```
 
 ### 2. Application Setup
 
 ```bash
-cd /var/www/vito-business-os
+cd /var/www/conecta-hn
 sudo -u www-data composer install --no-dev --optimize-autoloader
 sudo -u www-data cp .env.example .env
 sudo -u www-data php artisan key:generate
@@ -85,10 +85,10 @@ sudo -u www-data php artisan migrate --force
 ### 3. Install Nginx Config
 
 ```bash
-sudo cp devops/nginx_app.conf /etc/nginx/sites-available/vito-business-os
+sudo cp devops/nginx_app.conf /etc/nginx/sites-available/conecta-hn
 # Edit server_name and SSL paths
-sudo nano /etc/nginx/sites-available/vito-business-os
-sudo ln -s /etc/nginx/sites-available/vito-business-os /etc/nginx/sites-enabled/
+sudo nano /etc/nginx/sites-available/conecta-hn
+sudo ln -s /etc/nginx/sites-available/conecta-hn /etc/nginx/sites-enabled/
 sudo rm /etc/nginx/sites-enabled/default
 sudo nginx -t && sudo systemctl reload nginx
 ```
@@ -103,10 +103,10 @@ sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
 
 ```bash
 # Edit paths if needed
-sudo cp devops/vito-worker.conf /etc/supervisor/conf.d/
+sudo cp devops/conecta-worker.conf /etc/supervisor/conf.d/
 sudo supervisorctl reread
 sudo supervisorctl update
-sudo supervisorctl start vito:*
+sudo supervisorctl start conecta:*
 ```
 
 ### 6. Setup Deploy Script
@@ -114,8 +114,8 @@ sudo supervisorctl start vito:*
 ```bash
 sudo chmod +x devops/deploy.sh
 sudo mkdir -p /var/log
-sudo touch /var/log/vito-deploy.log
-sudo chown www-data:www-data /var/log/vito-deploy.log
+sudo touch /var/log/conecta-deploy.log
+sudo chown www-data:www-data /var/log/conecta-deploy.log
 ```
 
 ---
@@ -123,7 +123,7 @@ sudo chown www-data:www-data /var/log/vito-deploy.log
 ## 🚀 Deploying Updates
 
 ```bash
-cd /var/www/vito-business-os
+cd /var/www/conecta-hn
 sudo -u www-data ./devops/deploy.sh
 ```
 
@@ -137,7 +137,7 @@ sudo -u www-data ./devops/deploy.sh
 ./devops/deploy.sh --no-backup
 
 # View deployment log
-tail -f /var/log/vito-deploy.log
+tail -f /var/log/conecta-deploy.log
 ```
 
 ---
@@ -147,30 +147,30 @@ tail -f /var/log/vito-deploy.log
 ### Check Worker Status
 
 ```bash
-sudo supervisorctl status vito:*
+sudo supervisorctl status conecta:*
 ```
 
 ### View Worker Logs
 
 ```bash
 # Real-time log
-sudo supervisorctl tail -f vito-worker:*
+sudo supervisorctl tail -f conecta-worker:*
 
 # Or from file
-tail -f /var/www/vito-business-os/storage/logs/worker.log
+tail -f /var/www/conecta-hn/storage/logs/worker.log
 ```
 
 ### Check Nginx Status
 
 ```bash
 sudo systemctl status nginx
-sudo tail -f /var/log/nginx/vito-business-os.error.log
+sudo tail -f /var/log/nginx/conecta-hn.error.log
 ```
 
 ### Check Security Logs
 
 ```bash
-tail -f /var/www/vito-business-os/storage/logs/security.log
+tail -f /var/www/conecta-hn/storage/logs/security.log
 ```
 
 ---
@@ -199,7 +199,7 @@ sudo systemctl restart php8.2-fpm
 ### Workers Not Processing Jobs
 ```bash
 # Restart workers
-sudo supervisorctl restart vito:*
+sudo supervisorctl restart conecta:*
 
 # Check failed jobs
 php artisan queue:failed
