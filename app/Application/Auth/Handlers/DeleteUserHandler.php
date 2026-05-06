@@ -11,6 +11,9 @@ use App\Domain\Identity\Events\UserDeleted;
 use App\Domain\Identity\Exceptions\CrossTenantAccessException;
 use App\Domain\Identity\Exceptions\UserNotFoundException;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
+use App\Domain\Shared\Contracts\ClockInterface;
+use App\Domain\Shared\Entities\DomainEventMessage;
+use Ramsey\Uuid\Uuid;
 
 /**
  * DeleteUserHandler - Pure Core Edition (Russian Doll Pattern)
@@ -20,6 +23,7 @@ final readonly class DeleteUserHandler implements DeleteUserHandlerInterface
     public function __construct(
         private UserRepositoryInterface $userRepository,
         private OutboxRepositoryInterface $outboxRepository,
+        private ClockInterface $clock,
     ) {}
 
     public function handle(DeleteUserCommand $command): DeleteUserResult
@@ -35,13 +39,15 @@ final readonly class DeleteUserHandler implements DeleteUserHandlerInterface
         }
 
         // 2. IDOR Protection (Redundant but Safe)
-        if ($user->tenantId() !== $command->requestingTenantId) {
+        if ($user->tenantId !== $command->requestingTenantId) {
             throw CrossTenantAccessException::forUserDeletion($command->userId);
         }
 
         // 3. Domain Logic: Delete
-        $userId = $user->id();
-        $tenantId = $user->tenantId();
+        $userId = $user->id;
+        $tenantId = $user->tenantId;
+        $email = $user->email;
+        $name = $user->name;
 
         $this->userRepository->delete($user);
 
@@ -49,9 +55,24 @@ final readonly class DeleteUserHandler implements DeleteUserHandlerInterface
         $event = UserDeleted::fromSnapshot(
             userId: $userId,
             tenantId: $tenantId,
+            email: $email,
+            name: $name,
         );
 
-        $this->outboxRepository->append($event);
+        $message = new DomainEventMessage(
+            eventId: Uuid::uuid7()->toString(),
+            type: UserDeleted::class,
+            aggregateId: (string) $userId,
+            payload: json_encode($event->toPayload()),
+            occurredAt: $this->clock->now(),
+            metadata: [
+                'tenant_id' => $tenantId,
+                'causation_id' => $command->idempotencyKey,
+                'requesting_tenant_id' => $command->requestingTenantId,
+            ]
+        );
+
+        $this->outboxRepository->save($message);
 
         return new DeleteUserResult('deleted', (string) $userId);
     }

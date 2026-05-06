@@ -4,39 +4,36 @@ declare(strict_types=1);
 
 namespace App\Application\Reviews\Results;
 
-use DateTimeImmutable;
+use Carbon\Carbon;
 
 /**
- * SubmitReviewResult - Hybrid DTO for public review intake and review result exposure.
+ * SubmitReviewResult - Immutable Output Contract for Review Submission
+ *
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  SEMANTIC CONTRACT: Exposes review status without Eloquent leakage.     ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final readonly class SubmitReviewResult
 {
     public function __construct(
-        public string $tenantId,
-        public ?int $productId,
-        public int $rating,
-        public ?string $comment,
-        public ?string $userId = null,
-        public ?int $id = null,
-        public ?string $status = null,
-        public ?bool $isPublished = null,
-        public ?DateTimeImmutable $submittedAt = null,
+        public int $id,
+        public string $status,
+        public float $rating,
+        public bool $isPublished,
+        public Carbon $submittedAt,
     ) {}
 
+    /**
+     * Factory method to hydrate from Domain Entity / Eloquent Model.
+     */
     public static function fromEntity(object $review): self
     {
         return new self(
-            tenantId: (string) ($review->tenant_id ?? ''),
-            productId: isset($review->product_id) ? (int) $review->product_id : null,
-            rating: (int) $review->rating,
-            comment: $review->comment ?? null,
-            userId: isset($review->user_id) ? (string) $review->user_id : null,
-            id: (int) $review->id,
-            status: ($review->is_approved ?? false) ? 'APPROVED' : 'PENDING_MODERATION',
-            isPublished: (bool) ($review->is_approved ?? false),
-            submittedAt: $review->created_at instanceof DateTimeImmutable
-                ? $review->created_at
-                : new DateTimeImmutable((string) $review->created_at),
+            id: $review->id,
+            status: $review->is_approved ? 'APPROVED' : 'PENDING_MODERATION',
+            rating: (float) $review->rating,
+            isPublished: (bool) $review->is_approved,
+            submittedAt: $review->created_at instanceof Carbon ? $review->created_at : Carbon::parse($review->created_at),
         );
     }
 }

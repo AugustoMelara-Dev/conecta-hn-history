@@ -116,11 +116,7 @@ final readonly class TenantSettings implements \JsonSerializable, Arrayable
      */
     public static function fromRequest(Request $request): self
     {
-        $data = method_exists($request, 'validated')
-            ? $request->validated()
-            : $request->all();
-
-        return self::fromArray($data);
+        return self::fromArray($request->validated());
     }
 
     /**

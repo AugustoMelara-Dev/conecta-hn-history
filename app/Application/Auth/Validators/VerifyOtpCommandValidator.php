@@ -7,21 +7,23 @@ namespace App\Application\Auth\Validators;
 use App\Application\Auth\Commands\VerifyOtpCommand;
 use App\Application\Auth\Handlers\VerifyOtpHandlerInterface;
 use App\Application\Auth\Results\VerifyOtpResult;
-use App\Application\Shared\Contracts\ValidatorFactoryInterface;
-use App\Application\Shared\Exceptions\CommandValidationException;
+use Illuminate\Contracts\Validation\Factory as ValidatorFactory;
+use Illuminate\Validation\ValidationException;
 
 /**
  * VerifyOtpCommandValidator - Clean Architecture Edition
  *
- * Accepts a generic inner handler so it can wrap the shared middleware
- * decorators produced by PipelineBuilder while still exposing the typed
- * VerifyOtpHandlerInterface at the boundary.
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  DI COMPLIANT: Injects ValidatorFactory contract, no static Facades.    ║
+ * ║  DECORATOR PATTERN: Wraps inner handler with validation layer.          ║
+ * ║  TESTABLE: Factory can be mocked in unit tests.                         ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final readonly class VerifyOtpCommandValidator implements VerifyOtpHandlerInterface
 {
     public function __construct(
-        private object $inner,
-        private ValidatorFactoryInterface $validatorFactory,
+        private VerifyOtpHandlerInterface $inner,
+        private ValidatorFactory $validatorFactory,
     ) {}
 
     public function handle(VerifyOtpCommand $command): VerifyOtpResult
@@ -32,11 +34,11 @@ final readonly class VerifyOtpCommandValidator implements VerifyOtpHandlerInterf
     }
 
     /**
-     * @throws CommandValidationException
+     * @throws ValidationException
      */
     private function validate(VerifyOtpCommand $command): void
     {
-        $this->validatorFactory->validate([
+        $validator = $this->validatorFactory->make([
             'identifier' => $command->identifier,
             'code' => $command->code,
             'tenantId' => $command->tenantId,
@@ -47,5 +49,9 @@ final readonly class VerifyOtpCommandValidator implements VerifyOtpHandlerInterf
             'tenantId' => ['required', 'uuid'],
             'idempotencyKey' => ['required', 'uuid'],
         ]);
+
+        if ($validator->fails()) {
+            throw new ValidationException($validator);
+        }
     }
 }

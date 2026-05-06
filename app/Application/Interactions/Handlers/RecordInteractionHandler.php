@@ -5,16 +5,12 @@ declare(strict_types=1);
 namespace App\Application\Interactions\Handlers;
 
 use App\Application\Interactions\Commands\RecordInteractionCommand;
-use App\Application\Shared\Contracts\DataScrubberInterface;
 use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Contracts\TransactionManagerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Analytics\Repositories\InteractionRepositoryInterface;
 use App\Domain\Sales\Repositories\LeadRepositoryInterface;
 use App\Domain\Shared\Contracts\AdminNotifierInterface;
-use App\Domain\TenantGovernance\Services\OperationalPlaybookTaskManager;
-use App\Models\Lead;
-use App\Models\Tenant;
 
 /**
  * RecordInteractionHandler - Pure Interaction Recording Orchestrator
@@ -27,20 +23,18 @@ use App\Models\Tenant;
  * ║  FRAMEWORK AGNOSTIC: Uses injected interfaces for DB & Log.             ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class RecordInteractionHandler
+final class RecordInteractionHandler
 {
     use LogSanitizer;
 
     private const DEDUPLICATION_WINDOW_MINUTES = 5;
 
     public function __construct(
-        private InteractionRepositoryInterface $interactionRepository,
-        private LeadRepositoryInterface $leadRepository,
-        private AdminNotifierInterface $adminNotifier,
-        private OperationalPlaybookTaskManager $playbookTaskManager,
-        private TransactionManagerInterface $transactionManager,
-        private LoggerInterface $logger,
-        private DataScrubberInterface $scrubber,
+        private readonly InteractionRepositoryInterface $interactionRepository,
+        private readonly LeadRepositoryInterface $leadRepository,
+        private readonly AdminNotifierInterface $adminNotifier,
+        private readonly TransactionManagerInterface $transactionManager,
+        private readonly LoggerInterface $logger,
     ) {}
 
     /**
@@ -49,7 +43,6 @@ final readonly class RecordInteractionHandler
     public function handle(RecordInteractionCommand $command): void
     {
         $this->transactionManager->transaction(function () use ($command): void {
-            $leadProductId = is_numeric($command->productId) ? (int) $command->productId : null;
             // ═══════════════════════════════════════════════════════════════
             // PHASE 1: Deduplication Check (5-minute window, PER-VISITOR)
             // ═══════════════════════════════════════════════════════════════
@@ -65,7 +58,7 @@ final readonly class RecordInteractionHandler
                     'tenant_id' => $command->tenantId,
                     'visitor_id' => substr($command->visitorId, 0, 8).'...',
                     'type' => $command->type,
-                ], $this->scrubber));
+                ]));
 
                 return;
             }
@@ -89,7 +82,7 @@ final readonly class RecordInteractionHandler
                 'tenant_id' => $command->tenantId,
                 'type' => $command->type,
                 'interaction_id' => $interaction->id,
-            ], $this->scrubber));
+            ]));
 
             // ═══════════════════════════════════════════════════════════════
             // PHASE 3: Business Rule - WhatsApp Click → Lead Conversion
@@ -97,29 +90,14 @@ final readonly class RecordInteractionHandler
             if ($this->isWhatsAppClick($command->type)) {
                 $lead = $this->leadRepository->createFromInteraction(
                     tenantId: $command->tenantId,
-                    productId: $leadProductId,
+                    productId: $command->productId,
                     source: $command->type,
-                    message: $this->resolveLeadMessage($command->metadata),
-                    sessionId: $command->visitorId !== '' ? $command->visitorId : null,
                 );
 
                 $this->logger->info('Lead created from interaction', [
                     'tenant_id' => $command->tenantId,
                     'lead_id' => $lead->id,
                 ]);
-
-                $tenant = Tenant::query()->find($command->tenantId);
-                $leadModel = Lead::withoutGlobalScopes()
-                    ->whereKey($lead->id)
-                    ->where('tenant_id', $command->tenantId)
-                    ->first();
-
-                if ($tenant instanceof Tenant && $leadModel instanceof Lead) {
-                    $this->playbookTaskManager->syncForTrigger($tenant, 'lead_follow_up', [
-                        'related' => $leadModel,
-                        'customer_name' => (string) ($leadModel->name ?? 'este cliente'),
-                    ]);
-                }
 
                 $this->adminNotifier->notifyNewLead($lead);
             }
@@ -136,17 +114,5 @@ final readonly class RecordInteractionHandler
             'whatsapp_catalog_click',
             'whatsapp_product_click',
         ], true);
-    }
-
-    /**
-     * @param  array<string, mixed>  $metadata
-     */
-    private function resolveLeadMessage(array $metadata): ?string
-    {
-        $message = $metadata['message'] ?? $metadata['notes'] ?? null;
-
-        return is_string($message) && $message !== ''
-            ? $message
-            : null;
     }
 }

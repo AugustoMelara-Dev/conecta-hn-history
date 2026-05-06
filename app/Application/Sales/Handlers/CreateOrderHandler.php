@@ -4,53 +4,45 @@ declare(strict_types=1);
 
 namespace App\Application\Sales\Handlers;
 
-use App\Application\Inventory\Contracts\InventoryHoldPortInterface;
 use App\Application\Sales\Commands\CreateOrderCommand;
-use App\Application\Sales\Contracts\CheckoutSessionPortInterface;
 use App\Application\Sales\Results\CreateOrderResult;
-use App\Application\Shared\Contracts\CouponValidatorInterface;
-use App\Application\Shared\Contracts\DataScrubberInterface;
-use App\Application\Shared\Contracts\InventoryManagerInterface;
-use App\Application\Shared\Contracts\LoggerInterface;
-use App\Application\Shared\Contracts\PriceCalculatorInterface;
 use App\Application\Shared\Contracts\TransactionManagerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
-use App\Application\TenantGovernance\Contracts\CapabilityManagerInterface;
-use App\Domain\Identity\Exceptions\UserNotFoundException;
-use App\Domain\Identity\Repositories\UserRepositoryInterface;
-use App\Domain\Inventory\Contracts\LocationReaderInterface;
-use App\Domain\Sales\Events\OrderCreated;
 use App\Domain\Sales\Factories\OrderFactory;
 use App\Domain\Sales\Repositories\OrderRepositoryInterface;
-use App\Domain\Shared\Contracts\EventDispatcherInterface;
-use App\Domain\TenantGovernance\Enums\Capability;
-use App\Domain\TenantGovernance\Exceptions\TenantNotFoundException;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
-use DomainException;
+use App\Exceptions\TenantNotFoundException;
+use App\Infrastructure\Bus\TransactionalEventDispatcher;
+use App\Services\CouponValidatorService;
+use App\Services\InventoryManager;
+use App\Services\PriceCalculatorService;
+use Illuminate\Support\Facades\Log;
 
 /**
  * CreateOrderHandler - Pure Business Logic for Order Creation
+ *
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  TYPE SAFETY ENFORCED: No Array Persistence                             ║
+ * ╠══════════════════════════════════════════════════════════════════════════╣
+ * ║  - Uses OrderFactory for aggregation.                                   ║
+ * ║  - Uses Repository->save(OrderEntity).                                  ║
+ * ║  - Transactional via TransactionManagerInterface.                       ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
+final class CreateOrderHandler implements CreateOrderHandlerInterface
 {
     use LogSanitizer;
 
     public function __construct(
-        private InventoryManagerInterface $inventoryManager,
-        private PriceCalculatorInterface $priceCalculator,
-        private CouponValidatorInterface $couponValidator,
-        private TenantRepositoryInterface $tenantRepository,
-        private OrderRepositoryInterface $orderRepository,
-        private UserRepositoryInterface $userRepository,
-        private EventDispatcherInterface $eventDispatcher,
-        private OrderFactory $orderFactory,
-        private TransactionManagerInterface $transactionManager,
-        private LocationReaderInterface $locationReader,
-        private LoggerInterface $logger,
-        private DataScrubberInterface $scrubber,
-        private CapabilityManagerInterface $capabilityManager,
-        private ?InventoryHoldPortInterface $inventoryHoldPort = null,
-        private ?CheckoutSessionPortInterface $checkoutSessionPort = null,
+        private readonly InventoryManager $inventoryManager,
+        private readonly PriceCalculatorService $priceCalculator,
+        private readonly CouponValidatorService $couponValidator,
+        private readonly TenantRepositoryInterface $tenantRepository,
+        private readonly OrderRepositoryInterface $orderRepository,
+        private readonly \App\Domain\Identity\Repositories\UserRepositoryInterface $userRepository,
+        private readonly TransactionalEventDispatcher $eventDispatcher,
+        private readonly OrderFactory $orderFactory,
+        private readonly TransactionManagerInterface $transactionManager, // Injected for Atomicity
     ) {}
 
     public function handle(CreateOrderCommand $command): CreateOrderResult
@@ -62,39 +54,41 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
 
     private function processOrder(CreateOrderCommand $command): CreateOrderResult
     {
-        $tenant = $this->tenantRepository->findById($command->tenantId);
-        if ($tenant === null) {
-            throw TenantNotFoundException::withId($command->tenantId);
-        }
-
-        $this->assertFulfillmentCapability($command);
-        $this->assertValidLocation($command);
-
-        $user = $this->userRepository->findById($command->customerId, $command->tenantId);
+        // STEP 0: RESOLVE CUSTOMER
+        $user = $this->userRepository->findById($command->customerId);
         if (! $user) {
-            throw UserNotFoundException::withIdAndTenant($command->customerId, $command->tenantId);
+            throw new \App\Exceptions\UserNotFoundException("User {$command->customerId} not found");
         }
 
+        // STEP 1: INVENTORY VALIDATION & LOCKING
         $lockedProducts = $this->inventoryManager->validateAndLock(
             $command->items,
             $command->tenantId
         );
 
+        // STEP 2: PRICING CALCULATION
         $calculatedItems = $this->priceCalculator->calculate(
             $command->items,
             $lockedProducts
         );
 
+        // STEP 3: CALCULATE SUBTOTAL
         $subtotal = 0;
         foreach ($calculatedItems as $calc) {
             $subtotal += $calc['line_total'];
         }
 
+        // STEP 4: COUPON VALIDATION
         $discountAmount = 0;
         $couponCode = null;
         $coupon = null;
 
         if (! empty($command->couponCode)) {
+            $tenant = $this->tenantRepository->findById($command->tenantId);
+            if ($tenant === null) {
+                throw new TenantNotFoundException("Tenant {$command->tenantId} not found");
+            }
+
             $coupon = $this->couponValidator->validate(
                 $command->couponCode,
                 $user,
@@ -103,20 +97,23 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
             );
 
             $discountAmount = $coupon->calculateDiscountUnsafe($subtotal);
+            // Note: Redemption should ideally happen inside transaction implicitly or here explicitly
             $this->couponValidator->redeem($coupon, $user, null);
             $couponCode = $coupon->code;
         }
 
         $total = max(0, $subtotal - $discountAmount);
+
+        // STEP 5: GENERATE ORDER NUMBER
         $orderNumber = $this->orderRepository->generateOrderNumber($command->tenantId);
 
+        // STEP 6: FACTORY INSTANTIATION (Domain Aggregation)
         $orderEntity = $this->orderFactory->create(
             tenantId: $command->tenantId,
-            locationId: $command->locationId,
-            customerId: $user->id(),
+            customerId: $user->id,
             orderNumber: $orderNumber,
-            customerName: $user->name(),
-            customerEmail: $user->email(),
+            customerName: $user->name,
+            customerEmail: $user->email->value, // Value Object Access
             currency: $command->currency,
             subtotal: $subtotal,
             total: (float) $total,
@@ -130,83 +127,39 @@ final readonly class CreateOrderHandler implements CreateOrderHandlerInterface
             couponCode: $couponCode
         );
 
-        $persistedOrder = $this->orderRepository->save($orderEntity);
-        $orderId = $persistedOrder->id
-            ?? throw new \LogicException('Order repository must return a persisted order ID.');
+        // STEP 7: PERSISTENCE (Type Safe)
+        // --------------------------------------------------------------------------
+        // @TODO [ARCH-DEBT]: Refactorización de Persistencia Requerida
+        // --------------------------------------------------------------------------
+        // VIOLACIÓN DETECTADA: Aunque se usa OrderEntity, el flujo de persistencia
+        // ideal debería ser repo->save(OrderAggregate) con mapeo interno en infraestructura.
+        // ESTADO: Mitigado parcialmente con Entity wrapper.
+        // --------------------------------------------------------------------------
+        $this->orderRepository->save($orderEntity);
 
-        if ($coupon && $persistedOrder->id) {
-            $this->couponValidator->linkToOrder($coupon, $user, $orderId);
+        // STEP 8: LINK COUPON TO ORDER (After ID generated/saved)
+        if ($coupon && $orderEntity->id) {
+            // Assuming $orderEntity->id is populated by repository save (reference pass or return)
+            // Ideally save() should return the fresh entity with ID
+            $this->couponValidator->linkToOrder($coupon, $command->requestorId, $orderEntity->id);
         }
 
-        $this->eventDispatcher->dispatch(new OrderCreated(
-            orderId: $orderId,
-            tenantId: $command->tenantId,
-            orderNumber: $persistedOrder->orderNumber,
-            customerName: $persistedOrder->customerName,
-            total: (int) round($total),
-            status: 'pending'
+        // STEP 9: DISPATCH EVENT
+        $this->eventDispatcher->dispatch(new \App\Domain\Sales\Events\OrderCreated(
+            orderId: $orderEntity->id,
+            tenantId: $command->tenantId, // or $orderEntity->tenantId if available
+            orderNumber: $orderEntity->orderNumber->toString(), // Assuming VO or string
+            customerName: $orderEntity->customerName,
+            total: (float) $total,
+            status: 'pending' // Default status for new orders
         ));
 
-        $this->logger->info('Order created via Command Bus', $this->sanitizePayload([
-            'order_id' => $persistedOrder->id,
+        Log::info('Order created via Command Bus', $this->sanitizePayload([
+            'order_id' => $orderEntity->id,
             'tenant_id' => $command->tenantId,
             'total' => $total,
-        ], $this->scrubber));
+        ]));
 
-        if ($command->sessionId !== null) {
-            if ($this->inventoryHoldPort !== null) {
-                $this->inventoryHoldPort->commit(
-                    $command->tenantId,
-                    $command->sessionId,
-                    $orderId
-                );
-            }
-
-            if ($this->checkoutSessionPort !== null) {
-                $this->checkoutSessionPort->markAsConverted($command->tenantId, $command->sessionId);
-            }
-        }
-
-        return CreateOrderResult::fromEntity($persistedOrder);
-    }
-
-    private function assertFulfillmentCapability(CreateOrderCommand $command): void
-    {
-        $capability = match ($command->deliveryType) {
-            'pickup' => Capability::PICKUP_ORDERS,
-            'delivery' => Capability::DELIVERY_ORDERS,
-            'shipping' => Capability::SHIPPING_ORDERS,
-            default => throw new DomainException('Tipo de entrega no soportado.'),
-        };
-
-        if ($this->capabilityManager->hasForTenantId($command->tenantId, $capability)) {
-            return;
-        }
-
-        $message = match ($capability) {
-            Capability::PICKUP_ORDERS => 'Este comercio no permite retiro en tienda.',
-            Capability::DELIVERY_ORDERS => 'Este comercio no ofrece entrega a domicilio.',
-            Capability::SHIPPING_ORDERS => 'Este comercio no realiza envios nacionales.',
-        };
-
-        throw new DomainException($message);
-    }
-
-    private function assertValidLocation(CreateOrderCommand $command): void
-    {
-        if ($command->locationId === null || $command->locationId === '') {
-            throw new DomainException('Location is required to create an order.');
-        }
-
-        $locationExists = $this->locationReader->existsActiveForTenant(
-            $command->locationId,
-            $command->tenantId
-        );
-
-        if ($locationExists) {
-            return;
-        }
-
-        throw new DomainException("Invalid or inactive location {$command->locationId}");
+        return CreateOrderResult::fromEntity($orderEntity);
     }
 }

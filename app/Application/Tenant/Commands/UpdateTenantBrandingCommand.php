@@ -18,7 +18,7 @@ final readonly class UpdateTenantBrandingCommand
 {
     public function __construct(
         /** Tenant ID to update */
-        public string $tenantId,
+        public int $tenantId,
 
         /** New logo file (null = no change) */
         public ?FileTransferObject $logo = null,
@@ -58,8 +58,5 @@ final readonly class UpdateTenantBrandingCommand
 
         /** Primary brand color (hex) */
         public ?string $primaryColor = null,
-
-        /** Schema Version for Upcasting */
-        public int $schemaVersion = 1,
     ) {}
 }

@@ -4,24 +4,19 @@ declare(strict_types=1);
 
 namespace App\Application\Products\Commands;
 
-use App\Application\Shared\Contracts\IdempotentCommandInterface;
-
 /**
  * UpdateProductCommand - Immutable Input Contract for Product Update
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
  * ║  SECURITY: Tenant ID required for ownership verification (IDOR guard).  ║
  * ║  SERIALIZATION SAFE: No UploadedFile, only path reference.              ║
- * ║  IDEMPOTENT: Network retries must not cause inconsistent updates.       ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class UpdateProductCommand implements \App\Application\Shared\Contracts\VersionedCommandInterface, IdempotentCommandInterface
+final readonly class UpdateProductCommand
 {
-    use \App\Application\Shared\Traits\HasSchemaVersion;
-
     public function __construct(
         /** Tenant ID for ownership verification */
-        public string $tenantId,
+        public int $tenantId,
 
         /** Product ID to update */
         public int $productId,
@@ -34,12 +29,6 @@ final readonly class UpdateProductCommand implements \App\Application\Shared\Con
 
         /** Price in cents (integer for precision) */
         public int $price,
-
-        /** Idempotency Key (mandatory for deduplication) */
-        public string $idempotencyKey,
-
-        /** Product SKU */
-        public ?string $sku = null,
 
         /** Stock quantity */
         public int $stock = 0,
@@ -55,13 +44,5 @@ final readonly class UpdateProductCommand implements \App\Application\Shared\Con
 
         /** Product visibility */
         public bool $isVisible = true,
-
-        /** Schema version for upcasting support */
-        public int $schemaVersion = 1,
     ) {}
-
-    public function getIdempotencyKey(): string
-    {
-        return $this->idempotencyKey;
-    }
 }

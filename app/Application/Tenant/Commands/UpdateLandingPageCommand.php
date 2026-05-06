@@ -15,15 +15,12 @@ final readonly class UpdateLandingPageCommand
 {
     public function __construct(
         /** Tenant ID to update */
-        public string $tenantId,
+        public int $tenantId,
 
         /**
          * Landing page configuration data.
          * May include: sections, colors, hero text, CTA buttons, etc.
          */
         public array $landingData,
-
-        /** Schema Version for Upcasting */
-        public int $schemaVersion = 1,
     ) {}
 }

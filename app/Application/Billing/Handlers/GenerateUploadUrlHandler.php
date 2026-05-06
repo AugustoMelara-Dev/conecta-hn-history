@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace App\Application\Billing\Handlers;
 
-use App\Application\Shared\Contracts\PresignedUrlGeneratorInterface;
-use App\Application\Shared\Contracts\ResilientRateLimiterInterface;
 use App\Domain\Shared\Contracts\UuidGeneratorInterface;
+use App\Infrastructure\Services\S3PresignerService;
 use InvalidArgumentException;
 
 /**
@@ -21,9 +20,9 @@ final readonly class GenerateUploadUrlHandler implements GenerateUploadUrlHandle
     private const DECAY_SECONDS = 60;
 
     public function __construct(
-        private PresignedUrlGeneratorInterface $presigner,
+        private S3PresignerService $presigner,
         private UuidGeneratorInterface $uuidGenerator,
-        private ResilientRateLimiterInterface $rateLimiter
+        private \App\Infrastructure\Security\ResilientRateLimiter $rateLimiter
     ) {}
 
     /**

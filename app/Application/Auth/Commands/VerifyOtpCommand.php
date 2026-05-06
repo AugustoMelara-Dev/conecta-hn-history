@@ -5,31 +5,31 @@ declare(strict_types=1);
 namespace App\Application\Auth\Commands;
 
 /**
- * VerifyOtpCommand - Immutable OTP verification credentials.
+ * VerifyOtpCommand - Immutable OTP Verification Credentials
  *
- * Transport only. The handler validates cryptography, tenant boundaries, and
- * brute-force protection.
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  TRANSPORT ONLY: No validation logic - Handler validates cryptography.  ║
+ * ║  SECURITY METADATA: Carries IP for audit and brute-force detection.     ║
+ * ║  TENANT AWARE: Mandatory tenantId to prevent cross-tenant verification. ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class VerifyOtpCommand implements \App\Application\Shared\Contracts\HashableCommandInterface, \App\Application\Shared\Contracts\VersionedCommandInterface
+final readonly class VerifyOtpCommand implements \App\Application\Common\Contracts\HashableCommandInterface
 {
-    use \App\Application\Shared\Traits\HasSchemaVersion;
-
     public function __construct(
-        /** Mandatory tenant context. */
+        /** Mandatory Tenant Context (Axiom A) */
         public string $tenantId,
 
-        /** Email or phone number associated with the OTP. */
-        #[\SensitiveParameter] public string $identifier,
+        /** Email or phone number associated with OTP */
+        public string $identifier,
 
-        /** Six-digit OTP code entered by the user. */
-        #[\SensitiveParameter] public string $code,
+        /** 6-digit OTP code entered by user (plain text) */
+        public string $code,
 
-        /** Client IP used for audit and brute-force detection. */
-        #[\SensitiveParameter] public string $ipAddress,
+        /** Client IP for security audit and brute-force detection */
+        public string $ipAddress,
 
-        /** Unique receipt ID for transactional idempotency. */
+        /** Unique Receipt ID (UUID v7) for transactional idempotency */
         public string $idempotencyKey,
-        public int $schemaVersion = 1,
     ) {}
 
     public function getIdempotencyKey(): string

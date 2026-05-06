@@ -5,85 +5,77 @@ declare(strict_types=1);
 namespace App\Actions\Identity;
 
 use App\Application\Identity\Commands\RegisterUserCommand;
-use App\Application\Identity\Contracts\UserReadProjection;
-use App\Application\Identity\Contracts\UserUniquenessCheckerInterface;
-use App\Application\Shared\Contracts\CommandBusInterface;
-use App\Application\Shared\Contracts\TenantRateLimiterInterface;
-use App\Rules\UniqueUser;
-use Illuminate\Contracts\Auth\Authenticatable;
-use Illuminate\Contracts\Validation\Factory as ValidatorFactory;
-use Illuminate\Foundation\Auth\User as FoundationUser;
+use App\Application\Identity\Handlers\RegisterUserHandler;
+use App\Models\User;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
-use RuntimeException;
 
 /**
- * CreateNewUser - Fortify ACL Adapter
+ * CreateNewUser - Infrastructure Adapter for Fortify
  *
- * SYNC REQUIRED: Fortify expects an immediate Authenticatable return after dispatch.
- * DOMAIN INVARIANT EXCEPTION: tenant_id may be null because this is the genesis
- * registration flow for creating a new organization boundary.
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  ADAPTER PATTERN: Bridges Fortify (Infra) to Application Layer.          ║
+ * ║  RESPONSIBILITY: 1. Validate Input (Http/Form)                           ║
+ * ║                  2. Map to Command (DTO)                                 ║
+ * ║                  3. Delegate to Handler                                  ║
+ * ║                  4. Return Eloquent Model (Bridge)                       ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final readonly class CreateNewUser implements CreatesNewUsers
 {
+    // use \App\Actions\Fortify\PasswordValidationRules; // Trait not found in audit
+
     public function __construct(
-        private CommandBusInterface $commandBus,
-        private ValidatorFactory $validatorFactory,
-        private UserUniquenessCheckerInterface $uniquenessChecker,
-        private UserReadProjection $userReadProjection,
-        private TenantRateLimiterInterface $tenantRateLimiter,
+        private readonly RegisterUserHandler $handler
     ) {}
 
     /**
+     * Validate and create a newly registered user.
+     *
      * @param  array<string, string>  $input
      */
-    public function create(array $input): Authenticatable
+    public function create(array $input): User
     {
-        $this->validatorFactory->make($input, [
+        // 1. Validation (Infrastructure Concern)
+        Validator::make($input, [
             'name' => ['required', 'string', 'max:255'],
             'email' => [
                 'required',
                 'string',
                 'email',
                 'max:255',
-                new UniqueUser($this->uniquenessChecker),
+                Rule::unique(User::class),
             ],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'terms' => ['required', 'accepted'],
-            'tenant_id' => ['nullable', 'string', 'exists:tenants,id'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'], // Explicit rules
+            'terms' => ['required', 'accepted'], // Assuming terms are mandatory
+            'tenant_id' => ['nullable', 'string', 'exists:tenants,id'], // Validate if provided
         ])->validate();
 
+        // 2. Map to Command (DTO)
+        // STRICT TENANCY: Resolve tenant_id ONLY from validated input.
+        // The caller (Controller/Fortify pipeline) is responsible for merging
+        // session('tenant_id') into the input array before invoking this Action.
         $tenantId = $input['tenant_id'] ?? null;
 
-        if ($tenantId) {
-            $this->tenantRateLimiter->ensureNotExceeded(
-                actionName: self::class,
-                tenantId: $tenantId,
-                maxAttempts: 10,
-                decayMinutes: 1,
-            );
-        }
-
-        $result = $this->commandBus->dispatch(
-            new RegisterUserCommand(
-                name: $input['name'],
-                email: $input['email'],
-                password: $input['password'],
-                tenantName: $input['company_name'] ?? null,
-                tenantId: $tenantId,
-                role: $tenantId ? 'staff' : 'seller',
-            )
+        $command = new RegisterUserCommand(
+            name: $input['name'],
+            email: $input['email'],
+            password: $input['password'],
+            tenantName: $input['company_name'] ?? null, // Optional if strictly joining, mandatory if creating? Handler handles default.
+            tenantId: $tenantId,
+            role: $tenantId ? 'staff' : 'seller' // Default logic: Join=Staff, New=Owner (Legacy: Seller)
         );
 
-        if (! is_object($result) || ! isset($result->id) || ! is_string($result->id)) {
-            throw new RuntimeException('RegisterUserCommand must return an object with a string id.');
-        }
+        // 3. Delegate to Application Handler
+        // Returns RegisterUserResult with the persisted user ID
+        $result = $this->handler->handle($command);
 
-        $user = $this->userReadProjection->getById($result->id);
-
-        if (! $user instanceof FoundationUser) {
-            throw new RuntimeException('Fortify bridge must resolve a concrete Eloquent user.');
-        }
-
-        return $user;
+        // 4. ARCHITECTURAL BRIDGE (Result -> Eloquent Model)
+        // Fortify contract requires Authenticatable (Eloquent Model).
+        // This fetch is NECESSARY, not redundant - the handler uses
+        // Repository Pattern with Domain Entities, not Eloquent.
+        // Using findOrFail() for failfast on race conditions.
+        return User::findOrFail($result->id);
     }
 }

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Sales\Results;
 
 use App\Application\Sales\DTOs\OrderItemData;
-use App\Domain\Sales\Entities\OrderEntity;
+use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * CreateOrderResult - Immutable Output Contract for Order Creation
@@ -16,6 +16,7 @@ use App\Domain\Sales\Entities\OrderEntity;
  * ║  IDEMPOTENCY READY: Implements strict serialization for caching.        ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
+#[TypeScript]
 final readonly class CreateOrderResult
 {
     public function __construct(
@@ -25,7 +26,7 @@ final readonly class CreateOrderResult
         public string $status,
         public int $itemsCount,
         public string $currency,
-        /** @var array<int, OrderItemData|array<string, mixed>> */
+        /** @var array<int, OrderItemData> */
         public array $items = [],
     ) {}
 
@@ -74,16 +75,19 @@ final readonly class CreateOrderResult
 
     /**
      * Factory method to hydrate from Domain Entity / Eloquent Model.
+     *
+     * @param  object  $order  The Order entity (Model or Domain Entity)
      */
-    public static function fromEntity(OrderEntity $order): self
+    public static function fromEntity(object $order): self
     {
         return new self(
-            id: $order->id ?? 0,
-            orderNumber: $order->orderNumber,
-            totalAmount: $order->total,
+            id: $order->id,
+            orderNumber: $order->order_number,
+            totalAmount: (float) $order->total,
             status: $order->status,
-            itemsCount: count($order->items),
-            currency: $order->currency,
+            itemsCount: method_exists($order, 'items') ? $order->items()->count() : 0,
+            currency: $order->currency ?? 'HNL',
+            // Ideally map items here too
             items: []
         );
     }

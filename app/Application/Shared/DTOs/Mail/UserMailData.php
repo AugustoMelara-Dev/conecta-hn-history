@@ -22,16 +22,16 @@ namespace App\Application\Shared\DTOs\Mail;
 final readonly class UserMailData
 {
     public function __construct(
-        public string|int $id,
+        public int $id,
         public string $name,
-        #[\SensitiveParameter] public string $email,
-        public string|int|null $tenantId = null,
+        public string $email,
+        public ?int $tenantId = null,
     ) {}
 
     /**
      * Create from User model (snapshot at dispatch time).
      */
-    public static function fromUser(object $user): self
+    public static function fromUser(\App\Models\User $user): self
     {
         return new self(
             id: $user->id,

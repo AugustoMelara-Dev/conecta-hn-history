@@ -4,13 +4,12 @@ declare(strict_types=1);
 
 namespace App\Application\Tenant\Handlers;
 
-use App\Application\Shared\Contracts\DataScrubberInterface;
-use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Application\Tenant\Commands\UpdateLandingPageCommand;
+use App\Domain\Identity\Repositories\TenantRepositoryInterface;
 use App\Domain\Tenant\Exceptions\FeatureRequiresProException;
-use App\Domain\TenantGovernance\Exceptions\TenantNotFoundException;
-use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Log;
 
 /**
  * UpdateLandingPageHandler - Landing Page Configuration Handler
@@ -20,20 +19,18 @@ use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
  * ║  HTTP AGNOSTIC: No Illuminate\Http references.                          ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class UpdateLandingPageHandler
+final class UpdateLandingPageHandler
 {
     use LogSanitizer;
 
     public function __construct(
-        private TenantRepositoryInterface $tenantRepository,
-        private LoggerInterface $logger,
-        private DataScrubberInterface $scrubber,
+        private readonly TenantRepositoryInterface $tenantRepository,
     ) {}
 
     /**
      * Handle landing page update command.
      *
-     * @throws TenantNotFoundException If tenant not found
+     * @throws ModelNotFoundException If tenant not found
      * @throws FeatureRequiresProException If tenant is not PRO
      */
     public function handle(UpdateLandingPageCommand $command): void
@@ -42,25 +39,25 @@ final readonly class UpdateLandingPageHandler
         $tenant = $this->tenantRepository->findById($command->tenantId);
 
         if ($tenant === null) {
-            throw TenantNotFoundException::withId($command->tenantId);
+            throw new ModelNotFoundException("Tenant not found: {$command->tenantId}");
         }
 
         // 2. FEATURE GATING: PRO subscription required
-        if (! $tenant->isPro()) {
+        if (! $tenant->is_pro) {
             throw FeatureRequiresProException::forLandingPage();
         }
 
         // 3. Update landing page data (JSON field)
-        $tenant->updateLandingPage([
+        $tenant->landing_page_data = [
             'sections' => $command->landingData,
-            'updated_at' => \Carbon\CarbonImmutable::now()->toIso8601String(),
-        ]);
+            'updated_at' => now()->toIso8601String(),
+        ];
 
         // 4. Persist via Repository
         $this->tenantRepository->save($tenant);
 
-        $this->logger->info('Tenant landing page updated', $this->sanitizePayload([
+        Log::info('Tenant landing page updated', $this->sanitizePayload([
             'tenant_id' => $command->tenantId,
-        ], $this->scrubber));
+        ]));
     }
 }

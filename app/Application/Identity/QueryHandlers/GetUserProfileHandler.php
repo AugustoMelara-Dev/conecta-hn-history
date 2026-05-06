@@ -4,31 +4,35 @@ declare(strict_types=1);
 
 namespace App\Application\Identity\QueryHandlers;
 
-use App\Application\Identity\Contracts\UserReadProjection;
 use App\Application\Identity\Queries\GetUserProfileQuery;
-use App\Application\Shared\Contracts\TenantAwareAuthenticatable;
+// Assuming this exists or returns array/object
 use App\Domain\Identity\Exceptions\UserNotFoundException;
+use Illuminate\Database\ConnectionInterface;
 
 /**
  * Class GetUserProfileHandler
  *
  * Handles the retrieval of user profiles with strict tenant isolation.
- * Uses the UserReadProjection port for CQRS-compliant read access.
- *
- * REFACTORED: Replaced ConnectionInterface with UserReadProjection.
+ * Uses optimized query builder strictly scoped by tenant_id.
  */
 final readonly class GetUserProfileHandler
 {
     public function __construct(
-        private UserReadProjection $userReadProjection
+        private ConnectionInterface $db
     ) {}
 
-    public function handle(GetUserProfileQuery $query): TenantAwareAuthenticatable
+    public function handle(GetUserProfileQuery $query): object
     {
-        try {
-            return $this->userReadProjection->getById($query->id, $query->tenantId);
-        } catch (\Throwable $e) {
-            throw UserNotFoundException::withIdAndTenant($query->id, $query->tenantId);
+        $user = $this->db->table('users')
+            ->where('id', '=', $query->id)
+            ->where('tenant_id', '=', $query->tenantId) // Tenant Firewall
+            ->select(['id', 'name', 'email', 'created_at']) // Explicit columns
+            ->first();
+
+        if ($user === null) {
+            throw new UserNotFoundException('User not found or access denied.');
         }
+
+        return $user;
     }
 }

@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace App\Application\Sales\Decorators;
 
+use App\Application\Common\Contracts\IdempotencyServiceInterface;
 use App\Application\Sales\Commands\CreateOrderCommand;
 use App\Application\Sales\Handlers\CreateOrderHandlerInterface;
 use App\Application\Sales\Results\CreateOrderResult;
-use App\Application\Shared\Common\Exceptions\ConcurrentRequestException;
-use App\Application\Shared\Contracts\IdempotencyServiceInterface;
 use App\Domain\Common\Exceptions\ConcurrencyException;
 
 /**
@@ -33,29 +32,34 @@ final readonly class IdempotentCreateOrderHandler implements CreateOrderHandlerI
             return $cachedResult;
         }
 
+        // 2. Acquire Atomic Lock
+        $lock = $this->service->lock($key);
+
+        if (! $lock->get()) {
+            // If we can't get lock, it means another process is working on this key.
+            // We check once more if result appeared (Double-Check Locking variant via Cache)
+            // or we throw ConcurrencyException / 429.
+            // For now, simple concurrency error.
+            throw new ConcurrencyException('Order processing already in progress for this request.');
+        }
+
         try {
-            $this->service->registerProcessing($key);
-        } catch (ConcurrentRequestException) {
+            // 3. Double-Check inside Lock (Critical for high concurrency)
             $cachedResult = $this->service->get($key);
             if ($cachedResult instanceof CreateOrderResult) {
                 return $cachedResult;
             }
 
-            throw new ConcurrencyException('Order processing already in progress for this request.');
+            // 4. Execution
+            $result = $this->inner->handle($command);
+
+            // 5. Store Result (Release Lock implicitly by expiration or logic, but we store result)
+            $this->service->store($key, $result);
+
+            return $result;
+
+        } finally {
+            $lock->release();
         }
-
-        // 3. Double-Check inside processing window (Critical for high concurrency)
-        $cachedResult = $this->service->get($key);
-        if ($cachedResult instanceof CreateOrderResult) {
-            return $cachedResult;
-        }
-
-        // 4. Execution
-        $result = $this->inner->handle($command);
-
-        // 5. Store Result and mark COMPLETED for future replays
-        $this->service->store($key, $result);
-
-        return $result;
     }
 }

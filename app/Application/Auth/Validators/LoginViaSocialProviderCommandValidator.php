@@ -7,39 +7,30 @@ namespace App\Application\Auth\Validators;
 use App\Application\Auth\Commands\LoginViaSocialProviderCommand;
 use App\Application\Auth\Handlers\LoginViaSocialProviderHandlerInterface;
 use App\Application\Auth\Results\SocialLoginResult;
-use App\Application\Shared\Contracts\ValidatorFactoryInterface;
-use App\Application\Shared\Exceptions\CommandValidationException;
 use App\Domain\Shared\Enums\ProviderName;
+use Illuminate\Contracts\Validation\Factory as ValidatorFactory;
+use Illuminate\Validation\Rules\Enum;
+use Illuminate\Validation\ValidationException;
 
 /**
  * LoginViaSocialProviderCommandValidator - Clean Architecture Edition
  *
- * Accepts a generic inner handler so it can wrap the shared middleware
- * decorators produced by PipelineBuilder while still exposing the typed
- * LoginViaSocialProviderHandlerInterface at the boundary.
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  DI COMPLIANT: Injects ValidatorFactory contract, no static Facades.    ║
+ * ║  DECORATOR PATTERN: Wraps inner handler with validation layer.          ║
+ * ║  TESTABLE: Factory can be mocked in unit tests.                         ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final readonly class LoginViaSocialProviderCommandValidator implements LoginViaSocialProviderHandlerInterface
 {
     public function __construct(
-        private object $inner,
-        private ValidatorFactoryInterface $validatorFactory,
+        private LoginViaSocialProviderHandlerInterface $inner,
+        private ValidatorFactory $validatorFactory,
     ) {}
 
     public function handle(LoginViaSocialProviderCommand $command): SocialLoginResult
     {
-        $this->validate($command);
-
-        return $this->inner->handle($command);
-    }
-
-    /**
-     * @throws CommandValidationException
-     */
-    public function validate(LoginViaSocialProviderCommand $command): void
-    {
-        $allowedProviders = implode(',', array_column(ProviderName::cases(), 'value'));
-
-        $this->validatorFactory->validate([
+        $validator = $this->validatorFactory->make([
             'tenantId' => $command->tenantId,
             'providerName' => $command->providerName,
             'providerId' => $command->providerId,
@@ -49,12 +40,18 @@ final readonly class LoginViaSocialProviderCommandValidator implements LoginViaS
             'avatarUrl' => $command->avatarUrl,
         ], [
             'tenantId' => ['required', 'uuid'],
-            'providerName' => ['required', 'in:'.$allowedProviders],
+            'providerName' => ['required', new Enum(ProviderName::class)],
             'providerId' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
             'name' => ['required', 'string', 'max:255'],
             'idempotencyKey' => ['required', 'uuid'],
             'avatarUrl' => ['nullable', 'url', 'max:1024'],
         ]);
+
+        if ($validator->fails()) {
+            throw new ValidationException($validator);
+        }
+
+        return $this->inner->handle($command);
     }
 }

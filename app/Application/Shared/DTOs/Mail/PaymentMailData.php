@@ -22,7 +22,7 @@ final readonly class PaymentMailData
     /**
      * Create from Payment model (snapshot at dispatch time).
      */
-    public static function fromPayment(object $payment): self
+    public static function fromPayment(\App\Models\Payment $payment): self
     {
         return new self(
             id: $payment->id,

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Application\Sales\Validators;
+namespace App\Application\Validators\Sales;
 
 use App\Application\Sales\Commands\CreateOrderCommand;
 
@@ -14,7 +14,7 @@ use App\Application\Sales\Commands\CreateOrderCommand;
  * ║  DOMAIN RULES: Stock availability checked in InventoryManager.          ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class CreateOrderValidator
+class CreateOrderValidator
 {
     /**
      * Get the validation rules that apply to the command.
@@ -24,8 +24,8 @@ final readonly class CreateOrderValidator
     public function rules(CreateOrderCommand $command): array
     {
         return [
-            'tenantId' => ['required', 'string', 'exists:tenants,id'],
-            'customerId' => ['required', 'string', 'exists:users,id'],
+            'tenantId' => ['required', 'integer', 'exists:tenants,id'],
+            'customerId' => ['required', 'integer', 'exists:users,id'],
             'currency' => ['required', 'string', 'size:3'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'integer', 'exists:products,id'],

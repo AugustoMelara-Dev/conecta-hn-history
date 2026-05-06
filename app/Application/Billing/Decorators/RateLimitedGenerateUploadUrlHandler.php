@@ -5,18 +5,17 @@ declare(strict_types=1);
 namespace App\Application\Billing\Decorators;
 
 use App\Application\Billing\Handlers\GenerateUploadUrlHandlerInterface;
-use App\Application\Shared\Common\Exceptions\RateLimitExceededException;
-use App\Application\Shared\Contracts\LoggerInterface;
-use App\Application\Shared\Contracts\RateLimiterInterface;
+use App\Application\Common\Contracts\RateLimiterInterface;
+use Illuminate\Validation\ValidationException;
 
 /**
  * RateLimitedGenerateUploadUrlHandler - DoS Protection (Level 30)
  *
- * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
- * â•‘  DEFENSE: SIGNING ENDPOINT PROTECTION                                    â•‘
- * â•‘  1. Limits: 20 requests per minute per tenant (Higher burst for uploads).â•‘
- * â•‘  2. Protects: CPU (Signing) & Disk/S3 Metadata Spam.                     â•‘
- * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  DEFENSE: SIGNING ENDPOINT PROTECTION                                    ║
+ * ║  1. Limits: 20 requests per minute per tenant (Higher burst for uploads).║
+ * ║  2. Protects: CPU (Signing) & Disk/S3 Metadata Spam.                     ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final readonly class RateLimitedGenerateUploadUrlHandler implements GenerateUploadUrlHandlerInterface
 {
@@ -26,8 +25,7 @@ final readonly class RateLimitedGenerateUploadUrlHandler implements GenerateUplo
 
     public function __construct(
         private GenerateUploadUrlHandlerInterface $inner,
-        private RateLimiterInterface $rateLimiter,
-        private LoggerInterface $logger,
+        private RateLimiterInterface $rateLimiter
     ) {}
 
     public function handle(string $tenantId, string $mimeType, int $sizeBytes): array
@@ -38,17 +36,19 @@ final readonly class RateLimitedGenerateUploadUrlHandler implements GenerateUplo
             if ($this->rateLimiter->tooManyAttempts($key, self::MAX_ATTEMPTS)) {
                 $seconds = $this->rateLimiter->availableIn($key);
 
-                throw new RateLimitExceededException("Upload rate limit exceeded. Please wait {$seconds} seconds.");
+                throw ValidationException::withMessages([
+                    'tenant_id' => ["Upload rate limit exceeded. Please wait {$seconds} seconds."],
+                ]);
             }
 
             $this->rateLimiter->hit($key, self::DECAY_SECONDS);
-        } catch (RateLimitExceededException $e) {
-            throw $e; // Re-throw actual rate limit signals
+        } catch (ValidationException $e) {
+            throw $e; // Re-throw actual validations
         } catch (\Throwable $e) {
             // CIRCUIT BREAKER: Fail Open
             // If Redis/Cache is down, we do NOT want to block payments.
             // We log the critical failure but allow the request to proceed.
-            $this->logger->critical('Rate Limiter FAILURE (Fail-Open active): '.$e->getMessage());
+            \Illuminate\Support\Facades\Log::critical('Rate Limiter FAILURE (Fail-Open active): '.$e->getMessage());
         }
 
         return $this->inner->handle($tenantId, $mimeType, $sizeBytes);

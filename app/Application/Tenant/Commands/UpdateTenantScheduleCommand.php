@@ -15,15 +15,12 @@ final readonly class UpdateTenantScheduleCommand
 {
     public function __construct(
         /** Tenant ID to update */
-        public string $tenantId,
+        public int $tenantId,
 
         /**
          * Weekly schedule data structure.
          * Expected format: [['day' => 'monday', 'isOpen' => true, 'open' => '08:00', 'close' => '17:00'], ...]
          */
         public array $scheduleData,
-
-        /** Schema Version for Upcasting */
-        public int $schemaVersion = 1,
     ) {}
 }

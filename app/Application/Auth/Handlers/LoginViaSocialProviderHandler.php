@@ -10,11 +10,13 @@ use App\Application\Shared\Contracts\OutboxRepositoryInterface;
 use App\Domain\Identity\Entities\UserEntity;
 use App\Domain\Identity\Events\SocialIdentityLinked;
 use App\Domain\Identity\Events\UserRegisteredViaSocial;
-use App\Domain\Identity\Exceptions\CrossTenantAccessException;
 use App\Domain\Identity\Repositories\SocialIdentityRepositoryInterface;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
+use App\Domain\Shared\Contracts\ClockInterface;
+use App\Domain\Shared\Entities\DomainEventMessage;
 use App\Domain\Shared\Exceptions\DuplicateEntityException;
 use Psr\Log\LoggerInterface;
+use Ramsey\Uuid\Uuid;
 
 /**
  * LoginViaSocialProviderHandler - Atomic Protocol Edition
@@ -31,6 +33,7 @@ final readonly class LoginViaSocialProviderHandler implements LoginViaSocialProv
         private SocialIdentityRepositoryInterface $socialIdentityRepository,
         private UserRepositoryInterface $userRepository,
         private OutboxRepositoryInterface $outboxRepository,
+        private ClockInterface $clock,
         private LoggerInterface $logger,
     ) {}
 
@@ -39,14 +42,11 @@ final readonly class LoginViaSocialProviderHandler implements LoginViaSocialProv
         // 1. Strategy: Direct Social Identity Match (Login)
         $user = $this->socialIdentityRepository->findUserByProvider(
             $command->providerName->value,
-            $command->providerId
+            $command->providerId,
+            $command->tenantId
         );
 
         if ($user instanceof UserEntity) {
-            if ($user->tenantId() !== $command->tenantId) {
-                throw new CrossTenantAccessException('social identity', (string) $user->id());
-            }
-
             $this->updateSocialToken($user, $command);
 
             return SocialLoginResult::success($user);
@@ -72,7 +72,7 @@ final readonly class LoginViaSocialProviderHandler implements LoginViaSocialProv
                 provider: $command->providerName->value,
             );
 
-            $this->persistToOutbox($event);
+            $this->persistToOutbox($event, $command->idempotencyKey, $command->tenantId, $existingUser->id());
 
             return SocialLoginResult::success($existingUser);
         }
@@ -100,7 +100,7 @@ final readonly class LoginViaSocialProviderHandler implements LoginViaSocialProv
                 provider: $command->providerName->value,
             );
 
-            $this->persistToOutbox($event);
+            $this->persistToOutbox($event, $command->idempotencyKey, $command->tenantId, $newUser->id());
 
             return SocialLoginResult::newUser($newUser);
 
@@ -133,7 +133,7 @@ final readonly class LoginViaSocialProviderHandler implements LoginViaSocialProv
                         provider: $command->providerName->value,
                     );
 
-                    $this->persistToOutbox($event);
+                    $this->persistToOutbox($event, $command->idempotencyKey, $command->tenantId, $racedUser->id());
 
                 } catch (DuplicateEntityException $innerException) {
                     // Already linked by the other winner.
@@ -145,9 +145,20 @@ final readonly class LoginViaSocialProviderHandler implements LoginViaSocialProv
         }
     }
 
-    private function persistToOutbox(object $event): void
+    private function persistToOutbox(object $event, string $idempotencyKey, string $tenantId, ?int $aggregateId): void
     {
-        $this->outboxRepository->append($event);
+        $message = new DomainEventMessage(
+            eventId: Uuid::uuid7()->toString(),
+            type: get_class($event),
+            aggregateId: (string) $aggregateId,
+            payload: json_encode($event->toPayload()),
+            occurredAt: $this->clock->now(),
+            metadata: [
+                'tenant_id' => $tenantId,
+                'causation_id' => $idempotencyKey,
+            ]
+        );
+        $this->outboxRepository->save($message);
     }
 
     private function linkIdentity(UserEntity $user, LoginViaSocialProviderCommand $command): void
@@ -157,9 +168,8 @@ final readonly class LoginViaSocialProviderHandler implements LoginViaSocialProv
             $command->providerName->value,
             $command->providerId,
             $command->accessToken,
-            $command->refreshToken,
-            null,
-            $command->avatarUrl
+            $command->avatarUrl,
+            $command->tenantId
         );
     }
 
@@ -169,7 +179,7 @@ final readonly class LoginViaSocialProviderHandler implements LoginViaSocialProv
             $command->providerName->value,
             $command->providerId,
             $command->accessToken,
-            $command->refreshToken,
+            $command->tenantId
         );
     }
 

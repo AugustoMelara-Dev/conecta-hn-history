@@ -4,34 +4,39 @@ declare(strict_types=1);
 
 namespace App\Application\Shared\Middleware;
 
-use App\Application\Shared\Contracts\CommandValidatorRegistryInterface;
-use App\Application\Shared\Contracts\ValidatorFactoryInterface;
-use App\Application\Shared\Exceptions\CommandValidationException;
 use Closure;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 /**
  * ValidationMiddleware - Intercepts Commands before Handling
  *
- * Implements a "Registry over Convention" pipeline step.
- * Resolves validators via an explicit registry — no Service Locator.
+ * Implements a "Convention over Configuration" pipeline step.
+ * Scans for a matching Validator class and enforces rules strictly.
  */
-final readonly class ValidationMiddleware
+class ValidationMiddleware
 {
-    public function __construct(
-        private ValidatorFactoryInterface $validator,
-        private CommandValidatorRegistryInterface $registry,
-    ) {}
-
     public function handle(object $command, Closure $next): mixed
     {
+        // 1. Resolve Validator Class Name (Convention: Command + Validator replacement)
+        // Adjust logic to map App\Application\Commands\X -> App\Application\Validators\XValidator
+        // Current: App\Application\Identity\Commands\RegisterUserCommand
+        // Target:  App\Application\Identity\Validators\RegisterUserValidator
+
         $commandClass = get_class($command);
+        $validatorClass = str_replace(
+            ['\\Commands\\', 'Command'],
+            ['\\Validators\\', 'Validator'],
+            $commandClass
+        );
 
-        // 2. Resolve via explicit registry (no Service Locator, no convention string magic)
-        $validatorInstance = $this->registry->findFor($commandClass);
-
-        if ($validatorInstance === null) {
+        // 2. Skip if no validator exists (Opt-in validation)
+        if (! class_exists($validatorClass)) {
             return $next($command);
         }
+
+        // 3. Resolve Validator Instance
+        $validatorInstance = app($validatorClass);
 
         // 4. Extract Rules (Contract: rules($command))
         if (! method_exists($validatorInstance, 'rules')) {
@@ -44,8 +49,11 @@ final readonly class ValidationMiddleware
         // Convert strict DTO object to array for Validator compatibility
         $payload = json_decode(json_encode($command), true);
 
-        // ValidatorFactoryInterface::validate() throws CommandValidationException on failure
-        $this->validator->validate($payload, $rules);
+        $validator = Validator::make($payload, $rules);
+
+        if ($validator->fails()) {
+            throw new ValidationException($validator);
+        }
 
         // 6. Pass to next middleware/handler
         return $next($command);

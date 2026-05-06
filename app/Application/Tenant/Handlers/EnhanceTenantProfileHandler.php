@@ -4,14 +4,13 @@ declare(strict_types=1);
 
 namespace App\Application\Tenant\Handlers;
 
-use App\Application\Shared\Contracts\AiProfileGeneratorInterface;
-use App\Application\Shared\Contracts\DataScrubberInterface;
 use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Contracts\TransactionManagerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Application\Tenant\Commands\EnhanceTenantProfileCommand;
 use App\Domain\TenantGovernance\Exceptions\TenantDomainException;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
+use App\Services\AiProfileGeneratorService;
 
 /**
  * EnhanceTenantProfileHandler - Pure Business Logic for AI Enhancement
@@ -24,16 +23,15 @@ use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
  * ║  - NO Illuminate imports (uses injected interfaces)                     ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class EnhanceTenantProfileHandler
+final class EnhanceTenantProfileHandler
 {
     use LogSanitizer;
 
     public function __construct(
-        private TenantRepositoryInterface $repository,
-        private AiProfileGeneratorInterface $aiService,
-        private TransactionManagerInterface $transactionManager,
-        private LoggerInterface $logger,
-        private DataScrubberInterface $scrubber,
+        private readonly TenantRepositoryInterface $repository,
+        private readonly AiProfileGeneratorService $aiService,
+        private readonly TransactionManagerInterface $transactionManager,
+        private readonly LoggerInterface $logger,
     ) {}
 
     /**
@@ -52,46 +50,22 @@ final readonly class EnhanceTenantProfileHandler
             }
 
             // Phase 2: Generate AI enhancements
-            $name = $tenant->name();
-
-            if ($name === '') {
-                throw new TenantDomainException('Business name cannot be empty. AI enrichment requires at least a name.');
-            }
-
-            $description = $command->description ?? $tenant->description() ?? '';
-
             $enhancedData = $this->aiService->generate(
-                $name,
-                $description,
-                ($command->tags !== []) ? implode(',', $command->tags) : 'General'
+                $tenant->name ?? '',
+                $command->description ?? $tenant->description ?? '',
+                ($command->tags !== []) ? implode(',', $command->tags) : ($tenant->category?->name ?? 'General')
             );
 
             // Phase 3: Delegate to Domain
-            $tenant->applyAiEnhancement($enhancedData, $command->isAiGenerated);
+            $tenant->applyAiEnhancement($enhancedData, allowReEnhancement: $command->isAiGenerated);
 
             // Phase 4: Persist
             $this->repository->save($tenant);
 
             $this->logger->info('Tenant Profile Enhanced via AI', $this->sanitizePayload([
-                'tenant_id' => $tenant->id(),
-                'ai_tags' => $this->mergeAiTags($enhancedData),
-            ], $this->scrubber));
+                'tenant_id' => $tenant->id,
+                'ai_tags' => $enhancedData['tags'] ?? [],
+            ]));
         });
-    }
-
-    /**
-     * @param  array<string, mixed>  $enhancedData
-     * @return array<int, string>
-     */
-    private function mergeAiTags(array $enhancedData): array
-    {
-        $seoKeywords = is_array($enhancedData['seo_keywords'] ?? null)
-            ? $enhancedData['seo_keywords']
-            : [];
-        $tags = is_array($enhancedData['tags'] ?? null)
-            ? $enhancedData['tags']
-            : [];
-
-        return array_values(array_unique(array_merge($seoKeywords, $tags)));
     }
 }

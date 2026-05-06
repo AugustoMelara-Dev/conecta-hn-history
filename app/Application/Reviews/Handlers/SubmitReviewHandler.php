@@ -6,33 +6,30 @@ namespace App\Application\Reviews\Handlers;
 
 use App\Application\Reviews\Commands\SubmitReviewCommand;
 use App\Application\Reviews\Results\SubmitReviewResult;
-use App\Application\Shared\Contracts\DataScrubberInterface;
-use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Reviews\Repositories\ReviewRepositoryInterface;
-use App\Domain\Shared\Contracts\EventDispatcherInterface;
+use App\Infrastructure\Bus\TransactionalEventDispatcher;
+use Illuminate\Support\Facades\Log;
 
 /**
  * SubmitReviewHandler - Minimalist Command Handler for Review Submission
  *
- * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
- * â•‘  SINGLE RESPONSIBILITY: Persist Review ONLY. No aggregate updates.      â•‘
- * â• â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•£
- * â•‘  - NO ProductRepository injection (decoupling from Product aggregate)   â•‘
- * â•‘  - NO SQL aggregation queries (moved to async listener)                 â•‘
- * â•‘  - Dispatches ReviewCreated for eventual consistency processing         â•‘
- * â•‘  - STRICT RETURN: SubmitReviewResult DTO (no object/array leak)         â•‘
- * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  SINGLE RESPONSIBILITY: Persist Review ONLY. No aggregate updates.      ║
+ * ╠══════════════════════════════════════════════════════════════════════════╣
+ * ║  - NO ProductRepository injection (decoupling from Product aggregate)   ║
+ * ║  - NO SQL aggregation queries (moved to async listener)                 ║
+ * ║  - Dispatches ReviewCreated for eventual consistency processing         ║
+ * ║  - STRICT RETURN: SubmitReviewResult DTO (no object/array leak)         ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class SubmitReviewHandler
+final class SubmitReviewHandler
 {
     use LogSanitizer;
 
     public function __construct(
-        private ReviewRepositoryInterface $reviewRepository,
-        private EventDispatcherInterface $eventDispatcher,
-        private LoggerInterface $logger,
-        private DataScrubberInterface $scrubber,
+        private readonly ReviewRepositoryInterface $reviewRepository,
+        private readonly TransactionalEventDispatcher $eventDispatcher,
     ) {}
 
     /**
@@ -55,7 +52,7 @@ final readonly class SubmitReviewHandler
             'user_id' => $command->userId,
             'rating' => $command->rating,
             'comment' => $command->comment,
-            'is_approved' => false, // Default to pending moderation
+            'is_approved' => true, // Auto-approve per business rule
         ]);
 
         // 2. Dispatch Domain Event (Transactional Outbox)
@@ -67,12 +64,12 @@ final readonly class SubmitReviewHandler
         ));
 
         // 3. Audit Log (PII Scrubbed)
-        $this->logger->info('Review submitted successfully', $this->sanitizePayload([
+        Log::info('Review submitted successfully', $this->sanitizePayload([
             'review_id' => $review->id,
             'product_id' => $command->productId,
             'tenant_id' => $command->tenantId,
             'rating' => $command->rating,
-        ], $this->scrubber));
+        ]));
 
         return SubmitReviewResult::fromEntity($review);
     }

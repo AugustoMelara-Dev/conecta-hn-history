@@ -21,25 +21,13 @@ final readonly class CampaignMailData
     /**
      * Create from Campaign model (snapshot at dispatch time).
      */
-    public static function fromCampaign(object $campaign): self
+    public static function fromCampaign(\App\Models\Campaign $campaign): self
     {
-        $tenantName = 'Vito Business OS';
-
-        if (
-            isset($campaign->tenant)
-            && is_object($campaign->tenant)
-            && isset($campaign->tenant->name)
-            && is_string($campaign->tenant->name)
-            && $campaign->tenant->name !== ''
-        ) {
-            $tenantName = $campaign->tenant->name;
-        }
-
         return new self(
             id: $campaign->id,
             subject: $campaign->subject ?? '',
-            body: $campaign->content ?? '',
-            tenantName: $tenantName,
+            body: $campaign->body ?? '',
+            tenantName: $campaign->tenant?->name ?? 'Conecta HN',
         );
     }
 }

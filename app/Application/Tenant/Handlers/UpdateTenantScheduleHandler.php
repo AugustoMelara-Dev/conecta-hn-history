@@ -4,13 +4,12 @@ declare(strict_types=1);
 
 namespace App\Application\Tenant\Handlers;
 
-use App\Application\Shared\Contracts\DataScrubberInterface;
-use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Application\Tenant\Commands\UpdateTenantScheduleCommand;
-use App\Domain\TenantGovernance\Exceptions\TenantNotFoundException;
-use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
+use App\Domain\Identity\Repositories\TenantRepositoryInterface;
 use DomainException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Log;
 
 /**
  * UpdateTenantScheduleHandler - Business Hours Update Handler
@@ -20,20 +19,18 @@ use DomainException;
  * ║  HTTP AGNOSTIC: No Illuminate\Http references.                          ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class UpdateTenantScheduleHandler
+final class UpdateTenantScheduleHandler
 {
     use LogSanitizer;
 
     public function __construct(
-        private TenantRepositoryInterface $tenantRepository,
-        private LoggerInterface $logger,
-        private DataScrubberInterface $scrubber,
+        private readonly TenantRepositoryInterface $tenantRepository,
     ) {}
 
     /**
      * Handle schedule update command.
      *
-     * @throws TenantNotFoundException If tenant not found
+     * @throws ModelNotFoundException If tenant not found
      * @throws DomainException If no day is open
      */
     public function handle(UpdateTenantScheduleCommand $command): void
@@ -42,21 +39,21 @@ final readonly class UpdateTenantScheduleHandler
         $tenant = $this->tenantRepository->findById($command->tenantId);
 
         if ($tenant === null) {
-            throw TenantNotFoundException::withId($command->tenantId);
+            throw new ModelNotFoundException("Tenant not found: {$command->tenantId}");
         }
 
         // 2. DOMAIN RULE: At least one day must be open
         $this->validateAtLeastOneDayOpen($command->scheduleData);
 
         // 3. Update schedule field
-        $tenant->updateSchedule($command->scheduleData);
+        $tenant->schedule = $command->scheduleData;
 
         // 4. Persist via Repository
         $this->tenantRepository->save($tenant);
 
-        $this->logger->info('Tenant schedule updated', $this->sanitizePayload([
+        Log::info('Tenant schedule updated', $this->sanitizePayload([
             'tenant_id' => $command->tenantId,
-        ], $this->scrubber));
+        ]));
     }
 
     /**

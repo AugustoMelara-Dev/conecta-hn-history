@@ -15,7 +15,7 @@ use Closure;
  * ║  FRAMEWORK AGNOSTIC: Uses TransactionManagerInterface instead of DB.    ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class TransactionMiddleware
+final class TransactionMiddleware
 {
     public function __construct(
         private readonly TransactionManagerInterface $transactionManager

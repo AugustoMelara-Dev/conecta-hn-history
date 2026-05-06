@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Application\Billing\Listeners;
 
-use App\Application\Shared\Contracts\LoggerInterface;
 use App\Domain\Billing\Entities\PaymentEntity;
 use App\Domain\Billing\Events\PaymentReported;
 use App\Domain\Billing\Repositories\PaymentRepositoryInterface;
 use App\Domain\Billing\Services\DocumentStorageServiceInterface;
 use App\Domain\Shared\Exceptions\StaleObjectException;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use Throwable;
 
@@ -25,23 +27,31 @@ use Throwable;
  * ║  5. Atomic Optimistic Update.                                            ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class PromotePaymentEvidence
+class PromotePaymentEvidence implements ShouldQueue
 {
+    use InteractsWithQueue;
+
+    public int $tries = 3;
+
+    public bool $afterCommit = true;
+
     private const MAX_ATTEMPTS = 3;
 
     public function __construct(
         private PaymentRepositoryInterface $paymentRepository,
         private DocumentStorageServiceInterface $documentStorage,
-        private LoggerInterface $logger,
     ) {}
 
     public function handle(PaymentReported $event): void
     {
-        $this->logger->info("PromotePaymentEvidence: Processing Payment {$event->paymentId}");
+        Log::info("PromotePaymentEvidence: Processing Payment {$event->paymentId}");
 
+        $attempts = 0;
         $cachedPermanentPath = null;
 
-        for ($attempts = 1; $attempts <= self::MAX_ATTEMPTS; $attempts++) {
+        do {
+            $attempts++;
+
             try {
                 // 1. RE-HYDRATION (Fresh Read from PRIMARY NODE)
                 // LEVEL 38: STRONG CONSISTENCY - Writer-Pinned Fetching
@@ -49,9 +59,17 @@ final readonly class PromotePaymentEvidence
                 $payment = $this->paymentRepository->findByIdOnWriteConnection($event->paymentId);
 
                 if (! $payment) {
-                    throw new RuntimeException(
-                        "ZOMBIE EVENT: Payment {$event->paymentId} not found on Primary Node."
-                    );
+                    // LEVEL 38+40: DETERMINISTIC FAIL-FAST WITH OBSERVABILITY
+                    // If the record is missing on the PRIMARY NODE, it is DEFINITIVE.
+                    // Using fail() instead of delete() to:
+                    // 1. Trigger the failed() hook for logging
+                    // 2. Populate the failed_jobs table for SRE visibility
+                    // 3. Enable alerting on Zombie Events
+                    $this->fail(new RuntimeException(
+                        "ZOMBIE EVENT: Payment {$event->paymentId} not found on Primary Node (Transaction Rollback or Deletion)."
+                    ));
+
+                    return;
                 }
 
                 // 2. VERIFICATION (Idempotency Check)
@@ -61,7 +79,7 @@ final readonly class PromotePaymentEvidence
                 }
 
                 if (! str_starts_with($proofUrl, 'temp')) {
-                    $this->logger->info("PromotePaymentEvidence: Payment {$payment->id} evidence already promoted. Skipping.");
+                    Log::info("PromotePaymentEvidence: Payment {$payment->id} evidence already promoted. Skipping.");
 
                     return;
                 }
@@ -90,13 +108,12 @@ final readonly class PromotePaymentEvidence
                 // 5. ATOMIC OPTIMISTIC UPDATE
                 $this->paymentRepository->updateOptimistically($updatedPayment);
 
-                $this->logger->info("PromotePaymentEvidence: Successfully promoted to {$permanentPath}");
-
-                return;
+                Log::info("PromotePaymentEvidence: Successfully promoted to {$permanentPath}");
+                break; // Success
 
             } catch (StaleObjectException $e) {
-                if ($attempts === self::MAX_ATTEMPTS) {
-                    $this->logger->error("PromotePaymentEvidence: Failed to update DB after {$attempts} attempts due to contention.", [
+                if ($attempts >= self::MAX_ATTEMPTS) {
+                    Log::error("PromotePaymentEvidence: Failed to update DB after {$attempts} attempts due to contention.", [
                         'payment_id' => $event->paymentId,
                     ]);
                     throw $e;
@@ -104,10 +121,11 @@ final readonly class PromotePaymentEvidence
                 usleep($attempts * 100000); // 100ms Backoff
             } catch (Throwable $e) {
                 // Check if we can retry the job (Queue level)
-                $this->logger->error("PromotePaymentEvidence: Failed attempt {$attempts}: ".$e->getMessage());
+                Log::error("PromotePaymentEvidence: Failed attempt {$attempts}: ".$e->getMessage());
                 throw $e;
             }
-        }
+
+        } while ($attempts < self::MAX_ATTEMPTS);
     }
 
     /**
@@ -119,8 +137,16 @@ final readonly class PromotePaymentEvidence
      */
     private function executeSafePromotion(string $paymentId, string $tempPath): string
     {
-        $this->logger->info("PromotePaymentEvidence: Promoting artifact for Payment {$paymentId}");
+        Log::info("PromotePaymentEvidence: Promoting artifact for Payment {$paymentId}");
 
         return $this->documentStorage->promote($tempPath);
+    }
+
+    public function failed(PaymentReported $event, Throwable $exception): void
+    {
+        Log::critical("TERMINAL FAILURE: Could not promote evidence for Payment {$event->paymentId}. Artifact is stuck in TEMP storage.", [
+            'payment_id' => $event->paymentId,
+            'exception' => $exception->getMessage(),
+        ]);
     }
 }

@@ -7,10 +7,11 @@ namespace App\Application\Identity\Validators;
 use App\Application\Identity\Commands\RegisterUserCommand;
 use App\Application\Identity\Validators\Rules\UniqueTenantSlugRule;
 use App\Application\Identity\Validators\Rules\UniqueUserEmailRule;
-use App\Application\Shared\Contracts\ValidatorFactoryInterface;
-use App\Application\Shared\Exceptions\CommandValidationException;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
+use Illuminate\Contracts\Validation\Factory as ValidatorFactory;
+use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 
 /**
  * RegisterUserValidator - Executable Validation Service
@@ -27,7 +28,7 @@ use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 final readonly class RegisterUserValidator
 {
     public function __construct(
-        private ValidatorFactoryInterface $validatorFactory,
+        private ValidatorFactory $validatorFactory,
         private UserRepositoryInterface $userRepository,
         private TenantRepositoryInterface $tenantRepository,
     ) {}
@@ -35,7 +36,7 @@ final readonly class RegisterUserValidator
     /**
      * Validate the RegisterUserCommand and throw on failure.
      *
-     * @throws CommandValidationException If validation fails
+     * @throws ValidationException If validation fails
      */
     public function validate(RegisterUserCommand $command): void
     {
@@ -47,13 +48,17 @@ final readonly class RegisterUserValidator
             'slug' => $command->slug,
         ];
 
-        $this->validatorFactory->validate($data, $this->rules($command));
+        $validator = $this->validatorFactory->make($data, $this->rules($command));
+
+        if ($validator->fails()) {
+            throw new ValidationException($validator);
+        }
     }
 
     /**
      * Get validation rules for the RegisterUserCommand.
      *
-     * @return array<string, array|string>
+     * @return array<string, \Illuminate\Contracts\Validation\Rule|array|string>
      */
     public function rules(RegisterUserCommand $command): array
     {
@@ -66,7 +71,7 @@ final readonly class RegisterUserValidator
                 'max:255',
                 new UniqueUserEmailRule($this->userRepository),
             ],
-            'password' => ['required', 'string', 'min:8', 'regex:/[A-Za-z]/', 'regex:/[0-9]/'],
+            'password' => ['required', 'string', Password::defaults()],
             'tenantName' => ['nullable', 'string', 'max:255'],
             'slug' => [
                 'nullable',

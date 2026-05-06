@@ -7,21 +7,24 @@ namespace App\Application\Auth\Validators;
 use App\Application\Auth\Commands\UpdateUserPasswordCommand;
 use App\Application\Auth\Handlers\UpdateUserPasswordHandlerInterface;
 use App\Application\Auth\Results\UpdateUserPasswordResult;
-use App\Application\Shared\Contracts\ValidatorFactoryInterface;
-use App\Application\Shared\Exceptions\CommandValidationException;
+use Illuminate\Contracts\Validation\Factory as ValidatorFactory;
+use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 
 /**
  * UpdateUserPasswordCommandValidator - Clean Architecture Edition
  *
- * Accepts a generic inner handler so it can wrap the shared middleware
- * decorators produced by PipelineBuilder while still exposing the typed
- * UpdateUserPasswordHandlerInterface at the boundary.
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  DI COMPLIANT: Injects ValidatorFactory contract, no static Facades.    ║
+ * ║  DECORATOR PATTERN: Wraps inner handler with validation layer.          ║
+ * ║  TESTABLE: Factory can be mocked in unit tests.                         ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final readonly class UpdateUserPasswordCommandValidator implements UpdateUserPasswordHandlerInterface
 {
     public function __construct(
-        private object $inner,
-        private ValidatorFactoryInterface $validatorFactory,
+        private UpdateUserPasswordHandlerInterface $inner,
+        private ValidatorFactory $validatorFactory,
     ) {}
 
     public function handle(UpdateUserPasswordCommand $command): UpdateUserPasswordResult
@@ -32,11 +35,11 @@ final readonly class UpdateUserPasswordCommandValidator implements UpdateUserPas
     }
 
     /**
-     * @throws CommandValidationException
+     * @throws ValidationException
      */
     private function validate(UpdateUserPasswordCommand $command): void
     {
-        $this->validatorFactory->validate([
+        $validator = $this->validatorFactory->make([
             'userId' => $command->userId,
             'requestingTenantId' => $command->requestingTenantId,
             'currentPassword' => $command->currentPassword,
@@ -46,8 +49,12 @@ final readonly class UpdateUserPasswordCommandValidator implements UpdateUserPas
             'userId' => ['required', 'uuid'],
             'requestingTenantId' => ['required', 'uuid'],
             'currentPassword' => ['required', 'string'],
-            'newPassword' => ['required', 'string', 'min:8'],
+            'newPassword' => ['required', 'string', Password::min(8)->letters()->numbers()],
             'idempotencyKey' => ['required', 'uuid'],
         ]);
+
+        if ($validator->fails()) {
+            throw new ValidationException($validator);
+        }
     }
 }

@@ -9,7 +9,7 @@ use App\Application\Auth\Handlers\LoginViaSocialProviderHandlerInterface;
 use App\Application\Auth\Results\SocialLoginResult;
 use App\Application\Auth\Validators\LoginViaSocialProviderCommandValidator;
 
-final readonly class LoginViaSocialProviderValidationDecorator implements LoginViaSocialProviderHandlerInterface
+final class LoginViaSocialProviderValidationDecorator implements LoginViaSocialProviderHandlerInterface
 {
     public function __construct(
         private LoginViaSocialProviderHandlerInterface $inner,

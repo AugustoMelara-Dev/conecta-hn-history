@@ -12,13 +12,11 @@ namespace App\Application\Reviews\Commands;
  * ║  NO AGGREGATE LOGIC: This command triggers a single atomic write.       ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class SubmitReviewCommand implements \App\Application\Shared\Contracts\VersionedCommandInterface
+final readonly class SubmitReviewCommand
 {
-    use \App\Application\Shared\Traits\HasSchemaVersion;
-
     public function __construct(
         /** Tenant ID for multi-tenant isolation */
-        public string $tenantId,
+        public int $tenantId,
 
         /** Author's User ID */
         public int $userId,
@@ -31,8 +29,5 @@ final readonly class SubmitReviewCommand implements \App\Application\Shared\Cont
 
         /** Review comment text */
         public ?string $comment = null,
-
-        /** Schema Version for Upcasting */
-        public int $schemaVersion = 1,
     ) {}
 }

@@ -5,14 +5,17 @@ declare(strict_types=1);
 namespace App\Application\Auth\Handlers;
 
 use App\Application\Auth\Commands\UpdateUserPasswordCommand;
-use App\Application\Auth\Results\UpdateUserPasswordResult;
 use App\Application\Shared\Contracts\OutboxRepositoryInterface;
 use App\Domain\Auth\Events\UserPasswordChanged;
 use App\Domain\Auth\Exceptions\InvalidCredentialsException;
+use App\Domain\Identity\Entities\UserEntity;
 use App\Domain\Identity\Exceptions\CrossTenantAccessException;
 use App\Domain\Identity\Exceptions\UserNotFoundException;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
-use App\Domain\Shared\PasswordHasherInterface;
+use App\Domain\Shared\Contracts\ClockInterface;
+use App\Domain\Shared\Entities\DomainEventMessage;
+use App\Domain\Shared\Services\PasswordHasherInterface;
+use Ramsey\Uuid\Uuid;
 
 /**
  * UpdateUserPasswordHandler - Atomic Protocol Edition
@@ -29,9 +32,10 @@ final readonly class UpdateUserPasswordHandler implements UpdateUserPasswordHand
         private UserRepositoryInterface $userRepository,
         private PasswordHasherInterface $hasher,
         private OutboxRepositoryInterface $outboxRepository,
+        private ClockInterface $clock,
     ) {}
 
-    public function handle(UpdateUserPasswordCommand $command): UpdateUserPasswordResult
+    public function handle(UpdateUserPasswordCommand $command): \App\Application\Auth\Results\UpdateUserPasswordResult
     {
         // 1. Load Target User
 
@@ -42,6 +46,11 @@ final readonly class UpdateUserPasswordHandler implements UpdateUserPasswordHand
                 (string) $command->userId,
                 $command->requestingTenantId
             );
+        }
+
+        // Integrity Check
+        if (! $user instanceof UserEntity) {
+            throw new \RuntimeException('Repository returned invalid object type.');
         }
 
         // 2. IDOR Protection
@@ -76,9 +85,22 @@ final readonly class UpdateUserPasswordHandler implements UpdateUserPasswordHand
             sessionInvalidated: $sessionInvalidated,
         );
 
-        $this->outboxRepository->append($event);
+        $message = new DomainEventMessage(
+            eventId: Uuid::uuid7()->toString(),
+            type: UserPasswordChanged::class,
+            aggregateId: (string) $command->userId,
+            payload: json_encode($event->toPayload()),
+            occurredAt: $this->clock->now(),
+            metadata: [
+                'tenant_id' => $command->requestingTenantId,
+                'causation_id' => $command->idempotencyKey,
+                'session_invalidated' => $sessionInvalidated,
+            ]
+        );
 
-        return new UpdateUserPasswordResult(
+        $this->outboxRepository->save($message);
+
+        return new \App\Application\Auth\Results\UpdateUserPasswordResult(
             status: 'success',
             userId: $command->userId
         );

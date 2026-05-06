@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Application\Identity\Validators\Rules;
 
-use App\Application\Shared\Contracts\ValidationRuleInterface;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use Closure;
+use Illuminate\Contracts\Validation\ValidationRule;
 
 /**
  * UniqueUserEmailRule - Optimized for Performance
  */
-final readonly class UniqueUserEmailRule implements ValidationRuleInterface
+final readonly class UniqueUserEmailRule implements ValidationRule
 {
     public function __construct(
         private UserRepositoryInterface $userRepository

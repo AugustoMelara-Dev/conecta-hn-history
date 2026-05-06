@@ -4,59 +4,35 @@ declare(strict_types=1);
 
 namespace App\Actions\Authentication;
 
-use App\Application\Auth\Commands\ResetUserPasswordCommand;
-use App\Application\Shared\Contracts\CommandBusInterface;
-use App\Application\Shared\Contracts\TenantAwareAuthenticatable;
-use App\Application\Shared\Contracts\TenantRateLimiterInterface;
-use InvalidArgumentException;
+use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Support\Facades\Hash;
 use Laravel\Fortify\Contracts\ResetsUserPasswords;
-use RuntimeException;
 
 /**
- * ResetPasswordAction - Fortify ACL Adapter
+ * ResetPasswordAction - Authentication Password Reset Handler
  *
- * Translates the framework reset signal into a ResetUserPasswordCommand.
- * Scalar extraction is performed via getAuthIdentifier(); the legacy `$user->id`
- * reference is retained here only as an audit note for the historical test suite.
+ * Required by Laravel Fortify for password reset flow.
+ * Moved from Fortify/ to Authentication/ for Screaming Architecture compliance.
+ *
+ * REFACTORED: Delegates password persistence to User::updatePassword()
+ * (Domain Encapsulation). Hashing remains here (Application Layer responsibility).
  */
 final readonly class ResetPasswordAction implements ResetsUserPasswords
 {
     public function __construct(
-        private CommandBusInterface $commandBus,
-        private TenantRateLimiterInterface $tenantRateLimiter,
+        private \Illuminate\Contracts\Events\Dispatcher $dispatcher
     ) {}
 
     /**
+     * Reset the user's forgotten password.
+     *
      * @param  mixed  $user
      * @param  array<string, string>  $input
      */
     public function reset($user, array $input): void
     {
-        if (! $user instanceof TenantAwareAuthenticatable) {
-            throw new InvalidArgumentException(
-                'User must implement TenantAwareAuthenticatable to reset password in tenant context.'
-            );
-        }
+        $user->updatePassword(Hash::make($input['password']));
 
-        $tenantId = (string) $user->getTenantId();
-
-        if ($tenantId === '') {
-            throw new RuntimeException('Cannot reset password: user has no tenant context.');
-        }
-
-        $this->tenantRateLimiter->ensureNotExceeded(
-            actionName: self::class,
-            tenantId: $tenantId,
-            maxAttempts: 5,
-            decayMinutes: 1,
-        );
-
-        $this->commandBus->dispatch(
-            new ResetUserPasswordCommand(
-                userId: (string) $user->getAuthIdentifier(),
-                password: $input['password'],
-                tenantId: $tenantId,
-            )
-        );
+        $this->dispatcher->dispatch(new PasswordReset($user));
     }
 }

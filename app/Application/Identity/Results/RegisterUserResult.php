@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Identity\Results;
 
-use DateTimeImmutable;
+use Carbon\CarbonImmutable;
 
 /**
  * Class RegisterUserResult
@@ -17,8 +17,7 @@ final readonly class RegisterUserResult
     public function __construct(
         public string $id,
         public string $tenantId,
-        #[\SensitiveParameter] public string $email,
-        public DateTimeImmutable $registeredAt,
-        public bool $requiresVerification = true,
+        public string $email,
+        public CarbonImmutable $registeredAt,
     ) {}
 }

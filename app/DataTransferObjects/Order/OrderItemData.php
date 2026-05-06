@@ -34,6 +34,8 @@ use Illuminate\Contracts\Support\Arrayable;
  */
 final readonly class OrderItemData implements \JsonSerializable, Arrayable
 {
+    private const REQUIRED_FIELDS = ['product_id', 'quantity', 'unit_price'];
+
     public function __construct(
         public int $productId,
         public string $productName,
@@ -137,10 +139,14 @@ final readonly class OrderItemData implements \JsonSerializable, Arrayable
     {
         $missing = [];
 
-        foreach (['product_id', 'quantity'] as $field) {
-            if (! isset($data[$field])) {
-                $missing[] = $field;
-            }
+        // product_id is absolutely required
+        if (! isset($data['product_id'])) {
+            $missing[] = 'product_id';
+        }
+
+        // quantity is absolutely required
+        if (! isset($data['quantity'])) {
+            $missing[] = 'quantity';
         }
 
         // price can come as unit_price or price

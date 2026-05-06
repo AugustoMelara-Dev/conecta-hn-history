@@ -14,14 +14,16 @@ use App\Domain\Auth\Repositories\OtpRepositoryInterface;
 use App\Domain\Auth\Services\OtpHasherInterface;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\Shared\Contracts\ClockInterface;
+use App\Domain\Shared\Entities\DomainEventMessage;
 
 /**
  * VerifyOtpHandler - Atomic Protocol Edition
  *
- * Atomic protocol:
- * - "Insert-or-Die" gatekeeper.
- * - Transactional outbox dentro del bloqueo atómico.
- * - Sin efectos secundarios fuera del outbox.
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  ATOMIC PROTOCOL: "Insert-or-Die" Gatekeeper                            ║
+ * ║  CONSISTENCY: Transactional Outbox within Atomic Lock                   ║
+ * ║  PURITY: No side effects (Events/Mailers) outside Outbox                ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final readonly class VerifyOtpHandler implements VerifyOtpHandlerInterface
 {
@@ -47,7 +49,7 @@ final readonly class VerifyOtpHandler implements VerifyOtpHandlerInterface
             throw new InvalidOtpException;
         }
 
-        if ($otp->isExpired($this->clock->now())) {
+        if ($otp->isExpired($this->clock->immutablenow())) {
             $this->otpRepository->invalidateByIdentifier($command->identifier, $command->tenantId);
             throw new OtpExpiredException;
         }
@@ -77,12 +79,26 @@ final readonly class VerifyOtpHandler implements VerifyOtpHandlerInterface
             tenantId: $command->tenantId
         );
 
-        $this->outboxRepository->append($event);
+        $message = new DomainEventMessage(
+            eventId: $event->eventId,
+            type: OtpVerified::class,
+            aggregateId: (string) $otp->id,
+            payload: json_encode($event->toPayload()),
+            occurredAt: $this->clock->now(),
+            metadata: [
+                'tenant_id' => $command->tenantId,
+                'causation_id' => $command->idempotencyKey,
+                'user_id' => $otp->userId,
+                'trace_id' => null,
+            ]
+        );
+
+        $this->outboxRepository->save($message);
 
         return $result;
     }
 
-    private function resolveUserOrNew(?string $userId, string $identifier, string $tenantId): VerifyOtpResult
+    private function resolveUserOrNew(?int $userId, string $identifier, string $tenantId): VerifyOtpResult
     {
         if ($userId === null) {
             return VerifyOtpResult::forNewUser($identifier);
@@ -95,5 +111,10 @@ final readonly class VerifyOtpHandler implements VerifyOtpHandlerInterface
         }
 
         return VerifyOtpResult::forNewUser($identifier);
+    }
+
+    private function maskIdentifier(string $identifier): string
+    {
+        return substr($identifier, 0, 3).'***';
     }
 }

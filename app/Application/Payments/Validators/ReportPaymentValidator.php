@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace App\Application\Payments\Validators;
+namespace App\Application\Validators\Payments;
 
 use App\Application\Billing\Commands\ReportPaymentCommand;
 
 /**
  * ReportPaymentValidator - Structural Validation
  */
-final readonly class ReportPaymentValidator
+class ReportPaymentValidator
 {
     public function rules(ReportPaymentCommand $command): array
     {

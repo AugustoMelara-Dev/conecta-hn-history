@@ -5,13 +5,12 @@ declare(strict_types=1);
 namespace App\Application\Products\Handlers;
 
 use App\Application\Products\Commands\DeleteProductCommand;
-use App\Application\Shared\Contracts\DataScrubberInterface;
-use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Product\Events\ProductDeleted;
-use App\Domain\Product\Exceptions\ProductNotFoundException;
 use App\Domain\Product\Repositories\ProductRepositoryInterface;
-use App\Domain\Shared\Contracts\EventDispatcherInterface;
+use App\Infrastructure\Bus\TransactionalEventDispatcher;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Log;
 
 /**
  * DeleteProductHandler - Command Handler for Product Soft Deletion
@@ -21,21 +20,19 @@ use App\Domain\Shared\Contracts\EventDispatcherInterface;
  * ║  IDOR PROTECTED: Verifies tenant ownership before deletion.             ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class DeleteProductHandler
+final class DeleteProductHandler
 {
     use LogSanitizer;
 
     public function __construct(
-        private ProductRepositoryInterface $productRepository,
-        private EventDispatcherInterface $eventDispatcher,
-        private LoggerInterface $logger,
-        private DataScrubberInterface $scrubber,
+        private readonly ProductRepositoryInterface $productRepository,
+        private readonly TransactionalEventDispatcher $eventDispatcher,
     ) {}
 
     /**
      * Handle product deletion command.
      *
-     * @throws ProductNotFoundException If product not found or tenant mismatch
+     * @throws ModelNotFoundException If product not found or tenant mismatch
      */
     public function handle(DeleteProductCommand $command): void
     {
@@ -43,34 +40,31 @@ final readonly class DeleteProductHandler
         $product = $this->productRepository->findById($command->productId);
 
         if ($product === null) {
-            throw ProductNotFoundException::withId($command->productId);
+            throw new ModelNotFoundException("Product not found: {$command->productId}");
         }
 
         // 2. SECURITY GUARD: Tenant Ownership Verification
-        if (! $product->belongsToTenant($command->tenantId)) {
-            $this->logger->warning('SECURITY: Cross-tenant product deletion attempt', [
+        if ($product->tenant_id !== $command->tenantId) {
+            Log::warning('SECURITY: Cross-tenant product deletion attempt', [
                 'requested_product_id' => $command->productId,
                 'requesting_tenant_id' => $command->tenantId,
             ]);
-            throw ProductNotFoundException::withId($command->productId);
+            throw new ModelNotFoundException("Product not found: {$command->productId}");
         }
-
-        $productId = $product->id
-            ?? throw new \LogicException('Cannot delete a product without a persisted ID.');
 
         // 3. Soft Delete via Repository
         $this->productRepository->delete($product);
 
         // 4. Dispatch Domain Event
         $this->eventDispatcher->dispatch(new ProductDeleted(
-            productId: $productId,
+            productId: $product->id,
             tenantId: $command->tenantId,
             name: $product->name,
         ));
 
-        $this->logger->info('Product deleted', $this->sanitizePayload([
+        Log::info('Product deleted', $this->sanitizePayload([
             'product_id' => $command->productId,
             'tenant_id' => $command->tenantId,
-        ], $this->scrubber));
+        ]));
     }
 }

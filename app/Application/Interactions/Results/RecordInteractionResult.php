@@ -16,11 +16,11 @@ final readonly class RecordInteractionResult
      * @param  array<string, mixed>|null  $metadata
      */
     public function __construct(
-        public string $tenantId,
+        public int $tenantId,
         public string $type,
-        public ?string $productId,
-        #[\SensitiveParameter] public ?string $ipAddress,
-        #[\SensitiveParameter] public ?string $userAgent,
+        public ?int $productId,
+        public ?string $ipAddress,
+        public ?string $userAgent,
         public ?string $referrer,
         public ?string $url,
         public ?array $metadata

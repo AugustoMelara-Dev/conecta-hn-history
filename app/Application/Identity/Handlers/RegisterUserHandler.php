@@ -6,17 +6,17 @@ namespace App\Application\Identity\Handlers;
 
 use App\Application\Identity\Commands\RegisterUserCommand;
 use App\Application\Identity\Results\RegisterUserResult;
-use App\Application\Shared\Contracts\IdGeneratorInterface;
-use App\Application\Shared\Contracts\OutboxRepositoryInterface;
-use App\Application\Shared\Contracts\SlugGeneratorInterface;
 use App\Application\Shared\Contracts\TransactionManagerInterface;
 use App\Domain\Identity\Entities\UserEntity;
 use App\Domain\Identity\Enums\UserRole;
 use App\Domain\Identity\Events\UserRegistered;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
+use App\Domain\Shared\OutboxRepositoryInterface;
 use App\Domain\Shared\PasswordHasherInterface;
 use App\Domain\TenantGovernance\Entities\TenantEntity as Tenant;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Str;
 
 /**
  * Class RegisterUserHandler
@@ -31,23 +31,14 @@ final readonly class RegisterUserHandler implements RegisterUserHandlerInterface
         private TenantRepositoryInterface $tenantRepository,
         private TransactionManagerInterface $transactionManager,
         private OutboxRepositoryInterface $outboxRepository,
-
         private PasswordHasherInterface $hasher,
-        private IdGeneratorInterface $idGenerator,
-        private SlugGeneratorInterface $slugGenerator,
     ) {}
 
     public function handle(RegisterUserCommand $command): RegisterUserResult
     {
-        // Guard: Staff registration requires an explicit Tenant ID.
-        // Prevents accidental "New Tenant" creation if ID is omitted for a Staff user.
-        if ($command->tenantId === null && $command->role === UserRole::STAFF->value) {
-            throw new \DomainException('tenantId is required for tenant-bound user registration.');
-        }
-
         // 1. Generate Deterministic IDs & Time
-        $userId = $this->idGenerator->generate();
-        $now = new \DateTimeImmutable;
+        $userId = (string) Str::uuid();
+        $now = CarbonImmutable::now();
 
         // 2. Security Hardening (Hashing BEFORE Domain/Persistence)
         $passwordHash = $this->hasher->hash($command->password);
@@ -60,12 +51,12 @@ final readonly class RegisterUserHandler implements RegisterUserHandlerInterface
                 // Verify tenant exists first
                 $tenant = $this->tenantRepository->findById($command->tenantId);
                 if (! $tenant) {
-                    // Should throw DomainException, using generic for now as per project style might vary
-                    throw new \InvalidArgumentException("Tenant not found: {$command->tenantId}");
+                     // Should throw DomainException, using generic for now as per project style might vary
+                     throw new \InvalidArgumentException("Tenant not found: {$command->tenantId}");
                 }
-
+                
                 $tenantId = $command->tenantId;
-                // Default to STAFF if not specified, but never OWNER allowed here for safety?
+                // Default to STAFF if not specified, but never OWNER allowed here for safety? 
                 // We trust the command input for role, but default to STAFF if null.
                 $userRole = $command->role ? UserRole::from($command->role) : UserRole::STAFF;
 
@@ -78,15 +69,15 @@ final readonly class RegisterUserHandler implements RegisterUserHandlerInterface
                     role: $userRole,
                     tenantId: $tenantId
                 );
-
+                
                 // Persist User (Tenant already exists)
                 $this->userRepository->save($user);
 
             } else {
                 // FLOW A: Create New Tenant (Greenfield)
-                $tenantId = $this->idGenerator->generate();
+                $tenantId = (string) Str::uuid();
                 $tenantName = $command->tenantName ?? $command->name."'s Workspace";
-                $tenantDomain = $command->slug ?? $this->slugGenerator->generate($tenantName);
+                $tenantDomain = $command->slug ?? Str::slug($tenantName);
 
                 $tenant = Tenant::create(
                     id: $tenantId,
@@ -111,16 +102,15 @@ final readonly class RegisterUserHandler implements RegisterUserHandlerInterface
             // 5. Atomic Event Dispatch (Outbox)
             // Constructing strictly matching the UserRegistered signature
             // Ensure we use the BACKING VALUE of the Enum (string)
-            $finalRole = $command->tenantId
-                ? ($command->role ?? UserRole::STAFF->value)
+            $finalRole = $command->tenantId 
+                ? ($command->role ?? UserRole::STAFF->value) 
                 : UserRole::TENANT_OWNER->value;
 
             $event = new UserRegistered(
                 user_id: $userId,
                 name: $command->name,
-                email: new \App\Domain\Shared\ValueObjects\EncryptedEmail(
-                    \Illuminate\Support\Facades\Crypt::encryptString($command->email)
-                ),
+                email: $command->email,
+                password_hash: $passwordHash,
                 role: $finalRole,
                 tenant_id: $tenantId,
                 occurredOn: $now
@@ -133,8 +123,7 @@ final readonly class RegisterUserHandler implements RegisterUserHandlerInterface
                 id: $userId,
                 tenantId: $tenantId,
                 email: $command->email,
-                registeredAt: $now,
-                requiresVerification: true
+                registeredAt: $now
             );
         });
     }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Application\Tenant\Results;
 
+use Spatie\TypeScriptTransformer\Attributes\TypeScript;
+
 /**
  * RegisterTenantResult - Immutable Output Contract for Tenant Registration
  *
@@ -12,15 +14,14 @@ namespace App\Application\Tenant\Results;
  * ║  IDEMPOTENCY READY: Implements strict serialization for caching.        ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
+#[TypeScript]
 final readonly class RegisterTenantResult
 {
     public function __construct(
-        public string $tenantId,
+        public int $tenantId,
         public string $domain,
         public string $ownerEmail,
         public string $setupUrl,
-        public bool $requiresPayment = false,
-        public ?string $paymentId = null,
     ) {}
 
     public function toArray(): array
@@ -30,20 +31,16 @@ final readonly class RegisterTenantResult
             'domain' => $this->domain,
             'ownerEmail' => $this->ownerEmail,
             'setupUrl' => $this->setupUrl,
-            'requiresPayment' => $this->requiresPayment,
-            'paymentId' => $this->paymentId,
         ];
     }
 
     public static function fromArray(array $data): self
     {
         return new self(
-            tenantId: (string) $data['tenantId'],
+            tenantId: (int) $data['tenantId'],
             domain: (string) $data['domain'],
             ownerEmail: (string) $data['ownerEmail'],
             setupUrl: (string) $data['setupUrl'],
-            requiresPayment: (bool) ($data['requiresPayment'] ?? false),
-            paymentId: isset($data['paymentId']) ? (string) $data['paymentId'] : null,
         );
     }
 
@@ -53,20 +50,17 @@ final readonly class RegisterTenantResult
     public static function fromEntities(
         object $tenant,
         object $user,
-        string $appUrl,
-        ?string $paymentId = null,
+        ?string $appUrl = null
     ): self {
         // Domain construction logic
-        $domain = $tenant->domain().'.'.parse_url($appUrl, PHP_URL_HOST);
-        $setupUrl = rtrim($appUrl, '/')."/tenant/{$tenant->domain()}/setup";
+        $domain = $tenant->slug.'.'.parse_url($appUrl ?? config('app.url'), PHP_URL_HOST);
+        $setupUrl = ($appUrl ?? config('app.url'))."/tenant/{$tenant->slug}/setup";
 
         return new self(
-            tenantId: $tenant->id(),
+            tenantId: $tenant->id,
             domain: $domain,
-            ownerEmail: $user->email(),
+            ownerEmail: $user->email,
             setupUrl: $setupUrl,
-            requiresPayment: $paymentId !== null,
-            paymentId: $paymentId,
         );
     }
 }

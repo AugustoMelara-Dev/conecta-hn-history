@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Application\Products\Validators;
+namespace App\Application\Validators\Products;
 
 use App\Application\Products\Commands\CreateProductCommand;
 
@@ -14,7 +14,7 @@ use App\Application\Products\Commands\CreateProductCommand;
  * ║  UNIQUE RULE: Pragmatically included here for SKU/name collision.       ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class CreateProductValidator
+class CreateProductValidator
 {
     /**
      * Get the validation rules that apply to the command.

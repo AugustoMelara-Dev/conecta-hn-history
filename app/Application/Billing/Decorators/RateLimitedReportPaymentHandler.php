@@ -7,19 +7,18 @@ namespace App\Application\Billing\Decorators;
 use App\Application\Billing\Commands\ReportPaymentCommand;
 use App\Application\Billing\Handlers\ReportPaymentHandlerInterface;
 use App\Application\Billing\Results\ReportPaymentResult;
-use App\Application\Shared\Common\Exceptions\RateLimitExceededException;
-use App\Application\Shared\Contracts\LoggerInterface;
-use App\Application\Shared\Contracts\RateLimiterInterface;
+use App\Application\Common\Contracts\RateLimiterInterface;
+use Illuminate\Validation\ValidationException;
 
 /**
  * RateLimitedReportPaymentHandler - DoS Protection (Level 28)
  *
- * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
- * â•‘  DEFENSE: TENANT-AWARE RATE LIMITING                                     â•‘
- * â•‘  1. Limits: 10 requests per minute per tenant.                           â•‘
- * â•‘  2. Protects: S3 Upload Bandwidth & Database Connections.                â•‘
- * â•‘  3. Storage: Redis (Atomic).                                             â•‘
- * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  DEFENSE: TENANT-AWARE RATE LIMITING                                     ║
+ * ║  1. Limits: 10 requests per minute per tenant.                           ║
+ * ║  2. Protects: S3 Upload Bandwidth & Database Connections.                ║
+ * ║  3. Storage: Redis (Atomic).                                             ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final readonly class RateLimitedReportPaymentHandler implements ReportPaymentHandlerInterface
 {
@@ -29,8 +28,7 @@ final readonly class RateLimitedReportPaymentHandler implements ReportPaymentHan
 
     public function __construct(
         private ReportPaymentHandlerInterface $inner,
-        private RateLimiterInterface $rateLimiter,
-        private LoggerInterface $logger,
+        private RateLimiterInterface $rateLimiter
     ) {}
 
     public function handle(ReportPaymentCommand $command): ReportPaymentResult
@@ -41,17 +39,19 @@ final readonly class RateLimitedReportPaymentHandler implements ReportPaymentHan
             if ($this->rateLimiter->tooManyAttempts($key, self::MAX_ATTEMPTS)) {
                 $seconds = $this->rateLimiter->availableIn($key);
 
-                throw new RateLimitExceededException("Rate limit exceeded. Please try again in {$seconds} seconds.");
+                throw ValidationException::withMessages([
+                    'tenant_id' => ["Rate limit exceeded. Please try again in {$seconds} seconds."],
+                ]);
             }
 
             $this->rateLimiter->hit($key, self::DECAY_SECONDS);
-        } catch (RateLimitExceededException $e) {
-            throw $e; // Propagate rate limit signal
+        } catch (ValidationException $e) {
+            throw $e; // Respect validation errors (429)
         } catch (\Throwable $e) {
             // CIRCUIT BREAKER: Fail Open (Level 33)
             // If Redis is down, we MUST NOT block payment reporting (Revenue).
             // We log the failure as critical but allow the request to pass.
-            $this->logger->critical('Rate Limiter FAILURE in ReportPayment (Fail-Open active): '.$e->getMessage());
+            \Illuminate\Support\Facades\Log::critical('Rate Limiter FAILURE in ReportPayment (Fail-Open active): '.$e->getMessage());
         }
 
         return $this->inner->handle($command);

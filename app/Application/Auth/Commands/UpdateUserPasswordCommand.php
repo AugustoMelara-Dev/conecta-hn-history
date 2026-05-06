@@ -4,22 +4,17 @@ declare(strict_types=1);
 
 namespace App\Application\Auth\Commands;
 
-use App\Application\Shared\Contracts\SensitiveDataInterface;
-
 /**
  * UpdateUserPasswordCommand - Secure Password Change Contract
  *
- * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
- * â•‘  IDOR PROTECTION: Carries requestingTenantId for ownership validation.  â•‘
- * â•‘  SEC-01 FIX: Passwords scrubbed from stack traces via SensitiveParameterâ•‘
- * â•‘  IMMUTABLE: final readonly prevents tampering after dispatch.           â•‘
- * â•‘  P1-REDACT: SensitiveDataInterface for Outbox/log sanitization.        â•‘
- * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  IDOR PROTECTION: Carries requestingTenantId for ownership validation.  ║
+ * ║  SECURITY: Plain password is hashed in Handler, never stored in logs.   ║
+ * ║  IMMUTABLE: final readonly prevents tampering after dispatch.           ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class UpdateUserPasswordCommand implements \App\Application\Shared\Contracts\HashableCommandInterface, \App\Application\Shared\Contracts\VersionedCommandInterface, SensitiveDataInterface
+final readonly class UpdateUserPasswordCommand implements \App\Application\Common\Contracts\HashableCommandInterface
 {
-    use \App\Application\Shared\Traits\HasSchemaVersion;
-
     public function __construct(
         /** User ID to update (UUID string) */
         public string $userId,
@@ -31,18 +26,17 @@ final readonly class UpdateUserPasswordCommand implements \App\Application\Share
          */
         public string $requestingTenantId,
 
-        /** Current password for verification (scrubbed from stack traces) */
-        #[\SensitiveParameter] public string $currentPassword,
+        /** Current plain text password (for verification) */
+        public string $currentPassword,
 
-        /** New password (scrubbed from stack traces, hashed by Handler) */
-        #[\SensitiveParameter] public string $newPassword,
+        /** New plain text password (will be hashed) */
+        public string $newPassword,
 
         /** Whether to refresh remember token (forces re-login on other devices) */
         public bool $refreshRememberToken,
 
         /** Unique Receipt ID (UUID v7) for transactional idempotency */
         public string $idempotencyKey,
-        public int $schemaVersion = 1,
     ) {}
 
     public function getIdempotencyKey(): string
@@ -57,13 +51,12 @@ final readonly class UpdateUserPasswordCommand implements \App\Application\Share
 
     public function getCommandHash(): string
     {
-        // SEC-01 FIX: No password derivatives in command hash.
-        // Discriminate by user + idempotency key only.
-        return hash('xxh128', 'update_pwd_'.$this->userId.'_'.$this->idempotencyKey);
-    }
-
-    public function getSensitiveProperties(): array
-    {
-        return ['currentPassword', 'newPassword'];
+        return hash('sha256', json_encode([
+            'userId' => $this->userId,
+            'requestingTenantId' => $this->requestingTenantId,
+            'newPasswordHash' => md5($this->newPassword), // Avoid logging plain password in hash if debugged
+            // We include md5 of new password to discriminate specific change attempts
+            // MD5 is fast and "good enough" for identifying if payload changed, we don't store this hash as password.
+        ]));
     }
 }

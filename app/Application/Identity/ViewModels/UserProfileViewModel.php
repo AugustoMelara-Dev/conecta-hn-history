@@ -38,7 +38,7 @@ final readonly class UserProfileViewModel
         /**
          * User's email address.
          */
-        #[\SensitiveParameter] public string $email,
+        public string $email,
 
         /**
          * Tenant name (nullable for orphan users).

@@ -6,7 +6,7 @@ namespace App\Application\Auth\Decorators;
 
 use App\Application\Auth\Commands\GenerateOtpCommand;
 use App\Application\Auth\Contracts\GenerateOtpHandlerInterface;
-use App\Application\Shared\Contracts\TransactionManagerInterface;
+use Illuminate\Support\Facades\DB;
 
 /**
  * TransactionGenerateOtpHandler
@@ -17,12 +17,11 @@ use App\Application\Shared\Contracts\TransactionManagerInterface;
 final readonly class TransactionGenerateOtpHandler implements GenerateOtpHandlerInterface
 {
     public function __construct(
-        private GenerateOtpHandlerInterface $inner,
-        private TransactionManagerInterface $transactionManager,
+        private GenerateOtpHandlerInterface $inner
     ) {}
 
     public function handle(GenerateOtpCommand $command): void
     {
-        $this->transactionManager->transaction(fn () => $this->inner->handle($command));
+        DB::transaction(fn () => $this->inner->handle($command));
     }
 }

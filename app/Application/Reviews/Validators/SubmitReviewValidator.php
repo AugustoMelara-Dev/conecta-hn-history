@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace App\Application\Reviews\Validators;
+namespace App\Application\Validators\Reviews;
 
 use App\Application\Reviews\Commands\SubmitReviewCommand;
 
 /**
  * SubmitReviewValidator - Structural Validation
  */
-final readonly class SubmitReviewValidator
+class SubmitReviewValidator
 {
     public function rules(SubmitReviewCommand $command): array
     {

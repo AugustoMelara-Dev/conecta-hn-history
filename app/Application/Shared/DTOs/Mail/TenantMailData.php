@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Application\Shared\DTOs\Mail;
 
-use App\Domain\TenantGovernance\Enums\TenantPlan;
-
 /**
  * TenantMailData - Immutable DTO for Tenant Email Context
  *
@@ -14,9 +12,9 @@ use App\Domain\TenantGovernance\Enums\TenantPlan;
 final readonly class TenantMailData
 {
     public function __construct(
-        public string|int $id,
+        public int $id,
         public string $name,
-        #[\SensitiveParameter] public string $email,
+        public string $email,
         public string $planType,
         public ?string $subscriptionEndsAt = null,
     ) {}
@@ -24,15 +22,13 @@ final readonly class TenantMailData
     /**
      * Create from Tenant model (snapshot at dispatch time).
      */
-    public static function fromTenant(object $tenant, ?string $email = null): self
+    public static function fromTenant(\App\Models\Tenant $tenant): self
     {
-        $planType = $tenant->plan_type ?? 'semilla';
-
         return new self(
             id: $tenant->id,
-            name: (string) $tenant->name,
-            email: $email ?? (string) ($tenant->email ?? ''),
-            planType: $planType instanceof TenantPlan ? $planType->value : (string) $planType,
+            name: $tenant->name,
+            email: $tenant->email ?? '',
+            planType: $tenant->plan_type ?? 'semilla',
             subscriptionEndsAt: $tenant->subscription_ends_at?->toDateTimeString(),
         );
     }

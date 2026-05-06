@@ -4,40 +4,37 @@ declare(strict_types=1);
 
 namespace App\Application\Auth\Commands;
 
-use App\Application\Shared\Contracts\HashableCommandInterface;
+use App\Application\Common\Contracts\HashableCommandInterface;
 
 /**
  * GenerateOtpCommand - Immutable OTP Request Contract
  *
- * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
- * â•‘  TENANT AWARE: Mandatory tenantId to prevent cross-tenant OTP abuse.    â•‘
- * â•‘  HASHABLE: Implements HashableCommand for integrity verification.       â•‘
- * â•‘  AUDIT METADATA: Carries IP/UserAgent for security logging.             â•‘
- * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  TENANT AWARE: Mandatory tenantId to prevent cross-tenant OTP abuse.    ║
+ * ║  HASHABLE: Implements HashableCommand for integrity verification.       ║
+ * ║  AUDIT METADATA: Carries IP/UserAgent for security logging.             ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class GenerateOtpCommand implements \App\Application\Shared\Contracts\VersionedCommandInterface, HashableCommandInterface
+final readonly class GenerateOtpCommand implements HashableCommandInterface
 {
-    use \App\Application\Shared\Traits\HasSchemaVersion;
-
     public function __construct(
         /** Mandatory Tenant Context (Axiom A) */
         public string $tenantId,
 
         /** Email or phone number to send OTP */
-        #[\SensitiveParameter] public string $identifier,
+        public string $identifier,
 
         /** OTP type (email, sms) */
         public string $type,
 
         /** Client IP for security audit */
-        #[\SensitiveParameter] public string $ipAddress,
+        public string $ipAddress,
 
         /** Client User-Agent for fingerprinting */
-        #[\SensitiveParameter] public string $userAgent,
+        public string $userAgent,
 
         /** Unique Receipt ID (UUID v7) for transactional idempotency */
         public string $idempotencyKey = '',
-        public int $schemaVersion = 1,
     ) {}
 
     public function getIdempotencyKey(): string

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Products\Results;
 
-use App\Domain\Product\Entities\ProductEntity;
+use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * UpdateProductResult - Immutable Output Contract for Product Update
@@ -13,6 +13,7 @@ use App\Domain\Product\Entities\ProductEntity;
  * ║  AUDIT FRIENDLY: Includes changedAttributes for UI change notifications ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
+#[TypeScript]
 final readonly class UpdateProductResult
 {
     /**
@@ -29,12 +30,13 @@ final readonly class UpdateProductResult
     /**
      * Factory method to hydrate from Domain Entity / Eloquent Model.
      *
+     * @param  object  $product  The updated product
      * @param  array<string>  $changedAttributes  Fields that were modified
      */
-    public static function fromEntity(ProductEntity $product, array $changedAttributes = []): self
+    public static function fromEntity(object $product, array $changedAttributes = []): self
     {
         return new self(
-            id: $product->id ?? 0,
+            id: $product->id,
             sku: $product->sku,
             changedAttributes: $changedAttributes,
         );

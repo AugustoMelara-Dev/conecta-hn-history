@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Application\Sales\DTOs;
 
+use Spatie\TypeScriptTransformer\Attributes\TypeScript;
+
 /**
  * OrderItemData - Immutable Data Object for Order Lines
  *
@@ -12,6 +14,7 @@ namespace App\Application\Sales\DTOs;
  * ║  IMMUTABILITY: Readonly to prevent side effects in the Application.     ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
+#[TypeScript]
 final readonly class OrderItemData
 {
     public function __construct(

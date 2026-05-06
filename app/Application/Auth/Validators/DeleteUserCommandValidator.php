@@ -7,21 +7,23 @@ namespace App\Application\Auth\Validators;
 use App\Application\Auth\Commands\DeleteUserCommand;
 use App\Application\Auth\Handlers\DeleteUserHandlerInterface;
 use App\Application\Auth\Results\DeleteUserResult;
-use App\Application\Shared\Contracts\ValidatorFactoryInterface;
-use App\Application\Shared\Exceptions\CommandValidationException;
+use Illuminate\Contracts\Validation\Factory as ValidatorFactory;
+use Illuminate\Validation\ValidationException;
 
 /**
  * DeleteUserCommandValidator - Clean Architecture Edition
  *
- * Accepts a generic inner handler so it can wrap the shared middleware
- * decorators produced by PipelineBuilder while still exposing the typed
- * DeleteUserHandlerInterface at the boundary.
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  DI COMPLIANT: Injects ValidatorFactory contract, no static Facades.    ║
+ * ║  DECORATOR PATTERN: Wraps inner handler with validation layer.          ║
+ * ║  TESTABLE: Factory can be mocked in unit tests.                         ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final readonly class DeleteUserCommandValidator implements DeleteUserHandlerInterface
 {
     public function __construct(
-        private object $inner,
-        private ValidatorFactoryInterface $validatorFactory,
+        private DeleteUserHandlerInterface $inner,
+        private ValidatorFactory $validatorFactory,
     ) {}
 
     public function handle(DeleteUserCommand $command): DeleteUserResult
@@ -32,11 +34,11 @@ final readonly class DeleteUserCommandValidator implements DeleteUserHandlerInte
     }
 
     /**
-     * @throws CommandValidationException
+     * @throws ValidationException
      */
-    public function validate(DeleteUserCommand $command): void
+    private function validate(DeleteUserCommand $command): void
     {
-        $this->validatorFactory->validate([
+        $validator = $this->validatorFactory->make([
             'userId' => $command->userId,
             'requestingTenantId' => $command->requestingTenantId,
             'idempotencyKey' => $command->idempotencyKey,
@@ -45,5 +47,9 @@ final readonly class DeleteUserCommandValidator implements DeleteUserHandlerInte
             'requestingTenantId' => ['required', 'uuid'],
             'idempotencyKey' => ['required', 'uuid'],
         ]);
+
+        if ($validator->fails()) {
+            throw new ValidationException($validator);
+        }
     }
 }

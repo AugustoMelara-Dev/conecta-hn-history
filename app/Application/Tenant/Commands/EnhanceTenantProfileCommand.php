@@ -15,18 +15,15 @@ namespace App\Application\Tenant\Commands;
 final readonly class EnhanceTenantProfileCommand
 {
     /**
-     * @param  string  $tenantId  Target tenant identifier
+     * @param  int  $tenantId  Target tenant identifier
      * @param  string|null  $description  Updated description for AI processing
      * @param  array<int, string>  $tags  Category tags to guide AI enhancement
      * @param  bool  $isAiGenerated  Allow re-enhancement of previously AI-generated content
      */
     public function __construct(
-        public string $tenantId,
+        public int $tenantId,
         public ?string $description = null,
         public array $tags = [],
         public bool $isAiGenerated = false,
-
-        /** Schema Version for Upcasting */
-        public int $schemaVersion = 1,
     ) {}
 }
