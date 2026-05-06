@@ -8,16 +8,15 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     {{-- SEO Meta --}}
-    <title>{{ $title ?? 'Vito Business OS' }}</title>
-    <meta name="description" content="{{ $description ?? 'Vito Business OS - El directorio más completo de Honduras' }}">
+    <title>{{ $title ?? 'Conecta HN' }}</title>
+    <meta name="description" content="{{ $description ?? 'Conecta HN - El directorio más completo de Honduras' }}">
     
     {{-- Favicon --}}
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
 
-    {{-- Shared Typography --}}
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@700;800&family=Inter:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    {{-- Fonts: Inter (preconnect for performance) --}}
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700,800" rel="stylesheet" />
 
     {{-- Styles & Scripts --}}
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -25,7 +24,7 @@
 
     <style>
         body {
-            font-family: 'Manrope', 'Segoe UI', sans-serif;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
         }
         [x-cloak] { display: none !important; }
     </style>
@@ -51,8 +50,8 @@
             class="fixed bottom-4 right-4 z-50 px-6 py-3 bg-gray-900 text-white rounded-xl shadow-2xl flex items-center gap-3"
         >
             <span>{{ session('toast') }}</span>
-            <button @click="show = false" class="text-gray-400 hover:text-white" aria-label="Cerrar notificacion">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <button @click="show = false" class="text-gray-400 hover:text-white">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
             </button>

@@ -1,8 +1,5 @@
 import React from 'react';
 import { Tag, X, Loader2 } from 'lucide-react';
-import { Button } from '@/Components/ui/button';
-import { Input } from '@/Components/ui/input';
-import { cn } from '@/lib/utils';
 
 export default function CouponSection({
     couponCode,
@@ -13,44 +10,42 @@ export default function CouponSection({
     isApplyingCoupon,
     applyCoupon,
     removeCoupon,
-    couponError,
+    couponError
 }) {
     return (
-        <div className="grid gap-2">
+        <div className="space-y-2">
             {couponCode ? (
-                <div className="flex items-center justify-between rounded-lg border bg-muted px-3 py-2">
+                // ✅ Applied coupon display
+                <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-3 py-2">
                     <div className="flex items-center gap-2">
-                        <Tag className="h-4 w-4 text-muted-foreground" data-icon aria-hidden="true" />
-                        <span className="text-sm font-medium text-foreground">{couponCode}</span>
+                        <Tag className="w-4 h-4 text-emerald-400" />
+                        <span className="text-sm font-medium text-emerald-300">{couponCode}</span>
                     </div>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
+                    <button
                         onClick={() => {
                             removeCoupon();
+                            // Show input again for retry
                             setShowCouponInput(true);
                         }}
-                        aria-label="Eliminar cupón"
+                        className="text-slate-400 hover:text-rose-400 transition-colors"
                         title="Eliminar cupón"
                     >
-                        <X className="h-4 w-4" data-icon aria-hidden="true" />
-                    </Button>
+                        <X className="w-4 h-4" />
+                    </button>
                 </div>
             ) : showCouponInput ? (
-                <div className="grid gap-2">
+                // 📝 Coupon input form (revealed)
+                <div className="space-y-2">
                     <div className="flex gap-2">
-                        <Input
+                        <input
                             type="text"
                             value={couponInput}
-                            onChange={(event) => setCouponInput(event.target.value.toUpperCase())}
+                            onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
                             placeholder="Ingresa tu código"
                             autoFocus
-                            aria-label="Código de descuento"
-                            className="flex-1"
+                            className="flex-1 px-3 py-2 bg-slate-800 border border-white/10 rounded-lg text-white text-sm placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
-                        <Button
-                            type="button"
+                        <button
                             onClick={async () => {
                                 const result = await applyCoupon(couponInput);
                                 if (result.success) {
@@ -59,45 +54,43 @@ export default function CouponSection({
                                 }
                             }}
                             disabled={isApplyingCoupon || !couponInput}
+                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-1"
                         >
                             {isApplyingCoupon ? (
-                                <Loader2 className="h-4 w-4 animate-spin" data-icon aria-hidden="true" />
-                            ) : null}
-                            Aplicar
-                        </Button>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                                'Aplicar'
+                            )}
+                        </button>
                     </div>
 
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
+                    {/* Cancel button to hide input */}
+                    <button
                         onClick={() => {
                             setShowCouponInput(false);
                             setCouponInput('');
+                            // Clear any previous error when closing
                         }}
-                        className="w-fit"
+                        className="text-xs text-slate-500 hover:text-slate-400 transition-colors"
                     >
                         Cancelar
-                    </Button>
+                    </button>
                 </div>
             ) : (
-                <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
+                // 🎯 Trigger link (hidden state - Progressive Disclosure)
+                <button
                     onClick={() => setShowCouponInput(true)}
-                    className="w-fit px-0"
+                    className="flex items-center gap-1.5 text-sm text-indigo-400 hover:text-indigo-300 hover:underline transition-colors"
                 >
-                    <Tag className="h-3.5 w-3.5" data-icon aria-hidden="true" />
+                    <Tag className="w-3.5 h-3.5" />
                     ¿Tienes un código de descuento?
-                </Button>
+                </button>
             )}
 
-            {couponError && showCouponInput ? (
-                <p className={cn('text-xs text-[color:var(--ds-danger)]')} role="alert">
-                    {couponError}
-                </p>
-            ) : null}
+            {/* Coupon error */}
+            {couponError && showCouponInput && (
+                <p className="text-xs text-rose-400">{couponError}</p>
+            )}
         </div>
     );
 }

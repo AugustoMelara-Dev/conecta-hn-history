@@ -1,4 +1,3 @@
-// Deprecated: use the shadcn/Radix checkbox primitive for new React surfaces.
 export default function Checkbox({ className = '', ...props }) {
     return (
         <input

@@ -1,926 +1,384 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Head, Link, router, usePage } from '@inertiajs/react';
-import { AlertCircle, ArrowRight, Filter, MapPin, Search, Sparkles, X } from 'lucide-react';
-import PublicLayout from '@/Layouts/PublicLayout';
-import { ActionableAlert, EmptyState as UXEmptyState, LoadingState } from '@/Components/Feedback/UXStates';
-import { Alert, AlertDescription, AlertTitle } from '@/Components/ui/alert';
-import { Badge } from '@/Components/ui/badge';
+import { useState, useEffect, useCallback } from 'react';
+import { Head, Link, router } from '@inertiajs/react';
+import AppLayout from '@/Layouts/AppLayout';
 import { Button } from '@/Components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Input } from '@/Components/ui/input';
+import CategoryRail from '@/Components/Organisms/CategoryRail';
+import BlurImage from '@/Components/Molecules/BlurImage';
 import {
-    Select,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/Components/ui/select';
-import {
-    Sheet,
-    SheetContent,
-    SheetDescription,
-    SheetHeader,
-    SheetTitle,
-} from '@/Components/ui/sheet';
-import { Textarea } from '@/Components/ui/textarea';
-import { PUBLIC_DISPLAY_FONT } from '@/lib/publicTypography';
-import { PUBLIC_BRAND } from '@/lib/publicBrand';
-import PublicImage from '@/Components/Public/PublicImage';
+    MapPin, Star, Search, Building2, BadgeCheck, X, Filter, ChevronDown
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
-import {
-    getTenantInitials,
-    resolveTenantCategoryName,
-    resolveTenantCityName,
-    resolveTenantDescription,
-    resolveTenantPlanLabel,
-    resolveTenantVisual,
-} from '@/lib/tenantPresentation';
 
+// ═══════════════════════════════════════════════════════════════════════════
+// UTILITY: Clean empty params from URL
+// ═══════════════════════════════════════════════════════════════════════════
 function cleanParams(params) {
     return Object.fromEntries(
-        Object.entries(params).filter(([, value]) => value !== null && value !== undefined && value !== ''),
+        Object.entries(params).filter(([_, v]) => v !== null && v !== undefined && v !== '')
     );
 }
 
-function DirectoryCard({ tenant }) {
-    const visual = resolveTenantVisual(tenant);
-
+// ═══════════════════════════════════════════════════════════════════════════
+// COMPONENT: TenantCard - Individual Business Card
+// ═══════════════════════════════════════════════════════════════════════════
+function TenantCard({ tenant }) {
     return (
         <Link
-            href={route('tenant.microsite.show', { tenant: tenant.slug })}
+            href={route('tenant.show', tenant.slug)}
             className="group block h-full"
         >
-            <Card className="flex h-full flex-col overflow-hidden rounded-[32px] border-stone-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-slate-950/8">
-                <div className="relative aspect-[4/3] overflow-hidden bg-stone-100">
-                    {visual ? (
-                        <PublicImage
-                            src={visual}
-                            alt={`Imagen de ${tenant.name}`}
-                            width={960}
-                            height={720}
-                            className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
+            <div className={cn(
+                "bg-card rounded-2xl border transition-all duration-300 overflow-hidden h-full flex flex-col hover:shadow-xl hover:-translate-y-1",
+                tenant.is_pro ? "border-primary/20 shadow-sm" : "border-border"
+            )}>
+                {/* Image with lazy loading */}
+                <div className="aspect-video relative overflow-hidden bg-muted">
+                    {tenant.banner_path ? (
+                        <BlurImage
+                            src={`/storage/${tenant.banner_path}`}
+                            blurhash={tenant.blur_hash}
+                            alt={tenant.name}
+                            loading="lazy"
+                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                         />
                     ) : (
-                        <div className="flex h-full items-center justify-center bg-slate-950 text-3xl font-semibold text-white">
-                            {getTenantInitials(tenant)}
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted/50">
+                            <Building2 className="w-12 h-12 text-muted-foreground/20" />
                         </div>
                     )}
-                    <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-slate-950/65 to-transparent" />
-                    <Badge className="absolute left-4 top-4 gap-2 rounded-full border border-white/60 bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-white/90">
-                        <Sparkles data-icon="inline-start" aria-hidden="true" />
-                        {resolveTenantPlanLabel(tenant)}
-                    </Badge>
+
+                    {/* Badges */}
+                    <div className="absolute top-3 right-3 flex gap-2">
+                        {tenant.is_pro && (
+                            <div className="bg-background/90 backdrop-blur text-foreground text-[10px] font-bold px-2 py-1 rounded-full shadow-sm flex items-center gap-1 border border-border/50">
+                                <BadgeCheck className="w-3 h-3 text-blue-500 fill-blue-500/10" />
+                                VERIFICADO
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Category Badge */}
+                    <div className="absolute bottom-3 left-3">
+                        <div className="bg-black/60 backdrop-blur text-white text-[10px] font-medium px-2 py-1 rounded-full flex items-center gap-1">
+                            {tenant.category?.name || 'Negocio'}
+                        </div>
+                    </div>
                 </div>
 
-                <CardContent className="flex flex-1 flex-col gap-4 p-5 sm:p-6">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <Badge className="rounded-full bg-[#f3f3f1] px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-[#f3f3f1]">
-                            {resolveTenantCategoryName(tenant)}
-                        </Badge>
-                        <Badge className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-stone-100">
-                            {resolveTenantCityName(tenant)}
-                        </Badge>
-                    </div>
-
-                    <div>
-                        <h3 className="text-xl font-semibold text-slate-950" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
+                {/* Content */}
+                <div className="p-4 flex-1 flex flex-col">
+                    <div className="flex justify-between items-start gap-2 mb-1">
+                        <h3 className="font-bold text-lg line-clamp-1 group-hover:text-primary transition-colors flex items-center gap-1.5">
                             {tenant.name}
-                        </h3>
-                        <p className="mt-3 text-sm leading-7 text-slate-600">
-                            {resolveTenantDescription(
-                                tenant,
-                                `Negocio local con presencia activa en ${PUBLIC_BRAND.name} y una salida clara hacia contacto, pedido o reserva.`,
+                            {tenant.is_pro && (
+                                <BadgeCheck className="w-4 h-4 text-blue-500 fill-blue-500/10 shrink-0" />
                             )}
-                        </p>
+                        </h3>
                     </div>
 
-                </CardContent>
+                    <p className="text-sm text-muted-foreground line-clamp-2 mb-3 flex-1 leading-relaxed">
+                        {tenant.description || 'Sin descripción disponible.'}
+                    </p>
 
-                <CardFooter className="mt-auto flex items-center justify-between gap-3 border-t border-stone-100 pt-4">
-                    <span className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
-                        <MapPin data-icon="inline-start" aria-hidden="true" />
-                        {resolveTenantCityName(tenant)}
-                    </span>
-                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#f3f3f1] text-slate-700 transition group-hover:bg-slate-950 group-hover:text-white">
-                        <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                    </span>
-                </CardFooter>
-            </Card>
+                    {/* Tags Pills (max 3) */}
+                    {tenant.tags?.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mb-3">
+                            {tenant.tags.slice(0, 3).map((tag, idx) => (
+                                <span
+                                    key={idx}
+                                    className="text-[10px] font-medium px-2 py-0.5 bg-muted text-muted-foreground rounded-full"
+                                >
+                                    {tag}
+                                </span>
+                            ))}
+                        </div>
+                    )}
+
+                    <div className="flex items-center justify-between pt-3 border-t mt-auto">
+                        <div className="flex items-center text-xs text-muted-foreground truncate max-w-[65%]">
+                            <MapPin className="w-3.5 h-3.5 mr-1.5 shrink-0 text-primary/70" />
+                            <span className="truncate font-medium">{tenant.city?.name || 'Honduras'}</span>
+                        </div>
+                        <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-950/30 px-2 py-0.5 rounded-md border border-amber-100 dark:border-amber-900/50">
+                            <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                            <span className="text-xs font-bold text-amber-700 dark:text-amber-400">4.8</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </Link>
     );
 }
 
-function FilterButton({ active = false, children, onClick, testId = undefined }) {
+// ═══════════════════════════════════════════════════════════════════════════
+// COMPONENT: FilterPanel - Desktop & Mobile Filter Controls
+// ═══════════════════════════════════════════════════════════════════════════
+function FilterPanel({ cities, filters, onFilterChange, className = '' }) {
     return (
-        <Button
-            type="button"
-            variant={active ? 'default' : 'outline'}
-            onClick={onClick}
-            className={cn(
-                'h-auto rounded-full px-4 py-2 text-sm font-semibold transition-colors',
-                active
-                    ? 'bg-slate-950 text-white hover:bg-slate-800'
-                    : 'border-stone-200 bg-white text-slate-700 hover:border-stone-300 hover:bg-white hover:text-slate-950',
-            )}
-            data-testid={testId}
-        >
-            {children}
-        </Button>
-    );
-}
-
-function EmptyState({ filters, onClear }) {
-    return (
-        <UXEmptyState
-            icon={Search}
-            eyebrow="Directorio"
-            title={filters.search ? `No encontramos "${filters.search}"` : 'No hay resultados con esos filtros'}
-            description="Ajusta ciudad, categoria o termino de busqueda. Tambien puedes registrar tu negocio si todavia no aparece en el directorio."
-            actionLabel="Registrar mi negocio"
-            actionHref={route('tenant.register')}
-            secondaryLabel="Limpiar filtros"
-            onSecondaryAction={onClear}
-            testId="directory-empty-state"
-        />
-    );
-}
-
-function formatQuotaResetAt(resetAt) {
-    if (!resetAt) {
-        return 'mañana';
-    }
-
-    const parsed = new Date(resetAt);
-    if (Number.isNaN(parsed.getTime())) {
-        return 'mañana';
-    }
-
-    return parsed.toLocaleString('es-HN', {
-        hour: '2-digit',
-        minute: '2-digit',
-        day: '2-digit',
-        month: '2-digit',
-    });
-}
-
-function resolveGuideTenant(entry) {
-    if (entry && typeof entry === 'object' && entry.tenant) {
-        return entry.tenant;
-    }
-
-    return entry;
-}
-
-function DirectoryGuidePanel({ authUser, filters, searchTerm, cityTerm }) {
-    const [budget, setBudget] = useState('100');
-    const [chatPrompt, setChatPrompt] = useState('Que puedo comprar con 100 lps cerca de mi?');
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isChatting, setIsChatting] = useState(false);
-    const [guideResults, setGuideResults] = useState([]);
-    const [guideMeta, setGuideMeta] = useState(null);
-    const [guideError, setGuideError] = useState(null);
-    const [chatAnswer, setChatAnswer] = useState(null);
-    const [chatError, setChatError] = useState(null);
-    const [chatMeta, setChatMeta] = useState(null);
-
-    const isCustomer = Boolean(authUser?.persona?.is_customer) || authUser?.role === 'customer' || authUser?.role === 'user';
-    const quotaLimit = guideMeta?.quota_limit ?? 5;
-    const quotaRemaining = guideMeta?.quota_remaining;
-    const quotaUsed = guideMeta?.quota_used;
-    const quotaResetAt = guideMeta?.quota_reset_at;
-    const diagnostic = guideMeta?.diagnostic;
-
-    const currentCity = cityTerm || filters.city || 'tegucigalpa';
-    const currentCategory = filters.category || '';
-
-    const mergeMeta = (payload) => {
-        const responseMeta = payload?.meta && typeof payload.meta === 'object'
-            ? { ...payload.meta }
-            : {};
-
-        if (payload?.quota_limit !== undefined) {
-            responseMeta.quota_limit = payload.quota_limit;
-        }
-        if (payload?.quota_remaining !== undefined) {
-            responseMeta.quota_remaining = payload.quota_remaining;
-        }
-        if (payload?.reset_at && !responseMeta.quota_reset_at) {
-            responseMeta.quota_reset_at = payload.reset_at;
-        }
-
-        return responseMeta;
-    };
-
-    const runGuide = async (event) => {
-        event.preventDefault();
-
-        if (!isCustomer || isSubmitting) {
-            return;
-        }
-
-        setIsSubmitting(true);
-        setGuideError(null);
-
-        const query = new URLSearchParams();
-        query.set('budget', budget);
-
-        if ((searchTerm || '').trim()) {
-            query.set('search', searchTerm.trim());
-        }
-
-        if ((cityTerm || filters.city || '').trim()) {
-            query.set('city', cityTerm || filters.city);
-        }
-
-        if ((filters.category || '').trim()) {
-            query.set('category', filters.category);
-        }
-
-        query.set('limit', '8');
-
-        try {
-            const response = await fetch(`/api/v1/directory/guide?${query.toString()}`, {
-                method: 'GET',
-                credentials: 'same-origin',
-                headers: {
-                    Accept: 'application/json',
-                },
-            });
-
-            let payload = {};
-            try {
-                payload = await response.json();
-            } catch {
-                payload = {};
-            }
-
-            const responseMeta = mergeMeta(payload);
-
-            if (!response.ok) {
-                setGuideMeta(Object.keys(responseMeta).length ? responseMeta : null);
-                setGuideResults([]);
-                setGuideError({
-                    status: response.status,
-                    code: payload?.error_code || 'DIRECTORY_GUIDE_REQUEST_FAILED',
-                    message: payload?.message || 'No pudimos procesar la guía en este momento.',
-                    retryAfterSeconds: payload?.retry_after_seconds || null,
-                    resetAt: payload?.reset_at || responseMeta.quota_reset_at || null,
-                });
-                return;
-            }
-
-            setGuideMeta(responseMeta);
-            setGuideResults(Array.isArray(payload?.data) ? payload.data : []);
-        } catch {
-            setGuideError({
-                status: 0,
-                code: 'DIRECTORY_GUIDE_NETWORK_ERROR',
-                message: 'No fue posible cargar la guía. Intenta nuevamente.',
-                retryAfterSeconds: null,
-                resetAt: null,
-            });
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    const runChat = async (event) => {
-        event.preventDefault();
-
-        if (!isCustomer || isChatting || !chatPrompt.trim()) {
-            return;
-        }
-
-        setIsChatting(true);
-        setChatError(null);
-
-        try {
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
-            const response = await fetch('/api/v1/directory/guide/chat', {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: {
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                    'x-trace-id': `directory-chat-ui-${Date.now()}`,
-                },
-                body: JSON.stringify({
-                    query: chatPrompt.trim(),
-                    budget_amount: Number.parseFloat(budget || '0') || 0,
-                    currency: 'HNL',
-                    city: currentCity,
-                    category: currentCategory,
-                    limit: 5,
-                }),
-            });
-
-            const payload = await response.json().catch(() => ({}));
-            const responseMeta = mergeMeta(payload);
-            setChatMeta(responseMeta);
-            setGuideMeta(responseMeta);
-
-            if (!response.ok) {
-                setChatAnswer(null);
-                setChatError({
-                    status: response.status,
-                    code: payload?.error_code || 'DIRECTORY_GUIDE_CHAT_FAILED',
-                    message: payload?.message || 'No pudimos responder con IA en este momento.',
-                    resetAt: payload?.reset_at || responseMeta.quota_reset_at || null,
-                });
-
-                return;
-            }
-
-            setChatAnswer(responseMeta.chat_answer || payload?.data?.answer || 'Te dejo opciones recomendadas con el presupuesto indicado.');
-            setGuideResults(Array.isArray(payload?.data) ? payload.data : []);
-        } catch {
-            setChatError({
-                status: 0,
-                code: 'DIRECTORY_GUIDE_CHAT_NETWORK_ERROR',
-                message: 'No fue posible abrir el chat. Intenta nuevamente.',
-                resetAt: null,
-            });
-        } finally {
-            setIsChatting(false);
-        }
-    };
-
-    if (!authUser) {
-        return (
-            <Card className="mt-8 rounded-[28px]">
-                <CardHeader>
-                    <Badge variant="secondary" className="w-fit rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em]">
-                        Guía personalizada
-                    </Badge>
-                    <CardTitle className="text-xl">
-                        Inicia sesión para usar la guía (5 consultas al día)
-                    </CardTitle>
-                    <CardDescription>
-                        La guía te recomienda negocios y productos con tu presupuesto, ciudad y categoría.
-                    </CardDescription>
-                </CardHeader>
-                <CardFooter>
-                    <Button asChild>
-                        <Link href={route('login')}>
-                            Entrar como cliente
-                            <ArrowRight data-icon="inline-end" aria-hidden="true" />
-                        </Link>
-                    </Button>
-                </CardFooter>
-            </Card>
-        );
-    }
-
-    if (!isCustomer) {
-        return (
-            <Alert variant="warning" className="mt-8 rounded-[28px] px-5 py-5 sm:px-6">
-                <AlertTitle className="text-xs uppercase tracking-[0.2em]">Guía personalizada</AlertTitle>
-                <AlertDescription className="mt-2">
-                    <span className="block text-xl font-semibold">Disponible solo para cuentas de cliente</span>
-                    <span className="mt-2 block">
-                        Tu cuenta actual es de gestion operativa. Usa una cuenta de cliente para consultas del directorio.
-                    </span>
-                </AlertDescription>
-            </Alert>
-        );
-    }
-
-    return (
-        <Card className="mt-8 rounded-[28px]">
-            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                    <Badge variant="secondary" className="w-fit rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em]">
-                        Guía personalizada
-                    </Badge>
-                    <CardTitle className="mt-3 text-xl">Recomendaciones por presupuesto</CardTitle>
-                    <CardDescription className="mt-1">
-                        Plan gratis: {quotaLimit} consultas por día.
-                    </CardDescription>
-                </div>
-                <Badge variant="outline" className="rounded-full px-4 py-2 text-sm font-semibold" data-testid="directory-guide-quota">
-                    {quotaRemaining !== undefined && quotaRemaining !== null
-                        ? `Consultas restantes: ${quotaRemaining}/${quotaLimit}`
-                        : `Consultas restantes: ${quotaLimit}/${quotaLimit}`}
-                </Badge>
-            </CardHeader>
-
-            <CardContent className="grid gap-5">
-            <form onSubmit={runGuide} className="grid gap-3 sm:grid-cols-[180px,1fr,auto]">
-                <div>
-                    <label htmlFor="directory-guide-budget" className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                        Presupuesto (L)
-                    </label>
-                    <Input
-                        id="directory-guide-budget"
-                        name="budget"
-                        type="number"
-                        min="1"
-                        step="1"
-                        value={budget}
-                        onChange={(event) => setBudget(event.target.value)}
-                        inputMode="numeric"
-                        autoComplete="off"
-                        className="h-12 rounded-2xl"
-                        data-testid="directory-guide-budget-input"
-                    />
-                </div>
-                <div className="self-end rounded-2xl border bg-muted px-4 py-3 text-sm text-muted-foreground">
-                    Filtro actual: {filters.category || 'todas las categorías'} · {cityTerm || filters.city || 'todas las ciudades'}
-                </div>
-                <Button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="self-end h-12 rounded-2xl px-5 text-sm font-semibold"
-                    data-testid="directory-guide-submit"
-                >
-                    {isSubmitting ? 'Consultando…' : 'Pedir guía'}
-                </Button>
-            </form>
-
-            {guideError ? (
-                <ActionableAlert
-                    icon={AlertCircle}
-                    tone={guideError.status === 429 ? 'warning' : 'error'}
-                    title={guideError.status === 429 ? 'Límite diario alcanzado' : 'No pudimos consultar la guía'}
-                    actionLabel="Ocultar aviso"
-                    onAction={() => setGuideError(null)}
-                    className="mt-4"
-                    testId="directory-guide-error"
-                >
-                    <p>{guideError.message}</p>
-                    {guideError.status === 429 ? (
-                        <p className="mt-1">
-                            Te desbloqueas en {formatQuotaResetAt(guideError.resetAt)}. Puedes volver mañana o seguir explorando sin guía.
-                        </p>
-                    ) : null}
-                </ActionableAlert>
-            ) : null}
-
-            {quotaUsed !== undefined && quotaUsed !== null ? (
-                <p className="text-xs text-muted-foreground">
-                    Usadas hoy: {quotaUsed}/{quotaLimit}
-                    {quotaResetAt ? ` · Reinicio: ${formatQuotaResetAt(quotaResetAt)}` : ''}
-                </p>
-            ) : null}
-
-            {diagnostic ? (
-                <Alert className="grid gap-3 rounded-2xl sm:grid-cols-3">
-                    <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Estado</p>
-                        <p className="mt-1 font-semibold">{diagnostic.status}</p>
-                    </div>
-                    <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Causa probable</p>
-                        <p className="mt-1">{diagnostic.probable_cause}</p>
-                    </div>
-                    <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Acción</p>
-                        <p className="mt-1">{diagnostic.recommended_action}</p>
-                        {diagnostic.trace_id ? (
-                            <p className="mt-2 text-xs text-muted-foreground">REF: {diagnostic.trace_id}</p>
-                        ) : null}
-                    </div>
-                </Alert>
-            ) : null}
-
-            {guideResults.length > 0 ? (
-                <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                    {guideResults.map((entry, index) => {
-                        const tenant = resolveGuideTenant(entry);
-                        const priceRange = entry?.price_range;
-
-                        if (!tenant?.slug) {
-                            return null;
-                        }
-
-                        return (
-                            <Link
-                                key={`${tenant.slug}-${index}`}
-                                href={route('tenant.microsite.show', { tenant: tenant.slug })}
-                                className="rounded-2xl border bg-card px-4 py-4 text-card-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                data-testid="directory-guide-result"
-                            >
-                                <p className="text-sm font-semibold">{tenant.name}</p>
-                                <p className="mt-1 text-xs uppercase tracking-[0.12em] text-muted-foreground">
-                                    {resolveTenantCategoryName(tenant)} · {resolveTenantCityName(tenant)}
-                                </p>
-                                {entry?.reason ? (
-                                    <p className="mt-2 text-sm text-muted-foreground">{entry.reason}</p>
-                                ) : null}
-                                {priceRange?.min !== undefined && priceRange?.max !== undefined ? (
-                                    <p className="mt-2 text-sm font-semibold">
-                                        Rango sugerido: L {priceRange.min} - L {priceRange.max}
-                                    </p>
-                                ) : null}
-                            </Link>
-                        );
-                    })}
-                </div>
-            ) : null}
-
-            <div className="overflow-hidden rounded-[28px] border bg-primary text-primary-foreground shadow-2xl shadow-primary/10">
-                <div className="relative px-5 py-5 sm:px-6">
-                    <div className="pointer-events-none absolute right-0 top-0 h-32 w-32 rounded-full bg-primary-foreground/10 blur-3xl" />
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary-foreground/75">Chat IA del directorio</p>
-                    <h3 className="mt-2 text-2xl font-semibold">
-                        Pregunta como hablaría un cliente real
-                    </h3>
-                    <p className="mt-2 max-w-2xl text-sm leading-6 text-primary-foreground/75">
-                        Ejemplo: "tengo 100 lps y quiero comer algo en Tegucigalpa". El chat responde con negocios publicados, presupuesto y trazabilidad.
-                    </p>
-
-                    <form onSubmit={runChat} className="mt-5 grid gap-3 lg:grid-cols-[1fr,auto]">
-                        <Textarea
-                            value={chatPrompt}
-                            onChange={(event) => setChatPrompt(event.target.value)}
-                            rows={3}
-                            name="directory_guide_chat_prompt"
-                            className="min-h-[96px] rounded-3xl border-primary-foreground/15 bg-primary-foreground/10 px-4 py-3 text-sm leading-6 text-primary-foreground placeholder:text-primary-foreground/55 focus-visible:ring-primary-foreground"
-                            placeholder="¿Qué puedo comprar con 100 lps?"
-                            data-testid="directory-guide-chat-input"
-                        />
-                        <Button
-                            type="submit"
-                            disabled={isChatting || !chatPrompt.trim()}
-                            variant="secondary"
-                            className="rounded-3xl px-6 py-3 text-sm font-black"
-                            data-testid="directory-guide-chat-submit"
-                        >
-                            {isChatting ? 'Pensando…' : 'Preguntar'}
-                        </Button>
-                    </form>
-
-                    {chatError ? (
-                        <ActionableAlert
-                            icon={AlertCircle}
-                            tone={chatError.status === 429 ? 'warning' : 'error'}
-                            title={chatError.status === 429 ? 'Sin consultas por hoy' : 'El chat no respondió'}
-                            actionLabel="Editar pregunta"
-                            onAction={() => setChatError(null)}
-                            className="mt-4 border-rose-300/30 bg-rose-500/10 text-rose-100"
-                            testId="directory-guide-chat-error"
-                        >
-                            <p>{chatError.message}</p>
-                            {chatError.status === 429 ? (
-                                <p className="mt-1">Tu cuota vuelve en {formatQuotaResetAt(chatError.resetAt)}.</p>
-                            ) : null}
-                        </ActionableAlert>
-                    ) : null}
-
-                    {chatAnswer ? (
-                        <div className="mt-4 rounded-3xl border bg-background px-5 py-4 text-foreground" data-testid="directory-guide-chat-answer">
-                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Respuesta</p>
-                            <p className="mt-2 text-sm leading-7">{chatAnswer}</p>
-                            {chatMeta?.trace_id ? (
-                                <p className="mt-3 text-xs font-semibold text-muted-foreground">REF soporte: {chatMeta.trace_id}</p>
-                            ) : null}
-                        </div>
-                    ) : null}
+        <div className={cn("space-y-4", className)}>
+            {/* City Dropdown */}
+            <div>
+                <label className="block text-sm font-medium mb-2 text-foreground">Ciudad</label>
+                <div className="relative">
+                    <select
+                        value={filters.city || ''}
+                        onChange={(e) => onFilterChange('city', e.target.value)}
+                        className="w-full h-10 px-3 pr-8 rounded-lg border border-input bg-background text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    >
+                        <option value="">Todas las ciudades</option>
+                        {cities.map((city) => (
+                            <option key={city.id} value={city.slug}>{city.name}</option>
+                        ))}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                 </div>
             </div>
-            </CardContent>
-        </Card>
+
+            {/* Clear Filters */}
+            {(filters.search || filters.city || filters.category) && (
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onFilterChange('clear', null)}
+                    className="w-full"
+                >
+                    <X className="w-4 h-4 mr-2" />
+                    Limpiar filtros
+                </Button>
+            )}
+        </div>
     );
 }
 
-export default function DirectoryIndex({ tenants, categories = [], cities = [], activeCity = null, filters = {} }) {
-    const { auth = {} } = usePage().props;
-    const authUser = auth?.user || null;
-    const items = tenants?.data || tenants || [];
+// ═══════════════════════════════════════════════════════════════════════════
+// MAIN PAGE COMPONENT
+// ═══════════════════════════════════════════════════════════════════════════
+export default function DirectoryIndex({ tenants, categories, cities, activeCity, filters }) {
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
-    const [cityTerm, setCityTerm] = useState(filters.city || '');
-    const [mobileOpen, setMobileOpen] = useState(false);
-    const [isFiltering, setIsFiltering] = useState(false);
+    const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
-    const activeCategoryLabel = useMemo(() => (
-        categories.find((category) => category.slug === filters.category)?.name || 'Todo Negocios'
-    ), [categories, filters.category]);
+    // ═══════════════════════════════════════════════════════════════════════
+    // FILTER HANDLER: Single source of truth for all filter changes
+    // ═══════════════════════════════════════════════════════════════════════
+    const applyFilters = useCallback((newFilters) => {
+        const cleanedParams = cleanParams(newFilters);
 
-    const quickCities = useMemo(() => cities.slice(0, 6), [cities]);
+        router.get(
+            route('directory.index'),
+            cleanedParams,
+            { preserveState: true, preserveScroll: true, replace: true }
+        );
+    }, []);
 
-    const applyFilters = (nextFilters) => {
-        setIsFiltering(true);
-        router.get(route('directory.index'), cleanParams(nextFilters), {
-            preserveState: true,
-            preserveScroll: true,
-            replace: true,
-            onFinish: () => setIsFiltering(false),
-            onError: () => setIsFiltering(false),
-        });
-    };
+    const handleFilterChange = useCallback((key, value) => {
+        if (key === 'clear') {
+            setSearchTerm('');
+            applyFilters({});
+            return;
+        }
 
+        const newFilters = { ...filters, [key]: value || null };
+
+        // If changing search, update local state
+        if (key === 'search') {
+            setSearchTerm(value);
+        }
+
+        applyFilters(newFilters);
+        setMobileFiltersOpen(false);
+    }, [filters, applyFilters]);
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // DEBOUNCED SEARCH: 500ms delay to prevent API spam
+    // ═══════════════════════════════════════════════════════════════════════
     useEffect(() => {
-        const timer = window.setTimeout(() => {
+        const handler = setTimeout(() => {
             if (searchTerm !== (filters.search || '')) {
                 applyFilters({ ...filters, search: searchTerm || null });
             }
-        }, 400);
+        }, 500);
 
-        return () => window.clearTimeout(timer);
-    }, [searchTerm, filters]);
-
-    const setCategory = (slug) => {
-        applyFilters({ ...filters, category: slug || null });
-        setMobileOpen(false);
-    };
-
-    const setCity = (slug) => {
-        setCityTerm(slug);
-        applyFilters({ ...filters, city: slug || null });
-        setMobileOpen(false);
-    };
-
-    const clearFilters = () => {
-        setSearchTerm('');
-        setCityTerm('');
-        applyFilters({});
-        setMobileOpen(false);
-    };
-
-    const hasFilters = Boolean(filters.search || filters.category || filters.city);
-    const isSearchPending = searchTerm !== (filters.search || '');
-    const isDirectoryLoading = isFiltering || isSearchPending;
+        return () => clearTimeout(handler);
+    }, [searchTerm, filters, applyFilters]); // Full dependency array prevents stale closures
 
     return (
-        <PublicLayout>
-            <Head title={`Negocios ${activeCity ? `en ${activeCity.name}` : 'en Honduras'}`}>
-                <meta
-                    name="description"
-                    content={`Busca negocios en Honduras por ciudad, categoria o termino de busqueda desde la experiencia publica de ${PUBLIC_BRAND.name}.`}
-                />
-            </Head>
+        <AppLayout>
+            <Head title={`Directorio ${activeCity ? `en ${activeCity.name}` : 'de Negocios'}`} />
 
-            <section className="border-b border-stone-200 bg-white">
-                <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8 lg:py-18">
-                    <div className="max-w-3xl">
-                        <p className="text-sm font-semibold uppercase tracking-[0.28em] text-slate-500">Negocios</p>
-                        <h1 className="mt-4 text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                            Busca por ciudad, categoria o servicio sin salir de la misma experiencia publica.
-                        </h1>
-                        <p className="mt-6 text-lg leading-8 text-slate-600">
-                            Compara, filtra y llega al negocio correcto con rutas claras de contacto, compra o reserva.
-                        </p>
+            <div className="min-h-screen bg-background">
+                <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+                    {/* Category Rail */}
+                    <div className="mb-8">
+                        <CategoryRail
+                            categories={[{ id: 'all', name: 'Ver Todos', slug: '', icon: '🔍' }, ...categories]}
+                            activeCategory={filters.category}
+                        />
                     </div>
 
-                    <div className="mt-10 grid gap-4 lg:grid-cols-[1.15fr,0.45fr,auto]">
-                        <div className="relative">
-                            <label htmlFor="directory-search" className="sr-only">
-                                Buscar negocios, productos o servicios
-                            </label>
-                            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    {/* Filters Bar */}
+                    <div className="flex flex-col lg:flex-row gap-4 mb-6">
+                        {/* Search Input */}
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                             <Input
-                                id="directory-search"
-                                name="search"
                                 type="text"
-                                placeholder="Buscar negocios, productos o servicios..."
+                                placeholder="Buscar negocios, productos, servicios..."
                                 value={searchTerm}
-                                onChange={(event) => setSearchTerm(event.target.value)}
-                                className="h-14 rounded-[24px] border-stone-200 bg-[#f3f3f1] px-11 text-base text-slate-950 placeholder:text-slate-400 focus-visible:ring-slate-950"
-                                data-testid="directory-search-input"
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-10 h-11"
                             />
                         </div>
 
-                        <Select value={cityTerm || 'all'} onValueChange={(value) => setCity(value === 'all' ? '' : value)}>
-                            <SelectTrigger
-                                aria-label="Filtrar por ciudad"
-                                className="h-14 rounded-[24px] border-stone-200 bg-[#f3f3f1] px-4 text-base text-slate-900 focus:ring-slate-950"
-                                data-testid="directory-city-select"
-                            >
-                                <SelectValue placeholder="Todas las ciudades" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectGroup>
-                                    <SelectItem value="all">Todas las ciudades</SelectItem>
+                        {/* Desktop City Filter */}
+                        <div className="hidden lg:block w-64">
+                            <div className="relative">
+                                <select
+                                    value={filters.city || ''}
+                                    onChange={(e) => handleFilterChange('city', e.target.value)}
+                                    className="w-full h-11 px-3 pr-8 rounded-lg border border-input bg-background text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                >
+                                    <option value="">Todas las ciudades</option>
                                     {cities.map((city) => (
-                                        <SelectItem key={city.id} value={city.slug}>{city.name}</SelectItem>
+                                        <option key={city.id} value={city.slug}>{city.name}</option>
                                     ))}
-                                </SelectGroup>
-                            </SelectContent>
-                        </Select>
+                                </select>
+                                <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                            </div>
+                        </div>
 
+                        {/* Mobile Filter Button */}
                         <Button
-                            type="button"
-                            onClick={() => setMobileOpen((value) => !value)}
                             variant="outline"
-                            className="h-14 rounded-[24px] border-stone-200 bg-white px-5 text-sm font-semibold text-slate-700 transition-colors hover:border-stone-300 lg:hidden"
-                            data-testid="directory-mobile-filters"
+                            onClick={() => setMobileFiltersOpen(true)}
+                            className="lg:hidden"
                         >
-                            <Filter data-icon="inline-start" aria-hidden="true" />
-                            Filtros
+                            <Filter className="w-4 h-4 mr-2" />
+                            Filtrar
                         </Button>
                     </div>
 
-                    <div className="mt-6 flex flex-wrap gap-3">
-                        <FilterButton active={!filters.category} onClick={() => setCategory('')} testId="directory-category-all">
-                            Todo
-                        </FilterButton>
-                        {categories.map((category) => (
-                            <FilterButton
-                                key={category.id}
-                                onClick={() => setCategory(category.slug)}
-                                active={filters.category === category.slug}
-                                testId={`directory-category-${category.slug}`}
-                            >
-                                {category.name}
-                            </FilterButton>
-                        ))}
+                    {/* Results Header */}
+                    <div className="flex items-center justify-between mb-6">
+                        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                            {filters.category
+                                ? categories.find(c => c.slug === filters.category)?.name
+                                : activeCity
+                                    ? `Explora ${activeCity.name}`
+                                    : 'Descubre lo mejor de Honduras'}
+                        </h1>
+                        <span className="text-sm font-medium text-muted-foreground bg-muted px-3 py-1 rounded-full">
+                            {tenants.data?.length || 0} resultados
+                        </span>
                     </div>
 
-                    {quickCities.length > 0 ? (
-                        <div className="mt-6 flex flex-wrap items-center gap-3">
-                            <span className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Ciudades rapidas</span>
-                            {quickCities.map((city) => (
-                                <FilterButton
-                                    key={city.id}
-                                    onClick={() => setCity(city.slug)}
-                                    active={filters.city === city.slug}
-                                >
-                                    {city.name}
-                                </FilterButton>
+                    {/* Results Grid */}
+                    {(tenants.data || tenants).length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            {(tenants.data || tenants).map((tenant) => (
+                                <TenantCard key={tenant.id} tenant={tenant} />
                             ))}
                         </div>
-                    ) : null}
-
-                    <DirectoryGuidePanel
-                        authUser={authUser}
-                        filters={filters}
-                        searchTerm={searchTerm}
-                        cityTerm={cityTerm}
-                    />
-
-                    <div className="mt-8 flex flex-col gap-4 rounded-[28px] border border-stone-200 bg-[#f3f3f1] px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">Vista actual</p>
-                            <h2 className="mt-2 text-2xl font-semibold text-slate-950" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                                {activeCity ? `Negocios en ${activeCity.name}` : activeCategoryLabel}
-                            </h2>
-                            {filters.search ? (
-                                <p className="mt-2 text-sm text-slate-600">
-                                    Buscando: <span className="font-semibold text-slate-900">{filters.search}</span>
-                                </p>
-                            ) : null}
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
-                            {isDirectoryLoading ? (
-                                <LoadingState
-                                    variant="inline"
-                                    title="Actualizando resultados"
-                                    testId="directory-filter-loading"
-                                />
-                            ) : null}
-                            <span className="rounded-full bg-white px-4 py-2 font-semibold text-slate-700">
-                                {items.length} resultados
-                            </span>
-                            {hasFilters ? (
-                                <Button
-                                    type="button"
-                                    onClick={clearFilters}
-                                    variant="outline"
-                                    className="h-auto rounded-full border-stone-300 px-4 py-2 font-semibold transition-colors hover:border-stone-400 hover:bg-white"
-                                >
-                                    <X data-icon="inline-start" aria-hidden="true" />
-                                    Limpiar
-                                </Button>
-                            ) : null}
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section className="bg-[#f3f3f1] py-16">
-                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    {items.length > 0 ? (
-                        isDirectoryLoading ? (
-                            <LoadingState
-                                title="Actualizando directorio"
-                                description="Estamos aplicando tus filtros sin cambiar la página completa."
-                                testId="directory-results-loading"
-                            />
-                        ) : (
-                            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-                                {items.map((tenant) => (
-                                    <DirectoryCard key={tenant.id} tenant={tenant} />
-                                ))}
-                            </div>
-                        )
                     ) : (
-                        isDirectoryLoading ? (
-                            <LoadingState
-                                title="Buscando negocios"
-                                description="Estamos revisando ciudad, categoría y término de búsqueda."
-                                testId="directory-results-loading"
-                            />
-                        ) : (
-                            <EmptyState filters={filters} onClear={clearFilters} />
-                        )
+                        /* Empty State */
+                        <div className="flex flex-col items-center justify-center py-24 text-center">
+                            <div className="w-24 h-24 bg-muted/30 rounded-full flex items-center justify-center mb-6">
+                                <Search className="w-10 h-10 text-muted-foreground/50" />
+                            </div>
+                            <h3 className="text-xl font-bold mb-2 text-foreground">
+                                {filters.search
+                                    ? `No encontramos "${filters.search}"`
+                                    : 'No hay negocios disponibles'}
+                            </h3>
+                            <p className="text-muted-foreground max-w-md mx-auto mb-8">
+                                {filters.search
+                                    ? `No hay negocios que coincidan con tu búsqueda. ¿Conoces un negocio de "${filters.search}"? ¡Invítalos a registrarse!`
+                                    : 'No hay negocios que coincidan con tus filtros. Intenta limpiar los filtros para ver todo el catálogo.'}
+                            </p>
+
+                            <div className="flex flex-col sm:flex-row gap-4">
+                                <Button
+                                    variant="outline"
+                                    size="lg"
+                                    onClick={() => handleFilterChange('clear', null)}
+                                    className="rounded-full px-8"
+                                >
+                                    <X className="w-4 h-4 mr-2" />
+                                    Limpiar filtros
+                                </Button>
+
+                                <Link
+                                    href={route('register')}
+                                    className="inline-flex items-center justify-center gap-2 px-8 h-11 rounded-full bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors"
+                                >
+                                    <Building2 className="w-4 h-4" />
+                                    Registrar mi negocio
+                                </Link>
+                            </div>
+                        </div>
                     )}
 
-                    {tenants?.links && items.length > 0 ? (
-                        <div className="mt-12 flex flex-wrap justify-center gap-2">
+                    {/* Pagination */}
+                    {tenants.links && tenants.data?.length > 0 && (
+                        <div className="flex justify-center gap-2 mt-12">
                             {tenants.links.map((link, index) => {
+                                // Sanitize label: replace HTML entities with readable text
                                 const label = link.label
-                                    .replace('&laquo;', '<<')
-                                    .replace('&raquo;', '>>')
+                                    .replace('&laquo;', '«')
+                                    .replace('&raquo;', '»')
                                     .replace('Previous', 'Anterior')
                                     .replace('Next', 'Siguiente');
 
                                 return (
-                                    link.url ? (
-                                        <Button
-                                            key={index}
-                                            asChild
-                                            variant={link.active ? 'default' : 'outline'}
-                                            size="sm"
-                                            className="rounded-full border-stone-200 px-4 text-sm font-semibold"
-                                        >
-                                            <Link href={link.url}>
-                                                {label}
-                                            </Link>
-                                        </Button>
-                                    ) : (
-                                        <Button
-                                            key={index}
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            disabled
-                                            className="rounded-full border-stone-200 px-4 text-sm font-semibold"
-                                        >
-                                            {label}
-                                        </Button>
-                                    )
+                                    <Link
+                                        key={index}
+                                        href={link.url || '#'}
+                                        className={cn(
+                                            "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                                            link.active
+                                                ? "bg-primary text-primary-foreground"
+                                                : "bg-muted hover:bg-muted/80 text-foreground",
+                                            !link.url && "opacity-50 pointer-events-none"
+                                        )}
+                                    >
+                                        {label}
+                                    </Link>
                                 );
                             })}
                         </div>
-                    ) : null}
-                </div>
-            </section>
+                    )}
+                </main>
+            </div>
 
-            <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-                <SheetContent
-                    side="bottom"
-                    className="max-h-[85vh] overflow-y-auto rounded-t-[32px] border-stone-200 p-6 lg:hidden"
-                >
-                    <SheetHeader className="pr-8 text-left">
-                        <SheetTitle className="text-lg font-semibold text-slate-950" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                            Filtros
-                        </SheetTitle>
-                        <SheetDescription>
-                            Ajusta ciudad y categoría para encontrar negocios disponibles.
-                        </SheetDescription>
-                    </SheetHeader>
-
-                    <div className="mt-6 flex flex-col gap-5">
-                        <div>
-                            <label className="text-sm font-semibold text-slate-700">Ciudad</label>
-                            <Select value={cityTerm || 'all'} onValueChange={(value) => setCity(value === 'all' ? '' : value)}>
-                                <SelectTrigger aria-label="Filtrar por ciudad en móvil" className="mt-2 h-12 rounded-2xl border-stone-200 bg-[#f3f3f1] text-sm text-slate-900 focus:ring-slate-950">
-                                    <SelectValue placeholder="Todas las ciudades" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectGroup>
-                                        <SelectItem value="all">Todas las ciudades</SelectItem>
-                                        {cities.map((city) => (
-                                            <SelectItem key={city.id} value={city.slug}>{city.name}</SelectItem>
-                                        ))}
-                                    </SelectGroup>
-                                </SelectContent>
-                            </Select>
+            {/* Mobile Filter Drawer */}
+            {mobileFiltersOpen && (
+                <div className="fixed inset-0 z-50 lg:hidden">
+                    <div
+                        className="fixed inset-0 bg-black/50"
+                        onClick={() => setMobileFiltersOpen(false)}
+                    />
+                    <div className="fixed inset-y-0 right-0 w-full max-w-xs bg-background shadow-xl">
+                        <div className="flex items-center justify-between p-4 border-b">
+                            <h2 className="font-bold text-lg">Filtros</h2>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setMobileFiltersOpen(false)}
+                            >
+                                <X className="w-5 h-5" />
+                            </Button>
                         </div>
-
-                        <div>
-                            <label className="text-sm font-semibold text-slate-700">Categoría</label>
-                            <div className="mt-3 flex flex-wrap gap-2">
-                                <FilterButton active={!filters.category} onClick={() => setCategory('')}>
-                                    Todo
-                                </FilterButton>
-                                {categories.map((category) => (
-                                    <FilterButton
-                                        key={category.id}
-                                        onClick={() => setCategory(category.slug)}
-                                        active={filters.category === category.slug}
-                                    >
-                                        {category.name}
-                                    </FilterButton>
-                                ))}
-                            </div>
+                        <div className="p-4">
+                            <FilterPanel
+                                cities={cities}
+                                filters={filters}
+                                onFilterChange={handleFilterChange}
+                            />
                         </div>
-
-                        <Button
-                            type="button"
-                            onClick={clearFilters}
-                            variant="outline"
-                            className="w-full rounded-full border-stone-300 px-6 py-3 text-sm font-semibold text-slate-700"
-                        >
-                            <X data-icon="inline-start" aria-hidden="true" />
-                            Limpiar filtros
-                        </Button>
                     </div>
-                </SheetContent>
-            </Sheet>
-        </PublicLayout>
+                </div>
+            )}
+        </AppLayout>
     );
 }

@@ -50,21 +50,6 @@ export const calculateItemTotal = (basePrice, quantity, selectedModifiers = []) 
     return ((Number(basePrice) || 0) + modifiersTotal) * (Number(quantity) || 1);
 };
 
-const checkoutDiagnostic = (status, probableCause, recommendedAction, traceId = null) => ({
-    surface: 'checkout',
-    status,
-    probable_cause: probableCause,
-    recommended_action: recommendedAction,
-    trace_id: traceId,
-});
-
-const diagnosticFromError = (error, fallback) => error?.response?.data?.diagnostic || checkoutDiagnostic(
-    fallback.status,
-    error?.response?.data?.message || error?.message || fallback.probableCause,
-    fallback.recommendedAction,
-    error?.response?.headers?.['x-request-id'] || null
-);
-
 const useCartStore = create(
     persist(
         (set, get) => ({
@@ -76,8 +61,6 @@ const useCartStore = create(
             tenantPhone: null,
             tenantName: null,
             tenantSlug: null,
-            checkoutSessionId: null,
-            checkoutNonce: null,
 
             // ═══════════════════════════════════════════════════════════════════════
             // STATE: Customer Data (Persisted to localStorage)
@@ -106,7 +89,6 @@ const useCartStore = create(
             // ═══════════════════════════════════════════════════════════════════════
             isSubmitting: false,
             submitError: null,
-            submitDiagnostic: null,
             lastOrderNumber: null,
             lastOrderId: null,
 
@@ -165,8 +147,6 @@ const useCartStore = create(
                         tenantPhone,
                         tenantName,
                         tenantId,
-                        checkoutSessionId: null,
-                        checkoutNonce: null,
 
                         // ═══════════════════════════════════════════════════════════
                         // PII SANITIZATION: Reset ALL customer data to defaults
@@ -190,52 +170,6 @@ const useCartStore = create(
                     // Same tenant or first init - just update tenant info
                     set({ tenantSlug, tenantPhone, tenantName, tenantId });
                 }
-            },
-
-            ensureCheckoutSession: async () => {
-                const state = get();
-
-                if (state.checkoutSessionId && state.checkoutNonce) {
-                    return {
-                        sessionId: state.checkoutSessionId,
-                        nonce: state.checkoutNonce,
-                    };
-                }
-
-                if (!state.tenantId) {
-                    const diagnostic = checkoutDiagnostic(
-                        'Checkout sin negocio identificado',
-                        'El carrito no tiene tenant_id activo para crear la sesion de compra.',
-                        'Vuelve al catalogo del negocio y abre el carrito desde ahi.'
-                    );
-                    set({ submitDiagnostic: diagnostic });
-                    throw new Error('No se pudo iniciar checkout: tenant no identificado.');
-                }
-
-                let response;
-                try {
-                    response = await axios.post('/api/v1/checkout/session', {
-                        tenant: state.tenantId,
-                    });
-                } catch (error) {
-                    const diagnostic = diagnosticFromError(error, {
-                        status: 'No pudimos iniciar checkout',
-                        probableCause: 'La sesion segura de checkout no pudo crearse.',
-                        recommendedAction: 'Reintenta en unos segundos. Si persiste, comparte esta referencia con soporte.',
-                    });
-                    set({ submitDiagnostic: diagnostic });
-                    throw error;
-                }
-
-                const sessionId = response.data.session_id;
-                const nonce = response.data.checkout_nonce;
-
-                set({
-                    checkoutSessionId: sessionId,
-                    checkoutNonce: nonce,
-                });
-
-                return { sessionId, nonce };
             },
 
             // ═══════════════════════════════════════════════════════════════════════
@@ -405,18 +339,18 @@ const useCartStore = create(
                 set({ isApplyingCoupon: true, couponError: null });
 
                 try {
-                    const response = await axios.post('/api/v1/checkout/validate-coupon', {
+                    const response = await axios.post('/api/coupons/verify', {
                         tenant_id: state.tenantId,
                         code: code.trim().toUpperCase(),
-                        cart_total: subtotal,
+                        cart_subtotal: subtotal,
                     });
 
                     if (response.data.valid) {
                         set({
-                            couponCode: response.data.code,
+                            couponCode: response.data.coupon_code,
                             discountAmount: response.data.discount_amount,
-                            couponType: response.data.discount_type,
-                            couponValue: response.data.coupon_value ?? null,
+                            couponType: response.data.coupon_type,
+                            couponValue: response.data.coupon_value,
                             couponError: null,
                             isApplyingCoupon: false,
                         });
@@ -426,13 +360,12 @@ const useCartStore = create(
                             discountAmount: response.data.discount_amount,
                         };
                     } else {
-                        throw new Error(response.data.message || response.data.error || 'Cupon invalido');
+                        throw new Error(response.data.error || 'Cupón inválido');
                     }
                 } catch (error) {
-                    const errorMessage = error.response?.data?.message
-                        || error.response?.data?.error
+                    const errorMessage = error.response?.data?.error
                         || error.message
-                        || 'Error al validar cupon';
+                        || 'Error al validar cupón';
 
                     set({
                         couponCode: null,
@@ -484,10 +417,10 @@ const useCartStore = create(
                 const subtotal = get().getSubtotal();
 
                 try {
-                    const response = await axios.post('/api/v1/checkout/validate-coupon', {
+                    const response = await axios.post('/api/coupons/verify', {
                         tenant_id: tenantId,
                         code: couponCode,
-                        cart_total: subtotal,
+                        cart_subtotal: subtotal,
                     }, {
                         signal: controller.signal // Bind signal to axios
                     });
@@ -505,7 +438,7 @@ const useCartStore = create(
                             discountAmount: 0,
                             couponType: null,
                             couponValue: null,
-                            couponError: response.data.message || response.data.error,
+                            couponError: response.data.error,
                             revalidateController: null
                         });
                     }
@@ -712,33 +645,21 @@ const useCartStore = create(
                 // Validate
                 const validation = get().validateCheckout();
                 if (!validation.isValid) {
-                    const firstError = Object.values(validation.errors)[0];
-                    set({
-                        submitError: firstError,
-                        submitDiagnostic: checkoutDiagnostic(
-                            'Datos de entrega incompletos',
-                            firstError,
-                            'Completa los campos marcados antes de enviar el pedido.'
-                        ),
-                    });
+                    set({ submitError: Object.values(validation.errors)[0] });
                     return {
                         success: false,
-                        error: firstError,
+                        error: Object.values(validation.errors)[0],
                         validationErrors: validation.errors,
                     };
                 }
 
                 // Start submission
-                set({ isSubmitting: true, submitError: null, submitDiagnostic: null });
+                set({ isSubmitting: true, submitError: null });
 
                 try {
-                    const checkoutSession = await get().ensureCheckoutSession();
-
                     // Build API payload matching OrderController validation
                     const payload = {
                         tenant_id: state.tenantId,
-                        session_id: checkoutSession.sessionId,
-                        checkout_nonce: checkoutSession.nonce,
                         customer_name: state.customerName.trim(),
                         customer_phone: state.customerPhone.trim(),
                         customer_email: state.customerEmail?.trim() || null,
@@ -754,9 +675,9 @@ const useCartStore = create(
                             price: item.price,
                             quantity: item.quantity,
                             options: item.selectedModifiers?.map(mod => ({
-                                option_id: mod.optionId,
                                 group: mod.groupName,
                                 option: mod.name,
+                                price: mod.price || 0,
                             })) || [],
                             notes: item.notes || null,
                         })),
@@ -765,13 +686,7 @@ const useCartStore = create(
                     };
 
                     // Make API call
-                    const response = await axios.post('/api/orders', payload, {
-                        headers: {
-                            'X-Checkout-Session': checkoutSession.sessionId,
-                            'X-Checkout-Nonce': checkoutSession.nonce,
-                            'Idempotency-Key': checkoutSession.sessionId,
-                        },
-                    });
+                    const response = await axios.post('/api/orders', payload);
 
                     if (response.data.success) {
                         const { order_number, order_id, whatsapp_url } = response.data.data;
@@ -781,11 +696,8 @@ const useCartStore = create(
                             items: [],
                             isSubmitting: false,
                             submitError: null,
-                            submitDiagnostic: null,
                             lastOrderNumber: order_number,
                             lastOrderId: order_id,
-                            checkoutSessionId: null,
-                            checkoutNonce: null,
                         });
 
                         return {
@@ -801,16 +713,10 @@ const useCartStore = create(
                     const errorMessage = error.response?.data?.message
                         || error.message
                         || 'Error de conexión. Intenta de nuevo.';
-                    const diagnostic = diagnosticFromError(error, {
-                        status: 'Pedido no enviado',
-                        probableCause: errorMessage,
-                        recommendedAction: 'Revisa los datos, confirma que sigues en el negocio correcto e intenta de nuevo.',
-                    });
 
                     set({
                         isSubmitting: false,
                         submitError: errorMessage,
-                        submitDiagnostic: diagnostic,
                     });
 
                     return {
@@ -823,7 +729,7 @@ const useCartStore = create(
             /**
              * Clear submission error
              */
-            clearError: () => set({ submitError: null, submitDiagnostic: null }),
+            clearError: () => set({ submitError: null }),
         }),
         {
             name: 'conecta-cart', // localStorage key

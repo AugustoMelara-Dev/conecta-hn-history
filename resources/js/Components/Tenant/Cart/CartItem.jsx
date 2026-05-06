@@ -1,97 +1,94 @@
 import React from 'react';
 import { ShoppingBag, Minus, Plus, Trash2 } from 'lucide-react';
 import { calculateItemTotal } from '@/Stores/useCartStore';
-import { Button } from '@/Components/ui/button';
-import { Card, CardContent } from '@/Components/ui/card';
 
 export default function CartItem({ item, onRemove, onUpdateQuantity }) {
     const itemTotal = calculateItemTotal(item.price, item.quantity, item.selectedModifiers);
 
     return (
-        <Card>
-            <CardContent className="flex gap-3 p-3">
-            <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-muted">
+        <div className="flex gap-3 p-3 bg-slate-800/50 rounded-xl border border-white/5">
+            {/* Image */}
+            <div className="w-16 h-16 bg-slate-700 rounded-lg overflow-hidden flex-shrink-0">
                 {item.image ? (
                     <img
                         src={item.image}
                         alt={item.name}
-                        className="h-full w-full object-cover"
+                        className="w-full h-full object-cover"
                     />
                 ) : (
-                    <div className="flex h-full w-full items-center justify-center">
-                        <ShoppingBag className="h-6 w-6 text-muted-foreground" data-icon aria-hidden="true" />
+                    <div className="w-full h-full flex items-center justify-center">
+                        <ShoppingBag className="w-6 h-6 text-slate-500" />
                     </div>
                 )}
             </div>
 
-            <div className="min-w-0 flex-1">
-                <h4 className="truncate font-semibold text-foreground">{item.name}</h4>
+            {/* Details */}
+            <div className="flex-1 min-w-0">
+                <h4 className="font-semibold text-white truncate">{item.name}</h4>
 
-                {item.selectedModifiers?.length > 0 ? (
-                    <div className="mt-1 grid gap-0.5">
-                        {item.selectedModifiers.map((modifier, index) => (
-                            <p key={index} className="text-xs text-muted-foreground">
-                                + {modifier.name}
-                                {modifier.price > 0 ? (
-                                    <span className="ml-1 text-foreground">
-                                        (+L.{modifier.price.toFixed(2)})
+                {/* Modifiers */}
+                {item.selectedModifiers?.length > 0 && (
+                    <div className="mt-1 space-y-0.5">
+                        {item.selectedModifiers.map((mod, idx) => (
+                            <p key={idx} className="text-xs text-slate-400">
+                                + {mod.name}
+                                {mod.price > 0 && (
+                                    <span className="text-emerald-400 ml-1">
+                                        (+L.{mod.price.toFixed(2)})
                                     </span>
-                                ) : null}
+                                )}
                             </p>
                         ))}
                     </div>
-                ) : null}
+                )}
 
-                {item.notes ? (
-                    <p className="mt-1 truncate text-xs text-muted-foreground">
-                        Notas: {item.notes}
+                {/* Notes */}
+                {item.notes && (
+                    <p className="text-xs text-slate-500 mt-1 truncate">
+                        📝 {item.notes}
                     </p>
-                ) : null}
+                )}
 
-                <div className="mt-2 flex items-center justify-between">
-                    <span className="text-sm font-bold text-foreground">
+                {/* Price + Quantity */}
+                <div className="flex items-center justify-between mt-2">
+                    <span
+                        className="font-bold text-sm"
+                        style={{ color: 'var(--primary-color, #818cf8)' }}
+                    >
                         L. {itemTotal.toFixed(2)}
                     </span>
 
-                    <div className="flex items-center gap-1 rounded-lg bg-muted">
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
+                    {/* Quantity Controls */}
+                    <div className="flex items-center gap-1 bg-slate-700/50 rounded-lg">
+                        <button
                             onClick={() => onUpdateQuantity(item.quantity - 1)}
-                            className="h-7 w-7"
+                            className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-white"
                             aria-label="Reducir cantidad"
                         >
-                            <Minus className="h-3 w-3" data-icon aria-hidden="true" />
-                        </Button>
-                        <span className="w-5 text-center text-sm font-medium text-foreground" aria-live="polite">
+                            <Minus className="w-3 h-3" />
+                        </button>
+                        <span className="w-5 text-center text-sm font-medium text-white">
                             {item.quantity}
                         </span>
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
+                        <button
                             onClick={() => onUpdateQuantity(item.quantity + 1)}
-                            className="h-7 w-7"
+                            className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-white"
                             aria-label="Aumentar cantidad"
                         >
-                            <Plus className="h-3 w-3" data-icon aria-hidden="true" />
-                        </Button>
+                            <Plus className="w-3 h-3" />
+                        </button>
                     </div>
                 </div>
             </div>
 
-            <Button
-                type="button"
-                variant="ghost"
-                size="icon"
+            {/* Remove Button */}
+            <button
                 onClick={onRemove}
-                className="h-8 w-8 flex-shrink-0"
+                className="w-8 h-8 flex-shrink-0 flex items-center justify-center text-rose-400 hover:text-rose-300 transition-colors"
                 aria-label="Eliminar producto"
             >
-                <Trash2 className="h-4 w-4" data-icon aria-hidden="true" />
-            </Button>
-            </CardContent>
-        </Card>
+                <Trash2 className="w-4 h-4" />
+            </button>
+        </div>
     );
 }

@@ -180,34 +180,12 @@
     {{-- ═══════════════════════════════════════════════════════════════════════ --}}
     <section 
         class="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm mt-6"
-        x-data="{ 
-            activeTab: '{{ $activeTab }}',
-            activateTab(tab, panelId) {
-                this.activeTab = tab;
-                this.$nextTick(() => document.getElementById(panelId)?.focus());
-            },
-            focusSiblingTab(currentButton, direction) {
-                const tabs = Array.from(currentButton.closest('[role=tablist]')?.querySelectorAll('[role=tab]') ?? []);
-                const index = tabs.indexOf(currentButton);
-                if (index === -1 || tabs.length === 0) return;
-                const nextIndex = (index + direction + tabs.length) % tabs.length;
-                tabs[nextIndex]?.focus();
-            }
-        }"
+        x-data="{ activeTab: '{{ $activeTab }}' }"
     >
         <div class="max-w-4xl mx-auto px-4">
-            <nav class="flex gap-1 overflow-x-auto scrollbar-hide py-2" role="tablist" aria-label="Secciones del negocio">
+            <nav class="flex gap-1 overflow-x-auto scrollbar-hide py-2">
                 <button 
-                    @click="activateTab('info', 'tenant-panel-info')"
-                    @keydown.enter.prevent="activateTab('info', 'tenant-panel-info')"
-                    @keydown.space.prevent="activateTab('info', 'tenant-panel-info')"
-                    @keydown.arrow-right.prevent="focusSiblingTab($el, 1)"
-                    @keydown.arrow-left.prevent="focusSiblingTab($el, -1)"
-                    id="tenant-tab-info"
-                    role="tab"
-                    :aria-selected="activeTab === 'info'"
-                    :tabindex="activeTab === 'info' ? '0' : '-1'"
-                    aria-controls="tenant-panel-info"
+                    @click="activeTab = 'info'"
                     :class="activeTab === 'info' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
                     class="flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors"
                 >
@@ -216,16 +194,7 @@
 
                 @if($gallery->count() > 0 || $tenant->is_pro)
                 <button 
-                    @click="activateTab('gallery', 'tenant-panel-gallery')"
-                    @keydown.enter.prevent="activateTab('gallery', 'tenant-panel-gallery')"
-                    @keydown.space.prevent="activateTab('gallery', 'tenant-panel-gallery')"
-                    @keydown.arrow-right.prevent="focusSiblingTab($el, 1)"
-                    @keydown.arrow-left.prevent="focusSiblingTab($el, -1)"
-                    id="tenant-tab-gallery"
-                    role="tab"
-                    :aria-selected="activeTab === 'gallery'"
-                    :tabindex="activeTab === 'gallery' ? '0' : '-1'"
-                    aria-controls="tenant-panel-gallery"
+                    @click="activeTab = 'gallery'"
                     :class="activeTab === 'gallery' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
                     class="flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors"
                 >
@@ -235,16 +204,7 @@
 
                 @if($tenant->is_pro && $products->count() > 0)
                 <button 
-                    @click="activateTab('products', 'tenant-panel-products')"
-                    @keydown.enter.prevent="activateTab('products', 'tenant-panel-products')"
-                    @keydown.space.prevent="activateTab('products', 'tenant-panel-products')"
-                    @keydown.arrow-right.prevent="focusSiblingTab($el, 1)"
-                    @keydown.arrow-left.prevent="focusSiblingTab($el, -1)"
-                    id="tenant-tab-products"
-                    role="tab"
-                    :aria-selected="activeTab === 'products'"
-                    :tabindex="activeTab === 'products' ? '0' : '-1'"
-                    aria-controls="tenant-panel-products"
+                    @click="activeTab = 'products'"
                     :class="activeTab === 'products' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
                     class="flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors"
                 >
@@ -261,7 +221,7 @@
     {{-- ═══════════════════════════════════════════════════════════════════════ --}}
     {{-- TAB: INFORMACIÓN --}}
     {{-- ═══════════════════════════════════════════════════════════════════════ --}}
-    <div id="tenant-panel-info" role="tabpanel" aria-labelledby="tenant-tab-info" x-show="activeTab === 'info'" :tabindex="activeTab === 'info' ? '0' : '-1'" x-transition class="max-w-4xl mx-auto px-4 py-6 space-y-6">
+    <div x-show="activeTab === 'info'" x-transition class="max-w-4xl mx-auto px-4 py-6 space-y-6">
         
         {{-- Descripción --}}
         @if($tenant->description)
@@ -425,7 +385,7 @@
     {{-- ═══════════════════════════════════════════════════════════════════════ --}}
     {{-- TAB: GALERÍA --}}
     {{-- ═══════════════════════════════════════════════════════════════════════ --}}
-    <div id="tenant-panel-gallery" role="tabpanel" aria-labelledby="tenant-tab-gallery" x-show="activeTab === 'gallery'" :tabindex="activeTab === 'gallery' ? '0' : '-1'" x-transition class="max-w-4xl mx-auto px-4 py-6">
+    <div x-show="activeTab === 'gallery'" x-transition class="max-w-4xl mx-auto px-4 py-6">
         @if($gallery->count() > 0)
         <div class="grid grid-cols-3 gap-2">
             @foreach($gallery as $image)
@@ -453,7 +413,7 @@
     {{-- TAB: PRODUCTOS (Solo PRO) --}}
     {{-- ═══════════════════════════════════════════════════════════════════════ --}}
     @if($tenant->is_pro)
-    <div id="tenant-panel-products" role="tabpanel" aria-labelledby="tenant-tab-products" x-show="activeTab === 'products'" :tabindex="activeTab === 'products' ? '0' : '-1'" x-transition class="max-w-4xl mx-auto px-4 py-6">
+    <div x-show="activeTab === 'products'" x-transition class="max-w-4xl mx-auto px-4 py-6">
         
         {{-- ═══════════════════════════════════════════════════════════════ --}}
         {{-- BARRA DE NAVEGACIÓN POR SECCIONES (Sticky Glass Navigation) --}}

@@ -11,7 +11,7 @@
  * - Navigation restricted to store-only actions
  * - No escape routes to the directory
  * - Cart integration in bottom nav
- * - "Powered by Vito Business OS" relegated to footer
+ * - "Powered by Conecta HN" relegated to footer
  */
 
 import { useState } from 'react';
@@ -86,12 +86,10 @@ export default function ShopLayout({
                     {/* Cart Button (Desktop) */}
                     {isPro && showCart && (
                         <button
-                            type="button"
                             onClick={() => setIsCartOpen(true)}
-                            aria-label={`Abrir carrito${cartItemCount > 0 ? `, ${cartItemCount} productos` : ''}`}
-                            className="relative rounded-md p-2 text-slate-400 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                            className="relative p-2 text-slate-400 hover:text-white transition-colors"
                         >
-                            <ShoppingBag className="w-5 h-5" aria-hidden="true" />
+                            <ShoppingBag className="w-5 h-5" />
                             {cartItemCount > 0 && (
                                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
                                     {cartItemCount > 9 ? '9+' : cartItemCount}
@@ -110,13 +108,13 @@ export default function ShopLayout({
             </main>
 
             {/* ═══════════════════════════════════════════════════════════════
-                FOOTER: Powered by Vito Business OS (White-Label Attribution)
+                FOOTER: Powered by Conecta HN (White-Label Attribution)
             ═══════════════════════════════════════════════════════════════ */}
             <footer className="hidden md:block py-4 text-center border-t border-white/5">
                 <p className="text-xs text-slate-500">
                     Powered by{' '}
                     <Link href="/" className="text-slate-400 hover:text-white transition-colors">
-                        Vito Business OS
+                        Conecta HN
                     </Link>
                 </p>
             </footer>
@@ -134,7 +132,7 @@ export default function ShopLayout({
                 <div className="flex items-center justify-around h-16">
                     {/* Home */}
                     <Link
-                        href={tenantSlug ? `/t/${tenantSlug}` : '#'}
+                        href={tenantSlug ? `/${tenantSlug}` : '#'}
                         className="flex flex-col items-center gap-1 text-slate-400 hover:text-white transition-colors px-4 py-2"
                     >
                         <Store className="w-5 h-5" />
@@ -153,12 +151,10 @@ export default function ShopLayout({
                     {/* Cart (Pro only) or Contact (Semilla) */}
                     {isPro ? (
                         <button
-                            type="button"
                             onClick={() => setIsCartOpen(true)}
-                            aria-label={`Abrir carrito${cartItemCount > 0 ? `, ${cartItemCount} productos` : ''}`}
-                            className="relative flex flex-col items-center gap-1 rounded-lg px-4 py-2 text-slate-400 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+                            className="relative flex flex-col items-center gap-1 text-slate-400 hover:text-white transition-colors px-4 py-2"
                         >
-                            <ShoppingBag className="w-5 h-5" aria-hidden="true" />
+                            <ShoppingBag className="w-5 h-5" />
                             {cartItemCount > 0 && (
                                 <span className="absolute top-0 right-2 bg-red-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
                                     {cartItemCount > 9 ? '9+' : cartItemCount}

@@ -14,7 +14,7 @@
         <div class="text-center mb-8">
             <a href="/" class="inline-block">
                 <h1 class="text-3xl font-bold text-gray-900">
-                    Vito <span class="text-blue-600">Business OS</span>
+                    Conecta<span class="text-blue-600">HN</span>
                 </h1>
             </a>
         </div>
@@ -79,14 +79,12 @@
                                 autofocus
                                 autocomplete="email"
                                 placeholder="tu@email.com"
-                                aria-invalid="@error('email') true @else false @enderror"
-                                aria-describedby="@error('email') login-email-error @else null @enderror"
                                 class="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder-gray-400
                                     @error('email') border-red-300 bg-red-50 @enderror"
                             />
                         </div>
                         @error('email')
-                            <p id="login-email-error" class="mt-1.5 text-sm text-red-500" role="alert">{{ $message }}</p>
+                            <p class="mt-1.5 text-sm text-red-500">{{ $message }}</p>
                         @enderror
                     </div>
 
@@ -112,8 +110,6 @@
                                 id="password"
                                 autocomplete="current-password"
                                 placeholder="Tu contraseña"
-                                aria-invalid="@error('password') true @else false @enderror"
-                                aria-describedby="@error('password') login-password-error @else null @enderror"
                                 class="w-full pl-11 pr-12 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder-gray-400
                                     @error('password') border-red-300 bg-red-50 @enderror"
                             />
@@ -133,7 +129,7 @@
                             </button>
                         </div>
                         @error('password')
-                            <p id="login-password-error" class="mt-1.5 text-sm text-red-500" role="alert">{{ $message }}</p>
+                            <p class="mt-1.5 text-sm text-red-500">{{ $message }}</p>
                         @enderror
                     </div>
 

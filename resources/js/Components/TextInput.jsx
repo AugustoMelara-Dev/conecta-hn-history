@@ -1,6 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 
-// Deprecated: use '@/Components/ui/input' composed with Field for new React surfaces.
 export default forwardRef(function TextInput(
     { type = 'text', className = '', isFocused = false, ...props },
     ref,

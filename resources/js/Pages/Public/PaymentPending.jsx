@@ -1,141 +1,165 @@
-import { useEffect, useState } from 'react';
+/**
+ * Pages/Public/PaymentPending.jsx - Payment Processing Status
+ *
+ * FEATURES:
+ * - Real-time status polling
+ * - Animated progress states
+ * - Timeout handling
+ * - Support contact fallback
+ *
+ * PROPS:
+ * @param {Object} props.payment - { id, status, amount, method, created_at }
+ * @param {Object} props.tenant - Tenant info
+ * @param {string} props.checkUrl - URL to poll for status updates
+ */
+
+import { useState, useEffect, useCallback } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import PublicLayout from '@/Layouts/PublicLayout';
-import SupportDiagnosticCard from '@/Components/SupportDiagnosticCard';
 
+// ═══════════════════════════════════════════════════════════════════════════
+// FORMATTERS
+// ═══════════════════════════════════════════════════════════════════════════
 const currencyFormatter = new Intl.NumberFormat('es-HN', {
     style: 'currency',
     currency: 'HNL',
     minimumFractionDigits: 0,
 });
 
-function normalizePaymentStatus(rawStatus) {
-    if (rawStatus === 'approved' || rawStatus === 'completed' || rawStatus === 'paid') {
-        return 'completed';
-    }
+const dateFormatter = new Intl.DateTimeFormat('es-HN', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+});
 
-    if (rawStatus === 'rejected' || rawStatus === 'failed' || rawStatus === 'error') {
-        return 'failed';
-    }
-
-    return 'pending';
-}
-
-function StatusIcon({ status, reducedMotion }) {
-    const baseClass = reducedMotion ? '' : 'animate-pulse';
-
-    if (status === 'completed') {
-        return (
-            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100" aria-hidden="true">
-                <svg className="h-10 w-10 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                </svg>
-            </div>
-        );
-    }
-
-    if (status === 'failed') {
-        return (
-            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-red-100" aria-hidden="true">
-                <svg className="h-10 w-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </div>
-        );
-    }
-
+// ═══════════════════════════════════════════════════════════════════════════
+// STATUS COMPONENTS
+// ═══════════════════════════════════════════════════════════════════════════
+function PendingAnimation() {
     return (
-        <div className={`mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-amber-100 ${baseClass}`} aria-hidden="true">
-            <svg className="h-10 w-10 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+        <div className="relative">
+            <div className="w-32 h-32 rounded-full bg-amber-100 flex items-center justify-center mx-auto">
+                <div className="w-24 h-24 rounded-full bg-amber-200 flex items-center justify-center animate-pulse">
+                    <svg className="w-12 h-12 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+            </div>
+            {/* Orbiting dots */}
+            <div className="absolute inset-0 animate-spin" style={{ animationDuration: '3s' }}>
+                <div className="absolute top-0 left-1/2 w-3 h-3 -ml-1.5 bg-amber-500 rounded-full" />
+            </div>
+            <div className="absolute inset-0 animate-spin" style={{ animationDuration: '3s', animationDelay: '1s' }}>
+                <div className="absolute bottom-0 left-1/2 w-3 h-3 -ml-1.5 bg-amber-400 rounded-full" />
+            </div>
         </div>
     );
 }
 
-export default function PaymentPending({ payment, tenant, checkUrl, diagnostic = null }) {
-    const [status, setStatus] = useState(normalizePaymentStatus(payment?.status));
+function SuccessAnimation() {
+    return (
+        <div className="w-32 h-32 rounded-full bg-emerald-100 flex items-center justify-center mx-auto animate-bounce-in">
+            <div className="w-24 h-24 rounded-full bg-emerald-500 flex items-center justify-center">
+                <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+            </div>
+        </div>
+    );
+}
+
+function FailedAnimation() {
+    return (
+        <div className="w-32 h-32 rounded-full bg-red-100 flex items-center justify-center mx-auto">
+            <div className="w-24 h-24 rounded-full bg-red-500 flex items-center justify-center">
+                <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </div>
+        </div>
+    );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TIMELINE
+// ═══════════════════════════════════════════════════════════════════════════
+function PaymentTimeline({ status }) {
+    const steps = [
+        { id: 'created', label: 'Orden Creada', description: 'Tu orden ha sido registrada' },
+        { id: 'processing', label: 'Procesando Pago', description: 'Verificando transacción' },
+        { id: 'confirmed', label: 'Pago Confirmado', description: 'Transacción exitosa' },
+    ];
+
+    const currentIndex = status === 'pending' ? 1 : status === 'completed' ? 2 : 0;
+
+    return (
+        <div className="space-y-4 mt-8">
+            {steps.map((step, index) => (
+                <div key={step.id} className="flex items-start gap-4">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${index < currentIndex
+                            ? 'bg-emerald-500 text-white'
+                            : index === currentIndex
+                                ? 'bg-amber-500 text-white animate-pulse'
+                                : 'bg-gray-200 text-gray-400'
+                        }`}>
+                        {index < currentIndex ? (
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                        ) : (
+                            <span className="font-bold">{index + 1}</span>
+                        )}
+                    </div>
+                    <div className="flex-1 pt-1">
+                        <p className={`font-semibold ${index <= currentIndex ? 'text-gray-900' : 'text-gray-400'}`}>
+                            {step.label}
+                        </p>
+                        <p className="text-sm text-gray-500">{step.description}</p>
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MAIN PAGE
+// ═══════════════════════════════════════════════════════════════════════════
+export default function PaymentPending({ payment, tenant, checkUrl }) {
+    const [status, setStatus] = useState(payment?.status || 'pending');
     const [elapsedTime, setElapsedTime] = useState(0);
-    const [pollingError, setPollingError] = useState(false);
-    const [pollTick, setPollTick] = useState(0);
-    const [reducedMotion, setReducedMotion] = useState(false);
-    const [liveMessage, setLiveMessage] = useState('Estamos verificando tu pago.');
 
-    const appDashboardHref = tenant?.slug ? route('filament.app.pages.dashboard', { tenant: tenant.slug }) : route('home');
-    const appBillingHref = tenant?.slug ? route('filament.app.pages.manage-billing', { tenant: tenant.slug }) : route('home');
-
-    const visibleDiagnostic = diagnostic || {
-        surface: 'billing',
-        status: status === 'pending' ? 'Pago en verificacion' : status === 'completed' ? 'Pago confirmado' : 'Pago no procesado',
-        probable_cause: status === 'pending'
-            ? 'Estamos esperando confirmacion del proveedor de pago o del webhook asociado.'
-            : status === 'completed'
-                ? 'El proveedor confirmo el cobro y el sistema actualizo el estado.'
-                : 'No se recibio confirmacion del cobro o el estado llego como fallido.',
-        recommended_action: status === 'pending'
-            ? 'No cierres la pagina. Si tarda demasiado, abre billing oficial y comparte tu referencia con soporte.'
-            : status === 'completed'
-                ? 'Puedes volver al panel y continuar con la configuracion del negocio.'
-                : 'Abre billing oficial para reintentar el flujo y comparte la referencia con soporte.',
-        trace_id: payment?.reference_number || payment?.id || null,
-    };
-
-    useEffect(() => {
-        if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
-
-        const media = window.matchMedia('(prefers-reduced-motion: reduce)');
-        const syncPreference = () => setReducedMotion(media.matches);
-
-        syncPreference();
-        media.addEventListener('change', syncPreference);
-
-        return () => media.removeEventListener('change', syncPreference);
-    }, []);
-
+    // Poll for status updates
     useEffect(() => {
         if (status !== 'pending') return;
 
-        const timer = setInterval(() => {
-            setElapsedTime((prev) => prev + 1);
-        }, 1000);
-
-        return () => clearInterval(timer);
-    }, [status]);
-
-    useEffect(() => {
-        if (status !== 'pending' || !checkUrl) return;
-
-        const pollInterval = setInterval(async () => {
-            try {
-                const response = await fetch(checkUrl);
-                const data = await response.json();
-                const nextStatus = normalizePaymentStatus(data?.status);
-
-                setPollingError(false);
-                setPollTick((prev) => prev + 1);
-
-                if (nextStatus !== 'pending') {
-                    setStatus(nextStatus);
-                    setLiveMessage(nextStatus === 'completed'
-                        ? 'Pago confirmado. Te llevaremos al panel en unos segundos.'
-                        : 'No se pudo confirmar el pago. Revisa las acciones disponibles.');
-
-                    if (nextStatus === 'completed') {
-                        setTimeout(() => {
-                            router.visit(appDashboardHref);
-                        }, 1500);
+        const pollInterval = setInterval(() => {
+            fetch(checkUrl || `/api/payments/${payment?.id}/status`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status && data.status !== 'pending') {
+                        setStatus(data.status);
+                        if (data.status === 'completed') {
+                            // Redirect to success page after delay
+                            setTimeout(() => {
+                                router.visit(route('tenant.dashboard'));
+                            }, 2000);
+                        }
                     }
-                } else {
-                    setLiveMessage(`Seguimos verificando tu pago. Ultima revision hace ${Math.floor(elapsedTime / 60)} minuto(s).`);
-                }
-            } catch {
-                setPollingError(true);
-                setLiveMessage('No pudimos consultar el estado en este momento. Puedes reintentar sin salir de esta pagina.');
-            }
-        }, 5000);
+                })
+                .catch(() => { });
+        }, 5000); // Poll every 5 seconds
 
         return () => clearInterval(pollInterval);
-    }, [status, checkUrl, appDashboardHref, elapsedTime]);
+    }, [status, checkUrl, payment?.id]);
+
+    // Elapsed time counter
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setElapsedTime(prev => prev + 1);
+        }, 1000);
+        return () => clearInterval(timer);
+    }, []);
 
     const formatElapsed = (seconds) => {
         const mins = Math.floor(seconds / 60);
@@ -146,86 +170,115 @@ export default function PaymentPending({ payment, tenant, checkUrl, diagnostic =
     return (
         <PublicLayout>
             <Head>
-                <title>Procesando Pago - Vito Business OS</title>
+                <title>Procesando Pago - ConectaHN</title>
                 <meta name="robots" content="noindex" />
             </Head>
 
-            <div className="min-h-screen bg-slate-50 px-4 py-12">
-                <div className="mx-auto w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-                    <div className="sr-only" aria-live="polite" aria-atomic="true">{liveMessage}</div>
-                    <StatusIcon status={status} reducedMotion={reducedMotion} />
+            <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex items-center justify-center py-12 px-4">
+                <div className="max-w-lg w-full">
+                    <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 sm:p-12 text-center">
+                        {/* Status Icon */}
+                        {status === 'pending' && <PendingAnimation />}
+                        {status === 'completed' && <SuccessAnimation />}
+                        {status === 'failed' && <FailedAnimation />}
 
-                    <h1 className="mt-6 text-center text-2xl font-bold text-slate-950">
-                        {status === 'pending' && 'Verificando tu pago'}
-                        {status === 'completed' && 'Pago confirmado'}
-                        {status === 'failed' && 'Pago no procesado'}
-                    </h1>
+                        {/* Title */}
+                        <h1 className="text-2xl font-bold text-gray-900 mt-8 mb-2">
+                            {status === 'pending' && 'Verificando tu Pago'}
+                            {status === 'completed' && '¡Pago Confirmado!'}
+                            {status === 'failed' && 'Pago No Procesado'}
+                        </h1>
 
-                    <p className="mt-2 text-center text-sm text-slate-600" aria-live="polite">
-                        {status === 'pending' && 'Tu pago esta en revision. Manten esta pagina abierta mientras validamos el estado.'}
-                        {status === 'completed' && 'La validacion termino correctamente.'}
-                        {status === 'failed' && 'No pudimos confirmar este pago. Puedes retomar desde billing oficial.'}
-                    </p>
+                        <p className="text-gray-500 mb-6">
+                            {status === 'pending' && 'Esto puede tomar unos minutos. No cierres esta página.'}
+                            {status === 'completed' && 'Tu suscripción ha sido activada exitosamente.'}
+                            {status === 'failed' && 'Hubo un problema procesando tu pago. Por favor intenta de nuevo.'}
+                        </p>
 
-                    {status === 'pending' && !checkUrl && (
-                        <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900" role="status" aria-live="polite">
-                            Esta sesion no tiene endpoint de seguimiento en tiempo real. Usa billing oficial para confirmar avances.
-                        </div>
-                    )}
-
-                    {payment && (
-                        <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
-                            <div className="flex justify-between py-1"><span className="text-slate-500">Monto</span><span className="font-semibold text-slate-900">{currencyFormatter.format(payment.amount)}</span></div>
-                            <div className="flex justify-between py-1"><span className="text-slate-500">Referencia</span><span className="font-mono text-slate-700">{payment.reference_number || `#${payment.id}`}</span></div>
-                            <div className="flex justify-between py-1"><span className="text-slate-500">Estado</span><span className="font-medium text-slate-800">{status === 'completed' ? 'Aprobado' : status === 'failed' ? 'Rechazado' : 'Pendiente'}</span></div>
-                        </div>
-                    )}
-
-                    {status === 'pending' && checkUrl && (
-                        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900" role="status" aria-live="polite">
-                            Tiempo transcurrido: {formatElapsed(elapsedTime)}. Revisiones completadas: {pollTick}.
-                        </div>
-                    )}
-
-                    {pollingError && status === 'pending' && (
-                        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900" role="alert">
-                            No logramos consultar el estado ahora. Reintenta en unos segundos o abre billing oficial para seguimiento.
-                        </div>
-                    )}
-
-                    <SupportDiagnosticCard diagnostic={visibleDiagnostic} className="mt-6" />
-
-                    <div className="mt-6 space-y-3">
-                        {status === 'completed' && (
-                            <Link href={appDashboardHref} className="block rounded-lg bg-emerald-600 px-4 py-3 text-center font-semibold text-white hover:bg-emerald-700">
-                                Ir al panel
-                            </Link>
+                        {/* Payment Summary */}
+                        {payment && (
+                            <div className="bg-gray-50 rounded-2xl p-6 mb-6 text-left">
+                                <div className="flex justify-between items-center mb-3">
+                                    <span className="text-gray-500">Monto</span>
+                                    <span className="text-xl font-bold text-gray-900">
+                                        {currencyFormatter.format(payment.amount)}
+                                    </span>
+                                </div>
+                                {payment.method && (
+                                    <div className="flex justify-between items-center mb-3">
+                                        <span className="text-gray-500">Método</span>
+                                        <span className="font-medium text-gray-700">{payment.method}</span>
+                                    </div>
+                                )}
+                                <div className="flex justify-between items-center">
+                                    <span className="text-gray-500">Referencia</span>
+                                    <span className="font-mono text-sm text-gray-600">#{payment.id}</span>
+                                </div>
+                            </div>
                         )}
 
-                        {(status === 'failed' || status === 'pending') && (
-                            <Link href={appBillingHref} className="block rounded-lg bg-blue-600 px-4 py-3 text-center font-semibold text-white hover:bg-blue-700">
-                                Abrir billing oficial
-                            </Link>
-                        )}
-
+                        {/* Elapsed Time */}
                         {status === 'pending' && (
-                            <button
-                                type="button"
-                                onClick={() => router.reload({ only: ['payment', 'diagnostic'] })}
-                                className="block w-full rounded-lg border border-slate-300 px-4 py-3 text-center font-medium text-slate-700 hover:bg-slate-50"
-                            >
-                                Actualizar estado ahora
-                            </button>
+                            <div className="text-sm text-gray-400 mb-6">
+                                Tiempo transcurrido: {formatElapsed(elapsedTime)}
+                            </div>
                         )}
 
+                        {/* Timeline */}
                         {status === 'pending' && (
-                            <a href="mailto:soporte@vitobusinessos.com?subject=Seguimiento%20de%20pago" className="block rounded-lg border border-slate-300 px-4 py-3 text-center font-medium text-slate-700 hover:bg-slate-50">
-                                Contactar soporte
-                            </a>
+                            <PaymentTimeline status={status} />
                         )}
+
+                        {/* Actions */}
+                        <div className="mt-8 space-y-3">
+                            {status === 'completed' && (
+                                <Link
+                                    href={route('tenant.dashboard')}
+                                    className="block w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-colors"
+                                >
+                                    Ir a mi Panel
+                                </Link>
+                            )}
+
+                            {status === 'failed' && (
+                                <>
+                                    <Link
+                                        href={route('tenant.billing.index')}
+                                        className="block w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors"
+                                    >
+                                        Intentar de Nuevo
+                                    </Link>
+                                    <a
+                                        href="mailto:soporte@conectahn.com?subject=Problema con pago"
+                                        className="block w-full py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-colors"
+                                    >
+                                        Contactar Soporte
+                                    </a>
+                                </>
+                            )}
+
+                            {status === 'pending' && (
+                                <p className="text-xs text-gray-400">
+                                    ¿Problemas?{' '}
+                                    <a href="mailto:soporte@conectahn.com" className="text-blue-600 hover:underline">
+                                        Contacta a soporte
+                                    </a>
+                                </p>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
+
+            {/* Custom Animation Styles */}
+            <style>{`
+                @keyframes bounce-in {
+                    0% { transform: scale(0); }
+                    50% { transform: scale(1.1); }
+                    100% { transform: scale(1); }
+                }
+                .animate-bounce-in { animation: bounce-in 0.5s ease-out; }
+            `}</style>
         </PublicLayout>
     );
 }

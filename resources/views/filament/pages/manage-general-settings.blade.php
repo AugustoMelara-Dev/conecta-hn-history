@@ -1,62 +1,12 @@
 <x-filament-panels::page>
-    <div class="biz-shell">
-        <div class="biz-card-accent">
-            <div class="biz-grid-two">
-                <div class="biz-stack">
-                    <div class="biz-badge biz-badge-success">Configuración</div>
+    <form wire:submit="save">
+        {{ $this->form }}
 
-                    <div>
-                        <p class="biz-kicker">Superadmin</p>
-                        <h1 class="biz-title">Ajustes globales de la plataforma</h1>
-                        <p class="biz-copy">
-                            Todo lo que cambies aquí afecta la experiencia de negocios, cobros, soporte y disponibilidad general del sistema.
-                        </p>
-                    </div>
-                </div>
-
-                <div class="biz-card">
-                    <div class="biz-stack">
-                        <p class="biz-stat-label">Qué controlas aquí</p>
-                        <div class="biz-list">
-                            <div class="biz-stat">
-                                <p class="biz-action-title">Precios y límites</p>
-                                <p class="biz-action-copy">Plan PRO, días de gracia y capacidad por plan.</p>
-                            </div>
-
-                            <div class="biz-stat">
-                                <p class="biz-action-title">Pagos y soporte</p>
-                                <p class="biz-action-copy">Banco, instrucciones de transferencia y canales de ayuda.</p>
-                            </div>
-
-                            <div class="biz-stat">
-                                <p class="biz-action-title">Disponibilidad del sistema</p>
-                                <p class="biz-action-copy">Modo mantenimiento y control de nuevos registros.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div class="mt-6 flex justify-end">
+            <x-filament::button type="submit" size="lg">
+                <x-heroicon-o-check class="w-5 h-5 mr-2" />
+                Guardar Configuracion
+            </x-filament::button>
         </div>
-
-        <div class="biz-card" wire:loading.class="opacity-80" wire:target="save">
-            <div class="biz-stack">
-                <div>
-                    <p class="biz-kicker">Formulario</p>
-                    <h2 class="biz-heading">Edita y guarda con seguridad</h2>
-                    <p class="biz-muted">
-                        Revisa cada campo antes de guardar; estos cambios impactan a toda la plataforma.
-                    </p>
-                </div>
-
-                {{ $this->form }}
-
-                <div class="biz-empty-state" style="padding: 1rem; text-align: left;">
-                    <p class="biz-action-copy">
-                        Guarda los cambios con el botón <strong>Guardar configuración</strong> del encabezado para mantener un flujo consistente en todo el superpanel.
-                    </p>
-                    <p class="biz-note" wire:loading wire:target="save">Guardando ajustes globales...</p>
-                </div>
-            </div>
-        </div>
-    </div>
+    </form>
 </x-filament-panels::page>

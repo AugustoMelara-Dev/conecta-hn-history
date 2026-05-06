@@ -1,29 +1,20 @@
 import React from 'react';
 
-type DebugOrderItem = {
-    productId: string | number;
-    productName: string;
-    quantity: number;
-    total: number | string;
-};
+// NOTA: Usamos los tipos globales generados en resources/js/types/generated.d.ts
+// No importamos 'OrderStatus' porque es un type definition, no un valor en runtime.
 
-type DebugOrder = {
-    orderNumber: string;
-    status: string;
-    items?: DebugOrderItem[] | Record<string, DebugOrderItem>;
-};
-
-export default function TypeSafetyTest({ order }: { order: DebugOrder }) {
-    const items = Array.isArray(order.items) ? order.items : Object.values(order.items ?? {});
+export default function TypeSafetyTest({ order }: { order: App.Application.Sales.Results.CreateOrderResult }) {
 
     return (
         <div className="p-6 bg-gray-50 border border-gray-200 rounded-lg">
-            <h2 className="text-xl font-bold mb-4">Verificacion de Tipos Estrictos</h2>
+            <h2 className="text-xl font-bold mb-4">Verificación de Tipos Estrictos</h2>
 
+            {/* PRUEBA 1: Acceso a Propiedad Primitiva */}
             <div className="mb-2">
-                <strong>Orden ID:</strong> {order.orderNumber}
+                <strong>Orden ID:</strong> {order.orderNumber} {/* Debe autocompletar orderNumber */}
             </div>
 
+            {/* PRUEBA 2: Validación de Enum (Simulada con string estricto, ya que en TS es string) */}
             <div className="mb-2">
                 <strong>Estado:</strong>
                 {order.status === 'confirmed' ? (
@@ -33,12 +24,15 @@ export default function TypeSafetyTest({ order }: { order: DebugOrder }) {
                 )}
             </div>
 
+            {/* PRUEBA 3: Iteración de Array Tipado (Nested DTO) */}
             <div className="mt-4">
                 <h3 className="font-semibold">Items (Tipado Recursivo):</h3>
                 <ul className="list-disc pl-5">
-                    {items.map((item) => (
+                    {Object.values(order.items ?? {}).map((item) => (
                         <li key={item.productId}>
-                            {item.productName} - Cantidad: {item.quantity} - Total: ${item.total}
+                            {/* Aquí 'item' debe ser reconocido como OrderItemDto */}
+                            {/* Escribir 'item.' debe sugerir 'productName', 'quantity', etc. */}
+                            {item.productName} — Cantidad: {item.quantity} — Total: ${item.total}
                         </li>
                     ))}
                 </ul>

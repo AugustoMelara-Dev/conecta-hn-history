@@ -19,33 +19,33 @@
     <div class="container">
         <div class="header">
             <div class="icon">⏸️</div>
-            <h1>Plan PRO suspendido</h1>
+            <h1>Plan PRO Suspendido</h1>
         </div>
         
         <div class="content">
             <p>Hola <strong>{{ $tenant->user->name ?? 'Cliente' }}</strong>,</p>
             
-            <p>Te informamos que tu suscripción PRO de <strong>{{ $tenant->name }}</strong> ha expirado y los beneficios premium han sido desactivados.</p>
+            <p>Te informamos que tu suscripcion PRO de <strong>{{ $tenant->name }}</strong> ha expirado y los beneficios premium han sido desactivados.</p>
             
             <div class="alert">
-                <h3>Qué significa esto</h3>
+                <h3>Que significa esto</h3>
                 <p>Tu negocio sigue visible en Conecta HN, pero ahora opera con el plan gratuito:</p>
                 <ul style="margin: 10px 0 0 0; color: #6b7280;">
-                    <li>Límite de 10 productos visibles</li>
-                    <li>Sin personalización de colores</li>
+                    <li>Limite de 10 productos visibles</li>
+                    <li>Sin personalizacion de colores</li>
                     <li>Sin banner personalizado</li>
-                    <li>Sin botón de WhatsApp</li>
+                    <li>Sin boton de WhatsApp</li>
                 </ul>
             </div>
             
-            <p>La buena noticia es que puedes reactivar tu Plan PRO en cualquier momento manteniendo toda tu información.</p>
+            <p>La buena noticia es que puedes reactivar tu Plan PRO en cualquier momento manteniendo toda tu informacion.</p>
             
             <center>
-                <a href="{{ config('app.url') }}/app" class="btn">Reactivar plan PRO</a>
+                <a href="{{ config('app.url') }}/app" class="btn">Reactivar Plan PRO</a>
             </center>
             
             <p style="text-align: center; color: #6b7280; font-size: 14px;">
-                Estamos aquí para ayudarte. Contáctanos si tienes preguntas.
+                Estamos aqui para ayudarte. Contactanos si tienes preguntas.
             </p>
         </div>
         

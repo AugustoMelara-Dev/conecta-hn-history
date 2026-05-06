@@ -2,221 +2,151 @@
  * @jest-environment jsdom
  */
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
-import { vi } from "vitest"
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { router } from '@inertiajs/core';
+import AuthGate from '@/Components/Utils/AuthGate';
+import GlobalLoginModal from '@/Components/Organisms/Auth/GlobalLoginModal';
+import { useUIStore } from '@/Stores/useUIStore';
 
-import { ForgotPasswordForm } from "@/Components/Auth/ForgotPasswordForm"
-import { LoginForm } from "@/Components/Auth/LoginForm"
-import GlobalLoginModal from "@/Components/Organisms/Auth/GlobalLoginModal"
-import AuthGate from "@/Components/Utils/AuthGate"
-import VerifyEmail from "@/Pages/Auth/VerifyEmail"
-import { useUIStore } from "@/Stores/useUIStore"
-import { t } from "@/lib/i18n"
-
-const inertiaMock = vi.hoisted(() => ({
-    pageProps: {
+// Mock Inertia
+jest.mock('@inertiajs/react', () => ({
+    usePage: () => ({
         props: {
-            auth: { user: null },
+            auth: { user: null }, // Not authenticated by default
         },
-    },
-    setData: vi.fn(),
-    post: vi.fn(),
-    reset: vi.fn(),
-}))
-
-vi.mock("@inertiajs/react", () => ({
-    Head: ({ title }) => <title>{title}</title>,
-    Link: ({ children, ...props }) => <button {...props}>{children}</button>,
-    usePage: () => inertiaMock.pageProps,
+    }),
     useForm: () => ({
-        data: { email: "", password: "", remember: false },
-        setData: inertiaMock.setData,
-        post: inertiaMock.post,
+        data: { email: '', password: '', remember: false },
+        setData: jest.fn(),
+        post: jest.fn(),
         processing: false,
         errors: {},
-        reset: inertiaMock.reset,
+        reset: jest.fn(),
     }),
-}))
+}));
 
-vi.mock("axios")
+// Mock Axios
+jest.mock('axios');
 
-describe("AuthGate Component", () => {
+describe('AuthGate Component', () => {
     beforeEach(() => {
-        useUIStore.setState({ isLoginModalOpen: false })
-        inertiaMock.pageProps = {
-            props: {
-                auth: { user: null },
-            },
-        }
-    })
+        // Reset Zustand store
+        useUIStore.setState({ isLoginModalOpen: false });
+    });
 
-    it("opens modal when unauthenticated user clicks protected action", () => {
-        const mockAction = vi.fn()
+    it('opens modal when unauthenticated user clicks protected action', () => {
+        const mockAction = jest.fn();
 
         render(
             <AuthGate onAuth={mockAction}>
                 <button>Click Me</button>
-            </AuthGate>,
-        )
+            </AuthGate>
+        );
 
-        fireEvent.click(screen.getByText("Click Me"))
+        const button = screen.getByText('Click Me');
+        fireEvent.click(button);
 
-        expect(useUIStore.getState().isLoginModalOpen).toBe(true)
-        expect(mockAction).not.toHaveBeenCalled()
-    })
+        // Modal should open
+        expect(useUIStore.getState().isLoginModalOpen).toBe(true);
 
-    it("executes action when authenticated user clicks", () => {
-        inertiaMock.pageProps = {
+        // Original action should NOT execute
+        expect(mockAction).not.toHaveBeenCalled();
+    });
+
+    it('executes action when authenticated user clicks', () => {
+        // Mock authenticated user
+        jest.spyOn(require('@inertiajs/react'), 'usePage').mockReturnValue({
             props: {
-                auth: { user: { id: 1, name: "Test User" } },
+                auth: { user: { id: 1, name: 'Test User' } },
             },
-        }
-        const mockAction = vi.fn()
+        });
+
+        const mockAction = jest.fn();
 
         render(
             <AuthGate onAuth={mockAction}>
                 <button>Click Me</button>
-            </AuthGate>,
-        )
+            </AuthGate>
+        );
 
-        fireEvent.click(screen.getByText("Click Me"))
+        const button = screen.getByText('Click Me');
+        fireEvent.click(button);
 
-        expect(mockAction).toHaveBeenCalled()
-        expect(useUIStore.getState().isLoginModalOpen).toBe(false)
-    })
-})
+        // Action should execute
+        expect(mockAction).toHaveBeenCalled();
 
-describe("GlobalLoginModal Component", () => {
+        // Modal should NOT open
+        expect(useUIStore.getState().isLoginModalOpen).toBe(false);
+    });
+});
+
+describe('GlobalLoginModal Component', () => {
     beforeEach(() => {
-        useUIStore.setState({ isLoginModalOpen: true, loginView: "otp" })
-        inertiaMock.setData.mockClear()
-        inertiaMock.post.mockClear()
-        inertiaMock.reset.mockClear()
-    })
+        useUIStore.setState({ isLoginModalOpen: true, loginView: 'otp' });
+    });
 
-    it("renders with quick access active by default", () => {
-        render(<GlobalLoginModal />)
+    it('renders with OTP tab active by default', () => {
+        render(<GlobalLoginModal />);
 
-        expect(screen.getByText("Entrar a Vito Business OS")).toBeInTheDocument()
-        expect(screen.getByRole("tab", { name: /acceso con correo/i })).toBeInTheDocument()
-        expect(screen.getByRole("tab", { name: /acceso rapido|acceso rápido/i })).toBeInTheDocument()
-    })
+        expect(screen.getByText('Comprador')).toBeInTheDocument();
+        expect(screen.getByPlaceholderText(/ejemplo@correo.com/i)).toBeInTheDocument();
+    });
 
-    it("renders password fields when password access is active", () => {
-        useUIStore.setState({ isLoginModalOpen: true, loginView: "password" })
+    it('switches to password tab when clicked', () => {
+        render(<GlobalLoginModal />);
 
-        render(<GlobalLoginModal />)
+        const vendedorTab = screen.getByText('Vendedor');
+        fireEvent.click(vendedorTab);
 
-        expect(screen.getByLabelText("Correo")).toBeInTheDocument()
-        expect(screen.getByLabelText(/contrasen|contraseñ/i)).toBeInTheDocument()
-    })
+        expect(screen.getByLabelText(/Email/i)).toBeInTheDocument();
+        expect(screen.getByLabelText(/Contraseña/i)).toBeInTheDocument();
+    });
 
-    it("captures identifier input for quick access", async () => {
-        render(<GlobalLoginModal />)
+    it('validates identifier input for OTP', async () => {
+        render(<GlobalLoginModal />);
 
-        const input = screen.getByPlaceholderText(/nombre@negocio.hn/i)
+        const input = screen.getByPlaceholderText(/ejemplo@correo.com/i);
+        const submitButton = screen.getByText(/Enviar Código/i);
 
-        fireEvent.change(input, { target: { value: "test@example.com" } })
+        fireEvent.change(input, { target: { value: 'test@example.com' } });
+        fireEvent.click(submitButton);
 
+        // Should attempt to send request
         await waitFor(() => {
-            expect(input.value).toBe("test@example.com")
-        })
-    })
+            expect(input.value).toBe('test@example.com');
+        });
+    });
 
-    it("closes modal when close action is triggered", () => {
-        render(<GlobalLoginModal />)
+    it('closes modal when close action is triggered', () => {
+        render(<GlobalLoginModal />);
 
-        useUIStore.getState().closeLoginModal()
+        useUIStore.getState().closeLoginModal();
 
-        expect(useUIStore.getState().isLoginModalOpen).toBe(false)
-    })
-})
+        expect(useUIStore.getState().isLoginModalOpen).toBe(false);
+    });
+});
 
-describe("VerifyEmail Page", () => {
-    beforeEach(() => {
-        global.route = vi.fn((name) => `/${name}`)
-        inertiaMock.pageProps = {
-            props: {
-                auth: { user: { email: "dueno@negocio.test" } },
-            },
-        }
-        inertiaMock.post.mockClear()
-    })
-
-    it("renders catalog-backed verification copy and onboarding next action", () => {
-        render(
-            <VerifyEmail
-                onboardingNextAction={{
-                    title: "Publica tu primera oferta",
-                    copy: "Agrega un producto o servicio.",
-                    progress: 20,
-                }}
-            />,
-        )
-
-        expect(screen.getByText("Confirma tu correo")).toBeInTheDocument()
-        expect(screen.getByText(/Enviamos un enlace de verificacion a/i)).toBeInTheDocument()
-        expect(screen.getByText(/Siguiente paso: Publica tu primera oferta/i)).toBeInTheDocument()
-    })
-})
-
-describe("Auth catalog-backed forms", () => {
-    beforeEach(() => {
-        global.route = vi.fn((name) => `/${name}`)
-        inertiaMock.post.mockClear()
-    })
-
-    it("renders login form copy from the initial auth catalog", () => {
-        render(<LoginForm />)
-
-        expect(screen.getByText("Acceso seguro")).toBeInTheDocument()
-        expect(screen.getByText("Entra a Vito Business OS")).toBeInTheDocument()
-        expect(screen.getByText(/Usa contrasena para el panel de negocio/i)).toBeInTheDocument()
-        expect(screen.getByLabelText("Contrasena")).toBeInTheDocument()
-        expect(screen.getByRole("button", { name: /Iniciar sesion/i })).toBeInTheDocument()
-    })
-
-    it("renders forgot password form copy from the initial auth catalog", () => {
-        render(<ForgotPasswordForm />)
-
-        expect(screen.getByTestId("forgot-password-heading")).toHaveTextContent("Recupera tu acceso")
-        expect(screen.getByText(/enlace seguro para cambiar la contrasena/i)).toBeInTheDocument()
-        expect(screen.getByLabelText("Correo")).toBeInTheDocument()
-        expect(screen.getByRole("button", { name: /Enviar enlace/i })).toBeInTheDocument()
-        expect(screen.getByRole("button", { name: /Iniciar sesion/i })).toBeInTheDocument()
-    })
-})
-
-describe("Initial dashboard catalog", () => {
-    it("exposes dashboard and account copy without inline-only strings", () => {
-        expect(t("dashboard.fallback.title")).toBe("Tu panel principal depende de tu rol")
-        expect(t("dashboard.account.greeting", { name: "Ana" })).toBe("Hola, Ana")
-        expect(t("dashboard.account.favoritesCount", { count: 2 })).toBe("2 guardados")
-        expect(t("dashboard.account.visitsSummary", { visits: 7 })).toContain("Visitas registradas: 7")
-    })
-})
-
-describe("Zustand Store - useUIStore", () => {
+describe('Zustand Store - useUIStore', () => {
     beforeEach(() => {
         useUIStore.setState({
             isLoginModalOpen: false,
-            loginView: "otp",
-        })
-    })
+            loginView: 'otp',
+        });
+    });
 
-    it("opens login modal", () => {
-        useUIStore.getState().openLoginModal()
-        expect(useUIStore.getState().isLoginModalOpen).toBe(true)
-    })
+    it('opens login modal', () => {
+        useUIStore.getState().openLoginModal();
+        expect(useUIStore.getState().isLoginModalOpen).toBe(true);
+    });
 
-    it("closes login modal", () => {
-        useUIStore.setState({ isLoginModalOpen: true })
-        useUIStore.getState().closeLoginModal()
-        expect(useUIStore.getState().isLoginModalOpen).toBe(false)
-    })
+    it('closes login modal', () => {
+        useUIStore.setState({ isLoginModalOpen: true });
+        useUIStore.getState().closeLoginModal();
+        expect(useUIStore.getState().isLoginModalOpen).toBe(false);
+    });
 
-    it("switches login view", () => {
-        useUIStore.getState().setLoginView("password")
-        expect(useUIStore.getState().loginView).toBe("password")
-    })
-})
+    it('switches login view', () => {
+        useUIStore.getState().setLoginView('password');
+        expect(useUIStore.getState().loginView).toBe('password');
+    });
+});

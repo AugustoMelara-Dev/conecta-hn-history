@@ -368,7 +368,6 @@ export default function AnnouncementBanner() {
                 {sanitizedContent && (
                     <div
                         className="text-sm font-medium leading-snug announcement-content"
-                        // sanitized-html: DOMPurify output from announcement content.
                         dangerouslySetInnerHTML={{ __html: sanitizedContent }}
                     />
                 )}

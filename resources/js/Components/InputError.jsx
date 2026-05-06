@@ -1,4 +1,3 @@
-// Deprecated: use FieldDescription/Alert wired with aria-describedby for new React surfaces.
 export default function InputError({ message, className = '', ...props }) {
     return message ? (
         <p

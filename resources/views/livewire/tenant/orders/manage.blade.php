@@ -21,8 +21,7 @@
                 </div>
                 <button
                     wire:click="$set('isCreating', true)"
-                    aria-label="Registrar venta manual"
-                    class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-lg shadow-blue-500/25 transition-colors"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-lg shadow-blue-500/25 transition-all"
                 >
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -178,7 +177,6 @@
                                     @if(in_array($order->status, ['pending', 'confirmed', 'preparing']))
                                         <button
                                             wire:click="advanceOrder({{ $order->id }})"
-                                            aria-label="Avanzar estado del pedido {{ $order->order_number ?? '#'.$order->id }}"
                                             class="text-blue-600 hover:text-blue-800 font-medium"
                                         >
                                             Avanzar →
@@ -224,29 +222,17 @@
     {{-- POS MODAL (BOTH PLANS) --}}
     {{-- ═══════════════════════════════════════════════════════════════════════ --}}
     @if($isCreating)
-        <div
-            class="fixed inset-0 z-50 overflow-y-auto"
-            x-data="{ open: true }"
-            x-trap.inert.noscroll="open"
-            @keydown.escape.window="open && $wire.resetModal()"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="orders-pos-modal-title"
-            aria-describedby="orders-pos-modal-description"
-        >
+        <div class="fixed inset-0 z-50 overflow-y-auto">
             {{-- Backdrop --}}
             <div class="fixed inset-0 bg-gray-500/75 transition-opacity" wire:click="resetModal"></div>
 
             <div class="flex min-h-full items-center justify-center p-4">
-                <div class="relative bg-white rounded-2xl shadow-xl max-w-2xl w-full p-6 transform transition-transform max-h-[90vh] overflow-y-auto" tabindex="-1" x-ref="posModalPanel" x-init="$nextTick(() => $refs.posModalPanel.focus())">
+                <div class="relative bg-white rounded-2xl shadow-xl max-w-2xl w-full p-6 transform transition-all max-h-[90vh] overflow-y-auto">
                     {{-- Header --}}
                     <div class="flex items-center justify-between mb-6">
-                        <div>
-                            <h3 id="orders-pos-modal-title" class="text-xl font-bold text-gray-900">📦 Registrar Venta</h3>
-                            <p id="orders-pos-modal-description" class="mt-1 text-sm text-gray-500">Agrega productos, valida datos del cliente y confirma el pedido.</p>
-                        </div>
-                        <button wire:click="resetModal" type="button" aria-label="Cerrar modal de registro de venta" class="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <h3 class="text-xl font-bold text-gray-900">📦 Registrar Venta</h3>
+                        <button wire:click="resetModal" class="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                             </svg>
                         </button>
@@ -255,10 +241,9 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {{-- LEFT: Product Search --}}
                         <div>
-                            <label for="orders-product-search" class="block text-sm font-medium text-gray-700 mb-2">Buscar Producto</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Buscar Producto</label>
                             <input
                                 wire:model.live.debounce.300ms="productSearch"
-                                id="orders-product-search"
                                 type="text"
                                 placeholder="Escribe para buscar..."
                                 class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -270,7 +255,6 @@
                                     @foreach($this->availableProducts as $product)
                                         <button
                                             wire:click="addToCart({{ $product->id }})"
-                                            aria-label="Agregar {{ $product->name }} al carrito de venta manual"
                                             class="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between"
                                         >
                                             <span class="font-medium text-gray-900">{{ $product->name }}</span>
@@ -282,26 +266,20 @@
 
                             {{-- Customer Info --}}
                             <div class="mt-4 space-y-3">
-                                <label for="orders-customer-name" class="sr-only">Nombre del cliente</label>
                                 <input
                                     wire:model="customerName"
-                                    id="orders-customer-name"
                                     type="text"
                                     placeholder="Nombre del cliente (opcional)"
                                     class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm"
                                 />
-                                <label for="orders-customer-contact" class="sr-only">Teléfono del cliente</label>
                                 <input
                                     wire:model="customerContact"
-                                    id="orders-customer-contact"
                                     type="text"
                                     placeholder="Teléfono (opcional)"
                                     class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm"
                                 />
-                                <label for="orders-order-notes" class="sr-only">Notas especiales del pedido</label>
                                 <textarea
                                     wire:model="orderNotes"
-                                    id="orders-order-notes"
                                     rows="2"
                                     placeholder="Notas especiales..."
                                     class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm resize-none"
@@ -326,15 +304,11 @@
                                             <div class="flex items-center gap-2">
                                                 <button
                                                     wire:click="decrementItem({{ $item['product_id'] }})"
-                                                    type="button"
-                                                    aria-label="Reducir cantidad de {{ $item['name'] }}"
                                                     class="w-7 h-7 flex items-center justify-center bg-gray-100 rounded-lg text-gray-600 hover:bg-gray-200"
                                                 >−</button>
                                                 <span class="w-6 text-center font-medium">{{ $item['qty'] }}</span>
                                                 <button
                                                     wire:click="incrementItem({{ $item['product_id'] }})"
-                                                    type="button"
-                                                    aria-label="Aumentar cantidad de {{ $item['name'] }}"
                                                     class="w-7 h-7 flex items-center justify-center bg-gray-100 rounded-lg text-gray-600 hover:bg-gray-200"
                                                 >+</button>
                                             </div>
@@ -356,7 +330,7 @@
                                 wire:click="createManualOrder"
                                 wire:loading.attr="disabled"
                                 @if(empty($cart)) disabled @endif
-                                class="w-full mt-4 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-lg shadow-emerald-500/25 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                class="w-full mt-4 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-lg shadow-emerald-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <span wire:loading.remove>Registrar Venta</span>
                                 <span wire:loading>Procesando...</span>

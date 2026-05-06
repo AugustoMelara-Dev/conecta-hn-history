@@ -33,7 +33,7 @@
         </div>
         
         <div class="cta">
-            <a href="{{ route('tenant.show', $campaign->tenant->slug) }}">Ver negocio</a>
+            <a href="{{ route('tenant.show', $campaign->tenant->slug) }}">Ver Negocio</a>
         </div>
         
         <div class="footer">

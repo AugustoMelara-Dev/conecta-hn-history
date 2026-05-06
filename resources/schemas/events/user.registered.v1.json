@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://vitobusinessos.com/schemas/events/user.registered.v1.json",
+  "$id": "https://conecta-hn.com/schemas/events/user.registered.v1.json",
   "title": "User Registered Event",
   "description": "Event emitted when a new user completes the registration process.",
   "type": "object",

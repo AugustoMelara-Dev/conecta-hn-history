@@ -24,8 +24,8 @@ export default function MobileBottomNav() {
         {
             label: 'Favoritos',
             icon: Heart,
-            href: route('buyer.profile'),
-            active: route().current('buyer.profile'),
+            href: '#', // TODO: Implement favorites route
+            active: false,
             show: user && user.role === 'buyer'
         },
         {
@@ -39,8 +39,8 @@ export default function MobileBottomNav() {
         {
             label: 'Vista Previa',
             icon: Eye,
-            href: user && user.tenant ? route('tenant.microsite.show', { tenant: user.tenant.slug }) : route('directory.index'),
-            active: route().current('tenant.microsite.show'),
+            href: user && user.tenant ? route('tenant.show', user.tenant.slug) : '#',
+            active: route().current('tenant.show'),
             show: user && user.role === 'seller' && user.tenant
         },
         {

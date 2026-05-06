@@ -1,4 +1,3 @@
-import { Children, cloneElement, isValidElement } from 'react';
 import { usePage } from '@inertiajs/react';
 import { useUIStore } from '@/Stores/useUIStore';
 
@@ -13,24 +12,20 @@ export default function AuthGate({ children, onAuth, fallback = null }) {
     const { auth } = usePage().props;
     const openLoginModal = useUIStore((state) => state.openLoginModal);
 
-    const handleClick = (event, originalOnClick) => {
+    const handleClick = (e) => {
         // If user is NOT authenticated
         if (!auth.user) {
-            event.preventDefault();
-            event.stopPropagation();
+            e.preventDefault();
+            e.stopPropagation();
 
             // Open the global login modal
             openLoginModal();
             return;
         }
 
-        if (typeof originalOnClick === 'function') {
-            originalOnClick(event);
-        }
-
         // If authenticated, execute the original handler
         if (onAuth) {
-            onAuth(event);
+            onAuth(e);
         }
     };
 
@@ -39,17 +34,10 @@ export default function AuthGate({ children, onAuth, fallback = null }) {
         return fallback;
     }
 
-    // Attach the gate to the child control instead of relying on a non-semantic
-    // wrapper with a click handler.
+    // Wrap children with click interceptor
     return (
-        Children.map(children, (child) => {
-            if (!isValidElement(child)) {
-                return child;
-            }
-
-            return cloneElement(child, {
-                onClick: (event) => handleClick(event, child.props.onClick),
-            });
-        })
+        <div onClick={handleClick} className="contents">
+            {children}
+        </div>
     );
 }

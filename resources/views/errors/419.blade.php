@@ -1,10 +1,5 @@
-@include('errors.partials.friendly', [
-    'status' => '419',
-    'title' => 'Sesion expirada',
-    'message' => 'La solicitud expiro por inactividad o por seguridad.',
-    'hint' => 'Recarga la pagina y vuelve a enviar el formulario.',
-    'actions' => [
-        ['label' => 'Ir a login', 'href' => '/login'],
-        ['label' => 'Volver al inicio', 'href' => '/'],
-    ],
-])
+@extends('errors::minimal')
+
+@section('title', __('Page Expired'))
+@section('code', '419')
+@section('message', __('Page Expired'))

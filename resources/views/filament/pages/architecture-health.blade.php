@@ -1,146 +1,117 @@
 <x-filament-panels::page>
-    @php
-        $healthStatus = $this->summary['health_status'] ?? 'unknown';
-    @endphp
-
-    <div class="biz-shell">
-        <div class="biz-card">
-            <div class="biz-stack">
-                <div>
-                    <p class="biz-kicker">Salud técnica</p>
-                    <h1 class="biz-title">Arquitectura y eventos</h1>
-                    <p class="biz-copy">
-                        Vista ejecutiva del estado arquitectónico para detectar incumplimientos antes de que se conviertan en deuda técnica costosa.
-                    </p>
-                </div>
-
-                <div class="biz-metrics">
-                    <div class="biz-stat">
-                        <p class="biz-stat-label">Eventos totales</p>
-                        <p class="biz-stat-value">{{ number_format($this->summary['total_events'] ?? 0) }}</p>
-                        <p class="biz-stat-copy">Eventos revisados por el analizador</p>
-                    </div>
-
-                    <div class="biz-stat">
-                        <p class="biz-stat-label">Cumplen</p>
-                        <p class="biz-stat-value">{{ number_format($this->summary['compliant_count'] ?? 0) }}</p>
-                        <p class="biz-stat-copy">Sin observaciones</p>
-                    </div>
-
-                    <div class="biz-stat">
-                        <p class="biz-stat-label">Incumplimientos</p>
-                        <p class="biz-stat-value">{{ number_format($this->summary['non_compliant_count'] ?? 0) }}</p>
-                        <p class="biz-stat-copy">Eventos con alertas</p>
-                    </div>
-
-                    <div class="biz-stat">
-                        <p class="biz-stat-label">Cumplimiento</p>
-                        <p class="biz-stat-value">{{ $this->summary['compliance_percentage'] ?? 0 }}%</p>
-                        <p class="biz-stat-copy">Porcentaje general</p>
-                    </div>
-                </div>
+    {{-- Summary Cards --}}
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <x-filament::section>
+            <div class="text-center">
+                <p class="text-sm text-gray-500 dark:text-gray-400">Total Events</p>
+                <p class="text-3xl font-bold">{{ $this->summary['total_events'] ?? 0 }}</p>
             </div>
-        </div>
+        </x-filament::section>
 
-        @if ($healthStatus === 'healthy')
-            <div class="biz-card-accent">
-                <div class="biz-stack">
-                    <div class="biz-badge biz-badge-success">Estado saludable</div>
-                    <p class="biz-copy">Todos los eventos revisados cumplen la regla arquitectonica configurada.</p>
-                </div>
+        <x-filament::section>
+            <div class="text-center">
+                <p class="text-sm text-gray-500 dark:text-gray-400">Compliant</p>
+                <p class="text-3xl font-bold text-success-600">{{ $this->summary['compliant_count'] ?? 0 }}</p>
             </div>
-        @elseif ($healthStatus === 'warning')
-            <div class="biz-card-warning">
-                <div class="biz-stack">
-                    <div class="biz-badge biz-badge-warning">Atención requerida</div>
-                    <p class="biz-copy">Hay eventos con observaciones. Conviene revisarlos antes de seguir creciendo la base de código.</p>
-                </div>
-            </div>
-        @else
-            <div class="biz-card-warning">
-                <div class="biz-stack">
-                    <div class="biz-badge biz-badge-warning">Sin diagnóstico estable</div>
-                    <p class="biz-copy">No se pudo construir un reporte confiable o existen violaciones críticas pendientes.</p>
-                </div>
-            </div>
-        @endif
+        </x-filament::section>
 
-        @if (! empty($this->violations))
-            <div class="biz-card">
-                <div class="biz-stack">
-                    <div>
-                        <p class="biz-kicker">Observaciones</p>
-                        <h2 class="biz-heading">Incidencias encontradas</h2>
-                    </div>
-
-                    <div class="biz-list">
-                        @foreach ($this->violations as $violation)
-                            <div class="biz-stat" style="{{ ($violation['severity'] ?? 'warning') === 'critical' ? 'border-color: rgba(244, 63, 94, 0.28); background: rgba(244, 63, 94, 0.10);' : 'border-color: rgba(245, 158, 11, 0.24); background: rgba(245, 158, 11, 0.10);' }}">
-                                <p class="biz-action-title">{{ $violation['event'] ?? 'Evento' }}</p>
-                                <p class="biz-action-copy">
-                                    {{ $violation['rule'] ?? 'Regla' }}: {{ $violation['message'] ?? 'Sin detalle' }}
-                                </p>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            </div>
-        @endif
-
-        <div class="biz-card">
-            <div class="biz-stack">
-                <div>
-                    <p class="biz-kicker">Detalle</p>
-                        <h2 class="biz-heading">Revisión por evento</h2>
-                    <p class="biz-muted">
-                        Lista de eventos y estado de cumplimiento según las reglas activas.
-                    </p>
-                </div>
-
-                <div class="biz-table">
-                    <table class="biz-table-grid">
-                        <thead>
-                            <tr class="biz-table-head-row">
-                                <th class="biz-table-head-cell">Evento</th>
-                                <th class="biz-table-head-cell">Estado</th>
-                                <th class="biz-table-head-cell">Reglas afectadas</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse ($this->events as $class => $compliance)
-                                <tr class="biz-table-row">
-                                    <td class="biz-table-cell biz-table-cell-mono">{{ class_basename((string) $class) }}</td>
-                                    <td class="biz-table-cell">
-                                        @if (($compliance['is_compliant'] ?? false) === true)
-                                            <x-filament::badge color="success">Cumple</x-filament::badge>
-                                        @else
-                                            <x-filament::badge color="danger">
-                                                {{ $compliance['violation_count'] ?? 0 }} observaciones
-                                            </x-filament::badge>
-                                        @endif
-                                    </td>
-                                    <td class="biz-table-cell biz-table-cell-muted">
-                                        {{ implode(', ', array_keys($compliance['violations'] ?? [])) ?: 'Sin incidencias' }}
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="3" class="biz-table-cell">
-                                        @include('filament.app.components.table-empty-state', [
-                                            'heading' => 'Todavía no hay datos para mostrar',
-                                            'description' => 'Cuando el analizador tenga eventos procesados o reglas activas, el detalle aparecerá aquí.',
-                                        ])
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-
-                <p class="biz-muted">
-                    Última revisión: {{ $this->summary['last_checked_at'] ?? now()->format('Y-m-d H:i:s') }}
+        <x-filament::section>
+            <div class="text-center">
+                <p class="text-sm text-gray-500 dark:text-gray-400">Violations</p>
+                <p class="text-3xl font-bold {{ ($this->summary['non_compliant_count'] ?? 0) > 0 ? 'text-danger-600' : 'text-success-600' }}">
+                    {{ $this->summary['non_compliant_count'] ?? 0 }}
                 </p>
             </div>
-        </div>
+        </x-filament::section>
+
+        <x-filament::section>
+            <div class="text-center">
+                <p class="text-sm text-gray-500 dark:text-gray-400">Compliance</p>
+                <p class="text-3xl font-bold">{{ $this->summary['compliance_percentage'] ?? 0 }}%</p>
+            </div>
+        </x-filament::section>
     </div>
+
+    {{-- Health Status Banner --}}
+    @if (($this->summary['health_status'] ?? '') === 'healthy')
+        <x-filament::section class="bg-success-50 dark:bg-success-900/20 mb-6">
+            <h3 class="text-lg font-semibold text-success-700 dark:text-success-400">
+                ✅ All Systems Healthy - 100% Compliance
+            </h3>
+            <p class="text-sm text-success-600 dark:text-success-500">
+                All {{ $this->summary['total_events'] }} events comply with ADR-002.
+            </p>
+        </x-filament::section>
+    @elseif (($this->summary['health_status'] ?? '') === 'warning')
+        <x-filament::section class="bg-warning-50 dark:bg-warning-900/20 mb-6">
+            <h3 class="text-lg font-semibold text-warning-700 dark:text-warning-400">
+                ⚠️ Warning - Below 100%
+            </h3>
+            <p class="text-sm text-warning-600 dark:text-warning-500">
+                {{ $this->summary['non_compliant_count'] }} event(s) have violations.
+            </p>
+        </x-filament::section>
+    @else
+        <x-filament::section class="bg-danger-50 dark:bg-danger-900/20 mb-6">
+            <h3 class="text-lg font-semibold text-danger-700 dark:text-danger-400">
+                🚨 Critical Violations
+            </h3>
+            <p class="text-sm text-danger-600 dark:text-danger-500">
+                {{ $this->summary['non_compliant_count'] ?? 0 }} event(s) require immediate attention.
+            </p>
+        </x-filament::section>
+    @endif
+
+    {{-- Violations List --}}
+    @if (!empty($this->violations))
+        <x-filament::section class="mb-6">
+            <x-slot name="heading">📋 Violations</x-slot>
+            <div class="space-y-2">
+                @foreach ($this->violations as $v)
+                    <div class="flex items-center gap-3 p-3 rounded-lg border-l-4 {{ $v['severity'] === 'critical' ? 'border-danger-500 bg-danger-50 dark:bg-danger-900/20' : 'border-warning-500 bg-warning-50 dark:bg-warning-900/20' }}">
+                        <span>{{ $v['severity'] === 'critical' ? '❌' : '⚠️' }}</span>
+                        <div>
+                            <p class="font-semibold">{{ $v['event'] }}</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">{{ $v['rule'] }}: {{ $v['message'] }}</p>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </x-filament::section>
+    @endif
+
+    {{-- Events Table --}}
+    <x-filament::section>
+        <x-slot name="heading">📊 Event Details</x-slot>
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b">
+                    <th class="text-left p-2">Event</th>
+                    <th class="text-left p-2">Status</th>
+                    <th class="text-left p-2">Issues</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($this->events as $class => $compliance)
+                    <tr class="border-b hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                        <td class="p-2 font-mono text-xs">{{ class_basename($class) }}</td>
+                        <td class="p-2">
+                            @if ($compliance['is_compliant'])
+                                <x-filament::badge color="success">✅ Compliant</x-filament::badge>
+                            @else
+                                <x-filament::badge color="danger">❌ {{ $compliance['violation_count'] }} issues</x-filament::badge>
+                            @endif
+                        </td>
+                        <td class="p-2 text-gray-500">
+                            {{ implode(', ', array_keys($compliance['violations'])) ?: '—' }}
+                        </td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </x-filament::section>
+
+    <p class="mt-4 text-xs text-gray-400">
+        Last updated: {{ $this->summary['last_checked_at'] ?? now()->format('Y-m-d H:i:s') }}
+    </p>
 </x-filament-panels::page>

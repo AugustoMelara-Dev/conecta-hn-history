@@ -18,15 +18,7 @@ export default function MobileBottomNav() {
     // ═══════════════════════════════════════════════════════════════════════
     const isAuthenticated = !!user;
     const hasTenant = !!user?.tenant_id || !!user?.tenant;
-    const tenantSlug = user?.tenant?.slug || user?.tenant_slug || props.tenant?.slug || null;
     const showFAB = isAuthenticated && hasTenant;
-    const appHref = tenantSlug && typeof route === 'function'
-        ? route('filament.app.pages.dashboard', { tenant: tenantSlug })
-        : '/registrar-negocio';
-    const productCreateHref = tenantSlug && typeof route === 'function'
-        ? route('filament.app.resources.products.create', { tenant: tenantSlug })
-        : appHref;
-    const favoritesHref = typeof route === 'function' ? route('buyer.profile') : '/mi-cuenta/favoritos';
 
     // Base navigation items (always visible)
     const baseNavItems = [
@@ -47,7 +39,7 @@ export default function MobileBottomNav() {
     // FAB item (conditionally added)
     const fabItem = {
         label: 'Publicar',
-        href: productCreateHref,
+        href: '/admin/products/create',
         icon: PlusCircle,
         active: false,
         isFab: true,
@@ -57,15 +49,15 @@ export default function MobileBottomNav() {
     const endNavItems = [
         {
             label: 'Favoritos',
-            href: favoritesHref,
+            href: '/favoritos',
             icon: Heart,
-            active: url.includes('/favoritos') || url.includes('/mi-cuenta'),
+            active: url === '/favoritos',
         },
         {
             label: isAuthenticated ? 'Mi Tienda' : 'Perfil',
-            href: isAuthenticated ? (hasTenant ? appHref : '/registrar-negocio') : '/login',
+            href: isAuthenticated ? (hasTenant ? '/admin' : '/registrar-negocio') : '/login',
             icon: isAuthenticated ? Store : User,
-            active: url.startsWith('/perfil') || url.startsWith('/mi-cuenta') || url.startsWith('/app'),
+            active: url.startsWith('/perfil') || url.startsWith('/mi-cuenta') || url.startsWith('/admin'),
         },
     ];
 
@@ -84,7 +76,6 @@ export default function MobileBottomNav() {
                     key={item.label}
                     href={item.href}
                     preserveScroll={item.href === '/perfil'}
-                    aria-label={item.label}
                     className={cn(
                         "flex flex-col items-center justify-center w-full h-full gap-1 transition-all duration-200 active:scale-95 touch-manipulation",
                         item.active ? "text-primary" : "text-muted-foreground hover:text-foreground",

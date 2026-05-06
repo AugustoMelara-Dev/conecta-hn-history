@@ -22,35 +22,35 @@
     <div class="container">
         <div class="header">
             <div class="icon">⏰</div>
-            <h1>Tu plan PRO vence pronto</h1>
+            <h1>Tu Plan PRO Vence Pronto</h1>
         </div>
         
         <div class="content">
             <p>Hola <strong>{{ $tenant->user->name ?? 'Cliente' }}</strong>,</p>
             
-            <p>Te escribimos para recordarte que tu suscripción PRO de <strong>{{ $tenant->name }}</strong> está por vencer.</p>
+            <p>Te escribimos para recordarte que tu suscripcion PRO de <strong>{{ $tenant->name }}</strong> esta por vencer.</p>
             
             <div class="countdown">
                 <div class="number">{{ $daysRemaining }}</div>
-                <div class="label">{{ $daysRemaining === 1 ? 'DÍA RESTANTE' : 'DÍAS RESTANTES' }}</div>
+                <div class="label">{{ $daysRemaining === 1 ? 'DIA RESTANTE' : 'DIAS RESTANTES' }}</div>
             </div>
             
             <div class="warning">
                 <h3>No pierdas tus beneficios</h3>
-                <p>Al vencer tu plan, perderás acceso a:
+                <p>Al vencer tu plan, perderas acceso a:
                     <ul style="margin: 10px 0 0 0;">
                         <li>Productos ilimitados</li>
-                        <li>Personalización de colores</li>
+                        <li>Personalizacion de colores</li>
                         <li>Banner personalizado</li>
-                        <li>Botón de WhatsApp</li>
+                        <li>Boton de WhatsApp</li>
                     </ul>
                 </p>
             </div>
             
-            <p><strong>Fecha de vencimiento:</strong> {{ optional($tenant->subscription_ends_at ?? $tenant->plan_expires_at)->format('d/m/Y') ?? 'N/A' }}</p>
+            <p><strong>Fecha de vencimiento:</strong> {{ $tenant->plan_expires_at->format('d/m/Y') }}</p>
             
             <center>
-                <a href="{{ config('app.url') }}/app" class="btn">Renovar ahora</a>
+                <a href="{{ config('app.url') }}/app" class="btn">Renovar Ahora</a>
             </center>
             
             <p style="text-align: center; color: #6b7280; font-size: 14px;">

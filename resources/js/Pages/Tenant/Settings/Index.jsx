@@ -1,23 +1,36 @@
-import { useEffect, useState } from 'react';
-import { Head, useForm } from '@inertiajs/react';
-import { Camera, Clock3, Globe, Lock, MapPin, MessageCircle, Phone, UserCircle } from 'lucide-react';
+/**
+ * Tenant/Settings/Index.jsx - Unified Settings Hub
+ *
+ * FEATURES:
+ * - Tabbed Interface (Profile, Schedule, Security)
+ * - Isolated useForm hooks for each section
+ * - Logo/Cover upload with preview
+ * - Schedule matrix with day toggles
+ *
+ * PROPS (from SettingsController@index):
+ * @param {Object} props.tenant - All tenant data
+ * @param {Object} props.schedule - { monday: { isOpen, open, close }, ... }
+ * @param {Object} props.dayLabels - { monday: 'Lunes', ... }
+ */
 
-import { Button } from '@/Components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
-import { Input } from '@/Components/ui/input';
-import { Textarea } from '@/Components/ui/textarea';
+import { useState, useEffect } from 'react';
+import { Head, router, useForm } from '@inertiajs/react';
 import TenantLayout from '@/Layouts/TenantLayout';
 
+// ═══════════════════════════════════════════════════════════════════════════
+// TAB CONFIGURATION
+// ═══════════════════════════════════════════════════════════════════════════
 const TABS = [
-    { id: 'profile', label: 'Perfil', icon: UserCircle },
-    { id: 'schedule', label: 'Horarios', icon: Clock3 },
-    { id: 'security', label: 'Seguridad', icon: Lock },
+    { id: 'profile', label: '📝 Perfil', icon: 'profile' },
+    { id: 'schedule', label: '🕐 Horarios', icon: 'schedule' },
+    { id: 'security', label: '🔒 Seguridad', icon: 'security' },
 ];
 
-const fieldErrorId = (field) => `${field}-error`;
-
+// ═══════════════════════════════════════════════════════════════════════════
+// PROFILE TAB (Isolated Form 1)
+// ═══════════════════════════════════════════════════════════════════════════
 function ProfileTab({ tenant }) {
-    const { data, setData, post, processing, errors } = useForm({
+    const { data, setData, post, processing, errors, progress } = useForm({
         name: tenant?.name || '',
         description: tenant?.description || '',
         about: tenant?.about || '',
@@ -32,243 +45,386 @@ function ProfileTab({ tenant }) {
         cover: null,
         _method: 'PUT',
     });
+
     const [logoPreview, setLogoPreview] = useState(tenant?.logo_url || null);
     const [coverPreview, setCoverPreview] = useState(tenant?.cover_url || null);
 
-    useEffect(() => () => {
-        if (logoPreview?.startsWith('blob:')) URL.revokeObjectURL(logoPreview);
+    // ═══════════════════════════════════════════════════════════════════════════
+    // MEMORY MANAGEMENT: Revoke Blob URLs on cleanup or change
+    // Prevents browser memory leaks from accumulated object URLs
+    // ═══════════════════════════════════════════════════════════════════════════
+    useEffect(() => {
+        return () => {
+            if (logoPreview && logoPreview.startsWith('blob:')) {
+                URL.revokeObjectURL(logoPreview);
+            }
+        };
     }, [logoPreview]);
-    useEffect(() => () => {
-        if (coverPreview?.startsWith('blob:')) URL.revokeObjectURL(coverPreview);
+
+    useEffect(() => {
+        return () => {
+            if (coverPreview && coverPreview.startsWith('blob:')) {
+                URL.revokeObjectURL(coverPreview);
+            }
+        };
     }, [coverPreview]);
 
-    const onLogoChange = (e) => {
+    const handleLogoChange = (e) => {
         const file = e.target.files?.[0];
-        if (!file) return;
-        setData('logo', file);
-        if (logoPreview?.startsWith('blob:')) URL.revokeObjectURL(logoPreview);
-        setLogoPreview(URL.createObjectURL(file));
+        if (file) {
+            setData('logo', file);
+            // Revoke previous URL before creating new one
+            if (logoPreview && logoPreview.startsWith('blob:')) {
+                URL.revokeObjectURL(logoPreview);
+            }
+            setLogoPreview(URL.createObjectURL(file));
+        }
     };
-    const onCoverChange = (e) => {
+
+    const handleCoverChange = (e) => {
         const file = e.target.files?.[0];
-        if (!file) return;
-        setData('cover', file);
-        if (coverPreview?.startsWith('blob:')) URL.revokeObjectURL(coverPreview);
-        setCoverPreview(URL.createObjectURL(file));
+        if (file) {
+            setData('cover', file);
+            // Revoke previous URL before creating new one
+            if (coverPreview && coverPreview.startsWith('blob:')) {
+                URL.revokeObjectURL(coverPreview);
+            }
+            setCoverPreview(URL.createObjectURL(file));
+        }
+    };
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        post(route('tenant.settings.update-profile'), { forceFormData: true });
     };
 
     return (
-        <form
-            className="space-y-6"
-            onSubmit={(e) => {
-                e.preventDefault();
-                post(route('tenant.settings.update-profile'), { forceFormData: true });
-            }}
-        >
-            <Card>
-                <CardHeader><CardTitle>Identidad del negocio</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-2">
-                            <label htmlFor="settings-cover" className="text-sm font-medium text-slate-700">Portada</label>
-                            <Input id="settings-cover" type="file" accept="image/*" onChange={onCoverChange} />
-                            {coverPreview ? <img src={coverPreview} alt="Vista previa de portada" className="h-24 w-full rounded-md object-cover" /> : null}
-                        </div>
-                        <div className="space-y-2">
-                            <label htmlFor="settings-logo" className="text-sm font-medium text-slate-700">Logo</label>
-                            <Input id="settings-logo" type="file" accept="image/*" onChange={onLogoChange} />
-                            {logoPreview ? <img src={logoPreview} alt="Vista previa de logo" className="h-24 w-24 rounded-md object-cover" /> : null}
-                        </div>
-                    </div>
-                    <LabeledInput id="settings-name" label="Nombre del negocio" value={data.name} onChange={(v) => setData('name', v)} error={errors.name} required />
-                    <LabeledArea id="settings-description" label="Descripción corta" value={data.description} onChange={(v) => setData('description', v)} error={errors.description} rows={2} />
-                    <LabeledArea id="settings-about" label="Historia del negocio" value={data.about} onChange={(v) => setData('about', v)} error={errors.about} rows={4} />
-                </CardContent>
-            </Card>
+        <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Visual Branding Card */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                {/* Cover Image */}
+                <div className="relative h-40 bg-gradient-to-r from-blue-500 to-indigo-600">
+                    {coverPreview && (
+                        <img src={coverPreview} alt="Cover" className="w-full h-full object-cover" />
+                    )}
+                    <label className="absolute bottom-3 right-3 px-3 py-1.5 bg-white/90 backdrop-blur text-gray-700 text-sm font-medium rounded-lg cursor-pointer hover:bg-white transition-colors">
+                        <input type="file" accept="image/*" onChange={handleCoverChange} className="hidden" />
+                        📷 Cambiar Portada
+                    </label>
+                </div>
 
-            <Card>
-                <CardHeader><CardTitle>Contacto y redes</CardTitle></CardHeader>
-                <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <IconInput id="settings-phone" label="Teléfono" icon={Phone} value={data.phone} onChange={(v) => setData('phone', v)} error={errors.phone} />
-                    <IconInput id="settings-whatsapp" label="WhatsApp" icon={MessageCircle} value={data.whatsapp_number} onChange={(v) => setData('whatsapp_number', v)} error={errors.whatsapp_number} />
+                {/* Logo */}
+                <div className="relative -mt-12 ml-6">
+                    <div className="w-24 h-24 rounded-xl bg-white shadow-lg border-4 border-white overflow-hidden">
+                        {logoPreview ? (
+                            <img src={logoPreview} alt="Logo" className="w-full h-full object-cover" />
+                        ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-2xl font-bold">
+                                {data.name?.substring(0, 2) || 'T'}
+                            </div>
+                        )}
+                    </div>
+                    <label className="absolute -bottom-1 -right-1 p-1.5 bg-blue-600 text-white rounded-full cursor-pointer hover:bg-blue-700">
+                        <input type="file" accept="image/*" onChange={handleLogoChange} className="hidden" />
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </label>
+                </div>
+
+                {/* Basic Info */}
+                <div className="p-6 pt-4 space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del Negocio *</label>
+                        <input
+                            type="text"
+                            value={data.name}
+                            onChange={(e) => setData('name', e.target.value)}
+                            className={`w-full px-4 py-3 bg-gray-50 border rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 ${errors.name ? 'border-red-300' : 'border-gray-200'}`}
+                        />
+                        {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name}</p>}
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Descripción Corta</label>
+                        <textarea
+                            rows={2}
+                            value={data.description}
+                            onChange={(e) => setData('description', e.target.value)}
+                            placeholder="Una frase que define tu negocio..."
+                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 resize-none"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Nuestra Historia</label>
+                        <textarea
+                            rows={4}
+                            value={data.about}
+                            onChange={(e) => setData('about', e.target.value)}
+                            placeholder="Cuéntale a tus clientes quiénes son..."
+                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 resize-none"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            {/* Contact & Social */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <h2 className="font-semibold text-gray-900 mb-4">📞 Contacto y Redes</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <InputWithIcon label="Teléfono" icon="📱" value={data.phone} onChange={(v) => setData('phone', v)} placeholder="+504 9999-9999" />
+                    <InputWithIcon label="WhatsApp" icon="💬" value={data.whatsapp_number} onChange={(v) => setData('whatsapp_number', v)} placeholder="+504 9999-9999" />
                     <div className="md:col-span-2">
-                        <IconInput id="settings-address" label="Dirección" icon={MapPin} value={data.address} onChange={(v) => setData('address', v)} error={errors.address} />
+                        <InputWithIcon label="Dirección" icon="📍" value={data.address} onChange={(v) => setData('address', v)} placeholder="Colonia Kennedy, Tegucigalpa" />
                     </div>
-                    <IconInput id="settings-instagram" type="url" label="Instagram" icon={Camera} value={data.instagram_url} onChange={(v) => setData('instagram_url', v)} error={errors.instagram_url} />
-                    <IconInput id="settings-facebook" type="url" label="Facebook" icon={Globe} value={data.facebook_url} onChange={(v) => setData('facebook_url', v)} error={errors.facebook_url} />
-                    <IconInput id="settings-tiktok" type="url" label="TikTok" icon={Globe} value={data.tiktok_url} onChange={(v) => setData('tiktok_url', v)} error={errors.tiktok_url} />
-                    <IconInput id="settings-website" type="url" label="Sitio web" icon={Globe} value={data.website_url} onChange={(v) => setData('website_url', v)} error={errors.website_url} />
-                </CardContent>
-            </Card>
+                    <InputWithIcon label="Instagram" icon="📸" value={data.instagram_url} onChange={(v) => setData('instagram_url', v)} type="url" placeholder="https://instagram.com/tunegocio" />
+                    <InputWithIcon label="Facebook" icon="👍" value={data.facebook_url} onChange={(v) => setData('facebook_url', v)} type="url" placeholder="https://facebook.com/tunegocio" />
+                    <InputWithIcon label="TikTok" icon="🎵" value={data.tiktok_url} onChange={(v) => setData('tiktok_url', v)} type="url" placeholder="https://tiktok.com/@tunegocio" />
+                    <InputWithIcon label="Sitio Web" icon="🌐" value={data.website_url} onChange={(v) => setData('website_url', v)} type="url" placeholder="https://tunegocio.com" />
+                </div>
+            </div>
 
+            {/* Submit Button */}
             <div className="flex justify-end">
-                <Button type="submit" disabled={processing}>{processing ? 'Guardando...' : 'Guardar perfil'}</Button>
+                <button
+                    type="submit"
+                    disabled={processing}
+                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-lg transition-all disabled:opacity-50"
+                >
+                    {processing ? 'Guardando...' : 'Guardar Perfil'}
+                </button>
             </div>
         </form>
     );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// SCHEDULE TAB (Isolated Form 2)
+// ═══════════════════════════════════════════════════════════════════════════
 function ScheduleTab({ schedule: initialSchedule, dayLabels }) {
-    const { data, setData, put, processing } = useForm({ schedule: initialSchedule || {} });
+    const { data, setData, put, processing, errors } = useForm({
+        schedule: initialSchedule || {},
+    });
+
+    const handleToggleDay = (day) => {
+        setData('schedule', {
+            ...data.schedule,
+            [day]: { ...data.schedule[day], isOpen: !data.schedule[day]?.isOpen },
+        });
+    };
+
+    const handleTimeChange = (day, field, value) => {
+        setData('schedule', {
+            ...data.schedule,
+            [day]: { ...data.schedule[day], [field]: value },
+        });
+    };
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        put(route('tenant.settings.update-schedule'));
+    };
+
     return (
-        <form
-            onSubmit={(e) => {
-                e.preventDefault();
-                put(route('tenant.settings.update-schedule'));
-            }}
-            className="space-y-6"
-        >
-            <Card>
-                <CardHeader><CardTitle>Horarios de atención</CardTitle></CardHeader>
-                <CardContent className="space-y-3">
-                    {Object.entries(dayLabels || {}).map(([day, label]) => (
-                        <div key={day} className="grid gap-3 rounded-lg border border-slate-200 p-3 md:grid-cols-[140px_1fr_1fr_1fr] md:items-center">
-                            <p className="text-sm font-medium text-slate-900">{label}</p>
-                            <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+        <form onSubmit={handleSubmit}>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <h2 className="font-semibold text-gray-900 mb-4">🕐 Horarios de Atención</h2>
+                <div className="space-y-3">
+                    {Object.entries(dayLabels).map(([day, label]) => (
+                        <div
+                            key={day}
+                            className={`flex items-center gap-4 p-3 bg-gray-50 rounded-xl ${!data.schedule[day]?.isOpen ? 'opacity-50' : ''}`}
+                        >
+                            <div className="w-24 font-medium text-gray-900">{label}</div>
+
+                            {/* Toggle */}
+                            <button
+                                type="button"
+                                onClick={() => handleToggleDay(day)}
+                                className={`relative w-12 h-7 rounded-full transition-colors ${data.schedule[day]?.isOpen ? 'bg-emerald-500' : 'bg-gray-300'
+                                    }`}
+                            >
+                                <span className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-all ${data.schedule[day]?.isOpen ? 'right-1' : 'left-1'
+                                    }`} />
+                            </button>
+
+                            <span className={`text-sm ${data.schedule[day]?.isOpen ? 'text-emerald-600' : 'text-gray-500'}`}>
+                                {data.schedule[day]?.isOpen ? 'Abierto' : 'Cerrado'}
+                            </span>
+
+                            {/* Time Inputs */}
+                            <div className="flex items-center gap-2 ml-auto">
                                 <input
-                                    type="checkbox"
-                                    checked={Boolean(data.schedule?.[day]?.isOpen)}
-                                    onChange={() =>
-                                        setData('schedule', {
-                                            ...data.schedule,
-                                            [day]: { ...data.schedule?.[day], isOpen: !data.schedule?.[day]?.isOpen },
-                                        })
-                                    }
+                                    type="time"
+                                    value={data.schedule[day]?.open || ''}
+                                    onChange={(e) => handleTimeChange(day, 'open', e.target.value)}
+                                    disabled={!data.schedule[day]?.isOpen}
+                                    className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm disabled:opacity-40"
                                 />
-                                Abierto
-                            </label>
-                            <Input
-                                type="time"
-                                value={data.schedule?.[day]?.open || ''}
-                                disabled={!data.schedule?.[day]?.isOpen}
-                                onChange={(e) =>
-                                    setData('schedule', {
-                                        ...data.schedule,
-                                        [day]: { ...data.schedule?.[day], open: e.target.value },
-                                    })
-                                }
-                            />
-                            <Input
-                                type="time"
-                                value={data.schedule?.[day]?.close || ''}
-                                disabled={!data.schedule?.[day]?.isOpen}
-                                onChange={(e) =>
-                                    setData('schedule', {
-                                        ...data.schedule,
-                                        [day]: { ...data.schedule?.[day], close: e.target.value },
-                                    })
-                                }
-                            />
+                                <span className="text-gray-400">—</span>
+                                <input
+                                    type="time"
+                                    value={data.schedule[day]?.close || ''}
+                                    onChange={(e) => handleTimeChange(day, 'close', e.target.value)}
+                                    disabled={!data.schedule[day]?.isOpen}
+                                    className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm disabled:opacity-40"
+                                />
+                            </div>
                         </div>
                     ))}
-                </CardContent>
-            </Card>
-            <div className="flex justify-end">
-                <Button type="submit" disabled={processing}>{processing ? 'Guardando...' : 'Guardar horarios'}</Button>
+                </div>
+            </div>
+
+            <div className="flex justify-end mt-6">
+                <button
+                    type="submit"
+                    disabled={processing}
+                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-lg transition-all disabled:opacity-50"
+                >
+                    {processing ? 'Guardando...' : 'Guardar Horarios'}
+                </button>
             </div>
         </form>
     );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// SECURITY TAB (Isolated Form 3)
+// ═══════════════════════════════════════════════════════════════════════════
 function SecurityTab() {
     const { data, setData, put, processing, errors, reset } = useForm({
         current_password: '',
         password: '',
         password_confirmation: '',
     });
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        put(route('password.update'), {
+            preserveScroll: true,
+            onSuccess: () => reset(),
+        });
+    };
+
     return (
-        <form
-            className="space-y-6"
-            onSubmit={(e) => {
-                e.preventDefault();
-                put(route('password.update'), { preserveScroll: true, onSuccess: () => reset() });
-            }}
-        >
-            <Card>
-                <CardHeader><CardTitle>Cambiar contraseña</CardTitle></CardHeader>
-                <CardContent className="max-w-md space-y-4">
-                    <LabeledInput id="settings-current-password" type="password" label="Contraseña actual" value={data.current_password} onChange={(v) => setData('current_password', v)} error={errors.current_password} />
-                    <LabeledInput id="settings-password" type="password" label="Nueva contraseña" value={data.password} onChange={(v) => setData('password', v)} error={errors.password} />
-                    <LabeledInput id="settings-password-confirmation" type="password" label="Confirmar nueva contraseña" value={data.password_confirmation} onChange={(v) => setData('password_confirmation', v)} error={errors.password_confirmation} />
-                </CardContent>
-            </Card>
-            <div className="flex justify-end">
-                <Button type="submit" disabled={processing}>{processing ? 'Actualizando...' : 'Actualizar contraseña'}</Button>
+        <form onSubmit={handleSubmit}>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <h2 className="font-semibold text-gray-900 mb-4">🔒 Cambiar Contraseña</h2>
+                <div className="space-y-4 max-w-md">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña Actual</label>
+                        <input
+                            type="password"
+                            value={data.current_password}
+                            onChange={(e) => setData('current_password', e.target.value)}
+                            className={`w-full px-4 py-3 bg-gray-50 border rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 ${errors.current_password ? 'border-red-300' : 'border-gray-200'}`}
+                        />
+                        {errors.current_password && <p className="mt-1 text-sm text-red-500">{errors.current_password}</p>}
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Nueva Contraseña</label>
+                        <input
+                            type="password"
+                            value={data.password}
+                            onChange={(e) => setData('password', e.target.value)}
+                            className={`w-full px-4 py-3 bg-gray-50 border rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 ${errors.password ? 'border-red-300' : 'border-gray-200'}`}
+                        />
+                        {errors.password && <p className="mt-1 text-sm text-red-500">{errors.password}</p>}
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Confirmar Nueva Contraseña</label>
+                        <input
+                            type="password"
+                            value={data.password_confirmation}
+                            onChange={(e) => setData('password_confirmation', e.target.value)}
+                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex justify-end mt-6">
+                <button
+                    type="submit"
+                    disabled={processing}
+                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-lg transition-all disabled:opacity-50"
+                >
+                    {processing ? 'Actualizando...' : 'Actualizar Contraseña'}
+                </button>
             </div>
         </form>
     );
 }
 
-function IconInput({ id, label, icon: Icon, value, onChange, error, type = 'text' }) {
+// ═══════════════════════════════════════════════════════════════════════════
+// HELPER COMPONENT
+// ═══════════════════════════════════════════════════════════════════════════
+function InputWithIcon({ label, icon, value, onChange, type = 'text', placeholder }) {
     return (
-        <div className="space-y-2">
-            <label htmlFor={id} className="text-sm font-medium text-slate-700">{label}</label>
+        <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
             <div className="relative">
-                <Icon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-                <Input id={id} type={type} value={value || ''} onChange={(e) => onChange(e.target.value)} className="pl-9" aria-invalid={Boolean(error)} aria-describedby={error ? fieldErrorId(id) : undefined} />
+                <span className="absolute left-3 top-1/2 -translate-y-1/2">{icon}</span>
+                <input
+                    type={type}
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    placeholder={placeholder}
+                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500"
+                />
             </div>
-            {error ? <p id={fieldErrorId(id)} className="text-sm text-red-600">{error}</p> : null}
         </div>
     );
 }
 
-function LabeledInput({ id, label, value, onChange, error, type = 'text', required = false }) {
-    return (
-        <div className="space-y-2">
-            <label htmlFor={id} className="text-sm font-medium text-slate-700">{label}{required ? ' *' : ''}</label>
-            <Input id={id} type={type} value={value || ''} onChange={(e) => onChange(e.target.value)} aria-invalid={Boolean(error)} aria-describedby={error ? fieldErrorId(id) : undefined} />
-            {error ? <p id={fieldErrorId(id)} className="text-sm text-red-600">{error}</p> : null}
-        </div>
-    );
-}
-
-function LabeledArea({ id, label, value, onChange, error, rows = 3 }) {
-    return (
-        <div className="space-y-2">
-            <label htmlFor={id} className="text-sm font-medium text-slate-700">{label}</label>
-            <Textarea id={id} rows={rows} value={value || ''} onChange={(e) => onChange(e.target.value)} aria-invalid={Boolean(error)} aria-describedby={error ? fieldErrorId(id) : undefined} />
-            {error ? <p id={fieldErrorId(id)} className="text-sm text-red-600">{error}</p> : null}
-        </div>
-    );
-}
-
+// ═══════════════════════════════════════════════════════════════════════════
+// MAIN PAGE COMPONENT
+// ═══════════════════════════════════════════════════════════════════════════
 export default function SettingsIndex({ tenant, schedule, dayLabels }) {
     const [activeTab, setActiveTab] = useState('profile');
+
     return (
         <TenantLayout>
             <Head title="Configuración" />
-            <div className="space-y-6">
-                <header className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-                    <h1 className="text-2xl font-bold text-slate-900">Configuración</h1>
-                    <p className="mt-1 text-sm text-slate-600">Administra identidad, horarios y seguridad desde un flujo consistente.</p>
+
+            <div className="min-h-screen bg-gray-50">
+                {/* Header */}
+                <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+                    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="flex items-center justify-between h-16">
+                            <h1 className="text-xl font-bold text-gray-900">⚙️ Configuración</h1>
+                        </div>
+                    </div>
                 </header>
-                <Card>
-                    <CardContent className="pt-6">
-                        <nav className="grid grid-cols-1 gap-2 sm:grid-cols-3" role="tablist" aria-label="Secciones de configuración">
-                            {TABS.map((tab) => {
-                                const Icon = tab.icon;
-                                const isActive = activeTab === tab.id;
-                                return (
-                                    <button
-                                        key={tab.id}
-                                        type="button"
-                                        role="tab"
-                                        aria-selected={isActive}
-                                        aria-controls={`settings-panel-${tab.id}`}
-                                        onClick={() => setActiveTab(tab.id)}
-                                        className={`inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium ${isActive ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
-                                    >
-                                        <Icon className="h-4 w-4" aria-hidden="true" />
-                                        {tab.label}
-                                    </button>
-                                );
-                            })}
+
+                <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                    {/* Tab Navigation */}
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-1 mb-6">
+                        <nav className="flex gap-1">
+                            {TABS.map((tab) => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`flex-1 px-4 py-2.5 text-sm font-medium rounded-lg transition-colors ${activeTab === tab.id
+                                        ? 'bg-blue-600 text-white shadow-sm'
+                                        : 'text-gray-600 hover:bg-gray-100'
+                                        }`}
+                                >
+                                    {tab.label}
+                                </button>
+                            ))}
                         </nav>
-                    </CardContent>
-                </Card>
-                <section id="settings-panel-profile" role="tabpanel" hidden={activeTab !== 'profile'}>{activeTab === 'profile' ? <ProfileTab tenant={tenant} /> : null}</section>
-                <section id="settings-panel-schedule" role="tabpanel" hidden={activeTab !== 'schedule'}>{activeTab === 'schedule' ? <ScheduleTab schedule={schedule} dayLabels={dayLabels} /> : null}</section>
-                <section id="settings-panel-security" role="tabpanel" hidden={activeTab !== 'security'}>{activeTab === 'security' ? <SecurityTab /> : null}</section>
+                    </div>
+
+                    {/* Tab Content */}
+                    {activeTab === 'profile' && <ProfileTab tenant={tenant} />}
+                    {activeTab === 'schedule' && <ScheduleTab schedule={schedule} dayLabels={dayLabels} />}
+                    {activeTab === 'security' && <SecurityTab />}
+                </main>
             </div>
         </TenantLayout>
     );

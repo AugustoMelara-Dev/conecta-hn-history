@@ -1,491 +1,267 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link, router, usePage } from '@inertiajs/react';
-import {
-    ArrowRight,
-    Compass,
-    Home,
-    LayoutDashboard,
-    Menu,
-    MessageSquareMore,
-    Search,
-    Sparkles,
-    User2,
-    X,
-} from 'lucide-react';
-import { toast as sonnerToast } from 'sonner';
-import SupportDiagnosticCard from '@/Components/SupportDiagnosticCard';
-import { PUBLIC_BODY_FONT, PUBLIC_DISPLAY_FONT, PUBLIC_LABEL_FONT } from '@/lib/publicTypography';
-import { PUBLIC_BRAND, PUBLIC_BRAND_POLICY_NOTE } from '@/lib/publicBrand';
+/**
+ * Layouts/PublicLayout.jsx - SEO-Optimized Public Shell
+ *
+ * FEATURES:
+ * - Semantic HTML structure (<header>, <main>, <footer>)
+ * - Responsive sticky navbar with hamburger menu
+ * - Lightweight - no admin scripts
+ * - Flash notification support
+ *
+ * @param {Object} props
+ * @param {React.ReactNode} props.children - Page content
+ */
 
-function BrandMark() {
+import { useState, useEffect } from 'react';
+import { Link, usePage } from '@inertiajs/react';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TOAST NOTIFICATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+function Toast({ message, type = 'success', onClose }) {
+    useEffect(() => {
+        const timer = setTimeout(onClose, 4000);
+        return () => clearTimeout(timer);
+    }, [onClose]);
+
+    const colors = {
+        success: 'bg-emerald-500',
+        error: 'bg-red-500',
+        info: 'bg-blue-500',
+    };
+
     return (
-        <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-slate-950 text-sm font-semibold text-white shadow-lg shadow-slate-950/15">
-            {PUBLIC_BRAND.shortName}
+        <div className={`fixed bottom-6 right-6 z-50 px-6 py-4 rounded-xl text-white shadow-2xl ${colors[type]} animate-slide-up`}>
+            <div className="flex items-center gap-3">
+                {type === 'success' && (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                )}
+                <span className="font-medium">{message}</span>
+                <button onClick={onClose} className="ml-2 opacity-70 hover:opacity-100">×</button>
+            </div>
         </div>
     );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// NAVBAR
+// ═══════════════════════════════════════════════════════════════════════════
 function Navbar() {
-    const page = usePage();
-    const { auth } = page.props;
-    const [mobileOpen, setMobileOpen] = useState(false);
-    const [search, setSearch] = useState('');
-    const [scrolled, setScrolled] = useState(false);
-    const isHome = route().current('home');
-    const isRegistrationFlow = route().current('tenant.register');
+    const { auth } = usePage().props;
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
 
-    useEffect(() => {
-        const onScroll = () => setScrolled(window.scrollY > 12);
-
-        onScroll();
-        window.addEventListener('scroll', onScroll);
-
-        return () => window.removeEventListener('scroll', onScroll);
-    }, []);
-
-    const searchBusinesses = (event) => {
-        event.preventDefault();
-        router.get(route('directory.index'), search.trim() ? { search } : {});
-        setMobileOpen(false);
+    const handleSearch = (e) => {
+        e.preventDefault();
+        if (searchQuery.trim()) {
+            window.location.href = route('directory.index', { search: searchQuery });
+        }
     };
 
-    const discoveryActive =
-        route().current('public.explore')
-        || route().current('directory.*')
-        || route().current('city.show')
-        || route().current('category.show')
-        || route().current('cities.index');
-
-    const panelHref = auth?.tenant?.slug
-        ? route('filament.app.pages.dashboard', { tenant: auth.tenant.slug })
-        : null;
-
-    const homeLinks = [
-        { href: `${route('home')}#features`, label: 'Sistema', active: true, external: true },
-        { href: `${route('home')}#pricing`, label: 'Planes', active: false, external: true },
-        { href: `${route('home')}#businesses`, label: 'Negocios', active: false, external: true },
-        { href: `${route('home')}#faq`, label: 'FAQ', active: false, external: true },
-    ];
-    const defaultLinks = [
-        { href: route('home'), label: 'Inicio', active: route().current('home') },
-        { href: route('public.explore'), label: 'Negocios', active: discoveryActive },
-        { href: `${route('home')}#pricing`, label: 'Planes', active: false, external: true },
-    ];
-    const registrationLinks = [
-        { href: route('home'), label: 'Beneficios', active: false, external: true },
-        { href: `${route('home')}#pricing`, label: 'Precios', active: false, external: true },
-        { href: `mailto:${PUBLIC_BRAND.supportEmail}`, label: 'Soporte', active: false, external: true },
-    ];
-    const links = isHome ? homeLinks : (isRegistrationFlow ? registrationLinks : defaultLinks);
-    const headerClasses = isRegistrationFlow
-        ? 'border-slate-200 bg-white/92 backdrop-blur-xl'
-        : isHome
-            ? 'border-slate-200/60 bg-white/80 shadow-sm backdrop-blur-[20px]'
-        : scrolled
-            ? 'border-slate-200 bg-white/94 backdrop-blur-xl'
-            : 'border-transparent bg-white/86 backdrop-blur-md';
-
-    const navLinkClass = (active) => (
-        `rounded-full px-1 text-sm transition focus-visible:outline-none focus-visible:ring-4 ${
-            'focus-visible:ring-slate-200'
-        } ${
-            active ? 'border-b-2 border-slate-900 pb-1 text-slate-950' : 'text-slate-500 hover:text-slate-950'
-        }`
-    );
-
     return (
-        <header className={`sticky top-0 z-40 border-b transition-all ${headerClasses}`}>
-            <nav className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
-                <Link href={route('home')} className="flex items-center gap-3 rounded-2xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-200">
-                    {isHome ? null : <BrandMark />}
-                    <div>
-                        <p className={`${isHome ? 'text-2xl' : 'text-base'} font-extrabold tracking-tight text-slate-950`} style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                            {PUBLIC_BRAND.name}
-                        </p>
-                        {!isHome ? (
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-slate-500" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
-                                {PUBLIC_BRAND.name}
-                            </p>
-                        ) : null}
-                    </div>
-                </Link>
+        <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100">
+            <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex items-center justify-between h-16">
+                    {/* Logo */}
+                    <Link href="/" className="flex items-center gap-2 shrink-0">
+                        <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center">
+                            <span className="text-white font-bold text-lg">C</span>
+                        </div>
+                        <span className="text-xl font-bold text-gray-900 hidden sm:block">
+                            Conecta<span className="text-blue-600">HN</span>
+                        </span>
+                    </Link>
 
-                <div className="hidden items-center gap-8 lg:flex" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
-                    {links.map((item) => (
-                        item.external ? (
-                            <a key={item.label} href={item.href} className={navLinkClass(item.active)}>
-                                {item.label}
-                            </a>
+                    {/* Search Bar (Desktop) */}
+                    <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-md mx-8">
+                        <div className="relative w-full">
+                            <input
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder="Buscar negocios..."
+                                className="w-full pl-12 pr-4 py-2.5 bg-gray-100 border-0 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                            />
+                            <svg className="w-5 h-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                    </form>
+
+                    {/* Auth Buttons (Desktop) */}
+                    <div className="hidden md:flex items-center gap-3">
+                        {auth?.user ? (
+                            <Link
+                                href={route('tenant.dashboard')}
+                                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors"
+                            >
+                                Mi Panel
+                            </Link>
                         ) : (
-                            <Link key={item.label} href={item.href} className={navLinkClass(item.active)}>
-                                {item.label}
-                            </Link>
-                        )
-                    ))}
-                </div>
-
-                <form onSubmit={searchBusinesses} className={isRegistrationFlow || isHome ? 'hidden' : 'hidden w-full max-w-md lg:block'}>
-                    <div className="flex items-center rounded-full border border-stone-200 bg-white px-4 py-2.5 shadow-sm">
-                        <label htmlFor="public-nav-search" className="sr-only">
-                            Buscar negocios, rubros o ciudades
-                        </label>
-                        <Search className="mr-3 h-4 w-4 text-slate-400" />
-                        <input
-                            id="public-nav-search"
-                            name="search"
-                            type="text"
-                            value={search}
-                            onChange={(event) => setSearch(event.target.value)}
-                            placeholder="Busca negocios, rubros o ciudades..."
-                            className="w-full bg-transparent text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 placeholder:text-slate-400"
-                        />
-                        <button
-                            type="submit"
-                            className="rounded-full px-2 text-sm font-semibold text-slate-700 transition hover:text-slate-950 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-200"
-                        >
-                            Buscar
-                        </button>
+                            <>
+                                <Link
+                                    href={route('login')}
+                                    className="px-4 py-2 text-gray-600 hover:text-gray-900 font-medium"
+                                >
+                                    Iniciar Sesión
+                                </Link>
+                                <Link
+                                    href={route('register')}
+                                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors"
+                                >
+                                    Registrarse
+                                </Link>
+                            </>
+                        )}
                     </div>
-                </form>
 
-                <div className="hidden items-center gap-3 lg:flex">
-                    {auth?.user ? (
-                        <>
-                            <Link href={route('mi-cuenta.edit')} className="rounded-full border border-stone-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-stone-300 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-200">
-                                Mi cuenta
-                            </Link>
-                            {panelHref ? (
-                                <a href={panelHref} className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-200">
-                                    Abrir panel
-                                    <ArrowRight className="h-4 w-4" />
-                                </a>
-                            ) : (
-                                <Link href={route('tenant.register')} className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-200">
-                                    Registrar negocio
-                                    <ArrowRight className="h-4 w-4" />
-                                </Link>
-                            )}
-                        </>
-                    ) : isRegistrationFlow ? (
-                        <Link href={route('login')} className="inline-flex items-center gap-2 rounded-lg bg-slate-950 px-5 py-3 text-sm font-semibold uppercase tracking-[0.16em] text-white transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-200" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
-                            Iniciar sesión
-                        </Link>
-                    ) : (
-                        <>
-                            <Link href={route('login')} className="px-5 py-2 text-sm font-semibold text-slate-900 transition hover:text-slate-600 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-200" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
-                                Iniciar sesión
-                            </Link>
-                            {!isRegistrationFlow ? (
-                                <Link href={route('tenant.register')} className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-br from-slate-950 via-slate-900 to-slate-700 px-6 py-2.5 text-sm font-semibold text-white transition hover:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-200" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
-                                    Registrar negocio
-                                    {!isHome ? <ArrowRight className="h-4 w-4" /> : null}
-                                </Link>
-                            ) : null}
-                        </>
-                    )}
+                    {/* Hamburger Menu (Mobile) */}
+                    <button
+                        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                        className="md:hidden p-2 text-gray-600 hover:text-gray-900"
+                        aria-label="Toggle menu"
+                    >
+                        {mobileMenuOpen ? (
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        ) : (
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                            </svg>
+                        )}
+                    </button>
                 </div>
 
-                <button
-                    type="button"
-                    onClick={() => setMobileOpen((value) => !value)}
-                    className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-stone-200 bg-white text-slate-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-200 lg:hidden"
-                    aria-label={mobileOpen ? 'Cerrar menu' : 'Abrir menu'}
-                    aria-expanded={mobileOpen}
-                    aria-controls="public-mobile-menu"
-                >
-                    {mobileOpen ? <X className="h-5 w-5" aria-hidden="true" /> : <Menu className="h-5 w-5" aria-hidden="true" />}
-                </button>
-            </nav>
-
-            {mobileOpen ? (
-                <div id="public-mobile-menu" className="border-t border-stone-200 bg-white lg:hidden">
-                    <div className="mx-auto max-w-7xl space-y-4 px-4 py-4 sm:px-6">
-                        <form onSubmit={searchBusinesses} className={isHome || isRegistrationFlow ? 'hidden' : ''}>
-                            <div className="flex items-center rounded-2xl border border-stone-200 bg-white px-4 py-3">
-                                <label htmlFor="public-mobile-search" className="sr-only">
-                                    Buscar negocios o servicios
-                                </label>
-                                <Search className="mr-3 h-4 w-4 text-slate-400" />
-                                <input
-                                    id="public-mobile-search"
-                                    name="search"
-                                    type="text"
-                                    value={search}
-                                    onChange={(event) => setSearch(event.target.value)}
-                                    placeholder="Buscar negocios o servicios..."
-                                    className="w-full bg-transparent text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 placeholder:text-slate-400"
-                                />
-                            </div>
+                {/* Mobile Menu */}
+                {mobileMenuOpen && (
+                    <div className="md:hidden py-4 border-t border-gray-100">
+                        {/* Mobile Search */}
+                        <form onSubmit={handleSearch} className="mb-4">
+                            <input
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder="Buscar negocios..."
+                                className="w-full px-4 py-3 bg-gray-100 rounded-xl text-sm"
+                            />
                         </form>
 
-                        <div className="flex flex-col gap-2" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
-                            {links.map((item) => (
-                                item.external ? (
-                                    <a
-                                        key={item.label}
-                                        href={item.href}
-                                        className={`rounded-2xl px-4 py-3 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-200 ${
-                                            item.active ? 'bg-white text-slate-950' : 'text-slate-700 hover:bg-white hover:text-slate-950'
-                                        }`}
-                                        onClick={() => setMobileOpen(false)}
-                                    >
-                                        {item.label}
-                                    </a>
-                                ) : (
-                                    <Link
-                                        key={item.label}
-                                        href={item.href}
-                                        className={`rounded-2xl px-4 py-3 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-200 ${
-                                            item.active ? 'bg-white text-slate-950' : 'text-slate-700 hover:bg-white hover:text-slate-950'
-                                        }`}
-                                        onClick={() => setMobileOpen(false)}
-                                    >
-                                        {item.label}
-                                    </Link>
-                                )
-                            ))}
-                        </div>
-
-                        <div className="flex flex-col gap-3 pt-2">
+                        {/* Mobile Links */}
+                        <div className="flex flex-col gap-2">
+                            <Link href={route('directory.index')} className="px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-xl">
+                                Directorio
+                            </Link>
                             {auth?.user ? (
-                                <>
-                                    <Link
-                                        href={route('mi-cuenta.edit')}
-                                        className="inline-flex items-center justify-center rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-200"
-                                        onClick={() => setMobileOpen(false)}
-                                    >
-                                        Mi cuenta
-                                    </Link>
-                                    {panelHref ? (
-                                        <a
-                                            href={panelHref}
-                                            className="inline-flex items-center justify-center rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-200"
-                                        >
-                                            Abrir panel
-                                        </a>
-                                    ) : (
-                                        <Link
-                                            href={route('tenant.register')}
-                                            className="inline-flex items-center justify-center rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-200"
-                                            onClick={() => setMobileOpen(false)}
-                                        >
-                                            Registrar negocio
-                                        </Link>
-                                    )}
-                                </>
+                                <Link href={route('tenant.dashboard')} className="px-4 py-3 bg-blue-600 text-white text-center rounded-xl font-semibold">
+                                    Mi Panel
+                                </Link>
                             ) : (
                                 <>
-                                    <Link
-                                        href={route('login')}
-                                        className="inline-flex items-center justify-center rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-200"
-                                        onClick={() => setMobileOpen(false)}
-                                    >
-                                        Iniciar sesión
+                                    <Link href={route('login')} className="px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-xl">
+                                        Iniciar Sesión
                                     </Link>
-                                    {!isRegistrationFlow ? (
-                                        <Link
-                                            href={route('tenant.register')}
-                                            className="inline-flex items-center justify-center rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-200"
-                                            onClick={() => setMobileOpen(false)}
-                                        >
-                                            Registrar negocio
-                                        </Link>
-                                    ) : null}
+                                    <Link href={route('register')} className="px-4 py-3 bg-blue-600 text-white text-center rounded-xl font-semibold">
+                                        Registrarse
+                                    </Link>
                                 </>
                             )}
                         </div>
                     </div>
-                </div>
-            ) : null}
+                )}
+            </nav>
         </header>
     );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// FOOTER
+// ═══════════════════════════════════════════════════════════════════════════
 function Footer() {
-    const { auth } = usePage().props;
-
     return (
-        <footer className="border-t border-slate-200 bg-slate-100" data-brand-policy={PUBLIC_BRAND_POLICY_NOTE}>
-            <div className="mx-auto grid max-w-7xl grid-cols-2 gap-8 px-8 py-12 md:grid-cols-4">
-                <div className="col-span-2 md:col-span-1">
-                    <div className="text-xl font-bold text-slate-900" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>{PUBLIC_BRAND.name}</div>
-                    <p className="mt-4 text-sm leading-relaxed text-slate-500">
-                        Plataforma para descubrir negocios locales y ayudarles a captar clientes con informacion clara.
-                    </p>
-                </div>
+        <footer className="bg-gray-900 text-white mt-auto">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+                    {/* Brand */}
+                    <div className="md:col-span-2">
+                        <div className="flex items-center gap-2 mb-4">
+                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center">
+                                <span className="text-white font-bold">C</span>
+                            </div>
+                            <span className="text-xl font-bold">ConectaHN</span>
+                        </div>
+                        <p className="text-gray-400 max-w-sm">
+                            El directorio más completo de negocios en Honduras. Conecta con servicios locales de confianza.
+                        </p>
+                    </div>
 
-                <div>
-                    <span className="mb-6 block text-xs font-bold uppercase tracking-[0.18em] text-slate-900" style={{ fontFamily: PUBLIC_LABEL_FONT }}>Producto</span>
-                    <ul className="space-y-3 text-sm text-slate-500">
-                        <li><a href={`${route('home')}#features`} className="transition hover:underline">Funciones</a></li>
-                        <li><a href={`${route('home')}#pricing`} className="transition hover:underline">Planes</a></li>
-                        <li><Link href={route('public.explore')} className="transition hover:underline">Negocios</Link></li>
-                        <li><Link href={route('tenant.register')} className="transition hover:underline">Registrar negocio</Link></li>
-                    </ul>
-                </div>
+                    {/* Links */}
+                    <div>
+                        <h4 className="font-semibold mb-4">Explorar</h4>
+                        <ul className="space-y-2 text-gray-400">
+                            <li><Link href={route('directory.index')} className="hover:text-white">Directorio</Link></li>
+                            <li><Link href={route('directory.index', { category: 'food' })} className="hover:text-white">Restaurantes</Link></li>
+                            <li><Link href={route('directory.index', { category: 'services' })} className="hover:text-white">Servicios</Link></li>
+                        </ul>
+                    </div>
 
-                <div>
-                    <span className="mb-6 block text-xs font-bold uppercase tracking-[0.18em] text-slate-900" style={{ fontFamily: PUBLIC_LABEL_FONT }}>Compañía</span>
-                    <ul className="space-y-3 text-sm text-slate-500">
-                        <li><a href={`${route('home')}#businesses`} className="transition hover:underline">Clientes</a></li>
-                        <li><a href={`${route('home')}#faq`} className="transition hover:underline">FAQ</a></li>
-                        <li><a href={`mailto:${PUBLIC_BRAND.supportEmail}`} className="transition hover:underline">Soporte</a></li>
-                        {auth?.user ? (
-                            <li><Link href={route('mi-cuenta.edit')} className="transition hover:underline">Mi cuenta</Link></li>
-                        ) : (
-                            <li><Link href={route('login')} className="transition hover:underline">Iniciar sesión</Link></li>
-                        )}
-                    </ul>
-                </div>
-
-                <div>
-                    <span className="mb-6 block text-xs font-bold uppercase tracking-[0.18em] text-slate-900" style={{ fontFamily: PUBLIC_LABEL_FONT }}>Social</span>
-                    <div className="flex gap-4">
-                        <a href={PUBLIC_BRAND.websiteUrl} target="_blank" rel="noopener noreferrer" aria-label={`Abrir sitio web de ${PUBLIC_BRAND.name}`} className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-slate-700 transition hover:bg-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2">
-                            <Compass className="h-4 w-4" aria-hidden="true" />
-                        </a>
-                        <a href={PUBLIC_BRAND.supportWhatsAppUrl} target="_blank" rel="noopener noreferrer" aria-label="Contactar soporte por WhatsApp" className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-slate-700 transition hover:bg-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2">
-                            <MessageSquareMore className="h-4 w-4" aria-hidden="true" />
-                        </a>
+                    {/* Legal */}
+                    <div>
+                        <h4 className="font-semibold mb-4">Legal</h4>
+                        <ul className="space-y-2 text-gray-400">
+                            <li><a href="/privacy" className="hover:text-white">Privacidad</a></li>
+                            <li><a href="/terms" className="hover:text-white">Términos</a></li>
+                            <li><a href="/contact" className="hover:text-white">Contacto</a></li>
+                        </ul>
                     </div>
                 </div>
-            </div>
 
-            <div className="border-t border-slate-200">
-                <div className="mx-auto max-w-7xl px-8 py-8">
-                    <p className="text-center text-xs text-slate-500">
-                        &copy; {new Date().getFullYear()} {PUBLIC_BRAND.name}. Todos los derechos reservados.
-                    </p>
+                <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-500 text-sm">
+                    © {new Date().getFullYear()} ConectaHN. Todos los derechos reservados.
                 </div>
             </div>
         </footer>
     );
 }
 
-function DiscoveryDock() {
-    const { auth } = usePage().props;
-    const panelHref = auth?.tenant?.slug
-        ? route('filament.app.pages.dashboard', { tenant: auth.tenant.slug })
-        : null;
-
-    const items = [
-        {
-            label: 'Inicio',
-            href: route('home'),
-            icon: Home,
-            active: route().current('home'),
-        },
-        {
-            label: 'Negocios',
-            href: route('public.explore'),
-            icon: Sparkles,
-            active: route().current('public.explore'),
-        },
-        {
-            label: 'Buscar',
-            href: route('directory.index'),
-            icon: Search,
-            active:
-                route().current('directory.*')
-                || route().current('city.show')
-                || route().current('category.show')
-                || route().current('cities.index'),
-        },
-        auth?.user
-            ? panelHref
-                ? {
-                    label: 'Panel',
-                    href: panelHref,
-                    icon: LayoutDashboard,
-                    active: false,
-                    native: true,
-                }
-                : {
-                    label: 'Cuenta',
-                    href: route('mi-cuenta.edit'),
-                    icon: User2,
-                    active: route().current('mi-cuenta.edit'),
-                }
-            : {
-                label: 'Ingresar',
-                href: route('login'),
-                icon: Compass,
-                active: route().current('login'),
-            },
-    ];
-
-    return (
-        <nav className="fixed inset-x-0 bottom-4 z-40 px-4 md:hidden">
-            <div className="mx-auto grid max-w-md grid-cols-4 gap-2 rounded-[28px] border border-stone-200 bg-white/95 px-3 py-3 shadow-2xl shadow-slate-950/10 backdrop-blur-xl">
-                {items.map((item) => {
-                    const content = (
-                        <span className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-semibold transition ${item.active ? 'bg-slate-100 text-slate-950' : 'text-slate-500 hover:text-slate-950'}`}>
-                            <item.icon className="h-4 w-4" />
-                            {item.label}
-                        </span>
-                    );
-
-                    if (item.native) {
-                        return (
-                            <a key={item.label} href={item.href}>
-                                {content}
-                            </a>
-                        );
-                    }
-
-                    return (
-                        <Link key={item.label} href={item.href}>
-                            {content}
-                        </Link>
-                    );
-                })}
-            </div>
-        </nav>
-    );
-}
-
-export default function PublicLayout({ children, hideFooter = false }) {
-    const page = usePage();
-    const { flash } = page.props;
-    const isRegistrationFlow = route().current('tenant.register');
-
-    const showDiscoveryDock = useMemo(() => (
-        route().current('public.explore')
-        || route().current('directory.*')
-        || route().current('city.show')
-        || route().current('category.show')
-        || route().current('cities.index')
-    ), [page.url]);
+// ═══════════════════════════════════════════════════════════════════════════
+// MAIN LAYOUT
+// ═══════════════════════════════════════════════════════════════════════════
+export default function PublicLayout({ children }) {
+    const { flash } = usePage().props;
+    const [toast, setToast] = useState(null);
 
     useEffect(() => {
-        if (flash?.success) {
-            sonnerToast.success(flash.success);
-        } else if (flash?.error) {
-            sonnerToast.error(flash.error);
-        } else if (flash?.info) {
-            sonnerToast.info(flash.info);
-        }
-    }, [flash?.error, flash?.info, flash?.success]);
+        if (flash?.success) setToast({ message: flash.success, type: 'success' });
+        if (flash?.error) setToast({ message: flash.error, type: 'error' });
+    }, [flash]);
 
     return (
-        <div className={`min-h-screen bg-white text-slate-900 ${showDiscoveryDock ? 'pb-24 md:pb-0' : ''}`} style={{ fontFamily: PUBLIC_BODY_FONT }}>
-            <a
-                href="#main-content"
-                className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-slate-950 focus:shadow-lg"
-            >
-                Saltar al contenido
-            </a>
+        <div className="min-h-screen flex flex-col bg-gray-50">
+            <Navbar />,
+            <main className="flex-1">
+                {children}
+            </main>
+            <Footer />
 
-            <Navbar />
-            <main id="main-content">{children}</main>
-            {!hideFooter ? <Footer /> : null}
-            {showDiscoveryDock ? <DiscoveryDock /> : null}
+            {/* Toast */}
+            {toast && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={() => setToast(null)}
+                />
+            )}
 
-            {flash?.diagnostic ? (
-                <div className="fixed bottom-24 left-4 right-4 z-40 mx-auto max-w-3xl md:bottom-6">
-                    <SupportDiagnosticCard diagnostic={flash.diagnostic} />
-                </div>
-            ) : null}
+            {/* Animation Styles */}
+            <style>{`
+                @keyframes slide-up {
+                    from { opacity: 0; transform: translateY(20px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                .animate-slide-up { animation: slide-up 0.3s ease-out; }
+            `}</style>
         </div>
     );
 }

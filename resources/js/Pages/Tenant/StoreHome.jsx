@@ -14,7 +14,7 @@
  * - Prevents overselling via frontend guard
  *
  * OPTIMIZATIONS:
- * - Centralized sonner notifications
+ * - Centralized Toast component
  * - Lazy loading for all images
  * - Memoized product cards for large catalogs
  *
@@ -24,35 +24,24 @@
 
 import { useState, useRef, useEffect, useMemo, memo } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
-import { CheckCircle, Plus, ShoppingBag } from 'lucide-react';
-import { toast as sonnerToast } from 'sonner';
+import { ShoppingBag, Plus } from 'lucide-react';
 import StoreLayout from '@/Layouts/StoreLayout';
 import useCartStore from '@/Stores/useCartStore';
 import useTenantContext from '@/Hooks/useTenantContext';
 import { formatCurrency } from '@/Utils/currency';
 import ImageWithFallback from '@/Components/ImageWithFallback';
-import { ActionFeedback, EmptyState, LoadingState } from '@/Components/Feedback/UXStates';
-import { Badge } from '@/Components/ui/badge';
-import { Button } from '@/Components/ui/button';
-import { Card, CardContent } from '@/Components/ui/card';
-import { cn } from '@/lib/utils';
+import Toast from '@/Components/Toast';
 
 /**
  * ProductCard - Atomic product display with separated click areas
  * Memoized to prevent unnecessary re-renders in large catalogs
  */
-const ProductCard = memo(function ProductCard({ product, tenant, onQuickAdd, isAddingDisabled, recentlyAdded }) {
-    const productUrl = `/t/${tenant.slug}/product/${product.id}`;
+const ProductCard = memo(function ProductCard({ product, tenant, onQuickAdd, isAddingDisabled }) {
+    const productUrl = `/${tenant.slug}/product/${product.id}`;
     const isOutOfStock = product.manage_stock && product.stock_quantity <= 0;
 
     return (
-        <Card
-            className="group overflow-hidden rounded-lg shadow-sm transition-shadow hover:shadow-md"
-            style={{
-                '--store-accent': tenant.primary_color,
-                '--store-accent-soft': `${tenant.primary_color}15`,
-            }}
-        >
+        <div className="group bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
             {/* Image Area - Navigates to product details */}
             <Link href={productUrl} className="block relative aspect-square overflow-hidden">
                 {product.image ? (
@@ -64,10 +53,13 @@ const ProductCard = memo(function ProductCard({ product, tenant, onQuickAdd, isA
                         fadeIn
                     />
                 ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-[color:var(--store-accent-soft)]">
+                    <div
+                        className="w-full h-full flex items-center justify-center"
+                        style={{ backgroundColor: `${tenant.primary_color}15` }}
+                    >
                         <ShoppingBag
-                            className="h-12 w-12 text-[color:var(--store-accent)] opacity-30"
-                            data-icon
+                            className="h-12 w-12 opacity-30"
+                            style={{ color: tenant.primary_color }}
                             aria-hidden="true"
                         />
                     </div>
@@ -75,26 +67,26 @@ const ProductCard = memo(function ProductCard({ product, tenant, onQuickAdd, isA
 
                 {/* Out of Stock Badge */}
                 {isOutOfStock && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                        <Badge variant="secondary" className="rounded-full bg-background px-3 py-1 text-sm text-foreground">
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                        <span className="bg-white text-gray-900 px-3 py-1 rounded-full text-sm font-medium">
                             Agotado
-                        </Badge>
+                        </span>
                     </div>
                 )}
             </Link>
 
             {/* Content Area */}
-            <CardContent className="p-4">
+            <div className="p-4">
                 {/* Title - Navigates to product details */}
                 <Link href={productUrl}>
-                    <h3 className="line-clamp-2 font-medium text-foreground transition-colors hover:text-muted-foreground">
+                    <h3 className="font-medium text-gray-900 line-clamp-2 hover:text-gray-600 transition-colors">
                         {product.name}
                     </h3>
                 </Link>
 
                 {/* Description */}
                 {product.description && (
-                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                    <p className="mt-1 text-sm text-gray-500 line-clamp-2">
                         {product.description}
                     </p>
                 )}
@@ -105,74 +97,48 @@ const ProductCard = memo(function ProductCard({ product, tenant, onQuickAdd, isA
                         {/* Original Price (strikethrough if discounted) */}
                         {product.price_before_discount &&
                             product.price_before_discount > product.price && (
-                                <span className="text-sm text-muted-foreground line-through">
+                                <span className="text-sm text-gray-400 line-through">
                                     {formatCurrency(product.price_before_discount)}
                                 </span>
                             )}
                         {/* Current Price */}
-                        <span className="text-lg font-bold text-[color:var(--store-accent)]">
+                        <span
+                            className="text-lg font-bold"
+                            style={{ color: tenant.primary_color }}
+                        >
                             {formatCurrency(product.price)}
                         </span>
                     </div>
 
                     {/* Quick Add Button - Separated click area */}
                     {!isOutOfStock && (
-                        <Button
+                        <button
                             type="button"
-                            size="icon"
                             onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
                                 onQuickAdd(product);
                             }}
                             disabled={isAddingDisabled}
-                            className={cn(
-                                'h-10 w-10 rounded-full text-white shadow-sm',
-                                !isAddingDisabled && 'hover:scale-105'
-                            )}
-                            style={{ backgroundColor: tenant.primary_color }}
+                            className={`p-2 rounded-full text-white transition-all focus:outline-none focus:ring-2 focus:ring-offset-2
+                                ${isAddingDisabled
+                                    ? 'opacity-50 cursor-not-allowed'
+                                    : 'hover:scale-110'
+                                }`}
+                            style={{
+                                backgroundColor: tenant.primary_color,
+                                '--tw-ring-color': tenant.primary_color,
+                            }}
                             aria-label={`Agregar ${product.name} al carrito`}
-                            data-testid={`store-add-to-cart-${product.id}`}
                         >
-                            {recentlyAdded ? (
-                                <CheckCircle className="h-5 w-5" data-icon aria-hidden="true" />
-                            ) : (
-                                <Plus className="h-5 w-5" data-icon aria-hidden="true" />
-                            )}
-                        </Button>
+                            <Plus className="h-5 w-5" aria-hidden="true" />
+                        </button>
                     )}
                 </div>
-                <ActionFeedback active={recentlyAdded} className="mt-3" testId={`store-add-feedback-${product.id}`}>
-                    Agregado al carrito
-                </ActionFeedback>
-            </CardContent>
-        </Card>
+            </div>
+        </div>
     );
 });
-
-function StoreBreadcrumbs({ tenant }) {
-    const tenantHref = tenant.slug ? `/t/${tenant.slug}` : '/';
-
-    return (
-        <nav aria-label="Ubicación" className="mx-auto max-w-7xl px-4 pt-5 text-sm sm:px-6 lg:px-8">
-            <ol className="flex flex-wrap items-center gap-2 text-muted-foreground">
-                <li>
-                    <Link href="/" className="font-medium transition-colors hover:text-foreground">
-                        Inicio
-                    </Link>
-                </li>
-                <li aria-hidden="true">/</li>
-                <li>
-                    <Link href={tenantHref} className="font-medium transition-colors hover:text-foreground">
-                        {tenant.name || 'Negocio'}
-                    </Link>
-                </li>
-                <li aria-hidden="true">/</li>
-                <li className="font-semibold text-foreground">Catálogo</li>
-            </ol>
-        </nav>
-    );
-}
 
 /**
  * StoreHome - Main Catalog Page
@@ -184,11 +150,10 @@ export default function StoreHome({ sections = [] }) {
     // Cart store for inventory validation
     const { items, addItem, openCart } = useCartStore();
 
-    // Notification accumulator for rapid add-to-cart actions.
+    // Toast state with timeout cleanup and accumulator for rapid adds
+    const [toast, setToast] = useState(null);
     const toastTimeoutRef = useRef(null);
-    const toastCountRef = useRef(0);
-    const [isHydrated, setIsHydrated] = useState(false);
-    const [recentlyAddedProductId, setRecentlyAddedProductId] = useState(null);
+    const toastCountRef = useRef(0); // Accumulator for rapid adds
 
     // ═══════════════════════════════════════════════════════════════════════
     // SEO: Prepare OpenGraph metadata for home page
@@ -212,11 +177,9 @@ export default function StoreHome({ sections = [] }) {
     }, [tenant.name, tenant.tagline, tenant.banner_url, tenant.logo, tenant.slug]);
 
     // ═══════════════════════════════════════════════════════════════════════
-    // CLEANUP: Clear notification timeout on unmount to prevent memory leak
+    // CLEANUP: Clear toast timeout on unmount to prevent memory leak
     // ═══════════════════════════════════════════════════════════════════════
     useEffect(() => {
-        setIsHydrated(true);
-
         return () => {
             if (toastTimeoutRef.current) {
                 clearTimeout(toastTimeoutRef.current);
@@ -225,7 +188,7 @@ export default function StoreHome({ sections = [] }) {
     }, []);
 
     /**
-     * Show notification with accumulator for rapid adds
+     * Show toast notification with accumulator for rapid adds
      * If user clicks quickly, shows "Producto agregado x3" instead of resetting
      */
     const showToast = (message, type = 'success', isAddAction = false) => {
@@ -239,21 +202,33 @@ export default function StoreHome({ sections = [] }) {
             toastCountRef.current += 1;
             const count = toastCountRef.current;
             const displayMessage = count > 1
-                ? `Producto agregado x${count}`
+                ? `Producto agregado ×${count}`
                 : message;
-            const notify = sonnerToast[type] ?? sonnerToast;
-            notify(displayMessage, { id: 'store-add-to-cart', duration: 3000 });
+            setToast({ message: displayMessage, type });
         } else {
+            // Reset counter for non-add toasts
             toastCountRef.current = 0;
-            const notify = sonnerToast[type] ?? sonnerToast;
-            notify(message, { duration: 3000 });
+            setToast({ message, type });
         }
 
         // Set new timeout and store reference
         toastTimeoutRef.current = setTimeout(() => {
+            setToast(null);
             toastTimeoutRef.current = null;
-            toastCountRef.current = 0;
+            toastCountRef.current = 0; // Reset counter when toast hides
         }, 3000);
+    };
+
+    /**
+     * Hide toast manually
+     */
+    const hideToast = () => {
+        if (toastTimeoutRef.current) {
+            clearTimeout(toastTimeoutRef.current);
+            toastTimeoutRef.current = null;
+        }
+        toastCountRef.current = 0;
+        setToast(null);
     };
 
     /**
@@ -262,7 +237,7 @@ export default function StoreHome({ sections = [] }) {
     const handleQuickAdd = (product) => {
         // If product has modifiers, navigate to detail page (SPA-compliant)
         if (product.modifier_groups?.length > 0) {
-            router.visit(`/t/${tenant.slug}/product/${product.id}`);
+            router.visit(`/${tenant.slug}/product/${product.id}`);
             return;
         }
 
@@ -287,8 +262,6 @@ export default function StoreHome({ sections = [] }) {
 
         // All validations passed - add to cart
         addItem(product, 1, [], '');
-        setRecentlyAddedProductId(product.id);
-        window.setTimeout(() => setRecentlyAddedProductId(null), 1200);
         openCart();
         showToast('Producto agregado al carrito', 'success', true); // isAddAction = true
     };
@@ -319,11 +292,19 @@ export default function StoreHome({ sections = [] }) {
                 <meta name="twitter:image" content={seoData.image} />
             </Head>
 
+            {/* Toast Notification - Centralized component */}
+            {toast && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={hideToast}
+                    primaryColor={primaryColor}
+                />
+            )}
+
             {/* ═══════════════════════════════════════════════════════════════
                 HERO SECTION: Smart Banner with Gradient Fallback
             ═══════════════════════════════════════════════════════════════ */}
-            <StoreBreadcrumbs tenant={tenant} />
-
             <section className="relative">
                 {tenant.banner_url ? (
                     <div className="aspect-[21/9] w-full overflow-hidden">
@@ -361,22 +342,13 @@ export default function StoreHome({ sections = [] }) {
                 CATALOG SECTIONS: With scroll-margin for Browser-Native offset
             ═══════════════════════════════════════════════════════════════ */}
             <div className="max-w-7xl mx-auto px-4 py-8">
-                {!isHydrated ? (
-                    <LoadingState
-                        title="Preparando catálogo"
-                        description="Estamos cargando productos, imágenes y categorías del negocio."
-                        testId="store-home-loading"
-                    />
-                ) : sections.length === 0 ? (
-                    <EmptyState
-                        icon={ShoppingBag}
-                        eyebrow="Catálogo"
-                        title="Este negocio todavía no tiene productos publicados"
-                        description="Puedes volver más tarde o contactar al negocio si necesitas consultar disponibilidad."
-                        actionLabel="Volver al inicio del negocio"
-                        actionHref={tenant.slug ? `/t/${tenant.slug}` : '/'}
-                        testId="store-empty-state"
-                    />
+                {sections.length === 0 ? (
+                    <div className="text-center py-16">
+                        <ShoppingBag className="h-16 w-16 mx-auto text-gray-300 mb-4" aria-hidden="true" />
+                        <p className="text-gray-500 text-lg">
+                            No hay productos disponibles en este momento.
+                        </p>
+                    </div>
                 ) : (
                     sections.map((section) => (
                         <section
@@ -389,7 +361,7 @@ export default function StoreHome({ sections = [] }) {
                             className="scroll-mt-40 mb-12"
                         >
                             {/* Section Header */}
-                            <h2 className="mb-6 text-2xl font-bold text-foreground">
+                            <h2 className="text-2xl font-bold text-gray-900 mb-6">
                                 {section.name}
                             </h2>
 
@@ -401,24 +373,16 @@ export default function StoreHome({ sections = [] }) {
                                         product={product}
                                         tenant={tenant}
                                         onQuickAdd={handleQuickAdd}
-                                        isAddingDisabled={recentlyAddedProductId === product.id}
-                                        recentlyAdded={recentlyAddedProductId === product.id}
+                                        isAddingDisabled={false}
                                     />
                                 ))}
                             </div>
 
                             {/* Empty Section State */}
                             {(!section.products || section.products.length === 0) && (
-                                <EmptyState
-                                    icon={ShoppingBag}
-                                    eyebrow={section.name}
-                                    title="No hay productos en esta categoría"
-                                    description="Revisa otra categoría o vuelve más tarde cuando el negocio publique más opciones."
-                                    actionLabel="Ver catálogo completo"
-                                    actionHref={tenant.slug ? `/t/${tenant.slug}` : '/'}
-                                    className="py-10"
-                                    testId={`store-section-empty-${section.id}`}
-                                />
+                                <p className="text-gray-400 text-center py-8">
+                                    No hay productos en esta categoría.
+                                </p>
                             )}
                         </section>
                     ))

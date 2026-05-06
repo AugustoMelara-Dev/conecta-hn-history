@@ -45,7 +45,7 @@
                 </div>
 
                 {{-- Features --}}
-                <ul class="grid gap-4 mb-8">
+                <ul class="space-y-4 mb-8">
                     @foreach($features['free'] as $feature)
                         <li class="flex items-start gap-3">
                             @if($feature['included'])
@@ -101,7 +101,7 @@
                 </div>
 
                 {{-- Features --}}
-                <ul class="grid gap-4 mb-8">
+                <ul class="space-y-4 mb-8">
                     @foreach($features['pro'] as $feature)
                         <li class="flex items-start gap-3">
                             <svg class="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">

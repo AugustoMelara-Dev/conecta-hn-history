@@ -9,31 +9,31 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     
     {{-- SEO Meta Tags Dinámicos --}}
-    <title>{{ $title ?? 'Vito Business OS - El Directorio de Negocios de Honduras' }}</title>
+    <title>{{ $title ?? 'Conecta HN - El Directorio de Negocios de Honduras' }}</title>
     <meta name="description" content="{{ $description ?? 'Descubre los mejores negocios de Honduras. Restaurantes, tiendas, servicios y más.' }}">
     
     {{-- Open Graph --}}
     <meta property="og:type" content="website">
-    <meta property="og:title" content="{{ $title ?? 'Vito Business OS' }}">
+    <meta property="og:title" content="{{ $title ?? 'Conecta HN' }}">
     <meta property="og:description" content="{{ $description ?? 'El directorio de negocios más completo de Honduras.' }}">
     <meta property="og:image" content="{{ $ogImage ?? asset('images/og-default.png') }}">
     <meta property="og:url" content="{{ url()->current() }}">
-    <meta property="og:site_name" content="Vito Business OS">
+    <meta property="og:site_name" content="Conecta HN">
     <meta property="og:locale" content="es_HN">
     
     {{-- Twitter Cards --}}
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="{{ $title ?? 'Vito Business OS' }}">
+    <meta name="twitter:title" content="{{ $title ?? 'Conecta HN' }}">
     <meta name="twitter:description" content="{{ $description ?? 'El directorio de negocios más completo de Honduras.' }}">
     <meta name="twitter:image" content="{{ $ogImage ?? asset('images/og-default.png') }}">
     
     {{-- Favicon --}}
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
     
-    {{-- Shared Typography --}}
+    {{-- Fonts --}}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@700;800&family=Inter:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
     {{-- Styles --}}
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -44,7 +44,7 @@
     
     <style>
         body {
-            font-family: 'Manrope', 'Segoe UI', sans-serif;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
         }
         [x-cloak] { display: none !important; }
     </style>
@@ -72,8 +72,8 @@
             class="fixed bottom-4 right-4 z-50 px-6 py-3 bg-gray-900 text-white rounded-xl shadow-2xl flex items-center gap-3"
         >
             <span>{{ session('toast') }}</span>
-            <button @click="show = false" class="text-gray-400 hover:text-white" aria-label="Cerrar notificacion">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <button @click="show = false" class="text-gray-400 hover:text-white">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
             </button>
@@ -87,11 +87,11 @@
                 {{-- Logo y Descripción --}}
                 <div class="md:col-span-2">
                     <h3 class="text-2xl font-bold mb-4">
-                        Vito <span class="text-blue-400">Business OS</span>
+                        Conecta<span class="text-blue-400">HN</span>
                     </h3>
                     <p class="text-gray-400 max-w-md">
                         El directorio de negocios más completo de Honduras. 
-                        Operamos el frente digital de negocios locales que buscan crecer con orden.
+                        Conectamos a empresas locales con clientes que buscan calidad.
                     </p>
                 </div>
                 
@@ -114,8 +114,8 @@
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
                             </svg>
-                            <a href="mailto:soporte@vitobusinessos.com" class="hover:text-white transition-colors">
-                                soporte@vitobusinessos.com
+                            <a href="mailto:soporte@conectahn.com" class="hover:text-white transition-colors">
+                                soporte@conectahn.com
                             </a>
                         </li>
                         <li class="flex items-center gap-2">
@@ -132,7 +132,7 @@
             
             {{-- Copyright --}}
             <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-500 text-sm">
-                <p>&copy; {{ date('Y') }} Vito Business OS. Todos los derechos reservados.</p>
+                <p>&copy; {{ date('Y') }} Conecta HN. Todos los derechos reservados.</p>
             </div>
         </div>
     </footer>
@@ -143,3 +143,4 @@
     @stack('scripts')
 </body>
 </html>
+

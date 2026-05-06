@@ -11,33 +11,11 @@
  * @usage Conditionally rendered: {tenantPlan !== 'semilla' && <FloatingCart />}
  */
 
-import React, { useState, useEffect, useRef } from 'react';
-import { ShoppingCart, ShoppingBag, ChevronLeft, Percent } from 'lucide-react';
+import React, { useState, Fragment, useEffect, useRef } from 'react';
+import { Dialog, Transition } from '@headlessui/react';
+import { ShoppingCart, ShoppingBag, ChevronLeft, X, Percent } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import useCartStore from '@/Stores/useCartStore';
-import { focusFirstInvalidField } from '@/Components/Conversion/FormRecovery';
-import { EmptyState } from '@/Components/Feedback/UXStates';
-import { Badge } from '@/Components/ui/badge';
-import { Button } from '@/Components/ui/button';
-import { ScrollArea } from '@/Components/ui/scroll-area';
-import { Separator } from '@/Components/ui/separator';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from '@/Components/ui/alert-dialog';
-import {
-    Sheet,
-    SheetContent,
-    SheetDescription,
-    SheetHeader,
-    SheetTitle,
-} from '@/Components/ui/sheet';
 
 // Subcomponents
 import CouponSection from './Cart/CouponSection';
@@ -58,7 +36,6 @@ export default function FloatingCart() {
     const [step, setStep] = useState(STEPS.CART);
     const [errors, setErrors] = useState({});
     const [couponInput, setCouponInput] = useState('');
-    const [isClearCartDialogOpen, setIsClearCartDialogOpen] = useState(false);
 
     // Progressive Disclosure: Show coupon input only when user wants it
     // Initializes to true if a coupon is already applied (for consistency)
@@ -89,7 +66,6 @@ export default function FloatingCart() {
     // Submission state
     const isSubmitting = useCartStore(state => state.isSubmitting);
     const submitError = useCartStore(state => state.submitError);
-    const submitDiagnostic = useCartStore(state => state.submitDiagnostic);
     const submitOrder = useCartStore(state => state.submitOrder);
     const validateCheckout = useCartStore(state => state.validateCheckout);
     const clearError = useCartStore(state => state.clearError);
@@ -140,9 +116,6 @@ export default function FloatingCart() {
     const handleProceedToCheckout = () => {
         setStep(STEPS.CHECKOUT);
         setErrors({});
-        window.setTimeout(() => {
-            document.querySelector('[data-testid="checkout-name-input"]')?.focus();
-        }, 0);
     };
 
     const handleBackToCart = () => {
@@ -155,7 +128,6 @@ export default function FloatingCart() {
         const validation = validateCheckout();
         if (!validation.isValid) {
             setErrors(validation.errors);
-            window.setTimeout(() => focusFirstInvalidField(document.querySelector('[data-testid="cart-drawer"]')), 0);
             return;
         }
 
@@ -178,12 +150,6 @@ export default function FloatingCart() {
         }
     };
 
-    const handleClearCart = () => {
-        clearCart();
-        setIsClearCartDialogOpen(false);
-        setStep(STEPS.CART);
-    };
-
     // Don't render button if cart is empty
     if (totalItems === 0 && !isOpen) {
         return null;
@@ -192,119 +158,103 @@ export default function FloatingCart() {
     return (
         <>
             {/* Floating Button - Animated entrance */}
-            <Button
-                type="button"
+            <button
                 onClick={() => setIsOpen(true)}
-                data-testid="cart-fab"
-                aria-label="Abrir carrito"
                 className={cn(
-                    'fixed bottom-6 right-6 z-40 h-16 w-16 rounded-full',
-                    'bg-[var(--primary-color,#6366f1)] text-[var(--primary-text-color,#ffffff)] hover:brightness-90',
-                    'shadow-2xl shadow-black/30 hover:shadow-lg',
-                    'transition-transform active:scale-95',
-                    'group animate-[scale-in_0.2s_ease-out_forwards]',
+                    "fixed bottom-6 right-6 z-40",
+                    "w-16 h-16 rounded-full",
+                    "bg-[var(--primary-color,#6366f1)] hover:brightness-90 text-[var(--primary-text-color,#ffffff)]",
+                    "shadow-2xl shadow-black/30 hover:shadow-lg",
+                    "flex items-center justify-center",
+                    "transition-all active:scale-95",
+                    "group",
                     // Animation: scale-in from 0 when appearing
-                    isBouncing && 'scale-105',
+                    "animate-[scale-in_0.2s_ease-out_forwards]"
                 )}
-            >
-                <ShoppingCart className="h-6 w-6 transition-transform group-hover:scale-110" aria-hidden="true" />
-                {totalItems > 0 && (
-                    <Badge
-                        className={cn(
-                            'absolute -right-1 -top-1 flex h-6 min-w-6 items-center justify-center rounded-full shadow-lg',
-                            isBouncing && 'animate-bounce',
-                        )}
-                        aria-live="polite"
-                    >
-                        {totalItems}
-                    </Badge>
-                )}
-            </Button>
-
-            {/* Cart Drawer */}
-            <Sheet
-                open={isOpen}
-                onOpenChange={(open) => {
-                    if (!open && isSubmitting) {
-                        return;
-                    }
-
-                    setIsOpen(open);
+                style={{
+                    animation: 'scale-in 0.2s ease-out forwards',
                 }}
             >
-                <SheetContent
-                    side="right"
-                    data-testid="cart-drawer"
-                    aria-busy={isSubmitting}
-                    className="flex h-full w-full max-w-md flex-col gap-0 overflow-hidden p-0 sm:max-w-md"
-                >
-                    <div className="flex h-full min-h-0 flex-col">
-                        <span className="sr-only" aria-live="polite">
-                            {totalItems} productos en el carrito
-                        </span>
-                        {step === STEPS.CHECKOUT ? (
-                            <span className="sr-only" aria-live="polite">
-                                Completa los datos de entrega para finalizar el pedido.
-                            </span>
-                        ) : null}
-                        {(submitError || couponError) ? (
-                            <span className="sr-only" aria-live="assertive">
-                                {submitError || couponError}
-                            </span>
-                        ) : null}
+                <ShoppingCart className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                {totalItems > 0 && (
+                    <span className={cn(
+                        "absolute -top-1 -right-1 w-6 h-6 bg-rose-500 rounded-full text-xs font-bold flex items-center justify-center shadow-lg",
+                        isBouncing && "animate-bounce"
+                    )}>
+                        {totalItems}
+                    </span>
+                )}
+            </button>
+
+            {/* Cart Drawer */}
+            <Transition appear show={isOpen} as={Fragment}>
+                <Dialog as="div" className="relative z-50" onClose={() => !isSubmitting && setIsOpen(false)}>
+                    {/* Backdrop */}
+                    <Transition.Child
+                        as={Fragment}
+                        enter="ease-out duration-300"
+                        enterFrom="opacity-0"
+                        enterTo="opacity-100"
+                        leave="ease-in duration-200"
+                        leaveFrom="opacity-100"
+                        leaveTo="opacity-0"
+                    >
+                        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
+                    </Transition.Child>
+
+                    {/* Drawer Container */}
+                    <div className="fixed inset-0 overflow-hidden">
+                        <div className="absolute inset-0 overflow-hidden">
+                            <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
+                                <Transition.Child
+                                    as={Fragment}
+                                    enter="transform transition ease-in-out duration-300"
+                                    enterFrom="translate-x-full"
+                                    enterTo="translate-x-0"
+                                    leave="transform transition ease-in-out duration-200"
+                                    leaveFrom="translate-x-0"
+                                    leaveTo="translate-x-full"
+                                >
+                                    <Dialog.Panel className="w-screen max-w-md transform overflow-hidden bg-slate-900 shadow-2xl flex flex-col h-full">
                                         {/* ═══════════════════════════════════════════════════════════════
                                             HEADER
                                         ═══════════════════════════════════════════════════════════════ */}
-                        <SheetHeader className="border-b px-5 py-4 pr-12 text-left">
-                            <div className="flex min-w-0 items-center gap-3">
-                                {step === STEPS.CHECKOUT ? (
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={handleBackToCart}
-                                        aria-label="Volver al carrito"
-                                        className="-ml-2 shrink-0"
-                                    >
-                                        <ChevronLeft className="h-4 w-4" data-icon aria-hidden="true" />
-                                        Volver
-                                    </Button>
-                                ) : (
-                                    <ShoppingBag className="h-5 w-5 shrink-0 text-primary" data-icon aria-hidden="true" />
-                                )}
-                                <div className="min-w-0">
-                                    <SheetTitle className="truncate">
-                                        {step === STEPS.CART ? 'Mi carrito' : 'Datos de entrega'}
-                                    </SheetTitle>
-                                    <SheetDescription>
-                                        {step === STEPS.CART
-                                            ? 'Revisa tu pedido antes de continuar.'
-                                            : 'Completa los datos para registrar el pedido.'}
-                                    </SheetDescription>
-                                </div>
-                                {step === STEPS.CART ? (
-                                    <Badge variant="secondary" aria-live="polite" className="ml-auto shrink-0">
-                                        {totalItems}
-                                    </Badge>
-                                ) : null}
-                            </div>
-                        </SheetHeader>
+                                        <div className="flex items-center justify-between p-4 border-b border-white/10">
+                                            {step === STEPS.CHECKOUT ? (
+                                                <button
+                                                    onClick={handleBackToCart}
+                                                    className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
+                                                >
+                                                    <ChevronLeft className="w-5 h-5" />
+                                                    <span>Volver</span>
+                                                </button>
+                                            ) : (
+                                                <Dialog.Title className="text-lg font-bold text-white flex items-center gap-2">
+                                                    <ShoppingBag className="w-5 h-5" style={{ color: 'var(--primary-color, #818cf8)' }} />
+                                                    {step === STEPS.CART ? `Mi Carrito (${totalItems})` : 'Datos de Entrega'}
+                                                </Dialog.Title>
+                                            )}
+
+                                            <button
+                                                onClick={() => !isSubmitting && setIsOpen(false)}
+                                                disabled={isSubmitting}
+                                                className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-slate-400 hover:text-white transition-colors disabled:opacity-50"
+                                            >
+                                                <X className="w-5 h-5" />
+                                            </button>
+                                        </div>
 
                                         {/* ═══════════════════════════════════════════════════════════════
                                             STEP: CART VIEW
                                         ═══════════════════════════════════════════════════════════════ */}
                                         {step === STEPS.CART && (
                                             <>
-                                                <ScrollArea className="min-h-0 flex-1">
-                                                    <div className="grid gap-4 p-4">
+                                                <div className="flex-1 overflow-y-auto p-4 space-y-4">
                                                     {items.length === 0 ? (
-                                                        <EmptyState
-                                                            icon={ShoppingBag}
-                                                            eyebrow="Carrito"
-                                                            title="Tu carrito está vacío"
-                                                            description="Agrega productos del catálogo para continuar con el pedido."
-                                                            testId="cart-empty-state"
-                                                        />
+                                                        <div className="text-center py-12">
+                                                            <ShoppingBag className="w-16 h-16 text-slate-700 mx-auto mb-4" />
+                                                            <p className="text-slate-400">Tu carrito está vacío</p>
+                                                        </div>
                                                     ) : (
                                                         items.map(item => (
                                                             <CartItem
@@ -315,12 +265,11 @@ export default function FloatingCart() {
                                                             />
                                                         ))
                                                     )}
-                                                    </div>
-                                                </ScrollArea>
+                                                </div>
 
                                                 {/* Footer: Coupon + Totals + Continue */}
                                                 {items.length > 0 && (
-                                                    <div className="grid gap-4 border-t bg-card p-4 text-card-foreground shadow-sm">
+                                                    <div className="p-4 border-t border-white/10 bg-slate-900/80 backdrop-blur-xl space-y-4">
 
                                                         {/* Coupon Section */}
                                                         <CouponSection
@@ -336,24 +285,21 @@ export default function FloatingCart() {
                                                         />
 
                                                         {/* Clear cart link */}
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => setIsClearCartDialogOpen(true)}
-                                                            className="w-full"
+                                                        <button
+                                                            onClick={clearCart}
+                                                            className="w-full text-sm text-slate-400 hover:text-rose-400 transition-colors"
                                                         >
                                                             Vaciar carrito
-                                                        </Button>
+                                                        </button>
 
                                                         {/* Totals Breakdown */}
-                                                        <div className="grid gap-2">
+                                                        <div className="space-y-2">
                                                             {/* Subtotal */}
                                                             <div className="flex items-center justify-between text-sm">
-                                                                <span className="text-muted-foreground">Subtotal</span>
+                                                                <span className="text-slate-400">Subtotal</span>
                                                                 <span className={cn(
-                                                                    'text-foreground',
-                                                                    discountAmount > 0 && 'line-through'
+                                                                    "text-slate-300",
+                                                                    discountAmount > 0 && "line-through"
                                                                 )}>
                                                                     L. {subtotal.toFixed(2)}
                                                                 </span>
@@ -362,37 +308,37 @@ export default function FloatingCart() {
                                                             {/* Discount row (if applied) */}
                                                             {discountAmount > 0 && (
                                                                 <div className="flex items-center justify-between text-sm">
-                                                                    <span className="flex items-center gap-1 text-foreground">
-                                                                        <Percent className="h-3 w-3" data-icon aria-hidden="true" />
+                                                                    <span className="text-emerald-400 flex items-center gap-1">
+                                                                        <Percent className="w-3 h-3" />
                                                                         Descuento ({couponCode})
                                                                     </span>
-                                                                    <span className="font-medium text-foreground">
+                                                                    <span className="text-emerald-400 font-medium">
                                                                         - L. {discountAmount.toFixed(2)}
                                                                     </span>
                                                                 </div>
                                                             )}
 
                                                             {/* Final Total */}
-                                                            <div className="flex items-center justify-between pt-2">
-                                                                <span className="text-lg font-medium text-muted-foreground">Total</span>
-                                                                <span className="text-2xl font-bold text-foreground">
+                                                            <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                                                                <span className="text-lg font-medium text-slate-300">Total</span>
+                                                                <span className="text-2xl font-bold text-white">
                                                                     L. {grandTotal.toFixed(2)}
                                                                 </span>
                                                             </div>
                                                         </div>
 
-                                                        <Separator />
-
                                                         {/* Continue button */}
-                                                        <Button
-                                                            type="button"
+                                                        <button
                                                             onClick={handleProceedToCheckout}
-                                                            data-testid="cart-continue"
-                                                            className="w-full"
+                                                            className={cn(
+                                                                "w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2",
+                                                                "bg-[var(--primary-color,#6366f1)] hover:brightness-90 text-white",
+                                                                "shadow-lg transition-all active:scale-98"
+                                                            )}
                                                         >
                                                             Continuar
-                                                            <ChevronLeft className="h-5 w-5 rotate-180" data-icon aria-hidden="true" />
-                                                        </Button>
+                                                            <ChevronLeft className="w-5 h-5 rotate-180" />
+                                                        </button>
                                                     </div>
                                                 )}
                                             </>
@@ -418,36 +364,16 @@ export default function FloatingCart() {
                                                 handleSubmitOrder={handleSubmitOrder}
                                                 isSubmitting={isSubmitting}
                                                 submitError={submitError}
-                                                submitDiagnostic={submitDiagnostic}
                                                 errors={errors}
                                             />
                                         )}
+                                    </Dialog.Panel>
+                                </Transition.Child>
+                            </div>
+                        </div>
                     </div>
-                </SheetContent>
-            </Sheet>
-
-            <AlertDialog
-                open={isClearCartDialogOpen}
-                onOpenChange={setIsClearCartDialogOpen}
-            >
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>¿Vaciar carrito?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Se quitarán todos los productos, modificadores y cupones aplicados. Esta acción no afecta pedidos ya enviados.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={handleClearCart}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                            Vaciar carrito
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+                </Dialog>
+            </Transition>
         </>
     );
 }

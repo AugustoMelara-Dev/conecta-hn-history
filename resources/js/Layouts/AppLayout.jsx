@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import SmartNavbar from '@/Components/Organisms/SmartNavbar';
 import MobileBottomNav from '@/Components/Organisms/MobileBottomNav';
 import GlobalLoginModal from '@/Components/Organisms/Auth/GlobalLoginModal';
+import { Toaster } from '@/Components/ui/sonner';
 
 export default function AppLayout({ children }) {
     // Prevent overscroll on iOS for native feel
@@ -31,8 +32,6 @@ export default function AppLayout({ children }) {
             <nav className="md:hidden flex-none z-nav bg-background/80 border-t border-border/40 backdrop-blur-lg">
                 <MobileBottomNav />
             </nav>
-
-            <GlobalLoginModal />
         </div>
     );
 }

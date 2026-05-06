@@ -17,27 +17,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { PackagePlus } from 'lucide-react';
 import TenantLayout from '@/Layouts/TenantLayout';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from '@/Components/ui/alert-dialog';
-import { Button } from '@/Components/ui/button';
-import {
-    Empty,
-    EmptyContent,
-    EmptyDescription,
-    EmptyHeader,
-    EmptyIcon,
-    EmptyTitle,
-} from '@/Components/ui/empty';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -49,14 +29,6 @@ const currencyFormatter = new Intl.NumberFormat('es-HN', {
     currency: 'HNL',
     minimumFractionDigits: 2,
 });
-
-function paginationLabel(label) {
-    return String(label)
-        .replace(/&laquo;/g, 'Anterior')
-        .replace(/&raquo;/g, 'Siguiente')
-        .replace(/<[^>]*>/g, '')
-        .trim();
-}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // QUOTA BAR COMPONENT
@@ -121,10 +93,7 @@ function ProductCard({ product, onToggleVisibility, onDelete }) {
                 <div className="mt-4 flex items-center gap-2">
                     {/* Visibility Toggle */}
                     <button
-                        type="button"
                         onClick={() => onToggleVisibility(product.id)}
-                        aria-pressed={product.is_visible}
-                        aria-label={`${product.is_visible ? 'Ocultar' : 'Mostrar'} ${product.name}`}
                         className={`flex-1 py-2 px-3 text-sm font-medium rounded-lg transition-colors ${product.is_visible
                             ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                             : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
@@ -137,8 +106,6 @@ function ProductCard({ product, onToggleVisibility, onDelete }) {
                     <Link
                         href={route('tenant.products.edit', product.id)}
                         className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
-                        aria-label={`Editar ${product.name}`}
-                        title={`Editar ${product.name}`}
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -148,11 +115,8 @@ function ProductCard({ product, onToggleVisibility, onDelete }) {
 
                     {/* Delete */}
                     <button
-                        type="button"
                         onClick={() => onDelete(product)}
                         className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
-                        aria-label={`Eliminar ${product.name}`}
-                        title={`Eliminar ${product.name}`}
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -172,39 +136,21 @@ function Pagination({ links }) {
     if (!links || links.length <= 3) return null;
 
     return (
-        <nav className="flex items-center justify-center gap-1 mt-8" aria-label="Paginacion de productos">
-            {links.map((link, index) => {
-                const className = `px-3 py-2 text-sm rounded-lg transition-colors ${link.active
-                    ? 'bg-blue-600 text-white'
-                    : link.url
-                        ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        : 'bg-gray-50 text-gray-400 cursor-not-allowed'
-                    }`;
-
-                if (!link.url) {
-                    return (
-                        <span
-                            key={index}
-                            className={className}
-                            aria-disabled="true"
-                        >
-                            {paginationLabel(link.label)}
-                        </span>
-                    );
-                }
-
-                return (
-                    <Link
-                        key={index}
-                        href={link.url}
-                        preserveState
-                        className={className}
-                        aria-current={link.active ? 'page' : undefined}
-                    >
-                        {paginationLabel(link.label)}
-                    </Link>
-                );
-            })}
+        <nav className="flex items-center justify-center gap-1 mt-8">
+            {links.map((link, index) => (
+                <Link
+                    key={index}
+                    href={link.url || '#'}
+                    preserveState
+                    className={`px-3 py-2 text-sm rounded-lg transition-colors ${link.active
+                        ? 'bg-blue-600 text-white'
+                        : link.url
+                            ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            : 'bg-gray-50 text-gray-400 cursor-not-allowed'
+                        }`}
+                    dangerouslySetInnerHTML={{ __html: link.label }}
+                />
+            ))}
         </nav>
     );
 }
@@ -315,20 +261,15 @@ export default function ProductsIndex({ products, filters, limits, tenant }) {
     // ─────────────────────────────────────────────────────────────────────
     // DELETE PRODUCT
     // ─────────────────────────────────────────────────────────────────────
-    const requestDelete = useCallback((product) => {
-        setDeleteTarget(product);
-    }, []);
-
-    const confirmDelete = useCallback(() => {
-        if (!deleteTarget) {
+    const handleDelete = useCallback((product) => {
+        if (!confirm(`¿Estás seguro de eliminar '${product.name}'? Esta acción no se puede deshacer.`)) {
             return;
         }
 
-        router.delete(route('tenant.products.destroy', deleteTarget.id), {
+        router.delete(route('tenant.products.destroy', product.id), {
             preserveScroll: true,
-            onFinish: () => setDeleteTarget(null),
         });
-    }, [deleteTarget]);
+    }, []);
 
     return (
         <TenantLayout>
@@ -363,16 +304,12 @@ export default function ProductsIndex({ products, filters, limits, tenant }) {
                         {/* Search */}
                         <div className="relative flex-1 max-w-md">
                             <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                                         d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                 </svg>
                             </div>
-                            <label htmlFor="product-search" className="sr-only">
-                                Buscar productos
-                            </label>
                             <input
-                                id="product-search"
                                 type="text"
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
@@ -424,58 +361,44 @@ export default function ProductsIndex({ products, filters, limits, tenant }) {
                                         key={product.id}
                                         product={product}
                                         onToggleVisibility={handleToggleVisibility}
-                                        onDelete={requestDelete}
+                                        onDelete={handleDelete}
                                     />
                                 ))}
                             </div>
                             <Pagination links={products.links} />
                         </>
                     ) : (
-                        <Empty>
-                            <EmptyHeader>
-                                <EmptyIcon icon={PackagePlus} />
-                                <EmptyTitle>
-                                    {search ? 'No se encontraron productos' : 'Aun no tienes productos'}
-                                </EmptyTitle>
-                                <EmptyDescription>
-                                    {search
-                                        ? 'Prueba con otro termino o limpia la busqueda para volver a ver tu catalogo.'
-                                        : 'Agrega tu primer producto para que el negocio tenga una vitrina publica lista para vender.'}
-                                </EmptyDescription>
-                            </EmptyHeader>
+                        /* Empty State */
+                        <div className="text-center py-16">
+                            <div className="inline-flex items-center justify-center w-24 h-24 bg-gray-100 rounded-full mb-6">
+                                <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                                        d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                </svg>
+                            </div>
+                            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                                {search ? 'No se encontraron productos' : 'Aún no tienes productos'}
+                            </h3>
+                            <p className="text-gray-500 mb-6">
+                                {search
+                                    ? 'Intenta con otro término de búsqueda'
+                                    : 'Comienza añadiendo tu primer producto a la vitrina'}
+                            </p>
                             {!search && limits?.can_create && (
-                                <EmptyContent>
-                                    <Button asChild>
-                                        <Link href={route('tenant.products.create')}>
-                                            <PackagePlus className="h-4 w-4" aria-hidden="true" />
-                                            Crear mi primer producto
-                                        </Link>
-                                    </Button>
-                                </EmptyContent>
+                                <Link
+                                    href={route('tenant.products.create')}
+                                    className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all shadow-lg shadow-blue-500/25"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                    </svg>
+                                    Crear mi primer producto
+                                </Link>
                             )}
-                        </Empty>
+                        </div>
                     )}
                 </main>
             </div>
-
-            <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Eliminar producto</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Vas a eliminar "{deleteTarget?.name}". Esta accion no se puede deshacer y el producto dejara de estar disponible en la vitrina.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction asChild>
-                            <Button type="button" variant="destructive" onClick={confirmDelete}>
-                                Eliminar producto
-                            </Button>
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </TenantLayout>
     );
 }

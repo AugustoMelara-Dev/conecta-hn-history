@@ -1,5 +1,5 @@
 {{--
-    BRAND COMPONENT - Vito Business OS Text Logo
+    BRAND COMPONENT - Conecta HN Text Logo
     
     Simple text-based logo.
     Used in both AdminPanelProvider and AppPanelProvider.
@@ -9,11 +9,8 @@
     'class' => '',
 ])
 
-<div {{ $attributes->merge(['class' => 'biz-brand ' . $class]) }}>
-    <span class="biz-brand-mark">CH</span>
-
-    <span class="biz-brand-copy">
-        <span class="biz-brand-kicker">Vito Business OS</span>
-        <span class="biz-brand-name">Vito Business OS</span>
+<div {{ $attributes->merge(['class' => 'flex items-center gap-1 ' . $class]) }}>
+    <span class="text-xl tracking-tight font-semibold">
+        <span class="text-gray-700 dark:text-gray-200">Conecta</span><span class="font-bold text-blue-600 dark:text-blue-400">HN</span>
     </span>
 </div>

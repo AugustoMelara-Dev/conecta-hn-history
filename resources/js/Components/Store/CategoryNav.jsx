@@ -13,6 +13,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import PropTypes from 'prop-types';
 
 /**
  * CategoryNav - Sticky Horizontal Category Tabs
@@ -149,3 +150,14 @@ export default function CategoryNav({
         </nav>
     );
 }
+
+CategoryNav.propTypes = {
+    categories: PropTypes.arrayOf(
+        PropTypes.shape({
+            id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+            name: PropTypes.string.isRequired,
+        })
+    ),
+    primaryColor: PropTypes.string,
+    className: PropTypes.string,
+};

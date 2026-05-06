@@ -15,7 +15,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
                 <div class="flex items-center gap-4">
-                    <a href="/app/{{ $tenant->slug }}" wire:navigate aria-label="Volver al panel del negocio" class="text-gray-500 hover:text-gray-700">
+                    <a href="/app/{{ $tenant->slug }}" wire:navigate class="text-gray-500 hover:text-gray-700">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                         </svg>
@@ -55,7 +55,6 @@
                 <input
                     wire:model.live.debounce.300ms="search"
                     type="text"
-                    aria-label="Buscar productos del catalogo"
                     placeholder="Buscar productos..."
                     class="w-full pl-11 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
@@ -134,7 +133,6 @@
                                 {{-- Visibility Toggle --}}
                                 <button 
                                     wire:click="toggleVisibility({{ $product->id }})"
-                                    aria-label="{{ $product->is_visible ? 'Ocultar producto '.$product->name : 'Mostrar producto '.$product->name }}"
                                     class="flex-1 py-2 px-3 text-sm font-medium rounded-lg transition-colors {{ $product->is_visible ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100' }}"
                                 >
                                     {{ $product->is_visible ? 'Ocultar' : 'Mostrar' }}
@@ -144,7 +142,6 @@
                                 <a 
                                     href="{{ route('tenant.products.edit', $product) }}"
                                     wire:navigate
-                                    aria-label="Editar producto {{ $product->name }}"
                                     class="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
                                 >
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -155,7 +152,6 @@
                                 {{-- Delete --}}
                                 <button 
                                     wire:click="delete({{ $product->id }})"
-                                    aria-label="Eliminar producto {{ $product->name }}"
                                     wire:confirm="¿Estás seguro de eliminar '{{ $product->name }}'? Esta acción no se puede deshacer."
                                     class="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
                                 >

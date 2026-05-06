@@ -21,9 +21,8 @@
  * - GTM/fbq integration for conversion pixels
  */
 
-import { useMemo, useRef, useState } from 'react';
-import { Head, Link } from '@inertiajs/react';
-import { toast as sonnerToast } from 'sonner';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Head, Link, router } from '@inertiajs/react';
 import {
     ArrowLeft,
     ShoppingCart,
@@ -45,41 +44,7 @@ import useTenantContext from '@/Hooks/useTenantContext';
 import { formatCurrency } from '@/Utils/currency';
 import { validateHondurasPhone } from '@/Utils/validators';
 import ImageWithFallback from '@/Components/ImageWithFallback';
-import ConversionActionBar from '@/Components/Conversion/ConversionActionBar';
-import ConversionSummary from '@/Components/Conversion/ConversionSummary';
-import { focusFirstInvalidField, FormRecoveryAlert } from '@/Components/Conversion/FormRecovery';
-import { ActionableAlert, EmptyState, LoadingState } from '@/Components/Feedback/UXStates';
-import { Button } from '@/Components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
-import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/Components/ui/field';
-import { Input } from '@/Components/ui/input';
-import { RadioGroup, RadioGroupItem } from '@/Components/ui/radio-group';
-import { Textarea } from '@/Components/ui/textarea';
-import { cn } from '@/lib/utils';
-
-function CheckoutBreadcrumbs({ tenant }) {
-    const tenantHref = tenant.slug ? `/t/${tenant.slug}` : '/';
-
-    return (
-        <nav aria-label="Ubicación" className="mb-6 text-sm">
-            <ol className="flex flex-wrap items-center gap-2 text-muted-foreground">
-                <li>
-                    <Link href={tenantHref} className="font-medium transition-colors hover:text-foreground">
-                        Inicio del negocio
-                    </Link>
-                </li>
-                <li aria-hidden="true">/</li>
-                <li>
-                    <Link href={tenantHref} className="font-medium transition-colors hover:text-foreground">
-                        Catálogo
-                    </Link>
-                </li>
-                <li aria-hidden="true">/</li>
-                <li className="font-semibold text-foreground">Checkout</li>
-            </ol>
-        </nav>
-    );
-}
+import Toast from '@/Components/Toast';
 
 /**
  * CartItemRow - Single item in order summary with self-healing image
@@ -92,7 +57,7 @@ function CartItemRow({ item, primaryColor, onRemove }) {
     const itemTotal = (item.price + modifiersTotal) * item.quantity;
 
     return (
-        <div className="flex items-start gap-4 border-b border-border py-4 last:border-0">
+        <div className="flex items-start gap-4 py-4 border-b border-gray-100 last:border-0">
             {/* Always show image - fallback to icon if no image */}
             <ImageWithFallback
                 src={item.image || ''}
@@ -102,11 +67,11 @@ function CartItemRow({ item, primaryColor, onRemove }) {
                 className="h-16 w-16 rounded-lg object-cover"
                 loading="lazy"
             />
-            <div className="min-w-0 flex-1">
-                <h4 className="font-medium text-foreground">{item.name}</h4>
-                <p className="text-sm text-muted-foreground">Cantidad: {item.quantity}</p>
+            <div className="flex-1 min-w-0">
+                <h4 className="font-medium text-gray-900">{item.name}</h4>
+                <p className="text-sm text-gray-500">Cantidad: {item.quantity}</p>
                 {item.selectedModifiers?.length > 0 && (
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <p className="text-xs text-gray-400 mt-1">
                         {item.selectedModifiers.map((m) => m.name).join(', ')}
                     </p>
                 )}
@@ -115,16 +80,14 @@ function CartItemRow({ item, primaryColor, onRemove }) {
                 <p className="font-semibold" style={{ color: primaryColor }}>
                     {formatCurrency(itemTotal)}
                 </p>
-                <Button
+                <button
                     type="button"
-                    variant="ghost"
-                    size="icon"
                     onClick={() => onRemove(item.id)}
-                    className="mt-1 h-8 w-8 text-muted-foreground hover:text-destructive"
+                    className="text-gray-400 hover:text-red-500 transition-colors mt-1"
                     aria-label={`Eliminar ${item.name}`}
                 >
-                    <Trash2 className="h-4 w-4" data-icon aria-hidden="true" />
-                </Button>
+                    <Trash2 className="h-4 w-4" aria-hidden="true" />
+                </button>
             </div>
         </div>
     );
@@ -144,7 +107,21 @@ export default function Checkout() {
     const [phoneError, setPhoneError] = useState('');
     // Phone validation success state (for positive feedback)
     const [isPhoneValid, setIsPhoneValid] = useState(false);
-    const [hasSubmitAttempted, setHasSubmitAttempted] = useState(false);
+
+    // Toast state with timeout ref for cleanup
+    const [toast, setToast] = useState(null);
+    const toastTimeoutRef = useRef(null);
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // CLEANUP: Clear toast timeout on unmount
+    // ═══════════════════════════════════════════════════════════════════════
+    useEffect(() => {
+        return () => {
+            if (toastTimeoutRef.current) {
+                clearTimeout(toastTimeoutRef.current);
+            }
+        };
+    }, []);
 
     // ═══════════════════════════════════════════════════════════════════════
     // GLOBAL STORE BINDING: No local state - everything from Zustand
@@ -168,13 +145,26 @@ export default function Checkout() {
         getGrandTotal,
         isSubmitting,
         submitError,
-        submitDiagnostic,
         submitOrder,
         clearError,
     } = useCartStore();
 
     const subtotal = getSubtotal();
     const grandTotal = getGrandTotal();
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // EMPTY CART DEFENSE: Redirect if cart becomes empty
+    // Waits for tenant initialization to prevent premature redirect
+    // ═══════════════════════════════════════════════════════════════════════
+    useEffect(() => {
+        if (isInitialized && items.length === 0 && !isSubmitting && tenant.slug) {
+            const timeout = setTimeout(() => {
+                router.visit(`/${tenant.slug}`);
+            }, 100);
+
+            return () => clearTimeout(timeout);
+        }
+    }, [items.length, isSubmitting, tenant.slug, isInitialized]);
 
     // ═══════════════════════════════════════════════════════════════════════
     // PHONE VALIDATION: Using centralized validator from Utils/validators
@@ -240,26 +230,6 @@ export default function Checkout() {
         return true;
     }, [items.length, customerName, customerPhone, deliveryType, customerAddress]);
 
-    const isCustomerNameInvalid = hasSubmitAttempted && (!customerName || customerName.trim().length < 2);
-    const isCustomerPhoneMissing = hasSubmitAttempted && (!customerPhone || customerPhone.trim().length < 8);
-    const isCustomerPhoneInvalid = Boolean(phoneError) || isCustomerPhoneMissing;
-    const isDeliveryAddressInvalid = hasSubmitAttempted
-        && deliveryType === 'delivery'
-        && (!customerAddress || customerAddress.trim().length < 5);
-    const checkoutRecoveryMessages = [
-        isCustomerNameInvalid ? 'Agrega el nombre completo de quien recibe el pedido.' : null,
-        isCustomerPhoneInvalid ? (phoneError || 'Ingresa un telefono valido para coordinar el pedido.') : null,
-        isDeliveryAddressInvalid ? 'Agrega una direccion o referencia clara para el delivery.' : null,
-    ];
-    const focusCheckoutFirstError = () => focusFirstInvalidField(document.querySelector('[data-testid="checkout-form"]'));
-    const checkoutTotals = [
-        { label: 'Subtotal', value: formatCurrency(subtotal) },
-        { label: 'Total', value: formatCurrency(grandTotal), emphasis: true, accent: true },
-    ];
-    const checkoutProgressValue = isSubmitting ? 70 : isFormValid ? 100 : 45;
-    const checkoutProgressLabel = isSubmitting ? 'Enviando pedido' : 'Progreso del checkout';
-    const checkoutProgressStatus = isSubmitting ? 'Procesando' : isFormValid ? 'Listo' : 'Pendiente';
-
     // ═══════════════════════════════════════════════════════════════════════
     // BEACON TELEMETRY: Send conversion event with graceful degradation
     // ═══════════════════════════════════════════════════════════════════════
@@ -308,14 +278,26 @@ export default function Checkout() {
         }
     };
 
+    // Toast helpers with timeout cleanup
     const showToast = (message, type = 'success') => {
-        const notify = type === 'error'
-            ? sonnerToast.error
-            : type === 'warning'
-                ? sonnerToast.warning
-                : sonnerToast.success;
+        if (toastTimeoutRef.current) {
+            clearTimeout(toastTimeoutRef.current);
+        }
 
-        notify(message);
+        setToast({ message, type });
+
+        toastTimeoutRef.current = setTimeout(() => {
+            setToast(null);
+            toastTimeoutRef.current = null;
+        }, 4000);
+    };
+
+    const hideToast = () => {
+        if (toastTimeoutRef.current) {
+            clearTimeout(toastTimeoutRef.current);
+            toastTimeoutRef.current = null;
+        }
+        setToast(null);
     };
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -323,7 +305,6 @@ export default function Checkout() {
     // ═══════════════════════════════════════════════════════════════════════
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setHasSubmitAttempted(true);
 
         // ═══════════════════════════════════════════════════════════════════
         // GUARD CLAUSE: Prevent race condition
@@ -338,8 +319,6 @@ export default function Checkout() {
             if (customerPhone && customerPhone.trim().length >= 8) {
                 handlePhoneValidation(customerPhone);
             }
-            window.setTimeout(focusCheckoutFirstError, 0);
-            showToast('Completa los campos requeridos para confirmar el pedido.', 'warning');
             return;
         }
 
@@ -374,38 +353,28 @@ export default function Checkout() {
     };
 
     // ═══════════════════════════════════════════════════════════════════════
-    // EMPTY CART STATE
+    // EMPTY CART STATE (Fallback before redirect)
     // ═══════════════════════════════════════════════════════════════════════
-    if (!isInitialized) {
-        return (
-            <StoreLayout>
-                <Head title="Checkout" />
-                <div className="max-w-7xl mx-auto px-4 py-16">
-                    <LoadingState
-                        title="Preparando checkout"
-                        description="Estamos sincronizando el negocio y tu carrito antes de mostrar el formulario."
-                        testId="checkout-loading-state"
-                    />
-                </div>
-            </StoreLayout>
-        );
-    }
-
     if (items.length === 0) {
         return (
             <StoreLayout>
                 <Head title="Checkout" />
-                <div className="max-w-7xl mx-auto px-4 py-16">
-                    <CheckoutBreadcrumbs tenant={tenant} />
-                    <EmptyState
-                        icon={ShoppingCart}
-                        eyebrow="Checkout"
-                        title="Tu carrito está vacío"
-                        description="Agrega productos desde el catálogo del negocio para continuar con tu pedido."
-                        actionLabel="Ver catálogo"
-                        actionHref={tenant.slug ? `/t/${tenant.slug}` : '/'}
-                        testId="checkout-empty-cart"
-                    />
+                <div className="max-w-7xl mx-auto px-4 py-16 text-center">
+                    <ShoppingCart className="h-20 w-20 mx-auto text-gray-300 mb-4" aria-hidden="true" />
+                    <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                        Tu carrito está vacío
+                    </h1>
+                    <p className="text-gray-500 mb-6">
+                        Agrega productos para continuar con tu pedido.
+                    </p>
+                    <Link
+                        href={`/${tenant.slug || ''}`}
+                        className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-white font-medium transition-all hover:opacity-90"
+                        style={{ backgroundColor: primaryColor }}
+                    >
+                        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                        Ver catálogo
+                    </Link>
                 </div>
             </StoreLayout>
         );
@@ -415,346 +384,315 @@ export default function Checkout() {
         <StoreLayout>
             <Head title="Finalizar Pedido" />
 
-            <div className="max-w-7xl mx-auto px-4 py-6">
-                <CheckoutBreadcrumbs tenant={tenant} />
+            {/* Toast Notification - Centralized component */}
+            {toast && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={hideToast}
+                    primaryColor={primaryColor}
+                />
+            )}
 
+            <div className="max-w-7xl mx-auto px-4 py-6">
                 {/* Back Link */}
                 <Link
-                    href={tenant.slug ? `/t/${tenant.slug}` : '/'}
-                    className="mb-6 inline-flex items-center text-muted-foreground transition-colors hover:text-foreground"
+                    href={`/${tenant.slug}`}
+                    className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-6"
                 >
-                    <ArrowLeft className="mr-2 h-4 w-4" data-icon aria-hidden="true" />
+                    <ArrowLeft className="h-4 w-4 mr-2" aria-hidden="true" />
                     Seguir comprando
                 </Link>
 
-                <h1 className="mb-8 text-3xl font-bold text-foreground">
+                <h1 className="text-3xl font-bold text-gray-900 mb-8">
                     Finalizar Pedido
                 </h1>
 
-                <form
-                    onSubmit={handleSubmit}
-                    noValidate
-                    data-testid="checkout-form"
-                    style={{
-                        '--checkout-accent': primaryColor,
-                        '--checkout-accent-soft': `${primaryColor}12`,
-                    }}
-                >
+                <form onSubmit={handleSubmit} noValidate>
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         {/* ═══════════════════════════════════════════════════
                             LEFT: Customer Form
                         ═══════════════════════════════════════════════════ */}
-                        <div className="grid gap-6 lg:col-span-2">
-                            <FormRecoveryAlert
-                                messages={checkoutRecoveryMessages}
-                                onFocusFirstError={focusCheckoutFirstError}
-                                testId="checkout-recovery-alert"
-                            />
-
+                        <div className="lg:col-span-2 space-y-6">
                             {/* Customer Information */}
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2 text-lg">
-                                        <User className="h-5 w-5 text-[color:var(--checkout-accent)]" data-icon aria-hidden="true" />
-                                        Información de contacto
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <FieldGroup className="gap-5">
-                                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                            <Field data-invalid={isCustomerNameInvalid ? 'true' : undefined}>
-                                                <FieldLabel htmlFor="name">Nombre *</FieldLabel>
-                                                <Input
-                                                    type="text"
-                                                    id="name"
-                                                    name="customer_name"
-                                                    data-testid="checkout-name-input"
-                                                    value={customerName}
-                                                    onChange={(e) => setCustomerName(e.target.value)}
-                                                    onBlur={(e) => setCustomerName(e.target.value.trim())}
-                                                    placeholder="Tu nombre"
-                                                    className={cn('h-12', isCustomerNameInvalid && 'border-destructive focus-visible:ring-destructive')}
-                                                    required
-                                                    minLength={2}
-                                                    maxLength={100}
-                                                    aria-required="true"
-                                                    aria-label="Nombre completo"
-                                                    aria-invalid={isCustomerNameInvalid ? 'true' : 'false'}
-                                                    aria-describedby={isCustomerNameInvalid ? 'name-error' : undefined}
-                                                    autoComplete="name"
-                                                />
-                                                {isCustomerNameInvalid ? (
-                                                    <FieldDescription
-                                                        id="name-error"
-                                                        role="alert"
-                                                        className="text-destructive"
-                                                    >
-                                                        Ingresa tu nombre completo para preparar el pedido.
-                                                    </FieldDescription>
-                                                ) : null}
-                                            </Field>
+                            <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+                                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                                    <User className="h-5 w-5" style={{ color: primaryColor }} aria-hidden="true" />
+                                    Información de Contacto
+                                </h2>
 
-                                            <Field data-invalid={isCustomerPhoneInvalid ? 'true' : undefined}>
-                                                <FieldLabel htmlFor="phone">Teléfono *</FieldLabel>
-                                                <div className="relative">
-                                                    <Phone className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" data-icon aria-hidden="true" />
-                                                    <Input
-                                                        type="tel"
-                                                        id="phone"
-                                                        name="customer_phone"
-                                                        data-testid="checkout-phone-input"
-                                                        value={customerPhone}
-                                                        onChange={handlePhoneChange}
-                                                        onBlur={handlePhoneBlur}
-                                                        placeholder="9999-1234"
-                                                        className={cn('h-12 pl-10 pr-10', isCustomerPhoneInvalid && 'border-destructive focus-visible:ring-destructive')}
-                                                        required
-                                                        minLength={8}
-                                                        maxLength={15}
-                                                        aria-required="true"
-                                                        aria-label="Número de teléfono celular"
-                                                        aria-invalid={isCustomerPhoneInvalid ? 'true' : 'false'}
-                                                        aria-describedby={isCustomerPhoneInvalid ? 'phone-error' : 'phone-help'}
-                                                        autoComplete="tel"
-                                                        inputMode="tel"
-                                                    />
-                                                    {isPhoneValid && !phoneError && (
-                                                        <CheckCircle
-                                                            className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[color:var(--ds-success)]"
-                                                            data-icon
-                                                            aria-hidden="true"
-                                                        />
-                                                    )}
-                                                </div>
-                                                {isCustomerPhoneInvalid ? (
-                                                    <FieldDescription
-                                                        id="phone-error"
-                                                        role="alert"
-                                                        aria-live="polite"
-                                                        className="flex items-center gap-1 text-destructive"
-                                                    >
-                                                        <AlertCircle className="h-4 w-4 shrink-0" data-icon aria-hidden="true" />
-                                                        <span>{phoneError || 'Ingresa un teléfono válido para coordinar tu pedido.'}</span>
-                                                    </FieldDescription>
-                                                ) : (
-                                                    <FieldDescription id="phone-help">
-                                                        Ejemplo: 9999-1234, +504 8888-1234
-                                                    </FieldDescription>
-                                                )}
-                                            </Field>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                                            Nombre *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            id="name"
+                                            value={customerName}
+                                            onChange={(e) => setCustomerName(e.target.value)}
+                                            onBlur={(e) => setCustomerName(e.target.value.trim())}
+                                            placeholder="Tu nombre"
+                                            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-1"
+                                            style={{ '--tw-ring-color': primaryColor }}
+                                            required
+                                            minLength={2}
+                                            maxLength={100}
+                                            aria-required="true"
+                                            aria-label="Nombre completo"
+                                            autoComplete="name"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+                                            Teléfono *
+                                        </label>
+                                        <div className="relative">
+                                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" aria-hidden="true" />
+                                            <input
+                                                type="tel"
+                                                id="phone"
+                                                value={customerPhone}
+                                                onChange={handlePhoneChange}
+                                                onBlur={handlePhoneBlur}
+                                                placeholder="9999-1234"
+                                                className={`w-full pl-10 pr-4 py-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-offset-1
+                                                    ${phoneError ? 'border-red-500' : 'border-gray-300'}`}
+                                                style={{ '--tw-ring-color': phoneError ? '#ef4444' : primaryColor }}
+                                                required
+                                                minLength={8}
+                                                maxLength={15}
+                                                aria-required="true"
+                                                aria-label="Número de teléfono celular"
+                                                aria-invalid={phoneError ? 'true' : 'false'}
+                                                aria-describedby={phoneError ? 'phone-error' : undefined}
+                                                autoComplete="tel"
+                                            />
+                                            {/* Positive feedback icon when valid */}
+                                            {isPhoneValid && !phoneError && (
+                                                <CheckCircle
+                                                    className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-green-500"
+                                                    aria-hidden="true"
+                                                />
+                                            )}
                                         </div>
-
-                                        <Field>
-                                            <FieldLabel htmlFor="email">Email (opcional)</FieldLabel>
-                                            <div className="relative">
-                                                <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" data-icon aria-hidden="true" />
-                                                <Input
-                                                    type="email"
-                                                    id="email"
-                                                    name="customer_email"
-                                                    value={customerEmail}
-                                                    onChange={(e) => setCustomerEmail(e.target.value)}
-                                                    onBlur={(e) => setCustomerEmail(e.target.value.trim())}
-                                                    placeholder="tu@email.com"
-                                                    className="h-12 pl-10"
-                                                    maxLength={100}
-                                                    aria-label="Correo electrónico"
-                                                    autoComplete="email"
-                                                    inputMode="email"
-                                                />
+                                        {/* ═══════════════════════════════════════════════
+                                            PHONE VALIDATION ERROR MESSAGE (ACCESSIBLE)
+                                        ═══════════════════════════════════════════════ */}
+                                        {phoneError && (
+                                            <div
+                                                id="phone-error"
+                                                role="alert"
+                                                aria-live="polite"
+                                                className="flex items-center gap-1 mt-1 text-red-500 text-sm"
+                                            >
+                                                <AlertCircle className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+                                                <span>{phoneError}</span>
                                             </div>
-                                        </Field>
-                                    </FieldGroup>
-                                </CardContent>
-                            </Card>
+                                        )}
+                                        <p className="text-xs text-gray-400 mt-1">
+                                            Ejemplo: 9999-1234, +504 8888-1234
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                                        Email (opcional)
+                                    </label>
+                                    <div className="relative">
+                                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" aria-hidden="true" />
+                                        <input
+                                            type="email"
+                                            id="email"
+                                            value={customerEmail}
+                                            onChange={(e) => setCustomerEmail(e.target.value)}
+                                            onBlur={(e) => setCustomerEmail(e.target.value.trim())}
+                                            placeholder="tu@email.com"
+                                            className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-1"
+                                            style={{ '--tw-ring-color': primaryColor }}
+                                            maxLength={100}
+                                            aria-label="Correo electrónico"
+                                            autoComplete="email"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
 
                             {/* Delivery Options */}
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2 text-lg">
-                                        <Truck className="h-5 w-5 text-[color:var(--checkout-accent)]" data-icon aria-hidden="true" />
-                                        Método de entrega
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <FieldGroup className="gap-5">
-                                        <RadioGroup
-                                            name="delivery_type"
-                                            value={deliveryType}
-                                            onValueChange={setDeliveryType}
-                                            className="grid grid-cols-1 gap-3 sm:grid-cols-2"
-                                            aria-label="Método de entrega"
-                                        >
-                                            <label
-                                                htmlFor="delivery-pickup"
-                                                className={cn(
-                                                    'flex cursor-pointer items-center gap-3 rounded-lg border p-4 text-left transition-colors',
-                                                    'focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2',
-                                                    deliveryType === 'pickup' && 'border-[color:var(--checkout-accent)] bg-[color:var(--checkout-accent-soft)] text-foreground'
-                                                )}
-                                            >
-                                                <RadioGroupItem
-                                                    id="delivery-pickup"
-                                                    value="pickup"
-                                                    className="shrink-0 data-[state=checked]:border-[color:var(--checkout-accent)] data-[state=checked]:text-[color:var(--checkout-accent)]"
-                                                />
-                                                <Store className="h-5 w-5 shrink-0" data-icon aria-hidden="true" />
-                                                <span className="min-w-0 font-medium">Recoger en tienda</span>
-                                            </label>
-                                            <label
-                                                htmlFor="delivery-address"
-                                                className={cn(
-                                                    'flex cursor-pointer items-center gap-3 rounded-lg border p-4 text-left transition-colors',
-                                                    'focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2',
-                                                    deliveryType === 'delivery' && 'border-[color:var(--checkout-accent)] bg-[color:var(--checkout-accent-soft)] text-foreground'
-                                                )}
-                                            >
-                                                <RadioGroupItem
-                                                    id="delivery-address"
-                                                    value="delivery"
-                                                    className="shrink-0 data-[state=checked]:border-[color:var(--checkout-accent)] data-[state=checked]:text-[color:var(--checkout-accent)]"
-                                                />
-                                                <Truck className="h-5 w-5 shrink-0" data-icon aria-hidden="true" />
-                                                <span className="min-w-0 font-medium">Delivery a domicilio</span>
-                                            </label>
-                                        </RadioGroup>
+                            <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+                                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                                    <Truck className="h-5 w-5" style={{ color: primaryColor }} aria-hidden="true" />
+                                    Método de Entrega
+                                </h2>
 
-                                        {deliveryType === 'delivery' && (
-                                            <Field data-invalid={isDeliveryAddressInvalid ? 'true' : undefined}>
-                                                <FieldLabel htmlFor="address">Dirección de entrega *</FieldLabel>
-                                                <div className="relative">
-                                                    <MapPin className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" data-icon aria-hidden="true" />
-                                                    <Textarea
-                                                        id="address"
-                                                        name="customer_address"
-                                                        data-testid="checkout-address-input"
-                                                        value={customerAddress}
-                                                        onChange={(e) => setCustomerAddress(e.target.value)}
-                                                        onBlur={(e) => setCustomerAddress(e.target.value.trim())}
-                                                        placeholder="Colonia, calle, número de casa, referencias..."
-                                                        rows={3}
-                                                        className={cn('pl-10', isDeliveryAddressInvalid && 'border-destructive focus-visible:ring-destructive')}
-                                                        required={deliveryType === 'delivery'}
-                                                        minLength={5}
-                                                        maxLength={300}
-                                                        aria-required="true"
-                                                        aria-label="Dirección de entrega"
-                                                        aria-invalid={isDeliveryAddressInvalid ? 'true' : 'false'}
-                                                        aria-describedby={isDeliveryAddressInvalid ? 'address-error' : 'address-help'}
-                                                        autoComplete="street-address"
-                                                    />
-                                                </div>
-                                                {isDeliveryAddressInvalid ? (
-                                                    <FieldDescription
-                                                        id="address-error"
-                                                        role="alert"
-                                                        className="text-destructive"
-                                                    >
-                                                        Agrega una dirección o referencia de al menos 5 caracteres.
-                                                    </FieldDescription>
-                                                ) : (
-                                                    <FieldDescription id="address-help">
-                                                        Incluye una referencia clara para facilitar la entrega.
-                                                    </FieldDescription>
-                                                )}
-                                            </Field>
-                                        )}
-                                    </FieldGroup>
-                                </CardContent>
-                            </Card>
+                                <div className="grid grid-cols-2 gap-4" role="radiogroup" aria-label="Método de entrega">
+                                    <button
+                                        type="button"
+                                        onClick={() => setDeliveryType('pickup')}
+                                        className={`flex items-center justify-center gap-2 p-4 rounded-lg border-2 transition-all
+                                            ${deliveryType === 'pickup'
+                                                ? 'bg-opacity-10'
+                                                : 'border-gray-200 hover:border-gray-300'
+                                            }`}
+                                        style={{
+                                            borderColor: deliveryType === 'pickup' ? primaryColor : undefined,
+                                            backgroundColor: deliveryType === 'pickup' ? `${primaryColor}10` : undefined,
+                                        }}
+                                        role="radio"
+                                        aria-checked={deliveryType === 'pickup'}
+                                        aria-label="Recoger en tienda"
+                                    >
+                                        <Store className="h-5 w-5" aria-hidden="true" />
+                                        <span className="font-medium">Recoger</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setDeliveryType('delivery')}
+                                        className={`flex items-center justify-center gap-2 p-4 rounded-lg border-2 transition-all
+                                            ${deliveryType === 'delivery'
+                                                ? 'bg-opacity-10'
+                                                : 'border-gray-200 hover:border-gray-300'
+                                            }`}
+                                        style={{
+                                            borderColor: deliveryType === 'delivery' ? primaryColor : undefined,
+                                            backgroundColor: deliveryType === 'delivery' ? `${primaryColor}10` : undefined,
+                                        }}
+                                        role="radio"
+                                        aria-checked={deliveryType === 'delivery'}
+                                        aria-label="Delivery a domicilio"
+                                    >
+                                        <Truck className="h-5 w-5" aria-hidden="true" />
+                                        <span className="font-medium">Delivery</span>
+                                    </button>
+                                </div>
+
+                                {deliveryType === 'delivery' && (
+                                    <div className="transition-all duration-200">
+                                        <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
+                                            Dirección de entrega *
+                                        </label>
+                                        <div className="relative">
+                                            <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" aria-hidden="true" />
+                                            <textarea
+                                                id="address"
+                                                value={customerAddress}
+                                                onChange={(e) => setCustomerAddress(e.target.value)}
+                                                onBlur={(e) => setCustomerAddress(e.target.value.trim())}
+                                                placeholder="Colonia, calle, número de casa, referencias..."
+                                                rows={3}
+                                                className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-1"
+                                                style={{ '--tw-ring-color': primaryColor }}
+                                                required={deliveryType === 'delivery'}
+                                                minLength={5}
+                                                maxLength={300}
+                                                aria-required="true"
+                                                aria-label="Dirección de entrega"
+                                                autoComplete="street-address"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
 
                             {/* Notes */}
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2 text-lg">
-                                        <FileText className="h-5 w-5 text-[color:var(--checkout-accent)]" data-icon aria-hidden="true" />
-                                        Notas adicionales
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <Field>
-                                        <FieldLabel htmlFor="checkout-notes">Indicaciones para el negocio</FieldLabel>
-                                        <Textarea
-                                            id="checkout-notes"
-                                            name="customer_notes"
-                                            data-testid="checkout-notes-input"
-                                            value={customerNotes}
-                                            onChange={(e) => setCustomerNotes(e.target.value)}
-                                            onBlur={(e) => setCustomerNotes(e.target.value.trim())}
-                                            placeholder="Instrucciones especiales para tu pedido..."
-                                            rows={3}
-                                            maxLength={500}
-                                            aria-label="Notas adicionales para el pedido"
-                                        />
-                                        <FieldDescription>
-                                            Puedes agregar horarios, sustituciones o detalles de entrega.
-                                        </FieldDescription>
-                                    </Field>
-                                </CardContent>
-                            </Card>
+                            <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+                                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                                    <FileText className="h-5 w-5" style={{ color: primaryColor }} aria-hidden="true" />
+                                    Notas adicionales
+                                </h2>
+                                <textarea
+                                    id="checkout-notes"
+                                    value={customerNotes}
+                                    onChange={(e) => setCustomerNotes(e.target.value)}
+                                    onBlur={(e) => setCustomerNotes(e.target.value.trim())}
+                                    placeholder="Instrucciones especiales para tu pedido..."
+                                    rows={3}
+                                    maxLength={500}
+                                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-1"
+                                    style={{ '--tw-ring-color': primaryColor }}
+                                    aria-label="Notas adicionales para el pedido"
+                                />
+                            </div>
                         </div>
 
                         {/* ═══════════════════════════════════════════════════
                             RIGHT: Order Summary
                         ═══════════════════════════════════════════════════ */}
                         <div className="lg:col-span-1">
-                            <ConversionSummary
-                                icon={ShoppingCart}
-                                title="Resumen del pedido"
-                                totals={checkoutTotals}
-                                progressLabel={checkoutProgressLabel}
-                                progressStatus={checkoutProgressStatus}
-                                progressValue={checkoutProgressValue}
-                            >
-                                    <div className="max-h-80 overflow-y-auto pr-1" role="list" aria-label="Productos en el carrito">
-                                        {items.map((item) => (
-                                            <CartItemRow
-                                                key={item.id}
-                                                item={item}
-                                                primaryColor={primaryColor}
-                                                onRemove={removeItem}
-                                            />
-                                        ))}
+                            <div className="bg-white rounded-xl border border-gray-200 p-6 sticky top-40">
+                                <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                                    Resumen del Pedido
+                                </h2>
+
+                                {/* Cart Items */}
+                                <div className="max-h-80 overflow-y-auto" role="list" aria-label="Productos en el carrito">
+                                    {items.map((item) => (
+                                        <CartItemRow
+                                            key={item.id}
+                                            item={item}
+                                            primaryColor={primaryColor}
+                                            onRemove={removeItem}
+                                        />
+                                    ))}
+                                </div>
+
+                                {/* Totals */}
+                                <div className="border-t border-gray-200 mt-4 pt-4 space-y-2">
+                                    <div className="flex justify-between text-gray-600">
+                                        <span>Subtotal</span>
+                                        <span>{formatCurrency(subtotal)}</span>
                                     </div>
+                                    <div className="flex justify-between text-xl font-bold text-gray-900">
+                                        <span>Total</span>
+                                        <span style={{ color: primaryColor }}>
+                                            {formatCurrency(grandTotal)}
+                                        </span>
+                                    </div>
+                                </div>
 
                                 {/* Error Message with ref for scroll */}
                                 {submitError && (
-                                    <div ref={errorRef}>
-                                        <ActionableAlert
-                                            icon={AlertCircle}
-                                            tone="error"
-                                            title="No pudimos confirmar el pedido"
-                                            actionLabel="Revisar datos"
-                                            onAction={() => errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-                                            className="mt-4"
-                                            testId="checkout-submit-error"
-                                        >
-                                            <p>{submitError}</p>
-                                            {submitDiagnostic?.recommended_action ? (
-                                                <p className="mt-1">{submitDiagnostic.recommended_action}</p>
-                                            ) : (
-                                                <p className="mt-1">Verifica los datos del cliente e intenta nuevamente.</p>
-                                            )}
-                                            {submitDiagnostic?.trace_id ? (
-                                                <p className="mt-2 text-xs font-semibold">REF soporte: {submitDiagnostic.trace_id}</p>
-                                            ) : null}
-                                        </ActionableAlert>
+                                    <div
+                                        ref={errorRef}
+                                        role="alert"
+                                        className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2"
+                                    >
+                                        <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" aria-hidden="true" />
+                                        <p className="text-sm text-red-700">{submitError}</p>
                                     </div>
                                 )}
 
-                                <ConversionActionBar
+                                {/* Submit Button */}
+                                <button
+                                    type="submit"
                                     disabled={!isFormValid || isSubmitting}
-                                    busy={isSubmitting}
-                                    busyLabel="Guardando pedido..."
-                                    idleLabel="Confirmar Pedido"
-                                    icon={CheckCircle}
-                                    processingIcon={Loader2}
+                                    className={`w-full mt-6 flex items-center justify-center gap-2 px-6 py-4 text-white font-bold rounded-xl transition-all
+                                        ${(!isFormValid || isSubmitting)
+                                            ? 'opacity-50 cursor-not-allowed'
+                                            : 'hover:opacity-90'
+                                        }`}
                                     style={{ backgroundColor: primaryColor }}
-                                    testId="checkout-submit"
+                                    aria-label={isSubmitting ? 'Procesando pedido' : 'Confirmar pedido'}
+                                    aria-busy={isSubmitting}
                                 >
-                                    Al confirmar, seras redirigido a WhatsApp para finalizar tu pedido.
-                                </ConversionActionBar>
-                            </ConversionSummary>
+                                    {isSubmitting ? (
+                                        <>
+                                            <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+                                            Procesando...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CheckCircle className="h-5 w-5" aria-hidden="true" />
+                                            Confirmar Pedido
+                                        </>
+                                    )}
+                                </button>
+
+                                <p className="mt-4 text-xs text-gray-500 text-center">
+                                    Al confirmar, serás redirigido a WhatsApp para finalizar tu pedido.
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </form>

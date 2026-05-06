@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAiGenerator } from '@/Hooks/useAiGenerator';
 import { Wand2, Loader2 } from 'lucide-react';
-import { toast } from '@/Components/Toast/index.js';
+import { toast } from '@/Components/Toast';
 
 /**
  * AiGenerateButton - The Magic Wand

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cuenta Suspendida - Vito Business OS</title>
+    <title>Cuenta Suspendida - Conecta HN</title>
     <style>
         * {
             margin: 0;
@@ -136,7 +136,7 @@
         
         <p class="contact-info">
             Si crees que esto es un error, por favor contacta a soporte:<br>
-            <a href="mailto:soporte@vitobusinessos.com">soporte@vitobusinessos.com</a>
+            <a href="mailto:soporte@conectahn.com">soporte@conectahn.com</a>
         </p>
         
         @if(isset($isOwner) && $isOwner)

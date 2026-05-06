@@ -27,8 +27,6 @@ import {
 } from '@dnd-kit/sortable';
 import TenantLayout from '@/Layouts/TenantLayout';
 import KanbanCard from '@/Components/Orders/KanbanCard';
-import { EmptyState } from '@/Components/Feedback/UXStates';
-import { ShoppingCart } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTS: Column Configuration
@@ -93,9 +91,9 @@ function KanbanColumn({ id, label, color, orders, onAdvance, nextStatus }) {
                                 />
                             ))
                         ) : (
-                            <div className={`rounded-lg border border-dashed border-current/20 px-3 py-5 text-center text-sm ${colors.empty}`}>
-                                Sin pedidos en esta etapa
-                            </div>
+                            <p className={`text-sm ${colors.empty} text-center py-4`}>
+                                Sin pedidos
+                            </p>
                         )}
                     </div>
                 </SortableContext>
@@ -160,16 +158,9 @@ function OrdersTable({ orders, onAdvance }) {
                     ))}
                     {allOrders.length === 0 && (
                         <tr>
-                            <td colSpan={6} className="px-6 py-8">
-                                <EmptyState
-                                    icon={ShoppingCart}
-                                    eyebrow="Pedidos"
-                                    title="No hay pedidos hoy"
-                                    description="Cuando un cliente confirme un checkout o pedido por el micrositio, aparecerá aquí para darle seguimiento."
-                                    actionLabel="Revisar productos"
-                                    actionHref={route('tenant.products.index')}
-                                    testId="orders-empty-state"
-                                />
+                            <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                                <p>No hay pedidos hoy</p>
+                                <p className="text-sm mt-1">Los pedidos aparecerán aquí</p>
                             </td>
                         </tr>
                     )}

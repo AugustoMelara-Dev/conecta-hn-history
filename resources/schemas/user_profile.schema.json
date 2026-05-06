@@ -1,46 +1,42 @@
 {
-  "_meta": {
-    "title": "UserProfile",
-    "endpoint": "/api/v1/users/{id}",
-    "method": "GET",
-    "cache_ttl": 60,
-    "sla_threshold": 300
-  },
-  "type": "object",
-  "required": [
-    "id",
-    "tenantId",
-    "name",
-    "email",
-    "createdAt"
-  ],
-  "properties": {
-    "id": {
-      "type": "string"
+    "_meta": {
+        "title": "UserProfile",
+        "endpoint": "/api/v1/users/{id}",
+        "method": "GET",
+        "cache_ttl": 60,
+        "sla_threshold": 300
     },
-    "tenantId": {
-      "type": "string"
-    },
-    "name": {
-      "type": "string"
-    },
-    "email": {
-      "type": "string"
-    },
-    "tenantName": {
-      "type": [
-        "string",
-        "null"
-      ]
-    },
-    "tenantSlug": {
-      "type": [
-        "string",
-        "null"
-      ]
-    },
-    "createdAt": {
-      "type": "string"
+    "type": "object",
+    "required": [
+        "id",
+        "name",
+        "email",
+        "formattedCreatedAt"
+    ],
+    "properties": {
+        "id": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "tenantName": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "tenantSlug": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "formattedCreatedAt": {
+            "type": "string"
+        }
     }
-  }
 }
