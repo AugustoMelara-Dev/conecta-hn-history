@@ -85,7 +85,10 @@ class MenuSectionResource extends Resource
             return null;
         }
 
-        $count = MenuSection::where('tenant_id', $tenant->id)->count();
+        $count = MenuSection::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', $tenant->id)
+            ->count();
 
         return $count > 0 ? (string) $count : null;
     }

@@ -12,13 +12,20 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Domain\Identity\Enums\UserRole;
+use Filament\Models\Contracts\FilamentUser as FilamentUserContract;
+use Filament\Models\Contracts\HasTenants;
+use Filament\Panel;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Collection;
+use Laravel\Sanctum\HasApiTokens;
 use NotificationChannels\WebPush\HasPushSubscriptions;
 
 /**
@@ -28,9 +35,9 @@ use NotificationChannels\WebPush\HasPushSubscriptions;
  * 1. Authorization (via Enum-based Identity Helpers)
  * 2. Multi-tenancy Context Resolution (Strict Ownership)
  */
-class User extends Authenticatable implements MustVerifyEmail
+class User extends Authenticatable implements FilamentUserContract, HasTenants, MustVerifyEmail
 {
-    use HasFactory, HasPushSubscriptions, HasUuids, Notifiable;
+    use HasApiTokens, HasFactory, HasPushSubscriptions, HasUuids, Notifiable;
 
     /**
      * UUID Configuration: Disable Auto-Increment
@@ -129,6 +136,25 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->role === UserRole::SUPER_ADMIN;
     }
 
+    /**
+     * Legacy role-policy compatibility while the canonical role value lives on
+     * the UserRole enum.
+     *
+     * @param  string|array<int, string>  $roles
+     */
+    public function hasRole(string|array $roles): bool
+    {
+        $current = $this->role instanceof UserRole
+            ? $this->role->value
+            : (string) $this->role;
+
+        $normalize = static fn (string $role): string => strtolower(str_replace([' ', '-'], '_', $role));
+
+        $expected = array_map($normalize, (array) $roles);
+
+        return in_array($normalize($current), $expected, true);
+    }
+
     public function isTenantOwner(): bool
     {
         if ($this->tenant_id === null) {
@@ -195,9 +221,72 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Tenant::class);
     }
 
+    public function tenantMemberships(): HasMany
+    {
+        return $this->hasMany(TenantMembership::class, 'user_id');
+    }
+
+    public function memberTenants(): BelongsToMany
+    {
+        return $this->belongsToMany(Tenant::class, 'tenant_memberships', 'user_id', 'tenant_id')
+            ->withPivot(['role', 'preset_key', 'granted_permissions', 'accepted_at'])
+            ->withTimestamps();
+    }
+
+    public function canAccessTenant(Model $tenant): bool
+    {
+        if (! $tenant instanceof Tenant) {
+            return false;
+        }
+
+        if ($this->isSuperAdmin()) {
+            return true;
+        }
+
+        if ((string) $tenant->user_id === (string) $this->id) {
+            return true;
+        }
+
+        return $this->tenantMemberships()
+            ->where('tenant_id', $tenant->id)
+            ->whereNotNull('accepted_at')
+            ->exists();
+    }
+
     // ═══════════════════════════════════════════════════════════════════════
     // SOCIAL & INTERACTION LOGIC
     // ═══════════════════════════════════════════════════════════════════════
+
+    public function getTenants(Panel $panel): Collection
+    {
+        if ($this->isSuperAdmin()) {
+            return Tenant::query()
+                ->orderBy('name')
+                ->get();
+        }
+
+        $owned = $this->tenants()->orderBy('name')->get();
+        $member = $this->memberTenants()
+            ->wherePivotNotNull('accepted_at')
+            ->orderBy('name')
+            ->get();
+
+        return $owned
+            ->merge($member)
+            ->unique(fn (Tenant $tenant): string => (string) $tenant->getKey())
+            ->values();
+    }
+
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return match ($panel->getId()) {
+            self::PANEL_ADMIN => $this->isSuperAdmin(),
+            self::PANEL_APP => $this->tenants()->exists()
+                || $this->tenantMemberships()->whereNotNull('accepted_at')->exists()
+                || $this->isSuperAdmin(),
+            default => false,
+        };
+    }
 
     public function favorites(): HasMany
     {

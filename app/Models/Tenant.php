@@ -11,8 +11,12 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Application\TenantGovernance\Contracts\CapabilityManagerInterface;
+use App\Application\TenantGovernance\Contracts\TenantFeatureAccessManagerInterface;
 use App\Domain\Shared\Traits\HasDomainEvents;
 use App\Domain\TenantGovernance\Enums\BusinessType;
+use App\Domain\TenantGovernance\Enums\Capability;
+use App\Domain\TenantGovernance\Enums\TenantFeature;
 use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Domain\TenantGovernance\Exceptions\TenantDomainException;
 use App\Scopes\LocationScope;
@@ -414,6 +418,11 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         return $this->belongsTo(User::class);
     }
 
+    public function memberships(): HasMany
+    {
+        return $this->hasMany(TenantMembership::class);
+    }
+
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
@@ -539,6 +548,16 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
     public function appointments(): HasMany
     {
         return $this->hasMany(Appointment::class);
+    }
+
+    public function hasCapability(Capability $capability): bool
+    {
+        return app(CapabilityManagerInterface::class)->has($this, $capability);
+    }
+
+    public function hasFeature(TenantFeature $feature): bool
+    {
+        return app(TenantFeatureAccessManagerInterface::class)->has($this, $feature);
     }
 
     public function getThemeConfigAttribute($value): array

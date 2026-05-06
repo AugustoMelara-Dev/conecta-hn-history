@@ -39,7 +39,7 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
         // but this early return prevents the filter closures and observers
         // from being registered, saving ~2-5ms per request.
         // ═══════════════════════════════════════════════════════════════════════
-        if (! config('telescope.enabled', false) && ! $this->app->environment('local')) {
+        if (! config('telescope.enabled', false) && config('app.env') !== 'local') {
             return;
         }
 
@@ -51,7 +51,7 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
         // Filter entries to reduce noise and database size
         Telescope::filter(function (IncomingEntry $entry) {
             // Always record in local development
-            if ($this->app->environment('local')) {
+            if (config('app.env') === 'local') {
                 return true;
             }
 
@@ -69,7 +69,7 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
      */
     protected function hideSensitiveRequestDetails(): void
     {
-        if ($this->app->environment('local')) {
+        if (config('app.env') === 'local') {
             return;
         }
 

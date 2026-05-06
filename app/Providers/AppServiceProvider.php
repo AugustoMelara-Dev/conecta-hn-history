@@ -632,6 +632,10 @@ class AppServiceProvider extends ServiceProvider
             \App\Infrastructure\Shared\Telemetry\TraceContext::class,
             \App\Infrastructure\Shared\Telemetry\TraceContext::class
         );
+        $this->app->scoped(
+            \App\Application\Shared\Contracts\TraceContextInterface::class,
+            \App\Infrastructure\Shared\Telemetry\TraceContext::class
+        );
 
         $this->app->bind(
             \App\Application\Common\Contracts\MetricsCollectorInterface::class,
@@ -766,6 +770,9 @@ class AppServiceProvider extends ServiceProvider
             'product' => \App\Models\Product::class,
             'order' => \App\Models\Order::class,
             'coupon' => \App\Models\Coupon::class,
+            'crm_deal' => \App\Models\CrmDeal::class,
+            'customer_note' => \App\Models\CustomerNote::class,
+            'customer_task' => \App\Models\CustomerTask::class,
         ]);
 
         // ═══════════════════════════════════════════════════════════════════════

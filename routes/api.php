@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\V1\CouponController;
+use App\Http\Controllers\Api\V1\Crm\CrmDealController;
+use App\Http\Controllers\Api\V1\Crm\CrmPipelineController;
 use App\Http\Controllers\Api\V1\InteractionController;
 use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\ProductController;
@@ -125,6 +127,41 @@ Route::prefix('v1')->group(function () {
         Route::prefix('exports')->group(function () {
             Route::post('/sales', [\App\Http\Controllers\Api\V1\SalesExportController::class, 'store'])
                 ->name('api.exports.sales');
+        });
+
+        Route::prefix('crm')->name('api.crm.')->group(function () {
+            Route::get('/pipelines', [CrmPipelineController::class, 'index'])
+                ->name('pipelines.index');
+            Route::post('/pipelines', [CrmPipelineController::class, 'store'])
+                ->name('pipelines.store');
+            Route::patch('/pipelines/{pipeline}', [CrmPipelineController::class, 'update'])
+                ->name('pipelines.update');
+            Route::delete('/pipelines/{pipeline}', [CrmPipelineController::class, 'destroy'])
+                ->name('pipelines.destroy');
+            Route::post('/pipelines/{pipeline}/stages', [CrmPipelineController::class, 'storeStage'])
+                ->name('pipelines.stages.store');
+            Route::patch('/stages/{stage}', [CrmPipelineController::class, 'updateStage'])
+                ->name('stages.update');
+            Route::delete('/stages/{stage}', [CrmPipelineController::class, 'destroyStage'])
+                ->name('stages.destroy');
+            Route::get('/pipeline-summary', [CrmPipelineController::class, 'summary'])
+                ->name('pipeline-summary.show');
+            Route::get('/deals', [CrmDealController::class, 'index'])
+                ->name('deals.index');
+            Route::post('/deals', [CrmDealController::class, 'store'])
+                ->name('deals.store');
+            Route::post('/deals/import', [CrmDealController::class, 'import'])
+                ->name('deals.import');
+            Route::get('/deals/export', [CrmDealController::class, 'export'])
+                ->name('deals.export');
+            Route::post('/leads/{lead}/convert-to-deal', [CrmDealController::class, 'convertLead'])
+                ->name('leads.convert-to-deal');
+            Route::patch('/deals/{deal}', [CrmDealController::class, 'update'])
+                ->name('deals.update');
+            Route::patch('/deals/{deal}/stage', [CrmDealController::class, 'moveStage'])
+                ->name('deals.stage.update');
+            Route::delete('/deals/{deal}', [CrmDealController::class, 'destroy'])
+                ->name('deals.destroy');
         });
     });
 
