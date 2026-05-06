@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Identity\Persistence;
 
+use App\Contracts\Events\DomainEventBus;
 use App\Domain\Identity\Entities\UserEntity;
-use App\Domain\Identity\Exceptions\UserNotFoundException;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Models\User;
-use Illuminate\Support\Carbon;
 
 /**
  * EloquentUserRepository - Infrastructure Layer User Persistence
@@ -20,8 +19,12 @@ use Illuminate\Support\Carbon;
  * - updateAvatarIfMissing() now accepts string $userId
  * - Added delete(UserEntity) method
  */
-final readonly class EloquentUserRepository implements UserRepositoryInterface
+final class EloquentUserRepository implements UserRepositoryInterface
 {
+    public function __construct(
+        private readonly DomainEventBus $eventBus
+    ) {}
+
     /**
      * Persiste una entidad de dominio UserEntity en la base de datos.
      *
@@ -34,7 +37,6 @@ final readonly class EloquentUserRepository implements UserRepositoryInterface
     {
         // 1. DETERMINACIÓN INSERT/UPDATE mediante findOrNew
         $model = User::findOrNew($user->id());
-        $emailChanged = $model->exists && $model->email !== $user->email();
 
         // 2. MAPEO MANUAL EXPLÍCITO (Data Mapper Pattern)
         // Cada propiedad se extrae del agregado y se asigna al modelo Eloquent
@@ -43,17 +45,11 @@ final readonly class EloquentUserRepository implements UserRepositoryInterface
         $model->email = $user->email();         // String validado en entidad
         $model->password = $user->password();   // Hash ya cocinado
         $model->tenant_id = $user->tenantId();  // UUID del tenant
-        $model->role = $user->role();           // Domain enum casted by Eloquent
-        $model->avatar = $user->avatar();       // Avatar social / perfil
-        $model->banned_at = $user->bannedAt() !== null ? Carbon::instance($user->bannedAt()) : null;
+        $model->role = $user->role()->value;    // Enum -> string
 
         // Campos opcionales
         if ($user->rememberToken() !== null) {
             $model->remember_token = $user->rememberToken();
-        }
-
-        if ($emailChanged) {
-            $model->email_verified_at = null;
         }
 
         // 3. PERSISTENCIA ATÓMICA
@@ -90,8 +86,8 @@ final readonly class EloquentUserRepository implements UserRepositoryInterface
     {
         $user = User::find($userId);
 
-        if ($user && empty($user->avatar)) {
-            $user->update(['avatar' => $avatarUrl]);
+        if ($user && empty($user->avatar_url)) {
+            $user->update(['avatar_url' => $avatarUrl]);
 
             return true;
         }
@@ -99,49 +95,27 @@ final readonly class EloquentUserRepository implements UserRepositoryInterface
         return false;
     }
 
-    public function existsByEmail(string $email): bool
-    {
-        return User::where('email', $email)->exists();
-    }
-
     public function delete(UserEntity $user): void
     {
-        $userId = $user->id();
-
-        if ($userId === '') {
+        if ($user->id() === null) {
             return;
         }
 
-        User::whereKey($userId)->delete();
-    }
-
-    public function resetPassword(string $userId, string $tenantId, string $passwordHash, string $rememberToken): void
-    {
-        $affected = User::where('id', $userId)
-            ->where('tenant_id', $tenantId)
-            ->update([
-                'password' => $passwordHash,
-                'remember_token' => $rememberToken,
-            ]);
-
-        if ($affected === 0) {
-            throw UserNotFoundException::withIdAndTenant($userId, $tenantId);
-        }
+        User::where('id', $user->id())->delete();
     }
 
     private function toEntity(User $model): UserEntity
     {
-        $rawTenantId = $model->getAttribute('tenant_id');
-        $tenantId = $rawTenantId !== null ? (string) $rawTenantId : null;
-        $rawRole = $model->getAttribute('role');
-        $role = $rawRole instanceof \BackedEnum
-            ? (string) $rawRole->value
-            : (string) ($rawRole ?? 'user');
+        $tenantId = null;
+        $rawTenantId = $model->tenant_id;
 
-        $rawBannedAt = $model->getAttribute('banned_at');
-        $bannedAt = $rawBannedAt instanceof \DateTimeInterface
-            ? $rawBannedAt->format(\DateTimeImmutable::ATOM)
-            : (is_string($rawBannedAt) ? $rawBannedAt : null);
+        if ($rawTenantId instanceof \App\Domain\Shared\ValueObjects\TenantId) {
+            $tenantId = (string) $rawTenantId->value;
+        } elseif (is_numeric($rawTenantId)) {
+            $tenantId = (string) $rawTenantId;
+        } elseif (is_string($rawTenantId)) {
+            $tenantId = $rawTenantId;
+        }
 
         // Use fromStateArray factory method instead of private constructor
         return UserEntity::fromStateArray([
@@ -149,11 +123,9 @@ final readonly class EloquentUserRepository implements UserRepositoryInterface
             'name' => $model->name,
             'email' => $model->email,
             'password' => $model->password,
-            'role' => $role,
+            'role' => $model->role instanceof \UnitEnum ? $model->role->value : ($model->role ?? 'user'),
             'tenant_id' => $tenantId,
             'remember_token' => $model->remember_token,
-            'avatar' => $model->avatar,
-            'banned_at' => $bannedAt,
             'created_at' => $model->created_at?->format(\DateTimeImmutable::ATOM),
             'updated_at' => $model->updated_at?->format(\DateTimeImmutable::ATOM),
         ]);

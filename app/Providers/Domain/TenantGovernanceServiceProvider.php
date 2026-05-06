@@ -11,24 +11,13 @@ declare(strict_types=1);
 
 namespace App\Providers\Domain;
 
-use App\Application\Access\Contracts\TenantPermissionGuardInterface;
-use App\Application\TenantGovernance\Contracts\CapabilityManagerInterface;
-use App\Application\TenantGovernance\Contracts\RubroManifestReaderInterface;
-use App\Application\TenantGovernance\Contracts\TenantFeatureAccessManagerInterface;
-use App\Infrastructure\Access\Guards\StandardTenantPermissionGuard;
-use App\Infrastructure\TenantGovernance\Capabilities\ConfigCapabilityManager;
-use App\Infrastructure\TenantGovernance\Features\ConfigTenantFeatureAccessManager;
-use App\Infrastructure\TenantGovernance\Rubros\ConfigRubroManifestReader;
 use Illuminate\Support\ServiceProvider;
 
 final class TenantGovernanceServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->bind(CapabilityManagerInterface::class, ConfigCapabilityManager::class);
-        $this->app->bind(RubroManifestReaderInterface::class, ConfigRubroManifestReader::class);
-        $this->app->bind(TenantFeatureAccessManagerInterface::class, ConfigTenantFeatureAccessManager::class);
-        $this->app->bind(TenantPermissionGuardInterface::class, StandardTenantPermissionGuard::class);
+        // Bind domain contracts
     }
 
     public function boot(): void

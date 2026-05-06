@@ -22,73 +22,17 @@ class TenantAwareMiddleware
     {
         /** @var TenantContext $context */
         $context = app(TenantContext::class);
-        $previousState = $this->captureState($context);
 
         try {
             if (property_exists($job, 'tenantId') && $job->tenantId !== null) {
-                $this->activateTenantContext($context, $job->tenantId);
+                // Restore Context
+                $context->setTenant((int) $job->tenantId);
             }
 
             $next($job);
         } finally {
-            $this->restoreState($context, $previousState);
-        }
-    }
-
-    /**
-     * @return array{initialized: bool, root: bool, tenantId: string|int|null}
-     */
-    private function captureState(TenantContext $context): array
-    {
-        $initialized = $context->isInitialized();
-        $root = $initialized && $context->isRoot();
-
-        return [
-            'initialized' => $initialized,
-            'root' => $root,
-            'tenantId' => $initialized && ! $root ? $context->id() : null,
-        ];
-    }
-
-    private function activateTenantContext(TenantContext $context, string|int $tenantId): void
-    {
-        if (! $context->isInitialized()) {
-            $context->setTenant($tenantId);
-
-            return;
-        }
-
-        if ($context->isRoot()) {
+            // HYGIENE: Always clean up the worker process
             $context->reset();
-            $context->setTenant($tenantId);
-
-            return;
-        }
-
-        if ($context->id() !== $tenantId) {
-            $context->setTenant($tenantId);
-        }
-    }
-
-    /**
-     * @param  array{initialized: bool, root: bool, tenantId: string|int|null}  $state
-     */
-    private function restoreState(TenantContext $context, array $state): void
-    {
-        $context->reset();
-
-        if (! $state['initialized']) {
-            return;
-        }
-
-        if ($state['root']) {
-            $context->setAsSystemRoot(isConsoleOrTesting: true);
-
-            return;
-        }
-
-        if ($state['tenantId'] !== null) {
-            $context->setTenant($state['tenantId']);
         }
     }
 }

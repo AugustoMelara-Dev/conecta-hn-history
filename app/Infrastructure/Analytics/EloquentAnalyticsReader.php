@@ -7,6 +7,7 @@ namespace App\Infrastructure\Analytics;
 use App\Domain\Analytics\Contracts\AnalyticsReader;
 use App\Models\TenantAnalytic;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 
 /**
  * EloquentAnalyticsReader - Eloquent Implementation of AnalyticsReader
@@ -19,39 +20,28 @@ final class EloquentAnalyticsReader implements AnalyticsReader
     /**
      * {@inheritdoc}
      */
-    public function getAnalyticsData(string $tenantId, \DateTimeImmutable $startDate, \DateTimeImmutable $endDate): array
+    public function getAnalyticsData(int $tenantId, Carbon $startDate, Carbon $endDate): Collection
     {
-        $carbonStart = Carbon::instance($startDate);
-        $carbonEnd = Carbon::instance($endDate);
-
-        return TenantAnalytic::query()
-            ->withoutGlobalScopes()
-            ->where('tenant_id', $tenantId)
-            ->whereBetween('date', [$carbonStart, $carbonEnd])
+        return TenantAnalytic::where('tenant_id', $tenantId)
+            ->whereBetween('date', [$startDate, $endDate])
             ->orderBy('date', 'asc')
             ->get()
-            ->map(function (TenantAnalytic $record): array {
-                /** @var \Carbon\CarbonInterface $date */
-                $date = $record->getAttribute('date');
-
-                return [
-                    'date' => $date->format('Y-m-d'),
-                    'visits' => (int) $record->getAttribute('unique_visits'),
-                    'total' => (int) $record->getAttribute('total_visits'),
-                ];
-            })
-            ->all();
+            ->map(fn ($record) => [
+                'date' => $record->date->format('Y-m-d'),
+                'visits' => $record->unique_visits,
+                'total' => $record->total_visits,
+            ]);
     }
 
     /**
      * {@inheritdoc}
      */
-    public function getFilledAnalytics(string $tenantId, int $days): array
+    public function getFilledAnalytics(int $tenantId, int $days): array
     {
         $startDate = now()->subDays($days)->startOfDay();
         $endDate = now()->endOfDay();
 
-        $analytics = collect($this->getAnalyticsData($tenantId, \DateTimeImmutable::createFromInterface($startDate), \DateTimeImmutable::createFromInterface($endDate)));
+        $analytics = $this->getAnalyticsData($tenantId, $startDate, $endDate);
 
         // Fill gaps with zero values
         $filledData = [];

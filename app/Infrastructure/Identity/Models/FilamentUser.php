@@ -7,12 +7,16 @@ namespace App\Infrastructure\Identity\Models;
 use App\Models\User as DomainUser;
 use Filament\Models\Contracts\FilamentUser as FilamentUserContract;
 use Filament\Models\Contracts\HasTenants;
+use Filament\Panel;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 
 /**
  * Infrastructure User Model (Filament Adapter)
  *
- * This adapter keeps a stable auth-provider model class for infra wiring,
- * while delegating all access/tenant logic to the canonical Domain user model.
+ * This class extends the pure Domain User entity to add
+ * Filament-specific interfaces and logic. This keeps the
+ * Domain layer clean of UI dependencies.
  */
 final class FilamentUser extends DomainUser implements FilamentUserContract, HasTenants
 {
@@ -23,4 +27,33 @@ final class FilamentUser extends DomainUser implements FilamentUserContract, Has
      * @var string
      */
     protected $table = 'users';
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // PANEL ACCESS CONTROL (Filament Specific)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return match ($panel->getId()) {
+            DomainUser::PANEL_ADMIN => $this->isSuperAdmin(),
+            DomainUser::PANEL_APP => $this->isTenantOwner() || $this->isSuperAdmin(),
+            default => false,
+        };
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // TENANCY RELATIONSHIPS & LOGIC (Filament Specific)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    public function getTenants(Panel $panel): Collection
+    {
+        $tenant = $this->tenant;
+
+        return $tenant ? collect([$tenant]) : collect();
+    }
+
+    public function canAccessTenant(Model $tenant): bool
+    {
+        return $this->tenant_id === $tenant->id || $this->isSuperAdmin();
+    }
 }

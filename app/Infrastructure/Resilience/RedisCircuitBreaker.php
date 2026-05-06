@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Resilience;
 
-use App\Application\Shared\Contracts\CircuitBreakerInterface;
-use App\Application\Shared\Contracts\MetricsCollectorInterface;
+use App\Application\Common\Contracts\CircuitBreakerInterface;
+use App\Application\Common\Contracts\MetricsCollectorInterface;
 use Illuminate\Redis\Connections\Connection;
 use Illuminate\Support\Facades\Log;
 
@@ -51,11 +51,7 @@ final readonly class RedisCircuitBreaker implements CircuitBreakerInterface
             return redis.call('SET', KEYS[1], ARGV[1], 'NX', 'PX', ARGV[2])
         LUA;
 
-        $isProbe = $this->redis->command('eval', [
-            $script,
-            [$probeKey, 'PROBE', 2000],
-            1,
-        ]);
+        $isProbe = $this->redis->eval($script, 1, $probeKey, 'PROBE', 2000);
 
         if ($isProbe === true || $isProbe === 'OK' || $isProbe === 1) {
             Log::info("CIRCUIT BREAKER: Probing service {$serviceName} (Half-Open)");
@@ -91,11 +87,7 @@ final readonly class RedisCircuitBreaker implements CircuitBreakerInterface
             return current
         LUA;
 
-        $failures = (int) $this->redis->command('eval', [
-            $script,
-            [$failuresKey, self::FAILURE_WINDOW],
-            1,
-        ]);
+        $failures = (int) $this->redis->eval($script, 1, $failuresKey, self::FAILURE_WINDOW);
 
         if ($failures >= self::FAILURE_THRESHOLD) {
             $this->tripCircuit($serviceName);

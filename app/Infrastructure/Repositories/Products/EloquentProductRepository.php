@@ -52,11 +52,11 @@ final class EloquentProductRepository implements ProductRepositoryInterface
 
         $data = [
             'tenant_id' => $product->tenantId,
-            'slug' => $product->sku,
+            'sku' => $product->sku,
             'name' => $product->name,
             'description' => $product->description,
             'price' => $product->price / 100, // Convert Cents (Entity) to Float/Decimal (DB)
-            'stock_quantity' => $product->stockQuantity,
+            'stock' => $product->stockQuantity, // Mapped stock -> stockQuantity
             'category_id' => $product->categoryId,
             'image_path' => $product->imagePath,
             'is_visible' => $product->isVisible,
@@ -95,11 +95,11 @@ final class EloquentProductRepository implements ProductRepositoryInterface
         return new \App\Domain\Product\Entities\ProductEntity(
             id: $model->id,
             tenantId: $model->tenant_id,
-            sku: (string) $model->getAttribute('slug'),
+            sku: $model->sku,
             name: $model->name,
             description: $model->description ?? '',
             price: (int) ($model->price * 100), // Convert Float (DB) to Cents (Entity)
-            stockQuantity: (int) $model->getAttribute('stock_quantity'),
+            stockQuantity: $model->stock,
             categoryId: $model->category_id,
             imagePath: $model->image_path,
             isVisible: (bool) $model->is_visible,
@@ -129,16 +129,6 @@ final class EloquentProductRepository implements ProductRepositoryInterface
      */
     public function incrementStock(int $productId, int $quantity): void
     {
-        Product::where('id', $productId)->increment('stock_quantity', $quantity);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function existsBySkuExcludingId(string $sku, int|string $productId): bool
-    {
-        return Product::where('slug', $sku)
-            ->where('id', '!=', $productId)
-            ->exists();
+        Product::where('id', $productId)->increment('stock', $quantity);
     }
 }

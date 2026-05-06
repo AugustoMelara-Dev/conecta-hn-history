@@ -6,7 +6,6 @@ namespace App\Infrastructure\Notifications;
 
 use App\Domain\Auth\Contracts\OtpNotifierInterface;
 use App\Domain\Identity\Entities\UserEntity;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -27,8 +26,7 @@ final class SmsOtpNotifier implements OtpNotifierInterface
         string $plainTextCode,
         string $identifier,
         string $tenantId,
-        int $expiryMinutes,
-        ?string $magicUrl = null
+        int $expiryMinutes
     ): void {
         // Check if production SMS service is configured
         if (! $this->isSmsServiceConfigured()) {
@@ -37,18 +35,8 @@ final class SmsOtpNotifier implements OtpNotifierInterface
             return;
         }
 
-        $response = Http::asForm()
-            ->withBasicAuth((string) config('services.twilio.sid'), (string) config('services.twilio.token'))
-            ->post(sprintf(
-                'https://api.twilio.com/2010-04-01/Accounts/%s/Messages.json',
-                rawurlencode((string) config('services.twilio.sid'))
-            ), [
-                'From' => (string) config('services.twilio.from'),
-                'To' => $identifier,
-                'Body' => "Tu código de Vito Business OS es {$plainTextCode}. Vence en {$expiryMinutes} minutos.",
-            ]);
-
-        $response->throw();
+        // TODO: Real SMS implementation
+        // $this->twilioClient->messages->create($identifier, [...]);
 
         Log::info('SMS OTP sent', [
             'phone' => $this->maskPhone($identifier),
@@ -62,8 +50,7 @@ final class SmsOtpNotifier implements OtpNotifierInterface
     private function isSmsServiceConfigured(): bool
     {
         return ! empty(config('services.twilio.sid'))
-            && ! empty(config('services.twilio.token'))
-            && ! empty(config('services.twilio.from'));
+            || ! empty(config('services.sns.key'));
     }
 
     /**

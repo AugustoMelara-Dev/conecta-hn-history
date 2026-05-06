@@ -28,18 +28,13 @@ final class EmailOtpNotifier implements OtpNotifierInterface
         string $plainTextCode,
         string $identifier,
         string $tenantId,
-        int $expiryMinutes,
-        ?string $magicUrl = null
+        int $expiryMinutes
     ): void {
         // Use recipient email if available, otherwise use the provided identifier
-        $recipientEmail = $recipient !== null ? $recipient->email() : $identifier;
+        $recipientEmail = $recipient?->email ?? $identifier;
+        $recipientName = $recipient?->name ?? 'User';
 
-        Mail::to($recipientEmail)->send(new OtpMail(
-            code: $plainTextCode,
-            expiresInMinutes: $expiryMinutes,
-            magicUrl: $magicUrl,
-            resetPasswordUrl: route('password.request'),
-        ));
+        Mail::to($recipientEmail)->send(new OtpMail($plainTextCode, $expiryMinutes));
 
         Log::info('OTP email sent', [
             'identifier' => $this->maskEmail($recipientEmail),

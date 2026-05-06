@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Shared\Persistence;
 
-use App\Application\Shared\Contracts\OutboxRepositoryInterface;
-use App\Application\Shared\Contracts\SensitiveDataInterface;
-use App\Application\Shared\Contracts\TraceContextInterface;
+use App\Domain\Shared\OutboxRepositoryInterface;
 use App\Infrastructure\Models\OutboxMessage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -24,7 +22,7 @@ use RuntimeException;
 final class EloquentOutboxRepository implements OutboxRepositoryInterface
 {
     public function __construct(
-        private readonly TraceContextInterface $traceContext
+        private readonly \App\Infrastructure\Shared\Telemetry\TraceContext $traceContext
     ) {}
 
     /**
@@ -52,14 +50,10 @@ final class EloquentOutboxRepository implements OutboxRepositoryInterface
         // 1. Telemetry and Context Extraction
         $traceId = $this->traceContext->getTraceId();
         $eventType = get_class($event);
-        // C-OX-03: Use canonical DomainEvent contract method occurredAt(), not occurredOn()
-        $occurredAt = method_exists($event, 'occurredAt') ? $event->occurredAt() : now();
+        $occurredAt = method_exists($event, 'occurredOn') ? $event->occurredOn() : now();
 
         // 2. Extract context from event if available
-        // C-OX-05: Prefer method call over property access (handles TenantId VO → string)
-        $tenantId = method_exists($event, 'tenantId')
-            ? (string) $event->tenantId()
-            : (property_exists($event, 'tenantId') ? (string) $event->tenantId : null);
+        $tenantId = property_exists($event, 'tenantId') ? $event->tenantId : null;
         $userId = property_exists($event, 'userId') ? $event->userId : null;
 
         // LEVEL 46: AGGREGATE AFFINITY WITH ATOMIC SEQUENCE
@@ -80,8 +74,7 @@ final class EloquentOutboxRepository implements OutboxRepositoryInterface
                 'version' => '1.0',
                 'event_type' => $eventType,
                 'trace_id' => $traceId,
-                // C-OX-04: Use event's own correlationId() if provided by HasEventIdentity/HasDomainMetadata
-                'correlation_id' => method_exists($event, 'correlationId') ? $event->correlationId() : $traceId,
+                'correlation_id' => $traceId, // Can be different in complex flows
                 'tenant_id' => $tenantId,
                 'user_id' => $userId,
                 'aggregate_id' => $aggregateId,
@@ -114,23 +107,8 @@ final class EloquentOutboxRepository implements OutboxRepositoryInterface
      */
     private function extractAggregateId(object $event): ?string
     {
-        // C-OX-02: Prefer canonical DomainEvent/ShouldBeStoredInOutbox contract methods.
-        // ShouldBeStoredInOutbox::getAggregateId() takes priority (explicit contract).
-        if (method_exists($event, 'getAggregateId')) {
-            $value = $event->getAggregateId();
-
-            return $value !== null ? (string) $value : null;
-        }
-
-        // DomainEvent::aggregateId() is the canonical fallback.
-        if (method_exists($event, 'aggregateId')) {
-            $value = $event->aggregateId();
-
-            return $value !== null ? (string) $value : null;
-        }
-
-        // Fallback heuristic for legacy events without DomainEvent contract.
-        $candidates = ['paymentId', 'orderId', 'invoiceId', 'userId', 'tenantId', 'id'];
+        // Priority order for aggregate ID extraction
+        $candidates = ['aggregateId', 'paymentId', 'orderId', 'invoiceId', 'userId', 'tenantId', 'id'];
 
         foreach ($candidates as $candidate) {
             if (property_exists($event, $candidate)) {
@@ -157,6 +135,33 @@ final class EloquentOutboxRepository implements OutboxRepositoryInterface
     }
 
     /**
+     * LEVEL 45: Get next sequence number for aggregate (ATOMIC).
+     *
+     * Uses SELECT FOR UPDATE to lock aggregate rows during sequence calculation.
+     * This prevents race conditions where two concurrent inserts get the same sequence.
+     *
+     * PREREQUISITE: This method MUST be called within an active transaction
+     * (which is enforced by the transaction check at the start of append()).
+     */
+    private function getNextSequenceNumber(?string $aggregateId): int
+    {
+        if ($aggregateId === null) {
+            return 0;
+        }
+
+        // LEVEL 45: ATOMIC SEQUENCE GENERATION
+        // lockForUpdate() acquires an exclusive lock on rows matching the aggregate_id.
+        // This ensures that concurrent inserts for the same aggregate serialize,
+        // preventing duplicate sequence numbers.
+        $lastSequence = OutboxMessage::query()
+            ->where('aggregate_id', $aggregateId)
+            ->lockForUpdate() // Serialize concurrent access to same aggregate
+            ->max('sequence_number');
+
+        return ($lastSequence ?? 0) + 1;
+    }
+
+    /**
      * LEVEL 70: RECOVER STALE LOCKS WITH SEQUENCE BARRIER & PARTITION PUSHDOWN
      *
      * Retrieves stale messages (locked > threshold) strictly within owned partitions.
@@ -165,9 +170,9 @@ final class EloquentOutboxRepository implements OutboxRepositoryInterface
      * @param  int  $batchSize  Maximum number of messages to recover
      * @param  int  $staleThresholdSeconds  Seconds after which a lock is considered stale
      * @param  array<int>  $ownedPartitionKeys  Explicit list of partitions this worker owns
-     * @return array<int, OutboxMessage>
+     * @return \Illuminate\Support\Collection<OutboxMessage>
      */
-    public function retrieveNextStaleBatch(int $batchSize, int $staleThresholdSeconds, array $ownedPartitionKeys): array
+    public function retrieveNextStaleBatch(int $batchSize, int $staleThresholdSeconds, array $ownedPartitionKeys): \Illuminate\Support\Collection
     {
         $thresholdTime = now()->subSeconds($staleThresholdSeconds);
 
@@ -219,8 +224,7 @@ final class EloquentOutboxRepository implements OutboxRepositoryInterface
         $durationMs = (microtime(true) - $startTime) * 1000;
         $strategist->recordExecutionTime('retrieveNextStaleBatch', $durationMs);
 
-        return $results->all();
-
+        return $results;
     }
 
     /**
@@ -229,39 +233,23 @@ final class EloquentOutboxRepository implements OutboxRepositoryInterface
      */
     private function serializeEvent(object $event): array
     {
-        // C-OX-01: Prefer canonical toPayload() contract (versioned, schema-safe).
-        // This respects the DomainEvent/ShouldBeStoredInOutbox contract built in Domain Layer audit.
-        // Reflection fallback retained for legacy events without toPayload().
-        if (method_exists($event, 'toPayload')) {
-            $data = $event->toPayload();
-        } else {
-            $reflection = new \ReflectionClass($event);
-            $data = [];
+        $reflection = new \ReflectionClass($event);
+        $data = [];
 
-            foreach ($reflection->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
-                $value = $property->getValue($event);
+        foreach ($reflection->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
+            $value = $property->getValue($event);
 
-                // Handle DateTimeInterface specially
-                if ($value instanceof \DateTimeInterface) {
-                    $value = $value->format(\DateTimeInterface::ATOM);
-                }
-
-                // Handle nested objects (Value Objects)
-                if (is_object($value) && ! ($value instanceof \DateTimeInterface)) {
-                    $value = (array) $value;
-                }
-
-                $data[$property->getName()] = $value;
+            // Handle DateTimeInterface specially
+            if ($value instanceof \DateTimeInterface) {
+                $value = $value->format(\DateTimeInterface::ATOM);
             }
-        }
 
-        // REDACTION: If implementing SensitiveDataInterface, scrub secrets
-        if ($event instanceof SensitiveDataInterface) {
-            foreach ($event->getSensitiveProperties() as $sensitiveKey) {
-                if (array_key_exists($sensitiveKey, $data)) {
-                    $data[$sensitiveKey] = '[REDACTED]';
-                }
+            // Handle nested objects (Value Objects)
+            if (is_object($value) && ! ($value instanceof \DateTimeInterface)) {
+                $value = (array) $value;
             }
+
+            $data[$property->getName()] = $value;
         }
 
         return $data;

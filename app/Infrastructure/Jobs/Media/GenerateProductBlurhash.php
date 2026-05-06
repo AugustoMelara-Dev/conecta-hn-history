@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Jobs\Media;
 
-use App\Infrastructure\Queue\Middleware\TenantQueueMiddleware;
+use App\Domain\Shared\Middleware\TenantQueueMiddleware;
 use App\Models\Product;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -19,7 +19,7 @@ use Illuminate\Queue\InteractsWithQueue;
  * Uses withoutGlobalScopes() for cross-tenant product access in queue context.
  * IDEMPOTENCY: Uses ShouldBeUnique with tenant-product composite key.
  */
-final class GenerateProductBlurhash implements ShouldBeUnique, ShouldQueue
+final class GenerateProductBlurhash implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable;
 
@@ -29,7 +29,7 @@ final class GenerateProductBlurhash implements ShouldBeUnique, ShouldQueue
 
     public function __construct(
         public readonly int $productId,
-        public readonly string $tenantId
+        public readonly int $tenantId
     ) {}
 
     /**
@@ -37,7 +37,7 @@ final class GenerateProductBlurhash implements ShouldBeUnique, ShouldQueue
      */
     public function uniqueId(): string
     {
-        return 'blurhash_'.$this->tenantId.'_'.$this->productId;
+        return 'blurhash_' . $this->tenantId . '_' . $this->productId;
     }
 
     public function handle(): void
@@ -45,11 +45,7 @@ final class GenerateProductBlurhash implements ShouldBeUnique, ShouldQueue
         // SECURITY: Verify product belongs to this tenant (VC-AUDIT-003 fix)
         $product = Product::where('id', $this->productId)
             ->where('tenant_id', $this->tenantId)
-            ->first();
-
-        if (! $product) {
-            throw new \App\Domain\Product\Exceptions\ProductNotFoundException("Product {$this->productId} not found");
-        }
+            ->firstOrFail();
 
         if (! $product->image_path) {
             return;

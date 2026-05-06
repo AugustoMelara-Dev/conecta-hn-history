@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Jobs\Marketing;
 
-use App\Application\Shared\DTOs\Mail\CampaignMailData;
-use App\Application\Shared\DTOs\Mail\UserMailData;
-use App\Infrastructure\Queue\Middleware\TenantQueueMiddleware;
+use App\Domain\Shared\Middleware\TenantQueueMiddleware;
 use App\Mail\CampaignOfferMail;
 use App\Models\Campaign;
 use App\Models\User;
@@ -31,9 +29,9 @@ final class SendCampaignEmail implements ShouldBeUnique, ShouldQueue
     public int $uniqueFor = 300;
 
     public function __construct(
-        public readonly string $tenantId,
+        public readonly int $tenantId,
         public readonly int $campaignId,
-        public readonly string $userId
+        public readonly int $userId
     ) {}
 
     public function uniqueId(): string
@@ -68,10 +66,7 @@ final class SendCampaignEmail implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        Mail::to($user->email)->send(new CampaignOfferMail(
-            CampaignMailData::fromCampaign($campaign),
-            UserMailData::fromUser($user)
-        ));
+        Mail::to($user->email)->send(new CampaignOfferMail($campaign, $user));
     }
 
     public function middleware(): array

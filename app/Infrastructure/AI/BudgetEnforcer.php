@@ -36,10 +36,10 @@ final class BudgetEnforcer
     /**
      * Reserva créditos estimados ANTES de ejecutar operación IA.
      *
-     * @param  int|string  $tenantId  ID del tenant (UUID o int)
-     * @param  float  $estimatedCost  Costo estimado en USD (con margen de seguridad)
-     * @param  string  $operation  Nombre de la operación para auditoría
-     * @return string ID de reserva para tracking
+     * @param  int|string $tenantId  ID del tenant (UUID o int)
+     * @param  float $estimatedCost  Costo estimado en USD (con margen de seguridad)
+     * @param  string $operation     Nombre de la operación para auditoría
+     * @return string                ID de reserva para tracking
      *
      * @throws InsufficientAiCreditsException Si no hay créditos disponibles
      */
@@ -51,7 +51,7 @@ final class BudgetEnforcer
             // ═══════════════════════════════════════════════════════════════════
             // BLOQUEO PESIMISTA: Serializa todas las operaciones de este tenant
             // ═══════════════════════════════════════════════════════════════════
-            /** @var Tenant|null $tenant */
+            /** @var Tenant $tenant */
             $tenant = Tenant::lockForUpdate()->find($tenantId);
 
             if (! $tenant) {
@@ -99,10 +99,10 @@ final class BudgetEnforcer
     /**
      * Liquida la reserva después de operación exitosa.
      *
-     * @param  int|string  $tenantId  ID del tenant (UUID o int)
+     * @param  int|string $tenantId   ID del tenant (UUID o int)
      * @param  float  $estimatedCost  Costo estimado original (para liberar reserva)
-     * @param  float  $actualCost  Costo real reportado por OpenAI
-     * @param  string  $reservationId  ID de reserva original
+     * @param  float  $actualCost     Costo real reportado por OpenAI
+     * @param  string $reservationId  ID de reserva original
      * @param  array  $usageMetadata  Metadata de uso para auditoría
      */
     public function settle(
@@ -113,7 +113,7 @@ final class BudgetEnforcer
         array $usageMetadata = []
     ): void {
         DB::transaction(function () use ($tenantId, $estimatedCost, $actualCost, $reservationId, $usageMetadata) {
-            /** @var Tenant|null $tenant */
+            /** @var Tenant $tenant */
             $tenant = Tenant::lockForUpdate()->find($tenantId);
 
             if (! $tenant) {
@@ -151,10 +151,10 @@ final class BudgetEnforcer
     /**
      * Reembolsa una reserva si la operación falló.
      *
-     * @param  int|string  $tenantId  ID del tenant (UUID o int)
+     * @param  int|string $tenantId   ID del tenant (UUID o int)
      * @param  float  $estimatedCost  Costo estimado que se reservó
-     * @param  string  $reservationId  ID de reserva original
-     * @param  string  $failureReason  Razón del fallo para auditoría
+     * @param  string $reservationId  ID de reserva original
+     * @param  string $failureReason  Razón del fallo para auditoría
      */
     public function refund(
         int|string $tenantId,
@@ -163,7 +163,7 @@ final class BudgetEnforcer
         string $failureReason
     ): void {
         DB::transaction(function () use ($tenantId, $estimatedCost, $reservationId, $failureReason) {
-            /** @var Tenant|null $tenant */
+            /** @var Tenant $tenant */
             $tenant = Tenant::lockForUpdate()->find($tenantId);
 
             if (! $tenant) {
@@ -171,7 +171,6 @@ final class BudgetEnforcer
                     'tenant_id' => $tenantId,
                     'reservation_id' => $reservationId,
                 ]);
-
                 return;
             }
 

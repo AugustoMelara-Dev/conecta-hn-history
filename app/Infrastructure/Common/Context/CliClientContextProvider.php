@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Common\Context;
 
-use App\Application\Shared\Contracts\ClientContextProviderInterface;
+use App\Application\Common\Interfaces\ClientContextProviderInterface;
 
 /**
  * CliClientContextProvider - Console Transport Adapter

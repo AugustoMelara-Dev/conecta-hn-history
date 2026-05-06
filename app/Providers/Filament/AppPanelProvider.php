@@ -4,21 +4,17 @@ declare(strict_types=1);
 
 namespace App\Providers\Filament;
 
-use App\Filament\App\Pages\CustomerInbox;
-use App\Filament\App\Pages\Dashboard;
-use App\Filament\App\Pages\BusinessCopilot;
-use App\Filament\App\Pages\GrowthCenter;
-use App\Models\Tenant;
 use Filament\Facades\Filament;
+use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Navigation\NavigationGroup;
 use Filament\Navigation\NavigationItem;
+use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
-use Filament\View\PanelsRenderHook;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -27,113 +23,152 @@ use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 /**
- * Panel operativo para negocios.
+ * AppPanelProvider - Panel del Inquilino (Mobile-First)
  *
- * Priorizamos navegación clara, tiempos cortos y una experiencia sólida
- * en móvil para dueños de negocio que gestionan su operación desde el teléfono.
+ * Arquitectura optimizada para:
+ * - 90% de interacciones desde móviles Android gama media
+ * - Conexiones a internet intermitentes
+ * - Experiencia de aplicación nativa
+ *
+ * Diferenciación Visual:
+ * - Color Indigo (vs Blue del Admin) para clara distinción
+ * - Tipografía Inter para legibilidad móvil
+ * - Logo vectorial compartido con brand.blade.php
  */
 class AppPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
         return $panel
+            // ═══════════════════════════════════════════════════════════════
+            // IDENTIDAD DEL PANEL
+            // ═══════════════════════════════════════════════════════════════
             ->id('app')
             ->path('app')
+
+            // ═══════════════════════════════════════════════════════════════
+            // BRANDING: Logo Vectorial y Nombre
+            // ═══════════════════════════════════════════════════════════════
+            ->brandName('Conecta HN')
             ->brandLogo(fn () => view('filament.components.brand'))
             ->brandLogoHeight('2.5rem')
             ->favicon(asset('favicon.ico'))
+
+            // ═══════════════════════════════════════════════════════════════
+            // AUTENTICACIÓN
+            // Deshabilitamos registro nativo - usamos wizard público
+            // ═══════════════════════════════════════════════════════════════
             ->login()
-            // ->registration() // El alta se maneja en el flujo publico.
-            ->profile()
+            // ->registration() // Disabled - using /registrar-negocio wizard
             ->passwordReset()
             ->emailVerification()
-            ->tenant(Tenant::class, slugAttribute: 'slug')
+
+            // ═══════════════════════════════════════════════════════════════
+            // MULTI-TENANCY
+            // ═══════════════════════════════════════════════════════════════
+            ->tenant(\App\Models\Tenant::class, slugAttribute: 'slug')
             ->tenantProfile(\App\Filament\App\Pages\EditTenantProfile::class)
+
+            // ═══════════════════════════════════════════════════════════════
+            // MODO SPA (Single Page Application)
+            // Transiciones instantáneas sin recargas de página
+            // ═══════════════════════════════════════════════════════════════
+            ->spa()
+
+            // ═══════════════════════════════════════════════════════════════
+            // LAYOUT ADAPTATIVO (Mobile-First)
+            // ═══════════════════════════════════════════════════════════════
+            ->sidebarCollapsibleOnDesktop()
+            ->sidebarFullyCollapsibleOnDesktop()
             ->topNavigation(false)
-            ->sidebarWidth('18rem')
-            ->sidebarCollapsibleOnDesktop(false)
-            ->sidebarFullyCollapsibleOnDesktop(false)
-            ->collapsibleNavigationGroups(false)
+
+            // ═══════════════════════════════════════════════════════════════
+            // PALETA DE COLORES: INDIGO (Diferenciación del Admin)
+            // ═══════════════════════════════════════════════════════════════
             ->colors([
-                'primary' => Color::Emerald,
+                'primary' => Color::Indigo,
                 'gray' => Color::Zinc,
                 'success' => Color::Emerald,
                 'warning' => Color::Amber,
                 'danger' => Color::Rose,
                 'info' => Color::Cyan,
             ])
-            ->font('Manrope')
+
+            // ═══════════════════════════════════════════════════════════════
+            // TIPOGRAFÍA: Inter (Optimizada para móvil)
+            // ═══════════════════════════════════════════════════════════════
+            ->font('Inter')
+
+            // ═══════════════════════════════════════════════════════════════
+            // DARK MODE
+            // ═══════════════════════════════════════════════════════════════
             ->darkMode(true)
+
+            // ═══════════════════════════════════════════════════════════════
+            // NAVEGACIÓN CON ICONOS SEMÁNTICOS
+            // ═══════════════════════════════════════════════════════════════
             ->navigationGroups([
-                NavigationGroup::make()->label('Ventas'),
-                NavigationGroup::make()->label('Catálogo'),
-                NavigationGroup::make()->label('Servicios'),
-                NavigationGroup::make()->label('Marketing'),
-                NavigationGroup::make()->label('Marketing PRO'),
-                NavigationGroup::make()->label('Operación'),
-                NavigationGroup::make()->label('Inventario'),
-                NavigationGroup::make()->label('Configuración'),
-                NavigationGroup::make()->label('Cuenta'),
+                NavigationGroup::make()
+                    ->label('Mi Negocio'),
+                NavigationGroup::make()
+                    ->label('Catálogo'),
+                NavigationGroup::make()
+                    ->label('Cuenta'),
             ])
             ->navigationItems([
-                NavigationItem::make('Ver mi sitio público')
+                // Enlace externo: Ver mi página pública
+                NavigationItem::make('Ver mi Sitio Público')
                     ->url(fn () => $this->getTenantPublicUrl())
                     ->icon('heroicon-o-arrow-top-right-on-square')
-                    ->group('Ventas')
+                    ->group('Mi Negocio')
                     ->sort(99)
                     ->openUrlInNewTab(),
 
-                NavigationItem::make('Compartir negocio')
+                // Enlace externo: Compartir en WhatsApp
+                NavigationItem::make('Compartir Negocio')
                     ->url(fn () => $this->getShareUrl())
                     ->icon('heroicon-o-share')
-                    ->group('Ventas')
+                    ->group('Mi Negocio')
                     ->sort(100)
                     ->openUrlInNewTab(),
             ])
-            ->resources([
-                \App\Filament\App\Resources\OperationalPlaybookTaskResource::class,
-                \App\Filament\App\Resources\ProductResource::class,
-                \App\Filament\App\Resources\MenuSectionResource::class,
-                \App\Filament\App\Resources\OrderResource::class,
-                \App\Filament\App\Resources\ReviewResource::class,
-                \App\Filament\App\Resources\CustomerProfileResource::class,
-                \App\Filament\App\Resources\CustomerMessageTemplateResource::class,
-                \App\Filament\App\Resources\CustomerTouchpointResource::class,
-                \App\Filament\App\Resources\ServiceResource::class,
-                \App\Filament\App\Resources\AppointmentResource::class,
-                \App\Filament\App\Resources\ServiceProviderResource::class,
-                \App\Filament\App\Resources\Leads\LeadResource::class,
-                \App\Filament\App\Resources\FollowerResource::class,
-                \App\Filament\App\Resources\CampaignResource::class,
-                \App\Filament\App\Resources\CouponResource::class,
-                \App\Filament\App\Resources\AnnouncementResource::class,
-                \App\Filament\App\Resources\LoyaltyProgramResource::class,
-                \App\Filament\App\Resources\LoyaltyRewardResource::class,
-                \App\Filament\App\Resources\InventoryLevelResource::class,
-                \App\Filament\App\Resources\InventoryMovementResource::class,
-                \App\Filament\App\Resources\LocationResource::class,
-                \App\Filament\App\Resources\TenantUserResource::class,
-                \App\Filament\App\Resources\Dynamic\EntityDefinitionResource::class,
-                \App\Filament\App\Resources\Dynamic\DynamicPrintTemplateResource::class,
-                \App\Filament\App\Resources\Dynamic\DynamicRecordResource::class,
-            ])
+
+            // ═══════════════════════════════════════════════════════════════
+            // RECURSOS Y PÁGINAS
+            // ═══════════════════════════════════════════════════════════════
+            ->discoverResources(in: app_path('Filament/App/Resources'), for: 'App\\Filament\\App\\Resources')
+            ->discoverPages(in: app_path('Filament/App/Pages'), for: 'App\\Filament\\App\\Pages')
             ->pages([
                 Dashboard::class,
-                BusinessCopilot::class,
-                CustomerInbox::class,
-                GrowthCenter::class,
-                \App\Filament\App\Pages\KitchenDisplay::class,
-                \App\Filament\App\Pages\Settings::class,
-                \App\Filament\App\Pages\ManageMarketing::class,
-                \App\Filament\App\Pages\ManageBilling::class,
-                \App\Filament\App\Pages\UpgradeToPro::class,
             ])
-            ->widgets([])
+
+            // ═══════════════════════════════════════════════════════════════
+            // WIDGETS DEL DASHBOARD (Filament v4 compatible)
+            // Ordenados por prioridad: Stats Bento > Límite > Completitud > Acciones
+            // ═══════════════════════════════════════════════════════════════
+            ->widgets([
+                \App\Filament\App\Widgets\TenantStatsWidget::class, // Nuevo: Bento Grid con Growth Hacking
+                \App\Filament\App\Widgets\RevenueChart::class, // 30-day revenue trend
+                \App\Filament\App\Widgets\OrdersChart::class, // 7-day appointment volume
+                \App\Filament\App\Widgets\ProductLimitWidget::class,
+                \App\Filament\App\Widgets\AccountCompletenessWidget::class,
+                \App\Filament\App\Widgets\QuickActionsWidget::class,
+                \App\Filament\App\Widgets\ProductLimitWarning::class,
+                \App\Filament\App\Widgets\PendingReviewAlert::class,
+                \App\Filament\App\Widgets\FreePlanUpsellWidget::class,
+                // \App\Filament\App\Widgets\StatsOverview::class, // Reemplazado por TenantStatsWidget
+            ])
+
+            // ═══════════════════════════════════════════════════════════════
+            // RENDIMIENTO Y UX
+            // ═══════════════════════════════════════════════════════════════
             ->maxContentWidth('full')
-            ->renderHook(
-                PanelsRenderHook::HEAD_END,
-                fn (): \Illuminate\Contracts\View\View => view('filament.components.app-inline-overrides'),
-            )
+            ->databaseNotifications()
+            ->databaseNotificationsPolling('60s')
+
+            // ═══════════════════════════════════════════════════════════════
+            // MIDDLEWARE
+            // ═══════════════════════════════════════════════════════════════
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
@@ -142,67 +177,40 @@ class AppPanelProvider extends PanelProvider
                 ShareErrorsFromSession::class,
                 VerifyCsrfToken::class,
                 SubstituteBindings::class,
-                \App\Http\Middleware\NormalizeInternalRedirectLocation::class,
-                \App\Http\Middleware\SecurityHeaders::class,
-                \App\Http\Middleware\HydrateTenantContextFromPanelRoute::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
             ])
-            ->persistentMiddleware([
-                \App\Http\Middleware\HydrateTenantContextFromPanelRoute::class,
-            ])
             ->authMiddleware([
-                \App\Http\Middleware\SameOriginFilamentAuthenticate::class,
+                Authenticate::class,
             ]);
     }
 
-    public function boot(): void
-    {
-        Filament::serving(function (): void {
-            if (Filament::getCurrentPanel()?->getId() !== 'app') {
-                return;
-            }
-
-            $tenant = Filament::getTenant();
-
-            if (! $tenant instanceof Tenant) {
-                return;
-            }
-
-            app(\App\Domain\Shared\Services\TenantContext::class)
-                ->setTenant((string) $tenant->getKey());
-        });
-    }
-
+    /**
+     * Obtiene la URL pública del tenant actual
+     */
     protected function getTenantPublicUrl(): string
     {
-        $tenant = $this->getCurrentTenant();
-
-        if ($tenant instanceof Tenant) {
-            return route('tenant.microsite.show', ['tenant' => $tenant->slug]);
+        $tenant = Filament::getTenant();
+        if ($tenant) {
+            return url('/'.$tenant->slug);
         }
 
         return url('/');
     }
 
+    /**
+     * Genera URL para compartir en WhatsApp
+     */
     protected function getShareUrl(): string
     {
-        $tenant = $this->getCurrentTenant();
-
-        if ($tenant instanceof Tenant) {
-            $url = route('tenant.microsite.show', ['tenant' => $tenant->slug]);
-            $text = "Mira mi negocio {$tenant->name} en Vito Business OS.";
+        $tenant = Filament::getTenant();
+        if ($tenant) {
+            $url = url('/'.$tenant->slug);
+            $text = "¡Mira mi negocio {$tenant->name} en Conecta HN!";
 
             return 'https://wa.me/?text='.urlencode("{$text}\n\n{$url}");
         }
 
         return '#';
-    }
-
-    private function getCurrentTenant(): ?Tenant
-    {
-        $tenant = Filament::getTenant();
-
-        return $tenant instanceof Tenant ? $tenant : null;
     }
 }

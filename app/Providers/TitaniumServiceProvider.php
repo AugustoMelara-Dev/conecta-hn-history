@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
-use App\Application\Shared\Contracts\IdempotencyRepositoryInterface;
-use App\Application\Shared\Contracts\OutboxRepositoryInterface;
+use App\Application\Common\Interfaces\IdempotencyRepositoryInterface;
+use App\Application\Common\Interfaces\OutboxRepositoryInterface;
 use App\Application\Shared\Contracts\TransactionManagerInterface;
 use App\Infrastructure\Common\LaravelTransactionManager;
-// use App\Infrastructure\Common\Persistence\EloquentIdempotencyRepository;
-use App\Infrastructure\Shared\Persistence\EloquentOutboxRepository;
+use App\Infrastructure\Common\Persistence\EloquentIdempotencyRepository;
+use App\Infrastructure\Common\Persistence\EloquentOutboxRepository;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -24,8 +24,8 @@ class TitaniumServiceProvider extends ServiceProvider
         // Bind Transaction Manager (if not already bound elsewhere)
         $this->app->bind(TransactionManagerInterface::class, LaravelTransactionManager::class);
 
-        // Bind Idempotency (SQL Implementation) - DEPRECATED/DEAD CODE
-        // $this->app->bind(IdempotencyRepositoryInterface::class, EloquentIdempotencyRepository::class);
+        // Bind Idempotency (SQL Implementation)
+        $this->app->bind(IdempotencyRepositoryInterface::class, EloquentIdempotencyRepository::class);
 
         // Bind Outbox (SQL Implementation)
         $this->app->bind(OutboxRepositoryInterface::class, EloquentOutboxRepository::class);

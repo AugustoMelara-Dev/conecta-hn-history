@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Shared\Services\Upcasting;
 
-use App\Domain\Shared\Contracts\UpcasterInterface;
+use App\Application\Shared\Contracts\UpcasterInterface;
 use Illuminate\Support\Facades\Log;
 
 class UpcasterChain
@@ -38,7 +38,7 @@ class UpcasterChain
 
             // Advance version pointer
             $oldVersion = $currentVersion;
-            $currentVersion = (string) $upcaster->toVersion();
+            $currentVersion = $upcaster->getTargetVersion();
 
             Log::info("Upcasted {$eventType} from {$oldVersion} to {$currentVersion}");
         }

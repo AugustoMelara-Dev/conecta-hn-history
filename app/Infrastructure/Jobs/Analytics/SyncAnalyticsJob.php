@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Jobs\Analytics;
 
-use App\Domain\Shared\ValueObjects\TenantId;
 use App\Models\Tenant;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -19,7 +18,7 @@ use Illuminate\Support\Facades\Log;
  * INFRASTRUCTURE JOB: Coordinates batch analytics sync across all tenants.
  * IDEMPOTENCY: Uses ShouldBeUnique with daily date key to prevent duplicate runs.
  */
-final class SyncAnalyticsJob implements ShouldBeUnique, ShouldQueue
+final class SyncAnalyticsJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable;
 
@@ -30,7 +29,7 @@ final class SyncAnalyticsJob implements ShouldBeUnique, ShouldQueue
      */
     public function uniqueId(): string
     {
-        return 'sync_analytics_'.now()->subDay()->format('Y-m-d');
+        return 'sync_analytics_' . now()->subDay()->format('Y-m-d');
     }
 
     public function handle(): void
@@ -50,7 +49,7 @@ final class SyncAnalyticsJob implements ShouldBeUnique, ShouldQueue
 
         // T-103: Instrument Process
         event(new \App\Domain\Analytics\Events\AnalyticsSynced(
-            tenantId: TenantId::fromInt(0), // System context
+            tenantId: 0, // System context or aggregate 0
             processedRecords: $processedCount,
             occurredOn: new \DateTimeImmutable
         ));

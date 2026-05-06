@@ -4,20 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
-use App\Application\Inventory\Contracts\InventoryHoldPortInterface as TransactionalInventoryHoldPortInterface;
-use App\Application\Sales\Contracts\CheckoutSessionPortInterface;
-use App\Application\Sales\Contracts\InventoryHoldPortInterface;
 use App\Contracts\Scope\TenantContextInterface;
-use App\Domain\Common\Contracts\SnapshotRepositoryInterface;
-use App\Domain\Inventory\Contracts\LocationReaderInterface;
-use App\Infrastructure\Common\Snapshots\DatabaseSnapshotRepository;
-use App\Infrastructure\Inventory\Adapters\EloquentInventoryHoldAdapter as TransactionalInventoryHoldAdapter;
-use App\Infrastructure\Sales\Adapters\EloquentCheckoutSessionAdapter;
-use App\Infrastructure\Sales\Adapters\EloquentInventoryHoldAdapter;
-use App\Infrastructure\Sales\Adapters\EloquentLocationReader;
 use App\Infrastructure\Scope\FilamentTenantContext;
-use App\Support\Directory\GuideQuota;
-use App\Support\Directory\GuideRequestTelemetry;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -27,7 +15,6 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Str;
 
 class InfrastructureServiceProvider extends ServiceProvider
 {
@@ -62,17 +49,7 @@ class InfrastructureServiceProvider extends ServiceProvider
         );
 
         $this->app->bind(
-            \App\Domain\Security\Contracts\HasherInterface::class,
-            \App\Infrastructure\Security\LaravelHasher::class
-        );
-
-        $this->app->bind(
-            \App\Application\Shared\Contracts\LoggerInterface::class,
-            \App\Infrastructure\Logging\LaravelLoggerAdapter::class
-        );
-
-        $this->app->bind(
-            \App\Domain\Identity\Repositories\SocialIdentityRepositoryInterface::class,
+            \App\Application\Shared\Contracts\SocialIdentityRepositoryInterface::class,
             \App\Infrastructure\Persistence\EloquentSocialIdentityRepository::class
         );
 
@@ -84,16 +61,10 @@ class InfrastructureServiceProvider extends ServiceProvider
         // FakePaymentGateway for testing or PayPalPaymentGateway for migration.
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
-            \App\Domain\Billing\Gateways\PaymentGatewayInterface::class,
-            function () {
-                if (app()->environment('testing')) {
-                    return new \App\Infrastructure\Payments\FakePaymentGateway;
-                }
-
-                return strtolower((string) config('services.payment.provider', 'generic')) === 'stripe'
-                    ? new \App\Infrastructure\Payments\Stripe\StripePaymentGateway
-                    : new \App\Infrastructure\Payments\ManualPaymentGateway;
-            }
+            \App\Domain\Payments\Gateways\PaymentGatewayInterface::class,
+            fn () => app()->environment('testing')
+                ? new \App\Infrastructure\Payments\FakePaymentGateway
+                : new \App\Infrastructure\Payments\Stripe\StripePaymentGateway
         );
 
         $this->app->singleton(\App\Infrastructure\Shared\Context\IdempotencyContext::class);
@@ -124,71 +95,6 @@ class InfrastructureServiceProvider extends ServiceProvider
             \App\Infrastructure\Persistence\Readers\EloquentReferenceDataReader::class
         );
 
-        $this->app->bind(
-            \App\Application\Shared\Contracts\ServiceRepositoryInterface::class,
-            \App\Infrastructure\Tenant\EloquentServiceRepository::class
-        );
-
-        $this->app->bind(
-            \App\Application\Shared\Contracts\ServiceProviderRepositoryInterface::class,
-            \App\Infrastructure\Tenant\EloquentServiceProviderRepository::class
-        );
-
-        $this->app->bind(
-            \App\Application\Shared\Contracts\AppointmentRepositoryInterface::class,
-            \App\Infrastructure\Tenant\EloquentAppointmentRepository::class
-        );
-
-        $this->app->bind(
-            \App\Application\Tenant\Contracts\TenantProfileWriterInterface::class,
-            \App\Infrastructure\Tenant\EloquentTenantProfileWriter::class
-        );
-
-        $this->app->bind(
-            \App\Application\Catalog\Contracts\MenuSectionWriterInterface::class,
-            \App\Infrastructure\Catalog\EloquentMenuSectionWriter::class
-        );
-
-        $this->app->bind(
-            \App\Application\TenantGovernance\Contracts\TenantCampaignFinderInterface::class,
-            \App\Infrastructure\TenantGovernance\Campaign\EloquentTenantCampaignFinder::class
-        );
-
-        $this->app->bind(
-            \App\Application\TenantGovernance\Contracts\TenantCustomerInboxNoteFinderInterface::class,
-            \App\Infrastructure\TenantGovernance\Inbox\EloquentTenantCustomerInboxNoteFinder::class
-        );
-
-        $this->app->bind(
-            \App\Application\TenantGovernance\Contracts\TenantCustomerTaskFinderInterface::class,
-            \App\Infrastructure\TenantGovernance\CustomerProfile\EloquentTenantCustomerTaskFinder::class
-        );
-
-        $this->app->bind(
-            \App\Application\TenantGovernance\Contracts\TenantCustomerTouchpointFinderInterface::class,
-            \App\Infrastructure\TenantGovernance\CustomerProfile\EloquentTenantCustomerTouchpointFinder::class
-        );
-
-        $this->app->bind(
-            \App\Application\TenantGovernance\Contracts\TenantGrowthSignalsViewInterface::class,
-            \App\Infrastructure\TenantGovernance\TenantGrowthSignalsView::class
-        );
-
-        $this->app->bind(
-            \App\Application\TenantGovernance\Contracts\TenantOperationalComparisonsViewInterface::class,
-            \App\Infrastructure\TenantGovernance\TenantOperationalComparisonsView::class
-        );
-
-        $this->app->bind(
-            \App\Application\TenantGovernance\Contracts\TenantJourneyAnalyticsViewInterface::class,
-            \App\Infrastructure\TenantGovernance\TenantJourneyAnalyticsView::class
-        );
-
-        $this->app->bind(
-            \App\Domain\TenantGovernance\Contracts\WhatsAppTemplateDeliveryInterface::class,
-            \App\Infrastructure\TenantGovernance\Messaging\WhatsAppCloudTemplateDelivery::class
-        );
-
         // ═══════════════════════════════════════════════════════════════════════
         // UPCASTING INFRASTRUCTURE (Resilient Read)
         // ═══════════════════════════════════════════════════════════════════════
@@ -211,31 +117,6 @@ class InfrastructureServiceProvider extends ServiceProvider
         $this->app->bind(
             \App\Application\Auth\Contracts\AuthTokenServiceInterface::class,
             \App\Infrastructure\Auth\SanctumAuthTokenService::class
-        );
-
-        $this->app->bind(
-            TransactionalInventoryHoldPortInterface::class,
-            TransactionalInventoryHoldAdapter::class
-        );
-
-        $this->app->bind(
-            InventoryHoldPortInterface::class,
-            EloquentInventoryHoldAdapter::class
-        );
-
-        $this->app->bind(
-            CheckoutSessionPortInterface::class,
-            EloquentCheckoutSessionAdapter::class
-        );
-
-        $this->app->bind(
-            SnapshotRepositoryInterface::class,
-            DatabaseSnapshotRepository::class
-        );
-
-        $this->app->bind(
-            LocationReaderInterface::class,
-            EloquentLocationReader::class
         );
     }
 
@@ -277,37 +158,6 @@ class InfrastructureServiceProvider extends ServiceProvider
     {
         if ($this->app->isProduction()) {
             URL::forceScheme('https');
-
-            if ($this->app->bound('request')) {
-                $request = $this->app->make('request');
-                $forwardedProto = trim((string) $request->headers->get('x-forwarded-proto', ''));
-                $forwardedHost = trim((string) $request->headers->get('x-forwarded-host', ''));
-                $requestHost = trim((string) $request->getHost());
-                $platformAppUrl = trim((string) config('app.platform_app_url', ''));
-                $platformHost = trim((string) parse_url($platformAppUrl, PHP_URL_HOST));
-                $platformScheme = trim((string) parse_url($platformAppUrl, PHP_URL_SCHEME));
-
-                $proto = $forwardedProto !== ''
-                    ? strtolower(trim(explode(',', $forwardedProto)[0]))
-                    : ($platformScheme !== '' ? strtolower($platformScheme) : 'https');
-                $host = $forwardedHost !== ''
-                    ? trim(explode(',', $forwardedHost)[0])
-                    : ($platformHost !== '' ? $platformHost : $requestHost);
-
-                if ($host !== '') {
-                    URL::forceRootUrl(sprintf('%s://%s', $proto !== '' ? $proto : 'https', $host));
-                }
-            }
-
-            return;
-        }
-
-        if ($this->app->environment('local') && $this->app->bound('request')) {
-            $request = $this->app->make('request');
-
-            if (filled($request->getSchemeAndHttpHost())) {
-                URL::forceRootUrl($request->getSchemeAndHttpHost());
-            }
         }
     }
 
@@ -317,9 +167,6 @@ class InfrastructureServiceProvider extends ServiceProvider
     protected function configureVite(): void
     {
         Vite::prefetch(concurrency: 3);
-        Vite::createAssetPathsUsing(
-            static fn (string $path, ?bool $secure = null): string => '/'.ltrim($path, '/')
-        );
 
         // Use CSP Nonce for scripts if requested
         Vite::useCspNonce();
@@ -383,119 +230,6 @@ class InfrastructureServiceProvider extends ServiceProvider
         // 8. NOTIFICATION POLLING
         RateLimiter::for('notifications', function (Request $request) {
             return Limit::perMinute(30)->by($request->user()?->id ?: $request->ip());
-        });
-
-        // 9. API VERIFICATION: Coupon validation, OTP verify, identity checks
-        // 10 attempts per minute per user/IP (stricter than global api)
-        RateLimiter::for('api.verification', function (Request $request) {
-            return Limit::perMinute(10)->by($request->user()?->id ?: $request->ip());
-        });
-
-        // 10. API OTP GENERATION: Prevent SMS bombing / cost overflow
-        // 3 attempts per minute per IP (same policy as otp-request)
-        RateLimiter::for('api.otp-generation', function (Request $request) {
-            return Limit::perMinute(3)->by($request->ip());
-        });
-
-        // 11. API TRANSACTIONS: Order creation, payment submission
-        // 20 attempts per minute per user/IP
-        RateLimiter::for('api.transactions', function (Request $request) {
-            return Limit::perMinute(20)->by($request->user()?->id ?: $request->ip());
-        });
-
-        // 12. PUBLIC WAITLIST: prevent appointment spam without blocking normal traffic.
-        RateLimiter::for('public-waitlist', function (Request $request) {
-            $tenant = $request->route('tenant');
-            $tenantSlug = is_object($tenant) && isset($tenant->slug)
-                ? (string) $tenant->slug
-                : (string) ($tenant ?: 'unknown');
-
-            return Limit::perMinute(6)->by($tenantSlug.'|'.$request->ip());
-        });
-
-        // 13. PUBLIC BOOKING: protect appointment creation from spam without blocking normal customers.
-        RateLimiter::for('public-booking', function (Request $request) {
-            $tenant = $request->route('tenant');
-            $tenantSlug = is_object($tenant) && isset($tenant->slug)
-                ? (string) $tenant->slug
-                : (string) ($tenant ?: 'unknown');
-
-            return [
-                Limit::perMinute(8)->by('booking:tenant|'.$tenantSlug),
-                Limit::perMinute(3)->by('booking:ip|'.$tenantSlug.'|'.$request->ip()),
-            ];
-        });
-
-        // 14. WEBHOOKS: allow provider retries/bursts while limiting noisy abuse.
-        RateLimiter::for('webhooks', function (Request $request) {
-            $signature = (string) (
-                $request->header('x-signature')
-                ?: $request->header('x-hub-signature-256')
-                ?: $request->header('svix-id')
-                ?: ''
-            );
-            $limits = [
-                Limit::perMinute(120)->by($request->path().'|'.$request->ip()),
-            ];
-
-            if ($signature !== '') {
-                $limits[] = Limit::perMinute(240)->by(hash('sha256', $request->path().'|'.$signature));
-            }
-
-            return $limits;
-        });
-
-        // 15. AI OPTIMIZATION: protect LLM cost even before budget enforcement.
-        RateLimiter::for('ai-optimization', function (Request $request) {
-            return Limit::perMinute(10)->by($request->user()?->id ?: $request->ip());
-        });
-
-        // 16. BUSINESS AI: private tenant RAG has both user and tenant buckets.
-        RateLimiter::for('business-ai', function (Request $request) {
-            $actor = (string) ($request->user()?->getAuthIdentifier() ?: $request->ip());
-            $tenant = (string) ($request->user()?->tenant_id ?? 'no-tenant');
-
-            return [
-                Limit::perMinute((int) config('ai-rag.private.rate_limits.per_user_minute', 20))
-                    ->by('business-ai:user|'.$actor),
-                Limit::perMinute((int) config('ai-rag.private.rate_limits.per_tenant_minute', 60))
-                    ->by('business-ai:tenant|'.$tenant),
-            ];
-        });
-
-        // 17. DIRECTORY GUIDE DAILY QUOTA (Freemium v1)
-        // 5 calls/day per authenticated user_id with date-scoped key.
-        RateLimiter::for('directory-guide-daily', function (Request $request) {
-            $limit = GuideQuota::limit();
-
-            return Limit::perDay($limit)
-                ->by(GuideQuota::bucketKey($request))
-                ->response(function (Request $request, array $headers) use ($limit) {
-                    $retryAfter = GuideQuota::retryAfterSeconds($request);
-                    $status = GuideQuota::status($request);
-                    $requestId = (string) ($request->header('x-request-id') ?: Str::uuid()->toString());
-
-                    GuideRequestTelemetry::recordQuotaExceeded(
-                        request: $request,
-                        requestId: $requestId,
-                        quotaStatus: $status,
-                        retryAfterSeconds: $retryAfter,
-                        endpoint: $request->is('api/v1/directory/guide/chat') ? 'guide_chat' : 'guide',
-                        traceId: (string) ($request->header('x-trace-id') ?: $requestId),
-                    );
-
-                    return response()->json([
-                        'error_code' => 'DIRECTORY_GUIDE_DAILY_LIMIT_EXCEEDED',
-                        'message' => 'Llegaste al limite diario de consultas de guia. Intenta nuevamente manana.',
-                        'retry_after_seconds' => $retryAfter,
-                        'reset_at' => $status['quota_reset_at'],
-                        'quota_limit' => $limit,
-                        'quota_remaining' => 0,
-                    ], 429, array_merge($headers, [
-                        'Retry-After' => (string) $retryAfter,
-                        'x-request-id' => $requestId,
-                    ]));
-                });
         });
     }
 }

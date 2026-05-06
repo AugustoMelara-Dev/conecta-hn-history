@@ -7,49 +7,39 @@ namespace App\Infrastructure\Catalog;
 use App\Domain\Catalog\Contracts\PublicCatalogReader;
 use App\Models\Product;
 use App\Models\Tenant;
-use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 /**
  * EloquentPublicCatalogReader - Implementation
  */
 final class EloquentPublicCatalogReader implements PublicCatalogReader
 {
-    public function getFeaturedProducts(int $limit = 6): array
+    public function getFeaturedProducts(int $limit = 6): Collection
     {
         return Product::where('is_active', true)
-            ->where('is_visible', true)
-            ->whereHas('tenant', static function ($query): void {
-                $query->published();
-            })
+            // ->where('is_featured', true) // Assuming field exists, or logic
             ->orderByDesc('created_at')
             ->limit($limit)
-            ->with(['category', 'tenant'])
-            ->get()
-            ->toArray();
+            ->with(['category', 'tenant']) // Assuming relations needed for display
+            ->get();
     }
 
-    public function getLocations(): array
+    public function getLocations(): Collection
     {
-        return $this->publishedTenants()
+        // For map display
+        return Tenant::where('is_active', true)
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
             ->select(['id', 'name', 'slug', 'latitude', 'longitude', 'address', 'category_id'])
             ->with('category')
-            ->get()
-            ->toArray();
+            ->get();
     }
 
-    public function getDirectoryListing(): array
+    public function getDirectoryListing(): Collection
     {
-        return $this->publishedTenants()
+        return Tenant::where('is_active', true)
             ->orderBy('name')
             ->with(['category', 'city'])
-            ->get()
-            ->toArray();
-    }
-
-    private function publishedTenants(): Builder
-    {
-        return Tenant::query()->published();
+            ->get();
     }
 }

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\EventVersioning\Upcasters;
 
-use App\Domain\Shared\Contracts\UpcasterInterface;
+use App\Infrastructure\EventVersioning\UpcasterInterface;
 
 /**
  * PaymentReportedV1ToV2Upcaster - Schema Evolution Example
@@ -42,15 +42,5 @@ final readonly class PaymentReportedV1ToV2Upcaster implements UpcasterInterface
         }
 
         return $newPayload;
-    }
-
-    public function fromVersion(): int
-    {
-        return 1;
-    }
-
-    public function toVersion(): int
-    {
-        return 2;
     }
 }

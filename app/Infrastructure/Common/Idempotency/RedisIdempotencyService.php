@@ -4,18 +4,18 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Common\Idempotency;
 
-use App\Application\Shared\Common\Exceptions\ConcurrentRequestException;
-use App\Application\Shared\Contracts\IdempotencyServiceInterface;
-use Illuminate\Contracts\Cache\Lock;
+use App\Application\Common\Contracts\IdempotencyServiceInterface;
+use App\Application\Common\Exceptions\ConcurrentRequestException;
 use Illuminate\Redis\Connections\Connection;
-use Illuminate\Support\Facades\Cache;
 
 /**
- * RedisIdempotencyService - Distributed idempotency with Redis.
+ * RedisIdempotencyService - Distributed Idempotency with Redis Backend
  *
- * This service is part of the last line of defense against duplicate
- * processing. It stores an envelope with {status, data} so requests can move
- * safely between PROCESSING and COMPLETED states.
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  CRITICAL: This service is the last defense against duplicate payments. ║
+ * ║  INTERFACE COMPLIANCE: Strictly implements IdempotencyServiceInterface. ║
+ * ║  PROTOCOL: Uses {status, data} envelope for state management.           ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final class RedisIdempotencyService implements IdempotencyServiceInterface
 {
@@ -38,6 +38,7 @@ final class RedisIdempotencyService implements IdempotencyServiceInterface
 
         $data = unserialize($value);
 
+        // Unwrap envelope if present
         if (is_array($data) && isset($data['status'])) {
             return $data['data'] ?? null;
         }
@@ -62,8 +63,7 @@ final class RedisIdempotencyService implements IdempotencyServiceInterface
             return $data['status'];
         }
 
-        // Legacy compatibility: if the value exists but no status is stored,
-        // treat it as a completed request.
+        // Legacy compatibility: If value exists but no status, assume COMPLETED
         return 'COMPLETED';
     }
 
@@ -78,12 +78,16 @@ final class RedisIdempotencyService implements IdempotencyServiceInterface
             'timestamp' => time(),
         ]);
 
+        // SETNX: Set if Not Exists
+        // Returns 1 if set, 0 if not set (already exists)
         $acquired = $this->redis->setnx($this->formatKey($key), $payload);
 
         if (! $acquired) {
+            // Key exists. It might be PROCESSING or COMPLETED.
             throw ConcurrentRequestException::forKey($key);
         }
 
+        // Set expiry for the processing lock
         $this->redis->expire($this->formatKey($key), $ttlSeconds);
     }
 
@@ -103,14 +107,6 @@ final class RedisIdempotencyService implements IdempotencyServiceInterface
             $ttlSeconds,
             $payload
         );
-    }
-
-    /**
-     * Exposes a framework-backed lock for atomic decorator execution.
-     */
-    public function lock(string $key, int $ttlSeconds = 60): Lock
-    {
-        return Cache::lock($this->formatKey($key).':lock', $ttlSeconds);
     }
 
     private function formatKey(string $key): string

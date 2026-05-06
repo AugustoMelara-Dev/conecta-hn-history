@@ -8,45 +8,44 @@ use App\Domain\Public\Contracts\LandingPageRepository;
 use App\Models\Category;
 use App\Models\City;
 use App\Models\Tenant;
+use Illuminate\Support\Collection;
 
 /**
  * EloquentLandingPageRepository - Infrastructure Implementation
  */
 final class EloquentLandingPageRepository implements LandingPageRepository
 {
-    public function getCategories(): array
+    public function getCategories(): Collection
     {
         return Category::query()
             ->where('is_active', true)
             ->orderBy('sort_order', 'asc')
             ->select(['id', 'name', 'slug', 'icon', 'color'])
             ->take(12)
-            ->get()
-            ->toArray();
+            ->get();
     }
 
-    public function getPopularCities(): array
+    public function getPopularCities(): Collection
     {
         return City::query()
             ->where('is_available', true)
             ->select(['id', 'name', 'slug', 'hero_image', 'department'])
-            ->withCount(['tenants' => fn ($q) => $q->published()])
+            ->withCount(['tenants' => fn ($q) => $q->where('is_active', true)])
             ->orderByDesc('tenants_count')
             ->take(6)
-            ->get()
-            ->toArray();
+            ->get();
     }
 
-    public function getLatestTenants(): array
+    public function getLatestTenants(): Collection
     {
         return Tenant::query()
-            ->published()
+            ->where('is_active', true)
+            ->where('status', 'approved')
             ->with(['category:id,name,color'])
             ->select(['id', 'name', 'slug', 'logo_path', 'category_id', 'created_at', 'subscription_status', 'plan_type'])
             ->latest()
             ->take(8)
-            ->get()
-            ->toArray();
+            ->get();
     }
 
     public function getRandomHeroImage(): ?string
@@ -60,7 +59,7 @@ final class EloquentLandingPageRepository implements LandingPageRepository
     public function getStats(): array
     {
         return [
-            'tenants' => Tenant::query()->published()->count(),
+            'tenants' => Tenant::where('is_active', true)->count(),
             'cities' => City::where('is_available', true)->count(),
             'categories' => Category::where('is_active', true)->count(),
         ];

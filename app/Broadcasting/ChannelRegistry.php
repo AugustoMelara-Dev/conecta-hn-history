@@ -98,16 +98,12 @@ final class ChannelRegistry
     /**
      * Create a private channel for tenant administrators (Sensitive).
      *
-     * @param  int|string  $tenantId  The tenant identifier (positive integer or UUID string)
+     * @param  int  $tenantId  The tenant identifier (must be > 0)
      * @return PrivateChannel Channel instance for WebSocket routing
      */
-    public static function tenantAdmins(int|string $tenantId): PrivateChannel
+    public static function tenantAdmins(int $tenantId): PrivateChannel
     {
-        if (is_int($tenantId)) {
-            self::validatePositiveId($tenantId, 'tenantId');
-        } elseif (trim($tenantId) === '') {
-            throw new InvalidArgumentException('tenantId must be a non-empty string');
-        }
+        self::validatePositiveId($tenantId, 'tenantId');
 
         return new PrivateChannel(self::TENANT_PREFIX.$tenantId.'.admins');
     }

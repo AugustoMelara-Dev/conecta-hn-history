@@ -24,7 +24,7 @@ final class UserMapper
             'name' => (string) $model->name,
             'email' => (string) $model->email,
             'password' => (string) $model->password,
-            'role' => (string) $model->getRawOriginal('role'),
+            'role' => (string) ($model->role->value ?? $model->role), // Handle Enum or String
             'tenant_id' => (string) $model->tenant_id,
             'avatar' => $model->avatar,
             'created_at' => $model->created_at?->format(DateTimeImmutable::ATOM),

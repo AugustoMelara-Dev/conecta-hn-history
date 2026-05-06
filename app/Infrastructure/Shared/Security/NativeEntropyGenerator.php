@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Shared\Security;
 
-use App\Application\Shared\Contracts\EntropyGeneratorInterface;
+use App\Application\Shared\Interfaces\EntropyGeneratorInterface;
 use Exception;
 
 class NativeEntropyGenerator implements EntropyGeneratorInterface

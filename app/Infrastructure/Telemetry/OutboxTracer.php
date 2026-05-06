@@ -26,15 +26,31 @@ final class OutboxTracer
 
     private const W3C_TRACEPARENT_VERSION = '00';
 
+    private const VACCINE_IMPACT_THRESHOLD = 0.30;
+
+    private const CONFIDENCE_LEVEL_Z = 1.96;
+
     private const HORIZON_SHORT = 6;
 
     private const HORIZON_MEDIUM = 60;
 
     private const HORIZON_LONG = 600;
 
+    private const HORIZON_HUGE = 1800; // 30 mins
+
+    private const QUORUM_THRESHOLD_PERCENT = 0.75;
+
+    private const FLEET_STATE_KEY = 'outbox:fleet:active_count';
+
+    private const REDIS_TIMEOUT_MS = 200;
+
+    private string $sovereignSeed;
+
     public function __construct(
         private readonly ConsensusHealthGovernor $governor
-    ) {}
+    ) {
+        $this->sovereignSeed = hash('sha256', gethostname().hrtime(true));
+    }
 
     /**
      * Helper to trace Infrastructure Recoveries (DB Gridlock, Zombie Workers).
@@ -68,7 +84,9 @@ final class OutboxTracer
      */
     public function recordHydraulicPressure(int $pressure): void
     {
-        $this->safeRedisSet('outbox:hydraulic_pressure', $pressure, 60);
+        // Update the gauge in Redis for real-time dashboarding
+        Redis::set('outbox:hydraulic_pressure', $pressure);
+        Redis::expire('outbox:hydraulic_pressure', 60);
 
         if ($pressure > 2500) {
             Log::info('HYDRAULIC PRESSURE RISING', ['pressure' => $pressure]);
@@ -166,11 +184,17 @@ final class OutboxTracer
         $now = time();
         $statusKey = $success ? 'success' : 'failure';
 
-        foreach ([self::HORIZON_SHORT, self::HORIZON_MEDIUM, self::HORIZON_LONG] as $window) {
-            $bucket = floor($now / $window);
-            $key = "outbox:horizon:{$window}:{$bucket}:{$fingerprint}:{$statusKey}";
-            $this->safeRedisIncrement($key, $window * 2);
-        }
+        // Pipeline Redis commands for performance
+        Redis::pipeline(function ($pipe) use ($fingerprint, $now, $statusKey) {
+            foreach ([self::HORIZON_SHORT, self::HORIZON_MEDIUM, self::HORIZON_LONG] as $window) {
+                // Bucketing by window size to prevent key explosion
+                $bucket = floor($now / $window);
+                $key = "outbox:horizon:{$window}:{$bucket}:{$fingerprint}:{$statusKey}";
+
+                $pipe->incr($key);
+                $pipe->expire($key, $window * 2);
+            }
+        });
     }
 
     private function monitorErrorAcceleration(string $resourceDomain = 'fault:app_logic'): void
@@ -188,13 +212,12 @@ final class OutboxTracer
             default => ['threshold' => 20, 'multiplier' => 0.5],
         };
 
-        if ($this->safeRedisIncrement($key, 120) > $config['threshold']) {
-            $prev = (int) $this->safeRedisGet("outbox:errors:{$resourceDomain}:".($min - 1), 0);
+        if (Redis::incr($key) > $config['threshold']) {
+            $prev = (int) Redis::get("outbox:errors:{$resourceDomain}:".($min - 1));
 
             // Dampening: Only signal if acceleration is real (growth > 0)
             if ($prev > 0) {
-                $current = (int) $this->safeRedisGet($key, 0);
-                $acceleration = ($current - $prev) / $prev;
+                $acceleration = (\Redis::get($key) - $prev) / $prev;
 
                 // Apply Surgical Multiplier
                 $signalStrength = $acceleration * $config['multiplier'];
@@ -204,48 +227,18 @@ final class OutboxTracer
                 }
             }
         }
+        \Redis::expire($key, 120);
     }
 
     public function emitPredictiveAggregationSpan($message, string $diagnosis): void
     {
         $fingerprint = sha1(($message->last_error ?? '').$diagnosis.$message->type);
-        if ($this->safeRedisIncrement("outbox:topology:breach:{$fingerprint}", 300) > 3) {
+        if (\Redis::incr("outbox:topology:breach:{$fingerprint}") > 3) {
             Cache::put("vaccine:{$fingerprint}", $diagnosis, 300);
-            $this->safeRedisSet("vaccine:{$fingerprint}", $diagnosis, 300);
-        }
-    }
-
-    private function safeRedisSet(string $key, mixed $value, int $ttlSeconds): void
-    {
-        try {
-            Redis::set($key, $value);
-            Redis::expire($key, $ttlSeconds);
-        } catch (\Throwable) {
-            Cache::put($key, $value, $ttlSeconds);
-        }
-    }
-
-    private function safeRedisIncrement(string $key, int $ttlSeconds): int
-    {
-        try {
-            $value = (int) Redis::incr($key);
-            Redis::expire($key, $ttlSeconds);
-
-            return $value;
-        } catch (\Throwable) {
-            $value = ((int) Cache::get($key, 0)) + 1;
-            Cache::put($key, $value, $ttlSeconds);
-
-            return $value;
-        }
-    }
-
-    private function safeRedisGet(string $key, mixed $default = null): mixed
-    {
-        try {
-            return Redis::get($key) ?? $default;
-        } catch (\Throwable) {
-            return Cache::get($key, $default);
+            try {
+                \Redis::setex("vaccine:{$fingerprint}", 300, $diagnosis);
+            } catch (\Throwable $e) {
+            }
         }
     }
 }

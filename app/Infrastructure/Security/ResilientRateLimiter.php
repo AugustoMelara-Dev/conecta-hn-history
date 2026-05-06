@@ -4,14 +4,13 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Security;
 
-use App\Application\Shared\Contracts\ResilientRateLimiterInterface;
 use Illuminate\Cache\RateLimiter;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
 use Throwable;
 
-final readonly class ResilientRateLimiter implements ResilientRateLimiterInterface
+final readonly class ResilientRateLimiter
 {
     public function __construct(
         private RateLimiter $limiter

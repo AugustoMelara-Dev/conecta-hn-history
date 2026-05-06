@@ -13,12 +13,12 @@ use DateTimeImmutable;
 /**
  * EloquentOtpRepository - Tenant-Isolated Data Mapper
  *
- * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
- * â•‘  MULTI-TENANT: All queries filter by tenant_id (Axiom A).               â•‘
- * â•‘  ATOMIC WRITE: Uses database-level increments for concurrency safety.   â•‘
- * â•‘  STRICT HYDRATION: Maps Eloquent Models manually to Pure Entities.      â•‘
- * â•‘  INFRASTRUCTURE BARRIER: Translates Carbon -> DateTimeImmutable.        â•‘
- * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  MULTI-TENANT: All queries filter by tenant_id (Axiom A).               ║
+ * ║  ATOMIC WRITE: Uses database-level increments for concurrency safety.   ║
+ * ║  STRICT HYDRATION: Maps Eloquent Models manually to Pure Entities.      ║
+ * ║  INFRASTRUCTURE BARRIER: Translates Carbon -> DateTimeImmutable.        ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final class EloquentOtpRepository implements OtpRepositoryInterface
 {
@@ -34,6 +34,7 @@ final class EloquentOtpRepository implements OtpRepositoryInterface
             ->where('identifier', $identifier)
             ->where('tenant_id', $tenantId) // TENANT ISOLATION
             ->where('expires_at', '>', Carbon::now()) // Not expired
+            ->whereNull('used_at') // Not consumed
             ->first();
 
         if ($model === null) {
@@ -49,7 +50,7 @@ final class EloquentOtpRepository implements OtpRepositoryInterface
      * SECURITY: OTP record MUST be associated with tenantId.
      */
     public function create(
-        ?string $userId,
+        ?int $userId,
         string $identifier,
         string $tenantId,
         string $hashedCode,
@@ -58,8 +59,7 @@ final class EloquentOtpRepository implements OtpRepositoryInterface
         ?string $userAgent,
         int $expiryMinutes
     ): OtpEntity {
-        $model = new OneTimePassword;
-        $model->forceFill([
+        $model = OneTimePassword::create([
             'user_id' => $userId,
             'identifier' => $identifier,
             'tenant_id' => $tenantId, // TENANT ISOLATION
@@ -70,7 +70,6 @@ final class EloquentOtpRepository implements OtpRepositoryInterface
             'expires_at' => Carbon::now()->addMinutes($expiryMinutes),
             'attempts' => 0,
         ]);
-        $model->save();
 
         return $this->hydrate($model);
     }
@@ -95,17 +94,10 @@ final class EloquentOtpRepository implements OtpRepositoryInterface
             ->where('attempts', '<', $maxAttempts)
             ->increment('attempts');
 
-        // Affected rows will be 0 if the record doesn't exist OR if attempts >= maxAttempts.
+        // Affected rows will be 0 if the record doesn't exist OR if attempts >= maxAttempts
         if ($affected === 0) {
-            throw new \App\Domain\Auth\Exceptions\MaxOtpAttemptsExceededException;
-        }
-
-        // Re-read the persisted counter so concurrent readers do not rely on stale in-memory state.
-        $currentAttempts = (int) OneTimePassword::query()
-            ->where('id', $otpId)
-            ->value('attempts');
-
-        if ($currentAttempts >= $maxAttempts) {
+            // We assume it's exceeded because existence is usually checked prior, but even if not,
+            // failing secure is better.
             throw new \App\Domain\Auth\Exceptions\MaxOtpAttemptsExceededException;
         }
     }

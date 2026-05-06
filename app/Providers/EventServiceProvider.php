@@ -23,7 +23,7 @@ class EventServiceProvider extends ServiceProvider
      *
      * Mapped for Zero Downtime Migration (V1 -> V2).
      *
-     * @var array<string, array<int, string>>
+     * @var array
      */
     protected $listen = [
         // Canonical (V2)
@@ -35,41 +35,10 @@ class EventServiceProvider extends ServiceProvider
         \App\Domain\Billing\Events\PaymentReported::class => [
             \App\Application\Billing\Listeners\PromotePaymentEvidence::class,
         ],
-        \App\Domain\Billing\Events\PaymentWebhookReceived::class => [
-            \App\Application\Billing\Listeners\ProcessPaymentWebhookReceived::class,
-        ],
-        \App\Events\PaymentApproved::class => [
-            \App\Listeners\UpdateTenantSubscription::class,
-        ],
 
         // APPOINTMENT NOTIFICATIONS
         \App\Events\Appointment\AppointmentCreated::class => [
             \App\Listeners\SendAppointmentConfirmation::class,
-            \App\Listeners\NotifyAppointmentBookedListener::class,
-        ],
-
-        \App\Events\Order\OrderDelivered::class => [
-            \App\Listeners\NotifyRepeatPurchaseOpportunityListener::class,
-        ],
-
-        // DYNAMIC FORMS PLATFORM EVENTS
-        \App\Events\DynamicForms\SchemaPublished::class => [
-            \App\Listeners\DynamicForms\LogDynamicFormsEvent::class,
-            \App\Listeners\DynamicForms\InvalidateDynamicCompiledCache::class,
-            \App\Listeners\DynamicForms\PersistDynamicConfigAudit::class,
-        ],
-        \App\Events\DynamicForms\TemplatePublished::class => [
-            \App\Listeners\DynamicForms\LogDynamicFormsEvent::class,
-            \App\Listeners\DynamicForms\InvalidateDynamicCompiledCache::class,
-            \App\Listeners\DynamicForms\PersistDynamicConfigAudit::class,
-        ],
-        \App\Events\DynamicForms\TenantBlueprintCloned::class => [
-            \App\Listeners\DynamicForms\LogDynamicFormsEvent::class,
-            \App\Listeners\DynamicForms\InvalidateDynamicCompiledCache::class,
-            \App\Listeners\DynamicForms\PersistDynamicConfigAudit::class,
-        ],
-        \App\Events\DynamicForms\DynamicRecordPersisted::class => [
-            \App\Listeners\DynamicForms\LogDynamicFormsEvent::class,
         ],
 
         // INTERACTIONS DOMAIN
@@ -93,8 +62,6 @@ class EventServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        if (config('app.e2e_browser_release')) {
-            $this->app['events']->forget(\App\Events\Appointment\AppointmentCreated::class);
-        }
+        //
     }
 }

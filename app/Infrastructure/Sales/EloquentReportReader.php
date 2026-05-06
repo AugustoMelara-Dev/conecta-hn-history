@@ -7,6 +7,7 @@ namespace App\Infrastructure\Sales;
 use App\Domain\Sales\Contracts\ReportReader;
 use App\Models\Order;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 
 /**
  * EloquentReportReader - Eloquent Implementation of ReportReader
@@ -22,19 +23,18 @@ final class EloquentReportReader implements ReportReader
     /**
      * {@inheritdoc}
      */
-    public function getSalesData(int|string $tenantId, \DateTimeImmutable $startDate, \DateTimeImmutable $endDate): array
+    public function getSalesData(int $tenantId, Carbon $startDate, Carbon $endDate): Collection
     {
-        $carbonStart = Carbon::instance($startDate);
-        $carbonEnd = Carbon::instance($endDate);
+        // DEFENSIVE: Explicit cast in case of ValueObject leakage
+        $tenantId = (int) $tenantId;
 
         return Order::withoutGlobalScopes()
-            ->where('tenant_id', (string) $tenantId)
-            ->whereBetween('created_at', [$carbonStart, $carbonEnd])
+            ->where('tenant_id', $tenantId)
+            ->whereBetween('created_at', [$startDate, $endDate])
             ->whereIn('status', ['completed', 'paid', 'delivered'])
             ->with('items')
             ->orderByDesc('created_at')
-            ->get()
-            ->toArray();
+            ->get();
     }
 
     /**
@@ -44,14 +44,14 @@ final class EloquentReportReader implements ReportReader
      * Otherwise, executes a fresh database query (fallback for standalone usage).
      */
     public function getSalesSummary(
-        int|string $tenantId,
-        \DateTimeImmutable $startDate,
-        \DateTimeImmutable $endDate,
-        ?array $preloadedOrders = null
+        int $tenantId,
+        Carbon $startDate,
+        Carbon $endDate,
+        ?Collection $preloadedOrders = null
     ): array {
-        $orders = $preloadedOrders !== null
-            ? collect($preloadedOrders)
-            : collect($this->getSalesData($tenantId, $startDate, $endDate));
+        // Use preloaded data if available (O(1) SQL queries)
+        // Otherwise, fetch fresh data (1 SQL query - fallback)
+        $orders = $preloadedOrders ?? $this->getSalesData($tenantId, $startDate, $endDate);
 
         $totalRevenue = (float) $orders->sum('total');
         $orderCount = $orders->count();

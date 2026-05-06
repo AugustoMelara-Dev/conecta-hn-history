@@ -22,31 +22,11 @@ class SocialIdentityModel extends Model
 
     protected $fillable = [
         'user_id',
-        'user_type',
         'provider_name',
         'provider_id',
         'token',
-        'refresh_token',
-        'token_expires_at',
         'avatar',
     ];
-
-    protected $hidden = [
-        'token',
-        'refresh_token',
-    ];
-
-    /**
-     * @return array<string, string>
-     */
-    protected function casts(): array
-    {
-        return [
-            'token' => 'encrypted',
-            'refresh_token' => 'encrypted',
-            'token_expires_at' => 'datetime',
-        ];
-    }
 
     /**
      * Relationship: Identity belongs to User.

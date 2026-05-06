@@ -11,14 +11,16 @@ use Illuminate\Support\Facades\Storage;
 /**
  * LaravelMediaStorageService - Infrastructure Adapter for Media Storage
  *
- * Uses Laravel's Storage facade with the configured media disk.
+ * Uses Laravel's Storage facade with the 'public' disk.
  */
 final class LaravelMediaStorageService implements MediaStorageServiceInterface
 {
+    private const DISK = 'public';
+
     /**
      * {@inheritDoc}
      */
-    public function storeLogo(string $tenantId, FileTransferObject $file): string
+    public function storeLogo(int $tenantId, FileTransferObject $file): string
     {
         return $this->storeFile($tenantId, 'logos', $file);
     }
@@ -26,7 +28,7 @@ final class LaravelMediaStorageService implements MediaStorageServiceInterface
     /**
      * {@inheritDoc}
      */
-    public function storeBanner(string $tenantId, FileTransferObject $file): string
+    public function storeBanner(int $tenantId, FileTransferObject $file): string
     {
         return $this->storeFile($tenantId, 'banners', $file);
     }
@@ -40,28 +42,23 @@ final class LaravelMediaStorageService implements MediaStorageServiceInterface
             return true;
         }
 
-        return Storage::disk($this->disk())->delete($path);
+        return Storage::disk(self::DISK)->delete($path);
     }
 
     /**
      * Store file with consistent naming.
      */
-    private function storeFile(string $tenantId, string $subfolder, FileTransferObject $file): string
+    private function storeFile(int $tenantId, string $subfolder, FileTransferObject $file): string
     {
         $directory = "tenants/{$tenantId}/{$subfolder}";
         $filename = time().'_'.$file->originalName;
 
-        Storage::disk($this->disk())->putFileAs(
+        Storage::disk(self::DISK)->putFileAs(
             $directory,
             $file->tempPath,
             $filename
         );
 
         return "{$directory}/{$filename}";
-    }
-
-    private function disk(): string
-    {
-        return (string) config('filesystems.media_disk', env('MEDIA_DISK', 'media'));
     }
 }

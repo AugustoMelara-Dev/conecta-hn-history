@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Common\Idempotency;
 
-use App\Application\Shared\Common\Exceptions\ConcurrentRequestException;
-use App\Application\Shared\Common\Exceptions\IdempotencyKeyReuseException;
-use App\Application\Shared\Contracts\AtomicIdempotencyInterface;
+use App\Application\Common\Contracts\AtomicIdempotencyInterface;
+use App\Application\Common\Exceptions\ConcurrentRequestException;
+use App\Application\Common\Exceptions\IdempotencyKeyReuseException;
 use Closure;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\QueryException;
@@ -69,13 +69,13 @@ final class AtomicIdempotencyService implements AtomicIdempotencyInterface
 
         } catch (QueryException $e) {
             // 5. Handle Collision (Unique Constraint Violation)
-            if ($this->isDuplicateKeyViolation($e)) {
+            if ($e->getCode() === '23000' || $e->errorInfo[1] === 1062) {
                 // Another process has this key.
                 // Rolling back cleans up the 'PROCESSING' row if this transaction created it
                 // (though in collision case, it failed to create it).
                 $this->db->rollBack();
 
-                return $this->handleCollision($idempotencyKey, $tenantId, $commandHash, $operation);
+                return $this->handleCollision($idempotencyKey, $commandHash);
             }
 
             // Other DB error? Rollback and rethrow.
@@ -94,7 +94,7 @@ final class AtomicIdempotencyService implements AtomicIdempotencyInterface
         }
     }
 
-    private function handleCollision(string $key, string $tenantId, string $hash, Closure $operation): mixed
+    private function handleCollision(string $key, string $hash): mixed
     {
         // Read the existing state
         $record = $this->db->table(self::TABLE)
@@ -109,7 +109,7 @@ final class AtomicIdempotencyService implements AtomicIdempotencyInterface
 
         // Security Check: Hash Integrity
         if ($record->command_hash !== $hash) {
-            throw new IdempotencyKeyReuseException('Idempotency key reused with different payload');
+            throw new IdempotencyKeyReuseException('Idempotency key reused for different payload.');
         }
 
         if ($record->status === 'COMPLETED') {
@@ -128,10 +128,6 @@ final class AtomicIdempotencyService implements AtomicIdempotencyInterface
         }
 
         if ($record->status === 'PROCESSING') {
-            if ($this->recoverStaleProcessingLock($record, $key, $tenantId, $hash)) {
-                return $this->execute($key, $tenantId, $hash, $operation);
-            }
-
             throw new ConcurrentRequestException('Request is currently being processed by another worker.');
         }
 
@@ -140,41 +136,5 @@ final class AtomicIdempotencyService implements AtomicIdempotencyInterface
         }
 
         return null;
-    }
-
-    private function recoverStaleProcessingLock(object $record, string $key, string $tenantId, string $hash): bool
-    {
-        $ttlSeconds = max(1, (int) config('auth.idempotency_processing_lock_ttl_seconds', 60));
-        $updatedAt = $record->updated_at ?? null;
-
-        if ($updatedAt === null || \Illuminate\Support\Carbon::parse($updatedAt)->greaterThan(now()->subSeconds($ttlSeconds))) {
-            return false;
-        }
-
-        return $this->db->table(self::TABLE)
-            ->where('idempotency_key', $key)
-            ->where('tenant_id', $tenantId)
-            ->where('command_hash', $hash)
-            ->where('status', 'PROCESSING')
-            ->where('updated_at', '<=', now()->subSeconds($ttlSeconds))
-            ->delete() === 1;
-    }
-
-    private function isDuplicateKeyViolation(QueryException $e): bool
-    {
-        $sqlState = (string) ($e->errorInfo[0] ?? $e->getCode());
-        $driverCode = (int) ($e->errorInfo[1] ?? 0);
-        $message = strtolower($e->getMessage());
-
-        if ($driverCode === 1062 || $sqlState === '23505') {
-            return true;
-        }
-
-        if ($sqlState === '23000') {
-            return str_contains($message, 'duplicate')
-                || str_contains($message, 'unique constraint');
-        }
-
-        return false;
     }
 }

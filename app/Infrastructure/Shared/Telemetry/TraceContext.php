@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Shared\Telemetry;
 
-use App\Application\Shared\Contracts\TraceContextInterface;
 use Illuminate\Http\Request;
 use Ramsey\Uuid\Uuid;
 
@@ -15,7 +14,7 @@ use Ramsey\Uuid\Uuid;
  * Acts as a Singleton/Scoped service to propagate context across layers
  * without pollution of method signatures.
  */
-final class TraceContext implements TraceContextInterface
+final class TraceContext
 {
     private string $traceId;
 

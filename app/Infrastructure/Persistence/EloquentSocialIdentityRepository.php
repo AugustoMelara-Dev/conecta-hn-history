@@ -6,10 +6,8 @@ namespace App\Infrastructure\Persistence;
 
 use App\Domain\Identity\Entities\UserEntity;
 use App\Domain\Identity\Repositories\SocialIdentityRepositoryInterface;
-use App\Domain\Shared\Exceptions\DuplicateEntityException;
 use App\Infrastructure\Persistence\Mappers\UserMapper;
 use App\Infrastructure\Persistence\Models\SocialIdentityModel;
-use App\Models\User as UserModel;
 
 /**
  * EloquentSocialIdentityRepository - Strict Implementation
@@ -32,14 +30,12 @@ final class EloquentSocialIdentityRepository implements SocialIdentityRepository
             ->first();
 
         // 1. Guard Clause: No Identity or No User Link
-        $user = $identity?->user;
-
-        if (! $user instanceof UserModel) {
+        if ($identity === null || $identity->user === null) {
             return null;
         }
 
         // 2. Mapper Translation (Infrastructure -> Domain)
-        return $this->mapper->toDomain($user);
+        return $this->mapper->toDomain($identity->user);
     }
 
     public function linkIdentity(
@@ -47,55 +43,20 @@ final class EloquentSocialIdentityRepository implements SocialIdentityRepository
         string $provider,
         string $providerId,
         ?string $token = null,
-        ?string $refreshToken = null,
-        ?\DateTimeInterface $tokenExpiresAt = null,
         ?string $avatar = null
     ): void {
-        $identity = SocialIdentityModel::query()
-            ->where('provider_name', $provider)
-            ->where('provider_id', $providerId)
-            ->first();
-
-        if ($identity !== null && (string) $identity->getAttribute('user_id') !== $user->id()) {
-            throw new DuplicateEntityException('Social identity already linked to another user.');
-        }
-
-        SocialIdentityModel::query()->updateOrCreate(
+        // ENCAPSULATION RESPECT: Use Getters ($user->id()), never properties.
+        SocialIdentityModel::updateOrCreate(
             [
                 'provider_name' => $provider,
                 'provider_id' => $providerId,
             ],
             [
-                'user_id' => $user->id(),
-                'user_type' => 'App\Models\User',
+                'user_id' => $user->id(), // Strict UUID from Domain
+                'user_type' => 'App\Models\User', // Optional polymorphic support if needed, assuming standard FK for now
                 'token' => $token,
-                'refresh_token' => $refreshToken,
-                'token_expires_at' => $tokenExpiresAt,
                 'avatar' => $avatar,
             ]
         );
-    }
-
-    public function updateToken(
-        string $provider,
-        string $providerId,
-        ?string $token,
-        ?string $refreshToken = null,
-        ?\DateTimeInterface $tokenExpiresAt = null,
-    ): void {
-        $attributes = ['token' => $token];
-
-        if ($refreshToken !== null) {
-            $attributes['refresh_token'] = $refreshToken;
-        }
-
-        if ($tokenExpiresAt !== null) {
-            $attributes['token_expires_at'] = $tokenExpiresAt;
-        }
-
-        SocialIdentityModel::query()
-            ->where('provider_name', $provider)
-            ->where('provider_id', $providerId)
-            ->update($attributes);
     }
 }

@@ -59,10 +59,10 @@ class RescueStuckProofsCommand extends Command
     {
         $stuckPayments = $this->paymentRepository->findPaymentsWithTemporaryProofs(50);
 
-        if ($stuckPayments === []) {
+        if ($stuckPayments->isEmpty()) {
             $this->info('No qualified stuck funds found. System healthy or busy.');
 
-            return self::SUCCESS;
+            return 0;
         }
 
         $processed = 0;
@@ -78,7 +78,7 @@ class RescueStuckProofsCommand extends Command
 
         $this->info("Rescue Run Complete. Processed: {$processed}, Deferred: {$deferred}");
 
-        return self::SUCCESS;
+        return 0;
     }
 
     private function processRescue(PaymentEntity $initialPayment): bool
@@ -170,7 +170,9 @@ class RescueStuckProofsCommand extends Command
                 return false;
             }
 
-        } while (true);
+        } while ($attempts < self::MAX_ATTEMPTS);
+
+        return false;
     }
 
     private function tryInferenceRecovery(string $tempPath): ?string

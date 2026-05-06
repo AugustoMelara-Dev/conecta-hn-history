@@ -43,7 +43,7 @@ class ForcePromotePaymentCommand extends Command
 
     public function handle(): int
     {
-        $paymentId = (string) $this->argument('payment_id');
+        $paymentId = $this->argument('payment_id');
         $this->info("Initializing Surgical Recovery for Payment: {$paymentId}");
 
         try {
@@ -77,7 +77,7 @@ class ForcePromotePaymentCommand extends Command
                 if ($storage->exists($currentPath)) {
                     $this->info('✔ Status Healthy: Path is permanent and file exists. No action needed.');
 
-                    return self::SUCCESS;
+                    return 0;
                 } else {
                     $this->warn("⚠ Corruption: DB says permanent, but file missing from [{$diskName}]. Cannot auto-recover.");
 
@@ -161,15 +161,17 @@ class ForcePromotePaymentCommand extends Command
                         $this->error("❌ Failed to update DB after multiple retries. THE FILE IS MOVED TO: {$permanentPath}");
                         $this->error("MANUAL FIX REQUIRED: Update payments SET proof_url='{$permanentPath}' WHERE id='{$paymentId}'");
 
-                        return self::FAILURE;
+                        return 1;
                     }
                 }
-            } while (true);
+            } while ($attempts < self::MAX_RETRIES);
 
         } catch (Throwable $e) {
             $this->error('Recovery Failed: '.$e->getMessage());
 
-            return self::FAILURE;
+            return 1;
         }
+
+        return 1;
     }
 }

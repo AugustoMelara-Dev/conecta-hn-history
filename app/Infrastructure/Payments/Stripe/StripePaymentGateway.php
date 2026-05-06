@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Payments\Stripe;
 
-use App\Domain\Billing\DTOs\ChargeResult;
-use App\Domain\Billing\DTOs\PaymentIntentResult;
-use App\Domain\Billing\Exceptions\PaymentDeclinedException;
-use App\Domain\Billing\Exceptions\PaymentGatewayUnavailableException;
-use App\Domain\Billing\Exceptions\UnknownPaymentException;
-use App\Domain\Billing\Gateways\PaymentGatewayInterface;
+use App\Domain\Payments\DTOs\ChargeResult;
+use App\Domain\Payments\Exceptions\PaymentDeclinedException;
+use App\Domain\Payments\Exceptions\PaymentGatewayUnavailableException;
+use App\Domain\Payments\Exceptions\UnknownPaymentException;
+use App\Domain\Payments\Gateways\PaymentGatewayInterface;
 use Illuminate\Support\Facades\Log;
 use Stripe\Exception\ApiConnectionException;
 use Stripe\Exception\AuthenticationException;
@@ -35,69 +34,6 @@ final class StripePaymentGateway implements PaymentGatewayInterface
     public function __construct()
     {
         Stripe::setApiKey(config('services.stripe.secret'));
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function createPaymentIntent(
-        int $amountInCents,
-        string $currency,
-        string $idempotencyKey,
-        array $metadata = []
-    ): PaymentIntentResult {
-        try {
-            $intent = PaymentIntent::create([
-                'amount' => $amountInCents,
-                'currency' => strtolower($currency),
-                'automatic_payment_methods' => [
-                    'enabled' => true,
-                ],
-                'metadata' => $metadata,
-            ], [
-                'idempotency_key' => $idempotencyKey,
-            ]);
-
-            if ($intent->status === 'succeeded') {
-                return PaymentIntentResult::paid($intent->id);
-            }
-
-            if (is_string($intent->client_secret) && $intent->client_secret !== '') {
-                return PaymentIntentResult::requiresPayment($intent->id, $intent->client_secret);
-            }
-
-            return PaymentIntentResult::failure("Payment intent status: {$intent->status}");
-        } catch (InvalidRequestException $e) {
-            Log::error('Invalid Stripe payment intent request', [
-                'message' => $e->getMessage(),
-                'param' => $e->getStripeParam(),
-            ]);
-
-            throw new UnknownPaymentException(
-                message: 'Invalid payment intent configuration',
-                previous: $e
-            );
-        } catch (AuthenticationException|ApiConnectionException|RateLimitException $e) {
-            Log::error('Stripe payment intent unavailable', [
-                'exception' => get_class($e),
-                'message' => $e->getMessage(),
-            ]);
-
-            throw new PaymentGatewayUnavailableException(
-                message: 'Payment service is temporarily unavailable',
-                previous: $e
-            );
-        } catch (\Throwable $e) {
-            Log::error('Unexpected payment intent error', [
-                'exception' => get_class($e),
-                'message' => $e->getMessage(),
-            ]);
-
-            throw new UnknownPaymentException(
-                message: 'An unexpected error occurred while preparing payment',
-                previous: $e
-            );
-        }
     }
 
     /**
@@ -136,13 +72,9 @@ final class StripePaymentGateway implements PaymentGatewayInterface
                 return ChargeResult::failure("Payment status: {$intent->status}");
             }
 
-            /** @var array<string, mixed> $intentPayload */
-            $intentPayload = $intent->toArray();
-            $receiptUrl = data_get($intentPayload, 'charges.data.0.receipt_url');
-
             return ChargeResult::success(
                 transactionId: $intent->id,
-                receiptUrl: is_string($receiptUrl) ? $receiptUrl : null,
+                receiptUrl: $intent->charges?->data[0]?->receipt_url,
             );
 
         } catch (CardException $e) {

@@ -50,13 +50,4 @@ final class ManualSubscriptionGateway implements SubscriptionGatewayInterface
 
         return true;
     }
-
-    public function verifyStatus(string $reference): string
-    {
-        Log::info('Manual subscription status check', [
-            'reference' => $reference,
-        ]);
-
-        return 'PENDING';
-    }
 }

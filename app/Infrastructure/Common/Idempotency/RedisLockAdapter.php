@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Common\Idempotency;
 
-use App\Application\Shared\Common\Exceptions\LockTimeoutException;
-use App\Application\Shared\Contracts\LockInterface;
+use App\Application\Common\Contracts\LockInterface;
+use App\Application\Common\Exceptions\LockTimeoutException;
 use Illuminate\Redis\Connections\Connection;
 use Illuminate\Support\Str;
 
@@ -31,11 +31,7 @@ final readonly class RedisLockAdapter implements LockInterface
             return redis.call('SET', KEYS[1], ARGV[1], 'NX', 'PX', ARGV[2])
         LUA;
 
-        $result = $this->redis->command('eval', [
-            $script,
-            [$this->getLockKey(), $this->ownerToken, 10000],
-            1,
-        ]);
+        $result = $this->redis->eval($script, 1, $this->getLockKey(), $this->ownerToken, 10000);
 
         // Redis SET ... NX PX returns OK (string) or 1 (true) on success, nil (null) or false on failure.
         $acquired = ($result === true || $result === 'OK' || $result === 1);
@@ -92,11 +88,7 @@ final readonly class RedisLockAdapter implements LockInterface
             end
         LUA;
 
-        $this->redis->command('eval', [
-            $script,
-            [$this->getLockKey(), $this->ownerToken],
-            1,
-        ]);
+        $this->redis->eval($script, 1, $this->getLockKey(), $this->ownerToken);
     }
 
     private function getLockKey(): string

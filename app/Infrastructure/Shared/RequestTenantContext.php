@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace App\Infrastructure\Shared;
 
 use App\Domain\Shared\Contracts\TenantContext;
-use App\Domain\TenantGovernance\Enums\TenantPlan;
-use App\Models\Tenant;
 use Illuminate\Http\Request;
 
 /**
@@ -20,32 +18,6 @@ final class RequestTenantContext implements TenantContext
     public function __construct(
         private readonly Request $request
     ) {}
-
-    /**
-     * {@inheritDoc}
-     */
-    public function getTenantUuid(): string
-    {
-        $tenant = $this->resolveTenantModel();
-
-        if ($tenant instanceof Tenant) {
-            return (string) $tenant->getKey();
-        }
-
-        $user = $this->request->user();
-
-        if (! $user) {
-            throw new \RuntimeException('Tenant Context Error: User not authenticated.');
-        }
-
-        $tenantUuid = $user->tenant_uuid ?? $user->tenant_id ?? ($user->tenant->uuid ?? null) ?? ($user->tenant?->getKey() ?? null);
-
-        if (! $tenantUuid) {
-            throw new \RuntimeException('Tenant Context Error: User has no associated tenant UUID.');
-        }
-
-        return (string) $tenantUuid;
-    }
 
     /**
      * {@inheritDoc}
@@ -76,43 +48,20 @@ final class RequestTenantContext implements TenantContext
      */
     public function getTenantData(?array $only = null): array
     {
-        $tenant = $this->resolveTenantModel();
+        $user = $this->request->user();
 
-        if (! $tenant instanceof Tenant) {
+        if (! $user || ! $user->tenant) {
             throw new \RuntimeException('Tenant Context Error: Tenant not available.');
         }
 
-        $payload = [
-            'id' => $tenant->id,
-            'name' => $tenant->name,
-            'slug' => $tenant->slug,
-            'plan_type' => $tenant->getRawOriginal('plan_type') ?: ($tenant->getAttributes()['plan_type'] ?? Tenant::PLAN_SEMILLA),
-            'is_paid_plan' => in_array(
-                (string) ($tenant->getRawOriginal('plan_type') ?: ($tenant->getAttributes()['plan_type'] ?? Tenant::PLAN_SEMILLA)),
-                [TenantPlan::PRO->value, Tenant::PLAN_CRECIMIENTO, Tenant::PLAN_COSECHA, 'enterprise'],
-                true
-            ),
-        ];
+        $tenant = $user->tenant;
 
+        // If $only is specified, filter to those keys only
         if ($only !== null) {
-            return array_intersect_key($payload, array_flip($only));
+            return $tenant->only($only);
         }
 
-        return $payload;
-    }
-
-    private function resolveTenantModel(): ?Tenant
-    {
-        if (app()->bound('currentTenant')) {
-            $tenant = app('currentTenant');
-
-            if ($tenant instanceof Tenant) {
-                return $tenant;
-            }
-        }
-
-        $user = $this->request->user();
-
-        return $user?->tenant instanceof Tenant ? $user->tenant : null;
+        // Default: return essential public fields
+        return $tenant->only(['id', 'name', 'slug', 'is_pro']);
     }
 }

@@ -146,7 +146,7 @@ final class OutboxCoronerCommand extends Command
         }
 
         // Apply Physical Gaussian Delay for De-Synchronization
-        if ($delayMs > 0) {
+        if ($isolatedCount > 0 && $delayMs > 0) {
             usleep((int) ($delayMs * 1000));
         }
 
@@ -176,7 +176,7 @@ final class OutboxCoronerCommand extends Command
     private function getFleetSize(): int
     {
         try {
-            $count = Redis::zcount(self::FLEET_STATE_KEY, (string) (time() - self::SIGNAL_STALE_THRESHOLD_S), '+inf');
+            $count = Redis::zcount(self::FLEET_STATE_KEY, time() - self::SIGNAL_STALE_THRESHOLD_S, '+inf');
 
             return max(1, $count);
         } catch (\Throwable $e) {

@@ -6,32 +6,35 @@ namespace App\Infrastructure\Repositories\Sales;
 
 use App\Domain\Sales\Entities\LeadEntity;
 use App\Domain\Sales\Repositories\LeadRepositoryInterface;
-use App\Infrastructure\Sales\Mappers\LeadMapper;
 use App\Models\Lead;
 
+/**
+ * EloquentLeadRepository - Infrastructure Adapter for Lead Persistence
+ *
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  DATA MAPPER: Converts Eloquent models to domain entities.              ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
+ */
 final class EloquentLeadRepository implements LeadRepositoryInterface
 {
     /**
      * {@inheritDoc}
      */
     public function createFromInteraction(
-        string $tenantId,
+        int $tenantId,
         ?int $productId,
         string $source,
-        ?string $message = null,
-        ?string $sessionId = null
+        ?string $message = null
     ): LeadEntity {
         $model = Lead::create([
             'tenant_id' => $tenantId,
-            'name' => $source === 'whatsapp_click' ? 'Lead desde WhatsApp' : 'Lead web',
             'product_id' => $productId,
             'source' => $source,
-            'session_id' => $sessionId,
-            'message' => $message ?? 'Clic en WhatsApp desde el catalogo',
+            'message' => $message ?? 'Clic en WhatsApp desde el Catálogo',
             'status' => 'new',
         ]);
 
-        return LeadMapper::toDomain($model);
+        return LeadEntity::fromModel($model);
     }
 
     /**
@@ -41,6 +44,6 @@ final class EloquentLeadRepository implements LeadRepositoryInterface
     {
         $model = Lead::find($id);
 
-        return $model ? LeadMapper::toDomain($model) : null;
+        return $model ? LeadEntity::fromModel($model) : null;
     }
 }

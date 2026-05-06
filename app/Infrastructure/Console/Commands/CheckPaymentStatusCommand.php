@@ -9,13 +9,20 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * CheckPaymentStatusCommand - Diagnostic tool for payment storage state.
+ * CheckPaymentStatusCommand - The Diagnostic Tool (Level 21 - Config Safe)
+ *
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  OPERATIONAL VISIBILITY: CONFIG SAFE                                     ║
+ * ║  1. Checks Database State (Status, Path, Version).                       ║
+ * ║  2. DISK AWARENESS: Uses config('filesystems.default') instead of env(). ║
+ * ║     - Crucial for proper diagnostics in production.                      ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 class CheckPaymentStatusCommand extends Command
 {
     protected $signature = 'billing:check-status {payment_id : The ID of the payment to inspect}';
 
-    protected $description = 'Diagnose the distributed state of a payment (DB vs temp storage vs permanent storage)';
+    protected $description = 'Diagnose the Distributed State of a Payment (DB vs S3 Temp vs S3 Perm)';
 
     public function __construct(
         private PaymentRepositoryInterface $paymentRepository,
@@ -25,15 +32,16 @@ class CheckPaymentStatusCommand extends Command
 
     public function handle(): int
     {
-        $paymentId = (string) $this->argument('payment_id');
-        $this->info("Diagnosing Payment: {$paymentId}");
+        $paymentId = $this->argument('payment_id');
+        $this->info("🔍 Diagnosing Payment: {$paymentId}");
 
+        // 1. DB INSPECTION
         $payment = $this->paymentRepository->findById($paymentId);
 
-        if ($payment === null) {
-            $this->error('Payment record not found in database.');
+        if (! $payment) {
+            $this->error('❌ Payment record NOT FOUND in Database.');
 
-            return self::FAILURE;
+            return 1;
         }
 
         $this->table(
@@ -47,46 +55,47 @@ class CheckPaymentStatusCommand extends Command
             ]
         );
 
+        // 2. STORAGE INSPECTION
         $currentPath = $payment->proofUrl;
-        $disk = (string) config('filesystems.default', 's3');
+
+        // Use the configured disk, default to 's3' if not specified in config
+        $disk = config('filesystems.default', 's3');
         $storage = Storage::disk($disk);
+
         $expectedTempPath = "temp/{$paymentId}.pdf";
 
-        $existsStored = $currentPath !== null
-            && $currentPath !== ''
-            && $storage->exists($currentPath);
+        $existsStored = $currentPath && $storage->exists($currentPath);
         $existsTempCandidate = $storage->exists($expectedTempPath);
-        $isPointingToTemp = $currentPath !== null
-            && $currentPath !== ''
-            && str_starts_with($currentPath, 'temp');
 
-        $this->info("\nStorage State Analysis (Disk: {$disk}):");
+        $this->info("\n💾 Storage State Analysis (Disk: {$disk}):");
 
         $rows = [];
-        $rows[] = ['Stored Path Reconciled?', $existsStored ? 'YES' : 'NO (Broken Link)'];
-        $rows[] = ['DB Points to Temp?', $isPointingToTemp ? 'YES' : 'NO'];
-        $rows[] = ["Orphan in {$expectedTempPath}?", $existsTempCandidate ? 'YES' : 'NO'];
+        $rows[] = ['Stored Path Reconciled?', $existsStored ? '✅ YES' : '❌ NO (Broken Link)'];
+
+        $isPointingToTemp = $currentPath && str_starts_with($currentPath, 'temp');
+        $rows[] = ['DB Points to Temp?', $isPointingToTemp ? '⚠️ YES' : 'NO'];
+
+        $rows[] = ["Orphan in {$expectedTempPath}?", $existsTempCandidate ? '⚠️ YES' : 'NO'];
 
         $this->table(['Check', 'Result'], $rows);
 
-        $this->info("\nVerdict:");
+        // 3. RECOMMENDATION ENGINE
+        $this->info("\n🤖 AI Verdict:");
 
-        if ($isPointingToTemp) {
-            if ($existsStored) {
-                $this->warn('STATUS: STUCK IN QUARANTINE.');
-                $this->info("RECOMMENDATION: Run `php artisan billing:force-promote {$paymentId}`");
-            } else {
-                $this->error('STATUS: DATA LOSS / EXPIRED.');
-                $this->warn("ACTION: Check if {$expectedTempPath} or a permanent backup exists manually.");
-            }
-        } elseif (! $existsStored && $currentPath !== null && $currentPath !== '') {
-            $this->error('STATUS: BROKEN PERMANENT LINK.');
-        } elseif ($existsStored) {
-            $this->info('STATUS: HEALTHY.');
+        if ($isPointingToTemp && $existsStored) {
+            $this->warn('► STATUS: STUCK IN QUARANTINE.');
+            $this->info("RECOMMENDATION: Run `php artisan billing:force-promote {$paymentId}`");
+        } elseif ($isPointingToTemp && ! $existsStored) {
+            $this->error('► STATUS: DATA LOSS / EXPIRED.');
+            $this->warn("ACTION: Check if {$expectedTempPath} or permanent backup exists manually.");
+        } elseif (! $isPointingToTemp && ! $existsStored && $currentPath) {
+            $this->error('► STATUS: BROKEN PERMANENT LINK.');
+        } elseif (! $isPointingToTemp && $existsStored) {
+            $this->info('► STATUS: HEALTHY.');
         } else {
-            $this->warn('STATUS: INDETERMINATE.');
+            $this->warn('► STATUS: INDETERMINATE.');
         }
 
-        return self::SUCCESS;
+        return 0;
     }
 }

@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Payments;
 
-use App\Domain\Billing\DTOs\ChargeResult;
-use App\Domain\Billing\DTOs\PaymentIntentResult;
-use App\Domain\Billing\Gateways\PaymentGatewayInterface;
+use App\Domain\Payments\DTOs\ChargeResult;
+use App\Domain\Payments\Gateways\PaymentGatewayInterface;
 
 /**
  * FakePaymentGateway - Test Double for Payment Processing
@@ -33,21 +32,6 @@ final class FakePaymentGateway implements PaymentGatewayInterface
     public function willFail(string $errorMessage = 'Test failure'): void
     {
         $this->chargeResults['next'] = ChargeResult::failure($errorMessage);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function createPaymentIntent(
-        int $amountInCents,
-        string $currency,
-        string $idempotencyKey,
-        array $metadata = []
-    ): PaymentIntentResult {
-        return PaymentIntentResult::requiresPayment(
-            transactionId: 'pi_fake_'.substr(hash('sha256', $idempotencyKey), 0, 16),
-            clientSecret: 'pi_fake_secret_'.substr(hash('sha256', $idempotencyKey.$currency.$amountInCents), 0, 24),
-        );
     }
 
     /**

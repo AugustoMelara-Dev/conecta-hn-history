@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Events;
 
-use App\Domain\Shared\Contracts\UpcasterInterface;
+use App\Domain\Common\EventUpcaster;
 use RuntimeException;
 
 final class UpcastingEventFactory
 {
-    /** @var UpcasterInterface[] */
+    /** @var EventUpcaster[] */
     private array $upcasters = [];
 
     /**
-     * @param  iterable<UpcasterInterface>  $upcasters
+     * @param  iterable<EventUpcaster>  $upcasters
      */
     public function __construct(iterable $upcasters)
     {

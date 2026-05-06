@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Shared;
 
-use App\Application\Shared\Contracts\ClientContextProviderInterface;
+use App\Application\Common\Interfaces\ClientContextProviderInterface;
 use Illuminate\Http\Request;
 
 /**

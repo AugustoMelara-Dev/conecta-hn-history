@@ -43,8 +43,7 @@ final class CircuitBreakerDecorator implements OtpNotifierInterface
         string $plainTextCode,
         string $identifier,
         string $tenantId,
-        int $expiryMinutes,
-        ?string $magicUrl = null
+        int $expiryMinutes
     ): void {
         // 1. FAIL FAST CHECK
         if ($this->isOpen()) {
@@ -53,7 +52,7 @@ final class CircuitBreakerDecorator implements OtpNotifierInterface
 
         try {
             // 2. DELEGATE EXECUTION
-            $this->innerService->send($recipient, $plainTextCode, $identifier, $tenantId, $expiryMinutes, $magicUrl);
+            $this->innerService->send($recipient, $plainTextCode, $identifier, $tenantId, $expiryMinutes);
 
             // 3. SUCCESS - Reset local failure count if needed
         } catch (Throwable $e) {

@@ -4,13 +4,12 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Identity\Repositories;
 
-use App\Application\Shared\Common\Integration\IntegrationEventMapper;
+use App\Application\Common\Integration\IntegrationEventMapper;
 use App\Domain\Common\Contracts\EventStoreRepositoryInterface;
 use App\Domain\Common\Contracts\SnapshotRepositoryInterface;
 use App\Domain\Common\Contracts\SnapshotStrategyInterface;
 use App\Domain\Identity\Entities\UserEntity;
 use App\Domain\Identity\Exceptions\UserAlreadyExistsException;
-use App\Domain\Identity\Exceptions\UserNotFoundException;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Infrastructure\Common\Outbox\OutboxRepository;
 use Illuminate\Database\QueryException;
@@ -42,7 +41,7 @@ final readonly class EventSourcedUserRepository implements UserRepositoryInterfa
         // And "Dentro de la misma transacción DB::transaction".
         // If the Handler already opens one, we just execute.
 
-        $events = $user->getUncommittedEvents();
+        $events = method_exists($user, 'getUncommittedEvents') ? $user->getUncommittedEvents() : [];
 
         if (! empty($events)) {
             // 1. Source of Truth
@@ -74,12 +73,11 @@ final readonly class EventSourcedUserRepository implements UserRepositoryInterfa
         if ($this->snapshotStrategy->shouldSnapshot($user)) {
             try {
                 $this->snapshotRepository->save(
-                    'User',
                     $user->id(),
                     $user->version(),
                     $user->toStateArray()
                 );
-            } catch (\Throwable $e) {
+            } catch (\Exception $e) {
                 // Swallow snapshot errors to not block flow?
             }
         }
@@ -89,55 +87,25 @@ final readonly class EventSourcedUserRepository implements UserRepositoryInterfa
 
     public function findById(string $id, string $tenantId): ?UserEntity
     {
-        return $this->findReadModel([
-            ['id', '=', $id],
-            ['tenant_id', '=', $tenantId],
-        ]);
+        // TODO: Implement Read Model lookup
+        return null;
     }
 
     public function findByEmail(string $email, string $tenantId): ?UserEntity
     {
-        return $this->findReadModel([
-            ['email', '=', $email],
-            ['tenant_id', '=', $tenantId],
-        ]);
+        // TODO: Implement Read Model lookup
+        return null;
     }
 
     public function updateAvatarIfMissing(string $userId, string $avatarUrl): bool
     {
-        return DB::table('users')
-            ->where('id', $userId)
-            ->where(static function ($query): void {
-                $query->whereNull('avatar')->orWhere('avatar', '');
-            })
-            ->update([
-                'avatar' => $avatarUrl,
-                'updated_at' => now(),
-            ]) > 0;
+        // TODO: Implement update logic
+        return false;
     }
 
     public function delete(UserEntity $user): void
     {
-        DB::table('users')
-            ->where('id', $user->id())
-            ->where('tenant_id', $user->tenantId())
-            ->delete();
-    }
-
-    public function resetPassword(string $userId, string $tenantId, string $passwordHash, string $rememberToken): void
-    {
-        $updated = DB::table('users')
-            ->where('id', $userId)
-            ->where('tenant_id', $tenantId)
-            ->update([
-                'password' => $passwordHash,
-                'remember_token' => $rememberToken,
-                'updated_at' => now(),
-            ]);
-
-        if ($updated === 0) {
-            throw UserNotFoundException::withIdAndTenant($userId, $tenantId);
-        }
+        // TODO: Implement delete logic (tombstone event?)
     }
 
     public function existsByEmail(string $email): bool
@@ -154,33 +122,12 @@ final readonly class EventSourcedUserRepository implements UserRepositoryInterfa
                 'name' => $user->name(),
                 'email' => $user->email(),
                 'password' => $user->password(),
-                'banned_at' => $user->bannedAt(),
                 'created_at' => $user->createdAt(), // Assumes DateTime casting works or format
                 'updated_at' => now(),
             ],
             ['id'], // Unique Key
-            ['email', 'password', 'banned_at', 'updated_at'] // Update Columns
+            ['email', 'password', 'updated_at'] // Update Columns
         );
-    }
-
-    /**
-     * @param  list<array{0: string, 1: string, 2: mixed}>  $wheres
-     */
-    private function findReadModel(array $wheres): ?UserEntity
-    {
-        $query = DB::table('users');
-
-        foreach ($wheres as [$column, $operator, $value]) {
-            $query->where($column, $operator, $value);
-        }
-
-        $row = $query->first();
-
-        if ($row === null) {
-            return null;
-        }
-
-        return UserEntity::fromStateArray((array) $row);
     }
 
     private function handleConcurrencyException(QueryException $e, string $context): void

@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\EventVersioning;
 
-use App\Domain\Shared\Contracts\UpcasterInterface;
-
 /**
  * UpcasterChain - The Evolution Engine
  *
@@ -21,7 +19,6 @@ final readonly class UpcasterChain
      * @param  iterable<UpcasterInterface>  $upcasters  Registry of available upcasters
      */
     public function __construct(
-        /** @var iterable<UpcasterInterface> */
         private iterable $upcasters
     ) {}
 

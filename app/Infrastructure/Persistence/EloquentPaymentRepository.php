@@ -11,6 +11,7 @@ use App\Domain\Shared\Exceptions\StaleObjectException;
 use App\Domain\Shared\ValueObjects\Money;
 use App\Models\Payment as PaymentModel;
 use DateTimeImmutable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 final readonly class EloquentPaymentRepository implements PaymentRepositoryInterface
@@ -55,7 +56,7 @@ final readonly class EloquentPaymentRepository implements PaymentRepositoryInter
         $model->reference_number = $payment->referenceNumber;
         $model->status = $payment->status->value;
         $model->proof_path = $payment->proofUrl; // MAPPED
-        $model->created_at = $payment->createdAt->format('Y-m-d H:i:s');
+        $model->created_at = $payment->createdAt;
         $model->idempotency_key = $payment->idempotencyKey ?? null;
         $model->version = $payment->version;
 
@@ -92,7 +93,7 @@ final readonly class EloquentPaymentRepository implements PaymentRepositoryInter
 
     public function findById(string $id): ?PaymentEntity
     {
-        $model = PaymentModel::query()->withoutGlobalScopes()->find($id);
+        $model = PaymentModel::find($id);
 
         return $model ? $this->toEntity($model) : null;
     }
@@ -114,7 +115,6 @@ final readonly class EloquentPaymentRepository implements PaymentRepositoryInter
         // useWritePdo() forces Laravel to use the Write connection (Primary Node)
         // This bypasses any read-replica routing middleware or sticky sessions.
         $model = PaymentModel::query()
-            ->withoutGlobalScopes()
             ->useWritePdo()
             ->find($id);
 
@@ -124,7 +124,6 @@ final readonly class EloquentPaymentRepository implements PaymentRepositoryInter
     public function findByIdempotencyKey(string $tenantId, string $idempotencyKey): ?PaymentEntity
     {
         $model = PaymentModel::query()
-            ->withoutGlobalScopes()
             ->where('tenant_id', $tenantId)
             ->where('idempotency_key', $idempotencyKey)
             ->first();
@@ -132,20 +131,20 @@ final readonly class EloquentPaymentRepository implements PaymentRepositoryInter
         return $model ? $this->toEntity($model) : null;
     }
 
-    public function findPaymentsWithTemporaryProofs(int $limit = 50): array
+    public function findPaymentsWithTemporaryProofs(int $limit = 50): Collection
     {
         $bufferThreshold = now()->subMinutes(5);
         $executionDelay = now()->subMinutes(10);
 
-        return PaymentModel::query()
-            ->where('proof_path', 'like', 'temp/%')
+        $models = PaymentModel::query()
+            ->where('proof_path', 'like', 'temp/%') // MAPPED
             ->where('created_at', '<', $bufferThreshold)
             ->where('updated_at', '<', $executionDelay)
             ->orderBy('id')
             ->limit($limit)
-            ->get()
-            ->map(fn (PaymentModel $model) => $this->toEntity($model))
-            ->toArray();
+            ->get();
+
+        return $models->map(fn (PaymentModel $model) => $this->toEntity($model));
     }
 
     private function toEntity(PaymentModel $model): PaymentEntity
@@ -153,14 +152,14 @@ final readonly class EloquentPaymentRepository implements PaymentRepositoryInter
         return new PaymentEntity(
             id: (string) $model->id,
             tenantId: (string) $model->tenant_id,
-            amount: new Money((int) $model->amount, 'HNL'), // Default Currency
-            bank: (string) $model->bank,
-            referenceNumber: (string) $model->reference_number,
+            amount: new Money($model->amount, 'HNL'), // Default Currency
+            bank: $model->bank,
+            referenceNumber: $model->reference_number,
             status: PaymentStatus::tryFrom($model->status) ?? PaymentStatus::PENDING,
             proofUrl: $model->proof_path, // MAPPED
             createdAt: new DateTimeImmutable($model->created_at->toIso8601String()),
-            idempotencyKey: (string) ($model->idempotency_key ?? ''),
-            version: (int) ($model->version ?? 1)
+            idempotencyKey: $model->idempotency_key ?? '',
+            version: $model->version ?? 1
         );
     }
 }

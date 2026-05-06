@@ -34,10 +34,7 @@ class PublishContractsCommand extends Command
         $files = glob($sourcePath.'/*.json');
         $this->info('Publishing '.count($files)." schemas to [{$targetPath}]...");
 
-        $gitHashOutput = exec('git rev-parse --short HEAD');
-        $gitHash = is_string($gitHashOutput) && $gitHashOutput !== ''
-            ? trim($gitHashOutput)
-            : 'unknown';
+        $gitHash = trim(exec('git rev-parse --short HEAD') ?? 'unknown');
         $now = date('c');
 
         foreach ($files as $file) {

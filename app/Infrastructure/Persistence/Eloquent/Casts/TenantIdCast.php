@@ -36,7 +36,7 @@ class TenantIdCast implements CastsAttributes
      * Transform the attribute to its underlying model values.
      *
      * @param  Model  $model
-     * @param  mixed  $value
+     * @param  TenantId|string|null  $value
      */
     public function set($model, string $key, $value, array $attributes): ?string
     {

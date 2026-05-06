@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Bus;
 
-use App\Application\Shared\Contracts\OutboxRepositoryInterface;
 use App\Domain\Shared\Contracts\EventDispatcherInterface;
 use Illuminate\Contracts\Events\Dispatcher;
 
@@ -18,7 +17,7 @@ final readonly class TransactionalEventDispatcher implements EventDispatcherInte
 {
     public function __construct(
         private Dispatcher $dispatcher,
-        private OutboxRepositoryInterface $outboxRepository
+        private \App\Domain\Shared\OutboxRepositoryInterface $outboxRepository
     ) {}
 
     /**

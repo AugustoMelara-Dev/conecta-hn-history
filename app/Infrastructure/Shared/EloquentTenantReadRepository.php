@@ -12,7 +12,7 @@ use App\Models\Tenant;
  */
 final class EloquentTenantReadRepository implements TenantReadRepository
 {
-    public function exists(string|int $id): bool
+    public function exists(int $id): bool
     {
         return Tenant::where('id', $id)->exists();
     }

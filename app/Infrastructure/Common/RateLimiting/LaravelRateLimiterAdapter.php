@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Common\RateLimiting;
 
-use App\Application\Shared\Contracts\RateLimiterInterface;
+use App\Application\Common\Contracts\RateLimiterInterface;
 use Illuminate\Cache\RateLimiter;
 
 /**

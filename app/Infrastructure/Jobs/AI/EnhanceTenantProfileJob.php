@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Jobs\AI;
 
+use App\Domain\Shared\Middleware\TenantQueueMiddleware;
 use App\Domain\TenantGovernance\Exceptions\TenantDomainException;
-use App\Infrastructure\Queue\Middleware\TenantQueueMiddleware;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -68,14 +68,7 @@ final class EnhanceTenantProfileJob implements ShouldBeUnique, ShouldQueue
     public function handle(
         \App\Application\Tenant\Handlers\EnhanceTenantProfileHandler $handler
     ): void {
-        $command = new \App\Application\Tenant\Commands\EnhanceTenantProfileCommand(
-            tenantId: (string) $this->data->tenantId,
-            description: $this->data->description,
-            tags: $this->data->tags,
-            isAiGenerated: $this->data->isAiGenerated,
-        );
-
-        $handler->handle($command);
+        $handler->handle($this->data);
     }
 
     public function middleware(): array

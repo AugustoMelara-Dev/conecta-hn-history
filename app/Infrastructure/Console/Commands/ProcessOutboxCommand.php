@@ -8,23 +8,27 @@ use App\Infrastructure\Models\OutboxMessage;
 use DateTimeInterface;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Events\Dispatcher;
-use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * ProcessOutboxCommand - Long-running outbox relay.
+ * ProcessOutboxCommand - Level 66: The Obsidian Monolith
  *
- * Handles shard acquisition, retries with backoff, heartbeats, and graceful
- * shutdown for the event relay worker.
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  IMMORTAL: Global Exception Sentinel (No Exit Policy)                    ║
+ * ║  AMNESTIC: Total state wipe on infra failure (No Split-Brain)            ║
+ * ║  OBSERVABLE: Hibernate with Heartbeats & Signal Awareness                ║
+ * ║  ENTROPY: Jittered Exponential Backoff (No Thundering Herd)              ║
+ * ║  DISCRIMINATION: Smart Death on Code Errors vs Infra Sleep               ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
  */
 final class ProcessOutboxCommand extends Command
 {
-    protected $signature = 'outbox:process 
+    protected $signature = 'infrastructure:process-outbox 
                             {--batch-size=50 : Number of messages to process per batch}
-                            {--max-loops=1 : Maximum number of loops before exiting}
+                            {--max-loops=100 : Maximum number of loops before exiting}
                             {--max-shards=4 : Maximum number of shards to acquire}';
 
     protected $description = 'Relay events from Outbox to Event Bus with Unified Atomic Ownership';
@@ -110,11 +114,6 @@ final class ProcessOutboxCommand extends Command
 
             usleep(100000); // 100ms
         }
-    }
-
-    private function shouldContinueHydraulicWait(): bool
-    {
-        return $this->keepRunning && $this->pendingDispatches > self::HYDRAULIC_RESUME;
     }
 
     /**
@@ -249,7 +248,7 @@ final class ProcessOutboxCommand extends Command
                     if ($this->pendingDispatches > self::HYDRAULIC_LIMIT) {
                         $this->warn("HYDRAULIC BRAKE ENGAGED: Pending ({$this->pendingDispatches})");
 
-                        while ($this->shouldContinueHydraulicWait()) {
+                        while ($this->pendingDispatches > self::HYDRAULIC_RESUME && $this->keepRunning) {
                             usleep(100000);
                             if (function_exists('pcntl_signal_dispatch')) {
                                 pcntl_signal_dispatch();
@@ -325,8 +324,6 @@ final class ProcessOutboxCommand extends Command
                     // $this->failedAggregateIds is already reset at the start of the `do` loop (Level 79).
 
                     // PHASE 2: PROCESS
-                    $processedInBatch = 0;
-
                     foreach ($messages as $message) {
                         if (! $this->keepRunning) {
                             break;
@@ -402,7 +399,7 @@ final class ProcessOutboxCommand extends Command
                         }
                     }
 
-                    $processedTotal += $processedInBatch;
+                    $processedTotal += $messages->count();
                     $loopCount++;
 
                     if ($loopCount % 10 === 0) {
@@ -414,13 +411,12 @@ final class ProcessOutboxCommand extends Command
 
                 } while ($loopCount < $maxLoops && $this->keepRunning);
 
-                // Max-loops is an explicit exit contract for tests and controlled workers.
+                // Soft Recycle (Max Loops Reached)
                 if ($this->keepRunning) {
                     $this->info("Max loops ({$maxLoops}) reached. Recycling worker state...");
                     $this->releaseLeases();
-                    $this->leaseManager = null;
+                    $this->leaseManager = null; // Force re-init next loop
                     gc_collect_cycles();
-                    $this->keepRunning = false;
                 }
 
             } catch (\Throwable $e) {
@@ -431,7 +427,7 @@ final class ProcessOutboxCommand extends Command
                 // LEVEL 66: FATAL ERROR DISCRIMINATION (SMART DEATH)
                 // If the code is broken (TypeError), valid logic demands we die.
                 // Sleeping on a syntax error creates a "Zombie Loop" of spam.
-                if ($e instanceof \Error) {
+                if ($e instanceof \Error || $e instanceof \TypeError || $e instanceof \ArgumentCountError) {
                     Log::critical('OBSIDIAN MONOLITH: Fatal Code Defect Detected. Terminating. Error: '.$e->getMessage(), [
                         'trace' => $e->getTraceAsString(),
                     ]);
@@ -488,7 +484,7 @@ final class ProcessOutboxCommand extends Command
     /**
      * Renew leases if heartbeat interval has passed.
      *
-     * @throws \RuntimeException If lease renewal fails (Sovereignty Lost).
+     * @throws RuntimeException If lease renewal fails (Sovereignty Lost).
      */
     private function renewLeasesIfNeeded(): void
     {
@@ -583,6 +579,7 @@ final class ProcessOutboxCommand extends Command
             'recovery_count' => $message->recovery_count,
             'memory_usage_bytes' => $memoryUsage,
             'memory_peak_bytes' => memory_get_peak_usage(true),
+            'worker_id' => $workerId,
         ];
 
         // Write raw JSON to stderr to bypass any framework logging buffering
@@ -643,11 +640,11 @@ final class ProcessOutboxCommand extends Command
             // LEVEL 70: SQL PREDICATE PUSHDOWN
             // We pass the owned shards explicitly to force the DB to filter before returning rows.
             // This prevents "Blinding Fog" where 5000 stale messages from other shards hide our own 10 messages.
-            $staleMessages = collect($repository->retrieveNextStaleBatch(
+            $staleMessages = $repository->retrieveNextStaleBatch(
                 batchSize: 50, // Standard batch chunk
                 staleThresholdSeconds: 300, // 5 minutes
                 ownedPartitionKeys: $ownedShards
-            ));
+            );
 
             // LEVEL 70: MEMORY FILTER REMOVED
             // The repository now guarantees strictly owned data via SQL WHERE IN clause.
@@ -718,7 +715,7 @@ final class ProcessOutboxCommand extends Command
         } finally {
             // LEVEL 49: End span in finally to prevent leaks
             if ($span !== null) {
-                $this->tracer->endSpan($span);
+                $this->tracer?->endSpan($span);
             }
         }
     }
@@ -776,11 +773,30 @@ final class ProcessOutboxCommand extends Command
             // PHASE 3: THE CLAIM EXECUTION (Conditional Writing)
             // Only proceeded if validLeaseCount confirmed sovereignty.
 
-            $claimedCount = $this->claimMessages(
-                workerId: $workerId,
-                batchCorrelationId: $batchCorrelationId,
-                ownedShards: $ownedShards,
-                batchSize: $batchSize
+            $shardPlaceholders = implode(',', array_fill(0, count($ownedShards), '?'));
+
+            $claimedCount = DB::affectingStatement(
+                "UPDATE outbox_messages 
+                 SET status = 'PROCESSING', 
+                     worker_id = ?, 
+                     batch_correlation_id = ?,
+                     locked_at = NOW()
+                 WHERE id IN (
+                     SELECT id FROM (
+                         SELECT id FROM outbox_messages 
+                         WHERE status = 'PENDING' 
+                           AND partition_key IN ({$shardPlaceholders})
+                           AND recovery_count < ?
+                         ORDER BY partition_key ASC, sequence_number ASC
+                         LIMIT ?
+                         FOR UPDATE SKIP LOCKED
+                     ) AS candidates
+                 )",
+                array_merge(
+                    [$workerId, $batchCorrelationId],
+                    $ownedShards,
+                    [OutboxMessage::QUARANTINE_THRESHOLD, $batchSize]
+                )
             );
 
             if ($claimedCount === 0) {
@@ -848,121 +864,6 @@ final class ProcessOutboxCommand extends Command
 
             return $pipelinedMessages;
         });
-    }
-
-    /**
-     * @param  array<int>  $ownedShards
-     */
-    private function claimMessages(
-        string $workerId,
-        string $batchCorrelationId,
-        array $ownedShards,
-        int $batchSize
-    ): int {
-        try {
-            return $this->claimMessagesWithSkipLocked(
-                workerId: $workerId,
-                batchCorrelationId: $batchCorrelationId,
-                ownedShards: $ownedShards,
-                batchSize: $batchSize
-            );
-        } catch (QueryException $e) {
-            if (! $this->isSkipLockedSyntaxError($e)) {
-                throw $e;
-            }
-
-            Log::warning('OUTBOX FALLBACK: Database does not support SKIP LOCKED, using pessimistic lock fallback.', [
-                'connection' => DB::getDriverName(),
-                'error' => $e->getMessage(),
-            ]);
-
-            return $this->claimMessagesWithPessimisticLock(
-                workerId: $workerId,
-                batchCorrelationId: $batchCorrelationId,
-                ownedShards: $ownedShards,
-                batchSize: $batchSize
-            );
-        }
-    }
-
-    /**
-     * @param  array<int>  $ownedShards
-     */
-    private function claimMessagesWithSkipLocked(
-        string $workerId,
-        string $batchCorrelationId,
-        array $ownedShards,
-        int $batchSize
-    ): int {
-        $shardPlaceholders = implode(',', array_fill(0, count($ownedShards), '?'));
-
-        return DB::affectingStatement(
-            "UPDATE outbox_messages 
-             SET status = 'PROCESSING', 
-                 worker_id = ?, 
-                 batch_correlation_id = ?,
-                 locked_at = NOW()
-             WHERE id IN (
-                 SELECT id FROM (
-                     SELECT id FROM outbox_messages 
-                     WHERE status = 'PENDING' 
-                       AND partition_key IN ({$shardPlaceholders})
-                       AND recovery_count < ?
-                     ORDER BY partition_key ASC, sequence_number ASC
-                     LIMIT ?
-                     FOR UPDATE SKIP LOCKED
-                 ) AS candidates
-             )",
-            array_merge(
-                [$workerId, $batchCorrelationId],
-                $ownedShards,
-                [OutboxMessage::QUARANTINE_THRESHOLD, $batchSize]
-            )
-        );
-    }
-
-    /**
-     * @param  array<int>  $ownedShards
-     */
-    private function claimMessagesWithPessimisticLock(
-        string $workerId,
-        string $batchCorrelationId,
-        array $ownedShards,
-        int $batchSize
-    ): int {
-        $messageIds = DB::table('outbox_messages')
-            ->where('status', OutboxMessage::STATUS_PENDING)
-            ->whereIn('partition_key', $ownedShards)
-            ->where('recovery_count', '<', OutboxMessage::QUARANTINE_THRESHOLD)
-            ->orderBy('partition_key', 'asc')
-            ->orderBy('sequence_number', 'asc')
-            ->limit($batchSize)
-            ->lockForUpdate()
-            ->pluck('id')
-            ->all();
-
-        if ($messageIds === []) {
-            return 0;
-        }
-
-        return DB::table('outbox_messages')
-            ->whereIn('id', $messageIds)
-            ->update([
-                'status' => OutboxMessage::STATUS_PROCESSING,
-                'worker_id' => $workerId,
-                'batch_correlation_id' => $batchCorrelationId,
-                'locked_at' => now(),
-            ]);
-    }
-
-    private function isSkipLockedSyntaxError(QueryException $e): bool
-    {
-        $message = strtolower($e->getMessage());
-
-        return str_contains($message, 'skip locked')
-            || (str_contains($message, 'for update') && str_contains($message, 'syntax error'))
-            || (str_contains($message, 'for update') && str_contains($message, 'access violation'))
-            || (str_contains($message, 'near "for"') && str_contains($message, 'syntax error'));
     }
 
     /**
@@ -1253,43 +1154,30 @@ final class ProcessOutboxCommand extends Command
         $reflection = new \ReflectionClass($className);
 
         if (! $constructor = $reflection->getConstructor()) {
+            // No constructor: create instance and set properties
             $object = new $className;
             foreach ($data as $key => $val) {
-                if ($reflection->hasProperty($key)) {
-                    $property = $reflection->getProperty($key);
-                    // Prevent modifying readonly properties after instantiation
-                    if (! $property->isReadOnly()) {
-                        $property->setAccessible(true);
-                        $property->setValue($object, $val);
-                    }
+                if (property_exists($object, $key)) {
+                    $object->$key = $val;
                 }
             }
 
             return $object;
         }
 
+        // Constructor injection hydration
         $args = [];
         foreach ($constructor->getParameters() as $param) {
             $name = $param->getName();
             $type = $param->getType();
+
             $value = $data[$name] ?? null;
 
-            if ($value !== null && $type instanceof \ReflectionNamedType && ! $type->isBuiltin()) {
+            // SPECIAL TYPE CASTING: DateTime
+            if ($value && $type && ! $type->isBuiltin()) {
                 $typeName = $type->getName();
-
-                // Handle DateTime rehydration
                 if (is_string($value) && is_a($typeName, DateTimeInterface::class, true)) {
                     $value = new \DateTimeImmutable($value);
-                } elseif (is_array($value) && class_exists($typeName)) {
-                    // Handle nested object rehydration (Value Objects, nested DTOs)
-                    $value = $this->hydrateFromArray($typeName, $value);
-                } elseif (
-                    (is_string($value) || is_int($value))
-                    && enum_exists($typeName)
-                    && is_subclass_of($typeName, \BackedEnum::class)
-                ) {
-                    // Handle Enum rehydration
-                    $value = $typeName::from($value);
                 }
             }
 

@@ -4,20 +4,16 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Tenancy\Repositories;
 
-use App\Application\Shared\Common\Integration\IntegrationEventMapper;
+use App\Application\Common\Integration\IntegrationEventMapper;
+use App\Application\Tenancy\Interfaces\TenantRepositoryInterface;
 use App\Domain\Common\Contracts\EventStoreRepositoryInterface;
 use App\Domain\Common\Contracts\SnapshotRepositoryInterface;
 use App\Domain\Common\Contracts\SnapshotStrategyInterface;
 use App\Domain\Common\Exceptions\ConcurrencyException;
-use App\Domain\Shared\Exceptions\StaleObjectException;
 use App\Domain\TenantGovernance\Entities\TenantEntity;
-use App\Domain\TenantGovernance\Enums\TenantPlan;
-use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Infrastructure\Common\Outbox\OutboxRepository;
-use App\Models\Tenant;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
-use Spatie\OpeningHours\OpeningHours;
 
 /**
  * EventSourcedTenantRepository - Hybrid Persistence
@@ -47,104 +43,18 @@ final class EventSourcedTenantRepository implements TenantRepositoryInterface
         return TenantEntity::reconstituteFromHistory($events);
     }
 
-    public function findByIdForUpdate(string $id): ?TenantEntity
+    public function existsByDomain(string $domain): bool
     {
-        return $this->findById($id);
+        // REAL SQL CHECK
+        return DB::table('tenants')->where('domain', $domain)->exists();
     }
 
-    public function findBySlug(string $slug): ?TenantEntity
+    public function save(TenantEntity $tenant): void
     {
-        $id = DB::table('tenants')->where('slug', $slug)->value('id');
-
-        return $id ? $this->findById($id) : null;
-    }
-
-    public function existsBySlug(string $slug): bool
-    {
-        return DB::table('tenants')->where('slug', $slug)->exists();
-    }
-
-    public function findByDomain(string $domain): ?TenantEntity
-    {
-        // Domain is mapped to slug in this architecture
-        return $this->findBySlug($domain);
-    }
-
-    public function getFeatured(int $limit = 12): array
-    {
-        return Tenant::query()
-            ->published()
-            ->inPriorityOrder()
-            ->take($limit)
-            ->get([
-                'id',
-                'name',
-                'slug',
-                'description',
-                'hero_image',
-                'cover_path',
-                'brand_color',
-                'plan_type',
-            ])
-            ->map(function (Tenant $tenant): array {
-                $planType = $tenant->getAttribute('plan_type');
-
-                return [
-                    'id' => (string) $tenant->getKey(),
-                    'name' => (string) $tenant->name,
-                    'slug' => (string) $tenant->slug,
-                    'description' => (string) ($tenant->description ?? ''),
-                    'hero_image' => $tenant->hero_image,
-                    'cover_path' => $tenant->cover_path,
-                    'brand_color' => $tenant->brand_color,
-                    'plan_type' => $planType instanceof TenantPlan
-                        ? $planType->value
-                        : (string) ($planType ?? TenantPlan::SEMILLA->value),
-                    'is_paid_plan' => (bool) (
-                        ($planType instanceof TenantPlan ? $planType->value : (string) ($planType ?? TenantPlan::SEMILLA->value))
-                        !== TenantPlan::SEMILLA->value
-                    ),
-                ];
-            })
-            ->all();
-    }
-
-    public function countActive(): int
-    {
-        return Tenant::query()
-            ->published()
-            ->count();
-    }
-
-    public function getOpeningHours(string $tenantId): OpeningHours
-    {
-        $tenant = Tenant::find($tenantId);
-
-        return $tenant?->getOpeningHours() ?? OpeningHours::create([
-            'monday' => ['09:00-17:00'],
-            'tuesday' => ['09:00-17:00'],
-            'wednesday' => ['09:00-17:00'],
-            'thursday' => ['09:00-17:00'],
-            'friday' => ['09:00-17:00'],
-        ]);
-    }
-
-    public function create(array $attributes): TenantEntity
-    {
-        throw new \BadMethodCallException('EventSourced repository does not support array-based create. Use save() with new Entity.');
-    }
-
-    public function delete(TenantEntity $tenant): void
-    {
-        // To be implemented: Soft delete event or similar
-    }
-
-    public function save(TenantEntity $tenant): TenantEntity
-    {
-        $events = $tenant->getUncommittedEvents();
+        $events = method_exists($tenant, 'getUncommittedEvents') ? $tenant->getUncommittedEvents() : [];
 
         if (empty($events)) {
-            return $tenant;
+            return;
         }
 
         try {
@@ -170,129 +80,27 @@ final class EventSourcedTenantRepository implements TenantRepositoryInterface
 
         if ($this->snapshotStrategy->shouldSnapshot($tenant)) {
             $this->snapshotRepo->save(
-                'Tenant',
                 $tenant->id(),
                 $tenant->version(),
                 $tenant->toStateArray()
             );
         }
-
-        return $tenant;
-    }
-
-    public function updateOptimistically(TenantEntity $tenant): void
-    {
-        $state = $tenant->toStateArray();
-        $affected = DB::table('tenants')
-            ->where('id', $tenant->id())
-            ->where('version', max(1, $tenant->version()))
-            ->update([
-                'user_id' => $state['owner_id'] ?? null,
-                'name' => $state['name'],
-                'slug' => $state['domain'],
-                'is_active' => $state['is_active'],
-                'category_id' => $state['category_id'] ?? null,
-                'city_id' => $state['city_id'] ?? null,
-                'logo_path' => $state['logo_path'] ?? null,
-                'cover_path' => $state['cover_path'] ?? null,
-                'phone' => $state['phone'] ?? null,
-                'latitude' => $state['latitude'] ?? null,
-                'longitude' => $state['longitude'] ?? null,
-                'description' => $state['description'] ?? null,
-                'about' => $state['about'] ?? null,
-                'slogan' => $state['slogan'] ?? null,
-                'whatsapp_number' => $state['whatsapp'] ?? null,
-                'primary_color' => $state['primary_color'] ?? null,
-                'website_url' => $state['website_url'] ?? null,
-                'facebook_url' => $state['facebook_url'] ?? null,
-                'instagram_url' => $state['instagram_url'] ?? null,
-                'tiktok_url' => $state['tiktok_url'] ?? null,
-                'landing_page_data' => $state['landing_page_data'] ?? null,
-                'simple_schedule' => $state['simple_schedule'] ?? null,
-                'is_ai_enhanced' => $state['is_ai_enhanced'] ?? false,
-                'product_limit' => $state['product_limit'] ?? 10,
-                'plan_type' => $state['plan_id'] ?? TenantPlan::SEMILLA->value,
-                'subscription_status' => $state['subscription_status'] ?? Tenant::DEFAULT_SUBSCRIPTION_STATUS,
-                'subscription_ends_at' => $state['subscription_ends_at'] ?? null,
-                'updated_at' => $tenant->updatedAt(),
-                'version' => DB::raw('version + 1'),
-            ]);
-
-        if ($affected === 0) {
-            throw new StaleObjectException("Tenant {$tenant->id()} was modified by another process.");
-        }
     }
 
     private function projectState(TenantEntity $tenant): void
     {
-        $state = $tenant->toStateArray();
-
         DB::table('tenants')->upsert(
             [
                 'id' => $tenant->id(),
                 'name' => $tenant->name(),
+                'domain' => $tenant->domain(),
                 'created_at' => $tenant->createdAt(),
                 'updated_at' => $tenant->updatedAt(),
-                'slug' => $tenant->domain(),
-                'user_id' => $state['owner_id'] ?? null,
-                'is_active' => $state['is_active'],
-                'category_id' => $state['category_id'] ?? null,
-                'city_id' => $state['city_id'] ?? null,
-                'logo_path' => $state['logo_path'] ?? null,
-                'cover_path' => $state['cover_path'] ?? null,
-                'phone' => $state['phone'] ?? null,
-                'latitude' => $state['latitude'] ?? null,
-                'longitude' => $state['longitude'] ?? null,
-                'description' => $state['description'] ?? null,
-                'about' => $state['about'] ?? null,
-                'slogan' => $state['slogan'] ?? null,
-                'whatsapp_number' => $state['whatsapp'] ?? null,
-                'primary_color' => $state['primary_color'] ?? null,
-                'website_url' => $state['website_url'] ?? null,
-                'facebook_url' => $state['facebook_url'] ?? null,
-                'instagram_url' => $state['instagram_url'] ?? null,
-                'tiktok_url' => $state['tiktok_url'] ?? null,
-                'landing_page_data' => $state['landing_page_data'] ?? null,
-                'simple_schedule' => $state['simple_schedule'] ?? null,
-                'is_ai_enhanced' => $state['is_ai_enhanced'] ?? false,
-                'product_limit' => $state['product_limit'] ?? 10,
-                'plan_type' => $state['plan_id'] ?? TenantPlan::SEMILLA->value,
-                'subscription_status' => $state['subscription_status'] ?? Tenant::DEFAULT_SUBSCRIPTION_STATUS,
-                'subscription_ends_at' => $state['subscription_ends_at'] ?? null,
-                'version' => max(1, $tenant->version()),
+                // Assumed fields based on SQL table definition
+                'slug' => $tenant->domain(), // Mapping domain to slug if 1:1, or entity should expose slug
             ],
             ['id'],
-            [
-                'name',
-                'slug',
-                'user_id',
-                'is_active',
-                'category_id',
-                'city_id',
-                'logo_path',
-                'cover_path',
-                'phone',
-                'latitude',
-                'longitude',
-                'description',
-                'about',
-                'slogan',
-                'whatsapp_number',
-                'primary_color',
-                'website_url',
-                'facebook_url',
-                'instagram_url',
-                'tiktok_url',
-                'landing_page_data',
-                'simple_schedule',
-                'is_ai_enhanced',
-                'product_limit',
-                'plan_type',
-                'subscription_status',
-                'subscription_ends_at',
-                'updated_at',
-                'version',
-            ]
+            ['name', 'domain', 'updated_at']
         );
     }
 }
