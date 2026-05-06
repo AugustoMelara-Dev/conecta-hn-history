@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domain\Catalog\Events;
 
-use App\Domain\Shared\Contracts\Events\DomainEvent;
-use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
+use App\Contracts\Events\DomainEvent;
 use App\Domain\Shared\Contracts\TenantAwareEvent;
-use App\Domain\Shared\ValueObjects\TenantId;
 use App\Traits\HasDomainMetadata;
+use App\ValueObjects\TenantId;
+use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**
  * ProductPriceChanged - Event fired when a product price is updated.
@@ -27,14 +27,11 @@ final readonly class ProductPriceChanged implements DomainEvent, ShouldDispatchA
         ?string $restoredOccurredAt = null,
         ?string $restoredCorrelationId = null,
     ) {
-        $metadata = self::resolveMetadata(
+        $this->initMetadata(
             correlationId: $restoredCorrelationId,
             restoredEventId: $restoredEventId,
             restoredOccurredAt: $restoredOccurredAt,
         );
-        $this->eventId = $metadata['eventId'];
-        $this->correlationId = $metadata['correlationId'];
-        $this->occurredAt = $metadata['occurredAt'];
     }
 
     public function tenantId(): TenantId
@@ -42,9 +39,9 @@ final readonly class ProductPriceChanged implements DomainEvent, ShouldDispatchA
         return $this->tenantId;
     }
 
-    public function aggregateId(): string
+    public function aggregateId(): int
     {
-        return (string) $this->productId;
+        return $this->productId;
     }
 
     public function toPrimitives(): array
@@ -62,7 +59,7 @@ final readonly class ProductPriceChanged implements DomainEvent, ShouldDispatchA
     public static function fromPrimitives(array $primitives): self
     {
         return new self(
-            tenantId: TenantId::fromString((string) $primitives['tenant_id']),
+            tenantId: TenantId::fromInt($primitives['tenant_id']),
             productId: $primitives['product_id'],
             oldPrice: $primitives['old_price'],
             newPrice: $primitives['new_price'],

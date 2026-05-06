@@ -19,7 +19,7 @@ use LogicException;
  */
 final class TenantContext
 {
-    private string|int|null $tenantId = null;
+    private ?int $tenantId = null;
 
     private bool $isSystemRoot = false;
 
@@ -30,7 +30,7 @@ final class TenantContext
      *
      * @throws TenantContextMutationException If attempting to switch tenants.
      */
-    public function setTenant(string|int $id): void
+    public function setTenant(int $id): void
     {
         if ($this->isInitialized && $this->tenantId !== null && $this->tenantId !== $id) {
             throw TenantContextMutationException::tenantHopping($this->tenantId, $id);
@@ -49,12 +49,10 @@ final class TenantContext
      *
      * @throws TenantContextMutationException If context already set.
      */
-    public function setAsSystemRoot(bool $isConsoleOrTesting = false): void
+    public function setAsSystemRoot(): void
     {
-        // SECURITY FIX (VC-AUDIT-008): Prevent HTTP-based privilege escalation.
-        // Callers (Console Kernel, ServiceProvider, TestCase setUp) must pass true explicitly.
-        // This removes the app() service locator dependency from the Domain layer.
-        if (! $isConsoleOrTesting) {
+        // SECURITY FIX (VC-AUDIT-008): Prevent HTTP-based privilege escalation
+        if (! app()->runningInConsole() && ! app()->environment('testing')) {
             throw new \RuntimeException('Security Violation: setAsSystemRoot() cannot be invoked from HTTP context.');
         }
 
@@ -72,7 +70,7 @@ final class TenantContext
      * @throws LogicException If called in System Root mode (no ID exists).
      * @throws TenantContextMissingException If context is not initialized.
      */
-    public function id(): string|int
+    public function id(): int
     {
         if ($this->isSystemRoot) {
             throw new LogicException('Root context has no specific ID. Use isRoot() to check mode.');

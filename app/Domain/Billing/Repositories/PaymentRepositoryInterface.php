@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Billing\Repositories;
 
 use App\Domain\Billing\Entities\PaymentEntity;
+use Illuminate\Support\Collection;
 
 interface PaymentRepositoryInterface
 {
@@ -31,5 +32,5 @@ interface PaymentRepositoryInterface
 
     public function findByIdempotencyKey(string $tenantId, string $idempotencyKey): ?PaymentEntity;
 
-    public function findPaymentsWithTemporaryProofs(int $limit = 50): array;
+    public function findPaymentsWithTemporaryProofs(int $limit = 50): Collection;
 }

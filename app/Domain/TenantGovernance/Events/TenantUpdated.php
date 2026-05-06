@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Events;
 
-use App\Domain\Shared\Contracts\Events\DomainEvent;
-use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
+use App\Contracts\Events\DomainEvent;
 use App\Domain\Shared\Contracts\TenantAwareEvent;
-use App\Domain\Shared\Traits\HasDomainMetadata;
-use App\Domain\Shared\ValueObjects\TenantId;
+use App\Traits\HasDomainMetadata;
+use App\ValueObjects\TenantId;
+use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**
  * TenantUpdated - Event fired when a tenant updates their profile/slug.
@@ -16,13 +16,6 @@ use App\Domain\Shared\ValueObjects\TenantId;
 final readonly class TenantUpdated implements DomainEvent, ShouldDispatchAfterCommit, TenantAwareEvent
 {
     use HasDomainMetadata;
-
-    public const SCHEMA_VERSION = 1;
-
-    public function schemaVersion(): int
-    {
-        return self::SCHEMA_VERSION;
-    }
 
     public function __construct(
         private TenantId $tenantId,
@@ -33,14 +26,11 @@ final readonly class TenantUpdated implements DomainEvent, ShouldDispatchAfterCo
         ?string $restoredOccurredAt = null,
         ?string $restoredCorrelationId = null,
     ) {
-        $metadata = self::resolveMetadata(
+        $this->initMetadata(
             correlationId: $restoredCorrelationId,
             restoredEventId: $restoredEventId,
             restoredOccurredAt: $restoredOccurredAt,
         );
-        $this->eventId = $metadata['eventId'];
-        $this->correlationId = $metadata['correlationId'];
-        $this->occurredAt = $metadata['occurredAt'];
     }
 
     public function tenantId(): TenantId
@@ -48,15 +38,14 @@ final readonly class TenantUpdated implements DomainEvent, ShouldDispatchAfterCo
         return $this->tenantId;
     }
 
-    public function aggregateId(): string
+    public function aggregateId(): int
     {
-        return $this->tenantId->toString();
+        return (int) $this->tenantId->toString();
     }
 
     public function toPrimitives(): array
     {
         return [
-            'schema_version' => self::SCHEMA_VERSION,
             'tenant_id' => $this->tenantId->toString(),
             'old_slug' => $this->oldSlug,
             'new_slug' => $this->newSlug,
@@ -68,7 +57,7 @@ final readonly class TenantUpdated implements DomainEvent, ShouldDispatchAfterCo
     public static function fromPrimitives(array $primitives): self
     {
         return new self(
-            tenantId: TenantId::fromString((string) $primitives['tenant_id']),
+            tenantId: TenantId::fromInt($primitives['tenant_id']),
             oldSlug: $primitives['old_slug'],
             newSlug: $primitives['new_slug'],
             restoredEventId: $primitives['event_id'] ?? null,

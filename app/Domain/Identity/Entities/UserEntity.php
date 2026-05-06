@@ -8,13 +8,14 @@ use App\Domain\Common\Traits\EventSourcedAggregate;
 use App\Domain\Identity\Enums\UserRole;
 use App\Domain\Identity\Events\UserRegistered;
 use DateTimeImmutable;
+use Illuminate\Support\Str;
 
 /**
  * UserEntity - Aggregate Root (Titanium Immutable)
  *
  * - Identity Pre-allocation (UUIDs).
  * - Full Immutability (No setters, no Event Patching).
- * - Valid Birth State (tenant assignment may happen after registration).
+ * - Valid Birth State (TenantID required at register).
  */
 final class UserEntity
 {
@@ -30,13 +31,11 @@ final class UserEntity
 
     private UserRole $role;
 
-    private ?string $tenantId = null;
+    private string $tenantId;
 
     private ?string $rememberToken = null;
 
     private ?string $avatar = null;
-
-    private ?DateTimeImmutable $bannedAt = null;
 
     private ?DateTimeImmutable $createdAt = null;
 
@@ -48,7 +47,7 @@ final class UserEntity
      * Factory: Register a new User with Pre-allocated Identity.
      *
      * @param  string  $uuid  Pre-allocated UUID v4/v7.
-     * @param  ?string  $tenantId  Pre-allocated Tenant UUID or null for global.
+     * @param  string  $tenantId  Pre-allocated Tenant UUID.
      */
     public static function register(
         string $uuid,
@@ -56,21 +55,19 @@ final class UserEntity
         string $email,
         string $passwordHash,
         UserRole $role,
-        ?string $tenantId = null
+        string $tenantId
     ): self {
         $user = new self;
 
-        // Password is set on the aggregate directly — never travels in events (A6).
-        $user->password = $passwordHash;
-
         // The Event is recorded ONCE with the FINAL state.
         // No patching allowed.
-        $event = UserRegistered::now(
+        $event = new UserRegistered(
             user_id: $uuid,
             name: $name,
             email: $email,
+            password_hash: $passwordHash,
             role: $role->value,
-            tenant_id: $tenantId,
+            tenant_id: $tenantId
         );
 
         $user->recordThat($event);
@@ -94,7 +91,7 @@ final class UserEntity
     ): self {
         $user = new self;
         // OPTIMIZATION: Use Ordered UUID to prevent B-Tree fragmentation
-        $user->id = \Ramsey\Uuid\Uuid::uuid7()->toString();
+        $user->id = (string) Str::orderedUuid();
         $user->tenantId = $tenantId;
         $user->name = $name;
         $user->email = $email;
@@ -113,9 +110,8 @@ final class UserEntity
     {
         $this->id = $event->user_id;
         $this->name = $event->name;
-        $this->email = decrypt($event->email->value());
-        // NOTE: $password is set directly in register() before recordThat().
-        // It is intentionally absent from the event payload (A6 — no credentials in events).
+        $this->email = $event->email;
+        $this->password = $event->password_hash;
         $this->role = UserRole::from($event->role);
         $this->tenantId = $event->tenant_id;
         $this->createdAt = $event->occurredOn();
@@ -149,7 +145,7 @@ final class UserEntity
         return $this->role;
     }
 
-    public function tenantId(): ?string
+    public function tenantId(): string
     {
         return $this->tenantId;
     }
@@ -174,11 +170,6 @@ final class UserEntity
         return $this->createdAt;
     }
 
-    public function bannedAt(): ?DateTimeImmutable
-    {
-        return $this->bannedAt;
-    }
-
     // -- SNAPSHOT COMPATIBILITY --
 
     public function toStateArray(): array
@@ -192,7 +183,6 @@ final class UserEntity
             'tenant_id' => $this->tenantId,
             'remember_token' => $this->rememberToken,
             'avatar' => $this->avatar,
-            'banned_at' => $this->bannedAt?->format(DateTimeImmutable::ATOM),
             'created_at' => $this->createdAt?->format(DateTimeImmutable::ATOM),
             'updated_at' => $this->updatedAt?->format(DateTimeImmutable::ATOM),
         ];
@@ -206,14 +196,9 @@ final class UserEntity
         $user->email = $state['email'] ?? '';
         $user->password = $state['password'] ?? '';
         $user->role = UserRole::from($state['role']);
-        $user->tenantId = array_key_exists('tenant_id', $state) && $state['tenant_id'] !== null
-            ? (string) $state['tenant_id']
-            : null;
+        $user->tenantId = (string) ($state['tenant_id'] ?? '');
         $user->rememberToken = $state['remember_token'] ?? null;
         $user->avatar = $state['avatar'] ?? null;
-        $user->bannedAt = isset($state['banned_at'])
-            ? new DateTimeImmutable($state['banned_at'])
-            : null;
         $user->createdAt = isset($state['created_at']) ? new DateTimeImmutable($state['created_at']) : null;
         $user->updatedAt = isset($state['updated_at']) ? new DateTimeImmutable($state['updated_at']) : null;
         $user->version = 0;
@@ -227,22 +212,6 @@ final class UserEntity
     {
         $this->name = $name;
         $this->email = $email;
-        $this->updatedAt = new DateTimeImmutable;
-    }
-
-    public function assignToTenant(string $tenantId): void
-    {
-        $this->tenantId = $tenantId;
-        $this->updatedAt = new DateTimeImmutable;
-    }
-
-    public function reactivate(): void
-    {
-        if ($this->bannedAt === null) {
-            throw new \DomainException('User is already active.');
-        }
-
-        $this->bannedAt = null;
         $this->updatedAt = new DateTimeImmutable;
     }
 

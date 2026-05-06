@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Shared\Contracts;
 
-use App\Domain\Shared\ValueObjects\TenantId;
+use App\ValueObjects\TenantId;
 
 interface TenantAwareEvent
 {

@@ -88,7 +88,7 @@ final readonly class OtpGenerated
      *
      * @param  array<string, mixed>  $payload
      */
-    public static function fromPayload(array $payload): static
+    public static function fromPayload(array $payload): self
     {
         return new self(
             otpId: $payload['otp_id'],

@@ -4,23 +4,22 @@ declare(strict_types=1);
 
 namespace App\Domain\Billing\Events;
 
-use App\Domain\Shared\Contracts\Events\DomainEvent;
-use App\Domain\Shared\Contracts\ShouldBeStoredInOutbox;
-use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
-use App\Domain\Shared\Traits\HasEventIdentity;
 use DateTimeImmutable;
 use DateTimeInterface;
+use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**
- * Domain event emitted when a tenant reports a manual payment.
+ * PaymentReported - Domain Event for Manual Payment Submission
  *
- * The schema version is part of the event contract so future upcasters can
- * evolve the payload without breaking existing consumers.
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  SCHEMA VERSIONED: Enables future upcasting without breaking consumers.  ║
+ * ║  TRANSACTIONAL: Implements ShouldDispatchAfterCommit for Outbox safety.  ║
+ * ║  TYPE SAFE: Uses string IDs (UUID/ULID compatible).                      ║
+ * ║  TEMPORAL ACCURACY: occurredAt is immutable, set at creation time.       ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class PaymentReported implements DomainEvent, ShouldBeStoredInOutbox, ShouldDispatchAfterCommit
+final readonly class PaymentReported implements ShouldDispatchAfterCommit
 {
-    use HasEventIdentity;
-
     public const SCHEMA_VERSION = 4;
 
     public function __construct(
@@ -32,56 +31,20 @@ final readonly class PaymentReported implements DomainEvent, ShouldBeStoredInOut
         public ?string $idempotencyKey = null,
         public DateTimeImmutable $occurredAt = new DateTimeImmutable,
         public int $schemaVersion = self::SCHEMA_VERSION,
-        ?string $restoredEventId = null,
-        ?string $restoredCorrelationId = null,
-    ) {
-        $identity = self::resolveEventIdentity($restoredEventId, $restoredCorrelationId);
-        $this->eventId = $identity['eventId'];
-        $this->correlationId = $identity['correlationId'];
-    }
-
-    public function tenantId(): mixed
-    {
-        return $this->tenantId;
-    }
-
-    public function aggregateId(): string
-    {
-        return $this->paymentId;
-    }
-
-    public function occurredAt(): DateTimeImmutable
-    {
-        return $this->occurredAt;
-    }
-
-    public function getAggregateId(): string
-    {
-        return $this->paymentId;
-    }
-
-    public function getAggregateType(): string
-    {
-        return 'PaymentReport';
-    }
-
-    public function toPrimitives(): array
-    {
-        return $this->toPayload();
-    }
-
-    public static function fromPrimitives(array $primitives): self
-    {
-        return self::fromPayload($primitives);
-    }
+    ) {}
 
     /**
-     * Reconstruct the event from a safe payload.
+     * Reconstruct event from safe payload.
      *
-     * @param  array<string, mixed>  $payload
+     * Essential for eliminating "Metadata Bomb" (extra keys) and
+     * resolving Case Mismatch (snake vs camel).
      */
-    public static function fromPayload(array $payload): static
+    public static function fromPayload(array $payload): self
     {
+        $occurredAt = isset($payload['occurred_at'])
+            ? new DateTimeImmutable($payload['occurred_at'])
+            : new DateTimeImmutable;
+
         return new self(
             paymentId: (string) ($payload['payment_id'] ?? ''),
             tenantId: (string) ($payload['tenant_id'] ?? ''),
@@ -89,16 +52,14 @@ final readonly class PaymentReported implements DomainEvent, ShouldBeStoredInOut
             currency: (string) ($payload['currency'] ?? 'HNL'),
             reference: (string) ($payload['reference'] ?? ''),
             idempotencyKey: isset($payload['idempotency_key']) ? (string) $payload['idempotency_key'] : null,
-            occurredAt: isset($payload['occurred_at'])
-                ? new DateTimeImmutable($payload['occurred_at'])
-                : new DateTimeImmutable,
+            occurredAt: $occurredAt,
             schemaVersion: (int) ($payload['schema_version'] ?? self::SCHEMA_VERSION),
-            restoredEventId: $payload['event_id'] ?? null,
-            restoredCorrelationId: $payload['correlation_id'] ?? null,
         );
     }
 
     /**
+     * Serialize to safe payload for Outbox storage.
+     *
      * @return array<string, mixed>
      */
     public function toPayload(): array
@@ -112,8 +73,6 @@ final readonly class PaymentReported implements DomainEvent, ShouldBeStoredInOut
             'reference' => $this->reference,
             'idempotency_key' => $this->idempotencyKey,
             'occurred_at' => $this->occurredAt->format(DateTimeInterface::ATOM),
-            'event_id' => $this->eventId,
-            'correlation_id' => $this->correlationId,
         ];
     }
 }

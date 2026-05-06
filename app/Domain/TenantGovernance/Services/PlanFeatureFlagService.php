@@ -4,29 +4,26 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
-use App\Domain\TenantGovernance\Enums\TenantPlan;
-use App\Models\Tenant;
-
 // use App\Models\Tenant; // REMOVED
 
 /**
  * PlanFeatureFlagService - Domain Service for SaaS Plan Capabilities
  *
- * â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
- * â•‘  PURE DOMAIN SERVICE: Zero framework dependencies                        â•‘
- * â• â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•£
- * â•‘  This service encapsulates ALL business rules related to SaaS plans.    â•‘
- * â•‘  It answers questions like:                                              â•‘
- * â•‘  - "Can this tenant show reviews?"                                       â•‘
- * â•‘  - "How many products can they display?"                                 â•‘
- * â•‘  - "Are modifier groups enabled?"                                        â•‘
- * â•‘                                                                           â•‘
- * â•‘  PHILOSOPHY: Single source of truth for plan capabilities.               â•‘
- * â•‘  If a rule changes (e.g., Semilla can now show 15 products), change it  â•‘
- * â•‘  HERE, not in 50 scattered files.                                         â•‘
- * â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  PURE DOMAIN SERVICE: Zero framework dependencies                        ║
+ * ╠══════════════════════════════════════════════════════════════════════════╣
+ * ║  This service encapsulates ALL business rules related to SaaS plans.    ║
+ * ║  It answers questions like:                                              ║
+ * ║  - "Can this tenant show reviews?"                                       ║
+ * ║  - "How many products can they display?"                                 ║
+ * ║  - "Are modifier groups enabled?"                                        ║
+ * ║                                                                           ║
+ * ║  PHILOSOPHY: Single source of truth for plan capabilities.               ║
+ * ║  If a rule changes (e.g., Semilla can now show 15 products), change it  ║
+ * ║  HERE, not in 50 scattered files.                                         ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
  *
- * @see \App\Infrastructure\Tenant\Transformers\TenantMicrositeTransformer - Uses this service
+ * @see \App\Application\Tenant\Transformers\TenantMicrositeTransformer - Uses this service
  */
 final class PlanFeatureFlagService
 {
@@ -52,11 +49,9 @@ final class PlanFeatureFlagService
      * Determine the tenant's subscription plan.
      *
      * Business Logic:
-     * - plan_type = semilla → Free tier, stateless WhatsApp
-     * - plan_type = pro/crecimiento/cosecha → Paid tier
+     * - is_pro = false → 'semilla' (Free tier, stateless WhatsApp)
+     * - is_pro = true  → 'pro' (Paid tier, stateful cart)
      * - Future: enterprise based on subscription table
-     *
-     * @return self::PLAN_SEMILLA|self::PLAN_PRO|self::PLAN_ENTERPRISE
      */
     public function determinePlan(object $tenant): string
     {
@@ -65,23 +60,7 @@ final class PlanFeatureFlagService
         //     return self::PLAN_ENTERPRISE;
         // }
 
-        $planKey = method_exists($tenant, 'getRawOriginal')
-            ? ($tenant->getRawOriginal('plan_type') ?: ($tenant->getAttributes()['plan_type'] ?? null))
-            : ($tenant->plan_type ?? null);
-
-        $value = match (true) {
-            $planKey instanceof TenantPlan => $planKey->value,
-            is_string($planKey) && $planKey !== '' => $planKey,
-            default => self::PLAN_SEMILLA,
-        };
-
-        return match ($value) {
-            Tenant::PLAN_CRECIMIENTO,
-            Tenant::PLAN_COSECHA,
-            self::PLAN_PRO => self::PLAN_PRO,
-            self::PLAN_ENTERPRISE => self::PLAN_ENTERPRISE,
-            default => self::PLAN_SEMILLA,
-        };
+        return $tenant->is_pro ? self::PLAN_PRO : self::PLAN_SEMILLA;
     }
 
     /**
@@ -193,7 +172,7 @@ final class PlanFeatureFlagService
 
         $plan = $this->determinePlan($tenant);
 
-        return self::PRODUCT_LIMITS[$plan];
+        return self::PRODUCT_LIMITS[$plan] ?? self::PRODUCT_LIMITS[self::PLAN_SEMILLA];
     }
 
     /**

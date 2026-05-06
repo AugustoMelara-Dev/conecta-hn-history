@@ -39,10 +39,10 @@ interface ShouldBeStoredInOutbox
     /**
      * Get the aggregate identifier for debugging/filtering.
      */
-    public function getAggregateId(): string;
+    public function getAggregateId(): ?string;
 
     /**
      * Get the aggregate type (entity class) for debugging/filtering.
      */
-    public function getAggregateType(): string;
+    public function getAggregateType(): ?string;
 }

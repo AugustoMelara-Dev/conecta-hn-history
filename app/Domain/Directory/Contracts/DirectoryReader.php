@@ -5,29 +5,30 @@ declare(strict_types=1);
 namespace App\Domain\Directory\Contracts;
 
 use App\Domain\Directory\DTOs\DirectorySearchData;
-use App\Domain\Shared\Contracts\PaginatedResult;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 
 interface DirectoryReader
 {
     /**
      * Get featured/priority tenants for the directory.
      */
-    public function getFeaturedTenants(int $limit = 8): array;
+    public function getFeaturedTenants(int $limit = 8): Collection;
 
     /**
      * Search tenants with pagination.
      */
-    public function searchTenants(DirectorySearchData $filters): PaginatedResult;
+    public function searchTenants(DirectorySearchData $filters): LengthAwarePaginator;
 
     /**
      * Get all cities that given tenants belong to.
      */
-    public function getCitiesWithTenants(): array;
+    public function getCitiesWithTenants(): Collection;
 
     /**
      * Get all categories with active tenants.
      */
-    public function getCategoriesWithTenants(): array;
+    public function getCategoriesWithTenants(): Collection;
 
     /**
      * Find a city by its slug.

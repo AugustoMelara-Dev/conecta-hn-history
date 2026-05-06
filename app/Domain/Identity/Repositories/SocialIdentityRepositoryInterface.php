@@ -28,16 +28,8 @@ interface SocialIdentityRepositoryInterface
         string $provider,
         string $providerId,
         ?string $token = null,
-        ?string $refreshToken = null,
-        ?\DateTimeInterface $tokenExpiresAt = null,
         ?string $avatar = null
     ): void;
 
-    public function updateToken(
-        string $provider,
-        string $providerId,
-        ?string $token,
-        ?string $refreshToken = null,
-        ?\DateTimeInterface $tokenExpiresAt = null,
-    ): void;
+    // public function updateToken(string $provider, string $providerId, ?string $token): void; // Omitted as not requested in prompt
 }

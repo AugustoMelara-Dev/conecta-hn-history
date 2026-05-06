@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domain\Interactions\Repositories;
 
-use App\Domain\Analytics\Entities\InteractionEntity;
+use App\Models\Interaction;
 
 interface InteractionRepositoryInterface
 {
-    public function create(InteractionEntity $entity): void;
+    public function create(array $data, int $tenantId): Interaction;
 
-    public function exists(string $tenantId, array $criteria): bool;
+    public function exists(int $tenantId, array $criteria): bool;
 }

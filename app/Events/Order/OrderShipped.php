@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Events\Order;
 
-use App\Domain\Shared\Contracts\Events\DomainEvent;
-use App\Domain\Shared\Traits\HasDomainMetadata;
-use App\Domain\Shared\ValueObjects\TenantId;
+use App\Contracts\Events\DomainEvent;
+use App\Traits\HasDomainMetadata;
 use App\ValueObjects\OrderNumber;
+use App\ValueObjects\TenantId;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**
@@ -65,21 +65,18 @@ final readonly class OrderShipped implements DomainEvent, ShouldDispatchAfterCom
         ?string $restoredOccurredAt = null,
         ?string $restoredCorrelationId = null,
     ) {
-        $metadata = self::resolveMetadata(
+        $this->initMetadata(
             correlationId: $restoredCorrelationId,
             restoredEventId: $restoredEventId,
             restoredOccurredAt: $restoredOccurredAt,
         );
-        $this->eventId = $metadata['eventId'];
-        $this->correlationId = $metadata['correlationId'];
-        $this->occurredAt = $metadata['occurredAt'];
     }
 
     /**
      * Factory: Create from shipping data (snapshotted at creation time).
      */
     public static function create(
-        string $tenantId,
+        int $tenantId,
         int $orderId,
         string $orderNumber,
         string $carrier,
@@ -87,7 +84,7 @@ final readonly class OrderShipped implements DomainEvent, ShouldDispatchAfterCom
         ?string $estimatedDelivery = null
     ): self {
         return new self(
-            tenantId: TenantId::fromString($tenantId),
+            tenantId: TenantId::fromInt($tenantId),
             orderId: $orderId,
             orderNumber: OrderNumber::fromString($orderNumber),
             carrier: $carrier,
@@ -122,9 +119,9 @@ final readonly class OrderShipped implements DomainEvent, ShouldDispatchAfterCom
         return $this->tenantId;
     }
 
-    public function aggregateId(): string
+    public function aggregateId(): int
     {
-        return (string) $this->orderId;
+        return $this->orderId;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -155,7 +152,7 @@ final readonly class OrderShipped implements DomainEvent, ShouldDispatchAfterCom
         }
 
         return new self(
-            tenantId: TenantId::fromString((string) $tenantId),
+            tenantId: TenantId::fromInt($tenantId),
             orderId: $primitives['order_id'] ?? 0,
             orderNumber: OrderNumber::fromString($primitives['order_number'] ?? 'UNKNOWN'),
             carrier: $primitives['carrier'] ?? 'unknown',

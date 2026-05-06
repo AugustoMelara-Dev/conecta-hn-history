@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Tenant\Contracts;
 
-use App\Domain\Shared\Contracts\PaginatedResult;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 /**
  * CouponRepository - Domain Contract for Marketing Dashboard
@@ -17,5 +17,5 @@ interface CouponRepository
     /**
      * Get paginated list of coupons for dashboard.
      */
-    public function getDashboardList(int $tenantId, int $perPage = 10): PaginatedResult;
+    public function getDashboardList(int $tenantId, int $perPage = 10): LengthAwarePaginator;
 }

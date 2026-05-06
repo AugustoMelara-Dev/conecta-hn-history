@@ -4,16 +4,15 @@ declare(strict_types=1);
 
 namespace App\Domain\Sales\Enums;
 
+use Spatie\TypeScriptTransformer\Attributes\TypeScript;
+
 /**
  * OrderStatus - Domain State Definition
  *
  * Maps to App\Models\Order constants.
  * Exposed to Frontend for type-safe Status Badges.
- *
- * NOTE (A5): #[TypeScript] attribute removed to maintain Domain purity.
- * TypeScript type generation should be configured manually via
- * config/typescript-transformer.php or declared directly in the frontend.
  */
+#[TypeScript]
 enum OrderStatus: string
 {
     case PENDING = 'pending';

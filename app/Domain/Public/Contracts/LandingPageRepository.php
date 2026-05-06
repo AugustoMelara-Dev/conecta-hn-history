@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Public\Contracts;
 
+use Illuminate\Support\Collection;
+
 /**
  * LandingPageRepository - Domain Contract for Landing Page Data
  *
@@ -14,17 +16,17 @@ interface LandingPageRepository
     /**
      * Get active categories for navigation.
      */
-    public function getCategories(): array;
+    public function getCategories(): Collection;
 
     /**
      * Get popular cities with tenant counts.
      */
-    public function getPopularCities(): array;
+    public function getPopularCities(): Collection;
 
     /**
      * Get latest approved tenants for social proof.
      */
-    public function getLatestTenants(): array;
+    public function getLatestTenants(): Collection;
 
     /**
      * Get a random hero image from cities.

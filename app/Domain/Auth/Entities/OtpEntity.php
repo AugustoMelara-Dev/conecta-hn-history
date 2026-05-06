@@ -20,7 +20,7 @@ final readonly class OtpEntity
 {
     public function __construct(
         public string $id,
-        public ?string $userId,
+        public ?int $userId,
         public string $identifier,
         public string $tenantId,
         public string $hashedCode,

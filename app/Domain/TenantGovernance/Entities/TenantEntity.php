@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\TenantGovernance\Entities;
 
 use App\Domain\Common\Traits\EventSourcedAggregate;
-use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Domain\TenantGovernance\Events\TenantCreated;
-use App\Domain\TenantGovernance\Exceptions\TenantDomainException;
 use DateTimeImmutable;
 
 /**
@@ -36,60 +34,9 @@ final class TenantEntity
     // Subscription Properties (Billing Bounded Context)
     private ?string $planId = null;
 
-    private string $subscriptionStatus = 'inactive';
-
     private ?\DateTimeImmutable $subscriptionEndsAt = null;
 
     private ?string $subscriptionReference = null;
-
-    // Profile & Configuration
-    private ?string $ownerId = null;
-
-    private ?int $categoryId = null;
-
-    private ?int $cityId = null;
-
-    private BusinessType $businessType = BusinessType::RETAIL;
-
-    private ?string $logoPath = null;
-
-    private ?string $coverPath = null;
-
-    private ?string $whatsapp = null;
-
-    private ?string $phone = null;
-
-    private ?string $address = null;
-
-    private ?string $latitude = null;
-
-    private ?string $longitude = null;
-
-    private int $productLimit = 10;
-
-    private ?string $description = null;
-
-    private ?string $about = null;
-
-    private ?string $slogan = null;
-
-    private ?string $primaryColor = null;
-
-    private ?string $websiteUrl = null;
-
-    private ?string $instagramUrl = null;
-
-    private ?string $facebookUrl = null;
-
-    private ?string $tiktokUrl = null;
-
-    /** @var array<string, mixed>|null */
-    private ?array $landingPageData = null;
-
-    /** @var array<string, mixed>|null */
-    private ?array $simpleSchedule = null;
-
-    private bool $isAiEnhanced = false;
 
     private function __construct() {}
 
@@ -101,7 +48,7 @@ final class TenantEntity
     {
         $tenant = new self;
 
-        $event = TenantCreated::now(
+        $event = new TenantCreated(
             id: $id,
             name: $name,
             domain: $domain
@@ -142,114 +89,6 @@ final class TenantEntity
         return $this->domain;
     }
 
-    public function description(): ?string
-    {
-        return $this->description;
-    }
-
-    public function about(): ?string
-    {
-        return $this->about;
-    }
-
-    public function slug(): string
-    {
-        return $this->domain;
-    }
-
-    public function subscriptionStatus(): string
-    {
-        return $this->subscriptionStatus;
-    }
-
-    public function whatsappNumber(): ?string
-    {
-        return $this->whatsapp;
-    }
-
-    public function logoPath(): ?string
-    {
-        return $this->logoPath;
-    }
-
-    public function coverPath(): ?string
-    {
-        return $this->coverPath;
-    }
-
-    public function phone(): ?string
-    {
-        return $this->phone;
-    }
-
-    public function address(): ?string
-    {
-        return $this->address;
-    }
-
-    public function latitude(): ?string
-    {
-        return $this->latitude;
-    }
-
-    public function longitude(): ?string
-    {
-        return $this->longitude;
-    }
-
-    public function primaryColor(): ?string
-    {
-        return $this->primaryColor;
-    }
-
-    public function websiteUrl(): ?string
-    {
-        return $this->websiteUrl;
-    }
-
-    public function instagramUrl(): ?string
-    {
-        return $this->instagramUrl;
-    }
-
-    public function facebookUrl(): ?string
-    {
-        return $this->facebookUrl;
-    }
-
-    public function tiktokUrl(): ?string
-    {
-        return $this->tiktokUrl;
-    }
-
-    /**
-     * @return array<string, mixed>|null
-     */
-    public function landingPageData(): ?array
-    {
-        return $this->landingPageData;
-    }
-
-    /**
-     * @return array<string, mixed>|null
-     */
-    public function simpleSchedule(): ?array
-    {
-        return $this->simpleSchedule;
-    }
-
-    public function isPro(): bool
-    {
-        return $this->planId !== null
-            && in_array($this->planId, ['pro', 'crecimiento', 'cosecha', 'enterprise'], true)
-            && in_array($this->subscriptionStatus, ['active', 'trial'], true);
-    }
-
-    public function isPubliclyVisible(): bool
-    {
-        return $this->isActive && in_array($this->subscriptionStatus, ['active', 'trial'], true);
-    }
-
     // Additional getters if needed by Repository mapping,
     // maintaining read-only contract.
     public function isActive(): bool
@@ -260,11 +99,6 @@ final class TenantEntity
     public function createdAt(): DateTimeImmutable
     {
         return $this->createdAt;
-    }
-
-    public function updatedAt(): DateTimeImmutable
-    {
-        return $this->updatedAt;
     }
 
     // -- DOMAIN BEHAVIOR --
@@ -312,133 +146,6 @@ final class TenantEntity
         return $this->subscriptionReference ?? null;
     }
 
-    public function applyAiEnhancement(array $enhancedData, bool $allowReEnhancement = false): void
-    {
-        if ($this->isAiEnhanced && ! $allowReEnhancement) {
-            throw TenantDomainException::alreadyEnhanced();
-        }
-
-        if (($this->name === '') && isset($enhancedData['business_name_clean']) && $enhancedData['business_name_clean'] !== '') {
-            $this->name = (string) $enhancedData['business_name_clean'];
-        }
-
-        if (isset($enhancedData['tagline'])) {
-            $this->slogan = (string) $enhancedData['tagline'];
-        }
-
-        if (isset($enhancedData['short_description'])) {
-            $this->description = (string) $enhancedData['short_description'];
-        }
-
-        $this->isAiEnhanced = true;
-        $this->updatedAt = new DateTimeImmutable;
-    }
-
-    public function setupProfile(
-        string $ownerId,
-        ?int $categoryId = null,
-        ?int $cityId = null,
-        ?BusinessType $businessType = null,
-        ?string $logoPath = null,
-        ?string $whatsapp = null,
-        bool $hasPaidPlan = false,
-        int $productLimit = 10
-    ): void {
-        $this->ownerId = $ownerId;
-        $this->categoryId = $categoryId;
-        $this->cityId = $cityId;
-        $this->businessType = $businessType ?? BusinessType::RETAIL;
-        $this->logoPath = $logoPath;
-        $this->whatsapp = $whatsapp;
-        if ($this->planId === null) {
-            $this->planId = $hasPaidPlan ? 'pro' : 'semilla';
-        }
-        $this->productLimit = $productLimit;
-        $this->updatedAt = new DateTimeImmutable;
-    }
-
-    public function replaceLogoPath(string $logoPath): void
-    {
-        $this->logoPath = $logoPath;
-        $this->updatedAt = new DateTimeImmutable;
-    }
-
-    public function replaceCoverPath(string $coverPath): void
-    {
-        $this->coverPath = $coverPath;
-        $this->updatedAt = new DateTimeImmutable;
-    }
-
-    /**
-     * @param  array<string, string>  $attributes
-     */
-    public function updateBranding(array $attributes): void
-    {
-        if (array_key_exists('name', $attributes)) {
-            $this->name = $attributes['name'];
-        }
-
-        if (array_key_exists('description', $attributes)) {
-            $this->description = $attributes['description'];
-        }
-
-        if (array_key_exists('about', $attributes)) {
-            $this->about = $attributes['about'];
-        }
-
-        if (array_key_exists('phone', $attributes)) {
-            $this->phone = $attributes['phone'];
-        }
-
-        if (array_key_exists('whatsapp', $attributes)) {
-            $this->whatsapp = $attributes['whatsapp'];
-        }
-
-        if (array_key_exists('address', $attributes)) {
-            $this->address = $attributes['address'];
-        }
-
-        if (array_key_exists('website_url', $attributes)) {
-            $this->websiteUrl = $attributes['website_url'];
-        }
-
-        if (array_key_exists('instagram_url', $attributes)) {
-            $this->instagramUrl = $attributes['instagram_url'];
-        }
-
-        if (array_key_exists('facebook_url', $attributes)) {
-            $this->facebookUrl = $attributes['facebook_url'];
-        }
-
-        if (array_key_exists('tiktok_url', $attributes)) {
-            $this->tiktokUrl = $attributes['tiktok_url'];
-        }
-
-        if (array_key_exists('primary_color', $attributes)) {
-            $this->primaryColor = $attributes['primary_color'];
-        }
-
-        $this->updatedAt = new DateTimeImmutable;
-    }
-
-    /**
-     * @param  array<string, mixed>  $landingPageData
-     */
-    public function updateLandingPage(array $landingPageData): void
-    {
-        $this->landingPageData = $landingPageData;
-        $this->updatedAt = new DateTimeImmutable;
-    }
-
-    /**
-     * @param  array<string, mixed>  $schedule
-     */
-    public function updateSchedule(array $schedule): void
-    {
-        $this->simpleSchedule = $schedule;
-        $this->updatedAt = new DateTimeImmutable;
-    }
-
     // -- SNAPSHOT COMPATIBILITY (Memento Pattern) --
 
     /**
@@ -464,35 +171,8 @@ final class TenantEntity
 
             // Subscription State (Billing Context) - CRITICAL FOR PERSISTENCE
             'plan_id' => $this->planId,
-            'subscription_status' => $this->subscriptionStatus,
             'subscription_ends_at' => $this->subscriptionEndsAt?->format(\DateTimeInterface::ATOM),
             'subscription_reference' => $this->subscriptionReference,
-
-            // Profile & Settings
-            'owner_id' => $this->ownerId,
-            'category_id' => $this->categoryId,
-            'city_id' => $this->cityId,
-            'business_type' => $this->businessType->value,
-            'logo_path' => $this->logoPath,
-            'cover_path' => $this->coverPath,
-            'whatsapp' => $this->whatsapp,
-            'phone' => $this->phone,
-            'address' => $this->address,
-            'latitude' => $this->latitude,
-            'longitude' => $this->longitude,
-            'product_limit' => $this->productLimit,
-            'description' => $this->description,
-            'about' => $this->about,
-            'slogan' => $this->slogan,
-            'primary_color' => $this->primaryColor,
-            'website_url' => $this->websiteUrl,
-            'instagram_url' => $this->instagramUrl,
-            'facebook_url' => $this->facebookUrl,
-            'tiktok_url' => $this->tiktokUrl,
-            'landing_page_data' => $this->landingPageData,
-            'simple_schedule' => $this->simpleSchedule,
-            'is_ai_enhanced' => $this->isAiEnhanced,
-            'version' => $this->version,
         ];
     }
 
@@ -524,46 +204,12 @@ final class TenantEntity
 
         // Subscription State (CRITICAL - prevents Premium Amnesia)
         $tenant->planId = isset($state['plan_id']) ? (string) $state['plan_id'] : null;
-        $tenant->subscriptionStatus = isset($state['subscription_status'])
-            ? (string) $state['subscription_status']
-            : 'inactive';
-        $tenant->subscriptionEndsAt = array_key_exists('subscription_ends_at', $state) && $state['subscription_ends_at'] !== null
+        $tenant->subscriptionEndsAt = isset($state['subscription_ends_at']) && $state['subscription_ends_at'] !== null
             ? new DateTimeImmutable($state['subscription_ends_at'])
             : null;
         $tenant->subscriptionReference = isset($state['subscription_reference'])
             ? (string) $state['subscription_reference']
             : null;
-
-        // Profile & Settings
-        $tenant->ownerId = isset($state['owner_id']) ? (string) $state['owner_id'] : null;
-        $tenant->categoryId = isset($state['category_id']) ? (int) $state['category_id'] : null;
-        $tenant->cityId = isset($state['city_id']) ? (int) $state['city_id'] : null;
-        $tenant->businessType = isset($state['business_type'])
-            ? BusinessType::from((string) $state['business_type'])
-            : BusinessType::RETAIL;
-        $tenant->logoPath = isset($state['logo_path']) ? (string) $state['logo_path'] : null;
-        $tenant->coverPath = isset($state['cover_path']) ? (string) $state['cover_path'] : null;
-        $tenant->whatsapp = isset($state['whatsapp']) ? (string) $state['whatsapp'] : null;
-        $tenant->phone = isset($state['phone']) ? (string) $state['phone'] : null;
-        $tenant->address = isset($state['address']) ? (string) $state['address'] : null;
-        $tenant->latitude = isset($state['latitude']) ? (string) $state['latitude'] : null;
-        $tenant->longitude = isset($state['longitude']) ? (string) $state['longitude'] : null;
-        $tenant->productLimit = isset($state['product_limit']) ? (int) $state['product_limit'] : 10;
-        $tenant->description = isset($state['description']) ? (string) $state['description'] : null;
-        $tenant->about = isset($state['about']) ? (string) $state['about'] : null;
-        $tenant->slogan = isset($state['slogan']) ? (string) $state['slogan'] : null;
-        $tenant->primaryColor = isset($state['primary_color']) ? (string) $state['primary_color'] : null;
-        $tenant->websiteUrl = isset($state['website_url']) ? (string) $state['website_url'] : null;
-        $tenant->instagramUrl = isset($state['instagram_url']) ? (string) $state['instagram_url'] : null;
-        $tenant->facebookUrl = isset($state['facebook_url']) ? (string) $state['facebook_url'] : null;
-        $tenant->tiktokUrl = isset($state['tiktok_url']) ? (string) $state['tiktok_url'] : null;
-        $tenant->landingPageData = isset($state['landing_page_data']) && is_array($state['landing_page_data'])
-            ? $state['landing_page_data']
-            : null;
-        $tenant->simpleSchedule = isset($state['simple_schedule']) && is_array($state['simple_schedule'])
-            ? $state['simple_schedule']
-            : null;
-        $tenant->isAiEnhanced = isset($state['is_ai_enhanced']) ? (bool) $state['is_ai_enhanced'] : false;
 
         // Event Sourcing compatibility
         $tenant->version = (int) ($state['version'] ?? 0);

@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Domain\User\Events;
 
 use DateTimeImmutable;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Queue\SerializesModels;
 
 /**
  * UserProfileUpdated - Profile Change Domain Event
@@ -106,7 +109,7 @@ final readonly class UserProfileUpdated
      *
      * @param  array<string, mixed>  $payload
      */
-    public static function fromPayload(array $payload): static
+    public static function fromPayload(array $payload): self
     {
         return new self(
             userId: $payload['user_id'],

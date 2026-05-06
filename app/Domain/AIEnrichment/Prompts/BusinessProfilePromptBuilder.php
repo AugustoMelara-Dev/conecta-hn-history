@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\AIEnrichment\Prompts;
 
-use App\Domain\AIEnrichment\Data\BusinessProfilePromptRequest;
+use App\Domain\AIEnrichment\Data\AiPromptPayload;
 
 /**
  * BusinessProfilePromptBuilder - Business Logic for AI Context
@@ -22,14 +22,14 @@ final class BusinessProfilePromptBuilder
     /**
      * Build the structured prompt for the AI.
      *
-     * @return BusinessProfilePromptRequest Validated prompt object ready for LLM ingestion
+     * @return AiPromptPayload Validated prompt object ready for LLM ingestion
      */
     public static function build(
         string $businessName,
         string $activity,
         string $location,
         ?string $extraDetails = null
-    ): BusinessProfilePromptRequest {
+    ): AiPromptPayload {
         $context = $extraDetails
             ? "Contexto Adicional Proporcionado: \"{$extraDetails}\""
             : 'Contexto Adicional: Ninguno.';
@@ -56,7 +56,7 @@ Output Requirements:
 Do not include "Here is the profile" or meta-commentary. Just output the content.
 PROMPT;
 
-        return new BusinessProfilePromptRequest(
+        return new AiPromptPayload(
             content: $promptContent,
             config: ['temperature' => 0.7] // Default creativity configuration
         );

@@ -28,7 +28,7 @@ interface InteractionRepositoryInterface
      * @return bool True if duplicate exists for THIS visitor
      */
     public function hasRecentInteraction(
-        string $tenantId,
+        int $tenantId,
         string $visitorId,
         string $type,
         int $withinMinutes = 5
@@ -40,10 +40,10 @@ interface InteractionRepositoryInterface
      * @return InteractionEntity Created interaction entity
      */
     public function create(
-        string $tenantId,
+        int $tenantId,
         string $visitorId,
         string $type,
-        ?string $productId = null,
+        ?int $productId = null,
         ?string $ipAddress = null,
         ?string $userAgent = null,
         ?string $referrer = null,

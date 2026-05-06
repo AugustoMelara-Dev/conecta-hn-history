@@ -11,7 +11,7 @@ use DateTimeImmutable;
  *
  * Defines the essential behavior of any historical fact in the system.
  */
-interface DomainEventInterface extends \JsonSerializable
+interface DomainEventInterface
 {
     /**
      * Convert the event state to a primitive array for storage.

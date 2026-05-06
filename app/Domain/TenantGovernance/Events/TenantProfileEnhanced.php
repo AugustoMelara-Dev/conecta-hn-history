@@ -4,92 +4,58 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Events;
 
-use App\Domain\Shared\Contracts\Events\DomainEvent;
-use App\Domain\Shared\Contracts\ShouldDispatchAfterCommit;
-use App\Domain\Shared\Traits\HasEventIdentity;
+// Assuming a base abstract class or interface exists, or just standalone
+use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**
  * TenantProfileEnhanced - Domain Event (Scalar Compliant)
  *
  * Represents the fact that a tenant's profile was enhanced by AI.
- * Implements DomainEvent (canonical) via Bridge (W-01).
- * Uses HasEventIdentity (W-03).
+ * Updated to "Titanium Standard":
+ * - Scalar Constructor strings/ints (No Value Objects).
+ * - Implements toPayload/fromPayload.
+ * - Outbox Ready.
  */
-final readonly class TenantProfileEnhanced implements DomainEvent, ShouldDispatchAfterCommit
+final class TenantProfileEnhanced implements ShouldDispatchAfterCommit
 {
-    use HasEventIdentity;
-
-    private const SCHEMA_VERSION = 1;
-
-    public function schemaVersion(): int
-    {
-        return self::SCHEMA_VERSION;
-    }
-
     public function __construct(
         public readonly string $tenant_id,
-        public readonly string $user_id,
-        public readonly \DateTimeImmutable $occurredAt,
-        public readonly array $enhanced_fields,
-        ?string $restoredEventId = null,
-        ?string $restoredCorrelationId = null,
-    ) {
-        $identity = self::resolveEventIdentity($restoredEventId, $restoredCorrelationId);
-        $this->eventId = $identity['eventId'];
-        $this->correlationId = $identity['correlationId'];
+        public readonly int $user_id, // IDs as scalar
+        public readonly string $occurred_at, // ISO8601 String
+        public readonly array $enhanced_fields // Array is scalar-ish enough for JSON
+    ) {}
+
+    /*
+    public static function fromTenant(
+        \App\Models\Tenant $tenant,
+        array $enhancedFields
+    ): self {
+        return new self(
+            tenant_id: (string) $tenant->id,
+            user_id: (int) $tenant->user_id,
+            occurred_at: now()->toIso8601String(),
+            enhanced_fields: $enhancedFields
+        );
     }
+    */
 
-    // â”€â”€â”€ DomainEvent interface â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-    public function tenantId(): mixed
-    {
-        return $this->tenant_id;
-    }
-
-    public function aggregateId(): string
-    {
-        return $this->tenant_id;
-    }
-
-    public function occurredAt(): \DateTimeImmutable
-    {
-        return $this->occurredAt;
-    }
-
-    public function toPrimitives(): array
-    {
-        return $this->toPayload();
-    }
-
-    public static function fromPrimitives(array $primitives): self
-    {
-        return self::fromPayload($primitives);
-    }
-
-    // â”€â”€â”€ Serialization â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-    public static function fromPayload(array $payload): static
+    public static function fromPayload(array $payload): self
     {
         return new self(
             tenant_id: (string) ($payload['tenant_id'] ?? ''),
-            user_id: (string) ($payload['user_id'] ?? ''),
-            occurredAt: new \DateTimeImmutable($payload['occurred_at'] ?? 'now'),
-            enhanced_fields: (array) ($payload['enhanced_fields'] ?? []),
-            restoredEventId: $payload['event_id'] ?? null,
-            restoredCorrelationId: $payload['correlation_id'] ?? null,
+            user_id: (int) ($payload['user_id'] ?? 0),
+            occurred_at: (string) ($payload['occurred_at'] ?? now()->toIso8601String()),
+            enhanced_fields: (array) ($payload['enhanced_fields'] ?? [])
         );
     }
 
     public function toPayload(): array
     {
         return [
-            'schema_version' => self::SCHEMA_VERSION,
             'tenant_id' => $this->tenant_id,
             'user_id' => $this->user_id,
-            'occurred_at' => $this->occurredAt->format(\DateTimeInterface::ATOM),
+            'occurred_at' => $this->occurred_at,
             'enhanced_fields' => $this->enhanced_fields,
-            'event_id' => $this->eventId,
-            'correlation_id' => $this->correlationId,
         ];
     }
 }

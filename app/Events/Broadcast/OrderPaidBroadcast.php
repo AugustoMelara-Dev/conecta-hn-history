@@ -28,8 +28,8 @@ final class OrderPaidBroadcast implements BroadcastableNotification
     public $timeout = 30;
 
     public function __construct(
-        public string|int $tenantId,
-        public string|int $orderId,
+        public int $tenantId,
+        public int $orderId,
         public string $orderNumber,
         public int $amountCents,
         public string $currency,
@@ -38,8 +38,8 @@ final class OrderPaidBroadcast implements BroadcastableNotification
     ) {}
 
     public static function fromDomainData(
-        string|int $tenantId,
-        string|int $orderId,
+        int $tenantId,
+        int $orderId,
         string $orderNumber,
         int $amountCents,
         string $currency,
@@ -84,16 +84,15 @@ final class OrderPaidBroadcast implements BroadcastableNotification
      * @return array{
      *   _version: int,
      *   _timestamp: string,
-     *   title: string|array,
-     *   message: string|array,
+     *   title: string,
+     *   message: string,
      *   status: string,
      *   icon: string,
-     *   tenant_id: string|int,
-     *   order_id: string|int,
+     *   order_id: int,
      *   order_number: string,
-     *   amount_formatted: string,
+     *   amount: string,
      *   payment_method: string,
-     *   paid_at: string
+     *   tenant_id: int
      * }
      */
     public function broadcastWith(): array

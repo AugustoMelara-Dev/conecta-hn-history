@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Events\Audit;
 
 use App\Contracts\Events\AuditEvent;
-use App\Domain\Shared\ValueObjects\TenantId;
 use App\Enums\Severity;
 use App\ValueObjects\AuditContext;
 use App\ValueObjects\IpAddress;
+use App\ValueObjects\TenantId;
 use DateTimeImmutable;
 
 /**
@@ -40,7 +40,7 @@ final readonly class SalesExportCreated implements AuditEvent
     public function __construct(
         public string $exportId,
         public TenantId $tenantId,
-        public int|string $userId,
+        public int $userId,
         public string $format,
         public string $criteriaHash,
         public array $criteriaDetails,
@@ -54,7 +54,7 @@ final readonly class SalesExportCreated implements AuditEvent
     public static function create(
         string $exportId,
         TenantId $tenantId,
-        int|string $userId,
+        int $userId,
         string $format,
         string $criteriaHash,
         array $criteriaDetails,
@@ -140,13 +140,11 @@ final readonly class SalesExportCreated implements AuditEvent
         $occurredAt = new DateTimeImmutable($data['occurred_at'] ?? 'now');
         $ipAddress = $data['ip_address'] ?? '0.0.0.0';
         $userAgent = $data['user_agent'] ?? 'Unknown';
-        $userId = is_int($data['user_id'] ?? null) || is_string($data['user_id'] ?? null)
-            ? $data['user_id']
-            : 0;
+        $userId = $data['user_id'] ?? 0;
 
         return new self(
             exportId: $data['export_id'] ?? uniqid('exp_'),
-            tenantId: TenantId::fromString($tenantId),
+            tenantId: new TenantId($tenantId),
             userId: $userId,
             format: $data['format'] ?? 'unknown',
             criteriaHash: $data['criteria_hash'] ?? '',

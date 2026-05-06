@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
-use App\Domain\TenantGovernance\Entities\TenantEntity;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 
 /**
@@ -29,7 +28,7 @@ final class TenantResolver
      * SECURITY: Only returns active, publicly visible tenants.
      * Returns null for inactive or non-existent tenants (no information leak).
      */
-    public function findPublicById(string $tenantId): ?TenantEntity
+    public function findPublicById(int $tenantId): ?object
     {
         // Cache responsibility delegated to Infrastructure (Repository Decorator)
         $tenant = $this->repository->findById($tenantId);
@@ -38,13 +37,22 @@ final class TenantResolver
             return null;
         }
 
-        return $tenant->isPubliclyVisible() ? $tenant : null;
+        // Domain Logic: Validate Status
+        // We assume the entity has these properties/methods.
+        // In a pure domain, these would be methods like $tenant->isActive().
+        // For now, accessing properties dynamically or via the interface contract.
+
+        if ($tenant->is_active === true && in_array($tenant->subscription_status, ['active', 'trial'])) {
+            return $tenant;
+        }
+
+        return null;
     }
 
     /**
      * Find a PUBLIC tenant by slug.
      */
-    public function findPublicBySlug(string $slug): ?TenantEntity
+    public function findPublicBySlug(string $slug): ?object
     {
         // Cache responsibility delegated to Infrastructure
         $tenant = $this->repository->findBySlug($slug);
@@ -53,13 +61,17 @@ final class TenantResolver
             return null;
         }
 
-        return $tenant->isPubliclyVisible() ? $tenant : null;
+        if ($tenant->is_active === true && in_array($tenant->subscription_status, ['active', 'trial'])) {
+            return $tenant;
+        }
+
+        return null;
     }
 
     /**
      * Find a PUBLIC tenant by domain.
      */
-    public function findPublicByDomain(string $domain): ?TenantEntity
+    public function findPublicByDomain(string $domain): ?object
     {
         $tenant = $this->repository->findByDomain($domain);
 
@@ -67,13 +79,17 @@ final class TenantResolver
             return null;
         }
 
-        return $tenant->isPubliclyVisible() ? $tenant : null;
+        if ($tenant->is_active === true && in_array($tenant->subscription_status, ['active', 'trial'])) {
+            return $tenant;
+        }
+
+        return null;
     }
 
     /**
      * Verify a tenant exists and is public.
      */
-    public function isPublic(string $tenantId): bool
+    public function isPublic(int $tenantId): bool
     {
         return $this->findPublicById($tenantId) !== null;
     }

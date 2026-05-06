@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Contracts\Events;
 
-use App\Domain\Shared\Contracts\Events\DomainEvent;
-
 /**
  * DomainEventBus - Infrastructure Contract for Event Publishing
  *

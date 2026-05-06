@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Sales\Contracts;
 
-use App\Domain\Shared\Contracts\PaginatedResult;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 /**
  * OrderReader - Read-Only Query Contract for Order Domain
@@ -24,13 +24,13 @@ interface OrderReader
      * @param  int  $tenantId  The tenant context (REQUIRED for multi-tenancy)
      * @param  string|null  $status  Optional status filter
      * @param  int  $perPage  Pagination limit
-     * @return PaginatedResult Paginated order results with eager-loaded relations
+     * @return LengthAwarePaginator Paginated order results with eager-loaded relations
      */
     public function search(
         int|string $tenantId,
         ?string $status = null,
         int $perPage = 20
-    ): PaginatedResult;
+    ): LengthAwarePaginator;
 
     /**
      * Find a single order by ID within a specific tenant.
@@ -38,7 +38,7 @@ interface OrderReader
      * SECURITY: Requires explicit tenant context to prevent IDOR.
      *
      * @param  int|string  $tenantId  The tenant context (REQUIRED for multi-tenancy)
-     * @param  int  $orderId  The order identifier
+     * @param  int  $orderId   The order identifier
      * @return object|null Order entity or null
      */
     public function find(int|string $tenantId, int $orderId): ?object;

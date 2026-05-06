@@ -5,18 +5,20 @@ declare(strict_types=1);
 namespace App\Domain\Shared\Contracts;
 
 /**
- * UpcasterInterface - Event Schema Evolution Port
+ * UpcasterInterface - Event Evolution Contract
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  LAYER: Domain\Shared\Contracts (canonical location)                    ║
  * ║  PURPOSE: Transform old event payloads to newer schema versions.        ║
  * ║  PATTERN: Chain of Responsibility for sequential version upgrades.      ║
+ * ║  IMMUTABLE: Upcasters MUST NOT mutate global state.                     ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  *
- * Moved from App\Application\Shared\Contracts to enforce A5 (Domain Purity).
- * The Application layer retains a deprecated alias for backward compatibility.
+ * When an event's schema evolves (e.g., field renamed, added, or restructured),
+ * old serialized payloads in the database become incompatible with the new PHP
+ * class definition. Upcasters bridge this gap by transforming V(n) payloads
+ * to V(n+1) format BEFORE instantiation.
  *
- * @see App\Application\Shared\Contracts\UpcasterInterface (deprecated alias)
+ * Example chain: V1 payload → UpcasterV1ToV2 → V2 payload → UpcasterV2ToV3 → V3 payload → Instantiate
  */
 interface UpcasterInterface
 {

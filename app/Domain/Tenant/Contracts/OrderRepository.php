@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Tenant\Contracts;
 
+use Illuminate\Support\Collection;
+
 /**
  * OrderRepository - Domain Contract for Tenant Order Queries
  *
@@ -21,9 +23,9 @@ interface OrderRepository
      *
      * @param  int  $tenantId  The tenant identifier
      * @param  array<string, mixed>  $filters  Optional filters (date, status, etc.)
-     * @return array<string, array<int, array<string, mixed>>> Orders grouped by status
+     * @return Collection<string, Collection> Orders grouped by status
      */
-    public function getDashboardKanban(int $tenantId, array $filters = []): array;
+    public function getDashboardKanban(int $tenantId, array $filters = []): Collection;
 
     /**
      * Get paginated order list.

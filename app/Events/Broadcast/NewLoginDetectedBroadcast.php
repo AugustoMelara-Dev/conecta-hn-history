@@ -27,8 +27,8 @@ final class NewLoginDetectedBroadcast implements BroadcastableNotification
     public $timeout = 30;
 
     public function __construct(
-        public string|int $userId,
-        public string|int $tenantId,
+        public int $userId,
+        public int $tenantId,
         public string $userEmail,
         public string $ipAddress,
         public ?string $userAgent,
@@ -36,8 +36,8 @@ final class NewLoginDetectedBroadcast implements BroadcastableNotification
     ) {}
 
     public static function fromDomainData(
-        string|int $userId,
-        string|int $tenantId,
+        int $userId,
+        int $tenantId,
         string $userEmail,
         string $ipAddress,
         ?string $userAgent,
@@ -85,17 +85,15 @@ final class NewLoginDetectedBroadcast implements BroadcastableNotification
      * @return array{
      *   _version: int,
      *   _timestamp: string,
-     *   title: string|array,
-     *   message: string|array,
+     *   title: string,
+     *   message: string,
      *   status: string,
      *   icon: string,
-     *   tenant_id: string|int,
-     *   user_id: string|int,
-     *   user_email: string,
+     *   user_id: int,
+     *   user_name: string,
      *   ip_address: string,
-     *   device: string|null,
-     *   time: string,
-     *   login_at: string
+     *   device: string,
+     *   time: string
      * }
      */
     public function broadcastWith(): array

@@ -16,7 +16,7 @@ final class CrossTenantAccessException extends DomainException
 {
     public function __construct(
         string $resource = 'resource',
-        ?string $requestedId = null,
+        ?int $requestedId = null,
     ) {
         $message = "Access denied: Cannot modify {$resource} from a different tenant.";
 
@@ -30,13 +30,8 @@ final class CrossTenantAccessException extends DomainException
     /**
      * Create for user deletion attempt.
      */
-    public static function forUserDeletion(string $userId): self
+    public static function forUserDeletion(int $userId): self
     {
         return new self('user', $userId);
-    }
-
-    public static function forUserProfile(string $userId): self
-    {
-        return new self('user profile', $userId);
     }
 }

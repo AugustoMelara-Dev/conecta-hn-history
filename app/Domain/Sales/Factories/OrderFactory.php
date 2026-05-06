@@ -10,9 +10,8 @@ use DateTimeImmutable;
 final readonly class OrderFactory
 {
     public function create(
-        string $tenantId,
-        ?string $locationId,
-        string $customerId,
+        int $tenantId,
+        int $customerId,
         string $orderNumber,
         string $customerName,
         string $customerEmail,
@@ -31,7 +30,6 @@ final readonly class OrderFactory
         return new OrderEntity(
             id: null,
             tenantId: $tenantId,
-            locationId: $locationId,
             customerId: $customerId,
             orderNumber: $orderNumber,
             customerName: $customerName,
@@ -46,7 +44,6 @@ final readonly class OrderFactory
             customerNotes: $customerNotes,
             deliveryType: $deliveryType,
             paymentMethod: $paymentMethod,
-            paymentStatus: 'pending',
             taxAmount: 0.0,
             deliveryFee: 0.0,
             discountAmount: $discountAmount,

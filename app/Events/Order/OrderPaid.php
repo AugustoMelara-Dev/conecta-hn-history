@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Events\Order;
 
-use App\Domain\Shared\Contracts\Events\DomainEvent;
-use App\Domain\Shared\Traits\HasDomainMetadata;
-use App\Domain\Shared\ValueObjects\TenantId;
+use App\Contracts\Events\DomainEvent;
+use App\Traits\HasDomainMetadata;
 use App\ValueObjects\Money;
 use App\ValueObjects\OrderNumber;
+use App\ValueObjects\TenantId;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**
@@ -67,14 +67,11 @@ final readonly class OrderPaid implements DomainEvent, ShouldDispatchAfterCommit
         ?string $restoredOccurredAt = null,
         ?string $restoredCorrelationId = null,
     ) {
-        $metadata = self::resolveMetadata(
+        $this->initMetadata(
             correlationId: $restoredCorrelationId,
             restoredEventId: $restoredEventId,
             restoredOccurredAt: $restoredOccurredAt,
         );
-        $this->eventId = $metadata['eventId'];
-        $this->correlationId = $metadata['correlationId'];
-        $this->occurredAt = $metadata['occurredAt'];
     }
 
     /**
@@ -90,7 +87,7 @@ final readonly class OrderPaid implements DomainEvent, ShouldDispatchAfterCommit
         string $currency = 'HNL'
     ): self {
         return new self(
-            tenantId: TenantId::fromString((string) $tenantId),
+            tenantId: TenantId::fromInt((int) $tenantId),
             orderId: $orderId,
             orderNumber: OrderNumber::fromString($orderNumber),
             transactionId: $transactionId,
@@ -108,9 +105,9 @@ final readonly class OrderPaid implements DomainEvent, ShouldDispatchAfterCommit
         return $this->tenantId;
     }
 
-    public function aggregateId(): string
+    public function aggregateId(): int
     {
-        return (string) $this->orderId;
+        return (int) $this->orderId;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -126,7 +123,7 @@ final readonly class OrderPaid implements DomainEvent, ShouldDispatchAfterCommit
             'order_number' => $this->orderNumber->toString(),
             'transaction_id' => $this->transactionId,
             'payment_method' => $this->paymentMethod,
-            'amount_cents' => $this->amountPaid->cents(),
+            'amount_cents' => $this->amountPaid->amount(),
             'currency' => $this->amountPaid->currency(),
             'occurred_at' => $this->occurredAt->format(DATE_ATOM),
         ];
@@ -156,7 +153,7 @@ final readonly class OrderPaid implements DomainEvent, ShouldDispatchAfterCommit
         }
 
         return new self(
-            tenantId: TenantId::fromString((string) $primitives['tenant_id']),
+            tenantId: TenantId::fromInt((int) $primitives['tenant_id']),
             orderId: (string) $primitives['order_id'],
             orderNumber: OrderNumber::fromString($primitives['order_number']),
             transactionId: $primitives['transaction_id'],

@@ -4,18 +4,20 @@ declare(strict_types=1);
 
 namespace App\Domain\Public\Contracts;
 
+use Illuminate\Support\Collection;
+
 /**
  * BuyerRepository - Contract for Buyer Data
  */
 interface BuyerRepository
 {
     /**
-     * Get user favorites with polymorphic favoritable relation.
+     * Get user favorite products with relations.
      */
-    public function getFavorites(string|int $userId): array;
+    public function getFavorites(int $userId): Collection;
 
     /**
      * Get followed tenants.
      */
-    public function getFollowedTenants(string|int $userId): array;
+    public function getFollowedTenants(int $userId): Collection;
 }

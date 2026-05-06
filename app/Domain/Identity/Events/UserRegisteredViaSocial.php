@@ -16,12 +16,12 @@ final readonly class UserRegisteredViaSocial
 {
     private const EVENT_NAME = 'identity.user_registered_social';
 
-    private const SCHEMA_VERSION = 2;
+    private const SCHEMA_VERSION = 1;
 
     public function __construct(
         public string $userId,
         public string $tenantId,
-        public \App\Domain\Shared\ValueObjects\EncryptedEmail $email,
+        public string $email,
         public string $provider,
         public DateTimeImmutable $occurredAt,
     ) {}
@@ -35,7 +35,7 @@ final readonly class UserRegisteredViaSocial
         return new self(
             userId: $userId,
             tenantId: $tenantId,
-            email: new \App\Domain\Shared\ValueObjects\EncryptedEmail(encrypt($email)),
+            email: $email,
             provider: $provider,
             occurredAt: new DateTimeImmutable,
         );
@@ -56,7 +56,7 @@ final readonly class UserRegisteredViaSocial
         return [
             'user_id' => $this->userId,
             'tenant_id' => $this->tenantId,
-            'email' => $this->email->value(),
+            'email' => $this->email,
             'provider' => $this->provider,
             'occurred_at' => $this->occurredAt->format(DateTimeImmutable::ATOM),
         ];

@@ -90,7 +90,7 @@ final readonly class UserPasswordChanged
      *
      * @param  array<string, mixed>  $payload
      */
-    public static function fromPayload(array $payload): static
+    public static function fromPayload(array $payload): self
     {
         return new self(
             userId: $payload['user_id'],

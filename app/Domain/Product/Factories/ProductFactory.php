@@ -14,7 +14,7 @@ final readonly class ProductFactory
     ) {}
 
     public function createNew(
-        string $tenantId,
+        int $tenantId,
         string $name,
         string $description,
         int $price, // Expecting cents
@@ -48,7 +48,7 @@ final readonly class ProductFactory
         );
     }
 
-    private function generateSku(string $name, string $tenantId): string
+    private function generateSku(string $name, int $tenantId): string
     {
         // Simple logic: UPPERCASE-SLUG-RANDOM
         // In a real system, might call a SKU Generator Service to ensure uniqueness.

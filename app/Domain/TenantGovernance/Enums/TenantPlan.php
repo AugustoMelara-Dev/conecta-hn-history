@@ -8,7 +8,4 @@ enum TenantPlan: string
 {
     case SEMILLA = 'semilla';
     case PRO = 'pro';
-    case CRECIMIENTO = 'crecimiento';
-    case COSECHA = 'cosecha';
-    case ENTERPRISE = 'enterprise';
 }

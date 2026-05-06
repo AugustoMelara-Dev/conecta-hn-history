@@ -14,18 +14,9 @@ namespace App\Domain\Shared\Contracts;
 interface TenantContext
 {
     /**
-     * Get the current Tenant UUID (Option 2 Extension).
-     *
-     * @throws \RuntimeException If context cannot be resolved.
-     */
-    public function getTenantUuid(): string;
-
-    /**
      * Get the current Tenant ID.
      *
      * @throws \RuntimeException If context cannot be resolved.
-     *
-     * @deprecated Use getTenantUuid() once Option 1 full migration is executed.
      */
     public function getTenantId(): int;
 

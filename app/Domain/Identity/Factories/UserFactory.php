@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace App\Domain\Identity\Factories;
 
 use App\Domain\Identity\Entities\UserEntity;
-use App\Domain\Shared\Contracts\UuidGeneratorInterface;
+use App\Domain\Shared\Contracts\ClockInterface;
+use App\Domain\Shared\ValueObjects\EmailAddress;
 
 final readonly class UserFactory
 {
     public function __construct(
-        private UuidGeneratorInterface $uuidGenerator,
+        private ClockInterface $clock,
     ) {}
 
     public function createNewUser(
@@ -19,13 +20,15 @@ final readonly class UserFactory
         string $hashedPassword,
         string $role = 'customer'
     ): UserEntity {
-        return UserEntity::register(
-            uuid: $this->uuidGenerator->generate(),
+        return new UserEntity(
+            id: 0, // Transient ID
+            tenantId: 0, // Default/Global
+            email: new EmailAddress($email),
             name: $name,
-            email: $email,
-            passwordHash: $hashedPassword,
-            role: \App\Domain\Identity\Enums\UserRole::tryFrom($role) ?? \App\Domain\Identity\Enums\UserRole::CUSTOMER,
-            tenantId: null
+            role: $role,
+            createdAt: $this->clock->now(), // Deterministic Time
+            updatedAt: $this->clock->now(),
+            password: $hashedPassword,
         );
     }
 }

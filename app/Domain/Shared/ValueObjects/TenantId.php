@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Shared\ValueObjects;
 
+use Illuminate\Support\Str;
 use InvalidArgumentException;
-use JsonSerializable;
 
 /**
  * TenantId Value Object
@@ -15,15 +15,12 @@ use JsonSerializable;
  *
  * @property-read string $value
  */
-final readonly class TenantId implements JsonSerializable
+final readonly class TenantId
 {
-    /** UUID v4 pattern (8-4-4-4-12 hex groups) */
-    private const UUID_PATTERN = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i';
-
     private function __construct(
         public string $value
     ) {
-        if (! preg_match(self::UUID_PATTERN, $this->value)) {
+        if (! Str::isUuid($this->value)) {
             throw new InvalidArgumentException("TenantId must be a valid UUID string. Received: {$this->value}");
         }
     }
@@ -33,37 +30,12 @@ final readonly class TenantId implements JsonSerializable
         return new self($value);
     }
 
-    /** @deprecated Test compatibility layer */
-    public static function fromInt(int $id): self
-    {
-        return new self(sprintf('00000000-0000-0000-4000-%012d', $id));
-    }
-
-    /** @deprecated Test compatibility layer */
-    public function toInt(): int
-    {
-        return (int) substr($this->value, -12);
-    }
-
-    /**
-     * Generate a new random TenantId using Ramsey\Uuid (framework-agnostic).
-     */
-    public static function generate(): self
-    {
-        return new self(\Ramsey\Uuid\Uuid::uuid4()->toString());
-    }
-
     public function __toString(): string
     {
         return $this->value;
     }
 
     public function toString(): string
-    {
-        return $this->value;
-    }
-
-    public function jsonSerialize(): string
     {
         return $this->value;
     }

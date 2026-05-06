@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace App\Domain\Product\Contracts;
 
 // use App\Models\Product; // REMOVED
-use App\Domain\Shared\Contracts\PaginatedResult;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 
 /**
  * ProductReader - Domain Contract for Product Data Retrieval
@@ -15,14 +16,14 @@ use App\Domain\Shared\Contracts\PaginatedResult;
  */
 interface ProductReader
 {
-    public function getInventory(int|string $tenantId): array;
+    public function getInventory(int $tenantId): Collection;
 
-    public function getLowStockProducts(int|string $tenantId): array;
+    public function getLowStockProducts(int $tenantId): Collection;
 
-    public function search(int|string $tenantId, array $filters, int $perPage = 20): PaginatedResult;
+    public function search(int $tenantId, array $filters, int $perPage = 20): LengthAwarePaginator;
 
     /**
      * Find a product by ID, ensuring tenant scope.
      */
-    public function find(int|string $tenantId, int $productId): ?object;
+    public function find(int $tenantId, int $productId): ?object;
 }
