@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Public;
 
-use App\Application\Shared\Contracts\ReferenceDataReaderInterface;
-use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Http\Controllers\Controller;
-use Illuminate\Contracts\Cache\Repository as CacheRepository;
+use App\Models\Category;
+use App\Models\City;
+use App\Models\Tenant;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -23,42 +24,44 @@ use Inertia\Response;
  */
 final class ExploreController extends Controller
 {
-    public function __construct(
-        private TenantRepositoryInterface $tenantRepository,
-        private ReferenceDataReaderInterface $referenceReader,
-        private CacheRepository $cache
-    ) {}
-
     /**
      * Display the marketplace discovery page.
      */
     public function __invoke(): Response
     {
-        try {
-            $data = $this->cache->remember('v'.config('app.version').'_explore_data', 3600, function (): array {
-                return [
-                    'featuredTenants' => $this->tenantRepository->getFeatured(12),
-                    'categories' => $this->referenceReader->getPopularCategories(8),
-                    'cities' => $this->referenceReader->getPopularCities(4),
-                    'stats' => [
-                        'total_tenants' => $this->tenantRepository->countActive(),
-                        'total_cities' => $this->referenceReader->countActiveCities(),
-                    ],
-                ];
-            });
-        } catch (\Throwable) {
-            // Serverless/runtime fallback: keep /explore available even if DB/cache backends fail.
-            $data = [
-                'featuredTenants' => [],
-                'categories' => [],
-                'cities' => [],
+        $data = Cache::remember("v".config('app.version')."_explore_data", 3600, function () {
+            return [
+                'featuredTenants' => Tenant::query()
+                    ->where('is_visible', true)
+                    ->whereNotNull('logo_path')
+                    ->latest()
+                    ->limit(12)
+                    ->get()
+                    ->map(fn (Tenant $t) => [
+                        'id' => $t->id,
+                        'name' => $t->name,
+                        'slug' => $t->slug,
+                        'cover_url' => $t->cover_url,
+                        'logo_url' => $t->logo_url,
+                        'category' => $t->category?->name,
+                        'city' => $t->city?->name,
+                        'description' => \Illuminate\Support\Str::limit($t->description, 80),
+                    ]),
+
+                'categories' => Category::query()
+                    ->withCount('tenants')
+                    ->having('tenants_count', '>', 0)
+                    ->orderByDesc('tenants_count')
+                    ->limit(8)
+                    ->get(['id', 'name', 'slug', 'icon']),
+
                 'stats' => [
-                    'total_tenants' => 0,
-                    'total_cities' => 0,
+                    'total_tenants' => Tenant::where('is_visible', true)->count(),
+                    'total_cities' => City::has('tenants')->count(),
                 ],
             ];
-        }
+        });
 
-        return Inertia::render('Public/Explore', $data);
+        return Inertia::render('Public/Home', $data);
     }
 }

@@ -7,7 +7,7 @@ namespace App\Http\Controllers\Public;
 use App\Domain\TenantGovernance\Services\TenantResolver;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Psr\Log\LoggerInterface;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -21,8 +21,7 @@ use Symfony\Component\HttpFoundation\Response;
 final class ToggleFavoriteController extends Controller
 {
     public function __construct(
-        private TenantResolver $tenantResolver,
-        private LoggerInterface $log
+        private readonly TenantResolver $tenantResolver
     ) {}
 
     /**
@@ -33,7 +32,7 @@ final class ToggleFavoriteController extends Controller
     public function __invoke(Request $request): Response
     {
         $validated = $request->validate([
-            'tenant_id' => ['required', 'string'],
+            'tenant_id' => ['required', 'integer'],
         ]);
 
         // SECURE: Use TenantResolver - only returns public, active tenants
@@ -46,11 +45,11 @@ final class ToggleFavoriteController extends Controller
         }
 
         $user = $request->user();
-        $isFavorited = $user->toggleFavorite($tenant->id());
+        $isFavorited = $user->toggleFavorite($tenant);
 
-        $this->log->info('Favorite toggled', [
+        Log::info('Favorite toggled', [
             'user_id' => $user->id,
-            'tenant_id' => $tenant->id(),
+            'tenant_id' => $tenant->id,
             'is_favorited' => $isFavorited,
         ]);
 

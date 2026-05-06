@@ -30,7 +30,6 @@ final class ProductController extends Controller
         summary: 'Get tenant products',
         tags: ['Catalog'],
         parameters: [
-            new OA\Parameter(name: 'tenant_id', in: 'query', required: true, schema: new OA\Schema(type: 'string')),
             new OA\Parameter(name: 'category', in: 'query', schema: new OA\Schema(type: 'string')),
             new OA\Parameter(name: 'search', in: 'query', schema: new OA\Schema(type: 'string')),
         ],
@@ -41,9 +40,9 @@ final class ProductController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         // 1. Resolve Tenant safely (Public API context)
-        $tenantId = trim((string) $request->input('tenant_id', ''));
+        $tenantId = (int) $request->input('tenant_id');
 
-        if ($tenantId === '') {
+        if (! $tenantId) {
             abort(400, 'tenant_id is required');
         }
 
@@ -67,7 +66,6 @@ final class ProductController extends Controller
         tags: ['Catalog'],
         parameters: [
             new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
-            new OA\Parameter(name: 'tenant_id', in: 'query', required: true, schema: new OA\Schema(type: 'string')),
         ],
         responses: [
             new OA\Response(response: 200, description: 'Product details'),
@@ -76,9 +74,9 @@ final class ProductController extends Controller
     )]
     public function show(int $id, Request $request): ProductResource
     {
-        $tenantId = trim((string) $request->input('tenant_id', ''));
+        $tenantId = (int) $request->input('tenant_id');
 
-        if ($tenantId === '') {
+        if (! $tenantId) {
             abort(400, 'tenant_id is required');
         }
 

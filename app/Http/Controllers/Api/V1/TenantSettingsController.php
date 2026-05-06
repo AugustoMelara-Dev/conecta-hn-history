@@ -4,74 +4,60 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Application\Tenant\Commands\UpdateTenantBrandingCommand;
-use App\Application\Tenant\Handlers\UpdateTenantBrandingHandler;
-use App\Domain\Shared\DTOs\FileTransferObject;
+use App\Application\Actions\Tenant\UpdateTenantBrandingAction;
+use App\Application\Tenant\Results\UpdateBrandingResult;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdateTenantSettingsRequest;
 use App\Http\Resources\TenantSettingsResource;
-use App\Support\Tenancy\RequestTenantResolver;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-use OpenApi\Attributes as OA;
 
+/**
+ * TenantSettingsController - Dumb HTTP Gateway
+ *
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  REFACTORED: Action Pattern Implemented                                 ║
+ * ╠══════════════════════════════════════════════════════════════════════════╣
+ * ║  - No Storage logic (Moved to UpdateTenantBrandingAction)               ║
+ * ║  - No Model hydration (Moved to UpdateBrandingResult)                     ║
+ * ║  - Pure Delegation to Domain Action                                     ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
+ */
 final class TenantSettingsController extends Controller
 {
-    #[OA\Put(
-        path: '/api/tenant/settings',
-        summary: 'Update tenant branding settings',
-        tags: ['Tenant'],
-        requestBody: new OA\RequestBody(required: true, description: 'Settings update payload'),
-        responses: [
-            new OA\Response(response: 200, description: 'Settings updated successfully'),
-        ]
-    )]
+    /**
+     * Update tenant settings via Action.
+     *
+     * POST /api/settings/update
+     */
     public function update(
         UpdateTenantSettingsRequest $request,
-        UpdateTenantBrandingHandler $handler
+        UpdateTenantBrandingAction $action
     ): TenantSettingsResource {
-        $tenant = $request->tenantForRequest();
-        $validated = $request->validated();
 
-        if ($request->boolean('remove_logo') && is_string($tenant->logo_path) && $tenant->logo_path !== '') {
-            Storage::disk('public')->delete($tenant->logo_path);
-            $tenant->forceFill(['logo_path' => null])->save();
-        }
+        // 1. DTO Hydration (Factory)
+        $data = UpdateBrandingResult::fromRequest($request);
 
-        if ($request->file('logo') !== null || array_key_exists('whatsapp_number', $validated)) {
-            $handler->handle(new UpdateTenantBrandingCommand(
-                tenantId: (string) $tenant->getKey(),
-                logo: $request->file('logo') !== null
-                    ? FileTransferObject::fromUploadedFile($request->file('logo'))
-                    : null,
-                whatsapp: isset($validated['whatsapp_number']) ? (string) $validated['whatsapp_number'] : null,
-            ));
+        // 2. Delegation (Execution)
+        $tenant = $action->execute($data);
 
-            $tenant->refresh();
-        }
-
-        $tenant->forceFill([
-            'bank_name' => $validated['bank_name'] ?? $tenant->bank_name,
-            'bank_account' => $validated['bank_account'] ?? $tenant->bank_account,
-            'bank_account_name' => $validated['bank_account_name'] ?? $tenant->bank_account_name,
-            'bank_account_type' => $validated['bank_account_type'] ?? $tenant->bank_account_type,
-            'whatsapp_number' => $validated['whatsapp_number'] ?? $tenant->whatsapp_number,
-        ])->save();
-
+        // 3. Response (Standardized Resource)
         return new TenantSettingsResource($tenant);
     }
 
-    #[OA\Get(
-        path: '/api/tenant/settings',
-        summary: 'Get tenant settings',
-        tags: ['Tenant'],
-        responses: [
-            new OA\Response(response: 200, description: 'Tenant settings'),
-            new OA\Response(response: 403, description: 'Forbidden'),
-        ]
-    )]
-    public function show(Request $request): TenantSettingsResource
+    /**
+     * Get current tenant settings.
+     *
+     * GET /api/settings
+     */
+    public function show(): TenantSettingsResource
     {
-        return new TenantSettingsResource(app(RequestTenantResolver::class)->resolve($request));
+        // Tenant is guaranteed by 'tenant.ownership' middleware or user context
+        // But for safety in strict mode, we retrieve from user.
+        $tenant = auth()->user()->tenant;
+
+        if (! $tenant) {
+            abort(403, 'No tenant associated with user.');
+        }
+
+        return new TenantSettingsResource($tenant);
     }
 }

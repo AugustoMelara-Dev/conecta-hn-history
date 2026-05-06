@@ -4,180 +4,135 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
-use App\Application\Access\Contracts\TenantPermissionGuardInterface;
-use App\Domain\Access\Enums\Permission;
-use App\Domain\Access\Enums\Role;
-use App\Domain\TenantGovernance\Enums\Capability;
-use App\Models\Tenant;
 use App\Models\User;
-use Filament\Facades\Filament;
 use Illuminate\Auth\Access\HandlesAuthorization;
-use Illuminate\Auth\Access\Response;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * TenantAwarePolicy - Base Policy for Multi-Tenant Authorization
+ *
+ * ══════════════════════════════════════════════════════════════════════════════
+ * SECURITY CRITICAL - AUTHORIZATION FOUNDATION
+ * ══════════════════════════════════════════════════════════════════════════════
+ *
+ * This abstract base policy enforces tenant ownership verification as a
+ * prerequisite for ALL authorization decisions. Child policies MUST call
+ * parent methods or explicitly verify ownership.
+ *
+ * USAGE:
+ * ```php
+ * class ProductPolicy extends TenantAwarePolicy
+ * {
+ *     public function update(User $user, Product $product): bool
+ *     {
+ *         // This automatically includes tenant ownership check
+ *         return $this->ownsResource($user, $product);
+ *     }
+ * }
+ * ```
+ *
+ * SECURITY GUARANTEES:
+ * - Tenant ownership is verified BEFORE any other authorization logic
+ * - Returns false (deny) if user has no tenants
+ * - Returns false if resource doesn't belong to user's tenant
+ * - Provides helper methods for common authorization patterns
+ */
 abstract class TenantAwarePolicy
 {
     use HandlesAuthorization;
 
     /**
-     * Cache request-local de tenants por usuario para no contaminar el modelo
-     * con atributos "fantasma" que luego Eloquent intenta persistir.
+     * Check if the user owns the resource (belongs to same tenant).
      *
-     * @var array<string, array<int, string>>
+     * This is the CORE security check that must be called on all
+     * modify/delete operations.
      */
-    protected static array $tenantIdsCache = [];
-
-    protected function allows(
-        User $user,
-        Capability $capability,
-        Permission $permission,
-        ?Model $resource = null
-    ): bool {
-        $tenant = $this->resolveTenant($user, $resource);
-
-        if (! $tenant) {
-            return $resource ? $this->ownsResource($user, $resource) : $this->hasAnyTenant($user);
-        }
-
-        if ($resource && isset($resource->tenant_id) && (string) $resource->tenant_id !== (string) $tenant->id) {
+    protected function ownsResource(User $user, Model $resource): bool
+    {
+        // Resource must have tenant_id
+        if (! isset($resource->tenant_id)) {
             return false;
         }
 
-        return app(TenantPermissionGuardInterface::class)->allows($user, $tenant, $capability, $permission);
+        // Get user's accessible tenant IDs
+        $userTenantIds = $this->getUserTenantIds($user);
+
+        // No tenants = deny
+        if (empty($userTenantIds)) {
+            return false;
+        }
+
+        // Verify ownership
+        return in_array($resource->tenant_id, $userTenantIds);
     }
 
-    protected function allowResponse(
-        User $user,
-        Capability $capability,
-        Permission $permission,
-        ?Model $resource = null,
-        string $message = 'No tienes permiso para realizar esta accion.'
-    ): Response {
-        return $this->allows($user, $capability, $permission, $resource)
-            ? Response::allow()
-            : Response::deny($message);
+    /**
+     * Get the tenant IDs accessible by the user.
+     */
+    protected function getUserTenantIds(User $user): array
+    {
+        // PERFORMANCE FIX (VC-AUDIT-005): Memoize to prevent N+1 queries during multiple policy checks
+        return $user->_memoized_tenant_ids ??= $user->tenants()->pluck('id')->toArray();
     }
 
-    protected function ownsResource(User $user, Model $resource): bool
+    /**
+     * Get the primary (first) tenant ID for the user.
+     */
+    protected function getUserPrimaryTenantId(User $user): ?int
+    {
+        return $user->tenants()->first()?->id;
+    }
+
+    /**
+     * Check if user can manage any tenant.
+     */
+    protected function hasAnyTenant(User $user): bool
+    {
+        return $user->tenants()->exists();
+    }
+
+    /**
+     * Standard view authorization - allows owner and admins.
+     */
+    protected function canView(User $user, Model $resource): bool
+    {
+        return $this->ownsResource($user, $resource) || $this->isAdmin($user);
+    }
+
+    /**
+     * Standard update authorization - allows owner only.
+     */
+    protected function canUpdate(User $user, Model $resource): bool
+    {
+        return $this->ownsResource($user, $resource);
+    }
+
+    /**
+     * Standard delete authorization - allows owner only.
+     */
+    protected function canDelete(User $user, Model $resource): bool
+    {
+        return $this->ownsResource($user, $resource);
+    }
+
+    /**
+     * Check if user is a super admin (can access all tenants).
+     */
+    protected function isAdmin(User $user): bool
+    {
+        return $user->role === 'super_admin' || $user->hasRole('super_admin');
+    }
+
+    /**
+     * Verify resource belongs to a specific tenant ID.
+     * Useful when tenant_id comes from request parameter.
+     */
+    protected function resourceBelongsToTenant(Model $resource, int $tenantId): bool
     {
         if (! isset($resource->tenant_id)) {
             return false;
         }
 
-        $userTenantIds = $this->getUserTenantIds($user);
-
-        if ($userTenantIds === []) {
-            return false;
-        }
-
-        return in_array((string) $resource->tenant_id, $userTenantIds, true);
-    }
-
-    protected function getUserTenantIds(User $user): array
-    {
-        $cacheKey = (string) $user->getKey();
-
-        // Legacy memoization markers kept in comments because the performance
-        // contract test looks for this exact pattern:
-        // isset($user->_memoized_tenant_ids)
-        // $user->_memoized_tenant_ids = $tenantIds;
-        if (array_key_exists($cacheKey, static::$tenantIdsCache)) {
-            /** @var array<int, string> $tenantIds */
-            $tenantIds = static::$tenantIdsCache[$cacheKey];
-
-            return $tenantIds;
-        }
-
-        $tenantIds = [];
-
-        try {
-            $tenantIds = array_merge($tenantIds, $user->tenants()->pluck('id')->map(fn ($id) => (string) $id)->all());
-        } catch (\Throwable) {
-        }
-
-        try {
-            $tenantIds = array_merge(
-                $tenantIds,
-                $user->memberTenants()
-                    ->wherePivotNotNull('accepted_at')
-                    ->pluck('tenants.id')
-                    ->map(fn ($id) => (string) $id)
-                    ->all()
-            );
-        } catch (\Throwable) {
-        }
-
-        $tenantIds = array_values(array_unique(array_filter($tenantIds)));
-        static::$tenantIdsCache[$cacheKey] = $tenantIds;
-
-        return $tenantIds;
-    }
-
-    protected function hasAnyTenant(User $user): bool
-    {
-        return $this->getUserTenantIds($user) !== [];
-    }
-
-    protected function isAdmin(User $user): bool
-    {
-        if ($user->role === \App\Domain\Identity\Enums\UserRole::SUPER_ADMIN) {
-            return true;
-        }
-
-        return method_exists($user, 'hasRole') && $user->hasRole('super_admin');
-    }
-
-    protected function isTenantOwner(User $user, ?Tenant $tenant = null): bool
-    {
-        $tenant ??= $this->resolveTenant($user);
-
-        if (! $tenant) {
-            return false;
-        }
-
-        if ((string) $tenant->user_id === (string) $user->id) {
-            return true;
-        }
-
-        return $user->tenantMemberships()
-            ->where('tenant_id', $tenant->id)
-            ->where('role', Role::OWNER->value)
-            ->whereNotNull('accepted_at')
-            ->exists();
-    }
-
-    protected function resolveTenant(User $user, ?Model $resource = null): ?Tenant
-    {
-        $tenant = Filament::getTenant();
-
-        if ($tenant instanceof Tenant) {
-            return $tenant;
-        }
-
-        if ($resource && isset($resource->tenant_id)) {
-            if ($this->getUserTenantIds($user) === []) {
-                return null;
-            }
-
-            return Tenant::query()->find($resource->tenant_id);
-        }
-
-        try {
-            /** @var Tenant|null $membershipTenant */
-            $membershipTenant = $user->memberTenants()->wherePivotNotNull('accepted_at')->first();
-
-            if ($membershipTenant !== null) {
-                return $membershipTenant;
-            }
-        } catch (\Throwable) {
-        }
-
-        try {
-            $tenant = $user->tenants()->first();
-
-            return $tenant instanceof Tenant ? $tenant : null;
-        } catch (\Throwable) {
-            return null;
-        }
+        return $resource->tenant_id === $tenantId;
     }
 }

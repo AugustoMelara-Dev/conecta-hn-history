@@ -4,47 +4,62 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
-use App\Domain\Tenant\Services\TenantVisibilityService;
-use App\Domain\TenantGovernance\Exceptions\TenantNotFoundException;
 use App\Models\Tenant;
-use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-final class CheckTenantStatus
+/**
+ * CheckTenantStatus - Guardián de Estado del Tenant
+ *
+ * Middleware de seguridad que valida el acceso a micrositios.
+ *
+ * Reglas de Acceso:
+ * 1. Bloquea si status !== 'approved' OR is_active === false
+ * 2. Excepción: Dueño del negocio o Super Admin pueden ver en modo preview
+ * 3. Inyecta indicador de "modo preview" para mostrar alerta visual
+ */
+class CheckTenantStatus
 {
-    public function __construct(
-        private readonly TenantVisibilityService $visibilityService
-    ) {}
-
+    /**
+     * Handle an incoming request.
+     */
     public function handle(Request $request, Closure $next): Response
     {
         $tenant = $request->route('tenant');
 
+        // Si no hay tenant o no es instancia válida, continuar (404 nativo)
         if (! $tenant instanceof Tenant) {
             return $next($request);
         }
 
-        try {
-            $this->visibilityService->check($tenant);
+        // Verificar si el negocio está publicado y activo
+        $isPublished = $tenant->status === 'approved' && $tenant->is_active === true;
 
+        if ($isPublished) {
+            // Acceso público normal
             return $next($request);
-        } catch (TenantNotFoundException) {
-            // Continue to preview authorization branch below.
         }
 
+        // ═══════════════════════════════════════════════════════════════════
+        // MODO PREVIEW: Solo para dueño o Super Admin
+        // ═══════════════════════════════════════════════════════════════════
         $user = auth()->user();
-        if ($user instanceof User) {
-            $isSuperAdmin = $user->isSuperAdmin();
-            $isOwner = (string) $tenant->user_id === (string) $user->id;
-            $isAcceptedMember = $user->memberTenants()
-                ->where('tenants.id', $tenant->getKey())
-                ->wherePivotNotNull('accepted_at')
-                ->exists();
 
-            if ($isSuperAdmin || $isOwner || $isAcceptedMember) {
+        if ($user) {
+            // Verificar si es Super Admin (role + whitelist check)
+            $superAdmins = config('auth.super_admins', []);
+            $isSuperAdmin = $user->hasRole('super_admin')
+                && in_array($user->email, $superAdmins, true);
+
+            // Verificar si es dueño del negocio
+            $isOwner = $tenant->user_id === $user->id;
+
+            if ($isSuperAdmin || $isOwner) {
+                // Inyectar indicador de modo preview en la request
                 $request->merge(['_preview_mode' => true]);
+
+                // También guardar en session para acceder desde Blade
                 session()->flash('tenant_preview_mode', true);
                 session()->flash('tenant_preview_reason', $this->getPreviewReason($tenant));
 
@@ -52,31 +67,29 @@ final class CheckTenantStatus
             }
         }
 
+        // ═══════════════════════════════════════════════════════════════════
+        // BLOQUEO: No tiene permisos, mostrar 404
+        // ═══════════════════════════════════════════════════════════════════
         abort(404);
     }
 
+    /**
+     * Obtiene la razón por la cual está en modo preview
+     */
     protected function getPreviewReason(Tenant $tenant): string
     {
+        if ($tenant->status === 'pending') {
+            return 'Este negocio está pendiente de aprobación';
+        }
+
+        if ($tenant->status === 'rejected') {
+            return 'Este negocio fue rechazado. Revisa los comentarios.';
+        }
+
         if (! $tenant->is_active) {
-            return 'Este negocio esta desactivado temporalmente';
+            return 'Este negocio está desactivado temporalmente';
         }
 
-        if (! in_array((string) $tenant->subscription_status, ['active', 'trial'], true)) {
-            return 'La suscripcion actual no permite visibilidad publica';
-        }
-
-        if ((string) ($tenant->verification_status ?? 'provisional') === Tenant::VERIFICATION_STATUS_PROVISIONAL) {
-            return 'Este negocio aun no completa la verificacion de titularidad';
-        }
-
-        if ((string) ($tenant->verification_status ?? '') === Tenant::VERIFICATION_STATUS_REJECTED) {
-            return 'La verificacion del negocio fue rechazada';
-        }
-
-        if (! empty($tenant->publication_paused_at)) {
-            return 'La publicacion fue pausada temporalmente';
-        }
-
-        return 'Este negocio no esta publicado';
+        return 'Este negocio no está publicado';
     }
 }

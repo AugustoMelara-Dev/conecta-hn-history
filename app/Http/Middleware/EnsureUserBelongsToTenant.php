@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
-use App\Models\Tenant;
-use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -38,7 +36,7 @@ class EnsureUserBelongsToTenant
         $user = $request->user();
 
         // Guest users: allowed (guest checkout scenario)
-        if (! $user instanceof User) {
+        if ($user === null) {
             return $next($request);
         }
 
@@ -48,10 +46,6 @@ class EnsureUserBelongsToTenant
         }
 
         $tenant = app('currentTenant');
-
-        if (! $tenant instanceof Tenant) {
-            return $next($request);
-        }
 
         // SECURITY: Validate user belongs to resolved tenant
         if (! $this->userBelongsToTenant($user, $tenant)) {
@@ -66,7 +60,7 @@ class EnsureUserBelongsToTenant
      *
      * PERFORMANCE: Uses request-scoped cache to avoid N+1 queries.
      */
-    private function userBelongsToTenant(User $user, Tenant $tenant): bool
+    private function userBelongsToTenant($user, $tenant): bool
     {
         // Admin users may have access to all tenants
         if (method_exists($user, 'isAdmin') && $user->isAdmin()) {
@@ -76,17 +70,23 @@ class EnsureUserBelongsToTenant
         // FIX: Use isset() which works with Eloquent magic attributes
         // property_exists() does NOT work for $attributes array values
         if (isset($user->tenant_id)) {
-            return (string) $user->tenant_id === (string) $tenant->id;
+            return $user->tenant_id === $tenant->id;
         }
 
-        // PERFORMANCE: Cache the belongs check for this request
-        // Avoids repeated SQL queries during same request lifecycle
-        $cacheKey = sprintf('tenant_belongs:%s:%s', (string) $user->id, (string) $tenant->id);
+        // Check via relationship with request-scoped cache
+        if (method_exists($user, 'tenants')) {
+            // PERFORMANCE: Cache the belongs check for this request
+            // Avoids repeated SQL queries during same request lifecycle
+            $cacheKey = sprintf('tenant_belongs:%d:%d', $user->id, $tenant->id);
 
-        return Cache::store('array')->remember(
-            $cacheKey,
-            60, // 1 minute (effectively request-scoped with array driver)
-            fn () => $user->tenants()->whereKey((string) $tenant->id)->exists()
-        );
+            return Cache::store('array')->remember(
+                $cacheKey,
+                60, // 1 minute (effectively request-scoped with array driver)
+                fn () => $user->tenants()->where('id', $tenant->id)->exists()
+            );
+        }
+
+        // No relationship defined - allow (guest-like behavior)
+        return true;
     }
 }

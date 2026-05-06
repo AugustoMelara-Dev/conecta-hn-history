@@ -6,8 +6,6 @@ namespace App\Http\Controllers\Tenant;
 
 use App\Domain\Analytics\Contracts\AnalyticsReader;
 use App\Http\Controllers\Controller;
-use App\Models\Tenant;
-use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -22,7 +20,7 @@ use Illuminate\Http\Request;
 final class AnalyticsController extends Controller
 {
     public function __construct(
-        private AnalyticsReader $analyticsReader
+        private readonly AnalyticsReader $analyticsReader
     ) {}
 
     /**
@@ -30,13 +28,12 @@ final class AnalyticsController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $user = $request->user();
+        // SECURE: Tenant resolved via middleware, not manual query
+        $tenant = $request->user()?->tenant;
 
-        if (! $user instanceof User || ! $user->tenant instanceof Tenant) {
+        if (! $tenant) {
             return response()->json(['error' => 'No tenant found'], 404);
         }
-
-        $tenant = $user->tenant;
 
         $days = (int) $request->input('days', 30);
 

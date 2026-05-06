@@ -94,10 +94,9 @@ final class ResolveTenantFromRequest
 
             // VC-AUDIT-106: Rehydrate from lightweight array
             if (is_array($cached)) {
-                $tenant = new Tenant;
+                $tenant = new Tenant();
                 $tenant->forceFill($cached);
                 $tenant->exists = true;
-
                 return $tenant;
             }
 
@@ -106,11 +105,8 @@ final class ResolveTenantFromRequest
 
         // 3. Cache Miss - Database Query (Optimized Memory Footprint)
         // Select ONLY essential columns to keep Redis serialization light.
-        // 3. Cache Miss - Database Query (Optimized Memory Footprint)
-        // Keep select('*') because downstream serializers derive public plan state
-        // from plan_type plus subscription metadata.
         $query = Tenant::query()
-            ->select('*')
+            ->select(['id', 'slug', 'domain', 'name', 'is_active', 'is_pro', 'logo_path'])
             ->take(1);
 
         $this->applyResolutionLogic($query, $request);
@@ -124,10 +120,10 @@ final class ResolveTenantFromRequest
             $payload = [
                 'id' => $tenant->id,
                 'slug' => $tenant->slug,
-                // 'domain' removed - property does not exist
+                'domain' => $tenant->domain,
                 'name' => $tenant->name,
                 'is_active' => $tenant->is_active,
-                'plan_type' => $tenant->getRawOriginal('plan_type') ?: ($tenant->getAttributes()['plan_type'] ?? Tenant::PLAN_SEMILLA),
+                'is_pro' => $tenant->is_pro,
                 'logo_path' => $tenant->logo_path,
             ];
             Cache::put($cacheKey, $payload, self::TTL_VALID);

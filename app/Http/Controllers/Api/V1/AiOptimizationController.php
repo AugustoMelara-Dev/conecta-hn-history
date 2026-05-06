@@ -27,14 +27,13 @@ final class AiOptimizationController extends Controller
 
     public function optimizeProfile(OptimizeProfileRequest $request): JsonResponse
     {
-        $tenantUuid = $this->tenantContext->getTenantUuid();
-        $userId = (string) $request->user()->getAuthIdentifier();
+        $tenantId = $this->tenantContext->getTenantId();
 
         GenerateBusinessProfileJob::dispatch(
             businessName: $request->validated('business_name'),
             description: $request->validated('description'),
-            userId: $userId,
-            tenantId: $tenantUuid,
+            userId: 0,
+            tenantId: $tenantId,
             targetAudience: $request->validated('target_audience'),
             tone: $request->validated('tone'),
             keywords: $request->validated('keywords') ?? []

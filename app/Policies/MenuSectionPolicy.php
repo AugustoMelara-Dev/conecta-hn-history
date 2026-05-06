@@ -4,46 +4,71 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
-use App\Domain\Access\Enums\Permission;
-use App\Domain\TenantGovernance\Enums\Capability;
 use App\Models\MenuSection;
 use App\Models\User;
 
+/**
+ * MenuSectionPolicy - Tenant-Aware Authorization for Menu Sections
+ *
+ * ══════════════════════════════════════════════════════════════════════════════
+ * SECURITY: Enforces tenant ownership for menu organization
+ * ══════════════════════════════════════════════════════════════════════════════
+ */
 class MenuSectionPolicy extends TenantAwarePolicy
 {
+    /**
+     * Determine whether the user can view any menu sections.
+     */
     public function viewAny(User $user): bool
     {
-        return $this->allows($user, Capability::MENU_MODIFIERS, Permission::MENU_VIEW);
+        return $this->hasAnyTenant($user);
     }
 
+    /**
+     * Determine whether the user can view the menu section.
+     */
     public function view(User $user, MenuSection $menuSection): bool
     {
-        return $this->allows($user, Capability::MENU_MODIFIERS, Permission::MENU_VIEW, $menuSection);
+        return $this->ownsResource($user, $menuSection);
     }
 
+    /**
+     * Determine whether the user can create menu sections.
+     */
     public function create(User $user): bool
     {
-        return $this->allows($user, Capability::MENU_MODIFIERS, Permission::MENU_MANAGE);
+        return $this->hasAnyTenant($user);
     }
 
+    /**
+     * Determine whether the user can update the menu section.
+     */
     public function update(User $user, MenuSection $menuSection): bool
     {
-        return $this->allows($user, Capability::MENU_MODIFIERS, Permission::MENU_MANAGE, $menuSection);
+        return $this->ownsResource($user, $menuSection);
     }
 
+    /**
+     * Determine whether the user can delete the menu section.
+     */
     public function delete(User $user, MenuSection $menuSection): bool
     {
-        return $this->allows($user, Capability::MENU_MODIFIERS, Permission::MENU_MANAGE, $menuSection);
+        return $this->ownsResource($user, $menuSection);
     }
 
+    /**
+     * Determine whether the user can restore the menu section.
+     */
     public function restore(User $user, MenuSection $menuSection): bool
     {
-        return $this->allows($user, Capability::MENU_MODIFIERS, Permission::MENU_MANAGE, $menuSection);
+        return $this->ownsResource($user, $menuSection);
     }
 
+    /**
+     * Determine whether the user can permanently delete the menu section.
+     */
     public function forceDelete(User $user, MenuSection $menuSection): bool
     {
-        return $this->allows($user, Capability::MENU_MODIFIERS, Permission::MENU_MANAGE, $menuSection)
-            && $this->isTenantOwner($user, $this->resolveTenant($user, $menuSection));
+        return $this->ownsResource($user, $menuSection) && $this->isAdmin($user);
     }
 }

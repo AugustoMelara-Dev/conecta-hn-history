@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
-use App\Application\Products\Commands\CreateProductCommand;
-use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -37,16 +35,13 @@ final class StoreProductRequest extends FormRequest
         // Capture the authenticated tenant ID for scoped validation.
         // DEFENSE IN DEPTH: Explicit (int) cast prevents type coercion issues
         // and ensures Rule::exists receives a primitive integer for SQL generation.
-        /** @var User|null $user */
-        $user = $this->user();
-        $tenantId = $user?->tenant_id;
+        $tenantId = (int) $this->user()->tenant_id;
 
         return [
             // ═══════════════════════════════════════════════════════════════════════
             // CORE PRODUCT DATA
             // ═══════════════════════════════════════════════════════════════════════
             'name' => 'required|string|max:255',
-            'sku' => 'required|string|max:100',
             'description' => 'nullable|string|max:2000',
             'price' => 'required|numeric|min:0|max:999999.99',
 
@@ -115,39 +110,19 @@ final class StoreProductRequest extends FormRequest
         ];
     }
 
-    public function toCommand(): CreateProductCommand
+    public function toCommand(): \App\Application\Products\Commands\CreateProductCommand
     {
-        /** @var User|null $user */
-        $user = $this->user();
-        if (! $user instanceof User) {
-            throw new \RuntimeException('Authenticated user required to create products.');
-        }
-
         $validated = $this->validated();
-        $headerKey = $this->header('Idempotency-Key');
-        if (! is_string($headerKey) || $headerKey === '') {
-            $headerKey = $this->header('X-Idempotency-Key');
-        }
 
-        $idempotencyKey = is_string($headerKey) && $headerKey !== ''
-            ? $headerKey
-            : hash('xxh128', json_encode([
-                'tenant_id' => (string) $user->getTenantId(),
-                'sku' => $validated['sku'],
-                'name' => $validated['name'],
-                'price' => $validated['price'],
-            ], JSON_THROW_ON_ERROR));
-
-        return new CreateProductCommand(
-            tenantId: (string) $user->getTenantId(),
+        return new \App\Application\Products\Commands\CreateProductCommand(
+            tenantId: (int) $this->user()->tenant_id,
             sku: $validated['sku'],
             name: $validated['name'],
             description: $validated['description'] ?? '',
-            price: (int) round((float) $validated['price'] * 100),
-            idempotencyKey: $idempotencyKey,
-            stock: isset($validated['stock_quantity']) ? (int) $validated['stock_quantity'] : 0,
-            categoryId: isset($validated['category_id']) ? (int) $validated['category_id'] : null,
-            imagePath: null,
+            price: (float) $validated['price'],
+            stock: isset($validated['stock']) ? (int) $validated['stock'] : 0,
+            categoryId: (int) $validated['category_id'],
+            imagePath: null, // Image upload handled separately or via another field? Assuming simple field for now
             isVisible: $validated['is_visible'] ?? true,
         );
     }

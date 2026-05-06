@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\AIEnrichment\Jobs\GenerateBusinessProfile;
 use App\Http\Controllers\Controller;
-use App\Infrastructure\Jobs\AI\GenerateBusinessProfile;
-use Illuminate\Cache\RateLimiter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use OpenApi\Attributes as OA;
+use Illuminate\Support\Facades\RateLimiter;
 
 /**
  * AiController - The Guardian of Resources
@@ -18,24 +17,9 @@ use OpenApi\Attributes as OA;
  */
 final class AiController extends Controller
 {
-    public function __construct(
-        private RateLimiter $limiter
-    ) {}
-
     /**
      * Dispatch AI generation asynchronously.
      */
-    #[OA\Post(
-        path: '/api/ai/generate',
-        summary: 'Generate AI Profile',
-        tags: ['AI'],
-        requestBody: new OA\RequestBody(required: true, description: 'AI generation payload containing business details'),
-        responses: [
-            new OA\Response(response: 202, description: 'Processing Accepted'),
-            new OA\Response(response: 403, description: 'Forbidden'),
-            new OA\Response(response: 429, description: 'Too Many Requests'),
-        ]
-    )]
     public function generate(Request $request): JsonResponse
     {
         // 1. Sanitization & Validation (Framework Concern)
@@ -55,7 +39,7 @@ final class AiController extends Controller
         // 2. Rate Limiting (Token Bucket Strategy)
         $key = 'ai-gen:'.$user->id;
 
-        $executed = $this->limiter->attempt(
+        $executed = RateLimiter::attempt(
             $key,
             $maxAttempts = 5,
             function () {
@@ -65,7 +49,7 @@ final class AiController extends Controller
         );
 
         if (! $executed) {
-            $seconds = $this->limiter->availableIn($key);
+            $seconds = RateLimiter::availableIn($key);
 
             return response()->json([
                 'message' => 'Límite de generación excedido. Intenta de nuevo en '.gmdate('i:s', $seconds).' minutos.',
@@ -92,7 +76,7 @@ final class AiController extends Controller
         return response()->json([
             'status' => 'processing',
             'message' => 'La IA está trabajando en tu perfil. Te notificaremos en breve.',
-            'remaining_attempts' => $this->limiter->remaining($key, $maxAttempts),
+            'remaining_attempts' => RateLimiter::remaining($key, $maxAttempts),
         ], 202);
     }
 }

@@ -45,7 +45,10 @@ class TrackTenantVisit
         // Store request for terminate() method
         $this->request = $request;
 
-        $this->tenant = $this->resolveTenantFromRoute($request->route('tenant'));
+        // Extract tenant from route parameter
+        if ($request->route('tenant')) {
+            $this->tenant = $request->route('tenant');
+        }
 
         return $next($request);
     }
@@ -126,21 +129,5 @@ class TrackTenantVisit
     protected function isBot(string $userAgent): bool
     {
         return preg_match('/bot|crawl|spider|slurp|googlebot|bingbot|yandex/i', $userAgent) === 1;
-    }
-
-    private function resolveTenantFromRoute(mixed $tenant): ?Tenant
-    {
-        if ($tenant instanceof Tenant) {
-            return $tenant;
-        }
-
-        if (! is_string($tenant) || trim($tenant) === '') {
-            return null;
-        }
-
-        return Tenant::query()
-            ->withoutGlobalScopes()
-            ->where('slug', $tenant)
-            ->first();
     }
 }

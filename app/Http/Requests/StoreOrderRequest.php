@@ -4,11 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
-use App\Application\Sales\Commands\CreateOrderCommand;
 use App\Enums\PaymentMethod;
-use App\Models\Location;
-use App\Models\Tenant;
-use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -47,7 +43,6 @@ final class StoreOrderRequest extends FormRequest
     {
         return [
             // NOTE: tenant_id REMOVED - Must be derived from route/context, never user input
-            'location_id' => 'nullable|string|uuid',
             'customer_name' => 'required|string|max:255',
             'customer_phone' => 'required|string|max:20',
             'customer_email' => 'nullable|email|max:255',
@@ -97,30 +92,19 @@ final class StoreOrderRequest extends FormRequest
     /**
      * Factory: Create Command from Validated Data.
      */
-    public function toCommand(): CreateOrderCommand
+    public function toCommand(): \App\Application\Sales\Commands\CreateOrderCommand
     {
+        // 1. Get validated data (clean, type-safe)
         $validated = $this->validated();
+
+        // 2. Get tenant from route binding (CONTEXT OVER INPUT)
         $tenant = $this->route('tenant');
-        /** @var User|null $user */
-        $user = $this->user();
+        $tenantId = $tenant instanceof \App\Models\Tenant ? $tenant->id : (int) $tenant;
 
-        $tenantId = (string) ($tenant instanceof Tenant ? $tenant->id : $tenant);
-        $locationId = (string) ($validated['location_id'] ?? Location::query()
-            ->where('tenant_id', $tenantId)
-            ->where('is_primary', true)
-            ->where('is_active', true)
-            ->value('id'));
-        $requestorId = $user instanceof User ? (string) $user->id : null;
-        $customerId = (string) ($validated['customer_id'] ?? $requestorId ?? '');
-        $paymentMethod = $validated['payment_method'] ?? PaymentMethod::Pending;
-        $paymentMethodValue = $paymentMethod instanceof PaymentMethod
-            ? $paymentMethod->value
-            : (string) $paymentMethod;
-
-        return new CreateOrderCommand(
+        // 3. Map HTTP Input (snake_case) to Domain Command (camelCase)
+        return new \App\Application\Sales\Commands\CreateOrderCommand(
             tenantId: $tenantId,
-            locationId: $locationId !== '' ? $locationId : null,
-            customerId: $customerId,
+            customerId: isset($validated['customer_id']) ? (int) $validated['customer_id'] : null, // Handle conditional ID
             customerName: $validated['customer_name'] ?? null,
             customerEmail: $validated['customer_email'] ?? null,
             customerPhone: $validated['customer_phone'] ?? null,
@@ -135,10 +119,9 @@ final class StoreOrderRequest extends FormRequest
                 'notes' => $item['notes'] ?? null,
             ], $validated['items']),
             deliveryType: $validated['delivery_type'],
-            paymentMethod: $paymentMethodValue,
+            paymentMethod: $validated['payment_method'] ?? null,
             couponCode: $validated['coupon_code'] ?? null,
-            requestorId: $requestorId,
-            schemaVersion: 1,
+            requestorUserId: $this->user()?->id, // Nullable for guests
         );
     }
 }

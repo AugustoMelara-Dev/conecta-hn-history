@@ -9,17 +9,12 @@ use App\Models\User;
 
 class TenantPolicy
 {
-    private function canModerateTenants(User $user): bool
-    {
-        return $user->isSuperAdmin();
-    }
-
     /**
      * Determine whether the user can view any models.
      */
     public function viewAny(User $user): bool
     {
-        return $this->canModerateTenants($user);
+        return $user->hasRole(['Super Admin', 'Moderator']);
     }
 
     /**
@@ -27,7 +22,7 @@ class TenantPolicy
      */
     public function view(User $user, Tenant $tenant): bool
     {
-        return $this->canModerateTenants($user);
+        return $user->hasRole(['Super Admin', 'Moderator']);
     }
 
     /**
@@ -35,7 +30,7 @@ class TenantPolicy
      */
     public function create(User $user): bool
     {
-        return $user->isSuperAdmin();
+        return $user->hasRole('Super Admin');
     }
 
     /**
@@ -43,7 +38,7 @@ class TenantPolicy
      */
     public function update(User $user, Tenant $tenant): bool
     {
-        return $this->canModerateTenants($user);
+        return $user->hasRole(['Super Admin', 'Moderator']);
     }
 
     /**
@@ -51,7 +46,7 @@ class TenantPolicy
      */
     public function delete(User $user, Tenant $tenant): bool
     {
-        return $user->isSuperAdmin();
+        return $user->hasRole('Super Admin');
     }
 
     /**
@@ -59,7 +54,7 @@ class TenantPolicy
      */
     public function restore(User $user, Tenant $tenant): bool
     {
-        return $user->isSuperAdmin();
+        return $user->hasRole('Super Admin');
     }
 
     /**
@@ -67,6 +62,6 @@ class TenantPolicy
      */
     public function forceDelete(User $user, Tenant $tenant): bool
     {
-        return $user->isSuperAdmin();
+        return $user->hasRole('Super Admin');
     }
 }

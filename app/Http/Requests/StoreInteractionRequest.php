@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
-use App\Domain\Analytics\Enums\InteractionType;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 /**
  * StoreInteractionRequest - Security Gate for Analytics
@@ -20,19 +18,6 @@ use Illuminate\Validation\Rule;
  */
 final class StoreInteractionRequest extends FormRequest
 {
-    protected function prepareForValidation(): void
-    {
-        $type = (string) $this->input('type', '');
-
-        $this->merge([
-            'type' => match ($type) {
-                'call_click' => InteractionType::CALL->value,
-                'maps_click' => InteractionType::LOCATION_VIEW->value,
-                default => $type,
-            },
-        ]);
-    }
-
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -49,8 +34,9 @@ final class StoreInteractionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'tenant_id' => ['required', 'string', 'max:64'],
-            'type' => ['required', 'string', Rule::in(InteractionType::values())],
+            'tenant_id' => ['required', 'integer'],
+            // Allowlist for event types to prevent Garbage Injection
+            'type' => ['required', 'string', 'in:view,whatsapp_click,call_click,maps_click'],
             'product_id' => ['nullable', 'integer'],
             'metadata' => ['nullable', 'array'],
         ];

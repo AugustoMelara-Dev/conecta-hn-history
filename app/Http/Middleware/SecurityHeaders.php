@@ -6,8 +6,6 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Vite;
-use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -70,7 +68,6 @@ class SecurityHeaders
 
         // Store nonce in container for Blade/Inertia access
         app()->instance('csp-nonce', $nonce);
-        Vite::useCspNonce($nonce);
 
         $response = $next($request);
 
@@ -112,26 +109,12 @@ class SecurityHeaders
             );
         }
 
-        if (app()->environment('local')) {
-            // Local Filament/Livewire iteration was serving stale pages and assets
-            // from browser caches. Make every local response revalidate strictly.
-            $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
-            $response->headers->set('Pragma', 'no-cache');
-            $response->headers->set('Expires', '0');
-        }
-
         // ═══════════════════════════════════════════════════════════════════════
         // MODULE 4: INFORMATION LEAKAGE PREVENTION
         // ═══════════════════════════════════════════════════════════════════════
         $response->headers->remove('X-Powered-By');
         $response->headers->remove('Server');
         $response->headers->remove('X-Laravel');
-        $this->normalizeInternalRedirectLocation($request, $response);
-
-        // Production-only: prevent runtime cross-origin redirect drift in proxied topology.
-        if (app()->environment('production')) {
-            $this->normalizeInternalRedirectLocation($request, $response);
-        }
 
         return $response;
     }
@@ -153,11 +136,6 @@ class SecurityHeaders
     private function buildContentSecurityPolicy(string $nonce): string
     {
         $isProduction = app()->environment('production');
-        $runtimeConnectSources = $this->runtimeConnectSources();
-        $connectSources = implode(
-            ' ',
-            array_values(array_unique(array_merge(self::TRUSTED_CONNECT, $runtimeConnectSources)))
-        );
 
         // ═══════════════════════════════════════════════════════════════════════
         // SCRIPT-SRC: Control JavaScript execution
@@ -166,7 +144,7 @@ class SecurityHeaders
         // Development: unsafe-inline (required for Vite HMR)
         $scriptPolicy = $isProduction
             ? "'self' 'nonce-{$nonce}'"
-            : "'self' 'unsafe-inline' 'unsafe-eval'";
+            : "'self' 'unsafe-inline'";
 
         // ═══════════════════════════════════════════════════════════════════════
         // VITE DEV SERVER (Local/Staging only)
@@ -175,9 +153,6 @@ class SecurityHeaders
         // We force 'localhost' + '127.0.0.1' which cover most dev setups.
         $viteDevSrc = $isProduction ? '' : ' http://localhost:5173 http://127.0.0.1:5173';
         $viteDevWs = $isProduction ? '' : ' ws://localhost:5173 ws://127.0.0.1:5173';
-        $reverbEnabled = config('broadcasting.default') === 'reverb'
-            && (string) config('broadcasting.connections.reverb.key', '') !== '';
-        $reverbWs = $reverbEnabled ? ' ws://localhost:8080 wss://localhost:8080' : '';
 
         $scriptSrc = "script-src {$scriptPolicy} ".implode(' ', self::TRUSTED_SCRIPTS).$viteDevSrc;
 
@@ -196,9 +171,8 @@ class SecurityHeaders
             $scriptSrc,
             $styleSrc,
             "img-src 'self' data: https: blob:".$viteDevSrc,
-            "manifest-src 'self' https:",
             "font-src 'self' https://fonts.gstatic.com https://fonts.bunny.net",
-            "connect-src 'self' ".$connectSources.' wss:'.$viteDevSrc.$viteDevWs.$reverbWs.(app()->environment('local') ? ' http://localhost:* http://127.0.0.1:*' : ''),
+            "connect-src 'self' ".implode(' ', self::TRUSTED_CONNECT).' wss:'.$viteDevSrc.$viteDevWs,
             "frame-src 'self' https://js.stripe.com https://www.facebook.com",
             "frame-ancestors 'none'",
             "form-action 'self'",
@@ -207,125 +181,5 @@ class SecurityHeaders
         ];
 
         return implode('; ', $directives);
-    }
-
-    /**
-     * Collect runtime API origins that may appear in generated routes or redirects.
-     *
-     * This prevents CSP drift in hybrid Vercel->Railway topologies when absolute URLs
-     * are emitted from environment-driven URL generators.
-     *
-     * @return array<int, string>
-     */
-    private function runtimeConnectSources(): array
-    {
-        $candidates = [
-            (string) config('app.url', ''),
-            (string) config('app.platform_app_url', ''),
-            (string) config('app.platform_directory_url', ''),
-            (string) config('surfaces.origins.platform_api', ''),
-        ];
-
-        $sources = [];
-
-        foreach ($candidates as $candidate) {
-            $candidate = trim($candidate);
-
-            if ($candidate === '' || ! Str::startsWith($candidate, ['http://', 'https://'])) {
-                continue;
-            }
-
-            $parts = parse_url($candidate);
-            $scheme = $parts['scheme'] ?? null;
-            $host = $parts['host'] ?? null;
-
-            if ($scheme === null || $host === null) {
-                continue;
-            }
-
-            $port = isset($parts['port']) ? ':'.$parts['port'] : '';
-            $sources[] = sprintf('%s://%s%s', $scheme, $host, $port);
-        }
-
-        return array_values(array_unique($sources));
-    }
-
-    /**
-     * Keep redirect locations same-origin when runtime emits an internal absolute URL.
-     */
-    private function normalizeInternalRedirectLocation(Request $request, Response $response): void
-    {
-        if (! $response->isRedirection()) {
-            return;
-        }
-
-        $location = $response->headers->get('Location');
-
-        if (! is_string($location) || ! Str::startsWith($location, ['http://', 'https://'])) {
-            return;
-        }
-
-        $targetHost = strtolower((string) parse_url($location, PHP_URL_HOST));
-        $requestHost = strtolower((string) $request->getHost());
-
-        if ($targetHost === '' || $requestHost === '' || $targetHost === $requestHost) {
-            return;
-        }
-
-        if (! in_array($targetHost, $this->runtimeInternalHosts(), true) && ! $this->isRuntimeInternalHost($targetHost)) {
-            return;
-        }
-
-        $path = (string) (parse_url($location, PHP_URL_PATH) ?? '/');
-        $query = (string) (parse_url($location, PHP_URL_QUERY) ?? '');
-        $fragment = (string) (parse_url($location, PHP_URL_FRAGMENT) ?? '');
-        $relativeLocation = $path
-            .($query !== '' ? '?'.$query : '')
-            .($fragment !== '' ? '#'.$fragment : '');
-
-        $response->headers->set('Location', $relativeLocation);
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    private function runtimeInternalHosts(): array
-    {
-        $candidates = [
-            (string) config('app.url', ''),
-            (string) config('surfaces.origins.platform_api', ''),
-        ];
-
-        $hosts = [];
-
-        foreach ($candidates as $candidate) {
-            $candidate = trim($candidate);
-
-            if ($candidate === '' || ! Str::startsWith($candidate, ['http://', 'https://'])) {
-                continue;
-            }
-
-            $host = parse_url($candidate, PHP_URL_HOST);
-
-            if (! is_string($host) || $host === '') {
-                continue;
-            }
-
-            $host = strtolower($host);
-
-            if (! $this->isRuntimeInternalHost($host)) {
-                continue;
-            }
-
-            $hosts[] = $host;
-        }
-
-        return array_values(array_unique($hosts));
-    }
-
-    private function isRuntimeInternalHost(string $host): bool
-    {
-        return str_ends_with($host, '.up.railway.app')
-            || str_ends_with($host, '.railway.internal');
     }
 }

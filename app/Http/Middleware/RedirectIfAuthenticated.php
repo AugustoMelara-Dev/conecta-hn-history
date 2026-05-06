@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
-use App\Models\User;
-use App\Support\Auth\AuthRedirector;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -26,11 +24,19 @@ class RedirectIfAuthenticated
             if (Auth::guard($guard)->check()) {
                 $user = Auth::user();
 
-                if (! $user instanceof User) {
-                    return redirect(route('directory.index'));
+                if ($user->role === 'super_admin') {
+                    return redirect('/admin');
                 }
 
-                return redirect(AuthRedirector::destinationFor($user));
+                if ($user->role === 'seller') {
+                    return redirect('/app');
+                }
+
+                if ($user->role === 'buyer') {
+                    return redirect('/mi-cuenta');
+                }
+
+                return redirect(route('directory'));
             }
         }
 

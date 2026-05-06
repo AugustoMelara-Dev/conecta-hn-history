@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
-use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Models\Coupon;
-use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
 
@@ -19,11 +17,6 @@ use Illuminate\Auth\Access\Response;
  */
 class CouponPolicy extends TenantAwarePolicy
 {
-    public function before(User $user, string $ability): ?bool
-    {
-        return $this->isAdmin($user) ? true : null;
-    }
-
     /**
      * Determine whether the user can view any coupons.
      */
@@ -52,12 +45,8 @@ class CouponPolicy extends TenantAwarePolicy
             return Response::deny('Debes tener un negocio para crear cupones.');
         }
 
-        if (! $tenant instanceof Tenant) {
-            return Response::deny('No se pudo resolver el contexto del negocio.');
-        }
-
         // Only PRO tenants can create coupons
-        if (! $this->isPaidPlan($tenant)) {
+        if (! $tenant->is_pro) {
             return Response::deny(
                 'Los cupones de descuento son una característica PRO. '.
                 'Actualiza tu plan para crear promociones.'
@@ -97,16 +86,5 @@ class CouponPolicy extends TenantAwarePolicy
     public function forceDelete(User $user, Coupon $coupon): bool
     {
         return $this->ownsResource($user, $coupon) && $this->isAdmin($user);
-    }
-
-    private function isPaidPlan(Tenant $tenant): bool
-    {
-        $planKey = $tenant->getRawOriginal('plan_type') ?: ($tenant->getAttributes()['plan_type'] ?? null);
-
-        return match (true) {
-            $planKey instanceof TenantPlan => $planKey !== TenantPlan::SEMILLA,
-            is_string($planKey) => $planKey !== '' && $planKey !== Tenant::PLAN_SEMILLA,
-            default => false,
-        };
     }
 }

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
-use App\Models\Tenant;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redis;
@@ -27,7 +26,7 @@ class TrackTenantView
         }
 
         // Get tenant from route parameter
-        $tenant = $this->resolveTenantFromRoute($request->route('tenant'));
+        $tenant = $request->route('tenant');
 
         if (! $tenant) {
             return $response;
@@ -49,48 +48,30 @@ class TrackTenantView
         }
 
         try {
-            $date = now()->format('Y-m-d');
-            $cache = app(\Illuminate\Contracts\Cache\Repository::class);
+            // Check if Redis extension is loaded to avoid "Class 'Redis' not found" error
+            if (extension_loaded('redis')) {
+                $date = now()->format('Y-m-d');
+                $key = "analytics:tenants:{$tenant->id}:visits:{$date}";
 
-            // Hash PII to prevent GDPR violations
-            $visitorHash = hash('sha256', $request->ip().'|'.$userAgent);
+                // Unique visitor identifier (IP + User Agent)
+                $visitorId = $request->ip().'|'.$userAgent;
 
-            // Store unique visitors in a set (simulating HyperLogLog logic via Cache store)
-            $visitsKey = "analytics:tenants:{$tenant->id}:visits:{$date}";
-            $visits = $cache->get($visitsKey, []);
+                // Add to HyperLogLog for unique count
+                Redis::pfadd($key, [$visitorId]);
 
-            if (! in_array($visitorHash, $visits)) {
-                $visits[] = $visitorHash;
-                $cache->put($visitsKey, $visits, now()->addHours(48));
+                // Set TTL to 48 hours (gives sync job time to process)
+                Redis::expire($key, 60 * 60 * 48);
+
+                // Optional: Track total visits (simple counter)
+                $totalKey = "analytics:tenants:{$tenant->id}:total:{$date}";
+                Redis::incr($totalKey);
+                Redis::expire($totalKey, 60 * 60 * 48);
             }
-
-            // Track total visits (simple counter)
-            $totalKey = "analytics:tenants:{$tenant->id}:total:{$date}";
-            $cache->increment($totalKey);
-            // Re-apply TTL since increment might reset it depending on cache driver
-            $cache->put($totalKey, $cache->get($totalKey), now()->addHours(48));
-
         } catch (\Exception $e) {
             // Fallback: Log the error but don't break the user experience
             \Log::warning('Analytics tracking failed: '.$e->getMessage());
         }
 
         return $response;
-    }
-
-    private function resolveTenantFromRoute(mixed $tenant): ?Tenant
-    {
-        if ($tenant instanceof Tenant) {
-            return $tenant;
-        }
-
-        if (! is_string($tenant) || trim($tenant) === '') {
-            return null;
-        }
-
-        return Tenant::query()
-            ->withoutGlobalScopes()
-            ->where('slug', $tenant)
-            ->first();
     }
 }

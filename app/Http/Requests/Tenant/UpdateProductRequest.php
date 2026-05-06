@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Tenant;
 
-use App\Application\Products\Commands\UpdateProductCommand;
-use App\Models\Product;
-use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -33,11 +30,8 @@ final class UpdateProductRequest extends FormRequest
      */
     public function rules(): array
     {
-        /** @var User|null $user */
-        $user = $this->user();
-        $tenantId = $user?->tenant_id;
-        $product = $this->route('product');
-        $productId = $product instanceof Product ? (int) $product->getKey() : (int) $product;
+        $tenantId = $this->user()?->tenant?->id;
+        $productId = $this->route('product'); // Product ID from route
 
         return [
             'name' => ['required', 'string', 'min:2', 'max:255'],
@@ -88,41 +82,20 @@ final class UpdateProductRequest extends FormRequest
         ];
     }
 
-    public function toCommand(int $productId): UpdateProductCommand
+    public function toCommand(int $productId): \App\Application\Products\Commands\UpdateProductCommand
     {
-        /** @var User|null $user */
-        $user = $this->user();
-        if (! $user instanceof User) {
-            throw new \RuntimeException('Authenticated user required to update products.');
-        }
-
         $validated = $this->validated();
-        $headerKey = $this->header('Idempotency-Key');
-        if (! is_string($headerKey) || $headerKey === '') {
-            $headerKey = $this->header('X-Idempotency-Key');
-        }
 
-        $idempotencyKey = is_string($headerKey) && $headerKey !== ''
-            ? $headerKey
-            : hash('xxh128', json_encode([
-                'tenant_id' => (string) $user->getTenantId(),
-                'product_id' => $productId,
-                'name' => $validated['name'],
-                'sku' => $validated['sku'] ?? null,
-                'price' => $validated['price'],
-            ], JSON_THROW_ON_ERROR));
-
-        return new UpdateProductCommand(
-            tenantId: (string) $user->getTenantId(),
-            productId: $productId,
+        return new \App\Application\Products\Commands\UpdateProductCommand(
+            id: $productId,
+            tenantId: (int) $this->user()->tenant_id,
+            sku: $validated['sku'], // Now strictly required by DTO/Handler
             name: $validated['name'],
             description: $validated['description'] ?? '',
-            price: (int) round((float) $validated['price'] * 100),
-            idempotencyKey: $idempotencyKey,
-            sku: isset($validated['sku']) ? (string) $validated['sku'] : null,
+            price: (float) $validated['price'],
             stock: isset($validated['stock']) ? (int) $validated['stock'] : 0,
-            categoryId: isset($validated['category_id']) ? (int) $validated['category_id'] : null,
-            imagePath: null,
+            categoryId: (int) $validated['category_id'],
+            imagePath: null, // Handle image separately if needed
             isVisible: (bool) ($validated['is_visible'] ?? true),
         );
     }

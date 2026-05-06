@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Tenant;
 
-use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -32,9 +31,7 @@ final class StoreProductRequest extends FormRequest
      */
     public function rules(): array
     {
-        /** @var User|null $user */
-        $user = $this->user();
-        $tenantId = $user?->tenant_id;
+        $tenantId = $this->user()?->tenant?->id;
 
         return [
             'name' => ['required', 'string', 'min:2', 'max:255'],

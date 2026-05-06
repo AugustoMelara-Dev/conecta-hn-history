@@ -6,29 +6,22 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
-use App\Support\Auth\AuthRedirector;
-use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Routing\Router;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Inertia\Response;
-use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 final class AuthenticatedSessionController extends Controller
 {
-    public function __construct(
-        private StatefulGuard $auth,
-        private Router $router
-    ) {}
-
     /**
      * Display the login view.
      */
     public function create(): Response
     {
         return Inertia::render('Auth/Login', [
-            'canResetPassword' => $this->router->has('password.request'),
+            'canResetPassword' => Route::has('password.request'),
             'status' => session('status'),
         ]);
     }
@@ -36,19 +29,13 @@ final class AuthenticatedSessionController extends Controller
     /**
      * Handle an incoming authentication request.
      */
-    public function store(LoginRequest $request): RedirectResponse|SymfonyResponse
+    public function store(LoginRequest $request): RedirectResponse
     {
         $request->authenticate();
 
         $request->session()->regenerate();
 
-        $destination = AuthRedirector::destinationFor($request->user());
-
-        if ($request->headers->has('X-Inertia')) {
-            return Inertia::location($destination);
-        }
-
-        return redirect()->to($destination);
+        return redirect()->intended(route('dashboard', absolute: false));
     }
 
     /**
@@ -56,7 +43,7 @@ final class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
-        $this->auth->logout();
+        Auth::guard('web')->logout();
 
         $request->session()->invalidate();
 

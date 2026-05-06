@@ -5,71 +5,61 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
-use App\Settings\GeneralSettings;
-use Illuminate\Contracts\Cache\Repository as CacheRepository;
-use Illuminate\Routing\Router;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Inertia\Response;
-use Throwable;
 
 final class WelcomeController extends Controller
 {
     public function __construct(
-        private \App\Domain\Public\Contracts\LandingPageRepository $repository,
-        private CacheRepository $cache,
-        private Router $router
+        private readonly \App\Domain\Public\Contracts\LandingPageRepository $repository
     ) {}
 
+    /**
+     * Display the landing page.
+     *
+     * Data parity with Livewire Home.php:
+     * - categories: Active categories for navigation pills
+     * - cities: Popular cities with tenant counts
+     * - newTenants: Latest 8 businesses for social proof
+     * - heroImage: Random city hero image for background
+     * - stats: Aggregate counts for trust badges
+     */
     public function __invoke(): Response
     {
-        try {
-            $data = $this->cache->remember('v'.config('app.version').'_homepage_data', 3600, function (): array {
-                return [
-                    'categories' => $this->repository->getCategories(),
-                    'cities' => $this->repository->getPopularCities(),
-                    'newTenants' => $this->repository->getLatestTenants(),
-                    'heroImage' => $this->repository->getRandomHeroImage(),
-                    'stats' => $this->repository->getStats(),
-                ];
-            });
-        } catch (\Throwable) {
-            // Fallback for serverless/runtime scenarios where DB/cache backends are unavailable.
-            $data = [
-                'categories' => [],
-                'cities' => [],
-                'newTenants' => [],
-                'heroImage' => null,
-                'stats' => [
-                    'tenants_count' => 0,
-                    'cities_count' => 0,
-                    'categories_count' => 0,
-                    'products_count' => 0,
-                ],
-            ];
-        }
+        $data = Cache::remember("v".config('app.version')."_homepage_data", 3600, function () {
+            return [
+                // ═══════════════════════════════════════════════════════════
+                // CATEGORIES: For navigation pills (sorted by sort_order)
+                // ═══════════════════════════════════════════════════════════
+                'categories' => $this->repository->getCategories(),
 
-        $settings = $this->generalSettings();
+                // ═══════════════════════════════════════════════════════════
+                // CITIES: Popular cities with tenant counts
+                // ═══════════════════════════════════════════════════════════
+                'cities' => $this->repository->getPopularCities(),
+
+                // ═══════════════════════════════════════════════════════════
+                // NEW TENANTS: Latest businesses for social proof
+                // ═══════════════════════════════════════════════════════════
+                'newTenants' => $this->repository->getLatestTenants(),
+
+                // ═══════════════════════════════════════════════════════════
+                // HERO IMAGE: Random city background
+                // ═══════════════════════════════════════════════════════════
+                'heroImage' => $this->repository->getRandomHeroImage(),
+
+                // ═══════════════════════════════════════════════════════════
+                // STATS: Aggregate counts for trust badges
+                // ═══════════════════════════════════════════════════════════
+                'stats' => $this->repository->getStats(),
+            ];
+        });
 
         return Inertia::render('Welcome', array_merge($data, [
-            'canLogin' => $this->router->has('login'),
-            'canRegister' => $this->router->has('tenant.register'),
-            'settings' => [
-                'freeProductLimit' => (int) ($settings?->free_plan_product_limit ?? config('conecta.free_plan_product_limit', 10)),
-                'proProductLimit' => (int) ($settings?->pro_plan_product_limit ?? config('conecta.pro_plan_product_limit', 100)),
-                'freePlanPrice' => (float) ($settings?->free_plan_price ?? 0.00),
-                'proPlanPrice' => (float) ($settings?->pro_plan_price ?? config('conecta.pro_plan_price', 499.00)),
-                'proPlanOriginalPrice' => (float) ($settings?->pro_plan_original_price ?? 799.00),
-                'setupFeePrice' => (float) ($settings?->setup_fee_price ?? 2500.00),
-            ],
+            'canLogin' => Route::has('login'),
+            'canRegister' => Route::has('register'),
         ]));
-    }
-
-    private function generalSettings(): ?GeneralSettings
-    {
-        try {
-            return app(GeneralSettings::class);
-        } catch (Throwable) {
-            return null;
-        }
     }
 }

@@ -8,24 +8,27 @@ use App\Application\Actions\Auth\DeleteUserAction;
 use App\Application\Actions\Auth\UpdateUserProfileAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ProfileUpdateRequest;
-use App\Support\Auth\AuthRedirector;
-use Illuminate\Contracts\Auth\StatefulGuard;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Routing\Redirector;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Redirect;
+use Inertia\Inertia;
+use Inertia\Response;
 
 final class ProfileController extends Controller
 {
     public function __construct(
-        private UpdateUserProfileAction $updateUserAction,
-        private DeleteUserAction $deleteUserAction,
-        private StatefulGuard $auth,
-        private Redirector $redirector
+        private readonly UpdateUserProfileAction $updateUserAction,
+        private readonly DeleteUserAction $deleteUserAction
     ) {}
 
-    public function edit(Request $request): RedirectResponse
+    public function edit(Request $request): Response
     {
-        return redirect()->to(AuthRedirector::profileDestinationFor($request->user()));
+        return Inertia::render('Profile/Edit', [
+            'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
+            'status' => session('status'),
+        ]);
     }
 
     public function update(ProfileUpdateRequest $request): RedirectResponse
@@ -36,7 +39,7 @@ final class ProfileController extends Controller
             $request->validated()
         );
 
-        return $this->redirector->route('profile.edit');
+        return Redirect::route('profile.edit');
     }
 
     public function destroy(Request $request): RedirectResponse
@@ -47,7 +50,7 @@ final class ProfileController extends Controller
 
         $user = $request->user();
 
-        $this->auth->logout();
+        Auth::logout();
 
         // DELEGATED: Deletion logic moved to Action
         $this->deleteUserAction->execute($user);
@@ -55,6 +58,6 @@ final class ProfileController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return $this->redirector->to('/');
+        return Redirect::to('/');
     }
 }

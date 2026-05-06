@@ -38,13 +38,13 @@ final class DirectoryController extends Controller
         $activeCity = null;
         if ($filters->citySlug && $filters->citySlug !== 'all') {
             // Use pre-loaded cities collection instead of direct Eloquent
-            $activeCity = collect($cities)->firstWhere('slug', $filters->citySlug);
+            $activeCity = $cities->firstWhere('slug', $filters->citySlug);
         }
 
         $categories = $this->reader->getCategoriesWithTenants();
 
         // 4. Transform using Resource (Clean Presentation)
-        $tenants->through(fn ($t) => (new \App\Http\Resources\TenantCardResource($t))->resolve());
+        $tenants->through(fn ($t) => new \App\Http\Resources\TenantCardResource($t));
 
         return Inertia::render('Directory/Index', [
             'tenants' => $tenants,

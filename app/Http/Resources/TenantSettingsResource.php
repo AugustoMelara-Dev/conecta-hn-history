@@ -8,10 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Storage;
 
-/**
- * @mixin \App\Models\Tenant
- */
-final class TenantSettingsResource extends JsonResource
+class TenantSettingsResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
@@ -20,21 +17,18 @@ final class TenantSettingsResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        /** @var \App\Models\Tenant $tenant */
-        $tenant = $this->resource;
-
         return [
-            'id' => $tenant->id,
-            'name' => $tenant->name,
-            'slug' => $tenant->slug,
-            'slogan' => $tenant->slogan ?? null,
-            'brand_color' => $tenant->brand_color ?? null,
-            'logo_url' => $tenant->logo_path ? Storage::url($tenant->logo_path) : null,
-            'banner_url' => $tenant->cover_path ? Storage::url($tenant->cover_path) : null,
+            'id' => $this->id,
+            'name' => $this->name,
+            'slug' => $this->slug,
+            'slogan' => $this->slogan ?? null, // Graceful fallback if column missing
+            'brand_color' => $this->brand_color ?? null,
+            'logo_url' => $this->logo_path ? Storage::url($this->logo_path) : null,
+            'banner_url' => $this->cover_path ? Storage::url($this->cover_path) : null,
             // Additional fields useful for settings UI
-            'description' => $tenant->description,
-            'whatsapp' => $tenant->whatsapp_number,
-            'whatsapp_number' => $tenant->whatsapp_number,
+            'description' => $this->description,
+            'whatsapp' => $this->whatsapp_number, // Legacy alias
+            'whatsapp_number' => $this->whatsapp_number,
         ];
     }
 }

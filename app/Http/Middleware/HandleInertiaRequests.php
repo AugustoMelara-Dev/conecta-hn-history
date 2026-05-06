@@ -20,7 +20,7 @@ use Inertia\Middleware;
  * ║  TENANT VALIDATED: instanceof + exists check                            ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final class HandleInertiaRequests extends Middleware
+class HandleInertiaRequests extends Middleware
 {
     private const ANNOUNCEMENTS_CACHE_TTL = 300;
 
@@ -62,30 +62,12 @@ final class HandleInertiaRequests extends Middleware
      */
     protected function shareAuthData(Request $request): array
     {
-        $user = $request->user();
-        $tenant = $user?->tenant;
-        $memberTenantCount = $user?->memberTenants()
-            ->wherePivotNotNull('accepted_at')
-            ->count() ?? 0;
-        $hasBusinessContext = $tenant !== null || $memberTenantCount > 0;
-
         return [
             'auth' => [
-                'user' => $user ? [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'role' => $user->role->value,
-                    'persona' => [
-                        'is_super_admin' => $user->isSuperAdmin(),
-                        'is_business_owner_or_staff' => $hasBusinessContext,
-                        'is_customer' => ! $hasBusinessContext && ! $user->isSuperAdmin(),
-                    ],
-                ] : null,
-                'tenant' => $tenant ? [
-                    'id' => (string) $tenant->getKey(),
-                    'name' => (string) $tenant->name,
-                    'slug' => (string) $tenant->slug,
+                'user' => $request->user() ? [
+                    'id' => $request->user()->id,
+                    'name' => $request->user()->name,
+                    'email' => $request->user()->email,
                 ] : null,
             ],
         ];
@@ -113,7 +95,6 @@ final class HandleInertiaRequests extends Middleware
                 'error' => fn () => $request->session()->get('error'),
                 'warning' => fn () => $request->session()->get('warning'),
                 'info' => fn () => $request->session()->get('info'),
-                'diagnostic' => fn () => $request->session()->get('diagnostic'),
             ],
         ];
     }
@@ -184,18 +165,15 @@ final class HandleInertiaRequests extends Middleware
             return null;
         }
 
-        $planType = (string) ($tenant->getRawOriginal('plan_type') ?: ($tenant->getAttributes()['plan_type'] ?? Tenant::PLAN_SEMILLA));
-
         return [
-            'plan_type' => $planType,
-            'id' => (string) $tenant->id,
+            'id' => (int) $tenant->id,
             'name' => (string) $tenant->name,
             'slug' => (string) $tenant->slug,
             'logo_url' => $this->sanitizeLogoPath($tenant->logo_path),
-            'whatsapp' => $tenant->whatsapp_number ? (string) $tenant->whatsapp_number : null,
+            'whatsapp' => $tenant->whatsapp ? (string) $tenant->whatsapp : null,
             'whatsapp_number' => $tenant->whatsapp_number ? (string) $tenant->whatsapp_number : null,
             'phone' => $tenant->phone ? (string) $tenant->phone : null,
-            'is_paid_plan' => in_array($planType, ['pro', Tenant::PLAN_CRECIMIENTO, Tenant::PLAN_COSECHA, 'enterprise'], true),
+            'is_pro' => (bool) ($tenant->is_pro ?? false),
             'primary_color' => $this->sanitizeHexColor($tenant->primary_color),
             'settings' => [
                 'delivery_enabled' => (bool) ($tenant->delivery_enabled ?? true),
@@ -218,9 +196,9 @@ final class HandleInertiaRequests extends Middleware
         }
 
         $cacheKey = sprintf(
-            '%s:business:%s:announcements:%s',
+            '%s:business:%d:announcements:%s',
             app()->environment(),
-            (string) $tenant->id,
+            $tenant->id,
             $this->getCacheVersion()
         );
 
@@ -300,13 +278,13 @@ final class HandleInertiaRequests extends Middleware
     // CACHE INVALIDATION (STATIC HELPER)
     // ═══════════════════════════════════════════════════════════════════════
 
-    public static function invalidateAnnouncementsCache(int|string $tenantId): void
+    public static function invalidateAnnouncementsCache(int $tenantId): void
     {
         $version = config('app.version', date('Y.m.d.H'));
         $cacheKey = sprintf(
-            '%s:business:%s:announcements:%s',
+            '%s:business:%d:announcements:%s',
             app()->environment(),
-            (string) $tenantId,
+            $tenantId,
             $version
         );
         Cache::forget($cacheKey);

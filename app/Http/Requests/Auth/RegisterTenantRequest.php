@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Auth;
 
-use App\Application\TenantGovernance\Contracts\RubroManifestReaderInterface;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules;
 
 /**
  * RegisterTenantRequest - Form Request for User + Tenant Registration
  *
- * Encapsulates validation for the public business onboarding flow.
+ * ARCHITECTURAL PURPOSE:
+ * Encapsulates ALL validation rules for the registration flow.
+ * Controllers MUST NOT contain inline validation logic.
+ *
+ * SECURITY: Validation runs BEFORE controller is invoked.
  */
 final class RegisterTenantRequest extends FormRequest
 {
@@ -27,42 +30,23 @@ final class RegisterTenantRequest extends FormRequest
         'images', 'assets', 'public', 'static', 'uploads', 'media',
     ];
 
+    /**
+     * Determine if the user is authorized to make this request.
+     */
     public function authorize(): bool
     {
-        return true;
-    }
-
-    protected function prepareForValidation(): void
-    {
-        $businessName = $this->input('business_name', $this->input('name'));
-        $ownerName = $this->input('owner_name', $this->input('name'));
-        $rubroKey = (string) $this->input('rubro_key', '');
-        $manifest = $rubroKey !== '' ? app(RubroManifestReaderInterface::class)->get($rubroKey) : [];
-        $businessType = is_array($manifest) && $manifest !== []
-            ? data_get($manifest, 'business_type')
-            : $this->input('business_type', app(RubroManifestReaderInterface::class)->defaultBusinessType());
-
-        $this->merge([
-            'business_name' => $businessName,
-            'name' => $ownerName,
-            'slug' => $this->filled('slug')
-                ? $this->input('slug')
-                : \Illuminate\Support\Str::slug((string) $businessName),
-            'whatsapp' => $this->input('whatsapp', $this->input('whatsapp_number')),
-            'selected_plan' => $this->input('selected_plan', $this->input('plan', 'free')),
-            'business_type' => $businessType,
-            'privacy_accepted' => $this->input('privacy_accepted'),
-            'terms_version' => $this->input('terms_version', config('legal.current_versions.terms')),
-            'privacy_version' => $this->input('privacy_version', config('legal.current_versions.privacy')),
-        ]);
+        return true; // Public registration endpoint
     }
 
     /**
+     * Get the validation rules that apply to the request.
+     *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
         return [
+            // Step 1: Identity Claim
             'business_name' => ['required', 'string', 'max:255', 'min:3'],
             'slug' => [
                 'required',
@@ -73,30 +57,25 @@ final class RegisterTenantRequest extends FormRequest
                 'unique:tenants,slug',
                 'not_in:'.implode(',', self::RESERVED_SLUGS),
             ],
+
+            // Step 2: User Credentials
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+
+            // Step 3: Business Profile
             'city_id' => ['required', 'integer', 'exists:cities,id'],
             'category_id' => ['required', 'integer', 'exists:categories,id'],
-            'business_type' => ['required', 'in:'.implode(',', app(RubroManifestReaderInterface::class)->allowedBusinessTypes())],
-            'rubro_key' => ['nullable', 'string', 'max:120', 'in:'.implode(',', array_keys((array) config('rubro-manifest.rubros', [])))],
             'whatsapp' => ['nullable', 'string', 'max:20'],
-            'description' => ['nullable', 'string', 'max:1000'],
-            'phone' => ['nullable', 'string', 'max:20'],
-            'address' => ['nullable', 'string', 'max:500'],
-            'logo' => ['nullable', 'mimes:jpg,jpeg,png,webp', 'max:2048', 'dimensions:max_width=2000,max_height=2000'],
-            'selected_plan' => ['nullable', 'in:free,pro'],
-            'terms_accepted' => ['required', 'accepted'],
-            'privacy_accepted' => ['required', 'accepted'],
-            'terms_version' => ['required', 'string', 'max:50'],
-            'privacy_version' => ['required', 'string', 'max:50'],
-            'claim_evidence_type' => ['nullable', 'in:website,social,document,other'],
-            'claim_evidence_url' => ['nullable', 'url', 'max:500'],
-            'claim_evidence_notes' => ['nullable', 'string', 'max:1000'],
+
+            // Step 4: Plan Selection
+            'selected_plan' => ['required', 'in:free,pro'],
         ];
     }
 
     /**
+     * Get custom messages for validator errors.
+     *
      * @return array<string, string>
      */
     public function messages(): array
@@ -119,13 +98,8 @@ final class RegisterTenantRequest extends FormRequest
             'city_id.exists' => 'La ciudad seleccionada no es válida.',
             'category_id.required' => 'Selecciona una categoría.',
             'category_id.exists' => 'La categoría seleccionada no es válida.',
-            'business_type.required' => 'Selecciona el tipo de negocio que más se parece a tu operación.',
-            'business_type.in' => 'El tipo de negocio seleccionado no es válido.',
+            'selected_plan.required' => 'Selecciona un plan.',
             'selected_plan.in' => 'El plan seleccionado no es válido.',
-            'terms_accepted.accepted' => 'Debes aceptar los términos para continuar.',
-            'privacy_accepted.accepted' => 'Debes aceptar la política de privacidad para continuar.',
-            'claim_evidence_type.in' => 'El tipo de evidencia no es válido.',
-            'claim_evidence_url.url' => 'La URL de evidencia debe ser válida.',
         ];
     }
 }

@@ -4,18 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Web;
 
-use App\Domain\Billing\Enums\PaymentStatus;
 use App\Domain\Billing\Repositories\PaymentRepositoryInterface;
 use App\Http\Controllers\Controller;
-use App\Models\Tenant;
-use App\Models\TenantOnboardingState;
-use App\Models\User;
 use App\Settings\GeneralSettings;
-use App\Support\Diagnostics\SupportDiagnosticFactory;
 use Inertia\Inertia;
-use Inertia\Response as InertiaResponse;
-use Illuminate\Http\RedirectResponse;
-use Symfony\Component\HttpFoundation\Response;
+use Inertia\Response;
 
 /**
  * BillingController - Payment Flow Pages
@@ -27,46 +20,40 @@ final class BillingController extends Controller
 {
     public function __construct(
         private readonly PaymentRepositoryInterface $paymentRepository,
-        private readonly SupportDiagnosticFactory $diagnostics,
     ) {}
 
     /**
      * Show the payment pending page.
      */
-    public function showPaymentPending(string $paymentId): InertiaResponse|RedirectResponse|Response
+    public function showPaymentPending(string $paymentId): Response
     {
-        $user = auth()->user();
-        if (! $user instanceof User) {
-            return redirect()->guest(route('login'));
-        }
+        $result = $this->paymentRepository->findByIdWithTenant($paymentId);
 
-        $payment = $this->paymentRepository->findById($paymentId);
-
-        if ($payment === null) {
+        if (! $result) {
             abort(404, 'Pago no encontrado.');
         }
 
-        $tenant = Tenant::query()->find($payment->tenantId);
+        $payment = $result['payment'];
+        $tenantName = $result['tenant_name'];
+        $tenantUserId = $result['tenant_user_id'];
 
-        if (! $tenant instanceof Tenant) {
-            abort(404, 'Negocio asociado no encontrado.');
+        // Security: Verify ownership
+        $user = auth()->user();
+        if ($user && $tenantUserId !== $user->id) {
+            abort(403, 'No tienes permiso para ver esta página.');
         }
 
-        $tenantName = $tenant->name;
-        $tenantUserId = $tenant->user_id;
-
-        if ($user instanceof User && (string) $tenantUserId !== (string) $user->id) {
-            abort(403, 'No tienes permiso para ver esta pagina.');
-        }
-
-        if ($payment->status === PaymentStatus::PAID) {
+        // If payment is already approved, redirect
+        if ($payment->isApproved()) {
             return Inertia::location(route('login'));
         }
 
+        // Load settings
         $settings = app(GeneralSettings::class);
         $bankInstructions = $settings->bank_transfer_instructions ?? '';
         $supportWhatsApp = $settings->support_whatsapp_number ?? '';
 
+        // Generate WhatsApp URL
         $whatsappUrl = $this->generateWhatsAppUrl(
             $payment->referenceNumber,
             $payment->amount->format(),
@@ -85,37 +72,7 @@ final class BillingController extends Controller
             ],
             'bankInstructions' => $bankInstructions,
             'whatsappUrl' => $whatsappUrl,
-            'onboardingNextAction' => $this->onboardingNextActionFor($tenant, $user),
-            'diagnostic' => $this->diagnostics->make(
-                'billing',
-                'Pago pendiente de validacion',
-                'El comprobante aun no ha sido aprobado por el equipo.',
-                'Envia el comprobante por WhatsApp o correo e incluye la referencia de pago.'
-            ),
         ]);
-    }
-
-    /**
-     * @return array{progress:int,title:string,copy:string,href:string}|null
-     */
-    private function onboardingNextActionFor(Tenant $tenant, User $user): ?array
-    {
-        $state = TenantOnboardingState::query()
-            ->where('tenant_id', (string) $tenant->getKey())
-            ->where('user_id', (string) $user->getKey())
-            ->latest()
-            ->first();
-
-        if (! $state instanceof TenantOnboardingState || blank($state->next_action_title)) {
-            return null;
-        }
-
-        return [
-            'progress' => (int) $state->progress,
-            'title' => (string) $state->next_action_title,
-            'copy' => (string) $state->next_action_copy,
-            'href' => (string) $state->next_action_href,
-        ];
     }
 
     /**
@@ -133,14 +90,15 @@ final class BillingController extends Controller
             return '#';
         }
 
+        // Add country code if missing
         if (strlen($phone) === 8) {
             $phone = '504'.$phone;
         }
 
-        $message = "Hola, acabo de registrar mi negocio *{$tenantName}* en Vito Business OS.\n\n";
+        $message = "Hola, acabo de registrar mi negocio *{$tenantName}* en Conecta HN.\n\n";
         $message .= "Adjunto el comprobante de pago:\n";
-        $message .= "Referencia: *{$reference}*\n";
-        $message .= "Monto: *{$formattedAmount}*";
+        $message .= "📋 Referencia: *{$reference}*\n";
+        $message .= "💰 Monto: *{$formattedAmount}*";
 
         return "https://wa.me/{$phone}?text=".urlencode($message);
     }

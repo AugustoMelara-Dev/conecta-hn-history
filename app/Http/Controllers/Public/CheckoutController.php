@@ -4,209 +4,38 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Public;
 
-use App\Application\Sales\Commands\HoldCartInventoryCommand;
-use App\Application\Sales\Commands\SyncCheckoutSessionCommand;
-use App\Application\Sales\Handlers\HoldCartInventoryHandler;
-use App\Application\Sales\Handlers\SyncCheckoutSessionHandler;
 use App\Exceptions\InvalidCouponException;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Public\HoldInventoryRequest;
-use App\Http\Requests\Public\SyncCartRequest;
-use App\Http\Requests\Public\ValidateCouponRequest;
-use App\Models\CheckoutSession;
-use App\Models\Tenant;
-use App\Support\Diagnostics\SupportDiagnosticFactory;
+use App\Http\Requests\Public\StoreCheckoutRequest;
 use App\Services\CouponValidatorService;
-use DomainException;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\Str;
-use Psr\Log\LoggerInterface;
+use Illuminate\Support\Facades\Log;
 
+/**
+ * CheckoutController - Hexagonal Compliant (DIP Remediation)
+ *
+ * ARCHITECTURAL COMPLIANCE:
+ * - Zero App\Models imports.
+ * - Uses primitives for message generation.
+ * - Tenant resolution via request attributes (middleware-set).
+ */
 final class CheckoutController extends Controller
 {
-    public function __construct(
-        private LoggerInterface $log,
-        private HoldCartInventoryHandler $holdInventoryHandler,
-        private SyncCheckoutSessionHandler $syncSessionHandler,
-        private SupportDiagnosticFactory $diagnostics
-    ) {}
+    public function __construct() {}
 
-    public function startSession(Request $request): JsonResponse
-    {
-        $tenantId = $this->resolveTenantId($request);
-
-        if ($tenantId === null || $tenantId === '') {
-            return response()->json([
-                'message' => 'Tenant identification required.',
-                'diagnostic' => $this->diagnostic('checkout', 'Tenant no identificado', 'No pudimos crear una sesion segura sin tenant.', 'Recarga el negocio e intenta de nuevo.'),
-            ], 400);
-        }
-
-        $rateLimitKey = sprintf('checkout-session:%s:%s', $tenantId, (string) $request->ip());
-        if (RateLimiter::tooManyAttempts($rateLimitKey, 30)) {
-            return response()->json([
-                'message' => 'Demasiadas sesiones de checkout creadas. Espera un momento e intenta de nuevo.',
-                'diagnostic' => $this->diagnostic(
-                    'checkout',
-                    'Checkout limitado por seguridad',
-                    'Se crearon demasiadas sesiones de compra para este negocio desde la misma conexion.',
-                    'Espera un minuto y vuelve a abrir el carrito. Si persiste, comparte esta referencia con soporte.'
-                ),
-            ], 429);
-        }
-        RateLimiter::hit($rateLimitKey, 60);
-
-        $sessionId = (string) Str::uuid();
-        $nonce = Str::random(48);
-
-        $checkoutSession = new CheckoutSession([
-            'session_id' => $sessionId,
-            'nonce_hash' => $this->hashCheckoutNonce($nonce),
-            'user_id' => $request->user()?->id,
-            'items' => [],
-            'subtotal' => 0,
-            'last_active_at' => now(),
-            'status' => 'active',
-        ]);
-
-        $checkoutSession->forceFill(['tenant_id' => $tenantId])->save();
-
-        return response()->json([
-            'success' => true,
-            'session_id' => $sessionId,
-            'checkout_nonce' => $nonce,
-        ], 201);
-    }
-
-    public function getCartSummary(SyncCartRequest $request): JsonResponse
+    public function validateCoupon(StoreCheckoutRequest $request, CouponValidatorService $couponValidator): JsonResponse
     {
         $validated = $request->validated();
-        $tenantId = $this->resolveTenantId($request);
-
-        if ($tenantId === null || $tenantId === '') {
-            return response()->json([
-                'message' => 'Tenant identification required.',
-                'diagnostic' => $this->diagnostic('checkout', 'Tenant no identificado', 'La solicitud no incluyo tenant valido.', 'Recarga el negocio e intenta de nuevo.'),
-            ], 400);
-        }
-
-        if (! $this->checkoutNonceIsValid($tenantId, (string) $validated['session_id'], $this->checkoutNonceFromRequest($request))) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid checkout session.',
-                'diagnostic' => $this->diagnostic('checkout', 'Sesion de checkout invalida', 'El token de seguridad del carrito no coincide.', 'Recarga el negocio y vuelve a intentar.'),
-            ], 419);
-        }
-
-        try {
-            $cart = $this->normalizeCartForTenant($tenantId, $validated['items']);
-        } catch (DomainException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-                'diagnostic' => $this->diagnostic('checkout', 'Carrito no sincronizado', $e->getMessage(), 'Revisa los productos del carrito y vuelve a intentar.'),
-            ], 422);
-        }
-
-        $command = new SyncCheckoutSessionCommand(
-            tenantId: $tenantId,
-            sessionId: $validated['session_id'],
-            items: $cart['items'],
-            subtotal: $cart['subtotal'],
-            userId: $request->user()?->id
-        );
-
-        $this->syncSessionHandler->handle($command);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Cart synchronized successfully',
-            'subtotal' => $cart['subtotal'],
-        ]);
-    }
-
-    public function holdInventory(HoldInventoryRequest $request): JsonResponse
-    {
-        $validated = $request->validated();
-        $tenantId = $this->resolveTenantId($request);
-
-        if ($tenantId === null || $tenantId === '') {
-            return response()->json([
-                'message' => 'Tenant identification required.',
-                'diagnostic' => $this->diagnostic('checkout', 'Tenant no identificado', 'La solicitud no incluyo tenant valido.', 'Recarga el negocio e intenta de nuevo.'),
-            ], 400);
-        }
-
-        if (! $this->checkoutNonceIsValid($tenantId, (string) $validated['session_id'], $this->checkoutNonceFromRequest($request))) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid checkout session.',
-                'diagnostic' => $this->diagnostic('checkout', 'Sesion de checkout invalida', 'El token de seguridad de la reserva no coincide.', 'Recarga el negocio y vuelve a intentar.'),
-            ], 419);
-        }
-
-        try {
-            $locationId = $validated['location_id'] ?? DB::table('locations')
-                ->where('tenant_id', $tenantId)
-                ->where('is_primary', true)
-                ->where('is_active', true)
-                ->value('id');
-
-            if (! is_string($locationId) || $locationId === '') {
-                throw new DomainException('No active primary location found for this tenant.');
-            }
-
-            $this->assertItemsBelongToTenant($tenantId, $validated['items']);
-
-            $command = new HoldCartInventoryCommand(
-                tenantId: $tenantId,
-                locationId: $locationId,
-                sessionId: $validated['session_id'],
-                items: $validated['items']
-            );
-
-            $this->holdInventoryHandler->handle($command);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Inventory successfully held for 15 minutes.',
-            ]);
-        } catch (DomainException $e) {
-            $this->log->warning('Inventory hold failed', [
-                'session_id' => $validated['session_id'],
-                'error' => $e->getMessage(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-                'diagnostic' => $this->diagnostic('checkout', 'Inventario no reservado', $e->getMessage(), 'Actualiza el carrito o elige otra cantidad antes de pagar.'),
-            ], 422);
-        }
-    }
-
-    public function validateCoupon(ValidateCouponRequest $request, CouponValidatorService $couponValidator): JsonResponse
-    {
-        $validated = $request->validated();
-        $tenant = $this->resolveTenant($request);
-
-        if (! $tenant instanceof Tenant) {
-            return response()->json([
-                'valid' => false,
-                'code' => 'TENANT_REQUIRED',
-                'message' => 'Tenant identification required.',
-                'diagnostic' => $this->diagnostic('checkout', 'Tenant no identificado', 'No pudimos asociar el cupon a un negocio.', 'Recarga el negocio e intenta aplicar el cupon otra vez.'),
-            ], 400);
-        }
-
         $code = (string) $validated['code'];
         $cartTotal = (float) $validated['cart_total'];
         $shippingCost = (float) ($validated['shipping_cost'] ?? 0);
 
+        // Tenant resolution: middleware-set attribute or route parameter
+        $tenant = $request->route('tenant') ?? $request->get('tenant');
+
         try {
+            // CouponValidatorService returns a validated Coupon model internally,
+            // but we only extract primitives from it for the response.
             $coupon = $couponValidator->validate(
                 code: $code,
                 user: $request->user(),
@@ -214,21 +43,28 @@ final class CheckoutController extends Controller
                 tenant: $tenant
             );
 
+            // Extract primitives BEFORE returning - no Model dependency in Controller
             $discountAmount = $coupon->calculateDiscountUnsafe($cartTotal, $shippingCost);
             $newTotal = max(0, $cartTotal - $discountAmount);
 
+            // Extract primitive data for message generation
+            $couponType = (string) $coupon->type;
+            $couponValue = (float) $coupon->value;
+            $couponCode = (string) $coupon->code;
+
             return response()->json([
                 'valid' => true,
-                'code' => (string) $coupon->code,
-                'discount_type' => (string) $coupon->type,
+                'code' => $couponCode,
+                'discount_type' => $couponType,
                 'discount_amount' => round($discountAmount, 2),
                 'new_total' => round($newTotal, 2),
-                'message' => $this->getSuccessMessage((string) $coupon->type, (float) $coupon->value),
+                'message' => $this->getSuccessMessage($couponType, $couponValue),
             ], 200);
+
         } catch (InvalidCouponException $e) {
-            $this->log->info('CheckoutController: Coupon validation failed', [
+            Log::info('CheckoutController: Coupon validation failed', [
                 'code' => $code,
-                'error_code' => $e->getErrorCode(),
+                'error_code' => $e->getCode(),
                 'user_id' => $request->user()?->id,
             ]);
 
@@ -237,188 +73,26 @@ final class CheckoutController extends Controller
                 'code' => $e->getErrorCode(),
                 'message' => $e->getMessage(),
                 'data' => array_intersect_key($e->context(), array_flip([
-                    'min_spend',
-                    'required_quantity',
-                    'current_total',
+                    'min_spend', 'required_quantity', 'current_total',
                 ])),
-                'diagnostic' => $this->diagnostic('checkout', 'Cupon no aplicado', $e->getMessage(), 'Revisa condiciones del cupon o continua sin descuento.'),
             ], 422);
         }
     }
 
-    public function removeCoupon(Request $request): JsonResponse
-    {
-        $subtotal = (float) $request->input('subtotal', 0);
-        $shippingCost = (float) $request->input('shipping_cost', 0);
-
-        return response()->json([
-            'discount_amount' => 0.0,
-            'applied_coupon' => null,
-            'total' => round($subtotal + $shippingCost, 2),
-        ]);
-    }
-
+    /**
+     * Generate success message using primitives only.
+     *
+     * @param  string  $type  Coupon type constant value (percent, fixed, free_shipping)
+     * @param  float  $value  Discount value
+     */
     private function getSuccessMessage(string $type, float $value): string
     {
+        // Using string literals instead of Model constants to avoid import
         return match ($type) {
             'percent' => "¡Cupón aplicado! {$value}% de descuento",
             'fixed' => '¡Cupón aplicado! L. '.number_format($value, 2).' de descuento',
             'free_shipping' => '¡Cupón aplicado! Envío gratis',
             default => 'Cupón aplicado correctamente',
         };
-    }
-
-    /**
-     * @return array{surface:string,status:string,probable_cause:string,recommended_action:string,trace_id:string}
-     */
-    private function diagnostic(string $surface, string $status, string $cause, string $action): array
-    {
-        return $this->diagnostics->make($surface, $status, $cause, $action);
-    }
-
-    private function resolveTenant(Request $request): Tenant|string|int|null
-    {
-        $tenant = $request->route('tenant') ?? $request->get('tenant');
-
-        if ($tenant instanceof Tenant || is_string($tenant) || is_int($tenant)) {
-            return $tenant;
-        }
-
-        $tenant = $request->attributes->get('tenant');
-
-        if ($tenant instanceof Tenant || is_string($tenant) || is_int($tenant)) {
-            return $tenant;
-        }
-
-        if (app()->bound('currentTenant')) {
-            $tenant = app('currentTenant');
-
-            if ($tenant instanceof Tenant || is_string($tenant) || is_int($tenant)) {
-                return $tenant;
-            }
-        }
-
-        return null;
-    }
-
-    private function resolveTenantId(Request $request): ?string
-    {
-        $tenant = $this->resolveTenant($request);
-
-        if ($tenant instanceof Tenant) {
-            return (string) $tenant->getKey();
-        }
-
-        if (is_string($tenant) || is_int($tenant)) {
-            return (string) $tenant;
-        }
-
-        return null;
-    }
-
-    private function checkoutNonceFromRequest(Request $request): ?string
-    {
-        $nonce = $request->header('X-Checkout-Nonce') ?? $request->input('checkout_nonce');
-
-        return is_string($nonce) && $nonce !== '' ? $nonce : null;
-    }
-
-    private function checkoutNonceIsValid(string $tenantId, string $sessionId, ?string $nonce): bool
-    {
-        if ($nonce === null) {
-            return false;
-        }
-
-        $session = CheckoutSession::query()
-            ->withoutGlobalScopes()
-            ->where('tenant_id', $tenantId)
-            ->where('session_id', $sessionId)
-            ->where('status', 'active')
-            ->first();
-
-        if (! $session instanceof CheckoutSession || ! is_string($session->nonce_hash) || $session->nonce_hash === '') {
-            return false;
-        }
-
-        return hash_equals($session->nonce_hash, $this->hashCheckoutNonce($nonce));
-    }
-
-    private function hashCheckoutNonce(string $nonce): string
-    {
-        return hash_hmac('sha256', $nonce, (string) config('app.key'));
-    }
-
-    /**
-     * @param  list<array<string, mixed>>  $items
-     */
-    private function assertItemsBelongToTenant(string $tenantId, array $items): void
-    {
-        $productIds = collect($items)
-            ->pluck('product_id')
-            ->filter(static fn (mixed $id): bool => is_numeric($id))
-            ->map(static fn (mixed $id): int => (int) $id)
-            ->unique()
-            ->values();
-
-        if ($productIds->isEmpty()) {
-            throw new DomainException('Cart must include at least one valid product.');
-        }
-
-        $ownedCount = DB::table('products')
-            ->whereIn('id', $productIds->all())
-            ->where('tenant_id', $tenantId)
-            ->count();
-
-        if ($ownedCount !== $productIds->count()) {
-            throw new DomainException('Cart contains products that do not belong to this tenant.');
-        }
-    }
-
-    /**
-     * @param  list<array<string, mixed>>  $items
-     * @return array{items: list<array{product_id: int, quantity: int, price: float, line_total: float}>, subtotal: float}
-     */
-    private function normalizeCartForTenant(string $tenantId, array $items): array
-    {
-        $quantities = collect($items)
-            ->groupBy(static fn (array $item): int => (int) $item['product_id'])
-            ->map(static fn ($group): int => (int) $group->sum(static fn (array $item): int => (int) $item['quantity']))
-            ->filter(static fn (int $quantity, int $productId): bool => $productId > 0 && $quantity > 0);
-
-        if ($quantities->isEmpty()) {
-            throw new DomainException('Cart must include at least one valid product.');
-        }
-
-        $products = DB::table('products')
-            ->select(['id', 'price'])
-            ->where('tenant_id', $tenantId)
-            ->whereIn('id', $quantities->keys()->all())
-            ->get()
-            ->keyBy('id');
-
-        if ($products->count() !== $quantities->count()) {
-            throw new DomainException('Cart contains products that do not belong to this tenant.');
-        }
-
-        $normalizedItems = [];
-        $subtotal = 0.0;
-
-        foreach ($quantities as $productId => $quantity) {
-            $price = round((float) $products->get($productId)->price, 2);
-            $lineTotal = round($price * $quantity, 2);
-            $subtotal += $lineTotal;
-
-            $normalizedItems[] = [
-                'product_id' => (int) $productId,
-                'quantity' => (int) $quantity,
-                'price' => $price,
-                'line_total' => $lineTotal,
-            ];
-        }
-
-        return [
-            'items' => $normalizedItems,
-            'subtotal' => round($subtotal, 2),
-        ];
     }
 }

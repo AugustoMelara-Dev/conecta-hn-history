@@ -4,19 +4,35 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Tenant;
 
+use App\Application\Actions\Billing\ReportPaymentAction;
+use App\Application\Actions\Billing\RequestUpgradeAction;
+use App\Application\Billing\Results\ReportPaymentResult;
+use App\Application\Billing\Results\RequestUpgradeResult;
 use App\Domain\Shared\Contracts\TenantContext;
 use App\Domain\Tenant\Contracts\BillingRepository;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Tenant\ReportPaymentRequest;
+use App\Http\Requests\Tenant\UpgradePlanRequest;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
+/**
+ * BillingController - Final Sanitized Version
+ *
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  ARCHITECTURAL COMPLIANCE: PURE HEXAGONAL                                ║
+ * ║  - Context: Injected via TenantContext (No User Model coupling)          ║
+ * ║  - Read: Via BillingRepository                                           ║
+ * ║  - Write: Via FormRequest -> Action                                      ║
+ * ║  - Config: Bank options externalized to config/billing.php               ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
+ */
 final class BillingController extends Controller
 {
     public function __construct(
         private readonly BillingRepository $billingRepository,
-        private readonly TenantContext $tenantContext,
+        private readonly TenantContext $tenantContext
     ) {}
 
     public function index(): Response
@@ -25,6 +41,8 @@ final class BillingController extends Controller
 
         $invoices = $this->billingRepository->getInvoices($tenantId);
         $subscription = $this->billingRepository->getSubscriptionStatus($tenantId);
+
+        // Simple Transform
         $paymentsFormatted = $invoices->through(fn ($payment) => [
             'id' => $payment->id,
             'bank' => $payment->bank,
@@ -32,38 +50,45 @@ final class BillingController extends Controller
             'amount' => (float) $payment->amount,
             'status' => $payment->status,
             'created_at' => $payment->created_at->toIso8601String(),
-            // Legacy billing redirects to Filament; avoid generating an unregistered receipt route.
-            'download_url' => null,
+            'download_url' => $payment->receipt_path
+                ? route('tenant.billing.download-receipt', $payment->id)
+                : null,
         ]);
 
         return Inertia::render('Tenant/Billing/Index', [
             'subscription' => $subscription,
             'payments' => $paymentsFormatted,
+            // EXTERNALIZED: Bank options now come from config file
             'bankOptions' => config('billing.bank_options'),
         ]);
     }
 
     public function reportPayment(
-        Request $request
+        ReportPaymentRequest $request,
+        ReportPaymentAction $action
     ): RedirectResponse {
-        return $this->redirectToOfficialBilling('La gestion de pagos y upgrades ya se administra desde el panel oficial en /app.');
+        $tenantId = $this->tenantContext->getTenantId();
+
+        // PRE-PROCESS: File upload handled in Controller (Infrastructure Layer)
+        $receiptPath = $request->file('receipt')?->store('tenants/receipts', 'public');
+
+        $dto = ReportPaymentResult::fromRequest($request, $tenantId, $receiptPath);
+        $action->execute($dto);
+
+        return back()->with('success', 'Pago reportado.');
     }
 
     public function upgrade(
-        Request $request
+        UpgradePlanRequest $request,
+        RequestUpgradeAction $action
     ): RedirectResponse {
-        return $this->redirectToOfficialBilling('La gestion de pagos y upgrades ya se administra desde el panel oficial en /app.');
-    }
+        $tenantId = $this->tenantContext->getTenantId();
 
-    private function redirectToOfficialBilling(string $message): RedirectResponse
-    {
+        $dto = RequestUpgradeResult::fromRequest($request, $tenantId);
+        $action->execute($dto);
+
         return redirect()
-            ->to(route('filament.app.pages.manage-billing', ['tenant' => $this->tenantSlug()], false))
-            ->with('error', $message);
-    }
-
-    private function tenantSlug(): string
-    {
-        return (string) ($this->tenantContext->getTenantData(['slug'])['slug'] ?? '');
+            ->route('tenant.billing.index')
+            ->with('success', 'Solicitud recibida.');
     }
 }
