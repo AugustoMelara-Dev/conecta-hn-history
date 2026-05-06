@@ -2,150 +2,132 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\AI;
+/**
+ * BudgetEnforcer Feature Tests
+ * 
+ * Estos tests verifican la lógica del BudgetEnforcer con BD real (SQLite en memoria).
+ * Están en Feature/ porque requieren RefreshDatabase y el ciclo de vida completo de Laravel.
+ */
 
 use App\Exceptions\InsufficientAiCreditsException;
 use App\Infrastructure\AI\BudgetEnforcer;
 use App\Models\Tenant;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
-use PHPUnit\Framework\Attributes\Test;
-use RuntimeException;
-use Tests\TestCase;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
-final class BudgetEnforcerTest extends TestCase
-{
-    use DatabaseTransactions;
+uses(RefreshDatabase::class);
 
-    private Tenant $tenant;
+beforeEach(function () {
+    // Crear tenant de prueba con saldo inicial
+    $this->tenant = Tenant::factory()->create([
+        'ai_balance' => 1.000000,
+        'ai_reserved_balance' => 0.000000,
+    ]);
+    
+    $this->budgetEnforcer = new BudgetEnforcer();
+});
 
-    private BudgetEnforcer $budgetEnforcer;
+// ═══════════════════════════════════════════════════════════════════════════
+// TESTS: reserve() METHOD
+// ═══════════════════════════════════════════════════════════════════════════
 
-    protected function setUp(): void
-    {
-        parent::setUp();
+test('reserve increments ai_reserved_balance when sufficient funds', function () {
+    $reservationId = $this->budgetEnforcer->reserve(
+        tenantId: $this->tenant->id,
+        estimatedCost: 0.50,
+        operation: 'test_operation'
+    );
 
-        $this->tenant = Tenant::factory()->create([
-            'ai_balance' => 1.000000,
-            'ai_reserved_balance' => 0.000000,
-        ]);
+    expect($reservationId)->toBeString()->toHaveLength(16);
 
-        $this->budgetEnforcer = new BudgetEnforcer;
-    }
+    $this->tenant->refresh();
+    expect((float) $this->tenant->ai_reserved_balance)->toBe(0.50);
+    expect((float) $this->tenant->ai_balance)->toBe(1.00); // Balance no cambia
+});
 
-    #[Test]
-    public function reserve_increments_ai_reserved_balance_when_sufficient_funds(): void
-    {
-        $reservationId = $this->budgetEnforcer->reserve(
-            tenantId: (string) $this->tenant->id,
-            estimatedCost: 0.50,
-            operation: 'test_operation',
-        );
+test('reserve throws InsufficientAiCreditsException when balance too low', function () {
+    expect(fn() => $this->budgetEnforcer->reserve(
+        tenantId: $this->tenant->id,
+        estimatedCost: 5.00,
+        operation: 'expensive_operation'
+    ))->toThrow(InsufficientAiCreditsException::class);
 
-        self::assertSame(16, strlen($reservationId));
+    $this->tenant->refresh();
+    expect((float) $this->tenant->ai_reserved_balance)->toBe(0.00);
+});
 
-        $this->tenant->refresh();
+test('reserve considers already reserved balance', function () {
+    $this->budgetEnforcer->reserve($this->tenant->id, 0.60, 'first');
+    
+    expect(fn() => $this->budgetEnforcer->reserve(
+        tenantId: $this->tenant->id,
+        estimatedCost: 0.50,
+        operation: 'second'
+    ))->toThrow(InsufficientAiCreditsException::class);
+});
 
-        self::assertEqualsWithDelta(0.50, (float) $this->tenant->ai_reserved_balance, 0.000001);
-        self::assertEqualsWithDelta(1.00, (float) $this->tenant->ai_balance, 0.000001);
-    }
+test('reserve throws RuntimeException for non-existent tenant', function () {
+    expect(fn() => $this->budgetEnforcer->reserve(
+        tenantId: 999999,
+        estimatedCost: 0.10,
+        operation: 'test'
+    ))->toThrow(RuntimeException::class, 'Tenant 999999 no encontrado');
+});
 
-    #[Test]
-    public function reserve_throws_when_balance_is_too_low(): void
-    {
-        $this->expectException(InsufficientAiCreditsException::class);
+// ═══════════════════════════════════════════════════════════════════════════
+// TESTS: settle() METHOD
+// ═══════════════════════════════════════════════════════════════════════════
 
-        try {
-            $this->budgetEnforcer->reserve(
-                tenantId: (string) $this->tenant->id,
-                estimatedCost: 5.00,
-                operation: 'expensive_operation',
-            );
-        } finally {
-            $this->tenant->refresh();
+test('settle decrements both balances correctly', function () {
+    $reservationId = $this->budgetEnforcer->reserve($this->tenant->id, 0.50, 'test');
+    
+    $this->budgetEnforcer->settle(
+        tenantId: $this->tenant->id,
+        estimatedCost: 0.50,
+        actualCost: 0.30,
+        reservationId: $reservationId,
+        usageMetadata: ['model' => 'gpt-4o']
+    );
 
-            self::assertEqualsWithDelta(0.00, (float) $this->tenant->ai_reserved_balance, 0.000001);
-        }
-    }
+    $this->tenant->refresh();
+    
+    expect((float) $this->tenant->ai_reserved_balance)->toBe(0.00);
+    expect((float) $this->tenant->ai_balance)->toBe(0.70);
+});
 
-    #[Test]
-    public function reserve_considers_already_reserved_balance(): void
-    {
-        $this->budgetEnforcer->reserve((string) $this->tenant->id, 0.60, 'first');
+// ═══════════════════════════════════════════════════════════════════════════
+// TESTS: refund() METHOD
+// ═══════════════════════════════════════════════════════════════════════════
 
-        $this->expectException(InsufficientAiCreditsException::class);
+test('refund only decrements ai_reserved_balance', function () {
+    $reservationId = $this->budgetEnforcer->reserve($this->tenant->id, 0.50, 'test');
+    
+    $this->budgetEnforcer->refund(
+        tenantId: $this->tenant->id,
+        estimatedCost: 0.50,
+        reservationId: $reservationId,
+        failureReason: 'API timeout'
+    );
 
-        $this->budgetEnforcer->reserve(
-            tenantId: (string) $this->tenant->id,
-            estimatedCost: 0.50,
-            operation: 'second',
-        );
-    }
+    $this->tenant->refresh();
+    
+    expect((float) $this->tenant->ai_reserved_balance)->toBe(0.00);
+    expect((float) $this->tenant->ai_balance)->toBe(1.00);
+});
 
-    #[Test]
-    public function reserve_throws_for_non_existent_tenant(): void
-    {
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Tenant 999999 no encontrado');
+// ═══════════════════════════════════════════════════════════════════════════
+// TESTS: getAvailableBalance() METHOD
+// ═══════════════════════════════════════════════════════════════════════════
 
-        $this->budgetEnforcer->reserve(
-            tenantId: 999999,
-            estimatedCost: 0.10,
-            operation: 'test',
-        );
-    }
+test('getAvailableBalance returns balance minus reserved', function () {
+    $this->budgetEnforcer->reserve($this->tenant->id, 0.30, 'test');
+    
+    $available = $this->budgetEnforcer->getAvailableBalance($this->tenant->id);
+    
+    expect($available)->toBe(0.70);
+});
 
-    #[Test]
-    public function settle_decrements_both_balances_correctly(): void
-    {
-        $reservationId = $this->budgetEnforcer->reserve((string) $this->tenant->id, 0.50, 'test');
-
-        $this->budgetEnforcer->settle(
-            tenantId: (string) $this->tenant->id,
-            estimatedCost: 0.50,
-            actualCost: 0.30,
-            reservationId: $reservationId,
-            usageMetadata: ['model' => 'gpt-4o'],
-        );
-
-        $this->tenant->refresh();
-
-        self::assertEqualsWithDelta(0.00, (float) $this->tenant->ai_reserved_balance, 0.000001);
-        self::assertEqualsWithDelta(0.70, (float) $this->tenant->ai_balance, 0.000001);
-    }
-
-    #[Test]
-    public function refund_only_decrements_ai_reserved_balance(): void
-    {
-        $reservationId = $this->budgetEnforcer->reserve((string) $this->tenant->id, 0.50, 'test');
-
-        $this->budgetEnforcer->refund(
-            tenantId: (string) $this->tenant->id,
-            estimatedCost: 0.50,
-            reservationId: $reservationId,
-            failureReason: 'API timeout',
-        );
-
-        $this->tenant->refresh();
-
-        self::assertEqualsWithDelta(0.00, (float) $this->tenant->ai_reserved_balance, 0.000001);
-        self::assertEqualsWithDelta(1.00, (float) $this->tenant->ai_balance, 0.000001);
-    }
-
-    #[Test]
-    public function get_available_balance_returns_balance_minus_reserved(): void
-    {
-        $this->budgetEnforcer->reserve((string) $this->tenant->id, 0.30, 'test');
-
-        $available = $this->budgetEnforcer->getAvailableBalance((string) $this->tenant->id);
-
-        self::assertEqualsWithDelta(0.70, $available, 0.000001);
-    }
-
-    #[Test]
-    public function get_available_balance_returns_zero_for_non_existent_tenant(): void
-    {
-        $available = $this->budgetEnforcer->getAvailableBalance(999999);
-
-        self::assertSame(0.0, $available);
-    }
-}
+test('getAvailableBalance returns zero for non-existent tenant', function () {
+    $available = $this->budgetEnforcer->getAvailableBalance(999999);
+    
+    expect($available)->toBe(0.0);
+});

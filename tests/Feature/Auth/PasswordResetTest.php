@@ -6,7 +6,7 @@ namespace Tests\Feature\Auth;
 
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
 use Tests\TestCase;
@@ -20,7 +20,7 @@ use Tests\TestCase;
  */
 class PasswordResetTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     public function test_reset_password_link_screen_can_be_rendered(): void
     {
@@ -32,14 +32,10 @@ class PasswordResetTest extends TestCase
     public function test_reset_password_link_can_be_requested(): void
     {
         Notification::fake();
-        $token = 'forgot-password-token';
 
-        $user = User::factory()->withTenant()->create();
+        $user = User::factory()->create();
 
-        $response = $this->withSession(['_token' => $token])->post('/forgot-password', [
-            '_token' => $token,
-            'email' => $user->email,
-        ]);
+        $response = $this->post('/forgot-password', ['email' => $user->email]);
 
         Notification::assertSentTo($user, ResetPassword::class);
     }
@@ -47,20 +43,16 @@ class PasswordResetTest extends TestCase
     public function test_reset_password_screen_can_be_rendered(): void
     {
         Notification::fake();
-        $token = 'forgot-password-screen-token';
 
-        $user = User::factory()->withTenant()->create();
+        $user = User::factory()->create();
 
-        $this->withSession(['_token' => $token])->post('/forgot-password', [
-            '_token' => $token,
-            'email' => $user->email,
-        ]);
+        $this->post('/forgot-password', ['email' => $user->email]);
 
         Notification::assertSentTo($user, ResetPassword::class);
 
         // Extract notification from fake
         $notifications = Notification::sent($user, ResetPassword::class);
-        $this->assertGreaterThan(0, $notifications->count(), 'No ResetPassword notification was sent.');
+        $this->assertNotEmpty($notifications, 'No ResetPassword notification was sent.');
 
         $notification = $notifications->first();
         $token = $notification->token;
@@ -73,27 +65,21 @@ class PasswordResetTest extends TestCase
     public function test_password_can_be_reset_with_valid_token(): void
     {
         Notification::fake();
-        $requestToken = 'forgot-password-reset-token';
-        $resetToken = 'reset-password-token';
 
-        $user = User::factory()->withTenant()->create();
+        $user = User::factory()->create();
 
-        $this->withSession(['_token' => $requestToken])->post('/forgot-password', [
-            '_token' => $requestToken,
-            'email' => $user->email,
-        ]);
+        $this->post('/forgot-password', ['email' => $user->email]);
 
         Notification::assertSentTo($user, ResetPassword::class);
 
         // Extract token from notification
         $notifications = Notification::sent($user, ResetPassword::class);
-        $this->assertGreaterThan(0, $notifications->count(), 'No ResetPassword notification was sent.');
+        $this->assertNotEmpty($notifications, 'No ResetPassword notification was sent.');
 
         $notification = $notifications->first();
         $token = $notification->token;
 
-        $response = $this->withSession(['_token' => $resetToken])->post('/reset-password', [
-            '_token' => $resetToken,
+        $response = $this->post('/reset-password', [
             'token' => $token,
             'email' => $user->email,
             'password' => 'new-password-123',

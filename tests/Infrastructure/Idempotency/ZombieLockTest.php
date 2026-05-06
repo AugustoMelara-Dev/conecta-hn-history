@@ -2,23 +2,15 @@
 
 namespace Tests\Infrastructure\Idempotency;
 
-use App\Infrastructure\Common\Idempotency\AtomicIdempotencyService;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use App\Infrastructure\Shared\Services\AtomicIdempotencyService;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class ZombieLockTest extends TestCase
 {
-    use DatabaseTransactions;
+    use \Illuminate\Foundation\Testing\RefreshDatabase;
 
-    protected function tearDown(): void
-    {
-        \Carbon\Carbon::setTestNow();
-
-        parent::tearDown();
-    }
-
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function it_recovers_stale_processing_locks()
     {
         // 0. Freeze Time
@@ -59,7 +51,7 @@ class ZombieLockTest extends TestCase
         $this->assertNotEquals($twoHoursAgo->toIso8601String(), \Carbon\Carbon::parse($record->updated_at)->toIso8601String());
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function it_throttles_active_processing_locks()
     {
         // 0. Freeze Time
@@ -82,7 +74,7 @@ class ZombieLockTest extends TestCase
         $service = $this->app->make(AtomicIdempotencyService::class);
 
         // 2. Act & Assert: Expect Exception
-        $this->expectException(\App\Application\Shared\Common\Exceptions\ConcurrentRequestException::class);
+        $this->expectException(\App\Application\Common\Exceptions\ConcurrentRequestException::class);
 
         $service->execute($key, 'tenant-1', 'hash-x', function () {
             return 'SHOULD_NOT_EXECUTE';

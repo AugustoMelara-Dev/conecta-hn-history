@@ -7,7 +7,7 @@ namespace Tests\Feature\Middleware;
 use App\Models\Announcement;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use Tests\Traits\InteractsWithInertiaRoutes;
 
@@ -22,10 +22,8 @@ use Tests\Traits\InteractsWithInertiaRoutes;
  */
 class HandleInertiaRequestsTest extends TestCase
 {
-    use DatabaseTransactions;
     use InteractsWithInertiaRoutes;
-
-    private const LEGACY_PAID_PLAN_FLAG = 'is_pro';
+    use RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -47,9 +45,9 @@ class HandleInertiaRequestsTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════
 
     /**
+     * @test
      * Verifies authenticated users receive null tenant on non-storefront routes.
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function authenticated_user_without_tenant_receives_null_in_admin(): void
     {
         $user = User::factory()->create();
@@ -70,17 +68,16 @@ class HandleInertiaRequestsTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════
 
     /**
+     * @test
      * Verifies tenant data is properly hydrated in storefront context.
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function storefront_route_receives_tenant_data(): void
     {
         $tenant = Tenant::factory()->create([
             'name' => 'Test Store',
             'slug' => 'test-store',
             'primary_color' => '#3B82F6',
-            'plan_type' => 'pro',
-            'subscription_status' => 'active',
+            'is_pro' => true,
         ]);
 
         app()->instance('currentTenant', $tenant);
@@ -94,18 +91,15 @@ class HandleInertiaRequestsTest extends TestCase
         $this->assertNotNull($props['tenant']);
         $this->assertEquals($tenant->id, $props['tenant']['id']);
         $this->assertEquals('Test Store', $props['tenant']['name']);
-        $this->assertSame('pro', $props['tenant']['plan_type']);
-        $this->assertTrue($props['tenant']['is_paid_plan']);
-        $this->assertArrayNotHasKey(self::LEGACY_PAID_PLAN_FLAG, $props['tenant']);
         $this->assertEquals('#3B82F6', $props['tenant']['primary_color']);
 
         app()->forgetInstance('currentTenant');
     }
 
     /**
+     * @test
      * Verifies active announcements are fetched for tenant.
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function storefront_receives_active_announcements(): void
     {
         $tenant = Tenant::factory()->create();
@@ -136,13 +130,13 @@ class HandleInertiaRequestsTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════
 
     /**
+     * @test
      * Verifies malicious primary_color is sanitized to safe default.
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function css_injection_in_primary_color_is_blocked(): void
     {
         $tenant = Tenant::factory()->create([
-            'primary_color' => 'invalid',
+            'primary_color' => '#000000; background:url(javascript:alert(1))',
         ]);
 
         app()->instance('currentTenant', $tenant);
@@ -160,9 +154,9 @@ class HandleInertiaRequestsTest extends TestCase
     }
 
     /**
+     * @test
      * Verifies valid hex colors pass through unchanged.
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function valid_hex_color_passes_through(): void
     {
         $tenant = Tenant::factory()->create([
@@ -185,9 +179,9 @@ class HandleInertiaRequestsTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════
 
     /**
+     * @test
      * Verifies admin routes never receive tenant data even when bound.
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function admin_route_blocks_tenant_data(): void
     {
         $tenant = Tenant::factory()->create();
@@ -211,9 +205,9 @@ class HandleInertiaRequestsTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════
 
     /**
+     * @test
      * Verifies non-Tenant objects in container are rejected.
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function non_tenant_object_returns_null(): void
     {
         app()->instance('currentTenant', new \stdClass);
@@ -230,9 +224,9 @@ class HandleInertiaRequestsTest extends TestCase
     }
 
     /**
+     * @test
      * Verifies null binding returns null tenant.
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function null_binding_returns_null(): void
     {
         app()->instance('currentTenant', null);

@@ -11,11 +11,9 @@ use App\Exports\SalesExport;
 use App\Models\Order;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
-use ReflectionNamedType;
 use Tests\TestCase;
 
 /**
@@ -33,8 +31,8 @@ use Tests\TestCase;
  */
 class SalesExportTest extends TestCase
 {
-    // MySQL transaction rollback keeps this tenant-isolation suite fast and deterministic.
-    use DatabaseTransactions;
+    // RefreshDatabase: En MySQL envuelve el test en transacción + ROLLBACK
+    use RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -69,10 +67,7 @@ class SalesExportTest extends TestCase
     /**
      * Helper: Create orders without events.
      */
-    /**
-     * @return Collection<int, Order>
-     */
-    private function createOrdersWithoutEvents(int $count, array $attributes = []): Collection
+    private function createOrdersWithoutEvents(int $count, array $attributes = []): \Illuminate\Database\Eloquent\Collection
     {
         return Model::withoutEvents(function () use ($count, $attributes) {
             return Order::factory()->count($count)->create($attributes);
@@ -80,19 +75,18 @@ class SalesExportTest extends TestCase
     }
 
     /**
+     * @test
      * Tenant A export contains ONLY Tenant A data
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function export_contains_only_data_from_requesting_tenant(): void
     {
         $data = $this->createTestData();
-        $this->actingAsTenant((string) $data['tenantA']->id);
         $this->createOrdersWithoutEvents(5, ['tenant_id' => $data['tenantA']->id]);
         $this->createOrdersWithoutEvents(3, ['tenant_id' => $data['tenantB']->id]);
 
         // Ejecución bajo el contexto del Tenant A
         $export = SalesExport::create(
-            tenantId: TenantId::fromString((string) $data['tenantA']->id),
+            tenantId: TenantId::fromString($data['tenantA']->id),
             criteria: SalesExportCriteria::withDefaultRange(),
             userId: 1,
             ipAddress: '127.0.0.1',
@@ -106,7 +100,6 @@ class SalesExportTest extends TestCase
 
         // Verificación de Integridad: Todas las órdenes deben ser del Tenant A
         foreach ($results as $order) {
-            $this->assertInstanceOf(Order::class, $order);
             $this->assertEquals($data['tenantA']->id, $order->tenant_id);
         }
 
@@ -115,16 +108,16 @@ class SalesExportTest extends TestCase
     }
 
     /**
+     * @test
      * Export dispatches audit event with correct metadata
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function export_dispatches_audit_event(): void
     {
         $data = $this->createTestData();
         $this->createOrdersWithoutEvents(2, ['tenant_id' => $data['tenantA']->id]);
 
         SalesExport::create(
-            tenantId: TenantId::fromString((string) $data['tenantA']->id),
+            tenantId: TenantId::fromString($data['tenantA']->id),
             criteria: SalesExportCriteria::create('2025-01-01', '2025-12-31'),
             userId: 42,
             ipAddress: '192.168.1.100',
@@ -132,7 +125,7 @@ class SalesExportTest extends TestCase
         );
 
         Event::assertDispatched(SalesExportCreated::class, function ($event) use ($data) {
-            return $event->tenantId->toString() === (string) $data['tenantA']->id
+            return $event->tenantId->toInt() === $data['tenantA']->id
                 && $event->userId === 42
                 && $event->format === 'xlsx'
                 && ! empty($event->criteriaHash);
@@ -140,9 +133,9 @@ class SalesExportTest extends TestCase
     }
 
     /**
+     * @test
      * TenantId Value Object is required (not primitive int)
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function constructor_requires_tenant_id_value_object(): void
     {
         $reflection = new \ReflectionClass(SalesExport::class);
@@ -152,19 +145,16 @@ class SalesExportTest extends TestCase
         $tenantIdParam = $parameters[0];
 
         $this->assertEquals('tenantId', $tenantIdParam->getName());
-        $type = $tenantIdParam->getType();
-        $this->assertInstanceOf(ReflectionNamedType::class, $type);
-        $this->assertEquals(TenantId::class, $type->getName());
+        $this->assertEquals(TenantId::class, $tenantIdParam->getType()->getName());
     }
 
     /**
+     * @test
      * Date range filter works correctly within tenant
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function date_filter_works_within_tenant_context(): void
     {
         $data = $this->createTestData();
-        $this->actingAsTenant((string) $data['tenantA']->id);
 
         Model::withoutEvents(function () use ($data) {
             Order::factory()->create([
@@ -184,7 +174,7 @@ class SalesExportTest extends TestCase
         });
 
         $export = SalesExport::create(
-            tenantId: TenantId::fromString((string) $data['tenantA']->id),
+            tenantId: TenantId::fromString($data['tenantA']->id),
             criteria: SalesExportCriteria::forLastDays(45),
             userId: 1,
         );
@@ -196,13 +186,12 @@ class SalesExportTest extends TestCase
     }
 
     /**
+     * @test
      * Status filter works correctly within tenant
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function status_filter_works_within_tenant_context(): void
     {
         $data = $this->createTestData();
-        $this->actingAsTenant((string) $data['tenantA']->id);
 
         Model::withoutEvents(function () use ($data) {
             Order::factory()->create([
@@ -222,7 +211,7 @@ class SalesExportTest extends TestCase
         });
 
         $export = SalesExport::create(
-            tenantId: TenantId::fromString((string) $data['tenantA']->id),
+            tenantId: TenantId::fromString($data['tenantA']->id),
             criteria: SalesExportCriteria::create(status: Order::STATUS_DELIVERED),
             userId: 1,
         );
@@ -231,24 +220,22 @@ class SalesExportTest extends TestCase
 
         $this->assertCount(2, $results);
         foreach ($results as $order) {
-            $this->assertInstanceOf(Order::class, $order);
             $this->assertEquals(Order::STATUS_DELIVERED, $order->status);
         }
     }
 
     /**
+     * @test
      * Empty tenant returns no data (not all data)
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function empty_tenant_returns_no_orders(): void
     {
         $data = $this->createTestData();
-        $this->actingAsTenant((string) $data['tenantB']->id);
         $this->createOrdersWithoutEvents(5, ['tenant_id' => $data['tenantA']->id]);
 
         // Export for Tenant B (which has no orders)
         $export = SalesExport::create(
-            tenantId: TenantId::fromString((string) $data['tenantB']->id),
+            tenantId: TenantId::fromString($data['tenantB']->id),
             criteria: SalesExportCriteria::withDefaultRange(),
             userId: 1,
         );
@@ -260,21 +247,21 @@ class SalesExportTest extends TestCase
     }
 
     /**
+     * @test
      * Export generates unique export ID
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function export_generates_unique_id(): void
     {
         $data = $this->createTestData();
 
         $export1 = SalesExport::create(
-            tenantId: TenantId::fromString((string) $data['tenantA']->id),
+            tenantId: TenantId::fromString($data['tenantA']->id),
             criteria: SalesExportCriteria::withDefaultRange(),
             userId: 1,
         );
 
         $export2 = SalesExport::create(
-            tenantId: TenantId::fromString((string) $data['tenantA']->id),
+            tenantId: TenantId::fromString($data['tenantA']->id),
             criteria: SalesExportCriteria::withDefaultRange(),
             userId: 1,
         );

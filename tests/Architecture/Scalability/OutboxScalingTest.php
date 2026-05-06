@@ -4,92 +4,88 @@ declare(strict_types=1);
 
 namespace Tests\Architecture\Scalability;
 
-use App\Domain\Auth\Events\UserPasswordChanged;
-use App\Infrastructure\Models\OutboxMessage;
-use Illuminate\Foundation\Testing\RefreshDatabaseState;
+use App\Infrastructure\Persistence\Eloquent\Models\OutboxMessage;
 use Illuminate\Process\Pool;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
-use Illuminate\Support\Facades\Schema;
-use PHPUnit\Framework\Attributes\Test;
 use Ramsey\Uuid\Uuid;
 use Tests\TestCase;
 
 /**
  * OutboxScalingTest - Competing Consumers Validation
  *
- * Proves that competing workers process the outbox without duplicates while
- * respecting the current shard-leasing implementation and completed status.
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  PURPOSE: Prove that FOR UPDATE SKIP LOCKED prevents duplicate events   ║
+ * ║  METHOD: Launch N parallel workers attacking the same pending queue     ║
+ * ║  ASSERTION: Each message processed exactly once (no duplicates)         ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
+ *
+ * REQUIRES: MySQL 8.0+ or PostgreSQL 9.5+ (SQLite does NOT support SKIP LOCKED)
  */
 class OutboxScalingTest extends TestCase
 {
-    private static bool $outboxSchemaReady = false;
-
-    private bool $supportsSkipLocked = false;
-
-    private string $databaseVersion = 'unknown';
+    private string $testDbPath = '';
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->ensureOutboxSchemaIsReady();
-
-        $this->databaseVersion = (string) (DB::selectOne('select version() as version')->version ?? 'unknown');
-        $this->supportsSkipLocked = $this->databaseSupportsSkipLocked();
-
-        OutboxMessage::query()->delete();
-        $this->resetShardLeases();
+        // Skip if using SQLite (no SKIP LOCKED support)
+        if (DB::getDriverName() === 'sqlite') {
+            $this->markTestSkipped(
+                'Skipping concurrency test: SQLite does not support FOR UPDATE SKIP LOCKED. '.
+                'Run this test against MySQL 8.0+ or PostgreSQL 9.5+ for accurate results.'
+            );
+        }
     }
 
-    #[Test]
+    /** @test */
     public function it_prevents_duplicate_processing_under_parallel_worker_load(): void
     {
-        if (! $this->supportsSkipLocked) {
-            $this->assertFalse(
-                $this->supportsSkipLocked,
-                'Current database should not advertise FOR UPDATE SKIP LOCKED support.'
-            );
-            $this->assertStringContainsStringIgnoringCase('mariadb', $this->databaseVersion);
-
-            return;
-        }
-
-        $availableShardIds = [0, 1, 2];
+        // 1. SETUP: Create 100 pending messages
         $messageCount = 100;
-        $limitPerWorker = 35;
-        $workerCount = 3;
-
-        $this->restrictAvailableShards($availableShardIds);
-        $messageIds = $this->seedPendingMessages($messageCount, $availableShardIds);
+        $messageIds = $this->seedPendingMessages($messageCount);
 
         $this->assertCount($messageCount, $messageIds);
         $this->assertPendingCount($messageCount);
 
+        // 2. ATTACK: Launch 3 parallel workers, each with limit=35
+        // Total capacity: 3 * 35 = 105 (intentionally > 100 to force contention)
+        $workerCount = 3;
+        $limitPerWorker = 35;
+
         $results = Process::pool(function (Pool $pool) use ($workerCount, $limitPerWorker) {
             for ($i = 0; $i < $workerCount; $i++) {
-                $pool->command("php artisan outbox:process --batch-size={$limitPerWorker} --max-loops=1 --max-shards=1")
-                    ->timeout(60)
-                    ->env($this->testing_environment());
+                $pool->command("php artisan outbox:process --once --limit={$limitPerWorker}")
+                    ->timeout(60);
             }
         })->wait();
 
+        // 3. ANALYZE RESULTS
         $this->analyzeWorkerResults($results);
 
-        $completedCount = OutboxMessage::where('status', OutboxMessage::STATUS_COMPLETED)->count();
+        // 4. ASSERTIONS
+
+        // 4a. INTEGRITY: All messages should be PUBLISHED
+        $publishedCount = OutboxMessage::where('status', 'PUBLISHED')->count();
         $this->assertEquals(
             $messageCount,
-            $completedCount,
-            "Expected all {$messageCount} messages to be COMPLETED. Found: {$completedCount}"
+            $publishedCount,
+            "Expected all {$messageCount} messages to be PUBLISHED. Found: {$publishedCount}"
         );
 
-        $pendingCount = OutboxMessage::where('status', OutboxMessage::STATUS_PENDING)->count();
+        // 4b. NO PENDING LEFT: Queue should be empty
+        $pendingCount = OutboxMessage::where('status', 'PENDING')->count();
         $this->assertEquals(
             0,
             $pendingCount,
             "Expected 0 PENDING messages after processing. Found: {$pendingCount}"
         );
 
+        // 4c. UNIQUENESS CHECK: No duplicate processing
+        // If SKIP LOCKED failed, some messages would be processed by multiple workers.
+        // We detect this by checking if any message has been published more than once
+        // (in a real system, this would manifest as duplicate events in the event bus)
         $duplicateCheck = DB::table('outbox_messages')
             ->select('id', DB::raw('COUNT(*) as process_count'))
             ->groupBy('id')
@@ -103,236 +99,105 @@ class OutboxScalingTest extends TestCase
         );
     }
 
-    #[Test]
+    /** @test */
     public function it_handles_empty_queue_gracefully_in_daemon_mode(): void
     {
-        if (! $this->supportsSkipLocked) {
-            $this->assertFalse($this->supportsSkipLocked);
-            $this->assertNotSame('', trim($this->databaseVersion));
-
-            return;
-        }
-
-        $this->restrictAvailableShards([0]);
+        // Ensure queue is empty
         OutboxMessage::query()->delete();
 
-        $result = Process::timeout(15)
-            ->env($this->testing_environment())
-            ->run('php artisan outbox:process --max-loops=1 --max-shards=1');
+        // Run with a timeout (should sleep and exit cleanly)
+        $result = Process::timeout(5)->run('php artisan outbox:process --once');
 
         $this->assertTrue($result->successful(), 'Command should complete successfully on empty queue');
-        $this->assertSame(0, OutboxMessage::count(), 'Empty queue run must not create or mutate outbox messages');
+        $this->assertStringContainsString('Total processed: 0', $result->output());
     }
 
-    #[Test]
+    /** @test */
     public function it_respects_limit_option(): void
     {
-        if (! $this->supportsSkipLocked) {
-            $this->assertFalse($this->supportsSkipLocked);
-            $this->assertStringContainsStringIgnoringCase('mariadb', $this->databaseVersion);
+        // Seed more messages than limit
+        $this->seedPendingMessages(50);
 
-            return;
-        }
+        // Process with limit=20
+        $result = Process::run('php artisan outbox:process --once --limit=20');
 
-        $this->restrictAvailableShards([0]);
-        $this->seedPendingMessages(50, [0]);
+        $this->assertTrue($result->successful());
 
-        $result = Process::env($this->testing_environment())
-            ->run('php artisan outbox:process --batch-size=20 --max-loops=1 --max-shards=1');
+        // Should have processed exactly 20
+        $publishedCount = OutboxMessage::where('status', 'PUBLISHED')->count();
+        $this->assertEquals(20, $publishedCount);
 
-        $this->assertTrue($result->successful(), $result->errorOutput());
-
-        $completedCount = OutboxMessage::where('status', OutboxMessage::STATUS_COMPLETED)->count();
-        $this->assertEquals(20, $completedCount);
-
-        $pendingCount = OutboxMessage::where('status', OutboxMessage::STATUS_PENDING)->count();
+        // Should still have 30 pending
+        $pendingCount = OutboxMessage::where('status', 'PENDING')->count();
         $this->assertEquals(30, $pendingCount);
     }
 
     /**
-     * @param  array<int>  $availableShardIds
-     * @return array<string>
+     * Seed the outbox with N pending messages.
+     *
+     * @return array<string> Array of created message IDs
      */
-    private function seedPendingMessages(int $count, array $availableShardIds): array
+    private function seedPendingMessages(int $count): array
     {
         $ids = [];
-        $occurredAt = now();
 
         for ($i = 0; $i < $count; $i++) {
             $id = Uuid::uuid7()->toString();
-            $aggregateId = Uuid::uuid7()->toString();
-            $partitionKey = $availableShardIds[$i % count($availableShardIds)];
             $ids[] = $id;
 
             OutboxMessage::create([
                 'id' => $id,
-                'type' => UserPasswordChanged::class,
-                'aggregate_id' => $aggregateId,
-                'partition_key' => $partitionKey,
-                'sequence_number' => 1,
-                'payload' => [
-                    'meta' => ['version' => 1],
-                    'data' => [
-                        'userId' => $aggregateId,
-                        'tenantId' => 'tenant-test',
-                        'sessionInvalidated' => true,
-                        'occurredAt' => $occurredAt->toAtomString(),
-                    ],
-                ],
-                'occurred_at' => $occurredAt,
-                'status' => OutboxMessage::STATUS_PENDING,
+                'type' => 'App\\Domain\\Test\\Events\\TestEvent',
+                'aggregate_type' => 'Test',
+                'aggregate_id' => Uuid::uuid7()->toString(),
+                'payload' => json_encode([
+                    'meta' => ['version' => '1.0'],
+                    'data' => ['test_id' => $i, 'message' => "Test message {$i}"],
+                ]),
+                'occurred_at' => now(),
+                'status' => 'PENDING',
                 'attempts' => 0,
-                'recovery_count' => 0,
             ]);
         }
 
         return $ids;
     }
 
+    /**
+     * Assert exact pending count.
+     */
     private function assertPendingCount(int $expected): void
     {
-        $actual = OutboxMessage::where('status', OutboxMessage::STATUS_PENDING)->count();
+        $actual = OutboxMessage::where('status', 'PENDING')->count();
         $this->assertEquals($expected, $actual, "Expected {$expected} PENDING messages, found {$actual}");
     }
 
+    /**
+     * Analyze and log worker process results for debugging.
+     */
     private function analyzeWorkerResults($results): void
     {
         $successCount = 0;
         $failureCount = 0;
 
-        foreach ($results->collect() as $index => $result) {
+        foreach ($results as $index => $result) {
             if ($result->successful()) {
                 $successCount++;
                 $this->addToAssertionCount(1);
-
-                continue;
+            } else {
+                $failureCount++;
+                echo "Worker {$index} failed:\n";
+                echo $result->errorOutput()."\n";
             }
-
-            $failureCount++;
-            echo "Worker {$index} failed:\n";
-            echo $result->errorOutput()."\n";
         }
 
         echo "Worker Results: {$successCount} successful, {$failureCount} failed\n";
     }
 
-    /**
-     * @param  array<int>  $availableShardIds
-     */
-    private function restrictAvailableShards(array $availableShardIds): void
-    {
-        $future = now()->addMinutes(10);
-
-        DB::table('outbox_shards')->update([
-            'owner_worker_id' => 'test-reserved',
-            'expires_at' => $future,
-            'acquired_at' => now(),
-            'messages_processed' => 0,
-            'updated_at' => now(),
-        ]);
-
-        DB::table('outbox_shards')
-            ->whereIn('shard_id', $availableShardIds)
-            ->update([
-                'owner_worker_id' => null,
-                'expires_at' => null,
-                'acquired_at' => null,
-                'messages_processed' => 0,
-                'updated_at' => now(),
-            ]);
-    }
-
-    private function resetShardLeases(): void
-    {
-        DB::table('outbox_shards')->update([
-            'owner_worker_id' => null,
-            'expires_at' => null,
-            'acquired_at' => null,
-            'messages_processed' => 0,
-            'updated_at' => now(),
-        ]);
-    }
-
-    private function databaseSupportsSkipLocked(): bool
-    {
-        $driver = DB::getDriverName();
-
-        if ($driver === 'pgsql') {
-            return true;
-        }
-
-        if ($driver !== 'mysql') {
-            return false;
-        }
-
-        $version = strtolower((string) (DB::selectOne('select version() as version')->version ?? ''));
-
-        if ($version === '' || str_contains($version, 'mariadb')) {
-            return false;
-        }
-
-        if (! preg_match('/(\d+)\.(\d+)/', $version, $matches)) {
-            return false;
-        }
-
-        $major = (int) $matches[1];
-        $minor = (int) $matches[2];
-
-        return $major > 8 || ($major === 8 && $minor >= 0);
-    }
-
-    private function ensureOutboxSchemaIsReady(): void
-    {
-        if (self::$outboxSchemaReady && Schema::hasTable('outbox_messages') && Schema::hasTable('outbox_shards')) {
-            return;
-        }
-
-        if (! Schema::hasTable('outbox_messages') || ! Schema::hasTable('outbox_shards')) {
-            RefreshDatabaseState::$migrated = false;
-            $this->artisan('migrate', ['--force' => true])->assertExitCode(0);
-        }
-
-        self::$outboxSchemaReady = true;
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private function testing_environment(): array
-    {
-        $defaultConnection = (string) config('database.default');
-        $connection = (array) config("database.connections.{$defaultConnection}", []);
-
-        $env = [
-            'APP_ENV' => 'testing',
-            'DB_CONNECTION' => $defaultConnection,
-            'DB_HOST' => (string) ($connection['host'] ?? ''),
-            'DB_PORT' => (string) ($connection['port'] ?? ''),
-            'DB_DATABASE' => (string) ($connection['database'] ?? ''),
-            'DB_USERNAME' => (string) ($connection['username'] ?? ''),
-            'DB_PASSWORD' => (string) ($connection['password'] ?? ''),
-        ];
-
-        foreach (['LARAVEL_PARALLEL_TESTING', 'TEST_TOKEN'] as $key) {
-            $value = $_SERVER[$key] ?? $_ENV[$key] ?? null;
-
-            if (is_string($value) && $value !== '') {
-                $env[$key] = $value;
-            }
-        }
-
-        return array_filter($env, static fn (string $value): bool => $value !== '');
-    }
-
     protected function tearDown(): void
     {
-        if (Schema::hasTable('outbox_messages')) {
-            OutboxMessage::query()->delete();
-        }
-
-        if (Schema::hasTable('outbox_shards')) {
-            $this->resetShardLeases();
-        }
+        // Cleanup test data
+        OutboxMessage::query()->delete();
 
         parent::tearDown();
     }

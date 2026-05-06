@@ -6,30 +6,28 @@ namespace Tests\Feature\Auth;
 
 use App\Application\Auth\Commands\GenerateOtpCommand;
 use App\Application\Auth\Contracts\GenerateOtpHandlerInterface;
-use App\Domain\Shared\Exceptions\ValidationException;
 use App\Infrastructure\Shared\Telemetry\TraceContext;
-use App\Models\Tenant;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Ramsey\Uuid\Uuid;
 use Tests\TestCase;
 
 class TelemetryIntegrationTest extends TestCase
 {
-    use DatabaseTransactions;
+    use \Illuminate\Foundation\Testing\RefreshDatabase;
 
     protected function setUp(): void
     {
         parent::setUp();
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function it_propagates_trace_id_to_outbox(): void
     {
         // 1. Arrange: Setup Context and Command
         $traceId = Uuid::uuid7()->toString();
         $tenantId = Uuid::uuid7()->toString();
         $idempotencyKey = Uuid::uuid7()->toString();
-        Tenant::factory()->create(['id' => $tenantId]);
 
         /** @var TraceContext $context */
         $context = $this->app->make(TraceContext::class);
@@ -41,8 +39,7 @@ class TelemetryIntegrationTest extends TestCase
             type: 'email',
             tenantId: $tenantId,
             ipAddress: '127.0.0.1',
-            userAgent: 'TestAgent',
-            idempotencyKey: $idempotencyKey,
+            userAgent: 'TestAgent'
         );
 
         // Inject Idempotency Key via Context (simulating Middleware)
@@ -60,9 +57,9 @@ class TelemetryIntegrationTest extends TestCase
             'tenant_id' => $tenantId,
         ]);
 
-        $this->assertDatabaseHas('outbox_messages', [
+        $this->assertDatabaseHas('domain_outbox', [
             'type' => 'App\Domain\Auth\Events\OtpGenerated',
-            'payload->meta->trace_id' => $traceId,
+            'metadata->trace_id' => $traceId,
         ]);
 
         // Outbox should be created
@@ -77,7 +74,7 @@ class TelemetryIntegrationTest extends TestCase
         ]);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function it_rejects_invalid_commands_at_gate(): void
     {
         // 1. Arrange: Invalid Command
@@ -86,8 +83,7 @@ class TelemetryIntegrationTest extends TestCase
             type: 'telepathy',
             tenantId: 'bad-uuid',
             ipAddress: '127.0.0.1',
-            userAgent: 'TestAgent',
-            idempotencyKey: Uuid::uuid7()->toString(),
+            userAgent: 'TestAgent'
         );
 
         // Even for invalid commands, we need the context key IF the decorator/middleware runs before validation.

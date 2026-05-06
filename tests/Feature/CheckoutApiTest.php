@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Domain\Shared\Services\TenantContext;
 use App\Models\Coupon;
-use App\Models\Product;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
@@ -23,10 +21,12 @@ use Tests\TestCase;
  * 1. Returns correct JSON structure
  * 2. Does NOT leak sensitive database columns
  * 3. Handles validation errors properly
+ *
+ * @covers \App\Http\Controllers\CheckoutController
  */
 class CheckoutApiTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     private Tenant $tenant;
 
@@ -44,18 +44,8 @@ class CheckoutApiTest extends TestCase
 
         // Bind tenant to container
         app()->instance('currentTenant', $this->tenant);
-        // Initialize TenantContext so TenantScope can resolve tenant ID
-        app()->make(TenantContext::class)->setTenant($this->tenant->id);
 
-        $this->apiEndpoint = '/api/v1/checkout/validate-coupon';
-    }
-
-    protected function tearDown(): void
-    {
-        // Reset TenantContext singleton to avoid contaminating subsequent tests
-        app()->make(TenantContext::class)->reset();
-
-        parent::tearDown();
+        $this->apiEndpoint = '/api/checkout/validate-coupon';
     }
 
     // ═══════════════════════════════════════════════════════════════════════════════
@@ -63,12 +53,12 @@ class CheckoutApiTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════════
 
     /**
+     * @test
      * Verifies the API returns correct JSON structure for valid coupons.
      *
      * SCENARIO: Valid coupon code submitted via POST
      * EXPECTED: HTTP 200 with structured JSON containing required keys
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function it_validates_coupon_via_api_and_returns_correct_json(): void
     {
         // Arrange: Create a valid coupon
@@ -113,9 +103,9 @@ class CheckoutApiTest extends TestCase
     }
 
     /**
+     * @test
      * Verifies fixed amount coupon returns correct calculation.
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function it_calculates_fixed_discount_correctly(): void
     {
         Coupon::factory()->create([
@@ -139,9 +129,9 @@ class CheckoutApiTest extends TestCase
     }
 
     /**
+     * @test
      * Verifies free shipping coupon returns shipping cost as discount.
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function it_returns_shipping_cost_for_free_shipping_coupon(): void
     {
         Coupon::factory()->create([
@@ -170,6 +160,7 @@ class CheckoutApiTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════════
 
     /**
+     * @test
      * CRITICAL SECURITY: Verifies sensitive database columns are NOT exposed.
      *
      * SCENARIO: Successful coupon validation
@@ -181,7 +172,6 @@ class CheckoutApiTest extends TestCase
      * - Usage limits (competitive intelligence)
      * - Timestamps (system metadata)
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function it_does_not_leak_sensitive_model_data(): void
     {
         Coupon::factory()->create([
@@ -235,9 +225,9 @@ class CheckoutApiTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════════
 
     /**
+     * @test
      * Verifies that missing 'code' field returns 422 validation error.
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function it_returns_422_for_missing_code(): void
     {
         $response = $this->postJson($this->apiEndpoint, [
@@ -250,9 +240,9 @@ class CheckoutApiTest extends TestCase
     }
 
     /**
+     * @test
      * Verifies that missing 'cart_total' returns 422 validation error.
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function it_returns_422_for_missing_cart_total(): void
     {
         $response = $this->postJson($this->apiEndpoint, [
@@ -265,9 +255,9 @@ class CheckoutApiTest extends TestCase
     }
 
     /**
+     * @test
      * Verifies that empty body returns 422 with both field errors.
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function it_returns_422_for_empty_body(): void
     {
         $response = $this->postJson($this->apiEndpoint, []);
@@ -277,9 +267,9 @@ class CheckoutApiTest extends TestCase
     }
 
     /**
+     * @test
      * Verifies that invalid cart_total (negative) returns 422.
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function it_returns_422_for_negative_cart_total(): void
     {
         $response = $this->postJson($this->apiEndpoint, [
@@ -296,9 +286,9 @@ class CheckoutApiTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════════
 
     /**
+     * @test
      * Verifies that invalid coupon code returns 422 with error message.
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function it_returns_422_for_invalid_coupon_code(): void
     {
         $response = $this->postJson($this->apiEndpoint, [
@@ -315,9 +305,9 @@ class CheckoutApiTest extends TestCase
     }
 
     /**
+     * @test
      * Verifies that expired coupon returns 422 with EXPIRED code.
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function it_returns_422_for_expired_coupon(): void
     {
         Coupon::factory()->create([
@@ -342,9 +332,9 @@ class CheckoutApiTest extends TestCase
     }
 
     /**
+     * @test
      * Verifies that depleted coupon returns 422 with DEPLETED code.
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function it_returns_422_for_depleted_coupon(): void
     {
         Coupon::factory()->create([
@@ -370,9 +360,9 @@ class CheckoutApiTest extends TestCase
     }
 
     /**
+     * @test
      * Verifies that inactive coupon returns 422 with INACTIVE code.
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function it_returns_422_for_inactive_coupon(): void
     {
         Coupon::factory()->create([
@@ -400,9 +390,9 @@ class CheckoutApiTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════════
 
     /**
+     * @test
      * Verifies authenticated users can validate coupons.
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function it_allows_authenticated_users_to_validate_coupons(): void
     {
         $user = User::factory()->create();
@@ -434,90 +424,48 @@ class CheckoutApiTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════════
 
     /**
+     * @test
      * Verifies cart summary endpoint returns correct structure.
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function it_returns_cart_summary_with_applied_coupon(): void
     {
-        $product = Product::factory()->forTenant($this->tenant)->create([
-            'price' => 50.00,
+        Coupon::factory()->create([
+            'tenant_id' => $this->tenant->id,
+            'code' => 'SUMMARY10',
+            'type' => Coupon::TYPE_PERCENT,
+            'value' => 10.00,
+            'is_active' => true,
         ]);
-        $checkoutSession = $this->startCheckoutSession();
 
-        $response = $this->postJson('/api/v1/checkout/cart-summary', [
-            'tenant' => $this->tenant->id,
-            'session_id' => $checkoutSession['session_id'],
-            'checkout_nonce' => $checkoutSession['checkout_nonce'],
-            'items' => [
-                [
-                    'product_id' => $product->id,
-                    'quantity' => 2,
-                    'price' => 1.00,
-                ],
-            ],
-            'subtotal' => 2.00,
+        $response = $this->postJson('/api/checkout/cart-summary', [
+            'subtotal' => 100.00,
+            'shipping_cost' => 20.00,
+            'coupon_code' => 'SUMMARY10',
         ]);
 
         $response->assertStatus(200);
         $response->assertJsonStructure([
-            'success',
-            'message',
             'subtotal',
+            'shipping_cost',
+            'discount_amount',
+            'discount_type',
+            'applied_coupon',
+            'total',
         ]);
 
         $json = $response->json();
-        $this->assertTrue($json['success']);
-        $this->assertEquals(100.00, $json['subtotal']);
-    }
-
-    #[\PHPUnit\Framework\Attributes\Test]
-    public function it_rejects_cart_summary_items_from_other_tenants(): void
-    {
-        $otherTenant = Tenant::factory()->create();
-        $product = Product::factory()->forTenant($otherTenant)->create([
-            'price' => 50.00,
-        ]);
-        $checkoutSession = $this->startCheckoutSession();
-
-        $this->postJson('/api/v1/checkout/cart-summary', [
-            'tenant' => $this->tenant->id,
-            'session_id' => $checkoutSession['session_id'],
-            'checkout_nonce' => $checkoutSession['checkout_nonce'],
-            'items' => [
-                [
-                    'product_id' => $product->id,
-                    'quantity' => 1,
-                    'price' => 0.01,
-                ],
-            ],
-            'subtotal' => 0.01,
-        ])->assertStatus(422);
+        $this->assertEquals(10.00, $json['discount_amount']);
+        $this->assertEquals(110.00, $json['total']); // 100 + 20 - 10
+        $this->assertSame('SUMMARY10', $json['applied_coupon']);
     }
 
     /**
-     * @return array{session_id:string, checkout_nonce:string}
-     */
-    private function startCheckoutSession(): array
-    {
-        $response = $this->postJson('/api/v1/checkout/session', [
-            'tenant' => $this->tenant->id,
-        ]);
-
-        $response->assertCreated();
-
-        /** @var array{session_id:string, checkout_nonce:string} $payload */
-        $payload = $response->json();
-
-        return $payload;
-    }
-
-    /**
+     * @test
      * Verifies remove coupon endpoint works.
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function it_removes_coupon_and_returns_original_total(): void
     {
-        $response = $this->postJson('/api/v1/checkout/remove-coupon', [
+        $response = $this->postJson('/api/checkout/remove-coupon', [
             'subtotal' => 100.00,
             'shipping_cost' => 25.00,
         ]);

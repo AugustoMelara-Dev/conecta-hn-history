@@ -2,509 +2,247 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature;
-
-use App\Application\Shared\Contracts\AiProfileGeneratorInterface;
-use App\Application\Shared\Contracts\DataScrubberInterface;
-use App\Application\Shared\Contracts\LoggerInterface;
-use App\Application\Shared\Contracts\TransactionManagerInterface;
-use App\Application\Tenant\Handlers\EnhanceTenantProfileHandler;
-use App\Application\Tenant\ResultsProfileData;
-use App\Domain\TenantGovernance\Entities\TenantEntity;
-use App\Domain\TenantGovernance\Exceptions\TenantDomainException;
-use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
-use App\Infrastructure\Jobs\AI\EnhanceTenantProfileJob;
+use App\Domain\AIEnrichment\Jobs\EnhanceTenantProfileJob;
 use App\Models\Tenant;
 use App\Models\User;
-use Exception;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use App\Services\AiProfileGeneratorService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
-use PHPUnit\Framework\Attributes\Test;
-use Spatie\OpeningHours\OpeningHours;
-use Tests\TestCase;
 
-final class AiEnrichmentTest extends TestCase
+uses(RefreshDatabase::class);
+
+// Set API key before each test and reset mocks after
+beforeEach(function () {
+    config(['services.openai.key' => 'test-api-key']);
+});
+
+afterEach(function () {
+    Mockery::close();
+    Log::swap(new \Illuminate\Log\LogManager(app()));
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// HELPER: Create test tenant with unique slug
+// ═══════════════════════════════════════════════════════════════════════════════
+function createTestTenant(array $overrides = []): Tenant
 {
-    use DatabaseTransactions;
+    $user = User::factory()->create(['role' => 'seller']);
 
-    protected function setUp(): void
-    {
-        parent::setUp();
+    return Tenant::forceCreate(array_merge([
+        'user_id' => $user->id,
+        'name' => 'Test Tenant',
+        'slug' => 'test-tenant-'.uniqid(),
+        'is_active' => true,
+        'is_ai_enhanced' => false,
+        'subscription_status' => 'active',
+        'plan_type' => 'pro',
+    ], $overrides));
+}
 
-        config(['services.openai.key' => 'test-api-key']);
-    }
+// ═══════════════════════════════════════════════════════════════════════════════
+// HELPER: Mock successful AI response
+// ═══════════════════════════════════════════════════════════════════════════════
+function fakeSuccessfulOpenAiResponse(array $overrides = []): void
+{
+    $defaultResponse = [
+        'status' => 'success',
+        'business_name_clean' => 'Pulpería Don Mario',
+        'tagline' => 'Tu tienda de confianza',
+        'short_description' => 'La mejor pulpería de Tegucigalpa',
+        'full_description_html' => '<p>Bienvenidos a nuestra pulpería.</p>',
+        'seo_keywords' => ['pulpería', 'tegucigalpa', 'tienda'],
+        'risk_analysis' => 'Low risk - standard retail business',
+    ];
 
-    #[Test]
-    public function service_throws_exception_when_api_key_is_not_configured(): void
-    {
-        config(['services.openai.key' => null]);
-
-        $service = new \App\Services\AiProfileGeneratorService;
-
-        $this->expectException(Exception::class);
-        $this->expectExceptionMessage('OpenAI API key is not configured');
-
-        $service->generate('Test', 'Description', 'Category');
-    }
-
-    #[Test]
-    public function service_sanitizes_xss_from_html_output(): void
-    {
-        $this->fakeSuccessfulOpenAiResponse([
-            'business_name_clean' => 'Test<script>alert(1)</script>',
-            'tagline' => 'Tagline<img onerror="alert(1)">',
-            'short_description' => 'Short<iframe>evil</iframe>',
-            'full_description_html' => '<p>Safe</p><script>evil</script><ul><li>Item</li></ul>',
-            'seo_keywords' => ['test'],
-            'risk_analysis' => 'None',
-        ]);
-
-        $service = new \App\Services\AiProfileGeneratorService;
-        $result = $service->generate('Test', 'Desc', 'Cat');
-
-        self::assertStringNotContainsString('<script>', (string) $result['business_name_clean']);
-        self::assertStringNotContainsString('onerror', (string) $result['tagline']);
-        self::assertStringNotContainsString('<iframe>', (string) $result['short_description']);
-        self::assertStringNotContainsString('<script>', (string) $result['full_description_html']);
-        self::assertStringContainsString('<p>Safe</p>', (string) $result['full_description_html']);
-        self::assertStringContainsString('<ul><li>Item</li></ul>', (string) $result['full_description_html']);
-    }
-
-    #[Test]
-    public function service_handles_rate_limit_response_correctly(): void
-    {
-        Http::fake([
-            'api.openai.com/*' => Http::response([
-                'error' => ['message' => 'Rate limited'],
-            ], 429, ['Retry-After' => '60']),
-        ]);
-
-        $service = new \App\Services\AiProfileGeneratorService;
-
-        $this->expectException(Exception::class);
-        $this->expectExceptionMessage('rate limited');
-
-        $service->generate('Test', 'Desc', 'Cat');
-    }
-
-    #[Test]
-    public function service_validates_required_keys_in_response(): void
-    {
-        Http::fake([
-            'api.openai.com/*' => Http::response([
-                'choices' => [
-                    [
-                        'message' => [
-                            'content' => json_encode(['status' => 'success'], JSON_THROW_ON_ERROR),
-                        ],
+    Http::fake([
+        'api.openai.com/*' => Http::response([
+            'choices' => [
+                [
+                    'message' => [
+                        'content' => json_encode(array_merge($defaultResponse, $overrides)),
                     ],
                 ],
-            ], 200),
-        ]);
+            ],
+        ], 200),
+    ]);
+}
 
-        $service = new \App\Services\AiProfileGeneratorService;
+// ═══════════════════════════════════════════════════════════════════════════════
+// SERVICE TESTS: AiProfileGeneratorService
+// ═══════════════════════════════════════════════════════════════════════════════
 
-        $this->expectException(Exception::class);
-        $this->expectExceptionMessage('missing required keys');
+test('service throws exception when API key is not configured', function () {
+    config(['services.openai.key' => null]);
 
-        $service->generate('Test', 'Desc', 'Cat');
-    }
+    $service = new AiProfileGeneratorService;
 
-    #[Test]
-    public function service_returns_valid_response_on_success(): void
-    {
-        $this->fakeSuccessfulOpenAiResponse();
+    expect(fn () => $service->generate('Test', 'Description', 'Category'))
+        ->toThrow(Exception::class, 'OpenAI API key is not configured');
+});
 
-        $service = new \App\Services\AiProfileGeneratorService;
-        $result = $service->generate('pulperia don mario', 'tienda local', 'Comercio');
+test('service sanitizes XSS from HTML output', function () {
+    config(['services.openai.key' => 'test-api-key']);
 
-        self::assertSame('success', $result['status']);
-        self::assertSame('Pulperia Don Mario', $result['business_name_clean']);
-        self::assertIsArray($result['seo_keywords']);
-        self::assertContains('pulperia', $result['seo_keywords']);
-    }
-
-    #[Test]
-    public function service_handles_flagged_content_response(): void
-    {
-        Http::fake([
-            'api.openai.com/*' => Http::response([
-                'choices' => [
-                    [
-                        'message' => [
-                            'content' => json_encode([
-                                'status' => 'flagged',
-                                'business_name_clean' => 'Suspicious Business',
-                                'tagline' => '',
-                                'short_description' => '',
-                                'full_description_html' => '',
-                                'seo_keywords' => [],
-                                'risk_analysis' => 'Detected references to prohibited substances',
-                            ], JSON_THROW_ON_ERROR),
-                        ],
+    Http::fake([
+        'api.openai.com/*' => Http::response([
+            'choices' => [
+                [
+                    'message' => [
+                        'content' => json_encode([
+                            'status' => 'success',
+                            'business_name_clean' => 'Test<script>alert(1)</script>',
+                            'tagline' => 'Tagline<img onerror="alert(1)">',
+                            'short_description' => 'Short<iframe>evil</iframe>',
+                            'full_description_html' => '<p>Safe</p><script>evil</script><ul><li>Item</li></ul>',
+                            'seo_keywords' => ['test'],
+                            'risk_analysis' => 'None',
+                        ]),
                     ],
                 ],
-            ], 200),
-        ]);
+            ],
+        ], 200),
+    ]);
 
-        $service = new \App\Services\AiProfileGeneratorService;
-        $result = $service->generate('Suspicious', 'drugs available', 'Unknown');
+    $service = new AiProfileGeneratorService;
+    $result = $service->generate('Test', 'Desc', 'Cat');
 
-        self::assertSame('flagged', $result['status']);
-        self::assertStringContainsString('prohibited', (string) $result['risk_analysis']);
-    }
+    // Verify XSS is stripped
+    expect($result['business_name_clean'])->not->toContain('<script>');
+    expect($result['tagline'])->not->toContain('onerror');
+    expect($result['short_description'])->not->toContain('<iframe>');
+    expect($result['full_description_html'])->not->toContain('<script>');
+    expect($result['full_description_html'])->toContain('<p>Safe</p>');
+    expect($result['full_description_html'])->toContain('<ul><li>Item</li></ul>');
+});
 
-    #[Test]
-    public function job_dispatches_command_to_handler_even_when_tenant_is_missing(): void
-    {
-        $data = new ResultsProfileData(tenantId: '999999');
-        $job = new EnhanceTenantProfileJob($data);
+test('service handles rate limit response correctly', function () {
+    config(['services.openai.key' => 'test-api-key']);
 
-        $repository = new InMemoryTenantRepository;
-        $aiService = new FakeAiProfileGenerator([
-            'status' => 'success',
-            'business_name_clean' => 'Ignored',
-            'tagline' => 'Ignored',
-            'short_description' => 'Ignored',
-            'seo_keywords' => [],
-            'tags' => [],
-        ]);
-        $transactionManager = new InlineTransactionManager;
-        $logger = new RecordingApplicationLogger;
-        $scrubber = new PassthroughScrubber;
+    Http::fake([
+        'api.openai.com/*' => Http::response([
+            'error' => ['message' => 'Rate limited'],
+        ], 429, ['Retry-After' => '60']),
+    ]);
 
-        $handler = new EnhanceTenantProfileHandler(
-            $repository,
-            $aiService,
-            $transactionManager,
-            $logger,
-            $scrubber,
-        );
+    $service = new AiProfileGeneratorService;
 
-        $this->expectException(TenantDomainException::class);
+    expect(fn () => $service->generate('Test', 'Desc', 'Cat'))
+        ->toThrow(Exception::class, 'rate limited');
+});
 
-        try {
-            $job->handle($handler);
-        } finally {
-            self::assertSame(1, $transactionManager->calls);
-            self::assertSame(0, $repository->saveCalls);
-            self::assertSame(0, $aiService->calls);
-            self::assertCount(0, $logger->infos);
-        }
-    }
+test('service validates required keys in response', function () {
+    config(['services.openai.key' => 'test-api-key']);
 
-    #[Test]
-    public function job_throws_when_tenant_was_already_ai_enhanced(): void
-    {
-        $tenant = $this->createTestTenant([
-            'is_ai_enhanced' => true,
-        ]);
-
-        $repository = new InMemoryTenantRepository([
-            (string) $tenant->id => TenantEntity::fromStateArray([
-                'id' => (string) $tenant->id,
-                'name' => (string) $tenant->name,
-                'domain' => (string) $tenant->slug,
-                'is_active' => true,
-                'is_ai_enhanced' => true,
-            ]),
-        ]);
-
-        $aiService = new FakeAiProfileGenerator([
-            'status' => 'success',
-            'business_name_clean' => (string) $tenant->name,
-            'tagline' => 'Tagline',
-            'short_description' => 'Description',
-            'seo_keywords' => ['tag'],
-            'tags' => ['tag'],
-        ]);
-        $transactionManager = new InlineTransactionManager;
-        $logger = new RecordingApplicationLogger;
-        $scrubber = new PassthroughScrubber;
-
-        $handler = new EnhanceTenantProfileHandler(
-            $repository,
-            $aiService,
-            $transactionManager,
-            $logger,
-            $scrubber,
-        );
-
-        $data = new ResultsProfileData(tenantId: (string) $tenant->id);
-        $job = new EnhanceTenantProfileJob($data);
-
-        $this->expectException(TenantDomainException::class);
-
-        try {
-            $job->handle($handler);
-        } finally {
-            self::assertSame(1, $transactionManager->calls);
-            self::assertSame(1, $aiService->calls);
-            self::assertSame([(string) $tenant->name, '', 'General'], $aiService->lastPayload);
-            self::assertSame(0, $repository->saveCalls);
-            self::assertCount(0, $logger->infos);
-        }
-    }
-
-    #[Test]
-    public function job_can_be_dispatched_to_queue(): void
-    {
-        Queue::fake();
-
-        $tenant = $this->createTestTenant();
-
-        $data = new ResultsProfileData(tenantId: (string) $tenant->id);
-        EnhanceTenantProfileJob::dispatch($data);
-
-        Queue::assertPushed(EnhanceTenantProfileJob::class, function (EnhanceTenantProfileJob $job) use ($tenant): bool {
-            return $job->uniqueId() === 'enhance_'.$tenant->id;
-        });
-    }
-
-    #[Test]
-    public function job_has_correct_queue_configuration(): void
-    {
-        $data = new ResultsProfileData(tenantId: '1');
-        $job = new EnhanceTenantProfileJob($data);
-
-        self::assertSame(3, $job->tries);
-        self::assertSame(180, $job->timeout);
-        self::assertSame(3600, $job->uniqueFor);
-    }
-
-    /**
-     * @param  array<string, mixed>  $overrides
-     */
-    private function createTestTenant(array $overrides = []): Tenant
-    {
-        $user = User::factory()->create(['role' => 'seller']);
-
-        return Tenant::forceCreate(array_merge([
-            'user_id' => $user->id,
-            'name' => 'Test Tenant',
-            'slug' => 'test-tenant-'.uniqid(),
-            'is_active' => true,
-            'is_ai_enhanced' => false,
-            'subscription_status' => 'active',
-            'plan_type' => 'pro',
-        ], $overrides));
-    }
-
-    /**
-     * @param  array<string, mixed>  $overrides
-     */
-    private function fakeSuccessfulOpenAiResponse(array $overrides = []): void
-    {
-        $defaultResponse = [
-            'status' => 'success',
-            'business_name_clean' => 'Pulperia Don Mario',
-            'tagline' => 'Tu tienda de confianza',
-            'short_description' => 'La mejor pulperia de Tegucigalpa',
-            'full_description_html' => '<p>Bienvenidos a nuestra pulperia.</p>',
-            'seo_keywords' => ['pulperia', 'tegucigalpa', 'tienda'],
-            'risk_analysis' => 'Low risk - standard retail business',
-        ];
-
-        Http::fake([
-            'api.openai.com/*' => Http::response([
-                'choices' => [
-                    [
-                        'message' => [
-                            'content' => json_encode(array_merge($defaultResponse, $overrides), JSON_THROW_ON_ERROR),
-                        ],
+    Http::fake([
+        'api.openai.com/*' => Http::response([
+            'choices' => [
+                [
+                    'message' => [
+                        'content' => json_encode([
+                            'status' => 'success',
+                            // Missing required keys
+                        ]),
                     ],
                 ],
-            ], 200),
-        ]);
-    }
-}
+            ],
+        ], 200),
+    ]);
 
-final class InMemoryTenantRepository implements TenantRepositoryInterface
-{
-    /**
-     * @var array<string, TenantEntity>
-     */
-    private array $tenants;
+    $service = new AiProfileGeneratorService;
 
-    public int $saveCalls = 0;
+    expect(fn () => $service->generate('Test', 'Desc', 'Cat'))
+        ->toThrow(Exception::class, 'missing required keys');
+});
 
-    /**
-     * @param  array<string, TenantEntity>  $tenants
-     */
-    public function __construct(array $tenants = [])
-    {
-        $this->tenants = $tenants;
-    }
+test('service returns valid response on success', function () {
+    config(['services.openai.key' => 'test-api-key']);
+    fakeSuccessfulOpenAiResponse();
 
-    public function findById(string $id): ?TenantEntity
-    {
-        return $this->tenants[$id] ?? null;
-    }
+    $service = new AiProfileGeneratorService;
+    $result = $service->generate('pulperia don mario', 'tienda local', 'Comercio');
 
-    public function findByIdForUpdate(string $id): ?TenantEntity
-    {
-        return $this->findById($id);
-    }
+    expect($result['status'])->toBe('success');
+    expect($result['business_name_clean'])->toBe('Pulpería Don Mario');
+    expect($result['seo_keywords'])->toBeArray();
+    expect($result['seo_keywords'])->toContain('pulpería');
+});
 
-    public function findBySlug(string $slug): ?TenantEntity
-    {
-        return null;
-    }
+test('service handles flagged content response', function () {
+    config(['services.openai.key' => 'test-api-key']);
 
-    public function existsBySlug(string $slug): bool
-    {
-        return false;
-    }
+    Http::fake([
+        'api.openai.com/*' => Http::response([
+            'choices' => [
+                [
+                    'message' => [
+                        'content' => json_encode([
+                            'status' => 'flagged',
+                            'business_name_clean' => 'Suspicious Business',
+                            'tagline' => '',
+                            'short_description' => '',
+                            'full_description_html' => '',
+                            'seo_keywords' => [],
+                            'risk_analysis' => 'Detected references to prohibited substances',
+                        ]),
+                    ],
+                ],
+            ],
+        ], 200),
+    ]);
 
-    public function findByDomain(string $domain): ?TenantEntity
-    {
-        return null;
-    }
+    $service = new AiProfileGeneratorService;
+    $result = $service->generate('Suspicious', 'drugs available', 'Unknown');
 
-    public function getFeatured(int $limit = 12): array
-    {
-        return [];
-    }
+    expect($result['status'])->toBe('flagged');
+    expect($result['risk_analysis'])->toContain('prohibited');
+});
 
-    public function countActive(): int
-    {
-        return 0;
-    }
+// ═══════════════════════════════════════════════════════════════════════════════
+// JOB TESTS: EnhanceTenantProfileJob
+// ═══════════════════════════════════════════════════════════════════════════════
 
-    public function getOpeningHours(string $tenantId): OpeningHours
-    {
-        return OpeningHours::create([]);
-    }
+test('job skips processing when tenant not found', function () {
+    $job = new EnhanceTenantProfileJob(999999);
+    $mockService = Mockery::mock(AiProfileGeneratorService::class);
+    $mockService->shouldNotReceive('generate');
 
-    public function create(array $attributes): TenantEntity
-    {
-        throw new Exception('Not implemented in test fake.');
-    }
+    $job->handle($mockService);
+    // Test passes if no exception thrown - tenant not found is handled gracefully
+    expect(true)->toBeTrue();
+});
 
-    public function save(TenantEntity $tenant): TenantEntity
-    {
-        $this->saveCalls++;
-        $this->tenants[$tenant->id()] = $tenant;
+test('job skips already enriched tenants (idempotency)', function () {
+    $tenant = createTestTenant([
+        'is_ai_enhanced' => true, // Already processed
+    ]);
 
-        return $tenant;
-    }
+    $job = new EnhanceTenantProfileJob($tenant->id);
+    $mockService = Mockery::mock(AiProfileGeneratorService::class);
+    $mockService->shouldNotReceive('generate');
 
-    public function updateOptimistically(TenantEntity $tenant): void
-    {
-        $this->tenants[$tenant->id()] = $tenant;
-    }
+    $job->handle($mockService);
+});
 
-    public function delete(TenantEntity $tenant): void
-    {
-        unset($this->tenants[$tenant->id()]);
-    }
-}
+test('job can be dispatched to queue', function () {
+    Queue::fake();
 
-final class FakeAiProfileGenerator implements AiProfileGeneratorInterface
-{
-    /**
-     * @var array<string, mixed>
-     */
-    private array $response;
+    $tenant = createTestTenant();
 
-    public int $calls = 0;
+    EnhanceTenantProfileJob::dispatch($tenant->id);
 
-    /**
-     * @var list<string>|null
-     */
-    public ?array $lastPayload = null;
+    Queue::assertPushed(EnhanceTenantProfileJob::class, function ($job) use ($tenant) {
+        return $job->uniqueId() === 'enhance-tenant-'.$tenant->id;
+    });
+});
 
-    /**
-     * @param  array<string, mixed>  $response
-     */
-    public function __construct(array $response)
-    {
-        $this->response = $response;
-    }
+test('job has correct queue configuration', function () {
+    $job = new EnhanceTenantProfileJob(1);
 
-    public function generate(string $rawName, string $rawDescription, string $rawCategory): array
-    {
-        $this->calls++;
-        $this->lastPayload = [$rawName, $rawDescription, $rawCategory];
-
-        return $this->response;
-    }
-}
-
-final class InlineTransactionManager implements TransactionManagerInterface
-{
-    public int $calls = 0;
-
-    public function transaction(callable $callback): mixed
-    {
-        $this->calls++;
-
-        return $callback();
-    }
-}
-
-final class RecordingApplicationLogger implements LoggerInterface
-{
-    /**
-     * @var list<array{message: string, context: array<string, mixed>}>
-     */
-    public array $infos = [];
-
-    /**
-     * @var list<array{message: string, context: array<string, mixed>}>
-     */
-    public array $warnings = [];
-
-    /**
-     * @var list<array{message: string, context: array<string, mixed>}>
-     */
-    public array $errors = [];
-
-    /**
-     * @var list<array{message: string, context: array<string, mixed>}>
-     */
-    public array $debugs = [];
-
-    /**
-     * @var list<array{message: string, context: array<string, mixed>}>
-     */
-    public array $criticals = [];
-
-    public function info(string $message, array $context = []): void
-    {
-        $this->infos[] = ['message' => $message, 'context' => $context];
-    }
-
-    public function warning(string $message, array $context = []): void
-    {
-        $this->warnings[] = ['message' => $message, 'context' => $context];
-    }
-
-    public function error(string $message, array $context = []): void
-    {
-        $this->errors[] = ['message' => $message, 'context' => $context];
-    }
-
-    public function debug(string $message, array $context = []): void
-    {
-        $this->debugs[] = ['message' => $message, 'context' => $context];
-    }
-
-    public function critical(string $message, array $context = []): void
-    {
-        $this->criticals[] = ['message' => $message, 'context' => $context];
-    }
-}
-
-final class PassthroughScrubber implements DataScrubberInterface
-{
-    public function scrub(array|object $payload): array
-    {
-        if (is_array($payload)) {
-            return $payload;
-        }
-
-        return get_object_vars($payload);
-    }
-}
+    expect($job->tries)->toBe(3);
+    expect($job->backoff)->toBe([30, 60, 120]);
+    expect($job->uniqueFor)->toBe(3600);
+    expect($job->timeout)->toBe(120);
+    expect($job->tenantId)->toBe(1);
+});

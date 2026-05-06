@@ -1,19 +1,7 @@
 <?php
 
-declare(strict_types=1);
+test('example', function () {
+    $response = $this->get('/');
 
-namespace Tests\Feature\Feature\Architecture;
-
-use PHPUnit\Framework\Attributes\Test;
-use Tests\TestCase;
-
-final class TenantIsolationTest extends TestCase
-{
-    #[Test]
-    public function example(): void
-    {
-        $response = $this->get('/');
-
-        $response->assertStatus(200);
-    }
-}
+    $response->assertStatus(200);
+});

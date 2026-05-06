@@ -2,41 +2,42 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature;
-
 use Carbon\Carbon;
-use PHPUnit\Framework\Attributes\Test;
-use Tests\TestCase;
 
-final class LocalizationTest extends TestCase
-{
-    #[Test]
-    public function it_sets_carbon_locale_to_spanish_during_http_requests(): void
-    {
+describe('Localization Configuration', function () {
+    it('sets carbon locale to spanish during http request', function () {
+        // Make an HTTP request to trigger full Laravel bootstrap
         $this->get('/');
 
-        self::assertSame('es', Carbon::getLocale());
-    }
+        // Carbon::getLocale() should return the global locale
+        expect(Carbon::getLocale())->toBe('es');
+    });
 
-    #[Test]
-    public function it_renders_relative_dates_in_spanish(): void
-    {
+    it('renders dates in spanish with diffForHumans', function () {
+        // Trigger full bootstrap
         $this->get('/');
 
+        // Arrange
         $date = Carbon::now()->subMinute();
+
+        // Act
         $diff = $date->diffForHumans();
 
-        self::assertStringContainsString('hace', $diff);
-    }
+        // Assert: Spanish output "hace X minuto(s)"
+        expect($diff)->toContain('hace');
+    });
 
-    #[Test]
-    public function it_renders_month_names_in_spanish(): void
-    {
+    it('renders translated month names in spanish', function () {
+        // Trigger full bootstrap
         $this->get('/');
 
+        // Arrange: A date in January
         $date = Carbon::parse('2026-01-15');
+
+        // Act: Use translated format
         $formatted = $date->translatedFormat('F');
 
-        self::assertSame('enero', strtolower($formatted));
-    }
-}
+        // Assert: Spanish month name
+        expect(strtolower($formatted))->toBe('enero');
+    });
+});

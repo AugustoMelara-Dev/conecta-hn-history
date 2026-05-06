@@ -1,101 +1,73 @@
 <?php
 
-declare(strict_types=1);
-
-namespace Tests\Feature\Sales;
-
 use App\Application\Sales\Commands\CreateOrderCommand;
 use App\Application\Sales\Decorators\IdempotentCreateOrderHandler;
 use App\Application\Sales\Handlers\CreateOrderHandlerInterface;
 use App\Application\Sales\Results\CreateOrderResult;
-use App\Application\Shared\Common\Exceptions\ConcurrentRequestException;
-use App\Application\Shared\Contracts\IdempotencyServiceInterface;
-use PHPUnit\Framework\Attributes\Test;
-use PHPUnit\Framework\TestCase;
+use App\Infrastructure\Common\Idempotency\RedisIdempotencyService;
 
-final class CreateOrderIdempotencyTest extends TestCase
-{
-    #[Test]
-    public function it_survives_replays_and_executes_the_core_handler_only_once(): void
-    {
-        $expectedResult = new CreateOrderResult(
-            id: 999,
-            orderNumber: 'ORD-ATOMIC-01',
-            totalAmount: 1500.00,
-            status: 'pending',
-            itemsCount: 2,
-            currency: 'HNL',
-            items: [],
-        );
+/**
+ * ⚔️ TEST DE ATAQUE DE REPETICIÓN (Stress Test)
+ * "Laws of Distributed Testing: Ley de Simulación de Carrera & Caja Negra"
+ */
+it('survives a synthetic replay attack ensuring single execution of core logic', function () {
+    // 1. Mocking del Núcleo (The Inner Barrier)
+    // El núcleo DEBE ser intocable después de la primera ejecución.
+    $mockCore = Mockery::mock(CreateOrderHandlerInterface::class);
 
-        $coreHandler = new RecordingCreateOrderHandler($expectedResult);
-        $service = new InMemoryIdempotencyService;
-        $decorator = new IdempotentCreateOrderHandler($coreHandler, $service);
+    // Generamos un resultado válido simulado
+    $expectedResult = new CreateOrderResult(
+        id: 999,
+        orderNumber: 'ORD-ATOMIC-01',
+        totalAmount: 1500.00,
+        status: 'pending',
+        itemsCount: 2,
+        currency: 'HNL',
+        items: []
+    );
 
-        $command = new CreateOrderCommand(
-            tenantId: 'tenant-1',
-            locationId: 'loc-primary',
-            customerId: 'customer-10',
-            currency: 'HNL',
-            items: [['product_id' => 1, 'quantity' => 1]],
-            idempotencyKey: 'atomic-key-XYZ',
-        );
+    // EXPECTATIVA CRÍTICA: shouldReceive(...)->once()
+    // Si pest detecta una segunda llamada, el test falla.
+    $mockCore->shouldReceive('handle')
+        ->once() // <--- THE LAW OF SINGLE EXECUTION
+        ->andReturn($expectedResult);
 
-        $resultA = $decorator->handle($command);
-        $resultB = $decorator->handle($command);
-        $resultC = $decorator->handle($command);
+    // 2. Ensamblaje de la Defensa (The Onion)
+    // Usamos ArrayStore para simular Redis en memoria con comportamiento real de Cache
+    $store = new \Illuminate\Cache\ArrayStore;
+    $repo = new \Illuminate\Cache\Repository($store);
+    $service = new RedisIdempotencyService($repo);
 
-        self::assertSame(1, $coreHandler->calls);
-        self::assertSame($expectedResult->toArray(), $resultA->toArray());
-        self::assertSame($resultA->toArray(), $resultB->toArray());
-        self::assertSame($resultB->toArray(), $resultC->toArray());
-    }
-}
+    $decorator = new IdempotentCreateOrderHandler($mockCore, $service);
 
-final class RecordingCreateOrderHandler implements CreateOrderHandlerInterface
-{
-    public int $calls = 0;
+    // 3. Command Setup
+    $command = new CreateOrderCommand(
+        tenantId: 1,
+        customerId: 10,
+        currency: 'HNL',
+        items: [['product_id' => 1, 'quantity' => 1]],
+        idempotencyKey: 'atomic-key-XYZ' // Clave explícita para el ataque
+    );
 
-    public function __construct(private readonly CreateOrderResult $result) {}
+    // 4. Ejecución del Ataque (Burst Fire)
 
-    public function handle(CreateOrderCommand $command): CreateOrderResult
-    {
-        $this->calls++;
+    // Disparo 1 (Cache Miss -> Lock -> Core -> Store)
+    $resultA = $decorator->handle($command);
 
-        return $this->result;
-    }
-}
+    // Disparo 2 (Replay -> Cache Hit)
+    $resultB = $decorator->handle($command);
 
-final class InMemoryIdempotencyService implements IdempotencyServiceInterface
-{
-    /** @var array<string, mixed> */
-    private array $results = [];
+    // Disparo 3 (Replay -> Cache Hit)
+    $resultC = $decorator->handle($command);
 
-    /** @var array<string, string> */
-    private array $states = [];
+    // 5. Aserción de Victoria (Consistency Check)
+    // Verificamos que todos los resultados sean idénticos en estructura y valor
+    expect($resultA)->toBeInstanceOf(CreateOrderResult::class)
+        ->and($resultB)->toBeInstanceOf(CreateOrderResult::class)
+        ->and($resultA->orderNumber)->toBe($expectedResult->orderNumber)
+        ->and($resultB->orderNumber)->toBe($expectedResult->orderNumber)
+        // Molecular Identity: Result objects are distinct instances but identical data
+        ->and($resultA)->not->toBe($resultB) // Different objects (deserialized)
+        ->and($resultA->toArray())->toBe($resultB->toArray()); // Same Data logic
 
-    public function get(string $key): mixed
-    {
-        return $this->results[$key] ?? null;
-    }
-
-    public function getState(string $key): ?string
-    {
-        return $this->states[$key] ?? null;
-    }
-
-    public function registerProcessing(string $key, int $ttlSeconds = 60): void
-    {
-        if (isset($this->states[$key])) {
-            throw ConcurrentRequestException::forKey($key);
-        }
-
-        $this->states[$key] = 'PROCESSING';
-    }
-
-    public function store(string $key, mixed $value, int $ttlSeconds = 86400): void
-    {
-        $this->results[$key] = $value;
-        $this->states[$key] = 'COMPLETED';
-    }
-}
+});

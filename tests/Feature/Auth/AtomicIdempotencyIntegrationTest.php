@@ -2,8 +2,8 @@
 
 namespace Tests\Feature\Auth;
 
-use App\Application\Shared\Common\Exceptions\ConcurrentRequestException;
-use App\Application\Shared\Common\Exceptions\IdempotencyKeyReuseException;
+use App\Application\Common\Exceptions\ConcurrentRequestException;
+use App\Application\Common\Exceptions\IdempotencyKeyReuseException;
 use App\Infrastructure\Common\Idempotency\AtomicIdempotencyService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
@@ -12,7 +12,10 @@ use Tests\TestCase;
 
 class AtomicIdempotencyIntegrationTest extends TestCase
 {
-    use DatabaseTransactions;
+    // Use DatabaseTransactions to roll back changes after each test
+    // This assumes the table exists in the DB.
+    // If migration failed on the test DB, this will fail.
+    use \Illuminate\Foundation\Testing\RefreshDatabase;
 
     private AtomicIdempotencyService $service;
 
@@ -24,7 +27,7 @@ class AtomicIdempotencyIntegrationTest extends TestCase
         $this->service = $this->app->make(AtomicIdempotencyService::class);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function it_successfully_executes_locks_and_completes_operation()
     {
         $key = Uuid::uuid7()->toString();
@@ -48,7 +51,7 @@ class AtomicIdempotencyIntegrationTest extends TestCase
         $this->assertEquals(1, $payload['v'], 'Payload version mismatch');
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function it_prevents_replay_with_different_hash()
     {
         $key = Uuid::uuid7()->toString();
@@ -64,7 +67,7 @@ class AtomicIdempotencyIntegrationTest extends TestCase
         $this->service->execute($key, $tenantId, $hash2, fn () => 'hacker');
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function it_returns_cached_result_on_replay_with_same_hash()
     {
         $key = Uuid::uuid7()->toString();
@@ -87,7 +90,7 @@ class AtomicIdempotencyIntegrationTest extends TestCase
         $this->assertEquals(['data' => 123], $result2);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function it_throws_concurrent_exception_when_row_is_locked_processing()
     {
         $key = Uuid::uuid7()->toString();
@@ -112,7 +115,7 @@ class AtomicIdempotencyIntegrationTest extends TestCase
         });
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function it_cleans_up_processing_state_on_domain_failure()
     {
         $key = Uuid::uuid7()->toString();

@@ -36,7 +36,7 @@ test('track routes have throttle middleware', function () {
 // ═══════════════════════════════════════════════════════════════════════════
 
 test('store order request does not validate tenant_id from input', function () {
-    $request = new StoreOrderRequest;
+    $request = new StoreOrderRequest();
     $rules = $request->rules();
 
     expect($rules)->not->toHaveKey('tenant_id');

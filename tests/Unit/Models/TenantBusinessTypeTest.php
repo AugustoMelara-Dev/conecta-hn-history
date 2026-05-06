@@ -11,11 +11,21 @@ use App\Models\Tenant;
 
 // TEST 1: BusinessType enum exists with correct cases
 it('BusinessType enum has correct cases', function () {
-    expect(BusinessType::cases())->toHaveCount(4);
+    expect(BusinessType::cases())->toHaveCount(2);
     expect(BusinessType::RETAIL->value)->toBe('retail');
-    expect(BusinessType::FOOD->value)->toBe('food');
     expect(BusinessType::SERVICE->value)->toBe('service');
-    expect(BusinessType::HYBRID->value)->toBe('hybrid');
+});
+
+// TEST 2: BusinessType has labels for Filament
+it('BusinessType has labels for Filament', function () {
+    expect(BusinessType::RETAIL->getLabel())->toBe('Comercio (Retail)');
+    expect(BusinessType::SERVICE->getLabel())->toBe('Servicios / Reservas');
+});
+
+// TEST 3: BusinessType has icons
+it('BusinessType has icons', function () {
+    expect(BusinessType::RETAIL->getIcon())->toBe('heroicon-o-shopping-bag');
+    expect(BusinessType::SERVICE->getIcon())->toBe('heroicon-o-calendar');
 });
 
 // TEST 4: Tenant model casts business_type to enum

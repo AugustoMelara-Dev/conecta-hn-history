@@ -4,18 +4,18 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Identity\Http;
 
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Tests\TestCase;
 
 class RegisterUserEndpointTest extends TestCase
 {
     // USO DE MIGRACIONES REALES PARA EVITAR DEADLOCKS TRANSACCIONALES
     // Esto destruye y recrea las tablas por cada test, eliminando conflictos de bloqueo.
-    use DatabaseTransactions;
+    use DatabaseMigrations;
 
     private string $endpoint = '/api/v1/register';
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function it_registers_a_user_successfully_and_persists_data()
     {
         // 1. Verbose Exception Rule (Happy Path)
@@ -56,11 +56,11 @@ class RegisterUserEndpointTest extends TestCase
         ]);
 
         $this->assertDatabaseHas('tenants', [
-            'slug' => $payload['tenant_domain'],
+            'domain' => $payload['tenant_domain'],
         ]);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function it_rejects_invalid_input_formats()
     {
         // Critical: Exception Handling MUST be active (Implicit) here.
@@ -88,7 +88,7 @@ class RegisterUserEndpointTest extends TestCase
         ]);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function it_rejects_duplicate_registration_proving_sql_projection()
     {
         // Fase 1: Siembra (Verbose Mode for Debugging)

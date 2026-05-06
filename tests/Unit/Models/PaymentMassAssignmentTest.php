@@ -7,10 +7,9 @@ namespace Tests\Unit\Models;
 use App\Domain\Shared\Services\TenantContext;
 use App\Models\Payment;
 use App\Models\Tenant;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
-use Illuminate\Support\Str;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
-uses(DatabaseTransactions::class);
+uses(RefreshDatabase::class);
 
 /**
  * VC-AUDIT-002 Verification: Payment Mass Assignment Protection
@@ -23,36 +22,32 @@ test('payment model guards tenant_id against mass assignment', function () {
     $tenant1 = Tenant::factory()->create();
     $tenant2 = Tenant::factory()->create();
 
-    // Act: Set tenant context to tenant1 and create a payment without tenant_id
-    $tenantContext = app(TenantContext::class);
-    $tenantContext->reset();
-    $tenantContext->setTenant((string) $tenant1->id);
+    // Act: Set tenant context to tenant1 and attempt to create payment for tenant2
+    app(TenantContext::class)->set($tenant1->id);
 
     $payment = Payment::create([
-        'id' => (string) Str::uuid(),
+        'tenant_id' => $tenant2->id,  // Malicious: attempt cross-tenant
         'amount' => 99.99,
         'status' => 'pending',
         'reference_number' => 'REF-TEST-001',
         'bank' => 'Test Bank',
-        'proof_path' => 'payments/proof-mock.jpg',
-        'idempotency_key' => (string) Str::uuid(),
     ]);
 
-    // Assert: tenant_id should be injected from context (tenant1)
-    expect($payment->tenant_id)->toBe($tenant1->id);
-    expect($payment->tenant_id === $tenant2->id)->toBeFalse();
+    // Assert: tenant_id should be from context (tenant1), NOT from the malicious input
+    expect($payment->tenant_id)->toBe($tenant1->id)
+        ->and($payment->tenant_id)->not->toBe($tenant2->id);
 });
 
 test('payment tenant_id is in guarded array', function () {
-    $payment = new Payment;
+    $payment = new Payment();
     $guarded = $payment->getGuarded();
 
     expect($guarded)->toContain('tenant_id');
 });
 
 test('payment tenant_id is not in fillable array', function () {
-    $payment = new Payment;
+    $payment = new Payment();
     $fillable = $payment->getFillable();
 
-    expect(in_array('tenant_id', $fillable, true))->toBeFalse();
+    expect($fillable)->not->toContain('tenant_id');
 });

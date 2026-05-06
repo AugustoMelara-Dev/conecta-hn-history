@@ -6,7 +6,7 @@ use App\Enums\LowStockSeverity;
 use App\Events\Broadcast\LowStockBroadcast;
 
 // Bootstrap Laravel — needed for trans_choice() in buildMessage()
-// uses(Tests\TestCase::class);
+uses(Tests\TestCase::class);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPER: Build a LowStockBroadcast with sensible defaults
@@ -15,7 +15,7 @@ use App\Events\Broadcast\LowStockBroadcast;
 function makeLowStockBroadcast(array $overrides = []): LowStockBroadcast
 {
     $defaults = [
-        'tenantId' => '00000000-0000-0000-0000-000000000005',
+        'tenantId' => 5,
         'productId' => 42,
         'productName' => 'Tornillo Hexagonal',
         'productSku' => 'TH-001',
@@ -73,7 +73,7 @@ test('broadcastWith contains correct domain values', function () {
 
     $payload = $broadcast->broadcastWith();
 
-    expect($payload['tenant_id'])->toBe('00000000-0000-0000-0000-000000000005');
+    expect($payload['tenant_id'])->toBe(5);
     expect($payload['product_id'])->toBe(42);
     expect($payload['product_name'])->toBe('Tornillo Hexagonal');
     expect($payload['product_sku'])->toBe('TH-001');
@@ -197,7 +197,7 @@ test('broadcast title for Critical is Critical', function () {
 
 test('fromDomainData creates correct instance', function () {
     $broadcast = LowStockBroadcast::fromDomainData(
-        tenantId: '00000000-0000-0000-0000-000000000001',
+        tenantId: 3,
         productId: 99,
         productName: 'Café Molido',
         productSku: 'CM-500',
@@ -209,7 +209,7 @@ test('fromDomainData creates correct instance', function () {
 
     $payload = $broadcast->broadcastWith();
 
-    expect($payload['tenant_id'])->toBe('00000000-0000-0000-0000-000000000001');
+    expect($payload['tenant_id'])->toBe(3);
     expect($payload['product_id'])->toBe(99);
     expect($payload['product_name'])->toBe('Café Molido');
     expect($payload['severity'])->toBe('critical');

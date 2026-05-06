@@ -45,11 +45,11 @@ class BroadcastPayloadTest extends TestCase
     // UI CONTRACT TESTS
     // ═══════════════════════════════════════════════════════════════════════
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function order_paid_broadcast_satisfies_ui_contract(): void
     {
         $event = OrderPaidBroadcast::fromDomainData(
-            tenantId: '00000000-0000-0000-0000-000000000001',
+            tenantId: 1,
             orderId: 123,
             orderNumber: 'ORD-2026-00001',
             amountCents: 150000,
@@ -68,11 +68,11 @@ class BroadcastPayloadTest extends TestCase
         $this->assertEquals('check-circle', $payload['icon']);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function order_cancelled_broadcast_satisfies_ui_contract(): void
     {
         $event = OrderCancelledBroadcast::fromDomainData(
-            tenantId: '00000000-0000-0000-0000-000000000002',
+            tenantId: 2,
             orderId: 456,
             orderNumber: 'ORD-2026-00002',
             reason: 'customer_request',
@@ -89,11 +89,11 @@ class BroadcastPayloadTest extends TestCase
         $this->assertEquals('cancelled', $payload['status']);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function low_stock_broadcast_satisfies_ui_contract(): void
     {
         $event = LowStockBroadcast::fromDomainData(
-            tenantId: '00000000-0000-0000-0000-000000000001',
+            tenantId: 3,
             productId: 789,
             productName: 'Premium Widget',
             productSku: 'WDG-001',
@@ -112,11 +112,11 @@ class BroadcastPayloadTest extends TestCase
         $this->assertEquals('low_stock', $payload['status']);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function order_shipped_broadcast_satisfies_ui_contract(): void
     {
         $event = OrderShippedBroadcast::fromDomainData(
-            tenantId: '00000000-0000-0000-0000-000000000001',
+            tenantId: 4,
             orderId: 101,
             orderNumber: 'ORD-2026-00003',
             carrier: 'fedex',
@@ -134,11 +134,11 @@ class BroadcastPayloadTest extends TestCase
         $this->assertEquals('shipped', $payload['status']);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function order_refunded_broadcast_satisfies_ui_contract(): void
     {
         $event = OrderRefundedBroadcast::fromDomainData(
-            tenantId: '00000000-0000-0000-0000-000000000001',
+            tenantId: 5,
             orderId: 202,
             orderNumber: 'ORD-2026-00004',
             refundAmountCents: 50000,
@@ -157,12 +157,12 @@ class BroadcastPayloadTest extends TestCase
         $this->assertEquals('refunded', $payload['status']);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function new_login_detected_broadcast_satisfies_ui_contract(): void
     {
         $event = NewLoginDetectedBroadcast::fromDomainData(
             userId: 100,
-            tenantId: '00000000-0000-0000-0000-000000000001',
+            tenantId: 1,
             userEmail: 'user@example.com',
             ipAddress: '192.168.1.100',
             userAgent: 'Mozilla/5.0 Chrome/120',
@@ -183,7 +183,7 @@ class BroadcastPayloadTest extends TestCase
     // i18n MULTI-LOCALE TESTS
     // ═══════════════════════════════════════════════════════════════════════
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function translations_resolve_for_spanish_locale(): void
     {
         app()->setLocale('es');
@@ -196,7 +196,7 @@ class BroadcastPayloadTest extends TestCase
         $this->assertNoMissingPlaceholders($payload);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function translations_fallback_to_english_when_locale_missing(): void
     {
         app()->setLocale('en');
@@ -214,11 +214,11 @@ class BroadcastPayloadTest extends TestCase
     // EDGE CASES: NULL VALUES
     // ═══════════════════════════════════════════════════════════════════════
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function low_stock_broadcast_handles_null_sku_gracefully(): void
     {
         $event = LowStockBroadcast::fromDomainData(
-            tenantId: '00000000-0000-0000-0000-000000000001',
+            tenantId: 1,
             productId: 1,
             productName: 'Widget',
             productSku: null,
@@ -236,11 +236,11 @@ class BroadcastPayloadTest extends TestCase
         $this->assertStringNotContainsString('(SKU:', $payload['message']);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function order_refunded_handles_null_reason(): void
     {
         $event = OrderRefundedBroadcast::fromDomainData(
-            tenantId: '00000000-0000-0000-0000-000000000001',
+            tenantId: 1,
             orderId: 1,
             orderNumber: 'ORD-1',
             refundAmountCents: 1000,
@@ -257,12 +257,12 @@ class BroadcastPayloadTest extends TestCase
         $this->assertNoMissingPlaceholders($payload);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function new_login_handles_null_user_agent(): void
     {
         $event = NewLoginDetectedBroadcast::fromDomainData(
             userId: 1,
-            tenantId: '00000000-0000-0000-0000-000000000001',
+            tenantId: 1,
             userEmail: 'user@test.com',
             ipAddress: '10.0.0.1',
             userAgent: null,
@@ -279,11 +279,11 @@ class BroadcastPayloadTest extends TestCase
     // EDGE CASES: SPECIAL CHARACTERS
     // ═══════════════════════════════════════════════════════════════════════
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function low_stock_handles_special_characters_in_product_name(): void
     {
         $event = LowStockBroadcast::fromDomainData(
-            tenantId: '00000000-0000-0000-0000-000000000001',
+            tenantId: 1,
             productId: 1,
             productName: "L'Oréal Premium \"Deluxe\" & Co.",
             productSku: "SKU-O'BRIEN",
@@ -305,11 +305,11 @@ class BroadcastPayloadTest extends TestCase
     // EDGE CASES: MONEY FORMATTING PRECISION
     // ═══════════════════════════════════════════════════════════════════════
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function format_money_handles_zero_amount(): void
     {
         $event = OrderPaidBroadcast::fromDomainData(
-            tenantId: '00000000-0000-0000-0000-000000000001',
+            tenantId: 1,
             orderId: 1,
             orderNumber: 'ORD-1',
             amountCents: 0,
@@ -323,11 +323,11 @@ class BroadcastPayloadTest extends TestCase
         $this->assertMatchesRegularExpression('/0[.,]00/', $payload['amount_formatted']);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function format_money_handles_large_amounts(): void
     {
         $event = OrderPaidBroadcast::fromDomainData(
-            tenantId: '00000000-0000-0000-0000-000000000001',
+            tenantId: 1,
             orderId: 1,
             orderNumber: 'ORD-1',
             amountCents: 99999999,
@@ -340,11 +340,11 @@ class BroadcastPayloadTest extends TestCase
         $this->assertStringContainsString('999', $payload['amount_formatted']);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function format_money_handles_cents_correctly(): void
     {
         $event = OrderPaidBroadcast::fromDomainData(
-            tenantId: '00000000-0000-0000-0000-000000000001',
+            tenantId: 1,
             orderId: 1,
             orderNumber: 'ORD-1',
             amountCents: 333,
@@ -361,7 +361,7 @@ class BroadcastPayloadTest extends TestCase
     // CHANNEL REGISTRY VALIDATION
     // ═══════════════════════════════════════════════════════════════════════
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function channel_registry_rejects_zero_tenant_id(): void
     {
         $this->expectException(InvalidArgumentException::class);
@@ -370,7 +370,7 @@ class BroadcastPayloadTest extends TestCase
         ChannelRegistry::tenant(0);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function channel_registry_rejects_negative_tenant_id(): void
     {
         $this->expectException(InvalidArgumentException::class);
@@ -379,14 +379,14 @@ class BroadcastPayloadTest extends TestCase
         ChannelRegistry::tenant(-5);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function channel_registry_generates_correct_channel_name(): void
     {
         $channelName = ChannelRegistry::tenantName(42);
         $this->assertEquals('tenant.42', $channelName);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function channel_registry_exposes_pattern_constants(): void
     {
         $this->assertEquals('tenant.{id}', ChannelRegistry::TENANT_CHANNEL_PATTERN);
@@ -394,7 +394,7 @@ class BroadcastPayloadTest extends TestCase
         $this->assertEquals('order.{id}', ChannelRegistry::ORDER_CHANNEL_PATTERN);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function channel_registry_rejects_zero_user_id(): void
     {
         $this->expectException(InvalidArgumentException::class);
@@ -403,7 +403,7 @@ class BroadcastPayloadTest extends TestCase
         ChannelRegistry::user(0);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function channel_registry_rejects_negative_order_id(): void
     {
         $this->expectException(InvalidArgumentException::class);
@@ -412,14 +412,14 @@ class BroadcastPayloadTest extends TestCase
         ChannelRegistry::order(-10);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function channel_registry_generates_correct_order_name(): void
     {
         $orderName = ChannelRegistry::orderName(999);
         $this->assertEquals('order.999', $orderName);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function channel_registry_generates_correct_user_name(): void
     {
         $userName = ChannelRegistry::userName(123);
@@ -430,13 +430,13 @@ class BroadcastPayloadTest extends TestCase
     // SEVERITY VALIDATION TESTS
     // ═══════════════════════════════════════════════════════════════════════
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function low_stock_broadcast_rejects_invalid_severity(): void
     {
         $this->expectException(\ValueError::class);
 
         LowStockBroadcast::fromDomainData(
-            tenantId: '00000000-0000-0000-0000-000000000001',
+            tenantId: 1,
             productId: 1,
             productName: 'Widget',
             productSku: null,
@@ -447,14 +447,14 @@ class BroadcastPayloadTest extends TestCase
         );
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function low_stock_broadcast_accepts_valid_severities(): void
     {
         $severities = ['info', 'warning', 'critical'];
 
         foreach ($severities as $severity) {
             $event = LowStockBroadcast::fromDomainData(
-                tenantId: '00000000-0000-0000-0000-000000000001',
+                tenantId: 1,
                 productId: 1,
                 productName: 'Widget',
                 productSku: null,
@@ -472,6 +472,32 @@ class BroadcastPayloadTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════
     // SECURITY TESTS
     // ═══════════════════════════════════════════════════════════════════════
+
+    /** @test */
+    public function broadcast_payloads_contain_no_object_instances(): void
+    {
+        $events = [
+            OrderPaidBroadcast::fromDomainData(1, 1, 'ORD-1', 1000, 'HNL', 'cash', new DateTimeImmutable),
+            OrderCancelledBroadcast::fromDomainData(1, 1, 'ORD-1', 'test', false, new DateTimeImmutable),
+            LowStockBroadcast::fromDomainData(1, 1, 'Product', null, 5, 10, 'warning', new DateTimeImmutable),
+            OrderShippedBroadcast::fromDomainData(1, 1, 'ORD-1', 'ups', '123', null, new DateTimeImmutable),
+            OrderRefundedBroadcast::fromDomainData(1, 1, 'ORD-1', 1000, 'HNL', false, null, new DateTimeImmutable),
+            NewLoginDetectedBroadcast::fromDomainData(1, 1, 'test@test.com', '1.1.1.1', null, new DateTimeImmutable),
+        ];
+
+        foreach ($events as $event) {
+            $payload = $event->broadcastWith();
+            $eventClass = get_class($event);
+
+            foreach ($payload as $key => $value) {
+                $isScalarOrNull = is_null($value) || is_scalar($value) || is_array($value);
+                $this->assertTrue(
+                    $isScalarOrNull,
+                    "Broadcast event {$eventClass} contains non-scalar in key '{$key}'"
+                );
+            }
+        }
+    }
 
     // ═══════════════════════════════════════════════════════════════════════
     // HELPER METHODS
@@ -575,13 +601,13 @@ class BroadcastPayloadTest extends TestCase
     // PLURALIZATION GRAMMAR TESTS
     // ═══════════════════════════════════════════════════════════════════════
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function low_stock_message_uses_singular_when_stock_is_one(): void
     {
         app()->setLocale('es');
 
         $event = LowStockBroadcast::fromDomainData(
-            tenantId: '00000000-0000-0000-0000-000000000001',
+            tenantId: 1,
             productId: 1,
             productName: 'Widget',
             productSku: null,
@@ -598,13 +624,13 @@ class BroadcastPayloadTest extends TestCase
         $this->assertStringNotContainsString('unidades', $payload['message']);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function low_stock_message_uses_plural_when_stock_is_multiple(): void
     {
         app()->setLocale('es');
 
         $event = LowStockBroadcast::fromDomainData(
-            tenantId: '00000000-0000-0000-0000-000000000001',
+            tenantId: 1,
             productId: 1,
             productName: 'Widget',
             productSku: null,
@@ -620,13 +646,13 @@ class BroadcastPayloadTest extends TestCase
         $this->assertStringContainsString('unidades', $payload['message']);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function low_stock_message_uses_out_of_stock_when_zero(): void
     {
         app()->setLocale('es');
 
         $event = LowStockBroadcast::fromDomainData(
-            tenantId: '00000000-0000-0000-0000-000000000001',
+            tenantId: 1,
             productId: 1,
             productName: 'Widget',
             productSku: null,
@@ -646,7 +672,7 @@ class BroadcastPayloadTest extends TestCase
     // PLACEHOLDER DETECTION NEGATIVE TESTS
     // ═══════════════════════════════════════════════════════════════════════
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function placeholder_scanner_detects_unresolved_placeholders(): void
     {
         // Simulate a string with an unresolved placeholder (typo scenario)
@@ -660,7 +686,7 @@ class BroadcastPayloadTest extends TestCase
         // The scanner should detect the unreplaced placeholder
         $detectedPlaceholders = [];
         foreach ($testPayload as $key => $value) {
-            if (preg_match_all('/:[a-zA-Z_][a-zA-Z0-9_]*/', $value, $matches)) {
+            if (is_string($value) && preg_match_all('/:[a-zA-Z_][a-zA-Z0-9_]*/', $value, $matches)) {
                 $detectedPlaceholders = array_merge($detectedPlaceholders, $matches[0]);
             }
         }
@@ -668,7 +694,7 @@ class BroadcastPayloadTest extends TestCase
         $this->assertContains(':amout', $detectedPlaceholders);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function placeholder_scanner_ignores_iso_timestamps(): void
     {
         $timestamp = '2026-01-01T12:30:45+00:00';
@@ -684,7 +710,7 @@ class BroadcastPayloadTest extends TestCase
     // INTERFACE IMPLEMENTATION TESTS
     // ═══════════════════════════════════════════════════════════════════════
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function all_broadcast_events_implement_broadcastable_notification(): void
     {
         $events = [
@@ -709,11 +735,34 @@ class BroadcastPayloadTest extends TestCase
     // OBSERVABILITY / LOGGING TESTS
     // ═══════════════════════════════════════════════════════════════════════
 
+    /** @test */
+    public function broadcast_events_log_when_broadcasting(): void
+    {
+        // Use Laravel's Log facade spy
+        \Illuminate\Support\Facades\Log::spy();
+
+        $event = OrderPaidBroadcast::fromDomainData(
+            tenantId: 1,
+            orderId: 123,
+            orderNumber: 'ORD-TEST',
+            amountCents: 10000,
+            currency: 'HNL',
+            paymentMethod: 'card',
+            paidAt: new DateTimeImmutable,
+        );
+
+        // Trigger broadcastWith which contains the log call
+        $event->broadcastWith();
+
+        // Verify log was called (spy mode)
+        \Illuminate\Support\Facades\Log::shouldHaveReceived('channel')->atLeast()->once();
+    }
+
     // ═══════════════════════════════════════════════════════════════════════
     // FORMATS CURRENCY FALLBACK TESTS
     // ═══════════════════════════════════════════════════════════════════════
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function format_money_rejects_empty_currency_without_intl(): void
     {
         // This test verifies currency validation works
@@ -724,7 +773,7 @@ class BroadcastPayloadTest extends TestCase
         {
             use \App\Traits\FormatsCurrency;
 
-            public function test_format(int $cents, string $currency): string
+            public function testFormat(int $cents, string $currency): string
             {
                 return $this->formatMoney($cents, $currency);
             }
@@ -733,10 +782,10 @@ class BroadcastPayloadTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Currency code cannot be empty');
 
-        $formatter->test_format(1000, '');
+        $formatter->testFormat(1000, '');
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function format_money_supports_additional_currencies(): void
     {
         $formatter = new class
@@ -750,11 +799,11 @@ class BroadcastPayloadTest extends TestCase
         };
 
         // Test MXN (Mexican Peso)
-        $mxnResult = $formatter->test_format(15000, 'MXN');
+        $mxnResult = $formatter->testFormat(15000, 'MXN');
         $this->assertNotEmpty($mxnResult);
 
         // Test GTQ (Guatemalan Quetzal)
-        $gtqResult = $formatter->test_format(25000, 'GTQ');
+        $gtqResult = $formatter->testFormat(25000, 'GTQ');
         $this->assertNotEmpty($gtqResult);
     }
 
@@ -762,7 +811,7 @@ class BroadcastPayloadTest extends TestCase
     // ENUM TESTS
     // ═══════════════════════════════════════════════════════════════════════
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function low_stock_severity_enum_has_all_values(): void
     {
         $values = \App\Enums\LowStockSeverity::values();
@@ -773,7 +822,7 @@ class BroadcastPayloadTest extends TestCase
         $this->assertCount(3, $values);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function low_stock_severity_enum_provides_labels(): void
     {
         $this->assertEquals('Warning', \App\Enums\LowStockSeverity::Warning->label());
@@ -781,7 +830,7 @@ class BroadcastPayloadTest extends TestCase
         $this->assertEquals('Informational', \App\Enums\LowStockSeverity::Info->label());
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function low_stock_severity_critical_requires_immediate_action(): void
     {
         $this->assertTrue(\App\Enums\LowStockSeverity::Critical->requiresImmediateAction());
@@ -793,7 +842,7 @@ class BroadcastPayloadTest extends TestCase
     // PAYLOAD CONSISTENCY TESTS
     // ═══════════════════════════════════════════════════════════════════════
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function all_broadcast_events_include_tenant_id_in_payload(): void
     {
         $events = [

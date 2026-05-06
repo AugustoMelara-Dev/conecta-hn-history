@@ -13,9 +13,9 @@ use PHPUnit\Framework\TestCase;
 class InvalidCouponExceptionTest extends TestCase
 {
     /**
+     * @test
      * Exception should return correct HTTP status code for NOT_FOUND
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function returns_404_for_not_found_error(): void
     {
         $exception = new InvalidCouponException('Coupon not found', 'NOT_FOUND');
@@ -25,9 +25,9 @@ class InvalidCouponExceptionTest extends TestCase
     }
 
     /**
+     * @test
      * Exception should return correct HTTP status code for EXPIRED
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function returns_410_for_expired_error(): void
     {
         $exception = new InvalidCouponException('Coupon expired', 'EXPIRED');
@@ -37,9 +37,9 @@ class InvalidCouponExceptionTest extends TestCase
     }
 
     /**
+     * @test
      * Exception should return correct HTTP status code for DEPLETED
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function returns_410_for_depleted_error(): void
     {
         $exception = new InvalidCouponException('Coupon depleted', 'DEPLETED');
@@ -49,9 +49,9 @@ class InvalidCouponExceptionTest extends TestCase
     }
 
     /**
+     * @test
      * Exception should return 410 Gone status for INACTIVE coupon error code
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function it_returns_410_gone_status_for_inactive_coupon_error_code(): void
     {
         $exception = new InvalidCouponException('Coupon is inactive', 'INACTIVE');
@@ -61,9 +61,9 @@ class InvalidCouponExceptionTest extends TestCase
     }
 
     /**
+     * @test
      * Exception should return 422 for default/unknown errors
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function returns_422_for_default_error(): void
     {
         $exception = new InvalidCouponException('Invalid coupon', 'INVALID_MINIMUM');
@@ -73,9 +73,9 @@ class InvalidCouponExceptionTest extends TestCase
     }
 
     /**
+     * @test
      * toArray should return canonical structure
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function to_array_returns_canonical_structure(): void
     {
         $exception = new InvalidCouponException('Test message', 'TEST_CODE', ['key' => 'value']);
@@ -91,9 +91,9 @@ class InvalidCouponExceptionTest extends TestCase
     }
 
     /**
+     * @test
      * Context should include coupon_error and custom data
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function context_includes_coupon_error_and_custom_data(): void
     {
         $exception = new InvalidCouponException('Test', 'EXPIRED', ['remaining' => 50.00]);

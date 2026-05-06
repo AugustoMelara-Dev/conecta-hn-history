@@ -35,9 +35,12 @@ use Tests\TestCase;
  */
 class EventSerializationTest extends TestCase
 {
-    #[\PHPUnit\Framework\Attributes\Test]
-    #[\PHPUnit\Framework\Attributes\Group('events')]
-    #[\PHPUnit\Framework\Attributes\Group('serialization')]
+    /**
+     * @test
+     *
+     * @group events
+     * @group serialization
+     */
     public function sales_export_created_survives_serialization(): void
     {
         $tenantId = TenantId::fromString('00000000-0000-0000-0000-000000000042');
@@ -70,9 +73,12 @@ class EventSerializationTest extends TestCase
         $this->assertEquals($original->criteriaDetails, $reconstituted->criteriaDetails);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
-    #[\PHPUnit\Framework\Attributes\Group('events')]
-    #[\PHPUnit\Framework\Attributes\Group('serialization')]
+    /**
+     * @test
+     *
+     * @group events
+     * @group serialization
+     */
     public function failed_login_attempt_survives_serialization(): void
     {
         $context = new AuditContext(
@@ -97,9 +103,12 @@ class EventSerializationTest extends TestCase
         $this->assertEquals($original->failureReason, $reconstituted->failureReason);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
-    #[\PHPUnit\Framework\Attributes\Group('events')]
-    #[\PHPUnit\Framework\Attributes\Group('serialization')]
+    /**
+     * @test
+     *
+     * @group events
+     * @group serialization
+     */
     public function sensitive_data_accessed_survives_serialization(): void
     {
         $context = new AuditContext(
@@ -111,7 +120,7 @@ class EventSerializationTest extends TestCase
 
         $original = new SensitiveDataAccessed(
             actorId: 99,
-            actorEmail: 'admin@vitobusinessos.com',
+            actorEmail: 'admin@conectahn.com',
             tenantId: TenantId::fromInt(1),
             resource: 'customer_export',
             action: 'download',
@@ -132,9 +141,12 @@ class EventSerializationTest extends TestCase
         $this->assertEquals($original->affectedRecords, $reconstituted->affectedRecords);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
-    #[\PHPUnit\Framework\Attributes\Group('events')]
-    #[\PHPUnit\Framework\Attributes\Group('serialization')]
+    /**
+     * @test
+     *
+     * @group events
+     * @group serialization
+     */
     public function tenant_suspended_survives_serialization(): void
     {
         $suspendedUntil = new DateTimeImmutable('2026-03-01T00:00:00+00:00');
@@ -169,9 +181,12 @@ class EventSerializationTest extends TestCase
         );
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
-    #[\PHPUnit\Framework\Attributes\Group('events')]
-    #[\PHPUnit\Framework\Attributes\Group('serialization')]
+    /**
+     * @test
+     *
+     * @group events
+     * @group serialization
+     */
     public function tenant_suspended_handles_permanent_suspension(): void
     {
         $context = new AuditContext(
@@ -200,14 +215,17 @@ class EventSerializationTest extends TestCase
         $this->assertNull($reconstituted->suspendedUntil);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
-    #[\PHPUnit\Framework\Attributes\Group('events')]
-    #[\PHPUnit\Framework\Attributes\Group('serialization')]
+    /**
+     * @test
+     *
+     * @group events
+     * @group serialization
+     */
     public function order_shipped_includes_tracking_data(): void
     {
         // OrderShipped no longer has trackingUrl() - it exposes raw data
         $event = OrderShipped::create(
-            tenantId: '00000000-0000-0000-0000-000000000001',
+            tenantId: 1,
             orderId: 123,
             orderNumber: 'ORD-2026-00001',
             carrier: 'fedex',
@@ -224,9 +242,12 @@ class EventSerializationTest extends TestCase
         $this->assertEquals('2026-01-15', $reconstituted->estimatedDelivery);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
-    #[\PHPUnit\Framework\Attributes\Group('events')]
-    #[\PHPUnit\Framework\Attributes\Group('serialization')]
+    /**
+     * @test
+     *
+     * @group events
+     * @group serialization
+     */
     public function primitives_are_json_serializable(): void
     {
         $context = new AuditContext(
@@ -263,6 +284,12 @@ class EventSerializationTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════
 
     /**
+     * @test
+     *
+     * @group events
+     * @group robustness
+     * @group chaos
+     *
      * CHAOS TEST: Verify system survives missing non-critical keys.
      *
      * Simulates: A message from an older version of the event, or partial
@@ -271,15 +298,11 @@ class EventSerializationTest extends TestCase
      * Expected: The system uses default values and does NOT throw
      * "Undefined array key" warnings.
      */
-    #[\PHPUnit\Framework\Attributes\Test]
-    #[\PHPUnit\Framework\Attributes\Group('events')]
-    #[\PHPUnit\Framework\Attributes\Group('robustness')]
-    #[\PHPUnit\Framework\Attributes\Group('chaos')]
     public function it_reconstitutes_gracefully_with_missing_keys(): void
     {
         // Minimal payload: only the absolutely required key (tenant_id)
         $degradedPayload = [
-            'tenant_id' => '00000000-0000-0000-0000-000000000001',
+            'tenant_id' => 42,
             // Missing: order_id, order_number, carrier, tracking_number,
             // estimated_delivery, event_id, occurred_at, correlation_id
         ];
@@ -290,7 +313,7 @@ class EventSerializationTest extends TestCase
         // Verify defaults were applied correctly via toPrimitives()
         $primitives = $event->toPrimitives();
 
-        $this->assertEquals('00000000-0000-0000-0000-000000000001', $primitives['tenant_id']);
+        $this->assertEquals(42, $primitives['tenant_id']);
         $this->assertEquals(0, $primitives['order_id']);
         $this->assertEquals('UNKNOWN', $primitives['order_number']);
         $this->assertEquals('unknown', $event->carrier());
@@ -304,6 +327,12 @@ class EventSerializationTest extends TestCase
     }
 
     /**
+     * @test
+     *
+     * @group events
+     * @group robustness
+     * @group chaos
+     *
      * CHAOS TEST: Verify system ignores extraneous/malicious keys.
      *
      * Simulates: A payload injection attack or legacy fields from an
@@ -312,15 +341,11 @@ class EventSerializationTest extends TestCase
      * Expected: The object is created correctly, extra keys are discarded,
      * and no security vulnerabilities are introduced.
      */
-    #[\PHPUnit\Framework\Attributes\Test]
-    #[\PHPUnit\Framework\Attributes\Group('events')]
-    #[\PHPUnit\Framework\Attributes\Group('robustness')]
-    #[\PHPUnit\Framework\Attributes\Group('chaos')]
     public function it_ignores_extraneous_payload_data(): void
     {
         $noisyPayload = [
             // Valid keys
-            'tenant_id' => '00000000-0000-0000-0000-000000000001',
+            'tenant_id' => 1,
             'order_id' => 999,
             'order_number' => 'ORD-CLEAN',
             'carrier' => 'dhl',
@@ -345,7 +370,7 @@ class EventSerializationTest extends TestCase
         // Verify valid data was processed correctly via toPrimitives()
         $primitives = $event->toPrimitives();
 
-        $this->assertEquals('00000000-0000-0000-0000-000000000001', $primitives['tenant_id']);
+        $this->assertEquals(1, $primitives['tenant_id']);
         $this->assertEquals(999, $primitives['order_id']);
         $this->assertEquals('ORD-CLEAN', $primitives['order_number']);
         $this->assertEquals('dhl', $event->carrier());
@@ -370,14 +395,16 @@ class EventSerializationTest extends TestCase
     }
 
     /**
+     * @test
+     *
+     * @group events
+     * @group robustness
+     *
      * BOUNDARY TEST: Verify fail-fast on missing critical identifier.
      *
      * tenant_id is the only truly required field for multi-tenant isolation.
      * Without it, we cannot route the event correctly.
      */
-    #[\PHPUnit\Framework\Attributes\Test]
-    #[\PHPUnit\Framework\Attributes\Group('events')]
-    #[\PHPUnit\Framework\Attributes\Group('robustness')]
     public function it_fails_fast_on_missing_tenant_id(): void
     {
         $this->expectException(\InvalidArgumentException::class);
@@ -396,14 +423,17 @@ class EventSerializationTest extends TestCase
     // ADDITIONAL COVERAGE: NewOrderReceived and PaymentApproved
     // ═══════════════════════════════════════════════════════════════════════
 
-    #[\PHPUnit\Framework\Attributes\Test]
-    #[\PHPUnit\Framework\Attributes\Group('events')]
-    #[\PHPUnit\Framework\Attributes\Group('serialization')]
+    /**
+     * @test
+     *
+     * @group events
+     * @group serialization
+     */
     public function new_order_received_survives_serialization(): void
     {
         // Signature: create(tenantId, orderId, orderNumber, itemCount, totalAmountCents, customerId, customerName, currency)
         $original = \App\Events\Order\NewOrderReceived::create(
-            tenantId: '00000000-0000-0000-0000-000000000001',
+            tenantId: 10,
             orderId: 500,
             orderNumber: 'ORD-2026-TEST',
             itemCount: 5,
@@ -422,21 +452,24 @@ class EventSerializationTest extends TestCase
         $reconstituted = \App\Events\Order\NewOrderReceived::fromPrimitives($primitives);
 
         // Verify critical data preserved
-        $this->assertEquals(1, $reconstituted->tenantId()->toInt());
+        $this->assertEquals(10, $reconstituted->tenantId()->toInt());
         $this->assertEquals(500, $reconstituted->aggregateId());
         $this->assertEquals('ORD-2026-TEST', $reconstituted->orderNumber->toString());
         $this->assertEquals('Test Customer', $reconstituted->customerName);
         $this->assertEquals(5, $reconstituted->itemCount);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
-    #[\PHPUnit\Framework\Attributes\Group('events')]
-    #[\PHPUnit\Framework\Attributes\Group('serialization')]
+    /**
+     * @test
+     *
+     * @group events
+     * @group serialization
+     */
     public function payment_approved_survives_serialization(): void
     {
         // Signature: create(tenantId, orderId, orderNumber, transactionId, gatewayName, amountCents, currency)
         $original = \App\Events\Payment\PaymentApproved::create(
-            tenantId: '00000000-0000-0000-0000-000000000001',
+            tenantId: 15,
             orderId: 600,
             orderNumber: 'ORD-PAY-TEST',
             transactionId: 'txn_abc123',
@@ -454,7 +487,7 @@ class EventSerializationTest extends TestCase
         $reconstituted = \App\Events\Payment\PaymentApproved::fromPrimitives($primitives);
 
         // Verify critical data preserved
-        $this->assertEquals(1, $reconstituted->tenantId()->toInt());
+        $this->assertEquals(15, $reconstituted->tenantId()->toInt());
         $this->assertEquals(600, $reconstituted->aggregateId());
         $this->assertEquals('txn_abc123', $reconstituted->transactionId);
         $this->assertEquals('stripe', $reconstituted->gatewayName);

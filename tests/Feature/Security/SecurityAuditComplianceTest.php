@@ -6,7 +6,7 @@ namespace Tests\Feature\Security;
 
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
@@ -18,16 +18,16 @@ use Tests\TestCase;
  */
 class SecurityAuditComplianceTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     // ═══════════════════════════════════════════════════════════════════════════
     // VC-AUDIT-002: Middleware Abort Test
     // ═══════════════════════════════════════════════════════════════════════════
 
     /**
+     * @test
      * Unauthenticated requests to tenant-aware routes abort 404.
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function tenant_aware_route_aborts_without_context(): void
     {
         // Register a test route that uses the IdentifyTenantMiddleware
@@ -43,9 +43,9 @@ class SecurityAuditComplianceTest extends TestCase
     }
 
     /**
+     * @test
      * Authenticated user with tenant_id can access tenant-aware routes.
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function tenant_aware_route_succeeds_with_context(): void
     {
         $tenant = Tenant::factory()->create();
@@ -69,25 +69,26 @@ class SecurityAuditComplianceTest extends TestCase
     // ═══════════════════════════════════════════════════════════════════════════
 
     /**
+     * @test
      * User model does not allow tenant_id via mass assignment.
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function user_model_guards_tenant_id_from_mass_assignment(): void
     {
-        $this->expectException(\Illuminate\Database\Eloquent\MassAssignmentException::class);
-
-        User::create([
+        $user = User::create([
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => bcrypt('password'),
             'tenant_id' => 999, // Attacker attempts to set
         ]);
+
+        // tenant_id should NOT be set via mass assignment
+        $this->assertNull($user->tenant_id);
     }
 
     /**
+     * @test
      * User model allows tenant_id via explicit assignment.
      */
-    #[\PHPUnit\Framework\Attributes\Test]
     public function user_model_allows_tenant_id_via_explicit_assignment(): void
     {
         $tenant = Tenant::factory()->create();

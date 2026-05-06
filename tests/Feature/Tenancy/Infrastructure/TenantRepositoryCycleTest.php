@@ -4,24 +4,25 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Tenancy\Infrastructure;
 
+use App\Application\Tenancy\Interfaces\TenantRepositoryInterface;
 use App\Domain\TenantGovernance\Entities\TenantEntity;
-use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Infrastructure\Tenancy\Repositories\EventSourcedTenantRepository;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class TenantRepositoryCycleTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {
         parent::setUp();
+        // Bind interface to implementation if not auto-discovered
         $this->app->bind(TenantRepositoryInterface::class, EventSourcedTenantRepository::class);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function it_can_save_and_rehydrate_a_tenant()
     {
         // 1. Arrange (Write)
@@ -49,7 +50,7 @@ class TenantRepositoryCycleTest extends TestCase
         $this->assertEquals($domain, $retrievedTenant->domain());
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function it_returns_null_for_non_existent_tenant()
     {
         $repo = $this->app->make(TenantRepositoryInterface::class);

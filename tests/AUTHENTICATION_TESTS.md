@@ -144,7 +144,7 @@ done
 ### Pasos Manuales
 1. Abrir modal
 2. Click en tab "Vendedor"
-3. Ingresar email: admin@vitobusinessos.com
+3. Ingresar email: admin@conectahn.com
 4. Ingresar password: (la configurada)
 5. Click "Iniciar Sesión"
 

@@ -15,7 +15,7 @@ namespace Tests\Feature\Jobs;
 
 use App\Jobs\SendAppointmentReminders;
 use App\Mail\AppointmentReminderMail;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -23,14 +23,11 @@ use Tests\TestCase;
 
 class SendAppointmentRemindersTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     private string $tenantId;
-
     private string $userId;
-
     private int $serviceId;
-
     private int $providerId;
 
     protected function setUp(): void
@@ -40,7 +37,7 @@ class SendAppointmentRemindersTest extends TestCase
         Mail::fake();
 
         // Initialize TenantContext as System Root for Job execution
-        app(\App\Domain\Shared\Services\TenantContext::class)->setAsSystemRoot(isConsoleOrTesting: true);
+        app(\App\Domain\Shared\Services\TenantContext::class)->setAsSystemRoot();
 
         // ═══════════════════════════════════════════════════════════════════════
         // RAW DB SETUP: Avoids BelongsToTenant TenantContext issues with factories
@@ -51,7 +48,7 @@ class SendAppointmentRemindersTest extends TestCase
         DB::table('users')->insert([
             'id' => $this->userId,
             'name' => 'Test User',
-            'email' => 'test-'.Str::random(8).'@example.com',
+            'email' => 'test-' . Str::random(8) . '@example.com',
             'password' => bcrypt('password'),
             'role' => 'customer',
             'created_at' => now(),
@@ -64,7 +61,7 @@ class SendAppointmentRemindersTest extends TestCase
             'id' => $this->tenantId,
             'user_id' => $this->userId,
             'name' => 'Test Reminder Tenant',
-            'slug' => 'test-reminder-'.Str::random(6),
+            'slug' => 'test-reminder-' . Str::random(6),
             'plan' => 'SEED',
             'is_active' => true,
             'plan_type' => 'semilla',
@@ -91,7 +88,7 @@ class SendAppointmentRemindersTest extends TestCase
         $this->providerId = DB::table('service_providers')->insertGetId([
             'tenant_id' => $this->tenantId,
             'name' => 'Test Provider',
-            'email' => 'provider-'.Str::random(8).'@example.com',
+            'email' => 'provider-' . Str::random(8) . '@example.com',
             'phone' => '9999-9999',
             'schedule_config' => null,
             'is_active' => true,
@@ -140,7 +137,7 @@ class SendAppointmentRemindersTest extends TestCase
             'reminder_sent_at' => null,
         ]);
 
-        (new SendAppointmentReminders)->handle(app(\App\Domain\Contracts\AdminNotifier::class));
+        (new SendAppointmentReminders)->handle();
 
         // Assert: Email was queued
         Mail::assertQueued(AppointmentReminderMail::class, function ($mail) use ($appointmentId) {
@@ -167,7 +164,7 @@ class SendAppointmentRemindersTest extends TestCase
             'reminder_sent_at' => null,
         ]);
 
-        (new SendAppointmentReminders)->handle(app(\App\Domain\Contracts\AdminNotifier::class));
+        (new SendAppointmentReminders)->handle();
 
         Mail::assertNothingSent();
     }
@@ -185,7 +182,7 @@ class SendAppointmentRemindersTest extends TestCase
             'reminder_sent_at' => now()->subHour(), // Already reminded!
         ]);
 
-        (new SendAppointmentReminders)->handle(app(\App\Domain\Contracts\AdminNotifier::class));
+        (new SendAppointmentReminders)->handle();
 
         Mail::assertNothingSent();
     }
@@ -203,7 +200,7 @@ class SendAppointmentRemindersTest extends TestCase
             'reminder_sent_at' => null,
         ]);
 
-        (new SendAppointmentReminders)->handle(app(\App\Domain\Contracts\AdminNotifier::class));
+        (new SendAppointmentReminders)->handle();
 
         Mail::assertNothingSent();
     }
@@ -221,7 +218,7 @@ class SendAppointmentRemindersTest extends TestCase
             'reminder_sent_at' => null,
         ]);
 
-        (new SendAppointmentReminders)->handle(app(\App\Domain\Contracts\AdminNotifier::class));
+        (new SendAppointmentReminders)->handle();
 
         Mail::assertNothingSent();
     }
@@ -239,11 +236,10 @@ class SendAppointmentRemindersTest extends TestCase
             'reminder_sent_at' => null,
         ]);
 
-        (new SendAppointmentReminders)->handle(app(\App\Domain\Contracts\AdminNotifier::class));
+        (new SendAppointmentReminders)->handle();
 
         Mail::assertQueued(AppointmentReminderMail::class, function ($mail) {
             $subject = $mail->envelope()->subject;
-
             return str_contains($subject, 'Recordatorio de Cita') &&
                    str_contains($subject, 'Test Reminder Tenant');
         });

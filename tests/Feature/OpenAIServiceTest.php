@@ -6,11 +6,10 @@ namespace Tests\Feature;
 
 use App\Exceptions\Ai\AiMalformedResponseException;
 use App\Exceptions\Ai\AiProviderUnavailableException;
-use App\Infrastructure\AI\BudgetEnforcer;
-use App\Models\Tenant;
 use App\Models\User;
 use App\Services\AI\OpenAIService;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -29,13 +28,13 @@ use Tests\TestCase;
  */
 final class OpenAIServiceTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     private OpenAIService $service;
 
     private User $user;
 
-    private string $tenantId;
+    private int $tenantId;
 
     protected function setUp(): void
     {
@@ -43,19 +42,21 @@ final class OpenAIServiceTest extends TestCase
 
         config(['services.openai.api_key' => 'sk-fake-key']);
 
+        $this->service = new OpenAIService;
         $this->user = User::factory()->create();
-        $tenant = Tenant::factory()
-            ->forUser($this->user)
-            ->create([
-                'ai_balance' => 10.000000,
-                'ai_reserved_balance' => 0.000000,
-            ]);
 
-        $this->service = new OpenAIService(app(BudgetEnforcer::class));
-        $this->tenantId = (string) $tenant->id;
+        // Manual Tenant scaffolding
+        $tenantId = DB::table('tenants')->insertGetId([
+            'user_id' => $this->user->id,
+            'slug' => 'test-tenant-'.uniqid(),
+            'name' => 'Test Tenant',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $this->tenantId = $tenantId;
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function it_successfully_generates_and_logs_profile_on_valid_response(): void
     {
         $expectedPayload = [
@@ -81,7 +82,7 @@ final class OpenAIServiceTest extends TestCase
         $this->assertDatabaseHas('ai_usage_logs', ['cost' => '0.000750']);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function it_throws_unavailable_exception_after_exhausting_retries_on_500_errors(): void
     {
         Http::fake([
@@ -95,7 +96,7 @@ final class OpenAIServiceTest extends TestCase
         $this->service->generateStructuredProfile('Biz', 'Desc', $this->user->id, $this->tenantId);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function it_throws_malformed_exception_if_response_is_missing_keys(): void
     {
         $brokenPayload = ['description' => 'Missing stuff'];
@@ -111,7 +112,7 @@ final class OpenAIServiceTest extends TestCase
         $this->service->generateStructuredProfile('Biz', 'Desc', $this->user->id, $this->tenantId);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function scenario_4_it_enforces_strict_types_via_validator(): void
     {
         // Invalid Type: 'tags' is string "tag1", expected array
@@ -130,12 +131,12 @@ final class OpenAIServiceTest extends TestCase
         ]);
 
         $this->expectException(AiMalformedResponseException::class);
-        $this->expectExceptionMessage('AI returned invalid schema:');
+        $this->expectExceptionMessage('AI returned invalid schema: The tags field must be an array');
 
         $this->service->generateStructuredProfile('Biz', 'Desc', $this->user->id, $this->tenantId);
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function scenario_5_it_sanitizes_dangerous_html_xss_vectors(): void
     {
         // Malicious Payload

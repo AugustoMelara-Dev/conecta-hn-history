@@ -7,13 +7,13 @@ namespace Tests\Feature\Identity\Infrastructure;
 use App\Domain\TenantGovernance\Entities\TenantEntity;
 use App\Domain\TenantGovernance\Events\TenantCreated;
 use App\Infrastructure\Tenancy\Repositories\EventSourcedTenantRepository;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class TenantPersistenceAuditTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -21,7 +21,7 @@ class TenantPersistenceAuditTest extends TestCase
         // Bind mocks or real implementations if not strictly bound
     }
 
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function it_persists_tenant_created_event_to_store_and_outbox()
     {
         // 1. Setup
@@ -38,7 +38,7 @@ class TenantPersistenceAuditTest extends TestCase
 
         // 3. Audit Event Store
         $this->assertDatabaseHas('stored_events', [
-            'aggregate_uuid' => $id,
+            'aggregate_id' => $id,
             'aggregate_type' => 'Tenant',
             'event_type' => TenantCreated::class,
         ]);

@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Contract;
 
-use Tests\TestCase;
+use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Tests\CreatesApplication;
 
 /**
  * ContractTestCase
@@ -12,8 +13,10 @@ use Tests\TestCase;
  * Base class for Contract Testing.
  * Enforces JSON Schema compliance for API responses/View Models.
  */
-abstract class ContractTestCase extends TestCase
+abstract class ContractTestCase extends BaseTestCase
 {
+    use CreatesApplication;
+
     /**
      * Assert that the given data matches the defined JSON Schema.
      *

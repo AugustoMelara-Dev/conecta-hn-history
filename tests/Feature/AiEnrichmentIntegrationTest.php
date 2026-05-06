@@ -4,27 +4,23 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Application\Shared\Contracts\AiProfileGeneratorInterface;
-use App\Application\Tenant\ResultsProfileData;
-use App\Domain\TenantGovernance\Exceptions\TenantDomainException;
-use App\Infrastructure\Jobs\AI\EnhanceTenantProfileJob;
+use App\Domain\AIEnrichment\Jobs\EnhanceTenantProfileJob;
 use App\Models\Tenant;
 use App\Models\User;
-use App\Services\AiProfileGeneratorService;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
-use Illuminate\Support\Facades\Bus;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 /**
- * Integration Tests for AI Enrichment Pipeline.
+ * Integration Tests for AI Enrichment Pipeline
  *
- * These tests exercise the queued job against the current container bindings
- * and the live handler contract without Mockery state pollution.
+ * These tests use HTTP::fake() for full end-to-end testing without
+ * Mockery state pollution issues encountered in Pest tests.
  */
 class AiEnrichmentIntegrationTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     private User $user;
 
@@ -34,17 +30,12 @@ class AiEnrichmentIntegrationTest extends TestCase
 
         config(['services.openai.key' => 'test-api-key']);
 
-        $this->app->bind(AiProfileGeneratorInterface::class, AiProfileGeneratorService::class);
-
         $this->user = User::factory()->create(['role' => 'seller']);
     }
 
     private function createTenant(array $overrides = []): Tenant
     {
-        static $sequence = 1000;
-
         return Tenant::forceCreate(array_merge([
-            'id' => (string) ++$sequence,
             'user_id' => $this->user->id,
             'name' => 'Test Tenant',
             'slug' => 'test-tenant-'.uniqid(),
@@ -59,11 +50,11 @@ class AiEnrichmentIntegrationTest extends TestCase
     {
         $defaultResponse = [
             'status' => $status,
-            'business_name_clean' => 'Pulperia Don Mario',
+            'business_name_clean' => 'Pulpería Don Mario',
             'tagline' => 'Tu tienda de confianza',
-            'short_description' => 'La mejor pulperia de Tegucigalpa',
-            'full_description_html' => '<p>Bienvenidos a nuestra pulperia.</p>',
-            'seo_keywords' => ['pulperia', 'tegucigalpa', 'tienda'],
+            'short_description' => 'La mejor pulpería de Tegucigalpa',
+            'full_description_html' => '<p>Bienvenidos a nuestra pulpería.</p>',
+            'seo_keywords' => ['pulpería', 'tegucigalpa', 'tienda'],
             'risk_analysis' => $status === 'flagged'
                 ? 'Detected references to prohibited substances'
                 : 'Low risk - standard retail business',
@@ -82,6 +73,10 @@ class AiEnrichmentIntegrationTest extends TestCase
         ]);
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // JOB INTEGRATION TESTS
+    // ═══════════════════════════════════════════════════════════════════════
+
     public function test_job_enriches_tenant_with_real_service(): void
     {
         $this->fakeOpenAiResponse('success');
@@ -90,18 +85,17 @@ class AiEnrichmentIntegrationTest extends TestCase
             'name' => 'pulperia don mario',
         ]);
 
-        $data = new ResultsProfileData(tenantId: (string) $tenant->id);
-        $job = new EnhanceTenantProfileJob($data);
-        $job->handle(app(\App\Application\Tenant\Handlers\EnhanceTenantProfileHandler::class));
+        $job = new EnhanceTenantProfileJob($tenant->id);
+        $job->handle(app(\App\Services\AiProfileGeneratorService::class));
 
         $tenant->refresh();
 
-        $this->assertSame('pulperia don mario', $tenant->name);
+        $this->assertEquals('Pulpería Don Mario', $tenant->name);
+        $this->assertEquals('Tu tienda de confianza', $tenant->slogan);
         $this->assertTrue($tenant->is_ai_enhanced);
-        Http::assertSentCount(1);
     }
 
-    public function test_job_handles_flagged_response_with_current_domain_flow(): void
+    public function test_job_bans_tenant_when_flagged(): void
     {
         $this->fakeOpenAiResponse('flagged');
 
@@ -109,64 +103,71 @@ class AiEnrichmentIntegrationTest extends TestCase
             'name' => 'Suspicious Business',
         ]);
 
-        $data = new ResultsProfileData(tenantId: (string) $tenant->id);
-        $job = new EnhanceTenantProfileJob($data);
-        $job->handle(app(\App\Application\Tenant\Handlers\EnhanceTenantProfileHandler::class));
+        $job = new EnhanceTenantProfileJob($tenant->id);
+        $job->handle(app(\App\Services\AiProfileGeneratorService::class));
 
         $tenant->refresh();
 
-        $this->assertTrue($tenant->is_active);
-        $this->assertTrue($tenant->is_ai_enhanced);
-        Http::assertSentCount(1);
+        $this->assertEquals('banned', $tenant->status);
+        $this->assertFalse($tenant->is_active);
+        $this->assertStringContainsString('AI MODERATION', $tenant->admin_notes);
     }
 
-    public function test_job_throws_for_nonexistent_tenant(): void
+    public function test_job_skips_nonexistent_tenant(): void
     {
-        $this->expectException(TenantDomainException::class);
+        $job = new EnhanceTenantProfileJob(999999);
+        $job->handle(app(\App\Services\AiProfileGeneratorService::class));
 
-        $data = new ResultsProfileData(tenantId: '999999');
-        $job = new EnhanceTenantProfileJob($data);
-        $job->handle(app(\App\Application\Tenant\Handlers\EnhanceTenantProfileHandler::class));
+        // No exception thrown = test passes
+        $this->assertTrue(true);
     }
 
-    public function test_job_rejects_already_enriched_tenant(): void
+    public function test_job_skips_already_enriched_tenant(): void
     {
-        $this->fakeOpenAiResponse('success');
+        // Fake HTTP to prevent real API calls (just in case)
+        Http::fake();
 
         $tenant = $this->createTenant([
             'is_ai_enhanced' => true,
             'name' => 'Already Enriched Tenant',
         ]);
 
-        $this->expectException(TenantDomainException::class);
+        $originalName = $tenant->name;
 
-        $data = new ResultsProfileData(tenantId: (string) $tenant->id);
-        $job = new EnhanceTenantProfileJob($data);
-        $job->handle(app(\App\Application\Tenant\Handlers\EnhanceTenantProfileHandler::class));
+        $job = new EnhanceTenantProfileJob($tenant->id);
+        $job->handle(app(\App\Services\AiProfileGeneratorService::class));
+
+        $tenant->refresh();
+
+        // Name should NOT have changed - job should have skipped
+        $this->assertEquals($originalName, $tenant->name);
+        $this->assertTrue($tenant->is_ai_enhanced);
+
+        // Verify NO HTTP calls were made
+        Http::assertNothingSent();
     }
 
     public function test_job_can_be_dispatched_to_queue(): void
     {
-        Bus::fake();
+        Queue::fake();
 
         $tenant = $this->createTenant();
 
-        $data = new ResultsProfileData(tenantId: (string) $tenant->id);
-        Bus::dispatch(new EnhanceTenantProfileJob($data));
+        EnhanceTenantProfileJob::dispatch($tenant->id);
 
-        Bus::assertDispatched(EnhanceTenantProfileJob::class, function ($job) use ($tenant) {
-            return $job->uniqueId() === 'enhance_'.$tenant->id;
+        Queue::assertPushed(EnhanceTenantProfileJob::class, function ($job) use ($tenant) {
+            return $job->uniqueId() === 'enhance-tenant-'.$tenant->id;
         });
     }
 
     public function test_job_has_correct_configuration(): void
     {
-        $data = new ResultsProfileData(tenantId: '1');
-        $job = new EnhanceTenantProfileJob($data);
+        $job = new EnhanceTenantProfileJob(1);
 
-        $this->assertSame(3, $job->tries);
-        $this->assertSame(180, $job->timeout);
-        $this->assertSame(3600, $job->uniqueFor);
+        $this->assertEquals(3, $job->tries);
+        $this->assertEquals([30, 60, 120], $job->backoff);
+        $this->assertEquals(3600, $job->uniqueFor);
+        $this->assertEquals('ai-enrichment', $job->queue);
     }
 
     public function test_job_rethrows_exception_on_api_failure(): void
@@ -181,8 +182,7 @@ class AiEnrichmentIntegrationTest extends TestCase
 
         $this->expectException(\Exception::class);
 
-        $data = new ResultsProfileData(tenantId: (string) $tenant->id);
-        $job = new EnhanceTenantProfileJob($data);
-        $job->handle(app(\App\Application\Tenant\Handlers\EnhanceTenantProfileHandler::class));
+        $job = new EnhanceTenantProfileJob($tenant->id);
+        $job->handle(app(\App\Services\AiProfileGeneratorService::class));
     }
 }

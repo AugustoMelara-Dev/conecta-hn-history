@@ -2,14 +2,13 @@
 
 namespace Tests\Architecture;
 
-use App\Application\Shared\Contracts\AtomicIdempotencyInterface;
+use App\Application\Common\Contracts\AtomicIdempotencyInterface;
 use ReflectionClass;
-use ReflectionNamedType;
 use Tests\TestCase;
 
 class AuthHandlerSafetyTest extends TestCase
 {
-    #[\PHPUnit\Framework\Attributes\Test]
+    /** @test */
     public function all_auth_tasks_must_be_protected_by_atomic_locks()
     {
         // 1. Identify all "Handler" classes in Auth Application Layer
@@ -38,8 +37,7 @@ class AuthHandlerSafetyTest extends TestCase
 
             $hasAtomicDependency = false;
             foreach ($parameters as $param) {
-                $type = $param->getType();
-                if ($type instanceof ReflectionNamedType && $type->getName() === AtomicIdempotencyInterface::class) {
+                if ($param->getType() && $param->getType()->getName() === AtomicIdempotencyInterface::class) {
                     $hasAtomicDependency = true;
                     break;
                 }

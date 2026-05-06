@@ -2,87 +2,86 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Public;
-
 use App\Http\Controllers\Public\BookingController;
 use App\Models\Appointment;
 use App\Models\Service;
 use App\Models\ServiceProvider;
 use App\Models\Tenant;
-use PHPUnit\Framework\Attributes\Test;
-use ReflectionClass;
-use Tests\TestCase;
 
-final class BookingFlowTest extends TestCase
-{
-    #[Test]
-    public function booking_controller_exists(): void
-    {
-        self::assertTrue(class_exists(BookingController::class));
-    }
+// ═══════════════════════════════════════════════════════════════════════
+// BOOKING FLOW TESTS - Unit Tests (No DB Required)
+// ═══════════════════════════════════════════════════════════════════════
 
-    #[Test]
-    public function booking_controller_exposes_the_expected_methods(): void
-    {
-        $reflection = new ReflectionClass(BookingController::class);
+// TEST 1: BookingController class exists
+it('BookingController class exists', function () {
+    expect(class_exists(BookingController::class))->toBeTrue();
+});
 
-        self::assertTrue($reflection->hasMethod('index'));
-        self::assertTrue($reflection->hasMethod('store'));
-        self::assertTrue($reflection->hasMethod('getProviders'));
-        self::assertTrue($reflection->hasMethod('getSlots'));
-        self::assertTrue($reflection->hasMethod('success'));
-    }
+// TEST 2: BookingController has all required methods
+it('BookingController has all required methods', function () {
+    $methods = get_class_methods(BookingController::class);
+    
+    expect($methods)->toContain('index');
+    expect($methods)->toContain('store');
+    expect($methods)->toContain('getProviders');
+    expect($methods)->toContain('getSlots');
+    expect($methods)->toContain('success');
+});
 
-    #[Test]
-    public function tenant_model_exposes_booking_relationships(): void
-    {
-        $reflection = new ReflectionClass(Tenant::class);
+// TEST 3: Tenant model has services relationship
+it('Tenant model has services relationship', function () {
+    expect(method_exists(Tenant::class, 'services'))->toBeTrue();
+});
 
-        self::assertTrue($reflection->hasMethod('services'));
-        self::assertTrue($reflection->hasMethod('serviceProviders'));
-        self::assertTrue($reflection->hasMethod('appointments'));
-    }
+// TEST 4: Tenant model has serviceProviders relationship
+it('Tenant model has serviceProviders relationship', function () {
+    expect(method_exists(Tenant::class, 'serviceProviders'))->toBeTrue();
+});
 
-    #[Test]
-    public function booking_models_expose_the_expected_scopes_and_helpers(): void
-    {
-        $serviceReflection = new ReflectionClass(Service::class);
-        $providerReflection = new ReflectionClass(ServiceProvider::class);
+// TEST 5: Tenant model has appointments relationship
+it('Tenant model has appointments relationship', function () {
+    expect(method_exists(Tenant::class, 'appointments'))->toBeTrue();
+});
 
-        self::assertTrue($serviceReflection->hasMethod('scopeActive'));
-        self::assertTrue($providerReflection->hasMethod('scopeActive'));
-        self::assertTrue($providerReflection->hasMethod('isAvailableAt'));
-    }
+// TEST 6: Service model has active scope
+it('Service model has active scope', function () {
+    expect(method_exists(Service::class, 'scopeActive'))->toBeTrue();
+});
 
-    #[Test]
-    public function appointment_status_constants_match_the_expected_contract(): void
-    {
-        self::assertSame('pending', Appointment::STATUS_PENDING);
-        self::assertSame('confirmed', Appointment::STATUS_CONFIRMED);
-        self::assertSame('cancelled', Appointment::STATUS_CANCELLED);
-        self::assertSame('completed', Appointment::STATUS_COMPLETED);
-    }
+// TEST 7: ServiceProvider model has active scope  
+it('ServiceProvider model has active scope', function () {
+    expect(method_exists(ServiceProvider::class, 'scopeActive'))->toBeTrue();
+});
 
-    #[Test]
-    public function react_booking_pages_exist(): void
-    {
-        $indexPath = base_path('resources/js/Pages/Public/Book/Index.jsx');
-        $successPath = base_path('resources/js/Pages/Public/Book/Success.jsx');
+// TEST 8: ServiceProvider has isAvailableAt method
+it('ServiceProvider has isAvailableAt method', function () {
+    expect(method_exists(ServiceProvider::class, 'isAvailableAt'))->toBeTrue();
+});
 
-        self::assertFileExists($indexPath);
-        self::assertFileExists($successPath);
-    }
+// TEST 9: Appointment model has status constants
+it('Appointment model has status constants', function () {
+    expect(Appointment::STATUS_PENDING)->toBe('pending');
+    expect(Appointment::STATUS_CONFIRMED)->toBe('confirmed');
+    expect(Appointment::STATUS_CANCELLED)->toBe('cancelled');
+    expect(Appointment::STATUS_COMPLETED)->toBe('completed');
+});
 
-    #[Test]
-    public function booking_routes_are_declared_in_the_public_routes_file(): void
-    {
-        $routeFile = base_path('routes/public.php');
-        $contents = file_get_contents($routeFile);
+// TEST 10: React pages exist
+it('React booking pages exist', function () {
+    $indexPath = base_path('resources/js/Pages/Public/Book/Index.jsx');
+    $successPath = base_path('resources/js/Pages/Public/Book/Success.jsx');
+    
+    expect(file_exists($indexPath))->toBeTrue();
+    expect(file_exists($successPath))->toBeTrue();
+});
 
-        self::assertIsString($contents);
-        self::assertStringContainsString('BookingController', $contents);
-        self::assertStringContainsString('public.booking.index', $contents);
-        self::assertStringContainsString('public.booking.store', $contents);
-        self::assertStringContainsString('public.booking.success', $contents);
-    }
-}
+// TEST 11: Booking routes are defined in public.php
+it('Booking routes are defined in public.php', function () {
+    $routeFile = base_path('routes/public.php');
+    $contents = file_get_contents($routeFile);
+    
+    expect($contents)->toContain('BookingController');
+    expect($contents)->toContain("public.booking.index");
+    expect($contents)->toContain("public.booking.store");
+    expect($contents)->toContain("public.booking.success");
+});
