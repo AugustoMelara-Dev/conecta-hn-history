@@ -97,7 +97,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('seo:generate-sitemap')->daily()->at('00:30');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        SentryIntegration::handles($exceptions);
+        if (class_exists(SentryIntegration::class)) {
+            SentryIntegration::handles($exceptions);
+        }
 
         $exceptions->respond(function (SymfonyResponse $response, \Throwable $exception, Request $request) {
             $response = \App\Support\Http\ApiLifecycleHeaderFactory::apply($request, $response);
