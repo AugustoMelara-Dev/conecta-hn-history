@@ -4,25 +4,18 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
-use App\Domain\TenantGovernance\Enums\TenantFeature;
 use App\Filament\App\Resources\CouponResource\Pages;
 use App\Models\Coupon;
-use App\Models\Tenant;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
-use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -40,7 +33,9 @@ class CouponResource extends Resource
 {
     protected static ?string $model = Coupon::class;
 
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-ticket';
+    protected static ?string $navigationIcon = 'heroicon-o-ticket';
+
+    protected static ?string $navigationGroup = 'Marketing';
 
     protected static ?string $navigationLabel = 'Cupones';
 
@@ -50,25 +45,9 @@ class CouponResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Marketing PRO';
-
-    public static function shouldRegisterNavigation(): bool
+    public static function form(Form $form): Form
     {
-        $tenant = self::getTenantRecord();
-
-        return $tenant instanceof Tenant && $tenant->hasFeature(TenantFeature::PROMOTIONAL_COUPONS);
-    }
-
-    public static function canAccess(): bool
-    {
-        $tenant = self::getTenantRecord();
-
-        return $tenant instanceof Tenant && $tenant->hasFeature(TenantFeature::PROMOTIONAL_COUPONS);
-    }
-
-    public static function form(Schema $schema): Schema
-    {
-        return $schema
+        return $form
             ->schema([
                 Section::make('Información del Cupón')
                     ->description('Configure el código y tipo de descuento')
@@ -84,9 +63,9 @@ class CouponResource extends Resource
                                         column: 'code',
                                         ignoreRecord: true,
                                         modifyRuleUsing: function (\Illuminate\Validation\Rules\Unique $rule) {
-                                            $tenant = self::getTenantRecord();
-                                            if ($tenant instanceof Tenant) {
-                                                return $rule->where('tenant_id', (string) $tenant->getKey());
+                                            $tenant = \Filament\Facades\Filament::getTenant();
+                                            if ($tenant) {
+                                                return $rule->where('tenant_id', $tenant->id);
                                             }
 
                                             return $rule;
@@ -296,12 +275,12 @@ class CouponResource extends Resource
                     ->falseLabel('Inactivos'),
             ])
             ->actions([
-                EditAction::make(),
-                DeleteAction::make(),
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
             ->defaultSort('created_at', 'desc');
@@ -321,12 +300,5 @@ class CouponResource extends Resource
             'create' => Pages\CreateCoupon::route('/create'),
             'edit' => Pages\EditCoupon::route('/{record}/edit'),
         ];
-    }
-
-    private static function getTenantRecord(): ?Tenant
-    {
-        $tenant = Filament::getTenant();
-
-        return $tenant instanceof Tenant ? $tenant : null;
     }
 }

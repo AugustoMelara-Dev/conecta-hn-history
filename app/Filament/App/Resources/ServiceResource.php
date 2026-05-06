@@ -1,107 +1,62 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Filament\App\Resources;
 
-use App\Domain\TenantGovernance\Enums\Capability;
 use App\Filament\App\Resources\ServiceResource\Pages;
 use App\Models\Service;
-use App\Models\Tenant;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
-use Filament\Facades\Filament;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
+use Filament\Forms;
+use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Gate;
 
 class ServiceResource extends Resource
 {
     protected static ?string $model = Service::class;
 
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-scissors';
+    protected static ?string $navigationIcon = 'heroicon-o-scissors';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Servicios';
+    protected static ?string $navigationGroup = 'Servicios';
 
-    protected static ?string $navigationLabel = 'Catálogo de servicios';
+    protected static ?string $navigationLabel = 'Catálogo de Servicios';
 
     protected static ?int $navigationSort = 1;
 
-    public static function canViewAny(): bool
+    public static function form(Form $form): Form
     {
-        $tenant = static::getTenantRecord();
-
-        return $tenant instanceof Tenant
-            && $tenant->hasCapability(Capability::APPOINTMENT_BOOKING)
-            && Gate::allows('viewAny', Service::class);
-    }
-
-    public static function shouldRegisterNavigation(): bool
-    {
-        return static::canViewAny();
-    }
-
-    public static function canAccess(): bool
-    {
-        return static::canViewAny();
-    }
-
-    public static function form(Schema $schema): Schema
-    {
-        return $schema
+        return $form
             ->schema([
-                Section::make('Detalles del servicio')
+                Forms\Components\Section::make('Detalles del Servicio')
                     ->schema([
-                        TextInput::make('name')
-                            ->label('Nombre del servicio')
+                        Forms\Components\TextInput::make('name')
+                            ->label('Nombre del Servicio')
                             ->required()
                             ->maxLength(255),
-                        Textarea::make('description')
+
+                        Forms\Components\Textarea::make('description')
                             ->label('Descripción')
                             ->rows(3)
                             ->columnSpanFull(),
-                        Grid::make(2)
+
+                        Forms\Components\Grid::make(2)
                             ->schema([
-                                TextInput::make('price')
+                                Forms\Components\TextInput::make('price')
                                     ->label('Precio')
                                     ->numeric()
                                     ->prefix('L.')
                                     ->required(),
-                                TextInput::make('duration_minutes')
+
+                                Forms\Components\TextInput::make('duration_minutes')
                                     ->label('Duración')
                                     ->numeric()
                                     ->suffix('minutos')
                                     ->required()
                                     ->step(5)
-                                    ->minValue(5)
                                     ->default(30),
-                                TextInput::make('buffer_before')
-                                    ->label('Margen antes (preparación)')
-                                    ->numeric()
-                                    ->suffix('minutos')
-                                    ->required()
-                                    ->step(5)
-                                    ->minValue(0)
-                                    ->default(0),
-                                TextInput::make('buffer_after')
-                                    ->label('Margen después (limpieza)')
-                                    ->numeric()
-                                    ->suffix('minutos')
-                                    ->required()
-                                    ->step(5)
-                                    ->minValue(0),
                             ]),
-                        Toggle::make('is_active')
-                            ->label('Servicio activo')
+
+                        Forms\Components\Toggle::make('is_active')
+                            ->label('Servicio Activo')
                             ->default(true),
                     ]),
             ]);
@@ -116,12 +71,15 @@ class ServiceResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->weight('bold'),
+
                 Tables\Columns\TextColumn::make('formatted_price')
                     ->label('Precio'),
+
                 Tables\Columns\TextColumn::make('formatted_duration')
                     ->label('Duración')
                     ->badge()
                     ->color('info'),
+
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Activo')
                     ->boolean(),
@@ -131,12 +89,12 @@ class ServiceResource extends Resource
                     ->label('Estado'),
             ])
             ->actions([
-                EditAction::make(),
-                DeleteAction::make(),
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
     }
@@ -153,12 +111,5 @@ class ServiceResource extends Resource
             'create' => Pages\CreateService::route('/create'),
             'edit' => Pages\EditService::route('/{record}/edit'),
         ];
-    }
-
-    protected static function getTenantRecord(): ?Tenant
-    {
-        $tenant = Filament::getTenant();
-
-        return $tenant instanceof Tenant ? $tenant : null;
     }
 }

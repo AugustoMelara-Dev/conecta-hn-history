@@ -3,10 +3,10 @@
 namespace App\Filament\App\Resources\LoyaltyRewardResource\Pages;
 
 use App\Filament\App\Resources\LoyaltyRewardResource;
-use App\Filament\App\Resources\Pages\ListTenantRecords;
 use Filament\Actions;
+use Filament\Resources\Pages\ListRecords;
 
-class ListLoyaltyRewards extends ListTenantRecords
+class ListLoyaltyRewards extends ListRecords
 {
     protected static string $resource = LoyaltyRewardResource::class;
 

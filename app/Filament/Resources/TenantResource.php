@@ -5,36 +5,22 @@ declare(strict_types=1);
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\TenantResource\Pages;
-use App\Filament\Resources\TenantResource\RelationManagers\ActivityLogsRelationManager;
-use App\Infrastructure\TenantGovernance\SuperAdmin\SuperAdminTenantPlanReader;
 // MIGRATION: Updated to Domain namespace (2026-01-05)
 use App\Models\Tenant;
-use App\Models\User;
-use Filament\Actions\Action;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
 use Filament\Forms;
-use Filament\Notifications\Notification;
+use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\Utilities\Set;
-use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 
 class TenantResource extends Resource
 {
-    protected static bool $isScopedToTenant = false;
-
     protected static ?string $model = Tenant::class;
 
     protected static ?string $modelPolicy = \App\Policies\TenantPolicy::class;
 
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-building-storefront';
+    protected static ?string $navigationIcon = 'heroicon-o-building-storefront';
 
     public static function getNavigationLabel(): string
     {
@@ -51,18 +37,18 @@ class TenantResource extends Resource
         return 'Negocios';
     }
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
-        return $schema
+        return $form
             ->schema([
-                Section::make('Información principal')
+                Forms\Components\Section::make('Informacion Principal')
                     ->schema([
                         Forms\Components\TextInput::make('name')
                             ->label('Nombre del Negocio')
                             ->required()
                             ->maxLength(255)
                             ->live(onBlur: true)
-                            ->afterStateUpdated(fn (string $operation, $state, Set $set) => $operation === 'create' ? $set('slug', Str::slug($state)) : null),
+                            ->afterStateUpdated(fn (string $operation, $state, Forms\Set $set) => $operation === 'create' ? $set('slug', Str::slug($state)) : null),
 
                         Forms\Components\TextInput::make('slug')
                             ->required()
@@ -77,7 +63,7 @@ class TenantResource extends Resource
                             ->required(),
 
                         Forms\Components\Select::make('category_id')
-                            ->label('Categoría')
+                            ->label('Categoria')
                             ->relationship('category', 'name')
                             ->searchable()
                             ->preload()
@@ -98,44 +84,41 @@ class TenantResource extends Resource
                             ->required(),
 
                         Forms\Components\TextInput::make('address')
-                            ->label('Dirección')
+                            ->label('Direccion')
                             ->maxLength(255),
 
                         Forms\Components\TextInput::make('phone')
-                            ->label('Teléfono')
+                            ->label('Telefono')
                             ->tel(),
 
-                        Forms\Components\TextInput::make('website_url')
+                        Forms\Components\TextInput::make('website')
                             ->label('Sitio Web')
                             ->url(),
                     ])->columns(2),
 
-                Section::make('Configuración de plan')
+                Forms\Components\Section::make('Configuracion de Plan')
                     ->schema([
-                        Forms\Components\Select::make('plan_type')
-                            ->label('Plan comercial')
-                            ->options(static::planTypeOptions())
-                            ->default(\App\Domain\TenantGovernance\Enums\TenantPlan::SEMILLA->value)
-                            ->required()
-                            ->live()
-                            ->native(false),
+                        Forms\Components\Toggle::make('is_pro')
+                            ->label('Plan PRO Activo')
+                            ->default(false)
+                            ->live(),
 
                         Forms\Components\TextInput::make('product_limit')
-                            ->label('Límite de productos')
+                            ->label('Limite de Productos')
                             ->numeric()
                             ->default(10)
                             ->minValue(0)
                             ->required()
-                            ->helperText('Cantidad máxima de productos visibles. Default: 10.'),
+                            ->helperText('Cantidad maxima de productos visibles. Default: 10.'),
 
                         Forms\Components\Toggle::make('is_active')
                             ->label('Negocio Activo')
                             ->default(true)
-                            ->helperText('Si se desactiva, el negocio no podrá operar.'),
+                            ->helperText('Si se desactiva, el negocio no podra operar.'),
                     ])->columns(3),
 
-                Section::make('Personalización de plan pagado')
-                    ->description('Personaliza la apariencia del micrositio. Disponible para planes comerciales pagados.')
+                Forms\Components\Section::make('Personalizacion (PRO)')
+                    ->description('Personaliza la apariencia del micrositio. Exclusivo para planes PRO.')
                     ->schema([
                         Forms\Components\FileUpload::make('logo_path')
                             ->label('Logo')
@@ -151,32 +134,34 @@ class TenantResource extends Resource
                             ->maxSize(2048)
                             ->image()
                             ->directory('tenants/banners')
-                            ->disabled(fn (Get $get) => ! static::stateHasPaidPlan($get))
-                            ->helperText(fn (Get $get) => ! static::stateHasPaidPlan($get) ? 'Activa un plan pagado para habilitar.' : null),
+                            ->disabled(fn (Forms\Get $get) => ! $get('is_pro'))
+                            ->helperText(fn (Forms\Get $get) => ! $get('is_pro') ? 'Activa el Plan PRO para habilitar.' : null),
 
                         Forms\Components\ColorPicker::make('primary_color')
                             ->label('Color de Marca')
                             ->default('#000000')
-                            ->disabled(fn (Get $get) => ! static::stateHasPaidPlan($get))
-                            ->helperText(fn (Get $get) => ! static::stateHasPaidPlan($get) ? 'Activa un plan pagado para habilitar.' : null),
+                            ->disabled(fn (Forms\Get $get) => ! $get('is_pro'))
+                            ->helperText(fn (Forms\Get $get) => ! $get('is_pro') ? 'Activa el Plan PRO para habilitar.' : null),
 
                         Forms\Components\TextInput::make('whatsapp_number')
                             ->label('WhatsApp Business')
                             ->tel()
-                            ->disabled(fn (Get $get) => ! static::stateHasPaidPlan($get))
-                            ->helperText(fn (Get $get) => ! static::stateHasPaidPlan($get) ? 'Activa un plan pagado para habilitar el Botón Mágico.' : null),
+                            ->disabled(fn (Forms\Get $get) => ! $get('is_pro'))
+                            ->helperText(fn (Forms\Get $get) => ! $get('is_pro') ? 'Activa el Plan PRO para habilitar el Boton Magico.' : null),
 
                         Forms\Components\KeyValue::make('social_links')
                             ->label('Redes Sociales')
                             ->keyLabel('Plataforma (facebook, instagram, etc)')
                             ->valueLabel('URL Completa')
-                            ->disabled(fn (Get $get) => ! static::stateHasPaidPlan($get))
-                            ->helperText(fn (Get $get) => ! static::stateHasPaidPlan($get) ? 'Activa un plan pagado para habilitar.' : null),
+                            ->disabled(fn (Forms\Get $get) => ! $get('is_pro'))
+                            ->helperText(fn (Forms\Get $get) => ! $get('is_pro') ? 'Activa el Plan PRO para habilitar.' : null),
                     ])->columns(2),
 
+                // ═══════════════════════════════════════════════════════════════
                 // BRAND IDENTITY SECTION - White-Label Customization
                 // These fields control CSS variable injection on the frontend
-                Section::make('Identidad de Marca')
+                // ═══════════════════════════════════════════════════════════════
+                Forms\Components\Section::make('Identidad de Marca')
                     ->description('Personaliza colores y portada del micrositio. Se aplica automáticamente a botones y elementos interactivos.')
                     ->icon('heroicon-o-paint-brush')
                     ->schema([
@@ -194,27 +179,29 @@ class TenantResource extends Resource
                             ->maxSize(2048) // 2MB max for LCP performance
                             ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                             ->imagePreviewHeight('200')
-                            ->helperText('Máximo 2MB. Formatos: JPG, PNG y WebP. Recomendado: 1920x600px.'),
+                            ->helperText('Máximo 2MB. Formatos: JPG, PNG, WebP. Recomendado: 1920x600px.'),
 
                         Forms\Components\TextInput::make('slogan')
-                            ->label('Eslogan o frase de marca')
+                            ->label('Eslogan / Frase de Marca')
                             ->maxLength(100)
                             ->placeholder('Tu frase comercial aquí...')
                             ->helperText('Máximo 100 caracteres. Se muestra debajo del nombre en la portada.'),
                     ])->columns(3),
 
+                // ═══════════════════════════════════════════════════════════════
                 // CHECKOUT CONFIGURATION - Operational Settings
                 // These settings control payment and delivery options
-                Section::make('Configuración de checkout')
+                // ═══════════════════════════════════════════════════════════════
+                Forms\Components\Section::make('Configuración de Checkout')
                     ->description('Controla las opciones de pago y entrega disponibles para tus clientes.')
                     ->icon('heroicon-o-shopping-cart')
                     ->schema([
                         Forms\Components\CheckboxList::make('payment_methods')
-                            ->label('Métodos de pago habilitados')
+                            ->label('Métodos de Pago Habilitados')
                             ->options([
-                                'cash' => 'Efectivo (contra entrega)',
-                                'transfer' => 'Transferencia bancaria',
-                                'card' => 'Tarjeta de crédito o débito',
+                                'cash' => '💵 Efectivo (Contra entrega)',
+                                'transfer' => '🏦 Transferencia Bancaria',
+                                'card' => '💳 Tarjeta de Crédito/Débito',
                             ])
                             ->columns(3)
                             ->helperText('Selecciona los métodos que aceptas. Si no seleccionas ninguno, solo se mostrará efectivo.'),
@@ -230,81 +217,25 @@ class TenantResource extends Resource
                             ->helperText('Permite a los clientes recoger su pedido.'),
 
                         Forms\Components\TextInput::make('minimum_order')
-                            ->label('Pedido mínimo')
+                            ->label('Pedido Mínimo')
                             ->numeric()
                             ->default(0)
                             ->prefix('L.')
                             ->minValue(0)
                             ->helperText('Valor mínimo para realizar un pedido. 0 = sin mínimo.'),
                     ])->columns(2),
-
-                Section::make('CRM interno')
-                    ->description('Memoria comercial persistente para operar activacion, seguimiento, churn y renovacion del negocio.')
-                    ->icon('heroicon-o-briefcase')
-                    ->schema([
-                        Forms\Components\Select::make('crm_owner_id')
-                            ->label('Owner interno')
-                            ->options(static::internalOwnerOptions())
-                            ->searchable()
-                            ->preload()
-                            ->placeholder('Sin owner interno'),
-
-                        Forms\Components\Select::make('crm_team')
-                            ->label('Equipo')
-                            ->options(static::crmTeamOptions())
-                            ->default(Tenant::CRM_TEAM_ACTIVATION)
-                            ->required(),
-
-                        Forms\Components\Select::make('crm_status')
-                            ->label('Estado comercial')
-                            ->options(static::crmStatusOptions())
-                            ->default(Tenant::CRM_STATUS_NEW)
-                            ->required(),
-
-                        Forms\Components\Select::make('crm_priority')
-                            ->label('Prioridad')
-                            ->options(static::crmPriorityOptions())
-                            ->default(Tenant::CRM_PRIORITY_NORMAL)
-                            ->required(),
-
-                        Forms\Components\TextInput::make('crm_sla_hours')
-                            ->label('SLA interno (horas)')
-                            ->numeric()
-                            ->default(Tenant::DEFAULT_CRM_SLA_HOURS)
-                            ->minValue(1)
-                            ->maxValue(240)
-                            ->required(),
-
-                        Forms\Components\DateTimePicker::make('crm_next_follow_up_at')
-                            ->label('Siguiente toque')
-                            ->seconds(false),
-
-                        Forms\Components\Textarea::make('crm_notes')
-                            ->label('Notas CRM')
-                            ->rows(5)
-                            ->columnSpanFull()
-                            ->placeholder('Resume el contexto comercial, el riesgo o el siguiente paso acordado con el negocio.'),
-                    ])->columns(3),
             ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
-                'user:id,name,email',
-                'crmOwner:id,name,email',
-                'city:id,name',
-                'category:id,name',
-            ])->withCount([
-                'products as products_total' => fn (Builder $productQuery): Builder => $productQuery->withoutGlobalScopes(),
-            ]))
             ->columns([
                 Tables\Columns\ImageColumn::make('logo_path')
                     ->label('')
                     ->circular()
                     ->size(45)
-                    ->defaultImageUrl(fn (Tenant $record): string => \App\Support\Ui\AvatarPlaceholder::forName((string) $record->name)),
+                    ->defaultImageUrl(fn ($record) => 'https://ui-avatars.com/api/?name='.urlencode($record->name).'&background=random'),
 
                 Tables\Columns\TextColumn::make('name')
                     ->label('Negocio')
@@ -317,33 +248,20 @@ class TenantResource extends Resource
                     ->label('Propietario')
                     ->searchable()
                     ->sortable()
-                    ->description(fn (Tenant $record): string => $record->user instanceof User ? $record->user->email : ''),
-
-                Tables\Columns\TextColumn::make('crm_status_label')
-                    ->label('Estado comercial')
-                    ->badge()
-                    ->color(fn (Tenant $record): string => static::crmStatusColor((string) ($record->getAttributes()['crm_status'] ?? Tenant::CRM_STATUS_NEW)))
-                    ->description(fn (Tenant $record): string => 'Equipo: '.$record->crm_team_label),
-
-                Tables\Columns\TextColumn::make('crmOwner.name')
-                    ->label('Owner interno')
-                    ->default('Sin owner interno')
-                    ->description(fn (Tenant $record): string => $record->crm_next_follow_up_at instanceof \Illuminate\Support\Carbon
-                        ? 'Siguiente toque '.$record->crm_next_follow_up_at->diffForHumans()
-                        : 'Sin toque agendado'),
+                    ->description(fn (Tenant $record): string => $record->user->email ?? ''),
 
                 Tables\Columns\TextColumn::make('city.name')
-                    ->label('Ubicación')
+                    ->label('Ubicacion')
                     ->searchable()
                     ->sortable()
-                    ->description(fn (Tenant $record): string => $record->category instanceof \App\Models\Category ? $record->category->name : ''),
+                    ->description(fn (Tenant $record): string => $record->category->name ?? ''),
 
-                Tables\Columns\TextColumn::make('plan_type')
+                Tables\Columns\TextColumn::make('is_pro')
                     ->label('Plan')
                     ->badge()
-                    ->color(fn (Tenant $record): string => static::tenantHasPaidPlan($record) ? 'success' : 'gray')
-                    ->icon(fn (Tenant $record): string => static::tenantHasPaidPlan($record) ? 'heroicon-o-star' : 'heroicon-o-user')
-                    ->formatStateUsing(fn ($state, Tenant $record): string => static::planReader()->planLabel((string) ($state instanceof \BackedEnum ? $state->value : ($state ?: static::planReader()->planKey($record))))),
+                    ->color(fn (bool $state): string => $state ? 'success' : 'gray')
+                    ->icon(fn (bool $state): string => $state ? 'heroicon-o-star' : 'heroicon-o-user')
+                    ->formatStateUsing(fn (bool $state): string => $state ? 'PRO' : 'FREE'),
 
                 Tables\Columns\ColorColumn::make('primary_color')
                     ->label('Marca')
@@ -394,7 +312,7 @@ class TenantResource extends Resource
                             return 'heroicon-o-exclamation-triangle';
                         }
                     })
-                    ->tooltip(fn (Tenant $record): string => 'Última actividad: '.$record->updated_at->diffForHumans()),
+                    ->tooltip(fn (Tenant $record): string => 'Ultima actividad: '.$record->updated_at->diffForHumans()),
 
                 Tables\Columns\TextColumn::make('status')
                     ->label('Estado')
@@ -412,12 +330,6 @@ class TenantResource extends Resource
                         default => ucfirst($state),
                     }),
 
-                Tables\Columns\TextColumn::make('crm_priority_label')
-                    ->label('Prioridad')
-                    ->badge()
-                    ->color(fn (Tenant $record): string => static::crmPriorityColor((string) ($record->getAttributes()['crm_priority'] ?? Tenant::CRM_PRIORITY_NORMAL)))
-                    ->toggleable(),
-
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Operativo')
                     ->boolean()
@@ -425,10 +337,11 @@ class TenantResource extends Resource
                     ->falseIcon('heroicon-o-no-symbol')
                     ->trueColor('success')
                     ->falseColor('danger')
-                    ->tooltip(fn (Tenant $record): string => $record->is_active ? 'Negocio operando normalmente' : 'SUSPENDIDO - Kill Switch activado'),
+                    ->tooltip(fn ($record): string => $record->is_active ? 'Negocio operando normalmente' : 'SUSPENDIDO - Kill Switch activado'),
 
-                Tables\Columns\TextColumn::make('products_total')
+                Tables\Columns\TextColumn::make('products_count')
                     ->label('Productos')
+                    ->counts('products')
                     ->sortable()
                     ->badge()
                     ->color('gray'),
@@ -448,15 +361,17 @@ class TenantResource extends Resource
                     ->multiple(),
 
                 Tables\Filters\SelectFilter::make('category_id')
-                    ->label('Categoría')
+                    ->label('Categoria')
                     ->relationship('category', 'name')
                     ->searchable()
                     ->preload()
                     ->multiple(),
 
-                Tables\Filters\SelectFilter::make('plan_type')
+                Tables\Filters\TernaryFilter::make('is_pro')
                     ->label('Plan')
-                    ->options(static::planTypeOptions()),
+                    ->placeholder('Todos')
+                    ->trueLabel('Solo PRO')
+                    ->falseLabel('Solo FREE'),
 
                 Tables\Filters\TernaryFilter::make('is_active')
                     ->label('Estado Operativo')
@@ -465,25 +380,12 @@ class TenantResource extends Resource
                     ->falseLabel('Suspendidos'),
 
                 Tables\Filters\SelectFilter::make('status')
-                    ->label('Estado de aprobación')
+                    ->label('Estado de Aprobacion')
                     ->options([
                         'approved' => 'Aprobados',
                         'pending' => 'Pendientes',
                         'rejected' => 'Rechazados',
                     ]),
-
-                Tables\Filters\SelectFilter::make('crm_status')
-                    ->label('Estado comercial')
-                    ->options(static::crmStatusOptions()),
-
-                Tables\Filters\SelectFilter::make('crm_team')
-                    ->label('Equipo CRM')
-                    ->options(static::crmTeamOptions()),
-
-                Tables\Filters\SelectFilter::make('crm_owner_id')
-                    ->label('Owner interno')
-                    ->options(static::internalOwnerOptions())
-                    ->searchable(),
 
                 Tables\Filters\Filter::make('en_riesgo')
                     ->label('Negocios en Riesgo')
@@ -492,18 +394,18 @@ class TenantResource extends Resource
             ])
             ->filtersFormColumns(3)
             ->actions([
-                Action::make('approve')
+                Tables\Actions\Action::make('approve')
                     ->label('Aprobar')
                     ->icon('heroicon-o-check-badge')
                     ->color('success')
-                    ->visible(fn (Tenant $record): bool => $record->status === 'pending')
+                    ->visible(fn ($record) => $record->status === 'pending')
                     ->requiresConfirmation()
                     ->modalHeading('Aprobar Negocio')
-                    ->modalDescription('El negocio será visible públicamente y el dueño podrá operar.')
-                    ->action(function (Tenant $record): void {
-                        $record->approveForOperations();
-                        static::logTenantEvent($record, 'Negocio aprobado desde el superpanel', [
+                    ->modalDescription('El negocio sera visible publicamente y el dueno podra operar.')
+                    ->action(function ($record) {
+                        $record->update([
                             'status' => 'approved',
+                            'is_active' => true,
                         ]);
 
                         \Filament\Notifications\Notification::make()
@@ -512,224 +414,78 @@ class TenantResource extends Resource
                             ->send();
                     }),
 
-                Action::make('reject')
+                Tables\Actions\Action::make('reject')
                     ->label('Rechazar')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
-                    ->visible(fn (Tenant $record): bool => $record->status === 'pending')
+                    ->visible(fn ($record) => $record->status === 'pending')
                     ->requiresConfirmation()
                     ->form([
                         \Filament\Forms\Components\Textarea::make('rejection_reason')
                             ->label('Motivo del rechazo')
                             ->required(),
                     ])
-                    ->action(function (Tenant $record, array $data): void {
-                        $record->rejectForOperations();
-                        static::logTenantEvent($record, 'Negocio rechazado desde el superpanel', [
+                    ->action(function ($record, array $data) {
+                        $record->update([
                             'status' => 'rejected',
-                            'reason' => (string) ($data['rejection_reason'] ?? ''),
+                            'is_active' => false,
                         ]);
 
                         \Filament\Notifications\Notification::make()
                             ->danger()
                             ->title('Negocio Rechazado')
-                            ->body((string) ($data['rejection_reason'] ?? ''))
                             ->send();
                     }),
 
-                Action::make('crmFollowUp')
-                    ->label('CRM interno')
-                    ->icon('heroicon-o-briefcase')
-                    ->color('info')
-                    ->modalHeading('Gestion CRM interna')
-                    ->modalDescription('Asigna owner, equipo, estado y siguiente toque sin salir de la cartera de negocios.')
-                    ->fillForm(fn (Tenant $record): array => [
-                        'crm_owner_id' => $record->crm_owner_id,
-                        'crm_team' => (string) ($record->getAttributes()['crm_team'] ?? Tenant::CRM_TEAM_ACTIVATION),
-                        'crm_status' => (string) ($record->getAttributes()['crm_status'] ?? Tenant::CRM_STATUS_NEW),
-                        'crm_priority' => (string) ($record->getAttributes()['crm_priority'] ?? Tenant::CRM_PRIORITY_NORMAL),
-                        'crm_sla_hours' => (int) ($record->getAttributes()['crm_sla_hours'] ?? Tenant::DEFAULT_CRM_SLA_HOURS),
-                        'crm_next_follow_up_at' => optional($record->crm_next_follow_up_at)?->format('Y-m-d\TH:i'),
-                        'crm_note' => '',
-                    ])
-                    ->form([
-                        Forms\Components\Select::make('crm_owner_id')
-                            ->label('Owner interno')
-                            ->options(static::internalOwnerOptions())
-                            ->searchable()
-                            ->preload()
-                            ->placeholder('Sin owner interno'),
-                        Forms\Components\Select::make('crm_team')
-                            ->label('Equipo')
-                            ->options(static::crmTeamOptions())
-                            ->required(),
-                        Forms\Components\Select::make('crm_status')
-                            ->label('Estado comercial')
-                            ->options(static::crmStatusOptions())
-                            ->required(),
-                        Forms\Components\Select::make('crm_priority')
-                            ->label('Prioridad')
-                            ->options(static::crmPriorityOptions())
-                            ->required(),
-                        Forms\Components\TextInput::make('crm_sla_hours')
-                            ->label('SLA interno (horas)')
-                            ->numeric()
-                            ->minValue(1)
-                            ->maxValue(240)
-                            ->required(),
-                        Forms\Components\DateTimePicker::make('crm_next_follow_up_at')
-                            ->label('Siguiente toque')
-                            ->seconds(false),
-                        Forms\Components\Textarea::make('crm_note')
-                            ->label('Nota interna')
-                            ->rows(5)
-                            ->placeholder('Ej: negocio listo para upsell despues de activar catalogo y WhatsApp.'),
-                    ])
-                    ->action(function (Tenant $record, array $data): void {
-                        $actor = auth()->user();
-                        $selectedOwner = filled($data['crm_owner_id'] ?? null)
-                            ? User::query()->find((string) $data['crm_owner_id'])
-                            : null;
-
-                        if (! $selectedOwner instanceof User && $actor instanceof User && ($data['crm_status'] ?? '') !== Tenant::CRM_STATUS_NEW) {
-                            $selectedOwner = $actor;
-                        }
-
-                        $record->forceFill([
-                            'crm_owner_id' => $selectedOwner instanceof User ? (string) $selectedOwner->getKey() : null,
-                            'crm_team' => (string) ($data['crm_team'] ?? Tenant::CRM_TEAM_ACTIVATION),
-                            'crm_status' => (string) ($data['crm_status'] ?? Tenant::CRM_STATUS_NEW),
-                            'crm_priority' => (string) ($data['crm_priority'] ?? Tenant::CRM_PRIORITY_NORMAL),
-                            'crm_sla_hours' => (int) ($data['crm_sla_hours'] ?? Tenant::DEFAULT_CRM_SLA_HOURS),
-                            'crm_next_follow_up_at' => $data['crm_next_follow_up_at'] ?? null,
-                            'crm_last_contacted_at' => now(),
-                            'crm_notes' => static::appendCrmNote(
-                                (string) ($record->crm_notes ?? ''),
-                                (string) ($data['crm_note'] ?? ''),
-                                $actor instanceof User ? $actor : null,
-                            ),
-                        ])->save();
-
-                        static::logTenantEvent($record, 'Ficha CRM interna actualizada', [
-                            'crm_owner_id' => $selectedOwner instanceof User ? (string) $selectedOwner->getKey() : null,
-                            'crm_team' => (string) ($record->getAttributes()['crm_team'] ?? Tenant::CRM_TEAM_ACTIVATION),
-                            'crm_status' => (string) ($record->getAttributes()['crm_status'] ?? Tenant::CRM_STATUS_NEW),
-                            'crm_priority' => (string) ($record->getAttributes()['crm_priority'] ?? Tenant::CRM_PRIORITY_NORMAL),
-                            'crm_sla_hours' => (int) ($record->getAttributes()['crm_sla_hours'] ?? Tenant::DEFAULT_CRM_SLA_HOURS),
-                            'crm_next_follow_up_at' => optional($record->crm_next_follow_up_at)?->toIso8601String(),
-                            'note' => trim((string) ($data['crm_note'] ?? '')),
-                        ], $actor instanceof User ? $actor : null);
-
-                        Notification::make()
-                            ->success()
-                            ->title('CRM actualizado')
-                            ->body('El negocio ya tiene owner, estado comercial y siguiente toque persistentes.')
-                            ->send();
-                    }),
-
-                Action::make('impersonate')
+                Tables\Actions\Action::make('impersonate')
                     ->label('Acceder como Cliente')
                     ->icon('heroicon-o-user-circle')
                     ->color('warning')
                     ->requiresConfirmation()
-                    ->modalHeading('Shadow Login - Soporte técnico')
-                    ->modalDescription(function (Tenant $record): string {
-                        $user = $record->user;
-
-                        if (! $user instanceof User) {
-                            return 'Este negocio no tiene un propietario asignado para suplantación.';
-                        }
-
-                        return "Serás autenticado como '{$user->name}' ({$user->email}). Podrás ver su panel exactamente como él lo ve. Usa el banner superior para regresar.";
-                    })
-                    ->modalSubmitActionLabel('Iniciar sesión como cliente')
-                    ->action(function (Tenant $record) {
-                        $user = $record->user;
-
-                        if (! $user instanceof User) {
-                            \Filament\Notifications\Notification::make()
-                                ->title('Propietario no disponible')
-                                ->body('El negocio no tiene un usuario propietario asignado.')
-                                ->danger()
-                                ->send();
-
-                            return null;
-                        }
-
+                    ->modalHeading('Shadow Login - Soporte Tecnico')
+                    ->modalDescription(fn ($record) => "Seras autenticado como '{$record->user->name}' ({$record->user->email}). Podras ver su panel exactamente como el lo ve. Usa el banner superior para regresar.")
+                    ->modalSubmitActionLabel('Iniciar Sesion como Cliente')
+                    ->action(function ($record) {
                         // VC-AUDIT-107: Rate limit impersonation (max 5/hour per admin)
-                        $rateLimitKey = 'impersonate:'.auth()->id();
+                        $rateLimitKey = 'impersonate:' . auth()->id();
                         if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($rateLimitKey, 5)) {
                             \Filament\Notifications\Notification::make()
                                 ->title('Límite de seguridad alcanzado')
                                 ->body('Demasiados intentos de suplantación. Espere 1 hora.')
                                 ->danger()
                                 ->send();
-
                             return;
                         }
                         \Illuminate\Support\Facades\RateLimiter::hit($rateLimitKey, 3600);
 
                         // Audit Log: Non-repudiation for administrative actions
-                        $admin = auth()->user();
                         activity('security')
-                            ->causedBy($admin)
-                            ->performedOn($user)
+                            ->causedBy(auth()->user())
+                            ->performedOn($record->user)
                             ->withProperties(['tenant_id' => $record->id])
                             ->log('admin_impersonation_started');
 
-                        static::logTenantEvent(
-                            $record,
-                            'Soporte ingresó como propietario del negocio',
-                            [
-                                'target_user_id' => (string) $user->getKey(),
-                                'target_user_email' => (string) $user->email,
-                            ],
-                            $admin instanceof User ? $admin : null,
-                        );
-
-                        $impersonatedUser = User::query()->find($user->getKey());
-
-                        if (! $impersonatedUser instanceof User) {
-                            \Filament\Notifications\Notification::make()
-                                ->title('Propietario no disponible')
-                                ->body('No se pudo cargar la cuenta completa del propietario para soporte.')
-                                ->danger()
-                                ->send();
-
-                            return null;
-                        }
-
                         session(['impersonator_id' => auth()->id()]);
                         session(['impersonator_name' => auth()->user()->name]);
-                        \Illuminate\Support\Facades\Auth::login($impersonatedUser);
+                        \Illuminate\Support\Facades\Auth::login($record->user);
                         session()->regenerate(); // Session Fixation Prevention
 
-                        return redirect(route('filament.app.pages.dashboard', ['tenant' => $record->slug], false));
+                        return redirect('/app');
                     }),
 
-                Action::make('killSwitch')
-                    ->label(fn (Tenant $record): string => $record->is_active ? 'SUSPENDER' : 'REACTIVAR')
-                    ->icon(fn (Tenant $record): string => $record->is_active ? 'heroicon-o-no-symbol' : 'heroicon-o-bolt')
-                    ->color(fn (Tenant $record): string => $record->is_active ? 'danger' : 'success')
+                Tables\Actions\Action::make('killSwitch')
+                    ->label(fn ($record) => $record->is_active ? 'SUSPENDER' : 'REACTIVAR')
+                    ->icon(fn ($record) => $record->is_active ? 'heroicon-o-no-symbol' : 'heroicon-o-bolt')
+                    ->color(fn ($record) => $record->is_active ? 'danger' : 'success')
                     ->requiresConfirmation()
-                    ->modalHeading(fn (Tenant $record): string => $record->is_active ? 'KILL SWITCH - Suspensión inmediata' : 'Reactivar negocio')
-                    ->modalDescription(fn (Tenant $record): string => $record->is_active
-                        ? 'ADVERTENCIA: Esta acción congelará TODA la operación del negocio inmediatamente. El micrositio mostrará error 403 y el panel de control será inaccesible.'
-                        : 'El negocio será reactivado y podrá funcionar normalmente.')
-                    ->modalSubmitActionLabel(fn (Tenant $record): string => $record->is_active ? 'Confirmar suspensión' : 'Confirmar reactivación')
-                    ->action(function (Tenant $record): void {
+                    ->modalHeading(fn ($record) => $record->is_active ? 'KILL SWITCH - Suspension Inmediata' : 'Reactivar Negocio')
+                    ->modalDescription(fn ($record) => $record->is_active
+                        ? 'ADVERTENCIA: Esta accion congelara TODA la operacion del negocio inmediatamente. El micrositio mostrara error 403 y el panel de control sera inaccesible.'
+                        : 'El negocio sera reactivado y podra funcionar normalmente.')
+                    ->modalSubmitActionLabel(fn ($record) => $record->is_active ? 'Confirmar Suspension' : 'Confirmar Reactivacion')
+                    ->action(function ($record) {
                         $wasActive = $record->is_active;
-                        $record->toggleOperationalStatus();
-                        $record->refresh();
-                        static::logTenantEvent(
-                            $record,
-                            $wasActive
-                                ? 'Negocio suspendido con kill switch'
-                                : 'Negocio reactivado desde el superpanel',
-                            [
-                                'is_active' => (bool) $record->is_active,
-                            ],
-                        );
+                        $record->update(['is_active' => ! $record->is_active]);
 
                         \Filament\Notifications\Notification::make()
                             ->title($wasActive ? 'Kill Switch Activado' : 'Negocio Reactivado')
@@ -740,50 +496,47 @@ class TenantResource extends Resource
                             ->send();
                     }),
 
-                Action::make('forceUpgrade')
+                Tables\Actions\Action::make('forceUpgrade')
                     ->label('Forzar PRO')
                     ->icon('heroicon-o-arrow-up-circle')
                     ->color('info')
-                    ->visible(fn (Tenant $record): bool => ! static::tenantHasPaidPlan($record))
+                    ->visible(fn ($record) => ! $record->is_pro)
                     ->requiresConfirmation()
                     ->modalHeading('Activar Plan PRO Manualmente')
-                    ->modalDescription('Esto activará el Plan PRO sin registro de pago. Úsalo solo para regalos o pruebas.')
+                    ->modalDescription('Esto activara el Plan PRO sin registro de pago. Usar solo para regalos o pruebas.')
                     ->form([
                         \Filament\Forms\Components\Select::make('duration')
-                            ->label('Duración')
+                            ->label('Duracion')
                             ->options([
                                 '1' => '1 Mes',
                                 '3' => '3 Meses',
                                 '6' => '6 Meses',
-                                '12' => '1 Año',
+                                '12' => '1 Ano',
                                 '999' => 'Permanente',
                             ])
                             ->default('1')
                             ->required(),
                     ])
-                    ->action(function (Tenant $record, array $data): void {
+                    ->action(function ($record, array $data) {
                         $months = $data['duration'] == '999' ? 1200 : (int) $data['duration'];
 
-                        $record->activateProManually($months);
-                        $record->refresh();
-                        static::logTenantEvent($record, 'Plan PRO activado manualmente', [
-                            'duration_months' => $months,
-                            'duration_label' => $months >= 1200 ? 'Permanente' : "{$months} meses",
-                            'plan' => 'pro',
+                        $record->update([
+                            'is_pro' => true,
+                            'plan_expires_at' => now()->addMonths($months),
                         ]);
 
                         \Filament\Notifications\Notification::make()
                             ->success()
-                            ->title('Plan PRO activado')
+                            ->title('Plan PRO Activado')
                             ->body("Vigencia: {$months} meses")
                             ->send();
                     }),
 
-                EditAction::make(),
+                Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
             ->defaultSort('created_at', 'desc');
@@ -792,7 +545,7 @@ class TenantResource extends Resource
     public static function getRelations(): array
     {
         return [
-            ActivityLogsRelationManager::class,
+            //
         ];
     }
 
@@ -803,151 +556,5 @@ class TenantResource extends Resource
             'create' => Pages\CreateTenant::route('/create'),
             'edit' => Pages\EditTenant::route('/{record}/edit'),
         ];
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    protected static function internalOwnerOptions(): array
-    {
-        $superAdmins = collect(config('auth.super_admins', []))
-            ->filter(static fn (mixed $email): bool => is_string($email) && $email !== '')
-            ->values()
-            ->all();
-
-        return User::query()
-            ->where(function (Builder $query) use ($superAdmins): void {
-                $query->where('role', \App\Domain\Identity\Enums\UserRole::SUPER_ADMIN->value);
-
-                if ($superAdmins !== []) {
-                    $query->orWhereIn('email', $superAdmins);
-                }
-            })
-            ->orderBy('name')
-            ->pluck('name', 'id')
-            ->all();
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    protected static function crmStatusOptions(): array
-    {
-        return [
-            Tenant::CRM_STATUS_NEW => 'Nuevo',
-            Tenant::CRM_STATUS_ONBOARDING => 'En onboarding',
-            Tenant::CRM_STATUS_ACTIVE => 'Operando',
-            Tenant::CRM_STATUS_UPSELL => 'Upsell',
-            Tenant::CRM_STATUS_RENEWAL => 'Renovacion',
-            Tenant::CRM_STATUS_AT_RISK => 'En riesgo',
-            Tenant::CRM_STATUS_PAUSED => 'Pausado',
-        ];
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    protected static function crmTeamOptions(): array
-    {
-        return [
-            Tenant::CRM_TEAM_ACTIVATION => 'Activacion',
-            Tenant::CRM_TEAM_GROWTH => 'Growth',
-            Tenant::CRM_TEAM_RETENTION => 'Retencion',
-            Tenant::CRM_TEAM_BILLING => 'Cobros',
-            Tenant::CRM_TEAM_SUPPORT => 'Soporte',
-        ];
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    protected static function crmPriorityOptions(): array
-    {
-        return [
-            Tenant::CRM_PRIORITY_LOW => 'Baja',
-            Tenant::CRM_PRIORITY_NORMAL => 'Normal',
-            Tenant::CRM_PRIORITY_HIGH => 'Alta',
-            Tenant::CRM_PRIORITY_CRITICAL => 'Critica',
-        ];
-    }
-
-    protected static function crmStatusColor(string $status): string
-    {
-        return match ($status) {
-            Tenant::CRM_STATUS_ACTIVE, Tenant::CRM_STATUS_UPSELL => 'success',
-            Tenant::CRM_STATUS_ONBOARDING => 'info',
-            Tenant::CRM_STATUS_RENEWAL => 'warning',
-            Tenant::CRM_STATUS_AT_RISK => 'danger',
-            Tenant::CRM_STATUS_PAUSED => 'gray',
-            default => 'warning',
-        };
-    }
-
-    protected static function crmPriorityColor(string $priority): string
-    {
-        return match ($priority) {
-            Tenant::CRM_PRIORITY_CRITICAL => 'danger',
-            Tenant::CRM_PRIORITY_HIGH => 'warning',
-            Tenant::CRM_PRIORITY_LOW => 'gray',
-            default => 'info',
-        };
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    protected static function planTypeOptions(): array
-    {
-        return [
-            \App\Domain\TenantGovernance\Enums\TenantPlan::SEMILLA->value => 'Semilla',
-            \App\Domain\TenantGovernance\Enums\TenantPlan::PRO->value => 'PRO',
-            Tenant::PLAN_CRECIMIENTO => 'Crecimiento',
-            Tenant::PLAN_COSECHA => 'Cosecha',
-        ];
-    }
-
-    protected static function stateHasPaidPlan(Get $get): bool
-    {
-        return in_array((string) ($get('plan_type') ?? ''), ['pro', 'crecimiento', 'cosecha'], true);
-    }
-
-    protected static function tenantHasPaidPlan(Tenant $tenant): bool
-    {
-        return static::planReader()->isPaidPlan($tenant);
-    }
-
-    protected static function planReader(): SuperAdminTenantPlanReader
-    {
-        return app(SuperAdminTenantPlanReader::class);
-    }
-
-    protected static function appendCrmNote(string $existing, string $incoming, ?User $actor = null): string
-    {
-        $incoming = trim($incoming);
-
-        if ($incoming === '') {
-            return $existing;
-        }
-
-        $prefix = now()->format('d/m/Y H:i').' - '.($actor instanceof User ? $actor->name : 'Sistema');
-        $entry = $prefix.': '.$incoming;
-        $existing = trim($existing);
-
-        return $existing === '' ? $entry : $entry."\n\n".$existing;
-    }
-
-    /**
-     * @param  array<string, mixed>  $properties
-     */
-    protected static function logTenantEvent(Tenant $tenant, string $description, array $properties = [], ?User $actor = null): void
-    {
-        $resolvedActor = $actor;
-
-        if (! $resolvedActor) {
-            $user = auth()->user();
-            $resolvedActor = $user instanceof User ? $user : null;
-        }
-
-        $tenant->logOperationalEvent($description, $resolvedActor, $properties);
     }
 }

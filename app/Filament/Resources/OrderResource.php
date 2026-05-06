@@ -7,19 +7,17 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\OrderResource\Pages;
 use App\Models\Order;
 use App\Services\OrderStateService;
-use Filament\Actions\Action;
-use Filament\Actions\ViewAction;
+use Filament\Forms\Form;
+use Filament\Infolists\Components\Grid;
 use Filament\Infolists\Components\RepeatableEntry;
+use Filament\Infolists\Components\Section;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Infolist;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
 use Filament\Support\Enums\FontFamily;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 
 /**
  * OrderResource - Forensic Immutable Viewer & Workflow Command Center
@@ -37,9 +35,7 @@ class OrderResource extends Resource
 {
     protected static ?string $model = Order::class;
 
-    protected static bool $isScopedToTenant = false;
-
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-shopping-bag';
+    protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';
 
     protected static ?string $navigationLabel = 'Pedidos';
 
@@ -47,7 +43,7 @@ class OrderResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Pedidos';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Ventas';
+    protected static ?string $navigationGroup = 'Ventas';
 
     protected static ?int $navigationSort = 1;
 
@@ -70,9 +66,9 @@ class OrderResource extends Resource
      * from the Infolist for potential future use or read-only forms.
      * However, the primary detail view is handled by infolist().
      */
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
-        return $schema->schema([]); // Empty form as editing is disabled
+        return $form->schema([]); // Empty form as editing is disabled
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -137,12 +133,12 @@ class OrderResource extends Resource
                 // ═══════════════════════════════════════════════════════════════
                 // ACTION: VIEW
                 // ═══════════════════════════════════════════════════════════════
-                ViewAction::make(),
+                Tables\Actions\ViewAction::make(),
 
                 // ═══════════════════════════════════════════════════════════════
                 // ACTION: WHATSAPP CONTACT (Deep Link with Sanitization)
                 // ═══════════════════════════════════════════════════════════════
-                Action::make('whatsapp')
+                Tables\Actions\Action::make('whatsapp')
                     ->label('WhatsApp')
                     ->icon('heroicon-o-chat-bubble-left-right')
                     ->color('success')
@@ -163,7 +159,7 @@ class OrderResource extends Resource
                 // ═══════════════════════════════════════════════════════════════
                 // ACTION: COMPLETE (Workflow Transition)
                 // ═══════════════════════════════════════════════════════════════
-                Action::make('complete')
+                Tables\Actions\Action::make('complete')
                     ->label('Completar')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
@@ -184,7 +180,7 @@ class OrderResource extends Resource
                                 ->title('Pedido Completado')
                                 ->success()
                                 ->send();
-                        } catch (\Throwable $e) {
+                        } catch (\Exception $e) {
                             Notification::make()
                                 ->title('Error al completar')
                                 ->body($e->getMessage())
@@ -200,9 +196,9 @@ class OrderResource extends Resource
     // ═══════════════════════════════════════════════════════════════════════
     // INFOLIST: FORENSIC DECODER
     // ═══════════════════════════════════════════════════════════════════════
-    public static function infolist(\Filament\Schemas\Schema $schema): \Filament\Schemas\Schema
+    public static function infolist(Infolist $infolist): Infolist
     {
-        return $schema
+        return $infolist
             ->schema([
                 Section::make('Detalle del Pedido')
                     ->schema([
@@ -260,7 +256,7 @@ class OrderResource extends Resource
                     ->schema([
                         TextEntry::make('subtotal')->money('HNL'),
                         TextEntry::make('delivery_fee')->label('Envío')->money('HNL'),
-                        TextEntry::make('total')->money('HNL')->weight('bold')->size('lg'),
+                        TextEntry::make('total')->money('HNL')->weight('bold')->size(TextEntry\TextEntrySize::Large),
                     ]),
 
                 // Customer Section
@@ -276,11 +272,6 @@ class OrderResource extends Resource
     }
 
     use \App\Filament\Traits\ScopesToTenant;
-
-    public static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()->withoutGlobalScopes();
-    }
 
     public static function getRelations(): array
     {

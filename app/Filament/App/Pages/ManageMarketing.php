@@ -4,33 +4,17 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Pages;
 
-use App\Application\Catalog\Commands\CreateMenuSectionCommand;
-use App\Application\Catalog\Commands\DeleteMenuSectionCommand;
-use App\Application\Catalog\Commands\ReorderMenuSectionsCommand;
-use App\Application\Catalog\Commands\UpdateMenuSectionCommand;
-use App\Application\Catalog\Handlers\CreateMenuSectionHandler;
-use App\Application\Catalog\Handlers\DeleteMenuSectionHandler;
-use App\Application\Catalog\Handlers\ReorderMenuSectionsHandler;
-use App\Application\Catalog\Handlers\UpdateMenuSectionHandler;
-use App\Application\Tenant\Commands\UpdateTenantMarketingWhatsAppCommand;
-use App\Application\Tenant\Handlers\UpdateTenantMarketingWhatsAppHandler;
-use App\Domain\TenantGovernance\Enums\TenantFeature;
 use App\Models\MenuSection;
-use App\Models\Tenant;
 use App\Services\QrCodeService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions\Action;
-use Filament\Actions\CreateAction;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\EditAction;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
+use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
@@ -38,84 +22,109 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * @property-read Schema $form
+ * ManageMarketing - Pack de Herramientas de Venta PRO
+ *
+ * Dashboard de Growth Tools exclusivo para suscriptores PRO:
+ * - Configurador de WhatsApp con Live Preview
+ * - Generador de Cartelería QR (PDF Engine)
+ * - Gestor de Secciones de Menú (Sortable)
+ *
+ * Velvet Rope: FREE users ven un paywall atractivo.
  */
 class ManageMarketing extends Page implements HasForms, HasTable
 {
     use InteractsWithForms;
     use InteractsWithTable;
 
-    protected string $view = 'filament.app.pages.manage-marketing';
+    protected static string $view = 'filament.app.pages.manage-marketing';
 
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-megaphone';
-
-    public bool $isPro = false;
-
-    /** @var array<string, mixed>|null */
-    public ?array $data = [];
-
-    public string $messagePreview = '';
-
-    public string $qrCodeSvg = '';
-
-    public string $qrCodeDataUri = '';
-
-    public string $businessUrl = '';
+    protected static ?string $navigationIcon = 'heroicon-o-megaphone';
 
     public static function getNavigationLabel(): string
     {
         return 'Marketing';
     }
 
-    public static function getNavigationGroup(): ?string
-    {
-        return 'Marketing';
-    }
-
     public function getTitle(): string
     {
-        return 'Marketing y difusión';
-    }
-
-    public function getSubheading(): ?string
-    {
-        return 'Configura WhatsApp, comparte tu QR y ordena el catálogo público desde un solo flujo.';
+        return 'Herramientas de Venta';
     }
 
     public static function getNavigationSort(): ?int
     {
-        return 1;
+        return 3;
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // ESTADO DEL COMPONENTE
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * ¿Es usuario PRO?
+     */
+    public bool $isPro = false;
+
+    /**
+     * Datos del formulario de WhatsApp
+     */
+    public ?array $data = [];
+
+    /**
+     * Preview del mensaje (reactivo)
+     */
+    public string $messagePreview = '';
+
+    /**
+     * QR Code SVG generado
+     */
+    public string $qrCodeSvg = '';
+
+    /**
+     * URL del negocio
+     */
+    public string $businessUrl = '';
+
+    /**
+     * Inicialización con verificación de plan
+     */
     public function mount(): void
     {
-        $tenant = $this->getTenantRecord();
+        $tenant = Filament::getTenant();
 
-        if (! $tenant instanceof Tenant) {
+        if (! $tenant) {
             return;
         }
 
-        $this->isPro = $tenant->hasFeature(TenantFeature::MARKETING_SUITE);
-        $this->businessUrl = route('tenant.microsite.show', ['tenant' => $tenant->slug]);
+        // Verificar si es PRO (Velvet Rope)
+        $this->isPro = (bool) $tenant->is_pro;
 
-        if (! $this->isPro) {
-            return;
+        // URL del negocio
+        $this->businessUrl = url('/'.$tenant->slug);
+
+        // Solo cargar datos si es PRO
+        if ($this->isPro) {
+            // Llenar formulario con datos actuales
+            $this->form->fill([
+                'whatsapp_number' => $tenant->whatsapp_number,
+                'whatsapp_message' => $tenant->whatsapp_message ?? 'Hola, me interesa el producto {producto} que vi en su página.',
+            ]);
+
+            // Generar QR Code
+            $this->generateQrCode();
+
+            // Generar preview inicial
+            $this->updateMessagePreview();
         }
-
-        $this->form->fill([
-            'whatsapp_number' => $tenant->whatsapp_number,
-            'whatsapp_message' => $tenant->whatsapp_message ?? 'Hola, me interesa el producto {producto} que vi en su página.',
-        ]);
-
-        $this->generateQrCode();
-        $this->updateMessagePreview();
     }
 
-    public function form(Schema $schema): Schema
+    /**
+     * Esquema del formulario de WhatsApp
+     */
+    public function form(Form $form): Form
     {
-        return $schema
+        return $form
             ->schema([
-                Section::make('Configuración de WhatsApp')
+                Forms\Components\Section::make('Configuración de WhatsApp')
                     ->description('Personaliza el mensaje que reciben tus clientes al contactarte.')
                     ->schema([
                         Forms\Components\TextInput::make('whatsapp_number')
@@ -124,16 +133,16 @@ class ManageMarketing extends Page implements HasForms, HasTable
                             ->placeholder('+504 9999-9999')
                             ->prefix('+504')
                             ->prefixIcon('heroicon-o-device-phone-mobile')
-                            ->helperText('Escribe solo los 8 dígitos de tu número. Ejemplo: 9876-5432.')
+                            ->helperText('Escribe solo los 8 dígitos de tu número. Ejemplo: 9876-5432')
                             ->mask('9999-9999')
                             ->live(onBlur: true)
                             ->required(),
 
                         Forms\Components\Textarea::make('whatsapp_message')
-                            ->label('Mensaje predeterminado')
+                            ->label('Mensaje Predeterminado')
                             ->rows(4)
                             ->placeholder('Hola, me interesa el producto {producto} que vi en su página.')
-                            ->helperText('Usa {producto} para incluir el nombre del producto y {precio} para el precio.')
+                            ->helperText('Escribe el mensaje que recibirás cuando un cliente te contacte. Usa {producto} para incluir el nombre del producto y {precio} para el precio.')
                             ->live(debounce: 500)
                             ->afterStateUpdated(fn () => $this->updateMessagePreview())
                             ->required()
@@ -144,31 +153,44 @@ class ManageMarketing extends Page implements HasForms, HasTable
             ->statePath('data');
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // TABLA DE SECCIONES DE MENÚ (SORTABLE)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Configuración de la tabla de secciones de menú
+     *
+     * MEJORAS UX:
+     * 1. TextInputColumn: Edición en línea sin modales
+     * 2. Semáforo Visual: Verde = sana, Rojo = vacía
+     * 3. Orphan Guard: Modal dinámico según productos
+     */
     public function table(Table $table): Table
     {
-        $tenant = $this->getTenantRecord();
-
         return $table
             ->query(fn (): Builder => MenuSection::query()
-                ->where('tenant_id', $tenant?->getKey())
+                ->where('tenant_id', Filament::getTenant()?->id)
                 ->withCount('products')
-                ->orderBy('sort_order'))
+                ->orderBy('sort_order')
+            )
             ->columns([
+                // ═══════════════════════════════════════════════════════
+                // EDICIÓN EN LÍNEA: Nombre editable estilo Excel
+                // ═══════════════════════════════════════════════════════
                 Tables\Columns\TextInputColumn::make('name')
-                    ->label('Nombre de la sección')
+                    ->label('Nombre de la Sección')
                     ->searchable()
                     ->sortable()
                     ->rules(['required', 'max:50', 'min:2'])
                     ->placeholder('Escribe el nombre...')
-                    ->updateStateUsing(function (MenuSection $record, mixed $state): string {
-                        $updatedRecord = $this->updateMenuSection($record, [
-                            'name' => (string) $state,
-                        ]);
-
-                        return (string) $updatedRecord->name;
-                    })
                     ->extraAttributes(['class' => 'font-semibold']),
 
+                // ═══════════════════════════════════════════════════════
+                // SEMÁFORO VISUAL: Indicador de salud del inventario
+                // ═══════════════════════════════════════════════════════
+                // Verde (success) = Sección con productos
+                // Rojo (danger) = Sección vacía (requiere acción)
+                // ═══════════════════════════════════════════════════════
                 Tables\Columns\TextColumn::make('products_count')
                     ->label('Productos')
                     ->badge()
@@ -177,40 +199,38 @@ class ManageMarketing extends Page implements HasForms, HasTable
                         ? 'heroicon-o-check-circle'
                         : 'heroicon-o-exclamation-triangle')
                     ->tooltip(fn (int $state): string => $state > 0
-                        ? "Esta sección tiene {$state} producto(s)."
-                        : 'Sección vacía: agrega productos para mostrarla en tu vitrina.'),
+                        ? "Esta sección tiene {$state} producto(s)"
+                        : '⚠️ Sección vacía - Agrega productos'),
 
+                // Toggle rápido de visibilidad
                 Tables\Columns\ToggleColumn::make('is_active')
                     ->label('Activa')
                     ->onColor('success')
                     ->offColor('danger')
-                    ->updateStateUsing(function (MenuSection $record, mixed $state): bool {
-                        $updatedRecord = $this->updateMenuSection($record, [
-                            'is_active' => (bool) $state,
-                        ]);
+                    ->tooltip('Activar/Desactivar visibilidad en menú público'),
 
-                        return (bool) $updatedRecord->is_active;
-                    })
-                    ->tooltip('Activa o desactiva la visibilidad en el menú público.'),
-
+                // Referencia de orden (discreta)
                 Tables\Columns\TextColumn::make('sort_order')
                     ->label('Orden')
                     ->badge()
                     ->color('gray')
                     ->alignCenter(),
             ])
+            // Motor de arrastre para reordenar
             ->reorderable('sort_order')
             ->defaultSort('sort_order')
+
+            // Acciones de cabecera
             ->headerActions([
-                CreateAction::make()
-                    ->label('Nueva sección')
+                Tables\Actions\CreateAction::make()
+                    ->label('Nueva Sección')
                     ->icon('heroicon-o-plus')
-                    ->modalHeading('Crear sección del catálogo')
-                    ->modalDescription('Las secciones ayudan a organizar tu oferta. Por ejemplo: "Entradas", "Servicios" o "Promociones".')
+                    ->modalHeading('Crear Sección de Menú')
+                    ->modalDescription('Las secciones ayudan a organizar tus productos. Ejemplo: "Entradas", "Platos Fuertes", "Bebidas".')
                     ->form([
                         Forms\Components\TextInput::make('name')
-                            ->label('Nombre de la sección')
-                            ->placeholder('Ej: Promociones')
+                            ->label('Nombre de la Sección')
+                            ->placeholder('Ej: Platos Fuertes')
                             ->required()
                             ->maxLength(50)
                             ->minLength(2)
@@ -218,173 +238,208 @@ class ManageMarketing extends Page implements HasForms, HasTable
                         Forms\Components\Toggle::make('is_active')
                             ->label('Activa')
                             ->default(true)
-                            ->helperText('Las secciones inactivas no se muestran en el catálogo público.'),
+                            ->helperText('Las secciones inactivas no se muestran en el menú público.'),
                     ])
-                    ->using(fn (array $data): MenuSection => $this->createMenuSection($data))
-                    ->successNotificationTitle('Sección creada correctamente'),
+                    ->mutateFormDataUsing(function (array $data): array {
+                        $data['tenant_id'] = Filament::getTenant()->id;
+                        $data['sort_order'] = MenuSection::where('tenant_id', Filament::getTenant()->id)->max('sort_order') + 1;
+
+                        return $data;
+                    })
+                    ->successNotificationTitle('✅ Sección creada exitosamente'),
             ])
+
+            // Acciones por fila
             ->actions([
-                EditAction::make()
+                Tables\Actions\EditAction::make()
                     ->iconButton()
-                    ->modalHeading('Editar sección')
+                    ->modalHeading('Editar Sección')
                     ->form([
                         Forms\Components\TextInput::make('name')
-                            ->label('Nombre de la sección')
+                            ->label('Nombre de la Sección')
                             ->required()
                             ->maxLength(50)
                             ->minLength(2),
                         Forms\Components\Toggle::make('is_active')
                             ->label('Activa'),
-                    ])
-                    ->using(fn (MenuSection $record, array $data): MenuSection => $this->updateMenuSection($record, $data)),
-                DeleteAction::make()
+                    ]),
+
+                // ═══════════════════════════════════════════════════════
+                // ORPHAN GUARD: Eliminación defensiva inteligente
+                // ═══════════════════════════════════════════════════════
+                // Modal dinámico que advierte según productos asociados
+                // ═══════════════════════════════════════════════════════
+                Tables\Actions\DeleteAction::make()
                     ->iconButton()
                     ->modalHeading('¿Eliminar esta sección?')
                     ->modalDescription(function (MenuSection $record): string {
+                        // Obtener conteo actualizado
                         $count = $record->products()->count();
 
                         if ($count > 0) {
-                            return "**Atención:** esta sección contiene **{$count} producto(s)** asociados.\n\n"
-                                ."Si la eliminas:\n"
-                                ."- Los productos **no se borrarán** de la base de datos.\n"
-                                ."- Quedarán en **Sin categoría**.\n"
-                                ."- **Dejarán de ser visibles** en el catálogo público hasta que los reasignes.\n\n"
-                                .'¿Seguro que quieres continuar?';
+                            // ⚠️ ADVERTENCIA: Sección con productos
+                            return "⚠️ **ADVERTENCIA:** Esta sección contiene **{$count} producto(s)** asociados.\n\n".
+                                   "Si la eliminas:\n".
+                                   "• Los productos **NO se borrarán** de la base de datos\n".
+                                   "• Quedarán **'Sin Categoría'**\n".
+                                   "• **Dejarán de ser visibles** en tu menú público hasta que los reasignes\n\n".
+                                   '¿Estás seguro de continuar?';
                         }
 
-                        return "Esta sección está vacía (0 productos). ¿Seguro que quieres eliminarla?\n\nEsta acción no se puede deshacer.";
-                    })
-                    ->action(function (MenuSection $record): void {
-                        $this->deleteMenuSection($record);
+                        // ✅ Sección vacía - eliminación segura
+                        return "Esta sección está vacía (0 productos). ¿Estás seguro de eliminarla?\n\nEsta acción no se puede deshacer.";
                     })
                     ->modalSubmitActionLabel('Sí, eliminar sección')
                     ->successNotificationTitle('Sección eliminada'),
             ])
-            ->emptyState(fn () => view('filament.app.components.table-empty-state', [
-                'heading' => 'Aún no has creado secciones del catálogo',
-                'description' => 'Usa "Nueva sección" para ordenar tu oferta en bloques como bebidas, servicios o promociones.',
-            ]));
+
+            // Estado vacío (Onboarding)
+            ->emptyStateHeading('Sin secciones de menú')
+            ->emptyStateDescription('Crea tu primera categoría (ej. Entradas, Bebidas) para comenzar a organizar tu catálogo.')
+            ->emptyStateIcon('heroicon-o-folder-open')
+            ->emptyStateActions([
+                Tables\Actions\CreateAction::make()
+                    ->label('Crear Primera Sección')
+                    ->icon('heroicon-o-plus')
+                    ->form([
+                        Forms\Components\TextInput::make('name')
+                            ->label('Nombre de la Sección')
+                            ->placeholder('Ej: Platos Fuertes')
+                            ->required()
+                            ->maxLength(50)
+                            ->minLength(2),
+                        Forms\Components\Toggle::make('is_active')
+                            ->label('Activa')
+                            ->default(true),
+                    ])
+                    ->mutateFormDataUsing(function (array $data): array {
+                        $data['tenant_id'] = Filament::getTenant()->id;
+                        $data['sort_order'] = 0;
+
+                        return $data;
+                    }),
+            ]);
     }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // MÉTODOS DE WHATSAPP
+    // ═══════════════════════════════════════════════════════════════════════
 
     /**
-     * @param  array<int|string>  $order
+     * Actualiza el preview del mensaje con datos de ejemplo
      */
-    public function reorderTable(array $order, int|string|null $draggedRecordKey = null): void
-    {
-        if (! $this->getTable()->isReorderable()) {
-            return;
-        }
-
-        app(ReorderMenuSectionsHandler::class)->handle(
-            new ReorderMenuSectionsCommand(
-                tenantId: $this->resolveTenantIdOrFail(),
-                orderedMenuSectionIds: $this->normalizeMenuSectionIds($order),
-            )
-        );
-    }
-
     public function updateMessagePreview(): void
     {
         $template = $this->data['whatsapp_message'] ?? 'Hola, me interesa...';
 
+        // Reemplazar variables con datos de ejemplo
         $this->messagePreview = str_replace(
             ['{producto}', '{precio}'],
-            ['Baleada especial', 'L. 45.00'],
+            ['🍔 Baleada Especial', 'L. 45.00'],
             $template
         );
     }
 
+    /**
+     * Genera el código QR SVG usando el servicio
+     */
     protected function generateQrCode(): void
     {
         try {
-            $tenant = $this->getTenantRecord();
-
-            if (! $tenant instanceof Tenant) {
+            $tenant = Filament::getTenant();
+            if (! $tenant) {
                 $this->qrCodeSvg = '';
-                $this->qrCodeDataUri = '';
 
                 return;
             }
 
             $qrService = app(QrCodeService::class);
             $this->qrCodeSvg = $qrService->getQrCode($tenant, 250);
-            $this->qrCodeDataUri = $qrService->getQrCodeAsDataUri($tenant, 250);
-        } catch (\Exception) {
+        } catch (\Exception $e) {
             $this->qrCodeSvg = '';
-            $this->qrCodeDataUri = '';
         }
     }
 
+    /**
+     * Guarda la configuración de WhatsApp
+     *
+     * GUARD: Solo usuarios PRO pueden ejecutar esta acción
+     */
     public function saveWhatsAppConfig(): void
     {
+        // ═══ GUARD: Verificación de seguridad PRO ═══
         if (! $this->isPro) {
             Notification::make()
                 ->danger()
                 ->title('Acción no autorizada')
-                ->body('Debes activar PRO para usar esta funcionalidad.')
+                ->body('Debes tener un Plan PRO para usar esta funcionalidad.')
                 ->send();
 
             return;
         }
 
         $data = $this->form->getState();
-        $tenant = $this->getTenantRecord();
 
-        if (! $tenant instanceof Tenant) {
-            Notification::make()
-                ->danger()
-                ->title('No se pudo guardar la configuración')
-                ->send();
+        $tenant = Filament::getTenant();
 
-            return;
-        }
+        // Formatear número con código de país
+        $cleanNumber = preg_replace('/[^0-9]/', '', $data['whatsapp_number']);
 
-        app(UpdateTenantMarketingWhatsAppHandler::class)->handle(
-            new UpdateTenantMarketingWhatsAppCommand(
-                tenantId: (string) $tenant->getKey(),
-                whatsappNumber: (string) ($data['whatsapp_number'] ?? ''),
-                whatsappMessage: (string) ($data['whatsapp_message'] ?? ''),
-            )
-        );
+        $tenant->update([
+            'whatsapp_number' => $cleanNumber,
+            'whatsapp_message' => $data['whatsapp_message'],
+        ]);
 
         Notification::make()
             ->success()
             ->title('Configuración guardada')
-            ->body('Tu mensaje de WhatsApp fue actualizado correctamente.')
+            ->body('Tu mensaje de WhatsApp ha sido actualizado.')
             ->send();
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // GENERADOR DE PDF
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Descarga el cartel con código QR en PDF
+     *
+     * GUARD: Solo usuarios PRO pueden ejecutar esta acción
+     */
     public function downloadPoster()
     {
+        // ═══ GUARD: Verificación de seguridad PRO ═══
         if (! $this->isPro) {
             Notification::make()
                 ->danger()
                 ->title('Acción no autorizada')
-                ->body('Debes activar PRO para descargar carteles.')
+                ->body('Debes tener un Plan PRO para descargar carteles.')
                 ->send();
 
             return;
         }
 
-        $tenant = $this->getTenantRecord();
+        $tenant = Filament::getTenant();
 
-        if (! $tenant instanceof Tenant) {
+        if (! $tenant) {
             Notification::make()
                 ->danger()
-                ->title('No se pudo generar el cartel')
-                ->body('Vuelve a intentarlo en unos segundos.')
+                ->title('Error')
+                ->body('No se pudo generar el cartel.')
                 ->send();
 
             return;
         }
 
+        // Generar QR usando el servicio
         try {
             $qrService = app(QrCodeService::class);
             $qrCode = $qrService->getQrCodeForPoster($tenant);
-        } catch (\Exception) {
+        } catch (\Exception $e) {
             $qrCode = '';
         }
 
+        // Generar PDF
         $pdf = Pdf::loadView('pdf.qr-poster', [
             'tenant' => $tenant,
             'qrCode' => $qrCode,
@@ -400,124 +455,35 @@ class ManageMarketing extends Page implements HasForms, HasTable
         ]);
     }
 
+    /**
+     * Acciones del header
+     */
     protected function getHeaderActions(): array
     {
-        $tenant = $this->getTenantRecord();
-
-        if (! $tenant instanceof Tenant) {
-            return [];
-        }
-
         if (! $this->isPro) {
-            return [
-                Action::make('upgrade')
-                    ->label('Activar plan PRO')
-                    ->icon('heroicon-o-arrow-up-right')
-                    ->color('success')
-                    ->url(route('filament.app.pages.manage-billing', ['tenant' => $tenant->slug], false)),
-            ];
+            return [];
         }
 
         return [
             Action::make('save_whatsapp')
-                ->label('Guardar WhatsApp')
-                ->icon('heroicon-o-check-circle')
-                ->color('success')
-                ->keyBindings(['mod+s'])
+                ->label('Guardar Configuración')
+                ->icon('heroicon-o-check')
+                ->color('primary')
                 ->action('saveWhatsAppConfig'),
-            Action::make('public_page')
-                ->label('Ver página pública')
-                ->icon('heroicon-o-arrow-top-right-on-square')
-                ->color('gray')
-                ->url($this->businessUrl, shouldOpenInNewTab: true),
-            Action::make('billing')
-                ->label('Ver suscripción')
-                ->icon('heroicon-o-credit-card')
-                ->color('gray')
-                ->url(route('filament.app.pages.manage-billing', ['tenant' => $tenant->slug], false)),
+
+            Action::make('download_poster')
+                ->label('Descargar Cartel QR')
+                ->icon('heroicon-o-arrow-down-tray')
+                ->color('success')
+                ->action('downloadPoster'),
         ];
     }
 
+    /**
+     * Navegación solo para usuarios activos
+     */
     public static function shouldRegisterNavigation(): bool
     {
-        return true;
-    }
-
-    protected function getTenantRecord(): ?Tenant
-    {
-        $tenant = Filament::getTenant();
-
-        return $tenant instanceof Tenant ? $tenant : null;
-    }
-
-    /**
-     * @param  array<string, mixed>  $data
-     */
-    private function createMenuSection(array $data): MenuSection
-    {
-        return app(CreateMenuSectionHandler::class)->handle(
-            new CreateMenuSectionCommand(
-                tenantId: $this->resolveTenantIdOrFail(),
-                name: (string) ($data['name'] ?? ''),
-                isActive: (bool) ($data['is_active'] ?? true),
-            )
-        );
-    }
-
-    /**
-     * @param  array<string, mixed>  $data
-     */
-    private function updateMenuSection(MenuSection $record, array $data): MenuSection
-    {
-        return app(UpdateMenuSectionHandler::class)->handle(
-            new UpdateMenuSectionCommand(
-                tenantId: $this->resolveTenantIdOrFail(),
-                menuSectionId: (int) $record->getKey(),
-                name: array_key_exists('name', $data) ? (string) $data['name'] : null,
-                isActive: array_key_exists('is_active', $data) ? (bool) $data['is_active'] : null,
-            )
-        );
-    }
-
-    private function deleteMenuSection(MenuSection $record): void
-    {
-        app(DeleteMenuSectionHandler::class)->handle(
-            new DeleteMenuSectionCommand(
-                tenantId: $this->resolveTenantIdOrFail(),
-                menuSectionId: (int) $record->getKey(),
-            )
-        );
-    }
-
-    private function resolveTenantIdOrFail(): string
-    {
-        $tenant = $this->getTenantRecord();
-
-        if (! $tenant instanceof Tenant) {
-            throw new \RuntimeException('Unable to resolve tenant context for menu section mutation.');
-        }
-
-        return (string) $tenant->getKey();
-    }
-
-    /**
-     * @param  array<int|string>  $order
-     * @return array<int, int>
-     */
-    private function normalizeMenuSectionIds(array $order): array
-    {
-        $normalized = [];
-
-        foreach ($order as $menuSectionId) {
-            $menuSectionId = (int) $menuSectionId;
-
-            if ($menuSectionId <= 0 || in_array($menuSectionId, $normalized, true)) {
-                continue;
-            }
-
-            $normalized[] = $menuSectionId;
-        }
-
-        return $normalized;
+        return true; // Todos ven el menú, pero FREE ven paywall
     }
 }

@@ -4,22 +4,10 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Pages;
 
-use App\Application\Access\Contracts\TenantPermissionGuardInterface;
-use App\Application\Tenant\Commands\UpdateTenantPublicProfileCommand;
-use App\Application\Tenant\Handlers\UpdateTenantPublicProfileHandler;
-use App\Domain\Access\Enums\Permission;
-use App\Domain\TenantGovernance\Enums\Capability;
-use App\Domain\TenantGovernance\Enums\TenantFeature;
-use App\Models\Tenant;
-use App\Models\User;
-use Filament\Actions\Action;
+use Filament\Facades\Filament;
 use Filament\Forms;
+use Filament\Forms\Form;
 use Filament\Pages\Tenancy\EditTenantProfile as BaseEditTenantProfile;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Tabs;
-use Filament\Schemas\Components\Tabs\Tab;
-use Filament\Schemas\Schema;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\HtmlString;
 
 /**
@@ -36,46 +24,29 @@ class EditTenantProfile extends BaseEditTenantProfile
         return 'Perfil de mi Negocio';
     }
 
-    public static function canView(Model $tenant): bool
+    public function form(Form $form): Form
     {
-        $user = auth()->user();
-
-        if (! $user instanceof User || ! $tenant instanceof Tenant) {
-            return false;
-        }
-
-        return app(TenantPermissionGuardInterface::class)->allows(
-            $user,
-            $tenant,
-            Capability::CATALOG_BASIC,
-            Permission::SETTINGS_VIEW
-        );
-    }
-
-    public function form(Schema $schema): Schema
-    {
-        $tenant = $this->getTenantRecord();
-        $hasAdvancedBranding = $tenant instanceof Tenant ? $tenant->hasFeature(TenantFeature::ADVANCED_BRANDING) : false;
+        $isPro = Filament::getTenant()?->is_pro ?? false;
         $billingUrl = '#';
 
         try {
-            $billingUrl = route('filament.app.pages.manage-billing', ['tenant' => $tenant instanceof Tenant ? $tenant->slug : '']);
+            $billingUrl = route('filament.app.pages.manage-billing', ['tenant' => Filament::getTenant()?->slug ?? '']);
         } catch (\Exception $e) {
             // Route may not exist during app boot
         }
 
-        return $schema
+        return $form
             ->schema([
-                Tabs::make('ProfileSettings')
+                Forms\Components\Tabs::make('ProfileSettings')
                     ->tabs([
                         // ═══════════════════════════════════════════════════════════
                         // TAB 1: IDENTIDAD VISUAL
                         // ═══════════════════════════════════════════════════════════
-                        Tab::make('Identidad')
+                        Forms\Components\Tabs\Tab::make('Identidad')
                             ->label('🎨 Marca')
                             ->icon('heroicon-o-paint-brush')
                             ->schema([
-                                Section::make('Información del Negocio')
+                                Forms\Components\Section::make('Información del Negocio')
                                     ->schema([
                                         Forms\Components\TextInput::make('name')
                                             ->label('Nombre del Negocio')
@@ -84,7 +55,7 @@ class EditTenantProfile extends BaseEditTenantProfile
 
                                         Forms\Components\TextInput::make('slug')
                                             ->label('URL Personalizada')
-                                            ->prefix('vitobusinessos.com/')
+                                            ->prefix('conectahn.com/')
                                             ->required()
                                             ->unique(ignoreRecord: true)
                                             ->alphaDash()
@@ -124,7 +95,7 @@ class EditTenantProfile extends BaseEditTenantProfile
                                     ])
                                     ->columns(2),
 
-                                Section::make('Logo')
+                                Forms\Components\Section::make('Logo')
                                     ->schema([
                                         Forms\Components\FileUpload::make('logo_path')
                                             ->label('Logo')
@@ -137,8 +108,8 @@ class EditTenantProfile extends BaseEditTenantProfile
                                             ->maxSize(2048),
                                     ]),
 
-                                Section::make('Personalización de Marca')
-                                    ->description($hasAdvancedBranding ? '✨ Personaliza tu identidad visual.' : '🔒 Funciones PRO - Actualiza tu plan para desbloquear')
+                                Forms\Components\Section::make('Personalización de Marca')
+                                    ->description($isPro ? '✨ Personaliza tu identidad visual.' : '🔒 Funciones PRO - Actualiza tu plan para desbloquear')
                                     ->icon('heroicon-o-sparkles')
                                     ->schema([
                                         Forms\Components\ColorPicker::make('brand_color')
@@ -159,8 +130,8 @@ class EditTenantProfile extends BaseEditTenantProfile
                                             ->directory('tenant-heroes')
                                             ->maxSize(2048)
                                             ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
-                                            ->disabled(! $hasAdvancedBranding)
-                                            ->hint(! $hasAdvancedBranding ? '🔒 PRO' : null)
+                                            ->disabled(! $isPro)
+                                            ->hint(! $isPro ? '🔒 PRO' : null)
                                             ->helperText('Máx 2MB. Recomendado: 1920x600px. Se muestra en la cabecera de tu sitio.'),
 
                                         Forms\Components\FileUpload::make('banner_path')
@@ -171,13 +142,13 @@ class EditTenantProfile extends BaseEditTenantProfile
                                             ->directory('tenants/banners')
                                             ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                                             ->maxSize(2048)
-                                            ->disabled(! $hasAdvancedBranding)
-                                            ->hint(! $hasAdvancedBranding ? '🔒 PRO' : null),
+                                            ->disabled(! $isPro)
+                                            ->hint(! $isPro ? '🔒 PRO' : null),
 
                                         Forms\Components\ColorPicker::make('primary_color')
                                             ->label('Color Secundario')
-                                            ->disabled(! $hasAdvancedBranding)
-                                            ->hint(! $hasAdvancedBranding ? '🔒 PRO' : null)
+                                            ->disabled(! $isPro)
+                                            ->hint(! $isPro ? '🔒 PRO' : null)
                                             ->helperText('Color alternativo para variaciones.'),
                                     ])
                                     ->columns(2),
@@ -186,11 +157,11 @@ class EditTenantProfile extends BaseEditTenantProfile
                         // ═══════════════════════════════════════════════════════════
                         // TAB 2: UBICACIÓN
                         // ═══════════════════════════════════════════════════════════
-                        Tab::make('Ubicación')
+                        Forms\Components\Tabs\Tab::make('Ubicación')
                             ->label('📍 Ubicación')
                             ->icon('heroicon-o-map-pin')
                             ->schema([
-                                Section::make('Contacto')
+                                Forms\Components\Section::make('Contacto')
                                     ->schema([
                                         Forms\Components\TextInput::make('email')
                                             ->label('Email')
@@ -209,7 +180,7 @@ class EditTenantProfile extends BaseEditTenantProfile
                                     ])
                                     ->columns(3),
 
-                                Section::make('Dirección')
+                                Forms\Components\Section::make('Dirección')
                                     ->schema([
                                         Forms\Components\Select::make('city_id')
                                             ->label('Ciudad')
@@ -224,21 +195,21 @@ class EditTenantProfile extends BaseEditTenantProfile
                                             ->columnSpanFull(),
                                     ]),
 
-                                Section::make('GPS')
-                                    ->description($hasAdvancedBranding ? 'Pin en el mapa' : '🔒 PRO-only')
+                                Forms\Components\Section::make('GPS')
+                                    ->description($isPro ? 'Pin en el mapa' : '🔒 PRO-only')
                                     ->collapsed()
                                     ->schema([
                                         Forms\Components\TextInput::make('latitude')
                                             ->label('Latitud')
                                             ->numeric()
-                                            ->disabled(! $hasAdvancedBranding)
-                                            ->hint(! $hasAdvancedBranding ? '🔒 PRO' : null),
+                                            ->disabled(! $isPro)
+                                            ->hint(! $isPro ? '🔒 PRO' : null),
 
                                         Forms\Components\TextInput::make('longitude')
                                             ->label('Longitud')
                                             ->numeric()
-                                            ->disabled(! $hasAdvancedBranding)
-                                            ->hint(! $hasAdvancedBranding ? '🔒 PRO' : null),
+                                            ->disabled(! $isPro)
+                                            ->hint(! $isPro ? '🔒 PRO' : null),
                                     ])
                                     ->columns(2),
                             ]),
@@ -246,42 +217,42 @@ class EditTenantProfile extends BaseEditTenantProfile
                         // ═══════════════════════════════════════════════════════════
                         // TAB 3: OPERACIONES
                         // ═══════════════════════════════════════════════════════════
-                        Tab::make('Operaciones')
+                        Forms\Components\Tabs\Tab::make('Operaciones')
                             ->label('⏰ Operaciones')
                             ->icon('heroicon-o-clock')
                             ->schema([
-                                Section::make('Redes Sociales')
-                                    ->description($hasAdvancedBranding ? 'Integra tus redes' : '🔒 PRO-only')
+                                Forms\Components\Section::make('Redes Sociales')
+                                    ->description($isPro ? 'Conecta tus redes' : '🔒 PRO-only')
                                     ->schema([
                                         Forms\Components\TextInput::make('facebook_url')
                                             ->label('Facebook')
                                             ->url()
-                                            ->disabled(! $hasAdvancedBranding)
+                                            ->disabled(! $isPro)
                                             ->prefixIcon('heroicon-o-globe-alt'),
 
                                         Forms\Components\TextInput::make('instagram_url')
                                             ->label('Instagram')
                                             ->url()
-                                            ->disabled(! $hasAdvancedBranding)
+                                            ->disabled(! $isPro)
                                             ->prefixIcon('heroicon-o-camera'),
 
                                         Forms\Components\TextInput::make('tiktok_url')
                                             ->label('TikTok')
                                             ->url()
-                                            ->disabled(! $hasAdvancedBranding)
+                                            ->disabled(! $isPro)
                                             ->prefixIcon('heroicon-o-play'),
 
                                         Forms\Components\TextInput::make('website_url')
                                             ->label('Sitio Web')
                                             ->url()
-                                            ->disabled(! $hasAdvancedBranding)
+                                            ->disabled(! $isPro)
                                             ->prefixIcon('heroicon-o-globe-americas'),
                                     ])
                                     ->columns(2),
 
                                 // Horario Simple para FREE
-                                Section::make('Horario General')
-                                    ->visible(! $hasAdvancedBranding)
+                                Forms\Components\Section::make('Horario General')
+                                    ->visible(! $isPro)
                                     ->schema([
                                         Forms\Components\TextInput::make('simple_schedule')
                                             ->label('Horario de Atención')
@@ -290,8 +261,8 @@ class EditTenantProfile extends BaseEditTenantProfile
                                     ]),
 
                                 // Horario Complejo para PRO
-                                Section::make('Horarios Detallados')
-                                    ->visible($hasAdvancedBranding)
+                                Forms\Components\Section::make('Horarios Detallados')
+                                    ->visible($isPro)
                                     ->collapsed()
                                     ->schema([
                                         Forms\Components\Repeater::make('hours_data')
@@ -329,7 +300,7 @@ class EditTenantProfile extends BaseEditTenantProfile
                                             ->maxItems(7),
                                     ]),
 
-                                Section::make('WhatsApp')
+                                Forms\Components\Section::make('WhatsApp')
                                     ->collapsed()
                                     ->schema([
                                         Forms\Components\Textarea::make('whatsapp_message')
@@ -346,88 +317,22 @@ class EditTenantProfile extends BaseEditTenantProfile
 
     protected function getHeaderActions(): array
     {
-        $tenant = $this->getTenantRecord();
-        $canUpgrade = $tenant instanceof Tenant ? $tenant->hasFeature(TenantFeature::UPGRADE_PROMPT) : false;
+        $isPro = $this->tenant?->is_pro ?? false;
 
         return [
-            Action::make('view_site')
+            \Filament\Actions\Action::make('view_site')
                 ->label('Ver mi Sitio')
                 ->icon('heroicon-o-arrow-top-right-on-square')
                 ->color('gray')
-                ->url(fn (): string => $tenant instanceof Tenant
-                    ? route('tenant.microsite.show', ['tenant' => $tenant->slug])
-                    : url('/'))
+                ->url(fn () => url('/'.$this->tenant->slug))
                 ->openUrlInNewTab(),
 
-            Action::make('upgrade')
+            \Filament\Actions\Action::make('upgrade')
                 ->label('✨ Mejorar a PRO')
                 ->icon('heroicon-m-sparkles')
                 ->color('warning')
-                ->visible($canUpgrade)
-                ->url(fn (): string => route('filament.app.pages.manage-billing', ['tenant' => $tenant instanceof Tenant ? $tenant->slug : ''])),
+                ->visible(! $isPro)
+                ->url(fn () => route('filament.app.pages.manage-billing', ['tenant' => $this->tenant->slug])),
         ];
-    }
-
-    protected function getHeaderWidgets(): array
-    {
-        request()->attributes->set('onboarding_module', 'settings');
-
-        return [
-            \App\Filament\App\Widgets\OnboardingActivationWidget::class,
-        ];
-    }
-
-    /**
-     * @param  array<string, mixed>  $data
-     * @return array<string, mixed>
-     */
-    protected function mutateFormDataBeforeFill(array $data): array
-    {
-        if (array_key_exists('cover_path', $data) && ! array_key_exists('banner_path', $data)) {
-            $data['banner_path'] = $data['cover_path'];
-        }
-
-        return $data;
-    }
-
-    /**
-     * @param  array<string, mixed>  $data
-     * @return array<string, mixed>
-     */
-    protected function mutateFormDataBeforeSave(array $data): array
-    {
-        if (array_key_exists('banner_path', $data)) {
-            $data['cover_path'] = $data['banner_path'];
-            unset($data['banner_path']);
-        }
-
-        return $data;
-    }
-
-    /**
-     * @param  array<string, mixed>  $data
-     */
-    protected function handleRecordUpdate(Model $record, array $data): Model
-    {
-        if (! $record instanceof Tenant) {
-            return parent::handleRecordUpdate($record, $data);
-        }
-
-        app(UpdateTenantPublicProfileHandler::class)->handle(
-            new UpdateTenantPublicProfileCommand(
-                tenantId: (string) $record->getKey(),
-                profileData: $data,
-                hoursData: is_array($data['hours_data'] ?? null) ? $data['hours_data'] : null,
-            )
-        );
-
-        $record->refresh();
-
-        return $record;
-    }
-
-    protected function getTenantRecord(): ?Tenant
-    {
-        return $this->tenant instanceof Tenant ? $this->tenant : null;
     }
 }

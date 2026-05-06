@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources\TenantUserResource\Pages;
 
-use App\Filament\App\Resources\Pages\ListTenantRecords;
 use App\Filament\App\Resources\TenantUserResource;
 use Filament\Actions;
+use Filament\Resources\Pages\ListRecords;
 
-class ListTenantUsers extends ListTenantRecords
+class ListTenantUsers extends ListRecords
 {
     protected static string $resource = TenantUserResource::class;
 
@@ -16,7 +16,7 @@ class ListTenantUsers extends ListTenantRecords
     {
         return [
             Actions\CreateAction::make()
-                ->label('Invitar Miembro')
+                ->label('Agregar Miembro')
                 ->icon('heroicon-o-user-plus'),
         ];
     }

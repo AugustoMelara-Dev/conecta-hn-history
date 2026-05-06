@@ -5,13 +5,9 @@ declare(strict_types=1);
 namespace App\Filament\App\Resources\OrderResource\Pages;
 
 use App\Filament\App\Resources\OrderResource;
-use App\Models\Order;
 use Filament\Actions;
 use Filament\Resources\Pages\ViewRecord;
 
-/**
- * @property Order $record
- */
 class ViewOrder extends ViewRecord
 {
     protected static string $resource = OrderResource::class;
@@ -30,8 +26,7 @@ class ViewOrder extends ViewRecord
                 ->label('Imprimir Ticket')
                 ->icon('heroicon-o-printer')
                 ->color('gray')
-                ->url(fn (): string => route('orders.print-ticket', ['order' => $this->record]))
-                ->openUrlInNewTab(),
+                ->action(fn () => null), // TODO: Implementar impresión
         ];
     }
 

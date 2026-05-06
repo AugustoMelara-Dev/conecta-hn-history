@@ -3,9 +3,9 @@
 namespace App\Filament\App\Resources\AppointmentResource\Pages;
 
 use App\Filament\App\Resources\AppointmentResource;
-use App\Filament\App\Resources\Pages\CreateTenantRecord;
+use Filament\Resources\Pages\CreateRecord;
 
-class CreateAppointment extends CreateTenantRecord
+class CreateAppointment extends CreateRecord
 {
     protected static string $resource = AppointmentResource::class;
 }

@@ -5,15 +5,17 @@ declare(strict_types=1);
 namespace App\Filament\App\Widgets;
 
 use App\Models\Interaction;
-use App\Models\Tenant;
 use Filament\Facades\Filament;
 use Filament\Widgets\ChartWidget;
 
+/**
+ * WhatsAppClicksChart - Gráfico de Clics de WhatsApp
+ *
+ * Filament v4 Compatible: Extiende ChartWidget.
+ */
 class WhatsAppClicksChart extends ChartWidget
 {
-    protected static bool $isLazy = false;
-
-    protected ?string $heading = 'Clics en WhatsApp (Ultimos 7 dias)';
+    protected static ?string $heading = 'Clics en WhatsApp (Últimos 7 días)';
 
     public function getColumnSpan(): int|string|array
     {
@@ -29,25 +31,26 @@ class WhatsAppClicksChart extends ChartWidget
     {
         $tenant = Filament::getTenant();
 
-        if (! $tenant instanceof Tenant) {
+        if (! $tenant) {
             return [
                 'datasets' => [],
                 'labels' => [],
             ];
         }
 
-        $tenantId = (string) $tenant->getKey();
         $data = [];
         $labels = [];
 
         for ($i = 6; $i >= 0; $i--) {
             $date = now()->subDays($i);
             $labels[] = $date->format('d/m');
-            $data[] = Interaction::query()
-                ->where('tenant_id', $tenantId)
+
+            $count = Interaction::where('tenant_id', $tenant->id)
                 ->where('type', 'whatsapp_click')
                 ->whereDate('created_at', $date->toDateString())
                 ->count();
+
+            $data[] = $count;
         }
 
         return [

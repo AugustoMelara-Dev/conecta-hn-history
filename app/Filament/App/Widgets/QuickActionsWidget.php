@@ -4,16 +4,18 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Widgets;
 
-use App\Models\OpeningHour;
-use App\Models\Tenant;
 use Filament\Facades\Filament;
 use Filament\Widgets\Widget;
 
+/**
+ * QuickActionsWidget - Acciones Rápidas del Dashboard
+ */
 class QuickActionsWidget extends Widget
 {
-    protected static bool $isLazy = false;
-
-    protected string $view = 'filament.app.widgets.quick-actions-widget';
+    public function getView(): string
+    {
+        return 'filament.app.widgets.quick-actions-widget';
+    }
 
     public function getColumnSpan(): int|string|array
     {
@@ -25,87 +27,51 @@ class QuickActionsWidget extends Widget
         return 0;
     }
 
-    /**
-     * @return array{tenant: Tenant|null, isOpen: bool, productsCount: int, createProductUrl: string, profileUrl: string, publicUrl: string}
-     */
     protected function getViewData(): array
     {
-        $tenant = $this->getTenantRecord();
+        $tenant = Filament::getTenant();
 
-        if (! $tenant instanceof Tenant) {
-            return [
-                'tenant' => null,
-                'isOpen' => false,
-                'productsCount' => 0,
-                'createProductUrl' => '#',
-                'profileUrl' => '#',
-                'publicUrl' => '#',
-            ];
+        if (! $tenant) {
+            return ['tenant' => null, 'isOpen' => false, 'productsCount' => 0];
         }
 
         return [
             'tenant' => $tenant,
             'isOpen' => $this->isBusinessOpen($tenant),
             'productsCount' => $tenant->products()->count(),
-            'createProductUrl' => $this->getCreateProductUrl($tenant),
-            'profileUrl' => $this->getProfileUrl($tenant),
-            'publicUrl' => $this->getPublicUrl($tenant),
         ];
     }
 
-    protected function isBusinessOpen(Tenant $tenant): bool
+    protected function isBusinessOpen($tenant): bool
     {
-        try {
-            $now = now(OpeningHour::BUSINESS_TIMEZONE);
-            $todayHours = OpeningHour::query()
-                ->withoutGlobalScopes()
-                ->where('tenant_id', $tenant->getKey())
-                ->where('day_of_week', $now->dayOfWeek)
-                ->get();
-
-            if ($todayHours->isEmpty()) {
-                return true;
-            }
-
-            return $todayHours->contains(
-                fn (OpeningHour $openingHour): bool => $openingHour->isOpenAt($now)
-            );
-        } catch (\Throwable) {
+        if (empty($tenant->hours_data)) {
             return true;
         }
-    }
 
-    private function getTenantRecord(): ?Tenant
-    {
-        $tenant = Filament::getTenant();
+        $hours = is_array($tenant->hours_data)
+            ? $tenant->hours_data
+            : json_decode($tenant->hours_data, true);
 
-        return $tenant instanceof Tenant ? $tenant : null;
-    }
-
-    private function getCreateProductUrl(Tenant $tenant): string
-    {
-        try {
-            return route('filament.app.resources.products.create', ['tenant' => (string) ($tenant->getAttribute('slug') ?? '')]);
-        } catch (\Throwable) {
-            return '#';
+        if (! $hours) {
+            return true;
         }
-    }
 
-    private function getProfileUrl(Tenant $tenant): string
-    {
-        try {
-            return route('filament.app.tenant.profile', ['tenant' => (string) ($tenant->getAttribute('slug') ?? '')]);
-        } catch (\Throwable) {
-            return '#';
-        }
-    }
+        $dayNames = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+        $today = $dayNames[now()->dayOfWeek] ?? 'lunes';
+        $currentTime = now()->format('H:i');
 
-    private function getPublicUrl(Tenant $tenant): string
-    {
-        try {
-            return route('tenant.microsite.show', ['tenant' => (string) ($tenant->getAttribute('slug') ?? '')]);
-        } catch (\Throwable) {
-            return '#';
+        if (! isset($hours[$today])) {
+            return true;
         }
+
+        $todayHours = $hours[$today];
+        if (! empty($todayHours['closed'])) {
+            return false;
+        }
+
+        $open = $todayHours['open'] ?? $todayHours['open_time'] ?? '08:00';
+        $close = $todayHours['close'] ?? $todayHours['close_time'] ?? '18:00';
+
+        return $currentTime >= $open && $currentTime <= $close;
     }
 }

@@ -1,21 +1,12 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Filament\App\Resources;
 
-use App\Domain\TenantGovernance\Enums\TenantFeature;
 use App\Filament\App\Resources\LoyaltyProgramResource\Pages;
 use App\Models\LoyaltyProgram;
-use App\Models\Tenant;
-use Filament\Actions\EditAction;
-use Filament\Facades\Filament;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
+use Filament\Forms;
+use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 
@@ -23,67 +14,53 @@ class LoyaltyProgramResource extends Resource
 {
     protected static ?string $model = LoyaltyProgram::class;
 
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-currency-dollar';
+    protected static ?string $navigationIcon = 'heroicon-o-currency-dollar';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Marketing PRO';
+    protected static ?string $navigationGroup = 'Fidelización';
 
     protected static ?string $navigationLabel = 'Configuración';
 
     protected static ?int $navigationSort = 1;
 
-    public static function shouldRegisterNavigation(): bool
+    public static function form(Form $form): Form
     {
-        $tenant = self::getTenantRecord();
-
-        return $tenant instanceof Tenant && $tenant->hasFeature(TenantFeature::LOYALTY_PROGRAM);
-    }
-
-    public static function canAccess(): bool
-    {
-        $tenant = self::getTenantRecord();
-
-        return $tenant instanceof Tenant && $tenant->hasFeature(TenantFeature::LOYALTY_PROGRAM);
-    }
-
-    public static function form(Schema $schema): Schema
-    {
-        return $schema
+        return $form
             ->schema([
-                Section::make('Reglas del Programa')
-                    ->description('Define como tus clientes ganan y canjean puntos.')
+                Forms\Components\Section::make('Reglas del Programa')
+                    ->description('Define cómo tus clientes ganan y canjean puntos.')
                     ->schema([
-                        TextInput::make('name')
+                        Forms\Components\TextInput::make('name')
                             ->label('Nombre del Programa')
                             ->required()
                             ->maxLength(255)
                             ->default('Programa de Puntos'),
 
-                        Grid::make(2)
+                        Forms\Components\Grid::make(2)
                             ->schema([
-                                TextInput::make('earn_ratio')
+                                Forms\Components\TextInput::make('earn_ratio')
                                     ->label('Gasto para ganar 1 punto (L.)')
-                                    ->helperText('Si pones 10, el cliente gana 1 punto por cada L.10 gastados.')
+                                    ->helperText('Ej: Si pones 10, el cliente gana 1 punto por cada L.10 gastados.')
                                     ->numeric()
                                     ->default(10)
                                     ->required()
                                     ->minValue(1),
 
-                                TextInput::make('redemption_ratio')
+                                Forms\Components\TextInput::make('redemption_ratio')
                                     ->label('Puntos para L.1 de descuento')
-                                    ->helperText('Si pones 100, el cliente necesita 100 puntos para tener L.1 de descuento.')
+                                    ->helperText('Ej: Si pones 100, el cliente necesita 100 puntos para tener L.1 de descuento.')
                                     ->numeric()
                                     ->default(100)
                                     ->required()
                                     ->minValue(1),
                             ]),
 
-                        TextInput::make('expiry_days')
-                            ->label('Vencimiento de Puntos (Dias)')
+                        Forms\Components\TextInput::make('expiry_days')
+                            ->label('Vencimiento de Puntos (Días)')
                             ->numeric()
                             ->default(365)
                             ->required(),
 
-                        Toggle::make('is_active')
+                        Forms\Components\Toggle::make('is_active')
                             ->label('Programa Activo')
                             ->default(true),
                     ]),
@@ -110,7 +87,7 @@ class LoyaltyProgramResource extends Resource
             ])
             ->filters([])
             ->actions([
-                EditAction::make(),
+                Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([]);
     }
@@ -127,12 +104,5 @@ class LoyaltyProgramResource extends Resource
             'create' => Pages\CreateLoyaltyProgram::route('/create'),
             'edit' => Pages\EditLoyaltyProgram::route('/{record}/edit'),
         ];
-    }
-
-    private static function getTenantRecord(): ?Tenant
-    {
-        $tenant = Filament::getTenant();
-
-        return $tenant instanceof Tenant ? $tenant : null;
     }
 }

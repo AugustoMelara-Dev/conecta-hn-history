@@ -4,32 +4,23 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources;
 
-use App\Domain\Identity\Enums\UserRole;
 use App\Filament\Resources\UserResource\Pages;
-use App\Models\Tenant;
+// MIGRATION: Updated to Domain namespace (2026-01-05)
 use App\Models\User;
-use Filament\Actions\Action;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
 use Filament\Forms;
+use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Hash;
 
 class UserResource extends Resource
 {
-    protected static bool $isScopedToTenant = false;
-
     protected static ?string $model = User::class;
 
     protected static ?string $modelPolicy = \App\Policies\UserPolicy::class;
 
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-users';
+    protected static ?string $navigationIcon = 'heroicon-o-users';
 
     public static function getNavigationLabel(): string
     {
@@ -48,12 +39,12 @@ class UserResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Gerencia';
+        return 'Gestión de Usuarios';
     }
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
-        return $schema
+        return $form
             ->schema([
                 Forms\Components\TextInput::make('name')
                     ->label('Nombre')
@@ -67,12 +58,11 @@ class UserResource extends Resource
                 Forms\Components\Select::make('role')
                     ->label('Rol')
                     ->options([
-                        UserRole::TENANT_OWNER->value => 'Dueño de negocio',
-                        UserRole::STAFF->value => 'Personal',
-                        UserRole::CUSTOMER->value => 'Cliente',
-                        UserRole::SUPER_ADMIN->value => 'Superadministrador',
+                        'seller' => 'Vendedor',
+                        'buyer' => 'Comprador',
+                        'super_admin' => 'Super Admin',
                     ])
-                    ->default(UserRole::CUSTOMER->value),
+                    ->default('buyer'),
                 Forms\Components\TextInput::make('password')
                     ->label('Contraseña')
                     ->password()
@@ -96,8 +86,18 @@ class UserResource extends Resource
                 Tables\Columns\TextColumn::make('role')
                     ->label('Rol')
                     ->badge()
-                    ->color(fn (UserRole|string|null $state): string => static::getRoleColor($state))
-                    ->formatStateUsing(fn (UserRole|string|null $state): string => static::getRoleLabel($state)),
+                    ->color(fn (string $state): string => match ($state) {
+                        'seller' => 'info',
+                        'buyer' => 'gray',
+                        'super_admin' => 'danger',
+                        default => 'gray',
+                    })
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                        'seller' => 'Vendedor',
+                        'buyer' => 'Comprador',
+                        'super_admin' => 'Super Admin',
+                        default => 'Usuario',
+                    }),
                 Tables\Columns\TextColumn::make('tenants_count')
                     ->label('Negocios')
                     ->counts('tenants')
@@ -111,70 +111,63 @@ class UserResource extends Resource
                 Tables\Filters\SelectFilter::make('role')
                     ->label('Rol')
                     ->options([
-                        UserRole::TENANT_OWNER->value => 'Dueño de negocio',
-                        UserRole::STAFF->value => 'Personal',
-                        UserRole::CUSTOMER->value => 'Cliente',
-                        UserRole::SUPER_ADMIN->value => 'Superadministrador',
+                        'seller' => 'Vendedor',
+                        'buyer' => 'Comprador',
+                        'super_admin' => 'Super Admin',
                     ]),
             ])
             ->actions([
-                EditAction::make(),
-                Action::make('change_password')
-                    ->label('Cambiar contraseña')
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\Action::make('change_password')
+                    ->label('Cambiar Contraseña')
                     ->icon('heroicon-o-key')
                     ->color('warning')
                     ->form([
                         Forms\Components\TextInput::make('new_password')
-                            ->label('Nueva contraseña')
+                            ->label('Nueva Contraseña')
                             ->password()
                             ->required()
                             ->minLength(8),
                         Forms\Components\TextInput::make('new_password_confirmation')
-                            ->label('Confirmar contraseña')
+                            ->label('Confirmar Contraseña')
                             ->password()
                             ->required()
                             ->same('new_password'),
                     ])
-                    ->action(function (User $record, array $data): void {
-                        $record->updatePassword(Hash::make($data['new_password']));
-                        static::logTenantSideUserAction($record, 'Contraseña del propietario actualizada desde superadmin');
-
+                    ->action(function (User $record, array $data) {
+                        $record->update([
+                            'password' => \Illuminate\Support\Facades\Hash::make($data['new_password']),
+                        ]);
                         Notification::make()->title('Contraseña actualizada')->success()->send();
                     }),
-                Action::make('ban')
+
+                Tables\Actions\Action::make('ban')
                     ->label('Banear')
                     ->icon('heroicon-o-no-symbol')
                     ->color('danger')
                     ->requiresConfirmation()
                     ->visible(fn (User $record): bool => is_null($record->banned_at) && $record->id !== auth()->id())
-                    ->action(function (User $record): void {
-                        $record->forceFill(['banned_at' => now()])->save();
-                        static::logTenantSideUserAction($record, 'Propietario suspendido desde superadmin', [
-                            'status' => 'banned',
-                            'target_user_email' => (string) $record->email,
-                        ]);
+                    ->action(function (User $record) {
+                        $record->update(['banned_at' => now()]);
                         Notification::make()->title('Usuario baneado')->success()->send();
                     }),
-                Action::make('unban')
+
+                Tables\Actions\Action::make('unban')
                     ->label('Desbanear')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->requiresConfirmation()
                     ->visible(fn (User $record): bool => ! is_null($record->banned_at))
-                    ->action(function (User $record): void {
-                        $record->reactivate();
-                        $record->save();
-                        static::logTenantSideUserAction($record, 'Propietario reactivado desde superadmin', [
-                            'status' => 'active',
-                            'target_user_email' => (string) $record->email,
-                        ]);
+                    ->action(function (User $record) {
+                        $record->update(['banned_at' => null]);
                         Notification::make()->title('Usuario desbaneado')->success()->send();
                     }),
-                DeleteAction::make(),
+
+                Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
             ->defaultSort('created_at', 'desc');
@@ -182,7 +175,9 @@ class UserResource extends Resource
 
     public static function getRelations(): array
     {
-        return [];
+        return [
+            //
+        ];
     }
 
     public static function getPages(): array
@@ -192,60 +187,5 @@ class UserResource extends Resource
             'create' => Pages\CreateUser::route('/create'),
             'edit' => Pages\EditUser::route('/{record}/edit'),
         ];
-    }
-
-    protected static function normalizeRole(UserRole|string|null $state): ?string
-    {
-        if ($state instanceof UserRole) {
-            return $state->value;
-        }
-
-        return is_string($state) && $state !== '' ? $state : null;
-    }
-
-    protected static function getRoleLabel(UserRole|string|null $state): string
-    {
-        return match (static::normalizeRole($state)) {
-            UserRole::TENANT_OWNER->value => 'Dueno de negocio',
-            UserRole::STAFF->value => 'Personal',
-            UserRole::SUPER_ADMIN->value => 'Superadministrador',
-            UserRole::CUSTOMER->value => 'Cliente',
-            default => 'Usuario',
-        };
-    }
-
-    protected static function getRoleColor(UserRole|string|null $state): string
-    {
-        return match (static::normalizeRole($state)) {
-            UserRole::TENANT_OWNER->value => 'info',
-            UserRole::STAFF->value => 'warning',
-            UserRole::SUPER_ADMIN->value => 'danger',
-            UserRole::CUSTOMER->value => 'gray',
-            default => 'gray',
-        };
-    }
-
-    /**
-     * @param  array<string, mixed>  $properties
-     */
-    protected static function logTenantSideUserAction(User $user, string $description, array $properties = []): void
-    {
-        $actor = auth()->user();
-
-        /** @var \Illuminate\Database\Eloquent\Collection<int, Tenant> $tenants */
-        $tenants = $user->tenants()
-            ->get();
-
-        $tenants
-            ->each(function (Tenant $tenant) use ($actor, $description, $properties, $user): void {
-                $tenant->logOperationalEvent(
-                    $description,
-                    $actor instanceof User ? $actor : null,
-                    array_merge([
-                        'target_user_id' => (string) $user->getKey(),
-                        'target_user_email' => (string) $user->email,
-                    ], $properties),
-                );
-            });
     }
 }

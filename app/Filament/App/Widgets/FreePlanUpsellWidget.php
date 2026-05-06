@@ -4,16 +4,19 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Widgets;
 
-use App\Models\Tenant;
-use App\Models\User;
-use Filament\Facades\Filament;
 use Filament\Widgets\Widget;
 
+/**
+ * FreePlanUpsellWidget - Banner de Upsell para usuarios Free
+ *
+ * Filament v4 Compatible: Usa métodos en lugar de propiedades.
+ */
 class FreePlanUpsellWidget extends Widget
 {
-    protected static bool $isLazy = false;
-
-    protected string $view = 'filament.widgets.free-plan-upsell';
+    public function getView(): string
+    {
+        return 'filament.widgets.free-plan-upsell';
+    }
 
     public function getColumnSpan(): int|string|array
     {
@@ -22,41 +25,23 @@ class FreePlanUpsellWidget extends Widget
 
     public static function getSort(): int
     {
-        return -1;
+        return -1; // Show at the very top
     }
 
     public static function canView(): bool
     {
-        $tenant = self::resolveTenant();
+        $tenant = auth()->user()?->tenants()->first();
 
-        return $tenant instanceof Tenant && ! $tenant->getIsProAttribute();
+        return $tenant && ! $tenant->is_pro;
     }
 
     public function getUpgradeUrl(): string
     {
-        $tenant = self::resolveTenant();
-
-        if (! $tenant instanceof Tenant) {
-            return '#';
+        $tenant = auth()->user()?->tenants()->first();
+        if ($tenant) {
+            return "/app/{$tenant->slug}/billing";
         }
 
-        try {
-            return route('filament.app.pages.manage-billing', ['tenant' => (string) ($tenant->getAttribute('slug') ?? '')]);
-        } catch (\Throwable) {
-            return '#';
-        }
-    }
-
-    private static function resolveTenant(): ?Tenant
-    {
-        $tenant = Filament::getTenant();
-        if ($tenant instanceof Tenant) {
-            return $tenant;
-        }
-
-        $user = auth()->user();
-        $tenant = $user instanceof User ? $user->tenants()->first() : null;
-
-        return $tenant instanceof Tenant ? $tenant : null;
+        return '#';
     }
 }

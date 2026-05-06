@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Filament\Resources\CategoryResource\Pages;
 
 use App\Filament\Resources\CategoryResource;
-use App\Filament\Resources\Pages\EditAdminRecord;
+use Filament\Resources\Pages\EditRecord;
 
-class EditCategory extends EditAdminRecord
+class EditCategory extends EditRecord
 {
     protected static string $resource = CategoryResource::class;
 }

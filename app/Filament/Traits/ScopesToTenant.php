@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Filament\Traits;
 
-use App\Models\Tenant;
 use Filament\Facades\Filament;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -17,8 +16,6 @@ use Illuminate\Database\Eloquent\Builder;
  *
  * VISIBILITY: Respects SoftDeletes - deleted records remain hidden in listings.
  * Use withTrashed() in specific resource methods if restore functionality is needed.
- *
- * @mixin \Filament\Resources\Resource
  */
 trait ScopesToTenant
 {
@@ -31,8 +28,8 @@ trait ScopesToTenant
 
         // STRICT TENANCY ENFORCEMENT
         $tenant = Filament::getTenant();
-        if ($tenant instanceof Tenant) {
-            $query->where('tenant_id', $tenant->getKey());
+        if ($tenant) {
+            $query->where('tenant_id', $tenant->id);
         }
 
         return $query;

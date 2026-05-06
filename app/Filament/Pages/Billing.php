@@ -4,227 +4,118 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
-use App\Domain\Identity\Enums\UserRole;
-use App\Infrastructure\TenantGovernance\SuperAdmin\SuperAdminTenantPlanReader;
-use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
-use App\Models\User;
-use App\Settings\GeneralSettings;
 use Filament\Pages\Page;
-use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
-final class Billing extends Page
+/**
+ * Billing Dashboard Page
+ *
+ * Provides subscription status, plan information, and upgrade options.
+ * MVP: Manual bank transfer instructions (no Stripe integration yet).
+ */
+class Billing extends Page
 {
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-credit-card';
+    protected static ?string $navigationIcon = 'heroicon-o-credit-card';
 
     protected static ?string $navigationLabel = 'Facturación';
 
-    protected static ?string $title = 'Facturación de la plataforma';
+    protected static ?string $title = 'Mi Suscripción';
 
     protected static ?string $slug = 'billing';
 
     protected static ?int $navigationSort = 100;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Finanzas';
+    protected static ?string $navigationGroup = 'Mi Cuenta';
 
-    protected string $view = 'filament.pages.billing';
+    protected static string $view = 'filament.pages.billing';
 
-    public int $pendingPayments = 0;
-
-    public int $approvedPayments = 0;
-
-    public int $rejectedPayments = 0;
-
-    public int $proBusinesses = 0;
-
-    public int $baseBusinesses = 0;
-
-    public string $proPlanPrice = 'L. 99.00';
-
-    public string $supportEmail = 'soporte@vitobusinessos.com';
-
-    public string $supportWhatsApp = '+504 0000-0000';
-
-    /**
-     * @var array<int, array<string, string|null>>
-     */
-    public array $recentPayments = [];
-
-    public int $businessesWithCatalog = 0;
-
-    public int $businessesWithPayments = 0;
-
-    public float $proConversionRate = 0;
-
-    /** @var list<array{name: string, total: int, pro: int, conversion: string}> */
-    public array $cityFunnel = [];
-
-    /** @var list<array{name: string, total: int, pro: int, conversion: string}> */
-    public array $categoryFunnel = [];
-
-    public static function canAccess(): bool
-    {
-        $user = auth()->user();
-
-        if (! $user instanceof User) {
-            return false;
-        }
-
-        $superAdmins = config('auth.super_admins', []);
-        $isWhitelisted = in_array($user->email ?? '', $superAdmins, true);
-        $hasSuperAdminRole = $user->role === UserRole::SUPER_ADMIN;
-
-        return $hasSuperAdminRole || $user->isSuperAdmin() || $isWhitelisted;
-    }
+    public ?Tenant $tenant = null;
 
     public function mount(): void
     {
-        $this->loadSettings();
-        $this->loadMetrics();
+        $this->tenant = Auth::user()?->tenant;
     }
 
-    private function loadSettings(): void
+    /**
+     * Get current subscription status data
+     */
+    public function getSubscriptionData(): array
     {
-        try {
-            $settings = app(GeneralSettings::class);
-
-            $this->proPlanPrice = 'L. '.number_format((float) ($settings->pro_plan_price ?? 99), 2);
-            $this->supportEmail = (string) ($settings->support_email ?? $this->supportEmail);
-
-            $supportWhatsApp = (string) ($settings->support_whatsapp_number ?? '');
-            if ($supportWhatsApp !== '') {
-                $this->supportWhatsApp = $supportWhatsApp;
-            }
-        } catch (\Throwable) {
-            // Keep the page usable with defaults.
+        if (! $this->tenant) {
+            return [
+                'plan' => 'Sin Negocio',
+                'status' => 'N/A',
+                'raw_status' => null,
+                'expires_at' => null,
+                'days_left' => null,
+                'is_pro' => false,
+                'is_trial' => false,
+                'is_past_due' => false,
+                'is_expiring_soon' => false,
+            ];
         }
+
+        $rawStatus = $this->tenant->subscription_status ?? 'active';
+
+        return [
+            'plan' => $this->tenant->plan_type_label ?? 'Plan Semilla',
+            'status' => $this->tenant->subscription_status_label ?? 'Activo',
+            'raw_status' => $rawStatus,
+            'expires_at' => $this->tenant->subscription_ends_at?->format('d M Y'),
+            'days_left' => $this->tenant->days_until_expiry,
+            // Use the NEW computed is_pro (not is_pro_computed)
+            'is_pro' => $this->tenant->is_pro,
+            // Semantic flags for UI badges
+            'is_trial' => $rawStatus === 'trial',
+            'is_past_due' => $rawStatus === 'past_due',
+            'is_canceled' => $rawStatus === 'canceled',
+            'is_expiring_soon' => $this->tenant->isExpiringSoon(),
+        ];
     }
 
-    private function loadMetrics(): void
+    /**
+     * Bank transfer information for manual payments
+     */
+    public function getBankInfo(): array
     {
-        try {
-            $payments = SubscriptionPayment::query()->withoutGlobalScopes();
-
-            $this->pendingPayments = (clone $payments)
-                ->where('status', SubscriptionPayment::STATUS_PENDING)
-                ->count();
-
-            $this->approvedPayments = (clone $payments)
-                ->where('status', SubscriptionPayment::STATUS_APPROVED)
-                ->count();
-
-            $this->rejectedPayments = (clone $payments)
-                ->where('status', SubscriptionPayment::STATUS_REJECTED)
-                ->count();
-
-            $tenantSnapshot = Tenant::query()
-                ->with([
-                    'city:id,name',
-                    'category:id,name',
-                ])
-                ->withCount([
-                    'products as products_total' => fn (Builder $query): Builder => $query->withoutGlobalScopes(),
-                ])
-                ->get();
-
-            $this->proBusinesses = $tenantSnapshot
-                ->filter(fn (Tenant $tenant): bool => $this->planReader()->isPaidPlan($tenant))
-                ->count();
-
-            $this->baseBusinesses = $tenantSnapshot
-                ->filter(fn (Tenant $tenant): bool => $this->planReader()->isBasePlan($tenant))
-                ->count();
-
-            $this->recentPayments = (clone $payments)
-                ->with('tenant')
-                ->latest()
-                ->limit(6)
-                ->get()
-                ->map(function (SubscriptionPayment $payment): array {
-                    $tenant = $payment->tenant()->first();
-
-                    return [
-                        'business' => $tenant instanceof Tenant ? (string) $tenant->getAttribute('name') : 'Negocio sin registro',
-                        'reference' => (string) ($payment->reference_number ?? 'Sin referencia'),
-                        'status' => match ((string) $payment->status) {
-                            SubscriptionPayment::STATUS_PENDING => 'Pendiente',
-                            SubscriptionPayment::STATUS_APPROVED => 'Aprobado',
-                            SubscriptionPayment::STATUS_REJECTED => 'Rechazado',
-                            default => 'Desconocido',
-                        },
-                        'amount' => 'L. '.number_format((float) $payment->amount, 2),
-                        'reported_at' => optional($payment->created_at)?->format('d/m/Y H:i'),
-                    ];
-                })
-                ->all();
-
-            $this->businessesWithCatalog = $tenantSnapshot
-                ->where('products_total', '>', 0)
-                ->count();
-
-            $this->businessesWithPayments = SubscriptionPayment::query()
-                ->withoutGlobalScopes()
-                ->distinct('tenant_id')
-                ->count('tenant_id');
-
-            $totalBusinesses = max(1, $tenantSnapshot->count());
-            $this->proConversionRate = round(($this->proBusinesses / $totalBusinesses) * 100, 1);
-
-            $this->cityFunnel = $tenantSnapshot
-                ->groupBy(function (Tenant $tenant): string {
-                    $city = $tenant->city;
-
-                    return $city instanceof \App\Models\City ? (string) $city->name : 'Sin ciudad';
-                })
-                ->map(function ($group, string $name): array {
-                    $total = $group->count();
-                    $pro = $group->filter(fn (Tenant $tenant): bool => $this->planReader()->isPaidPlan($tenant))->count();
-
-                    return [
-                        'name' => $name,
-                        'total' => $total,
-                        'pro' => $pro,
-                        'conversion' => number_format(($pro / max(1, $total)) * 100, 1).'%',
-                    ];
-                })
-                ->sortByDesc('total')
-                ->take(5)
-                ->values()
-                ->all();
-
-            $this->categoryFunnel = $tenantSnapshot
-                ->groupBy(function (Tenant $tenant): string {
-                    $category = $tenant->category;
-
-                    return $category instanceof \App\Models\Category ? (string) $category->name : 'Sin categoría';
-                })
-                ->map(function ($group, string $name): array {
-                    $total = $group->count();
-                    $pro = $group->filter(fn (Tenant $tenant): bool => $this->planReader()->isPaidPlan($tenant))->count();
-
-                    return [
-                        'name' => $name,
-                        'total' => $total,
-                        'pro' => $pro,
-                        'conversion' => number_format(($pro / max(1, $total)) * 100, 1).'%',
-                    ];
-                })
-                ->sortByDesc('total')
-                ->take(5)
-                ->values()
-                ->all();
-        } catch (\Throwable) {
-            $this->recentPayments = [];
-            $this->businessesWithCatalog = 0;
-            $this->businessesWithPayments = 0;
-            $this->proConversionRate = 0;
-            $this->cityFunnel = [];
-            $this->categoryFunnel = [];
-        }
+        return [
+            'bank_name' => 'Banco Atlántida',
+            'account_type' => 'Cuenta de Ahorro',
+            'account_number' => '2060-1234567-8',
+            'account_holder' => 'CONECTA HN S.A. de C.V.',
+            'email' => 'pagos@conectahn.com',
+        ];
     }
 
-    private function planReader(): SuperAdminTenantPlanReader
+    /**
+     * Pricing information
+     */
+    public function getPricing(): array
     {
-        return app(SuperAdminTenantPlanReader::class);
+        return [
+            'monthly' => [
+                'price' => 299,
+                'period' => 'mes',
+                'features' => ['Carrito de compras', 'Personalización de marca', 'Sin límite de productos'],
+            ],
+            'annual' => [
+                'price' => 2499,
+                'period' => 'año',
+                'discount' => '30% OFF',
+                'features' => ['Todo de Pro', '2 meses gratis', 'Soporte prioritario'],
+            ],
+        ];
+    }
+
+    /**
+     * Generate WhatsApp URL for payment proof
+     */
+    public function getWhatsAppPaymentUrl(): string
+    {
+        $phone = '50499999999'; // Replace with actual support number
+        $message = urlencode("¡Hola! Quiero enviar mi comprobante de pago para Plan Pro.\n\nNegocio: ".($this->tenant?->name ?? 'Mi Negocio'));
+
+        return "https://wa.me/{$phone}?text={$message}";
     }
 }

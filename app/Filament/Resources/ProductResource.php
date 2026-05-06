@@ -6,36 +6,21 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ProductResource\Pages;
 use App\Models\Product;
-use App\Models\Tenant;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
-use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
+use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Group;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
 use Filament\Tables;
-use Filament\Tables\Columns\SpatieMediaLibraryImageColumn;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Schema as DatabaseSchema;
-use Illuminate\Support\HtmlString;
 
 class ProductResource extends Resource
 {
     protected static ?string $model = Product::class;
 
-    protected static bool $isScopedToTenant = false;
-
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-shopping-bag';
+    protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Gestion de Catalogo';
+        return 'Gestión de Catálogo';
     }
 
     public static function getNavigationLabel(): string
@@ -48,78 +33,75 @@ class ProductResource extends Resource
         return 'Producto';
     }
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
-        $tenant = self::getTenantRecord();
-        $planValue = $tenant instanceof Tenant ? (string) $tenant->getRawOriginal('plan_type') : null;
-        $isPro = in_array($planValue, ['pro', 'enterprise'], true);
+        // Feature Gating: Check Plan
+        $tenant = \Filament\Facades\Filament::getTenant();
+        $isPro = $tenant && $tenant->plan_type === 'pro' || $tenant->plan_type === 'enterprise';
 
-        return $schema
+        return $form
             ->schema([
-                Group::make()
+                // 1. MAIN COLUMN (LEFT - 2/3)
+                Forms\Components\Group::make()
                     ->schema([
-                        Section::make('Informacion del producto')
+                        Forms\Components\Section::make('Información del Producto')
                             ->schema([
                                 Forms\Components\TextInput::make('name')
-                                    ->label('Nombre del producto')
+                                    ->label('Nombre del Producto')
                                     ->required()
                                     ->maxLength(255),
 
+                                // RichEditor with simplified toolbar to avoid messy HTML
                                 Forms\Components\RichEditor::make('description')
-                                    ->label('Descripcion')
+                                    ->label('Descripción')
                                     ->toolbarButtons([
-                                        'bold',
-                                        'italic',
-                                        'bulletList',
-                                        'orderedList',
-                                        'link',
-                                        'redo',
-                                        'undo',
+                                        'bold', 'italic', 'bulletList', 'orderedList', 'link', 'redo', 'undo',
                                     ])
                                     ->columnSpan('full'),
                             ]),
 
-                        Section::make('Galeria de imagenes')
+                        Forms\Components\Section::make('Galería de Imágenes')
                             ->schema([
-                                SpatieMediaLibraryFileUpload::make('images')
-                                    ->label('Imagenes del producto')
+                                Forms\Components\SpatieMediaLibraryFileUpload::make('images')
+                                    ->label('Imágenes del Producto')
                                     ->collection('product-images')
                                     ->image()
                                     ->imageEditor()
                                     ->reorderable()
-                                    ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
-                                    ->maxSize(2048)
+                                    ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp']) // Security Hardening (VC-AUDIT-003)
+                                    ->maxSize(2048) // 2MB Limit
                                     ->maxFiles(5)
                                     ->columnSpan('full'),
                             ]),
 
-                        Section::make('Opciones y modificadores')
+                        // GATED FEATURE: Modifiers (Only for PRO/ENT)
+                        Forms\Components\Section::make('Opciones y Modificadores')
                             ->schema([
                                 $isPro
-                                    ? Forms\Components\Repeater::make('modifiers')
-                                        ->label('Grupos de opciones')
-                                        ->relationship('modifierGroups')
-                                        ->schema([
-                                            Forms\Components\TextInput::make('name')->label('Nombre (ej. Tallas)')->required(),
-                                            Forms\Components\TextInput::make('min_selections')->numeric()->default(0)->label('Min'),
-                                            Forms\Components\TextInput::make('max_selections')->numeric()->default(1)->label('Max'),
-                                        ])
-                                        ->collapsed()
-                                    : Forms\Components\Placeholder::make('upgrade_promo')
-                                        ->label('Opciones avanzadas')
-                                        ->content(new HtmlString('
-                                            <div class="p-4 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-700">
-                                                <p class="font-bold">Disponible en plan PRO</p>
-                                                <p>Actualiza para agregar tallas, colores y extras a tus productos.</p>
-                                            </div>
-                                        ')),
+                                ? Forms\Components\Repeater::make('modifiers')
+                                    ->label('Grupos de Opciones')
+                                    ->relationship('modifierGroups')
+                                    ->schema([
+                                        Forms\Components\TextInput::make('name')->label('Nombre (ej. Tallas)')->required(),
+                                        Forms\Components\TextInput::make('min_selections')->numeric()->default(0)->label('Mín'),
+                                        Forms\Components\TextInput::make('max_selections')->numeric()->default(1)->label('Máx'),
+                                    ])
+                                    ->collapsed()
+                                : Forms\Components\Placeholder::make('upgrade_promo')
+                                    ->label('Opciones Avanzadas')
+                                    ->content(new \Illuminate\Support\HtmlString('
+                                        <div class="p-4 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-700">
+                                            <p class="font-bold">Disponible en Plan Pro</p>
+                                            <p>Actualiza para agregar tallas, colores y extras a tus productos.</p>
+                                        </div>
+                                    ')),
                             ]),
-                    ])
-                    ->columnSpan(2),
+                    ])->columnSpan(2),
 
-                Group::make()
+                // 2. SIDEBAR COLUMN (RIGHT - 1/3)
+                Forms\Components\Group::make()
                     ->schema([
-                        Section::make('Detalles y precio')
+                        Forms\Components\Section::make('Detalles y Precio')
                             ->schema([
                                 Forms\Components\TextInput::make('price')
                                     ->label('Precio (Lps)')
@@ -129,46 +111,37 @@ class ProductResource extends Resource
 
                                 Forms\Components\Select::make('category_id')
                                     ->relationship('category', 'name')
-                                    ->label('Categoria')
+                                    ->label('Categoría')
                                     ->searchable()
                                     ->preload()
                                     ->required(),
 
                                 Forms\Components\Select::make('menu_section_id')
                                     ->relationship('menuSection', 'name')
-                                    ->label('Seccion del menu')
+                                    ->label('Sección del Menú')
                                     ->searchable()
                                     ->preload(),
 
                                 Forms\Components\Toggle::make('is_visible')
-                                    ->label('Visible al publico')
+                                    ->label('Visible al Público')
                                     ->default(true)
                                     ->onColor('success')
                                     ->offColor('danger'),
                             ]),
-                    ])
-                    ->columnSpan(1),
+                    ])->columnSpan(1),
             ])
             ->columns(3);
     }
 
     public static function table(Table $table): Table
     {
-        $imageColumn = DatabaseSchema::hasTable('media')
-            ? SpatieMediaLibraryImageColumn::make('product-images')
-                ->label('Imagen')
-                ->collection('product-images')
-                ->conversion('thumb')
-                ->circular()
-            : Tables\Columns\TextColumn::make('id')
-                ->label('Imagen')
-                ->formatStateUsing(static fn (): string => 'Sin media')
-                ->badge()
-                ->color('gray');
-
         return $table
             ->columns([
-                $imageColumn,
+                Tables\Columns\SpatieMediaLibraryImageColumn::make('product-images')
+                    ->label('Imagen')
+                    ->collection('product-images')
+                    ->conversion('thumb')
+                    ->circular(),
 
                 Tables\Columns\TextColumn::make('name')
                     ->label('Nombre')
@@ -177,7 +150,7 @@ class ProductResource extends Resource
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('category.name')
-                    ->label('Categoria')
+                    ->label('Categoría')
                     ->badge()
                     ->color('gray')
                     ->sortable(),
@@ -197,33 +170,30 @@ class ProductResource extends Resource
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('category_id')
-                    ->label('Categoria')
+                    ->label('Categoría')
                     ->relationship('category', 'name'),
 
                 Tables\Filters\TernaryFilter::make('is_visible')
                     ->label('Visibilidad'),
             ])
             ->actions([
-                EditAction::make(),
-                DeleteAction::make(),
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
     }
 
     use \App\Filament\Traits\ScopesToTenant;
 
-    public static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()->withoutGlobalScopes();
-    }
-
     public static function getRelations(): array
     {
-        return [];
+        return [
+            //
+        ];
     }
 
     public static function getPages(): array
@@ -233,12 +203,5 @@ class ProductResource extends Resource
             'create' => Pages\CreateProduct::route('/create'),
             'edit' => Pages\EditProduct::route('/{record}/edit'),
         ];
-    }
-
-    private static function getTenantRecord(): ?Tenant
-    {
-        $tenant = Filament::getTenant();
-
-        return $tenant instanceof Tenant ? $tenant : null;
     }
 }

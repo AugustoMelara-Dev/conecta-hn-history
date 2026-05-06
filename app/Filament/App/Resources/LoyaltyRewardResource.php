@@ -1,25 +1,12 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Filament\App\Resources;
 
-use App\Domain\TenantGovernance\Enums\TenantFeature;
 use App\Filament\App\Resources\LoyaltyRewardResource\Pages;
 use App\Models\LoyaltyReward;
-use App\Models\Tenant;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
-use Filament\Facades\Filament;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
+use Filament\Forms;
+use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 
@@ -27,53 +14,39 @@ class LoyaltyRewardResource extends Resource
 {
     protected static ?string $model = LoyaltyReward::class;
 
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-gift';
+    protected static ?string $navigationIcon = 'heroicon-o-gift';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Marketing PRO';
+    protected static ?string $navigationGroup = 'Fidelización';
 
     protected static ?string $navigationLabel = 'Recompensas';
 
     protected static ?int $navigationSort = 2;
 
-    public static function shouldRegisterNavigation(): bool
+    public static function form(Form $form): Form
     {
-        $tenant = self::getTenantRecord();
-
-        return $tenant instanceof Tenant && $tenant->hasFeature(TenantFeature::LOYALTY_REWARDS);
-    }
-
-    public static function canAccess(): bool
-    {
-        $tenant = self::getTenantRecord();
-
-        return $tenant instanceof Tenant && $tenant->hasFeature(TenantFeature::LOYALTY_REWARDS);
-    }
-
-    public static function form(Schema $schema): Schema
-    {
-        return $schema
+        return $form
             ->schema([
-                Section::make('Detalles del Premio')
+                Forms\Components\Section::make('Detalles del Premio')
                     ->schema([
-                        TextInput::make('name')
+                        Forms\Components\TextInput::make('name')
                             ->label('Nombre del Premio')
                             ->required()
                             ->maxLength(255),
 
-                        Textarea::make('description')
+                        Forms\Components\Textarea::make('description')
                             ->label('Descripción')
                             ->maxLength(65535)
                             ->columnSpanFull(),
 
-                        Grid::make(2)
+                        Forms\Components\Grid::make(2)
                             ->schema([
-                                TextInput::make('points_cost')
+                                Forms\Components\TextInput::make('points_cost')
                                     ->label('Costo en Puntos')
                                     ->numeric()
                                     ->required()
                                     ->minValue(1),
 
-                                TextInput::make('stock')
+                                Forms\Components\TextInput::make('stock')
                                     ->label('Stock Disponible')
                                     ->helperText('Usa -1 para stock ilimitado')
                                     ->numeric()
@@ -81,7 +54,7 @@ class LoyaltyRewardResource extends Resource
                                     ->required(),
                             ]),
 
-                        Toggle::make('is_active')
+                        Forms\Components\Toggle::make('is_active')
                             ->label('Disponible para Canje')
                             ->default(true),
                     ]),
@@ -103,7 +76,7 @@ class LoyaltyRewardResource extends Resource
                     ->suffix(' Ptos'),
                 Tables\Columns\TextColumn::make('stock')
                     ->label('Stock')
-                    ->formatStateUsing(fn (string $state): string => $state === '-1' ? 'infinito' : $state),
+                    ->formatStateUsing(fn (string $state): string => $state === '-1' ? '∞' : $state),
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Activo')
                     ->boolean(),
@@ -113,12 +86,12 @@ class LoyaltyRewardResource extends Resource
                     ->label('Estado'),
             ])
             ->actions([
-                EditAction::make(),
-                DeleteAction::make(),
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
     }
@@ -135,12 +108,5 @@ class LoyaltyRewardResource extends Resource
             'create' => Pages\CreateLoyaltyReward::route('/create'),
             'edit' => Pages\EditLoyaltyReward::route('/{record}/edit'),
         ];
-    }
-
-    private static function getTenantRecord(): ?Tenant
-    {
-        $tenant = Filament::getTenant();
-
-        return $tenant instanceof Tenant ? $tenant : null;
     }
 }

@@ -5,19 +5,21 @@ declare(strict_types=1);
 namespace App\Filament\App\Resources\MenuSectionResource\Pages;
 
 use App\Filament\App\Resources\MenuSectionResource;
-use App\Filament\App\Resources\Pages\CreateTenantRecord;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Facades\Filament;
+use Filament\Resources\Pages\CreateRecord;
 
-class CreateMenuSection extends CreateTenantRecord
+class CreateMenuSection extends CreateRecord
 {
     protected static string $resource = MenuSectionResource::class;
 
     /**
-     * @param  array<string, mixed>  $data
+     * Automáticamente asignar tenant_id al crear
      */
-    protected function handleRecordCreation(array $data): Model
+    protected function mutateFormDataBeforeCreate(array $data): array
     {
-        return static::getResource()::createOwnedMenuSection($data);
+        $data['tenant_id'] = Filament::getTenant()?->id;
+
+        return $data;
     }
 
     protected function getRedirectUrl(): string

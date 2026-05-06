@@ -4,60 +4,25 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
-use App\Domain\Access\Enums\Role;
-use App\Domain\Identity\Enums\UserRole;
-use App\Domain\Shared\PasswordHasherInterface;
-use App\Domain\TenantGovernance\Enums\Capability;
-use App\Domain\TenantGovernance\Services\BusinessOperationsBlueprint;
-use App\Domain\TenantGovernance\Services\BusinessRolePresetCatalog;
 use App\Filament\App\Resources\TenantUserResource\Pages;
-use App\Models\Tenant;
-use App\Models\TenantMembership;
-use App\Models\User;
-use Filament\Actions\Action;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\EditAction;
+use App\Models\TenantUser;
 use Filament\Facades\Filament;
-use Filament\Forms\Components\Placeholder;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
+use Filament\Forms;
+use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\Utilities\Set;
-use Filament\Schemas\Schema;
 use Filament\Tables;
+use Filament\Tables\Actions\BulkActionGroup;
+use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 
 class TenantUserResource extends Resource
 {
-    protected static ?string $model = TenantMembership::class;
+    protected static ?string $model = TenantUser::class;
 
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-user-group';
-
-    public static function canViewAny(): bool
-    {
-        $tenant = static::getTenantRecord();
-
-        return $tenant instanceof Tenant
-            && $tenant->hasCapability(Capability::STAFF_BASIC)
-            && Gate::allows('viewAny', TenantMembership::class);
-    }
-
-    public static function shouldRegisterNavigation(): bool
-    {
-        return static::canViewAny();
-    }
-
-    public static function canAccess(): bool
-    {
-        return static::canViewAny();
-    }
+    protected static ?string $navigationIcon = 'heroicon-o-user-group';
 
     public static function getNavigationLabel(): string
     {
@@ -84,143 +49,117 @@ class TenantUserResource extends Resource
         return 50;
     }
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
-        return $schema
+        return $form
             ->schema([
-                Section::make('Información del miembro')
+                // ═══ SECCIÓN: SELECCIÓN DE USUARIO ═══
+                Forms\Components\Section::make('Información del Miembro')
                     ->icon('heroicon-o-user')
                     ->columns(2)
                     ->schema([
-                        Select::make('user_id')
+                        Forms\Components\Select::make('user_id')
                             ->label('Usuario')
-                            ->relationship(
-                                name: 'user',
-                                titleAttribute: 'name',
-                                modifyQueryUsing: fn (Builder $query): Builder => $query->orderBy('name'),
-                            )
-                            ->getOptionLabelFromRecordUsing(
-                                fn (User $record): string => "{$record->name} ({$record->email})"
-                            )
+                            ->relationship('user', 'name')
                             ->searchable(['name', 'email'])
                             ->preload()
                             ->required()
-                            ->helperText('Selecciona un usuario existente o crea uno nuevo.')
+                            ->helperText('Busca por nombre o email')
                             ->createOptionForm([
-                                TextInput::make('name')
+                                Forms\Components\TextInput::make('name')
                                     ->label('Nombre')
-                                    ->required()
-                                    ->maxLength(255),
-                                TextInput::make('email')
+                                    ->required(),
+                                Forms\Components\TextInput::make('email')
                                     ->label('Email')
                                     ->email()
                                     ->required()
-                                    ->maxLength(255)
                                     ->unique('users', 'email'),
-                                TextInput::make('password')
-                                    ->label('Contraseña temporal')
+                                Forms\Components\TextInput::make('password')
+                                    ->label('Contraseña')
                                     ->password()
                                     ->required()
-                                    ->minLength(8)
-                                    ->helperText('Se guarda de forma segura y la persona podrá cambiarla luego.'),
+                                    ->minLength(8),
                             ])
-                            ->createOptionUsing(function (array $data): string {
-                                $passwordHasher = app(PasswordHasherInterface::class);
-
-                                $user = User::query()->create([
-                                    'name' => (string) $data['name'],
-                                    'email' => Str::lower(trim((string) $data['email'])),
-                                    'password' => $passwordHasher->hash((string) $data['password']),
-                                    'role' => UserRole::STAFF->value,
-                                ]);
-
-                                return (string) $user->getKey();
-                            })
-                            ->createOptionAction(function (Action $action): Action {
+                            ->createOptionAction(function (Forms\Components\Actions\Action $action) {
                                 return $action
-                                    ->modalHeading('Crear nuevo usuario')
+                                    ->modalHeading('Crear Nuevo Usuario')
                                     ->modalWidth('md');
                             })
-                            ->disabled(fn (?TenantMembership $record): bool => $record !== null)
-                            ->columnSpan(1),
+                            ->columnSpan(1)
+                            ->disabled(fn (?TenantUser $record) => $record !== null),
 
-                        Select::make('role')
-                            ->label('Rol base')
-                            ->options(static::getRoleOptions())
-                            ->default(Role::OPERATOR->value)
+                        Forms\Components\Select::make('role')
+                            ->label('Rol')
+                            ->options([
+                                'owner' => '👑 Dueño',
+                                'manager' => '👔 Gerente',
+                                'employee' => '👤 Empleado',
+                            ])
+                            ->default('employee')
                             ->required()
-                            ->native(false)
-                            ->helperText(static::getRoleHelperText())
-                            ->disabled(fn (?TenantMembership $record): bool => $record?->isOwner() ?? false)
-                            ->columnSpan(1),
-
-                        Select::make('preset_key')
-                            ->label('Perfil operativo')
-                            ->options(static::getPresetOptions())
-                            ->placeholder('Usar solo el rol base')
-                            ->native(false)
-                            ->searchable()
-                            ->preload()
+                            ->helperText('Define el nivel de acceso')
                             ->live()
-                            ->helperText(static::getPresetHelperText())
-                            ->afterStateUpdated(function (?string $state, Set $set): void {
-                                $tenant = static::getTenantRecord();
-
-                                if (! $tenant instanceof Tenant || ! is_string($state) || $state === '') {
-                                    return;
-                                }
-
-                                $preset = app(BusinessRolePresetCatalog::class)->findForTenant($tenant, $state);
-
-                                if (is_array($preset) && isset($preset['role']) && is_string($preset['role'])) {
-                                    $set('role', $preset['role']);
-                                }
-                            })
-                            ->columnSpan(1),
-
-                        Placeholder::make('preset_description')
-                            ->label('Resumen del perfil')
-                            ->content(function (Get $get): string {
-                                $presetKey = $get('preset_key');
-
-                                return static::getPresetDescription(is_string($presetKey) ? $presetKey : null);
-                            })
                             ->columnSpan(1),
                     ]),
 
-                Section::make('Información de acceso')
+                // ═══ SECCIÓN: PERMISOS GRANULARES ═══
+                Forms\Components\Section::make('Permisos de Acceso')
+                    ->icon('heroicon-o-shield-check')
+                    ->description('Configura qué puede hacer este miembro')
+                    ->columns(2)
+                    ->visible(fn (Forms\Get $get): bool => $get('role') !== 'owner')
+                    ->schema([
+                        Forms\Components\Toggle::make('can_manage_products')
+                            ->label('Gestionar Productos')
+                            ->helperText('Crear, editar y eliminar productos')
+                            ->default(true),
+
+                        Forms\Components\Toggle::make('can_manage_orders')
+                            ->label('Gestionar Pedidos')
+                            ->helperText('Ver y actualizar estado de pedidos')
+                            ->default(true),
+
+                        Forms\Components\Toggle::make('can_view_analytics')
+                            ->label('Ver Estadísticas')
+                            ->helperText('Acceso al dashboard de métricas')
+                            ->default(false),
+
+                        Forms\Components\Toggle::make('can_manage_settings')
+                            ->label('Configuración')
+                            ->helperText('Editar perfil del negocio')
+                            ->default(false),
+
+                        Forms\Components\Toggle::make('can_manage_team')
+                            ->label('Gestionar Equipo')
+                            ->helperText('Invitar y administrar miembros')
+                            ->default(false),
+
+                        Forms\Components\Toggle::make('can_manage_billing')
+                            ->label('Facturación')
+                            ->helperText('Acceso a pagos y suscripción')
+                            ->default(false),
+                    ]),
+
+                // ═══ INFORMACIÓN ADICIONAL (Solo ver) ═══
+                Forms\Components\Section::make('Información de Acceso')
                     ->icon('heroicon-o-information-circle')
-                    ->visible(fn (?TenantMembership $record): bool => $record !== null)
+                    ->visible(fn (?TenantUser $record) => $record !== null)
                     ->columns(2)
                     ->schema([
-                        Placeholder::make('user_email_display')
-                            ->label('Email')
-                            ->content(function (?TenantMembership $record): string {
-                                $user = $record?->user;
+                        Forms\Components\Placeholder::make('invited_at_display')
+                            ->label('Invitado')
+                            ->content(fn (?TenantUser $record): string => $record?->invited_at?->format('d/m/Y H:i') ?? 'N/A'
+                            ),
 
-                                return $user instanceof User ? $user->email : 'N/A';
-                            }),
-                        Placeholder::make('assigned_at_display')
-                            ->label('Asignado')
-                            ->content(function (?TenantMembership $record): string {
-                                $createdAt = $record?->created_at;
+                        Forms\Components\Placeholder::make('accepted_at_display')
+                            ->label('Aceptado')
+                            ->content(fn (?TenantUser $record): string => $record?->accepted_at?->format('d/m/Y H:i') ?? 'Pendiente'
+                            ),
 
-                                return $createdAt instanceof Carbon ? $createdAt->format('d/m/Y H:i') : 'N/A';
-                            }),
-                        Placeholder::make('accepted_at_display')
-                            ->label('Estado')
-                            ->content(function (?TenantMembership $record): string {
-                                $acceptedAt = $record?->getAttribute('accepted_at');
-
-                                if (is_string($acceptedAt) && $acceptedAt !== '') {
-                                    return 'Activo desde '.Carbon::parse($acceptedAt)->format('d/m/Y H:i');
-                                }
-
-                                return 'Pendiente';
-                            }),
-                        Placeholder::make('preset_guidance')
-                            ->label('Presets y equipo sugerido')
-                            ->content(static::getRoleHelperText()),
+                        Forms\Components\Placeholder::make('last_access_display')
+                            ->label('Último Acceso')
+                            ->content(fn (?TenantUser $record): string => $record?->last_access_at?->diffForHumans() ?? 'Nunca'
+                            ),
                     ]),
             ]);
     }
@@ -228,67 +167,99 @@ class TenantUserResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(function (Builder $query): Builder {
-                $tenant = static::getTenantRecord();
-
-                if (! $tenant instanceof Tenant) {
-                    return $query->whereRaw('1 = 0');
-                }
-
-                return $query
-                    ->where('tenant_id', (string) $tenant->getKey())
-                    ->with('user');
-            })
+            ->modifyQueryUsing(fn (Builder $query) => $query
+                ->where('tenant_id', Filament::getTenant()->id)
+                ->with('user'))
             ->columns([
+                // ═══ USUARIO ═══
                 Tables\Columns\TextColumn::make('user.name')
                     ->label('Nombre')
                     ->searchable()
                     ->sortable()
                     ->weight('bold'),
+
                 Tables\Columns\TextColumn::make('user.email')
                     ->label('Email')
                     ->searchable()
                     ->copyable()
                     ->icon('heroicon-o-envelope'),
+
+                // ═══ ROL CON COLORES ═══
                 Tables\Columns\TextColumn::make('role')
                     ->label('Rol')
                     ->badge()
-                    ->state(fn (TenantMembership $record): string => static::getRoleLabel($record->role))
-                    ->color(fn (TenantMembership $record): string => static::getRoleColor($record->role)),
-                Tables\Columns\TextColumn::make('preset_key')
-                    ->label('Perfil')
-                    ->badge()
-                    ->color('info')
-                    ->state(fn (TenantMembership $record): string => static::getPresetLabel($record->getAttribute('preset_key'))),
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'owner' => '👑 Dueño',
+                        'manager' => '👔 Gerente',
+                        'employee' => '👤 Empleado',
+                        default => $state,
+                    })
+                    ->color(fn (string $state): string => match ($state) {
+                        'owner' => 'warning',
+                        'manager' => 'info',
+                        'employee' => 'gray',
+                        default => 'gray',
+                    }),
+
+                // ═══ ESTADO ═══
                 Tables\Columns\TextColumn::make('accepted_at')
                     ->label('Estado')
                     ->badge()
-                    ->state(fn (TenantMembership $record): string => filled($record->getAttribute('accepted_at')) ? 'Activo' : 'Pendiente')
-                    ->color(fn (TenantMembership $record): string => filled($record->getAttribute('accepted_at')) ? 'success' : 'warning'),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->label('Asignado')
-                    ->since(),
+                    ->formatStateUsing(fn ($state): string => $state ? '✓ Activo' : '⏳ Pendiente')
+                    ->color(fn ($state): string => $state ? 'success' : 'warning'),
+
+                // ═══ ÚLTIMO ACCESO ═══
+                Tables\Columns\TextColumn::make('last_access_at')
+                    ->label('Último Acceso')
+                    ->since()
+                    ->placeholder('Nunca'),
+
+                // ═══ PERMISOS RESUMIDOS ═══
+                Tables\Columns\TextColumn::make('permissions_summary')
+                    ->label('Permisos')
+                    ->state(function (TenantUser $record): string {
+                        $perms = [];
+                        if ($record->can_manage_products) {
+                            $perms[] = '📦';
+                        }
+                        if ($record->can_manage_orders) {
+                            $perms[] = '📋';
+                        }
+                        if ($record->can_view_analytics) {
+                            $perms[] = '📊';
+                        }
+                        if ($record->can_manage_settings) {
+                            $perms[] = '⚙️';
+                        }
+
+                        return implode(' ', $perms) ?: '—';
+                    })
+                    ->tooltip('📦=Productos, 📋=Pedidos, 📊=Analytics, ⚙️=Config'),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('role')
                     ->label('Rol')
-                    ->options(static::getRoleOptions()),
-                Tables\Filters\SelectFilter::make('preset_key')
-                    ->label('Perfil operativo')
-                    ->options(static::getPresetOptions()),
+                    ->options([
+                        'owner' => 'Dueño',
+                        'manager' => 'Gerente',
+                        'employee' => 'Empleado',
+                    ]),
             ])
             ->actions([
-                EditAction::make()->iconButton(),
+                EditAction::make()
+                    ->iconButton(),
                 DeleteAction::make()
                     ->iconButton()
-                    ->visible(fn (TenantMembership $record): bool => ! $record->isOwner()),
+                    ->visible(fn (TenantUser $record): bool => $record->role !== 'owner'),
             ])
-            ->emptyState(fn () => view('filament.app.components.table-empty-state', [
-                'heading' => 'Todavía no has agregado miembros',
-                'description' => static::getEmptyStateDescription(),
-                'buttonLabel' => 'Agregar miembro',
-                'buttonUrl' => static::getUrl('create'),
-            ]));
+            ->bulkActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
+                ]),
+            ])
+            ->emptyStateHeading('Sin miembros del equipo')
+            ->emptyStateDescription('Agrega empleados o gerentes para delegar la gestión de tu negocio.')
+            ->emptyStateIcon('heroicon-o-user-group');
     }
 
     public static function getRelations(): array
@@ -303,291 +274,5 @@ class TenantUserResource extends Resource
             'create' => Pages\CreateTenantUser::route('/create'),
             'edit' => Pages\EditTenantUser::route('/{record}/edit'),
         ];
-    }
-
-    public static function getRoleOptions(): array
-    {
-        $tenant = static::getTenantRecord();
-        $assignableRoles = static::resolveAssignableRoles($tenant);
-
-        return collect(array_keys(config('rbac.roles', [])))
-            ->filter(static fn (mixed $value): bool => is_string($value) && Role::tryFrom($value) !== null)
-            ->filter(static fn (string $value): bool => in_array($value, $assignableRoles, true))
-            ->mapWithKeys(static fn (string $value): array => [$value => static::getRoleLabel($value)])
-            ->all();
-    }
-
-    public static function getRoleLabel(Role|string|null $role): string
-    {
-        $value = $role instanceof Role ? $role->value : (string) $role;
-
-        return match ($value) {
-            Role::OWNER->value => 'Dueño',
-            Role::ADMIN->value => 'Admin',
-            Role::MANAGER->value => 'Manager',
-            Role::OPERATOR->value => 'Operador',
-            Role::VIEWER->value => 'Solo lectura',
-            default => Str::of($value)->replace('_', ' ')->title()->value(),
-        };
-    }
-
-    public static function getRoleColor(Role|string|null $role): string
-    {
-        $value = $role instanceof Role ? $role->value : (string) $role;
-
-        return match ($value) {
-            Role::OWNER->value => 'warning',
-            Role::ADMIN->value, Role::MANAGER->value => 'info',
-            Role::OPERATOR->value => 'success',
-            Role::VIEWER->value => 'gray',
-            default => 'gray',
-        };
-    }
-
-    public static function getRoleHelperText(): string
-    {
-        $summary = static::getActivePresetSummary();
-        $teamSummary = static::getVerticalTeamSummary();
-
-        if ($summary === 'Sin presets adicionales para este negocio.' && $teamSummary === 'Sin recomendación vertical todavía.') {
-            return 'Asigna un rol base y, si aplica, un perfil operativo por rubro.';
-        }
-
-        $combined = collect([$summary, $teamSummary])
-            ->filter(static fn (string $item): bool => ! in_array($item, ['Sin presets adicionales para este negocio.', 'Sin recomendación vertical todavía.'], true))
-            ->implode(' ');
-
-        return $combined !== '' ? $combined : 'Asigna un rol base y, si aplica, un perfil operativo por rubro.';
-    }
-
-    public static function getPresetHelperText(): string
-    {
-        if (static::getPresetOptions() === []) {
-            return 'Este rubro todavía no tiene perfiles operativos extra.';
-        }
-
-        return 'Los perfiles operativos agregan permisos finos para que cada vertical trabaje con claridad.';
-    }
-
-    public static function getActivePresetSummary(): string
-    {
-        $tenant = static::getTenantRecord();
-
-        if (! $tenant instanceof Tenant) {
-            return 'Sin contexto de tenant.';
-        }
-
-        $presets = collect(static::getPresetCatalog()->forTenant($tenant))
-            ->map(function (array $preset): string {
-                $role = Role::tryFrom((string) ($preset['role'] ?? ''));
-                $roleLabel = $role ? static::getRoleLabel($role) : 'Rol base';
-
-                return ((string) ($preset['label'] ?? 'Perfil')).' -> '.$roleLabel;
-            })
-            ->values()
-            ->all();
-
-        if ($presets === []) {
-            return 'Sin presets adicionales para este negocio.';
-        }
-
-        return 'Perfiles listos para este negocio: '.implode(', ', $presets).'.';
-    }
-
-    public static function getVerticalTeamSummary(): string
-    {
-        $tenant = static::getTenantRecord();
-
-        if (! $tenant instanceof Tenant) {
-            return 'Sin contexto de tenant.';
-        }
-
-        $blueprint = app(BusinessOperationsBlueprint::class)->forTenant($tenant);
-        $teamPlaybook = collect((array) ($blueprint['team_playbook'] ?? []))
-            ->map(function (array $item): string {
-                $title = (string) ($item['title'] ?? '');
-                $role = (string) ($item['role'] ?? '');
-
-                if ($title === '') {
-                    return '';
-                }
-
-                return $title.' -> '.static::getRoleLabel($role);
-            })
-            ->filter(static fn (string $item): bool => $item !== '')
-            ->values()
-            ->all();
-
-        if ($teamPlaybook === []) {
-            return 'Sin recomendación vertical todavía.';
-        }
-
-        return 'Equipo sugerido por rubro: '.implode(', ', $teamPlaybook).'.';
-    }
-
-    public static function getEmptyStateDescription(): string
-    {
-        $teamSummary = static::getVerticalTeamSummary();
-
-        if (in_array($teamSummary, ['Sin contexto de tenant.', 'Sin recomendación vertical todavía.'], true)) {
-            return 'Agrega personas y dales un rol claro dentro del negocio.';
-        }
-
-        return 'Agrega personas y dales un rol claro dentro del negocio. '.$teamSummary;
-    }
-
-    /**
-     * @param  array<string, mixed>  $data
-     * @return array<string, mixed>
-     */
-    public static function normalizeMembershipData(Tenant $tenant, array $data): array
-    {
-        $assignableRoles = static::resolveAssignableRoles($tenant);
-        if ($assignableRoles === []) {
-            throw ValidationException::withMessages([
-                'role' => 'No tienes permisos para asignar roles en este negocio.',
-            ]);
-        }
-
-        $presetKey = isset($data['preset_key']) && is_string($data['preset_key']) && $data['preset_key'] !== ''
-            ? $data['preset_key']
-            : null;
-        $preset = static::getPresetCatalog()->findForTenant($tenant, $presetKey);
-        $role = (string) ($data['role'] ?? Role::OPERATOR->value);
-
-        if (is_array($preset) && isset($preset['role']) && is_string($preset['role'])) {
-            $role = $preset['role'];
-        }
-
-        if (! in_array($role, $assignableRoles, true)) {
-            throw ValidationException::withMessages([
-                'role' => 'No puedes asignar ese rol con tus permisos actuales.',
-            ]);
-        }
-
-        return array_merge($data, [
-            'role' => $role,
-            'preset_key' => $presetKey,
-            'granted_permissions' => static::getPresetCatalog()->permissionsForTenantPreset($tenant, $presetKey),
-        ]);
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    protected static function getPresetOptions(): array
-    {
-        $tenant = static::getTenantRecord();
-
-        if (! $tenant instanceof Tenant) {
-            return [];
-        }
-
-        return collect(static::getPresetCatalog()->forTenant($tenant))
-            ->mapWithKeys(static fn (array $preset, string $key): array => [$key => (string) ($preset['label'] ?? $key)])
-            ->all();
-    }
-
-    protected static function getPresetLabel(?string $presetKey): string
-    {
-        if (! is_string($presetKey) || trim($presetKey) === '') {
-            return 'Sin preset';
-        }
-
-        $tenant = static::getTenantRecord();
-        $preset = $tenant instanceof Tenant
-            ? static::getPresetCatalog()->findForTenant($tenant, $presetKey)
-            : null;
-
-        return (string) ($preset['label'] ?? Str::of($presetKey)->replace('_', ' ')->title()->value());
-    }
-
-    protected static function getPresetDescription(?string $presetKey): string
-    {
-        if (! is_string($presetKey) || trim($presetKey) === '') {
-            return 'Usa el rol base si todavía no necesitas permisos finos por vertical.';
-        }
-
-        $tenant = static::getTenantRecord();
-        $preset = $tenant instanceof Tenant
-            ? static::getPresetCatalog()->findForTenant($tenant, $presetKey)
-            : null;
-
-        return (string) ($preset['description'] ?? 'Perfil operativo recomendado para este rubro.');
-    }
-
-    protected static function getPresetCatalog(): BusinessRolePresetCatalog
-    {
-        return app(BusinessRolePresetCatalog::class);
-    }
-
-    protected static function getTenantRecord(): ?Tenant
-    {
-        $tenant = Filament::getTenant();
-
-        return $tenant instanceof Tenant ? $tenant : null;
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    protected static function resolveAssignableRoles(?Tenant $tenant): array
-    {
-        if (! $tenant instanceof Tenant) {
-            return [];
-        }
-
-        $actor = auth()->user();
-        if (! $actor instanceof User) {
-            return [];
-        }
-
-        if ($actor->isSuperAdmin()) {
-            return [
-                Role::ADMIN->value,
-                Role::MANAGER->value,
-                Role::OPERATOR->value,
-                Role::VIEWER->value,
-            ];
-        }
-
-        if ((string) $tenant->user_id === (string) $actor->id) {
-            return [
-                Role::ADMIN->value,
-                Role::MANAGER->value,
-                Role::OPERATOR->value,
-                Role::VIEWER->value,
-            ];
-        }
-
-        $membership = TenantMembership::query()
-            ->where('tenant_id', (string) $tenant->getKey())
-            ->where('user_id', (string) $actor->getKey())
-            ->whereNotNull('accepted_at')
-            ->first();
-
-        $actorRoleValue = $membership?->getAttribute('role');
-        $actorRole = $actorRoleValue instanceof Role
-            ? $actorRoleValue
-            : Role::tryFrom((string) $actorRoleValue);
-
-        return match ($actorRole) {
-            Role::OWNER => [
-                Role::ADMIN->value,
-                Role::MANAGER->value,
-                Role::OPERATOR->value,
-                Role::VIEWER->value,
-            ],
-            Role::ADMIN => [
-                Role::MANAGER->value,
-                Role::OPERATOR->value,
-                Role::VIEWER->value,
-            ],
-            Role::MANAGER => [
-                Role::OPERATOR->value,
-                Role::VIEWER->value,
-            ],
-            default => [],
-        };
     }
 }

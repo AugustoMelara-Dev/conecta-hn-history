@@ -6,69 +6,63 @@ namespace App\Filament\App\Widgets;
 
 use App\Filament\App\Resources\AppointmentResource;
 use App\Models\Appointment;
-use App\Models\Service;
-use App\Models\ServiceProvider;
-use Filament\Widgets\Widget;
-use Illuminate\Database\Eloquent\Collection;
+use Saade\FilamentFullCalendar\Widgets\FullCalendarWidget;
 
-class AppointmentCalendarWidget extends Widget
+/**
+ * AppointmentCalendarWidget - Visual Schedule Display
+ *
+ * Displays tenant appointments in a FullCalendar interface.
+ * Color-coded by status for quick visual identification.
+ *
+ * SECURITY: Queries are automatically tenant-scoped via BelongsToTenant trait.
+ */
+class AppointmentCalendarWidget extends FullCalendarWidget
 {
-    protected static bool $isLazy = false;
-
-    protected string $view = 'filament.app.widgets.appointment-calendar-placeholder';
-
     /**
-     * @param  array{start: string, end: string}  $fetchInfo
-     * @return list<array<string, mixed>>
+     * Fetch appointments for the calendar view.
+     *
+     * @param array $fetchInfo Contains 'start' and 'end' dates from FullCalendar
+     * @return array Events formatted for FullCalendar
      */
     public function fetchEvents(array $fetchInfo): array
     {
-        /** @var Collection<int, Appointment> $appointments */
-        $appointments = Appointment::query()
+        return Appointment::query()
             ->with(['service', 'provider'])
             ->where('scheduled_at', '>=', $fetchInfo['start'])
             ->where('scheduled_at', '<=', $fetchInfo['end'])
-            ->get();
-
-        return $appointments
-            ->map(function (Appointment $appointment): array {
-                $service = $appointment->service;
-                $provider = $appointment->provider;
-
-                return [
-                    'id' => $appointment->getKey(),
-                    'title' => sprintf(
-                        '%s - %s',
-                        $appointment->customer_display_name,
-                        $service instanceof Service ? $service->name : ''
-                    ),
-                    'start' => $appointment->scheduled_at,
-                    'end' => $appointment->end_at,
-                    'backgroundColor' => $this->getStatusColor($appointment->status),
-                    'borderColor' => $this->getStatusColor($appointment->status),
-                    'url' => AppointmentResource::getUrl('edit', ['record' => $appointment]),
-                    'extendedProps' => [
-                        'status' => $appointment->status,
-                        'provider' => $provider instanceof ServiceProvider ? $provider->name : null,
-                    ],
-                ];
-            })
+            ->get()
+            ->map(fn (Appointment $appointment) => [
+                'id' => $appointment->id,
+                'title' => "{$appointment->customer_display_name} - {$appointment->service?->name}",
+                'start' => $appointment->scheduled_at,
+                'end' => $appointment->end_at,
+                'backgroundColor' => $this->getStatusColor($appointment->status),
+                'borderColor' => $this->getStatusColor($appointment->status),
+                'url' => AppointmentResource::getUrl('edit', ['record' => $appointment]),
+                'extendedProps' => [
+                    'status' => $appointment->status,
+                    'provider' => $appointment->provider?->name,
+                ],
+            ])
             ->all();
     }
 
+    /**
+     * Map appointment status to calendar color.
+     */
     protected function getStatusColor(string $status): string
     {
         return match ($status) {
-            Appointment::STATUS_PENDING => '#f59e0b',
-            Appointment::STATUS_CONFIRMED => '#3b82f6',
-            Appointment::STATUS_COMPLETED => '#22c55e',
-            Appointment::STATUS_CANCELLED => '#ef4444',
-            default => '#6b7280',
+            Appointment::STATUS_PENDING => '#f59e0b',   // amber-500
+            Appointment::STATUS_CONFIRMED => '#3b82f6', // blue-500
+            Appointment::STATUS_COMPLETED => '#22c55e', // green-500
+            Appointment::STATUS_CANCELLED => '#ef4444', // red-500
+            default => '#6b7280',                       // gray-500
         };
     }
 
     /**
-     * @return array<string, mixed>
+     * Calendar configuration options.
      */
     public function config(): array
     {

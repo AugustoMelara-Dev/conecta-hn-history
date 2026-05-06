@@ -5,13 +5,12 @@ declare(strict_types=1);
 namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\FollowerResource\Pages;
-use App\Infrastructure\TenantGovernance\Presentation\TenantPlanPresentationReader;
 use App\Models\Follow;
-use App\Models\Tenant;
+use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms;
+use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -20,7 +19,7 @@ class FollowerResource extends Resource
 {
     protected static ?string $model = Follow::class;
 
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-users';
+    protected static ?string $navigationIcon = 'heroicon-o-users';
 
     public static function getNavigationLabel(): string
     {
@@ -35,16 +34,6 @@ class FollowerResource extends Resource
     public static function getPluralModelLabel(): string
     {
         return 'Seguidores';
-    }
-
-    public static function getNavigationGroup(): ?string
-    {
-        return 'Ventas';
-    }
-
-    public static function getNavigationSort(): ?int
-    {
-        return 3;
     }
 
     public static function canCreate(): bool
@@ -62,10 +51,11 @@ class FollowerResource extends Resource
         return false;
     }
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
-        return $schema
+        return $form
             ->schema([
+                // Read-only view
                 Forms\Components\TextInput::make('user.name')
                     ->label('Nombre'),
                 Forms\Components\TextInput::make('user.email')
@@ -77,14 +67,13 @@ class FollowerResource extends Resource
 
     public static function table(Table $table): Table
     {
-        $tenant = static::getTenantRecord();
-        $plan = static::getPlanPresentation();
-        $hasFollowerInsights = (bool) ($plan['hasFollowerInsights'] ?? false);
+        $isPro = Filament::getTenant()->is_pro;
 
         return $table
-            ->modifyQueryUsing(function (Builder $query) use ($hasFollowerInsights, $tenant) {
-                if ($hasFollowerInsights) {
-                    return $query->where('tenant_id', (string) $tenant?->getKey());
+            ->modifyQueryUsing(function (Builder $query) use ($isPro) {
+                // If PRO, show followers. If Free, show empty query
+                if ($isPro) {
+                    return $query->where('tenant_id', Filament::getTenant()->id);
                 }
 
                 return $query->whereRaw('1 = 0');
@@ -103,36 +92,28 @@ class FollowerResource extends Resource
                     ->dateTime('d/m/Y')
                     ->sortable(),
             ])
-            ->emptyState(fn () => view('filament.app.components.table-empty-state', [
-                'badge' => $hasFollowerInsights ? 'Audiencia' : ($plan['marketingLabel'] ?? 'Plan Base'),
-                'heading' => $hasFollowerInsights
-                    ? 'Todavía no tienes seguidores registrados'
-                    : 'La lista de seguidores se desbloquea con PRO',
-                'description' => $hasFollowerInsights
-                    ? 'Cuando alguien siga tu negocio, su registro aparecerá aquí para que puedas entender mejor tu audiencia.'
-                    : ($plan['followersCopy'] ?? 'En el plan Base mantienes el conteo general.'),
-            ]));
-    }
-
-    protected static function getTenantRecord(): ?Tenant
-    {
-        $tenant = Filament::getTenant();
-
-        return $tenant instanceof Tenant ? $tenant : null;
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    public static function getPlanPresentation(): array
-    {
-        $tenant = static::getTenantRecord();
-
-        if (! $tenant instanceof Tenant) {
-            return [];
-        }
-
-        return app(TenantPlanPresentationReader::class)->forTenant($tenant);
+            ->emptyStateHeading(
+                $isPro
+                    ? 'Aún no tienes seguidores'
+                    : 'Descubre quién te sigue con PRO'
+            )
+            ->emptyStateDescription(
+                $isPro
+                    ? 'Comparte tu perfil para conseguir seguidores.'
+                    : 'Actualiza a nuestro plan PRO para ver la lista completa de tus seguidores y contactarlos.'
+            )
+            ->emptyStateIcon($isPro ? 'heroicon-o-users' : 'heroicon-o-lock-closed')
+            ->emptyStateActions(
+                $isPro
+                    ? []
+                    : [
+                        Action::make('upgrade')
+                            ->label('Actualizar a PRO')
+                            ->url(fn () => route('filament.app.pages.upgrade-to-pro', ['tenant' => Filament::getTenant()->slug]))
+                            ->icon('heroicon-o-star')
+                            ->button(),
+                    ]
+            );
     }
 
     public static function getPages(): array

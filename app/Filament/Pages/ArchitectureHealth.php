@@ -4,24 +4,28 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
-use App\Domain\Identity\Enums\UserRole;
-use App\Models\User;
 use App\Services\EventArchitectureMetricsService;
 use Filament\Pages\Page;
 
+/**
+ * Architecture Health Dashboard (ADR-002 Governance)
+ *
+ * Shows real-time compliance metrics for Domain Events.
+ * Accessible only to super admins at /admin/architecture-health
+ */
 class ArchitectureHealth extends Page
 {
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-shield-check';
+    protected static ?string $navigationIcon = 'heroicon-o-shield-check';
 
-    protected static ?string $navigationLabel = 'Salud de arquitectura';
+    protected static ?string $navigationLabel = 'Architecture Health';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Configuración';
+    protected static ?string $navigationGroup = 'Configuración';
 
     protected static ?int $navigationSort = 100;
 
-    protected static ?string $title = 'Salud de arquitectura';
+    protected static ?string $title = 'Event Architecture Health';
 
-    protected string $view = 'filament.pages.architecture-health';
+    protected static string $view = 'filament.pages.architecture-health';
 
     public array $metrics = [];
 
@@ -33,32 +37,18 @@ class ArchitectureHealth extends Page
 
     public function mount(): void
     {
-        try {
-            $service = app(EventArchitectureMetricsService::class);
-            $this->metrics = $service->getMetrics();
-            $this->summary = $this->metrics['summary'] ?? [];
-            $this->events = $this->metrics['events'] ?? [];
-            $this->violations = $this->metrics['violations'] ?? [];
-        } catch (\Throwable) {
-            $this->metrics = [];
-            $this->summary = [
-                'total_events' => 0,
-                'compliant_count' => 0,
-                'non_compliant_count' => 0,
-                'compliance_percentage' => 0,
-                'health_status' => 'unknown',
-                'last_checked_at' => now()->format('Y-m-d H:i:s'),
-            ];
-            $this->events = [];
-            $this->violations = [];
-        }
+        $service = app(EventArchitectureMetricsService::class);
+        $this->metrics = $service->getMetrics();
+        $this->summary = $this->metrics['summary'];
+        $this->events = $this->metrics['events'];
+        $this->violations = $this->metrics['violations'];
     }
 
     public static function canAccess(): bool
     {
+        // Only super admins can access this page
         $user = auth()->user();
 
-        return $user instanceof User
-            && $user->role === UserRole::SUPER_ADMIN;
+        return $user && method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
     }
 }

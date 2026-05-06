@@ -4,29 +4,23 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Pages;
 
-use App\Domain\TenantGovernance\Enums\TenantFeature;
-use App\Infrastructure\TenantGovernance\Presentation\TenantPlanPresentationReader;
-use App\Models\Tenant;
 use Filament\Facades\Filament;
 use Filament\Pages\Page;
 
 class UpgradeToPro extends Page
 {
-    protected string $view = 'filament.app.pages.upgrade-to-pro';
+    // Navigation Icon removed to fix type error in Filament v4
+
+    protected static string $view = 'filament.app.pages.upgrade-to-pro';
 
     public static function getNavigationLabel(): string
     {
         return 'Mejorar a PRO';
     }
 
-    public static function getNavigationGroup(): ?string
-    {
-        return 'Cuenta';
-    }
-
     public function getTitle(): string
     {
-        return 'Mejora tu negocio a PRO';
+        return 'Mejora tu Negocio a PRO';
     }
 
     public static function getNavigationSort(): ?int
@@ -36,68 +30,49 @@ class UpgradeToPro extends Page
 
     public static function shouldRegisterNavigation(): bool
     {
-        $tenant = self::getTenantRecord();
+        $tenant = Filament::getTenant();
 
-        return $tenant instanceof Tenant && $tenant->hasFeature(TenantFeature::UPGRADE_PROMPT);
+        return $tenant && ! $tenant->is_pro;
     }
 
     public function getViewData(): array
     {
-        $tenant = self::getTenantRecord();
-        $plan = $tenant instanceof Tenant
-            ? app(TenantPlanPresentationReader::class)->forTenant($tenant)
-            : [
-                'marketingLabel' => 'Plan PRO',
-                'billingCta' => 'Activar PRO',
-                'priceLabel' => 'L. 99.00/mes',
-                'catalogCopy' => 'Catalogo ampliado para publicar mas productos, imagenes y merchandising.',
-                'marketingCopy' => 'Suite comercial activa para QR, WhatsApp, campañas y seguimiento.',
-                'brandingCopy' => 'Personalizacion visual avanzada ya habilitada para tu micrositio.',
-                'followersCopy' => 'Tu audiencia ya esta disponible con detalle completo para operar seguimiento.',
-            ];
-
         return [
-            'tenant' => $tenant,
-            'plan' => $plan,
+            'tenant' => Filament::getTenant(),
             'features' => [
                 [
                     'icon' => 'heroicon-o-chat-bubble-left-right',
-                    'title' => 'Integración con WhatsApp',
-                    'description' => $plan['marketingCopy'],
+                    'title' => 'Integración WhatsApp',
+                    'description' => 'Botón de contacto directo para que tus clientes te escriban al instante.',
                 ],
                 [
                     'icon' => 'heroicon-o-cube',
-                    'title' => 'Catalogo ampliado',
-                    'description' => $plan['catalogCopy'],
+                    'title' => 'Productos Ilimitados',
+                    'description' => 'Sin límite de 10 productos. Muestra todo tu catálogo completo.',
                 ],
                 [
                     'icon' => 'heroicon-o-paint-brush',
-                    'title' => 'Marca personalizada',
-                    'description' => $plan['brandingCopy'],
+                    'title' => 'Marca Personalizada',
+                    'description' => 'Colores de tu marca, banner personalizado y logo destacado.',
                 ],
                 [
                     'icon' => 'heroicon-o-users',
-                    'title' => 'Seguidores visibles',
-                    'description' => $plan['followersCopy'],
+                    'title' => 'Ver Seguidores',
+                    'description' => 'Conoce quiénes siguen tu negocio y construye tu comunidad.',
                 ],
                 [
                     'icon' => 'heroicon-o-megaphone',
-                    'title' => 'Campanas de marketing',
-                    'description' => $plan['marketingCopy'],
+                    'title' => 'Campañas de Marketing',
+                    'description' => 'Envía promociones y novedades a todos tus seguidores.',
                 ],
                 [
                     'icon' => 'heroicon-o-chart-bar',
-                    'title' => 'Métricas avanzadas',
-                    'description' => 'Ten una lectura más completa del rendimiento y la actividad del negocio.',
+                    'title' => 'Estadísticas Avanzadas',
+                    'description' => 'Métricas detalladas de visitas y rendimiento de tu negocio.',
                 ],
             ],
+            'price' => 'L. 1,500',
+            'period' => 'mes',
         ];
-    }
-
-    private static function getTenantRecord(): ?Tenant
-    {
-        $tenant = Filament::getTenant();
-
-        return $tenant instanceof Tenant ? $tenant : null;
     }
 }

@@ -4,47 +4,45 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources\ProductResource\Pages;
 
-use App\Filament\App\Resources\Pages\CreateTenantRecord;
 use App\Filament\App\Resources\ProductResource;
-use App\Infrastructure\TenantGovernance\Presentation\TenantPlanPresentationReader;
-use App\Models\Tenant;
-use Filament\Actions\Action;
+use App\Settings\GeneralSettings;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
+use Filament\Resources\Pages\CreateRecord;
 
-class CreateProduct extends CreateTenantRecord
+class CreateProduct extends CreateRecord
 {
     protected static string $resource = ProductResource::class;
 
+    /**
+     * SAFETY NET: Validación del lado del servidor
+     * Previene creación de productos si se supera el límite del plan
+     */
     protected function beforeCreate(): void
     {
-        $tenant = $this->getTenantRecord();
+        $tenant = Filament::getTenant();
 
-        if (! $tenant instanceof Tenant) {
+        // PRO tiene productos ilimitados
+        if ($tenant?->is_pro) {
             return;
         }
 
-        $plan = app(TenantPlanPresentationReader::class)->forTenant($tenant);
+        // Obtener límite dinámico desde settings o tenant
+        $settings = app(GeneralSettings::class);
+        $limit = $tenant?->product_limit ?? $settings->free_plan_product_limit ?? 10;
 
-        if ($plan['isCatalogUnlimited']) {
-            return;
-        }
-
-        $limit = (int) ($plan['productLimit'] ?? 0);
         $currentCount = $tenant->products()->count();
 
         if ($currentCount >= $limit) {
             Notification::make()
                 ->danger()
-                ->title('Limite del catalogo alcanzado')
-                ->body($plan['catalogStatusCopy'])
+                ->title('Límite del Plan Alcanzado')
+                ->body("Has alcanzado el límite de {$limit} productos de tu plan. Actualiza a PRO para productos ilimitados.")
                 ->persistent()
                 ->actions([
-                    Action::make('upgrade')
-                        ->label($plan['billingCta'])
-                        ->url(route('filament.app.pages.manage-billing', [
-                            'tenant' => (string) ($tenant->getAttribute('slug') ?? ''),
-                        ]))
+                    \Filament\Notifications\Actions\Action::make('upgrade')
+                        ->label('Ver Plan PRO')
+                        ->url(route('filament.app.pages.manage-billing', ['tenant' => $tenant->slug]))
                         ->color('warning'),
                 ])
                 ->send();
@@ -54,14 +52,14 @@ class CreateProduct extends CreateTenantRecord
     }
 
     /**
-     * @param  array<string, mixed>  $data
-     * @return array<string, mixed>
+     * Automáticamente asignar tenant_id al crear
      */
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        $tenant = $this->getTenantRecord();
+        $tenant = Filament::getTenant();
 
-        $data['city_id'] = $tenant?->getAttribute('city_id');
+        $data['tenant_id'] = $tenant?->id;
+        $data['city_id'] = $tenant?->city_id;
 
         return $data;
     }
@@ -69,12 +67,5 @@ class CreateProduct extends CreateTenantRecord
     protected function getRedirectUrl(): string
     {
         return $this->getResource()::getUrl('index');
-    }
-
-    private function getTenantRecord(): ?Tenant
-    {
-        $tenant = Filament::getTenant();
-
-        return $tenant instanceof Tenant ? $tenant : null;
     }
 }

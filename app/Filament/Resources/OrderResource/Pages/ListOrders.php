@@ -6,11 +6,10 @@ namespace App\Filament\Resources\OrderResource\Pages;
 
 use App\Filament\Resources\OrderResource;
 use App\Models\Order;
-use App\Models\Tenant;
 use Filament\Actions;
 use Filament\Facades\Filament;
+use Filament\Resources\Components\Tab;
 use Filament\Resources\Pages\ListRecords;
-use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Database\Eloquent\Builder;
 
 class ListOrders extends ListRecords
@@ -32,12 +31,7 @@ class ListOrders extends ListRecords
      */
     public function getTabs(): array
     {
-        $tenant = Filament::getTenant();
-        if (! $tenant instanceof Tenant) {
-            return [];
-        }
-
-        $tenantId = (string) $tenant->getKey();
+        $tenantId = Filament::getTenant()->id;
 
         return [
             'all' => Tab::make('Todos')

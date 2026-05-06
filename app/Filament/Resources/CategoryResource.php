@@ -6,26 +6,20 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\CategoryResource\Pages;
 use App\Models\Category;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Section;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Form;
+use Filament\Forms\Set;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Utilities\Set;
-use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
 
 class CategoryResource extends Resource
 {
-    protected static bool $isScopedToTenant = false;
-
     // Strict Governance: Global Categories are managed ONLY by Super Admin
     public static function canCreate(): bool
     {
@@ -49,7 +43,7 @@ class CategoryResource extends Resource
 
     protected static ?string $model = Category::class;
 
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-tag';
+    protected static ?string $navigationIcon = 'heroicon-o-tag';
 
     public static function getModelLabel(): string
     {
@@ -63,12 +57,12 @@ class CategoryResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Configuración';
+        return 'Configuracion';
     }
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
-        return $schema
+        return $form
             ->schema([
                 // ═══════════════════════════════════════════════════════════
                 // SECCION 1: Identidad de la Categoria
@@ -221,12 +215,12 @@ class CategoryResource extends Resource
                     ->falseLabel('No Destacadas'),
             ])
             ->actions([
-                EditAction::make(),
-                DeleteAction::make(),
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
             // ═══════════════════════════════════════════════════════════════

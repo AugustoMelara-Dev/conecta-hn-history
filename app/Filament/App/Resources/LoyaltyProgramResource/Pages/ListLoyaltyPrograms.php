@@ -3,9 +3,9 @@
 namespace App\Filament\App\Resources\LoyaltyProgramResource\Pages;
 
 use App\Filament\App\Resources\LoyaltyProgramResource;
-use App\Filament\App\Resources\Pages\ListTenantRecords;
+use Filament\Resources\Pages\ListRecords;
 
-class ListLoyaltyPrograms extends ListTenantRecords
+class ListLoyaltyPrograms extends ListRecords
 {
     protected static string $resource = LoyaltyProgramResource::class;
 

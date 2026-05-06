@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Filament\Widgets;
 
-use App\Models\Tenant;
 use App\Models\TenantVisit;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Facades\Auth;
@@ -17,9 +16,9 @@ use Illuminate\Support\Facades\Auth;
  */
 class TrafficChartWidget extends ChartWidget
 {
-    protected ?string $heading = 'Tráfico del Mes';
+    protected static ?string $heading = 'Tráfico del Mes';
 
-    protected ?string $pollingInterval = '60s';
+    protected static ?string $pollingInterval = '60s';
 
     protected static ?int $sort = 2;
 
@@ -27,9 +26,9 @@ class TrafficChartWidget extends ChartWidget
 
     protected function getData(): array
     {
-        $tenant = $this->getTenantRecord();
+        $tenant = Auth::user()?->tenant;
 
-        if (! $tenant instanceof Tenant) {
+        if (! $tenant) {
             return [
                 'datasets' => [],
                 'labels' => [],
@@ -44,8 +43,7 @@ class TrafficChartWidget extends ChartWidget
         // AGGREGATE VISITS BY DAY
         // Efficient single query with GROUP BY
         // ═══════════════════════════════════════════════════════════════
-        $visitsData = TenantVisit::query()
-            ->where('tenant_id', (string) $tenant->getKey())
+        $visitsData = TenantVisit::forTenant($tenant->id)
             ->thisMonth()
             ->selectRaw('DAY(created_at) as day, COUNT(*) as count')
             ->groupBy('day')
@@ -93,13 +91,5 @@ class TrafficChartWidget extends ChartWidget
                 ],
             ],
         ];
-    }
-
-    private function getTenantRecord(): ?Tenant
-    {
-        $user = Auth::user();
-        $tenant = $user?->tenant;
-
-        return $tenant instanceof Tenant ? $tenant : null;
     }
 }

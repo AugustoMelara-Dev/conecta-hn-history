@@ -6,27 +6,21 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\CityResource\Pages;
 use App\Models\City;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Form;
+use Filament\Forms\Set;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Utilities\Set;
-use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
 
 class CityResource extends Resource
 {
-    protected static bool $isScopedToTenant = false;
-
     // Strict Governance: Cities can only be managed by Super Admin
     public static function canCreate(): bool
     {
@@ -50,11 +44,11 @@ class CityResource extends Resource
 
     protected static ?string $model = City::class;
 
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-map-pin';
+    protected static ?string $navigationIcon = 'heroicon-o-map-pin';
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Configuración';
+        return 'Configuracion';
     }
 
     public static function getModelLabel(): string
@@ -94,9 +88,9 @@ class CityResource extends Resource
         ];
     }
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
-        return $schema
+        return $form
             ->schema([
                 // ═══════════════════════════════════════════════════════════
                 // SECCION 1: Identidad y SEO
@@ -122,7 +116,7 @@ class CityResource extends Resource
                             ->required()
                             ->unique(City::class, 'slug', ignoreRecord: true)
                             ->prefix(config('app.url').'/')
-                            ->helperText('Editable para optimizacion SEO. Ej: "tocoa" para vitobusinessos.com/tocoa'),
+                            ->helperText('Editable para optimizacion SEO. Ej: "tocoa" para conectahn.com/tocoa'),
 
                         Select::make('department')
                             ->label('Departamento')
@@ -174,7 +168,7 @@ class CityResource extends Resource
                         TextInput::make('meta_title')
                             ->label('Meta Title (SEO)')
                             ->maxLength(70)
-                            ->placeholder('Negocios en [Ciudad] | Vito Business OS')
+                            ->placeholder('Negocios en [Ciudad] | Conecta HN')
                             ->helperText('Titulo para Google. Max 70 caracteres.'),
 
                         TextInput::make('meta_description')
@@ -219,7 +213,7 @@ class CityResource extends Resource
                     ->label('')
                     ->circular()
                     ->size(45)
-                    ->defaultImageUrl(fn ($record) => \App\Support\Ui\AvatarPlaceholder::forName((string) $record->name)),
+                    ->defaultImageUrl(fn ($record) => 'https://ui-avatars.com/api/?name='.urlencode($record->name).'&background=random'),
 
                 Tables\Columns\TextColumn::make('name')
                     ->label('Ciudad')
@@ -278,12 +272,12 @@ class CityResource extends Resource
                     ->falseLabel('No Destacadas'),
             ])
             ->actions([
-                EditAction::make(),
-                DeleteAction::make(),
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
             ->defaultSort('launch_order', 'asc');

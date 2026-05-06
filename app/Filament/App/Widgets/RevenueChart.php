@@ -4,16 +4,24 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Widgets;
 
-use App\Models\Order;
-use App\Models\Tenant;
+use App\Models\Appointment;
 use Filament\Facades\Filament;
 use Filament\Widgets\ChartWidget;
+use Flowframe\Trend\Trend;
+use Flowframe\Trend\TrendValue;
 
+/**
+ * RevenueChart - 30-Day Estimated Revenue Trend
+ *
+ * ARCHITECTURE NOTE: Revenue is calculated using current Service.price
+ * since Appointment model does not snapshot price at booking time.
+ * This is an MVP trade-off for simplicity.
+ *
+ * SECURITY: Data is strictly scoped to current tenant.
+ */
 class RevenueChart extends ChartWidget
 {
-    protected static bool $isLazy = false;
-
-    protected ?string $heading = 'Ingresos por Ordenes (Ultimos 30 dias)';
+    protected static ?string $heading = 'Ingresos Estimados (Últimos 30 días)';
 
     protected static ?int $sort = 2;
 
@@ -23,47 +31,33 @@ class RevenueChart extends ChartWidget
     {
         $tenant = Filament::getTenant();
 
-        if (! $tenant instanceof Tenant) {
-            return [
-                'datasets' => [],
-                'labels' => [],
-            ];
-        }
-
-        /** @var array<string, float> $aggregates */
-        $aggregates = Order::query()
-            ->where('tenant_id', (string) $tenant->getKey())
-            ->where('status', 'delivered')
-            ->whereBetween('created_at', [now()->subDays(30)->startOfDay(), now()->endOfDay()])
-            ->selectRaw('DATE(created_at) as order_date, COALESCE(SUM(total), 0) as aggregate')
-            ->groupBy('order_date')
-            ->orderBy('order_date')
-            ->pluck('aggregate', 'order_date')
-            ->map(fn ($value): float => (float) $value)
-            ->all();
-
-        $labels = [];
-        $data = [];
-
-        for ($i = 29; $i >= 0; $i--) {
-            $date = now()->subDays($i);
-            $key = $date->toDateString();
-            $labels[] = $date->format('d/m');
-            $data[] = $aggregates[$key] ?? 0.0;
-        }
+        $data = Trend::query(
+            Appointment::query()
+                ->where('appointments.tenant_id', $tenant->id)
+                ->where('status', 'completed')
+                ->join('services', 'appointments.service_id', '=', 'services.id')
+                ->select('appointments.*')
+        )
+            ->dateColumn('appointments.scheduled_at')
+            ->between(
+                start: now()->subDays(30),
+                end: now(),
+            )
+            ->perDay()
+            ->sum('services.price');
 
         return [
             'datasets' => [
                 [
                     'label' => 'Ingresos (L.)',
-                    'data' => $data,
-                    'borderColor' => '#000000',
-                    'backgroundColor' => 'rgba(0, 0, 0, 0.1)',
+                    'data' => $data->map(fn (TrendValue $value) => $value->aggregate),
+                    'borderColor' => '#10b981',
+                    'backgroundColor' => 'rgba(16, 185, 129, 0.1)',
                     'fill' => 'start',
                     'tension' => 0.3,
                 ],
             ],
-            'labels' => $labels,
+            'labels' => $data->map(fn (TrendValue $value) => $value->date),
         ];
     }
 
