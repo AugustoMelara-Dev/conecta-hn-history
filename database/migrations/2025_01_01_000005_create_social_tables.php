@@ -11,50 +11,42 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (! Schema::hasTable('interactions')) {
-            Schema::create('interactions', function (Blueprint $table) {
-                $table->id();
-                $table->foreignUuid('tenant_id')->constrained()->cascadeOnDelete();
-                $table->foreignUuid('user_id')->nullable()->constrained()->nullOnDelete();
-                $table->string('type'); // view, whatsapp_click, call, share
-                $table->json('metadata')->nullable();
-                $table->string('ip_address')->nullable();
-                $table->string('user_agent')->nullable();
-                $table->timestamps();
-            });
-        }
+        Schema::create('interactions', function (Blueprint $table) {
+            $table->id();
+            $table->foreignUuid('tenant_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('user_id')->nullable()->constrained()->nullOnDelete();
+            $table->string('type'); // view, whatsapp_click, call, share
+            $table->json('metadata')->nullable();
+            $table->string('ip_address')->nullable();
+            $table->string('user_agent')->nullable();
+            $table->timestamps();
+        });
 
-        if (! Schema::hasTable('follows')) {
-            Schema::create('follows', function (Blueprint $table) {
-                $table->id();
-                $table->foreignUuid('user_id')->constrained()->cascadeOnDelete();
-                $table->foreignUuid('tenant_id')->constrained()->cascadeOnDelete();
-                $table->timestamps();
-                $table->unique(['user_id', 'tenant_id']);
-            });
-        }
+        Schema::create('follows', function (Blueprint $table) {
+            $table->id();
+            $table->foreignUuid('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('tenant_id')->constrained()->cascadeOnDelete();
+            $table->timestamps();
+            $table->unique(['user_id', 'tenant_id']);
+        });
 
-        if (! Schema::hasTable('favorites')) {
-            Schema::create('favorites', function (Blueprint $table) {
-                $table->id();
-                $table->foreignUuid('user_id')->constrained()->cascadeOnDelete();
-                $table->foreignId('product_id')->constrained()->cascadeOnDelete();
-                $table->timestamps();
-                $table->unique(['user_id', 'product_id']);
-            });
-        }
+        Schema::create('favorites', function (Blueprint $table) {
+            $table->id();
+            $table->foreignUuid('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('product_id')->constrained()->cascadeOnDelete();
+            $table->timestamps();
+            $table->unique(['user_id', 'product_id']);
+        });
 
-        if (! Schema::hasTable('reviews')) {
-            Schema::create('reviews', function (Blueprint $table) {
-                $table->id();
-                $table->foreignUuid('user_id')->constrained()->cascadeOnDelete();
-                $table->foreignUuid('tenant_id')->constrained()->cascadeOnDelete();
-                $table->integer('rating');
-                $table->text('comment')->nullable();
-                $table->boolean('is_approved')->default(true);
-                $table->timestamps();
-            });
-        }
+        Schema::create('reviews', function (Blueprint $table) {
+            $table->id();
+            $table->foreignUuid('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('tenant_id')->constrained()->cascadeOnDelete();
+            $table->integer('rating');
+            $table->text('comment')->nullable();
+            $table->boolean('is_approved')->default(true);
+            $table->timestamps();
+        });
     }
 
     /**

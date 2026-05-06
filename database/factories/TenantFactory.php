@@ -46,13 +46,9 @@ class TenantFactory extends Factory
             'user_id' => null, // CRITICAL: No auto-creation to prevent recursion
             'name' => $name,
             'slug' => Str::slug($name).'-'.Str::random(6),
-            'status' => 'approved',
             'is_active' => true,
             'plan_type' => 'semilla', // String value for MySQL ENUM column
-            'business_type' => 'retail',
             'subscription_status' => 'active',
-            'verification_status' => Tenant::VERIFICATION_STATUS_VERIFIED,
-            'verified_at' => now(),
             'ai_balance' => 0.000000, // AI Budget columns (EDoS Prevention)
             'ai_reserved_balance' => 0.000000,
         ];

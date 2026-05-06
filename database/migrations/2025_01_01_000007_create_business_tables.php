@@ -11,34 +11,38 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (! Schema::hasTable('payments')) {
-            Schema::create('payments', function (Blueprint $table) {
-                $table->id();
-                $table->foreignUuid('tenant_id')->constrained()->cascadeOnDelete();
-                $table->decimal('amount', 10, 2);
-                $table->string('currency')->default('HNL');
-                $table->string('status')->default('pending');
-                $table->string('reference_id')->nullable();
-                $table->string('provider')->nullable(); // bank_transfer, card
-                $table->timestamp('paid_at')->nullable();
-                $table->timestamps();
-            });
-        }
+        Schema::create('payments', function (Blueprint $table) {
+            $table->id();
+            $table->foreignUuid('tenant_id')->constrained()->cascadeOnDelete();
+            $table->decimal('amount', 10, 2);
+            $table->string('currency')->default('HNL');
+            $table->string('status')->default('pending');
+            $table->string('reference_id')->nullable();
+            $table->string('provider')->nullable(); // bank_transfer, card
+            $table->timestamp('paid_at')->nullable();
+            $table->timestamps();
+        });
 
-        if (! Schema::hasTable('tenant_analytics')) {
-            Schema::create('tenant_analytics', function (Blueprint $table) {
-                $table->id();
-                $table->foreignUuid('tenant_id')->constrained()->cascadeOnDelete();
-                $table->date('date');
-                $table->integer('views')->default(0);
-                $table->integer('whatsapp_clicks')->default(0);
-                $table->integer('unique_visitors')->default(0);
-                $table->timestamps();
-                $table->unique(['tenant_id', 'date']);
-            });
-        }
+        Schema::create('tenant_analytics', function (Blueprint $table) {
+            $table->id();
+            $table->foreignUuid('tenant_id')->constrained()->cascadeOnDelete();
+            $table->date('date');
+            $table->integer('views')->default(0);
+            $table->integer('whatsapp_clicks')->default(0);
+            $table->integer('unique_visitors')->default(0);
+            $table->timestamps();
+            $table->unique(['tenant_id', 'date']);
+        });
 
-        // Historical note: one_time_passwords moved to a dedicated migration.
+        /*
+        Schema::create('one_time_passwords', function (Blueprint $table) {
+            $table->id();
+            $table->string('identifier');
+            $table->string('token');
+            $table->timestamp('expires_at');
+            $table->timestamps();
+        });
+        */
     }
 
     /**

@@ -13,8 +13,8 @@ use Illuminate\Support\Facades\Schema;
  * - plan_type: Scalable plan identifier (semilla, pro, enterprise)
  *
  * BUSINESS LOGIC:
- * - Legacy paid-plan storage moved to computed plan semantics
- * - Existing paid tenants are represented through plan_type
+ * - is_pro is now COMPUTED, not stored
+ * - Existing is_pro=true tenants get plan_type='pro'
  * - All tenants get active status to preserve service
  */
 return new class extends Migration
@@ -62,7 +62,7 @@ return new class extends Migration
             }
         });
 
-        // Legacy data migration logic removed; fresh schema relies on plan_type.
+        // Legacy data migration logic removed (is_pro does not exist in fresh schema)
     }
 
     public function down(): void

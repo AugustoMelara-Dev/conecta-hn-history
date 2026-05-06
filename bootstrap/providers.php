@@ -11,7 +11,6 @@
 return [
     // Framework Providers
     App\Providers\AppServiceProvider::class,
-    App\Providers\TypeScriptTransformerServiceProvider::class,
     App\Providers\BusServiceProvider::class, // Command Bus Middleware Pipeline
     App\Providers\FortifyServiceProvider::class, // Security Actions
     App\Providers\InfrastructureServiceProvider::class,

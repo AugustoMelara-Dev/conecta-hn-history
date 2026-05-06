@@ -29,10 +29,6 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (Schema::hasTable('order_events')) {
-            return;
-        }
-
         Schema::create('order_events', function (Blueprint $table) {
             // ═══════════════════════════════════════════════════════════════
             // PRIMARY KEY

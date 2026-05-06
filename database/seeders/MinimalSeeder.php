@@ -18,7 +18,7 @@ class MinimalSeeder extends Seeder
         // Using Identity Domain Factory
         \App\Domain\Identity\Models\User::factory()->create([
             'name' => 'Super Admin',
-            'email' => 'admin@vitobusinessos.com',
+            'email' => 'admin@conectahn.com',
             'role' => 'super_admin',
             'password' => 'password', // Model has 'hashed' cast, will autopassword
         ]);
@@ -44,14 +44,14 @@ class MinimalSeeder extends Seeder
         // 4. Create Tenants for the Seller
         // Using TenantGovernance Domain Factory
         $businesses = [
-            ['name' => 'Café El Indio', 'city' => 'Tegucigalpa', 'plan_type' => 'pro'],
-            ['name' => 'TechStore SPS', 'city' => 'San Pedro Sula', 'plan_type' => 'pro'],
-            ['name' => 'Farmacia Salud', 'city' => 'La Ceiba', 'plan_type' => 'pro'],
-            ['name' => 'Restaurante Don Pepe', 'city' => 'Tegucigalpa', 'plan_type' => 'pro'],
-            ['name' => 'Inversiones La Paz', 'city' => 'San Pedro Sula', 'plan_type' => 'pro'],
-            ['name' => 'Comedor Suyapa', 'city' => 'Tegucigalpa', 'plan_type' => 'semilla'],
-            ['name' => 'Tienda La Esquina', 'city' => 'La Ceiba', 'plan_type' => 'semilla'],
-            ['name' => 'Barbería El Corte', 'city' => 'San Pedro Sula', 'plan_type' => 'semilla'],
+            ['name' => 'Café El Indio', 'city' => 'Tegucigalpa', 'is_pro' => true],
+            ['name' => 'TechStore SPS', 'city' => 'San Pedro Sula', 'is_pro' => true],
+            ['name' => 'Farmacia Salud', 'city' => 'La Ceiba', 'is_pro' => true],
+            ['name' => 'Restaurante Don Pepe', 'city' => 'Tegucigalpa', 'is_pro' => true],
+            ['name' => 'Inversiones La Paz', 'city' => 'San Pedro Sula', 'is_pro' => true],
+            ['name' => 'Comedor Suyapa', 'city' => 'Tegucigalpa', 'is_pro' => false],
+            ['name' => 'Tienda La Esquina', 'city' => 'La Ceiba', 'is_pro' => false],
+            ['name' => 'Barbería El Corte', 'city' => 'San Pedro Sula', 'is_pro' => false],
         ];
 
         // Retrieve category IDs
@@ -91,7 +91,7 @@ class MinimalSeeder extends Seeder
                     'whatsapp_number' => '+504 9999-999'.$idx,
                 ]);
 
-            if ($biz['plan_type'] === 'pro') {
+            if ($biz['is_pro']) {
                 $factory = $factory->pro();
             } else {
                 $factory = $factory->state(['plan_type' => 'semilla']);

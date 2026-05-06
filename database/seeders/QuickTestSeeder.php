@@ -25,7 +25,7 @@ class QuickTestSeeder extends Seeder
         // 2. Create Test Users
         $admin = User::create([
             'name' => 'Admin',
-            'email' => 'admin@vitobusinessos.com',
+            'email' => 'admin@conectahn.com',
             'password' => bcrypt('password'),
             'role' => 'super_admin',
         ]);
@@ -55,8 +55,7 @@ class QuickTestSeeder extends Seeder
             'description' => 'El mejor café hondureño con tradición desde 1950. Especialidad en baleadas y café gourmet.',
             'city' => 'Tegucigalpa',
             'status' => 'approved',
-            'plan_type' => 'pro',
-            'subscription_status' => 'active',
+            'is_pro' => true,
             'logo_path' => 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400&q=80',
             'primary_color' => '#7c3aed',
             'whatsapp_number' => '+504 9999-9999',
@@ -72,8 +71,7 @@ class QuickTestSeeder extends Seeder
             'description' => 'La mejor tecnología al mejor precio. Laptops, celulares, accesorios y más.',
             'city' => 'San Pedro Sula',
             'status' => 'approved',
-            'plan_type' => 'pro',
-            'subscription_status' => 'active',
+            'is_pro' => true,
             'logo_path' => 'https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=400&q=80',
             'primary_color' => '#dc2626',
             'whatsapp_number' => '+504 8888-8888',
@@ -89,8 +87,7 @@ class QuickTestSeeder extends Seeder
             'description' => 'Tu salud es nuestra prioridad. Medicamentos, vitaminas y atención farmacéutica profesional.',
             'city' => 'La Ceiba',
             'status' => 'approved',
-            'plan_type' => 'semilla',
-            'subscription_status' => 'active',
+            'is_pro' => false,
             'logo_path' => 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=400&q=80',
             'primary_color' => '#059669',
             'whatsapp_number' => '+504 7777-7777',
@@ -101,7 +98,7 @@ class QuickTestSeeder extends Seeder
         $this->command->info('🎉 Quick test data ready!');
         $this->command->newLine();
         $this->command->info('Login credentials:');
-        $this->command->info('  Admin: admin@vitobusinessos.com / password');
+        $this->command->info('  Admin: admin@conectahn.com / password');
         $this->command->info('  Café El Indio: cafe@test.com / password');
         $this->command->info('  TechStore: tech@test.com / password');
     }

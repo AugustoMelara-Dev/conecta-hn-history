@@ -55,22 +55,20 @@ return new class extends Migration
         // ═══════════════════════════════════════════════════════════════════
         // ALTER: products (Add Advanced Inventory Fields - Safe)
         // ═══════════════════════════════════════════════════════════════════
-        if (Schema::hasTable('products')) {
-            Schema::table('products', function (Blueprint $table) {
-                // Only add columns if they don't exist
-                if (! Schema::hasColumn('products', 'stock_status')) {
-                    $table->string('stock_status', 20)
-                        ->default('in_stock')
-                        ->after('price');
-                }
+        Schema::table('products', function (Blueprint $table) {
+            // Only add columns if they don't exist
+            if (! Schema::hasColumn('products', 'stock_status')) {
+                $table->string('stock_status', 20)
+                    ->default('in_stock')
+                    ->after('price');
+            }
 
-                if (! Schema::hasColumn('products', 'is_new')) {
-                    $table->boolean('is_new')
-                        ->default(false)
-                        ->after('is_featured');
-                }
-            });
-        }
+            if (! Schema::hasColumn('products', 'is_new')) {
+                $table->boolean('is_new')
+                    ->default(false)
+                    ->after('is_featured');
+            }
+        });
     }
 
     public function down(): void

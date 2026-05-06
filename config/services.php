@@ -20,22 +20,6 @@ return [
 
     'resend' => [
         'key' => env('RESEND_API_KEY'),
-        'webhook_secret' => env('RESEND_WEBHOOK_SECRET'),
-    ],
-
-    'whatsapp_cloud' => [
-        'access_token' => env('WHATSAPP_CLOUD_ACCESS_TOKEN'),
-        'phone_number_id' => env('WHATSAPP_CLOUD_PHONE_NUMBER_ID'),
-        'business_account_id' => env('WHATSAPP_CLOUD_BUSINESS_ACCOUNT_ID'),
-        'verify_token' => env('WHATSAPP_CLOUD_VERIFY_TOKEN'),
-        'app_secret' => env('WHATSAPP_CLOUD_APP_SECRET'),
-        'version' => env('WHATSAPP_CLOUD_VERSION', 'v23.0'),
-    ],
-
-    'twilio' => [
-        'sid' => env('TWILIO_SID'),
-        'token' => env('TWILIO_TOKEN'),
-        'from' => env('TWILIO_FROM'),
     ],
 
     'ses' => [
@@ -85,19 +69,6 @@ return [
     'payment' => [
         'webhook_secret' => env('PAYMENT_WEBHOOK_SECRET'),
         'provider' => env('PAYMENT_PROVIDER', 'generic'), // stripe, paypal, local
-        'webhook_require_timestamp' => env('PAYMENT_WEBHOOK_REQUIRE_TIMESTAMP', true),
-        'webhook_timestamp_tolerance_seconds' => env('PAYMENT_WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS', 300),
-    ],
-
-    'stripe' => [
-        'key' => env('STRIPE_KEY'),
-        'secret' => env('STRIPE_SECRET'),
-        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET', env('PAYMENT_WEBHOOK_SECRET')),
-        'use_price_ids' => env('STRIPE_USE_PRICE_IDS', false),
-        'prices' => [
-            'semilla' => env('STRIPE_PRICE_SEMILLA'),
-            'pro' => env('STRIPE_PRICE_PRO', env('STRIPE_PRICE_ID')),
-        ],
     ],
 
 ];

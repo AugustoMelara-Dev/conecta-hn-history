@@ -20,29 +20,23 @@ return new class extends Migration
             return;
         }
 
-        $hasAggregateId = Schema::hasColumn('outbox_messages', 'aggregate_id');
-        $hasPartitionKey = Schema::hasColumn('outbox_messages', 'partition_key');
-        $hasSequenceNumber = Schema::hasColumn('outbox_messages', 'sequence_number');
+        Schema::table('outbox_messages', function (Blueprint $table) {
+            // LEVEL 44: Aggregate Affinity Columns
+            if (! Schema::hasColumn('outbox_messages', 'aggregate_id')) {
+                $table->string('aggregate_id', 36)->nullable()
+                    ->comment('Business entity ID for sequence grouping');
+            }
 
-        if (! $hasAggregateId || ! $hasPartitionKey || ! $hasSequenceNumber) {
-            Schema::table('outbox_messages', function (Blueprint $table) use ($hasAggregateId, $hasPartitionKey, $hasSequenceNumber) {
-                // LEVEL 44: Aggregate Affinity Columns
-                if (! $hasAggregateId) {
-                    $table->string('aggregate_id', 36)->nullable()
-                        ->comment('Business entity ID for sequence grouping');
-                }
+            if (! Schema::hasColumn('outbox_messages', 'partition_key')) {
+                $table->unsignedSmallInteger('partition_key')->default(0)
+                    ->comment('Deterministic partition for worker sharding (crc32 % N)');
+            }
 
-                if (! $hasPartitionKey) {
-                    $table->unsignedSmallInteger('partition_key')->default(0)
-                        ->comment('Deterministic partition for worker sharding (crc32 % N)');
-                }
-
-                if (! $hasSequenceNumber) {
-                    $table->unsignedBigInteger('sequence_number')->default(0)
-                        ->comment('Monotonic sequence per aggregate for ordering');
-                }
-            });
-        }
+            if (! Schema::hasColumn('outbox_messages', 'sequence_number')) {
+                $table->unsignedBigInteger('sequence_number')->default(0)
+                    ->comment('Monotonic sequence per aggregate for ordering');
+            }
+        });
 
         // Add indexes only if they don't exist
         $indexes = collect(Schema::getIndexes('outbox_messages'))->pluck('name');
@@ -62,35 +56,10 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (! Schema::hasTable('outbox_messages')) {
-            return;
-        }
-
-        $indexes = collect(Schema::getIndexes('outbox_messages'))->pluck('name');
-        $columns = array_values(array_filter([
-            Schema::hasColumn('outbox_messages', 'aggregate_id') ? 'aggregate_id' : null,
-            Schema::hasColumn('outbox_messages', 'partition_key') ? 'partition_key' : null,
-            Schema::hasColumn('outbox_messages', 'sequence_number') ? 'sequence_number' : null,
-        ]));
-
-        if (! $indexes->contains('idx_outbox_partition_sequence')
-            && ! $indexes->contains('idx_outbox_aggregate_status')
-            && $columns === []) {
-            return;
-        }
-
-        Schema::table('outbox_messages', function (Blueprint $table) use ($indexes, $columns) {
-            if ($indexes->contains('idx_outbox_partition_sequence')) {
-                $table->dropIndex('idx_outbox_partition_sequence');
-            }
-
-            if ($indexes->contains('idx_outbox_aggregate_status')) {
-                $table->dropIndex('idx_outbox_aggregate_status');
-            }
-
-            if ($columns !== []) {
-                $table->dropColumn($columns);
-            }
+        Schema::table('outbox_messages', function (Blueprint $table) {
+            $table->dropIndex('idx_outbox_partition_query');
+            $table->dropIndex('idx_outbox_aggregate_status');
+            $table->dropColumn(['aggregate_id', 'partition_key', 'sequence_number']);
         });
     }
 };

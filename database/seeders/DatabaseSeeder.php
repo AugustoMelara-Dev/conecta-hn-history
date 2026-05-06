@@ -75,7 +75,7 @@ class DatabaseSeeder extends Seeder
         // 3. Usuarios Clave
         // Super Admin
         User::firstOrCreate(
-            ['email' => 'admin@vitobusinessos.com'],
+            ['email' => 'admin@conectahn.com'],
             [
                 'name' => 'Augusto Admin',
                 'password' => Hash::make('password'),
@@ -128,6 +128,7 @@ class DatabaseSeeder extends Seeder
                 'city_id' => $data['city']->id,
                 'status' => 'approved',
                 'is_active' => true,
+                'is_pro' => true,
                 'plan_type' => 'pro',
                 'subscription_status' => 'active',
                 'product_limit' => 999,
@@ -170,6 +171,7 @@ class DatabaseSeeder extends Seeder
                 'city_id' => $data['city']->id,
                 'status' => 'approved',
                 'is_active' => true,
+                'is_pro' => false,
                 'plan_type' => 'semilla',
                 'subscription_status' => 'active',
                 'product_limit' => 10,
@@ -204,8 +206,7 @@ class DatabaseSeeder extends Seeder
                 'city_id' => $tegus->id,
                 'status' => 'pending', // CRÍTICO: Pendiente de aprobación
                 'is_active' => 0,
-                'plan_type' => 'semilla',
-                'subscription_status' => 'pending',
+                'is_pro' => false,
                 'description' => 'Este negocio está esperando aprobación del admin.',
             ]);
         }

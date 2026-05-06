@@ -22,12 +22,12 @@ return new class extends SettingsMigration
         // ═══════════════════════════════════════════════════════════════════
         $this->migrator->add('general.bank_transfer_instructions', '<p><strong>Instrucciones de Pago:</strong></p>
 <p>Depositar a Cuenta BAC Honduras #123456789</p>
-<p>A nombre de: Vito Business OS</p>
+<p>A nombre de: Conecta HN</p>
 <p>RTN: 0801-1234-56789</p>
 <p>Después de realizar el depósito, suba su comprobante en esta plataforma.</p>');
 
         $this->migrator->add('general.support_whatsapp_number', '+50499999999');
-        $this->migrator->add('general.support_email', 'soporte@vitobusinessos.com');
+        $this->migrator->add('general.support_email', 'soporte@conectahn.com');
 
         // ═══════════════════════════════════════════════════════════════════
         // INTERRUPTORES DE SISTEMA

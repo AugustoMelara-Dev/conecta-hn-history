@@ -131,8 +131,6 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
-    'idempotency_processing_lock_ttl_seconds' => env('AUTH_IDEMPOTENCY_PROCESSING_LOCK_TTL', 60),
-
     /*
     |--------------------------------------------------------------------------
     | OTP (One-Time Password) Configuration
@@ -165,20 +163,6 @@ return [
 
         // Idempotency TTL for OTP generation (24 hours = 86400)
         'idempotency_ttl_seconds' => env('AUTH_OTP_IDEMPOTENCY_TTL', 86400),
-
-        // Optional tenant UUID used when OTP is requested from a public surface
-        // before a tenant context exists. If blank, the controller falls back
-        // to an existing tenant and returns that tenant_id to the client.
-        'platform_tenant_id' => env('AUTH_OTP_PLATFORM_TENANT_ID'),
-
-        // Magic-link OTP login authenticates the device that opens the signed
-        // email link, so it stays disabled until a real smoke test enables it.
-        'magic_link_enabled' => env('AUTH_MAGIC_LINK_ENABLED', false),
-        'magic_link_expiry_minutes' => env('AUTH_MAGIC_LINK_EXPIRY_MINUTES', env('AUTH_OTP_EXPIRY_MINUTES', 10)),
-        'magic_link_tenant_allowlist' => array_values(array_filter(array_map(
-            'trim',
-            explode(',', (string) env('AUTH_MAGIC_LINK_TENANT_ALLOWLIST', ''))
-        ))),
     ],
 
 ];

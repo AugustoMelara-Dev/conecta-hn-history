@@ -2,22 +2,6 @@
 
 use Illuminate\Support\Str;
 
-$appUrl = (string) env('APP_URL', 'http://localhost');
-$sessionSecureCookie = env('SESSION_SECURE_COOKIE');
-$sessionCookieUsesHttps = str_starts_with(strtolower($appUrl), 'https://');
-$isVercel = (bool) env('VERCEL');
-$serverlessSessionPath = rtrim((string) env('SERVERLESS_SESSION_PATH', sys_get_temp_dir().'/vito-sessions'), '/\\');
-
-if ($sessionSecureCookie !== null) {
-    $sessionCookieUsesHttps = filter_var($sessionSecureCookie, FILTER_VALIDATE_BOOL);
-
-    // En local HTTP el navegador descarta cookies "Secure", lo que rompe
-    // autenticación, Livewire y navegación dentro de Filament.
-    if (! str_starts_with(strtolower($appUrl), 'https://')) {
-        $sessionCookieUsesHttps = false;
-    }
-}
-
 return [
 
     /*
@@ -76,7 +60,7 @@ return [
     |
     */
 
-    'files' => env('SESSION_FILES', $isVercel ? $serverlessSessionPath : storage_path('framework/sessions')),
+    'files' => storage_path('framework/sessions'),
 
     /*
     |--------------------------------------------------------------------------
@@ -185,7 +169,7 @@ return [
     |
     */
 
-    'secure' => $sessionCookieUsesHttps,
+    'secure' => env('SESSION_SECURE_COOKIE', true),
 
     /*
     |--------------------------------------------------------------------------

@@ -92,7 +92,7 @@ class UserFactory extends Factory
     public function tenantOwner(): static
     {
         return $this->state(fn (array $attributes) => [
-            'role' => UserRole::TENANT_OWNER,
+            'role' => UserRole::CUSTOMER,
         ]);
     }
 
@@ -105,8 +105,7 @@ class UserFactory extends Factory
     {
         return $this->afterCreating(function (User $user) {
             $tenant = Tenant::factory()->create(['user_id' => $user->id]);
-            $user->tenant_id = $tenant->id;
-            $user->save();
+            $user->update(['tenant_id' => $tenant->id]);
         });
     }
 }

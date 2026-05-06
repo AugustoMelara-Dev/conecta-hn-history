@@ -24,10 +24,6 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (! Schema::hasTable('tenants')) {
-            return;
-        }
-
         Schema::table('tenants', function (Blueprint $table) {
             // ═══════════════════════════════════════════════════════════════════════
             // WHATSAPP OVERRIDE

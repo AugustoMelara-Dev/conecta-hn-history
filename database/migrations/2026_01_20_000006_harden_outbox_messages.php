@@ -12,22 +12,14 @@ return new class extends Migration
             return;
         }
 
-        $hasAttempts = Schema::hasColumn('outbox_messages', 'attempts');
-        $hasFailedAt = Schema::hasColumn('outbox_messages', 'failed_at');
-        $hasLastError = Schema::hasColumn('outbox_messages', 'last_error');
-
-        if ($hasAttempts && $hasFailedAt && $hasLastError) {
-            return;
-        }
-
-        Schema::table('outbox_messages', function (Blueprint $table) use ($hasAttempts, $hasFailedAt, $hasLastError) {
-            if (! $hasAttempts) {
+        Schema::table('outbox_messages', function (Blueprint $table) {
+            if (! Schema::hasColumn('outbox_messages', 'attempts')) {
                 $table->unsignedInteger('attempts')->default(0);
             }
-            if (! $hasFailedAt) {
+            if (! Schema::hasColumn('outbox_messages', 'failed_at')) {
                 $table->timestamp('failed_at')->nullable();
             }
-            if (! $hasLastError) {
+            if (! Schema::hasColumn('outbox_messages', 'last_error')) {
                 $table->text('last_error')->nullable();
             }
         });
@@ -35,22 +27,8 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (! Schema::hasTable('outbox_messages')) {
-            return;
-        }
-
-        $columns = array_values(array_filter([
-            Schema::hasColumn('outbox_messages', 'attempts') ? 'attempts' : null,
-            Schema::hasColumn('outbox_messages', 'failed_at') ? 'failed_at' : null,
-            Schema::hasColumn('outbox_messages', 'last_error') ? 'last_error' : null,
-        ]));
-
-        if ($columns === []) {
-            return;
-        }
-
-        Schema::table('outbox_messages', function (Blueprint $table) use ($columns) {
-            $table->dropColumn($columns);
+        Schema::table('outbox_messages', function (Blueprint $table) {
+            $table->dropColumn(['attempts', 'failed_at', 'last_error']);
         });
     }
 };

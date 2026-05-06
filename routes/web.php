@@ -1,37 +1,32 @@
 <?php
 
 use App\Http\Controllers\Auth\ProfileController;
-use App\Http\Controllers\Public\BookingController;
 use App\Http\Controllers\Public\DirectoryController;
 use App\Http\Controllers\Public\ExploreController;
 use App\Http\Controllers\Public\InteractionController;
-use App\Http\Controllers\Public\LegalPageController;
 use App\Http\Controllers\Public\LocationController;
-use App\Http\Controllers\Public\BuyerController;
 use App\Http\Controllers\Public\TenantMicrositeController;
 use App\Http\Controllers\Public\WelcomeController;
 use App\Http\Controllers\Tenant\AnalyticsController;
-use App\Http\Controllers\Web\LegacyDashboardController;
-use App\Http\Middleware\EnsureAppSurfaceAccess;
-use App\Http\Middleware\EnsurePublicSurfaceAccess;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 /*
 |--------------------------------------------------------------------------
 | Public Routes - React/Inertia Frontend
 |--------------------------------------------------------------------------
 |
-| Rutas del frontend p�blico usando Inertia.js + React.
-| Prioridad: rutas espec�ficas primero; el wildcard (/{slug}) va al final.
+| Rutas del frontend público usando Inertia.js + React.
+| Prioridad: Rutas específicas PRIMERO, wildcard (/{slug}) AL FINAL.
 |
 */
 
 require __DIR__.'/tenant.php';
 
+// ═══════════════════════════════════════════════════════════════════════
 // 1. LANDING PAGE: React/Inertia (Welcome.jsx)
-Route::get('/', WelcomeController::class)
-    ->middleware(EnsurePublicSurfaceAccess::class)
-    ->name('home');
+// ═══════════════════════════════════════════════════════════════════════
+Route::get('/', WelcomeController::class)->name('home');
 
 // [DEPRECATED] Old Livewire route:
 // Route::get('/', \App\Livewire\LandingPage::class)->name('home');
@@ -39,12 +34,14 @@ Route::get('/', WelcomeController::class)
 // Motor de Descubrimiento (antiguo home - DEPRECATED)
 // Route::get('/explorar', \App\Livewire\Pages\Home::class)->name('explore');
 
+// ═══════════════════════════════════════════════════════════════════════
 // 2. EXPLORE: Marketplace Discovery (Luxury Entrance Strategy)
-Route::get('/explore', ExploreController::class)
-    ->middleware(EnsurePublicSurfaceAccess::class)
-    ->name('public.explore');
+// ═══════════════════════════════════════════════════════════════════════
+Route::get('/explore', ExploreController::class)->name('public.explore');
 
+// ═══════════════════════════════════════════════════════════════════════
 // 3. DIRECTORIO: React/Inertia (Directory/Index.jsx)
+// ═══════════════════════════════════════════════════════════════════════
 Route::get('/directorio', [DirectoryController::class, 'index'])->name('directory.index');
 
 // Ruta SEO para Ciudades (ej. /ciudad/tocoa)
@@ -53,82 +50,92 @@ Route::get('/ciudad/{city:slug}', [DirectoryController::class, 'byCity'])->name(
 // Listado de todas las ciudades (redirige a directorio)
 Route::get('/ciudades', [DirectoryController::class, 'index'])->name('cities.index');
 
-// Ruta SEO para categor�as (ej. /categoria/restaurantes)
+// Ruta SEO para Categorías (ej. /categoria/restaurantes)
 Route::get('/categoria/{category:slug}', [DirectoryController::class, 'byCategory'])->name('category.show');
 
-Route::get('/legal/privacy', [LegalPageController::class, 'privacy'])->name('legal.privacy');
-Route::get('/legal/terms', [LegalPageController::class, 'terms'])->name('legal.terms');
-
+// ═══════════════════════════════════════════════════════════════════════
 // 3. REGISTRO DE NEGOCIOS [MIGRATED TO REACT - 2026-01-08]
+// ═══════════════════════════════════════════════════════════════════════
 // [MIGRATED TO REACT] Route::get('/registrar-negocio', \App\Livewire\Pages\RegisterTenant::class)->name('tenant.register');
 
+// [MIGRATED TO REACT] Página de Pago Pendiente (PRO Post-Registro)
 // Route::get('/registro/pago-pendiente/{payment}', \App\Livewire\Pages\PaymentPending::class)->name('payment.pending');
 Route::get('/registro/pago-pendiente/{payment}', [\App\Http\Controllers\Web\BillingController::class, 'showPaymentPending'])->name('payment.pending');
 
+// ═══════════════════════════════════════════════════════════════════════
 // Location API Routes
+// ═══════════════════════════════════════════════════════════════════════
 Route::post('/location/set', [LocationController::class, 'setCity'])->name('location.set');
 Route::post('/location/clear', [LocationController::class, 'clearCity'])->name('location.clear');
 Route::get('/api/cities', [LocationController::class, 'getCities'])->name('cities.all');
-Route::get('/api/check-slug', [\App\Http\Controllers\Web\RegistrationController::class, 'checkSlug'])
-    ->middleware('throttle:slug-check')
-    ->name('api.check-slug');
+// [REMOVED] Dead code: SearchController was never created. Future search → ExploreController.
+Route::get('/api/check-slug', [\App\Http\Controllers\Web\RegistrationController::class, 'checkSlug'])->name('api.check-slug');
 
 // ... (Skip lines)
 
+// ═══════════════════════════════════════════════════════════════════════
 // TRACKING ROUTES - Analytics Middleware
+// ═══════════════════════════════════════════════════════════════════════
 Route::prefix('track')
     ->middleware(['throttle:60,1']) // 60 requests per minute per IP
     ->group(function () {
-        Route::get('/wa/{tenant:slug}', [InteractionController::class, 'whatsapp'])->name('track.whatsapp');
-        Route::get('/call/{tenant:slug}', [InteractionController::class, 'call'])->name('track.call');
-        Route::get('/maps/{tenant:slug}', [InteractionController::class, 'maps'])->name('track.maps');
-    });
+    Route::get('/wa/{tenant:slug}', [InteractionController::class, 'whatsapp'])->name('track.whatsapp');
+    Route::get('/call/{tenant:slug}', [InteractionController::class, 'call'])->name('track.call');
+    Route::get('/maps/{tenant:slug}', [InteractionController::class, 'maps'])->name('track.maps');
+});
 
+// ═══════════════════════════════════════════════════════════════════════
 // PAYMENT STATUS - Consolidated
+// ═══════════════════════════════════════════════════════════════════════
 // Route moved to: Line 50 (Consolidated)
 
+// ═══════════════════════════════════════════════════════════════════════
 // TENANT REGISTRATION - Atomic Transactional Controller
 // FIX #16: Rate limiting for security - prevents DoS/spam attacks
 // Principle: Defense in Depth - 5 attempts per minute per IP
-Route::controller(\App\Http\Controllers\Web\RegistrationController::class)->group(function () {
-    Route::get('/registrar-negocio', 'create')
-        ->middleware('guest')
-        ->name('tenant.register');
+// ═══════════════════════════════════════════════════════════════════════
+Route::controller(\App\Http\Controllers\Auth\RegisterTenantController::class)->group(function () {
+    Route::get('/registrar-negocio', 'create')->name('tenant.register');
     Route::post('/registrar-negocio', 'store')
-        ->middleware('guest')
-        ->middleware('throttle:register-tenant')
+        ->middleware('throttle:5,1')  // 5 attempts per minute
         ->name('tenant.register.store');
 });
 
+// ═══════════════════════════════════════════════════════════════════════
 // FAVORITES - Inertia-Compatible Toggle Controller
+// ═══════════════════════════════════════════════════════════════════════
 Route::middleware('auth')->group(function () {
-    Route::get('/mi-cuenta/favoritos', [BuyerController::class, 'index'])->name('buyer.profile');
-
     Route::post('/favorites/toggle', \App\Http\Controllers\Public\ToggleFavoriteController::class)
         ->name('favorites.toggle');
-
-    // FOLLOWS - Inertia-Compatible Toggle Controller
-    Route::post('/follows/toggle', \App\Http\Controllers\Public\ToggleFollowController::class)
-        ->name('follows.toggle');
 });
 
+// ═══════════════════════════════════════════════════════════════════════
 // Auth Routes (Dashboard, Mi Cuenta)
-Route::get('/dashboard', LegacyDashboardController::class)
-    ->middleware(['auth', EnsureAppSurfaceAccess::class])
-    ->name('dashboard');
+// ═══════════════════════════════════════════════════════════════════════
+Route::get('/dashboard', function () {
+    return Inertia::render('Dashboard');
+})->middleware(['auth', 'verified'])->name('dashboard');
 
+// ═══════════════════════════════════════════════════════════════════════
 // TENANT INERTIA ROUTES (Must be loaded BEFORE wildcards)
+// ═══════════════════════════════════════════════════════════════════════
 
 Route::middleware('auth')->group(function () {
+    // ═══════════════════════════════════════════════════════════════════
     // TENANT DASHBOARD (Owner Panel)
+    // ═══════════════════════════════════════════════════════════════════
     // Route::get('/app/{tenant:slug}', \App\Livewire\Tenant\Dashboard::class)
     //    ->name('tenant.dashboard');
 
+    // ═══════════════════════════════════════════════════════════════════
     // UPGRADE TO PRO (Pricing Table + Payment Order)
+    // ═══════════════════════════════════════════════════════════════════
     // Route::get('/upgrade/{tenant:slug}', \App\Livewire\Tenant\Upgrade::class)
     //    ->name('tenant.upgrade');
 
+    // ═══════════════════════════════════════════════════════════════════
     // PRODUCTS CRUD (Tenant Panel) - ARCHIVED: Migrated to React/Inertia
+    // ═══════════════════════════════════════════════════════════════════
     // Route::get('/admin/products', \App\Livewire\Tenant\Products\Index::class)
     //     ->name('tenant.products.index');
     // Route::get('/admin/products/create', \App\Livewire\Tenant\Products\Form::class)
@@ -136,15 +143,21 @@ Route::middleware('auth')->group(function () {
     // Route::get('/admin/products/{product}/edit', \App\Livewire\Tenant\Products\Form::class)
     //     ->name('tenant.products.edit');
 
+    // ═══════════════════════════════════════════════════════════════════
     // ORDERS MANAGEMENT (Kanban PRO / List FREE) - ARCHIVED
+    // ═══════════════════════════════════════════════════════════════════
     // Route::get('/admin/orders', \App\Livewire\Tenant\Orders\Manage::class)
     //     ->name('tenant.orders.manage');
 
+    // ═══════════════════════════════════════════════════════════════════
     // REPORTS & ANALYTICS (Tiered Access) - ARCHIVED
+    // ═══════════════════════════════════════════════════════════════════
     // Route::get('/admin/reports', \App\Livewire\Tenant\Reports\Index::class)
     //     ->name('tenant.reports.index');
 
+    // ═══════════════════════════════════════════════════════════════════
     // SETTINGS (Branding, Schedule, Security) - ARCHIVED
+    // ═══════════════════════════════════════════════════════════════════
     // Route::get('/admin/settings', \App\Livewire\Tenant\Settings\Profile::class)
     //     ->name('tenant.settings.profile');
     // Route::get('/admin/settings/schedule', \App\Livewire\Tenant\Settings\Schedule::class)
@@ -152,11 +165,15 @@ Route::middleware('auth')->group(function () {
     // Route::get('/admin/settings/security', \App\Livewire\Tenant\Settings\Security::class)
     //     ->name('tenant.settings.security');
 
+    // ═══════════════════════════════════════════════════════════════════
     // MARKETING (WhatsApp Config, QR Generation) - ARCHIVED
+    // ═══════════════════════════════════════════════════════════════════
     // Route::get('/admin/marketing', \App\Livewire\Tenant\Marketing\Index::class)
     //     ->name('tenant.marketing.index');
 
+    // ═══════════════════════════════════════════════════════════════════
     // BILLING (Subscription & Payments)
+    // ═══════════════════════════════════════════════════════════════════
     // Route::get('/admin/billing', \App\Livewire\Tenant\Billing\Index::class)
     //    ->name('tenant.billing.index');
 
@@ -174,33 +191,26 @@ Route::middleware('auth')->group(function () {
     // [REMOVED] Follow/Unfollow feature - FollowController was never created.
     // TODO: Implement follow functionality when needed via dedicated controller.
 
+    // ═══════════════════════════════════════════════════════════════════
     // SHADOW LOGIN - Impersonation Exit Route (SECURED)
+    // ═══════════════════════════════════════════════════════════════════
     Route::get('/impersonate/leave', [\App\Http\Controllers\Auth\ImpersonationController::class, 'leave'])
         ->name('impersonate.leave');
 });
 
 require __DIR__.'/auth.php';
 
-// TENANT MICROSITE - Path-Based Fallback (/t/{tenant:slug})
-// Replaces subdomain routing for local dev + Ziggy compatibility.
-// Original subdomain logic preserved (commented) in routes/public.php.
-Route::prefix('/t/{tenant:slug}')
-    ->middleware(['track.tenant', 'track.tenant.visit'])
-    ->group(function () {
-    Route::get('/', [TenantMicrositeController::class, 'show'])->name('tenant.microsite.show');
-    Route::get('/product/{product}', [TenantMicrositeController::class, 'product'])->name('tenant.product.show');
-    Route::get('/checkout', [TenantMicrositeController::class, 'checkout'])->name('tenant.checkout');
-
-    Route::prefix('book')->group(function () {
-        Route::get('/', [BookingController::class, 'index'])->name('public.booking.index');
-        Route::post('/', [BookingController::class, 'store'])
-            ->middleware('throttle:public-booking')
-            ->name('public.booking.store');
-        Route::post('/waitlist', [\App\Http\Controllers\Public\WaitlistController::class, 'store'])
-            ->middleware('throttle:public-waitlist')
-            ->name('public.booking.waitlist.store');
-        Route::get('/providers/{service}', [BookingController::class, 'getProviders'])->name('public.booking.providers');
-        Route::get('/slots', [BookingController::class, 'getSlots'])->name('public.booking.slots');
-        Route::get('/success', [BookingController::class, 'success'])->name('public.booking.success');
-    });
-    });
+/*
+|--------------------------------------------------------------------------
+| Subdomain Routing Note
+|--------------------------------------------------------------------------
+|
+| Tenant microsites are now served via subdomain routing:
+| - {tenant}.vito.io → TenantMicrositeController
+|
+| Routes defined in: routes/public.php (Route::domain group)
+|
+| DEPRECATED: The old /@{slug} prefix routing has been removed.
+| All legacy URLs will return 404.
+|
+*/

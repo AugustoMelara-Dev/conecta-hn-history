@@ -1,10 +1,9 @@
-# ----------------------------------------------------------------------
-# VITO BUSINESS OS - shared gitignore
-# Keep local secrets, build output, diagnostics, and runtime artifacts
-# out of version control.
-# ----------------------------------------------------------------------
+# ─────────────────────────────────────────────────────
+# CONECTA HN - GITIGNORE COMPLETO
+# Actualizado para deployment seguro y Git Flow
+# ─────────────────────────────────────────────────────
 
-# Secrets and credentials
+# ═══ CREDENCIALES Y SECRETOS (CRÍTICO) ═══
 .env
 .env.*
 .env.backup
@@ -12,17 +11,16 @@
 .env.staging
 .env.local
 auth.json
-.secrets/
 *.key
 *.pem
 *.p12
 .credentials/
 
-# Dependencies
+# ═══ DEPENDENCIAS ═══
 /vendor
 /node_modules
 
-# Build output
+# ═══ BUILD Y COMPILADOS ═══
 /public/build
 /public/hot
 /public/storage
@@ -31,10 +29,9 @@ auth.json
 *.compiled.*
 .vite/
 
-# Cache and logs
+# ═══ CACHE Y LOGS ═══
 *.log
 *.cache
-.composer-cache/
 .phpunit.result.cache
 .phpunit.cache/
 storage/*.key
@@ -48,9 +45,8 @@ storage/framework/sessions/*
 storage/framework/views/*
 !storage/framework/views/.gitkeep
 bootstrap/cache/*.php
-/bootstrap/cache/filament/
 
-# Editors and IDEs
+# ═══ IDEs Y EDITORES ═══
 .idea/
 .vscode/
 .fleet/
@@ -65,7 +61,7 @@ bootstrap/cache/*.php
 .settings/
 nbproject/
 
-# Operating system noise
+# ═══ SISTEMA OPERATIVO ═══
 .DS_Store
 ._*
 Thumbs.db
@@ -74,102 +70,42 @@ Desktop.ini
 *.bak
 *~
 
-# Testing
+# ═══ TESTING ═══
 /coverage
 .phpunit.result.cache
 phpunit.xml.bak
 .pest/
 .phpunit/
 
-# Deployment
+# ═══ DEPLOYMENT ═══
 Homestead.json
 Homestead.yaml
 docker-compose.override.yml
 .vagrant/
 *.box
 
-# Local uploads
+# ═══ UPLOADS LOCALES (desarrollo) ═══
 storage/app/public/*
 !storage/app/public/.gitkeep
 
-# Temporary files
+# ═══ ARCHIVOS TEMPORALES ═══
 *.tmp
 *.temp
 *.swp
 .sass-cache/
 
-# Databases
+# ═══ DATABASE ═══
 *.sqlite
 *.sqlite-journal
 database/database.sqlite
 
-# Local audit output
+# ═══ DOCUMENTOS DE AUDITORÍA LOCAL ═══
 AUDIT_REPORT.md
 QA_CERTIFICATION.md
 error_log.txt
 
-# Development scratch files
+# ═══ ARCHIVOS DE DESARROLLO ═══
 todo.md
 notes.md
 scratch.php
 test.php
-
-# Generated debug and evidence artifacts
-/analysis_out.txt
-/evidence*.txt
-/*_result*.txt
-/*_output*.txt
-/*_final*.txt
-/*_error*.txt
-/*_evidence*.txt
-/*_install*.txt
-/git_status*.txt
-/debug_*.txt
-/full_pest.txt
-/pest*.txt
-/test*.txt
-/tests_output.txt
-/discovery*.txt
-/optimize*.txt
-/latest_error*.txt
-/http_evidence.txt
-/spatie_result.txt
-
-# PHPStan and static analysis snapshots
-/phpstan*.json
-/arch_*detailed.txt
-/fortify_actions_inspect.txt
-
-# Root-level local diagnostics
-/*.py
-/discovery.ps1
-/run_evidence.sh
-/test.php
-/cols.json
-/http_diagnostic.md
-/pest_arch_result*.txt
-bootstrap/cache/*.tmp
-
-# Codex and local runtime artifacts
-/.codex-admin-dashboard.html
-/.codex-admin-login.html
-/_tmp_admin_probe.php
-/route-list.json
-/.codex-appdata/runtime/
-/.codex-appdata/PsySH/
-/playwright-report/
-/test-results/
-/reports/
-/artifacts/
-/artifacts/manual-audit/
-/artifacts/closure/
-/e2e-pr-smoke-auth-junit.xml
-/e2e-*.xml
-
-# Local E2E/test runtime artifacts
-/.tmp-e2e-db-bootstrap.php
-/system-tests*.xml
-/storage/testing/
-
-.vercel
-.codex-security-scans/

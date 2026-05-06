@@ -21,36 +21,6 @@ Schedule::command('subscriptions:check-expiry')
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/subscription-checker.log'));
 
-Schedule::command('crm:sync-portfolio')
-    ->hourly()
-    ->withoutOverlapping()
-    ->runInBackground()
-    ->appendOutputTo(storage_path('logs/crm-portfolio-sync.log'));
-
-Schedule::command('crm:dispatch-retention --limit=25')
-    ->hourly()
-    ->withoutOverlapping()
-    ->runInBackground()
-    ->appendOutputTo(storage_path('logs/customer-retention.log'));
-
-Schedule::command('crm:retry-touchpoints --limit=50')
-    ->everyFifteenMinutes()
-    ->withoutOverlapping()
-    ->runInBackground()
-    ->appendOutputTo(storage_path('logs/customer-touchpoint-retries.log'));
-
-Schedule::command('crm:dispatch-journeys --limit=50')
-    ->everyFifteenMinutes()
-    ->withoutOverlapping()
-    ->runInBackground()
-    ->appendOutputTo(storage_path('logs/customer-journey-dispatch.log'));
-
-Schedule::command('crm:sync-journey-ops --limit=50')
-    ->hourly()
-    ->withoutOverlapping()
-    ->runInBackground()
-    ->appendOutputTo(storage_path('logs/customer-journey-ops.log'));
-
 // ═══════════════════════════════════════════════════════════════════════════════
 // AUTOMATED INVENTORY RECOVERY - Stale Order Garbage Collector
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -88,12 +58,6 @@ Schedule::command('outbox:process')
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/outbox-worker.log'));
 
-// ABANDONED CART RECOVERY - Detect and Dispatch Events
-Schedule::call(function () {
-    app(\App\Application\Sales\Handlers\DetectAbandonedCartsHandler::class)
-        ->handle(new \App\Application\Sales\Commands\DetectAbandonedCartsCommand(30));
-})->everyFifteenMinutes()->name('sales:detect-abandoned-carts')->withoutOverlapping();
-
 // ═══════════════════════════════════════════════════════════════════════════════
 // STORAGE MAINTENANCE - Data Hygiene (Prunable Models)
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -125,34 +89,3 @@ Schedule::job(new \App\Jobs\SendAppointmentReminders)
     ->hourly()
     ->withoutOverlapping();
 
-// -------------------------------------------------------------------------------
-// BILLING RECONCILIATION - Self-Healing for Zombie Transactions
-// -------------------------------------------------------------------------------
-// Runs hourly to cleanup 'PENDING' subscription intents older than 1 hour.
-// Queries the gateway to verify final status (PAID/FAILED) and updates DB.
-// -------------------------------------------------------------------------------
-Schedule::call(function () {
-    $tenantIds = \Illuminate\Support\Facades\DB::table('tenants')->pluck('id');
-    foreach ($tenantIds as $tenantId) {
-        dispatch(new \App\Application\Billing\Commands\ReconcilePendingSubscriptionsCommand($tenantId));
-    }
-})->hourly()->name('billing:reconcile-pending');
-
-// -------------------------------------------------------------------------------
-// DIRECTORY GUIDE OPERATIONS - runtime preflight + quality/cost dashboard
-// -------------------------------------------------------------------------------
-// Preflight validates APP_KEY/OpenAI/platform vars and embeddings table readiness.
-// Ops report emits hybrid/fallback rates, timeout/auth failures, and 429 pressure.
-// If alert thresholds are exceeded, the report command exits non-zero.
-// -------------------------------------------------------------------------------
-Schedule::command('directory:guide:preflight --strict --json')
-    ->everyThirtyMinutes()
-    ->withoutOverlapping()
-    ->runInBackground()
-    ->appendOutputTo(storage_path('logs/directory-guide-preflight.log'));
-
-Schedule::command('directory:guide:ops-report --hours=24 --json --fail-on-alert')
-    ->hourly()
-    ->withoutOverlapping()
-    ->runInBackground()
-    ->appendOutputTo(storage_path('logs/directory-guide-ops.log'));

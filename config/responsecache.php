@@ -1,8 +1,5 @@
 <?php
 
-$isVercel = (bool) env('VERCEL');
-$defaultResponseCacheStore = $isVercel ? 'failover' : 'file';
-
 return [
     /*
      * Determine if the response cache middleware should be enabled.
@@ -65,7 +62,7 @@ return [
      * requests. This can be the name of any store that is
      * configured in app/config/cache.php
      */
-    'cache_store' => env('RESPONSE_CACHE_DRIVER', $defaultResponseCacheStore),
+    'cache_store' => env('RESPONSE_CACHE_DRIVER', 'file'),
 
     /*
      * Here you may define replacers that dynamically replace content from the response.

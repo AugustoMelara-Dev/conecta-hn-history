@@ -18,7 +18,7 @@ return [
     |
     */
 
-    'default' => env('LOG_CHANNEL', env('VERCEL') ? 'stderr' : 'stack'),
+    'default' => env('LOG_CHANNEL', 'stack'),
 
     /*
     |--------------------------------------------------------------------------
@@ -54,7 +54,7 @@ return [
 
         'stack' => [
             'driver' => 'stack',
-            'channels' => explode(',', (string) env('LOG_STACK', env('VERCEL') ? 'stderr' : 'single')),
+            'channels' => explode(',', (string) env('LOG_STACK', 'single')),
             'ignore_exceptions' => false,
         ],
 
@@ -139,7 +139,7 @@ return [
         | - Suspicious activity patterns
         |
         | This channel is separate from application logs for:
-        | - Easy ingestion by external log platforms and SIEM tools
+        | - Easy ingestion by SIEM tools (Datadog, Splunk, etc.)
         | - Fail2Ban integration for IP blocking
         | - Compliance audit trail (90-day retention)
         | - Real-time Slack/Discord alerts for CRITICAL events
@@ -165,7 +165,7 @@ return [
         'security_slack' => [
             'driver' => 'slack',
             'url' => env('SECURITY_SLACK_WEBHOOK_URL'),
-            'username' => env('SECURITY_SLACK_USERNAME', '🔒 Vito Business OS Security'),
+            'username' => env('SECURITY_SLACK_USERNAME', '🔒 ConectaHN Security'),
             'emoji' => ':rotating_light:',
             'level' => 'critical', // Only CRITICAL events go to Slack
             'replace_placeholders' => true,

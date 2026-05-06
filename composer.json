@@ -2,52 +2,60 @@
     "$schema": "https://getcomposer.org/schema.json",
     "name": "laravel/laravel",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
-    "keywords": ["laravel", "framework"],
+    "description": "Conecta HN - Plataforma Nacional de Negocios",
+    "keywords": [
+        "laravel",
+        "framework"
+    ],
     "license": "MIT",
     "require": {
         "php": "^8.2",
-        "barryvdh/laravel-dompdf": "^3.1",
-        "bepsvpt/blurhash": "*",
-        "darkaonline/l5-swagger": "*",
-        "filament/filament": "^4.8.5",
-        "filament/spatie-laravel-media-library-plugin": "^4.8.5",
+        "barryvdh/laravel-dompdf": "^3.0",
+        "chillerlan/php-qrcode": "^5.0",
+        "darkaonline/l5-swagger": "^10.0",
+        "filament/filament": "^3.2",
+        "flowframe/laravel-trend": "^0.4.0",
         "inertiajs/inertia-laravel": "^2.0",
-        "kornrunner/blurhash": "^1.2",
-        "laravel-notification-channels/webpush": "^10.5",
-        "laravel/fortify": "*",
-        "laravel/framework": "^12.0",
+        "laravel-notification-channels/webpush": "^10.4",
+        "laravel/fortify": "^1.33",
+        "laravel/framework": "^11.0",
+        "laravel/reverb": "^1.7",
         "laravel/sanctum": "^4.0",
-        "laravel/socialite": "^5.25",
-        "laravel/tinker": "^3.0.2",
+        "laravel/scout": "^10.23",
+        "laravel/socialite": "^5.0",
+        "laravel/tinker": "^2.9",
         "maatwebsite/excel": "^3.1",
-        "predis/predis": "^3.4",
-        "resend/resend-php": "^1.1",
-        "sentry/sentry-laravel": "^4.25",
-        "spatie/laravel-activitylog": "^4.12",
-        "spatie/laravel-health": "^1.34",
-        "spatie/laravel-medialibrary": "*",
-        "spatie/laravel-permission": "^6.23",
-        "spatie/laravel-settings": "^3.7",
-        "spatie/laravel-sitemap": "^8.0",
-        "spatie/opening-hours": "^4.2",
-        "stripe/stripe-php": "^20.1",
+        "opis/json-schema": "^2.6",
+        "predis/predis": "^3.3",
+        "saade/filament-fullcalendar": "^3.2",
+        "spatie/laravel-activitylog": "^4.8",
+        "spatie/laravel-health": "^1.29",
+        "spatie/laravel-medialibrary": "^11.0",
+        "spatie/laravel-permission": "^6.0",
+        "spatie/laravel-responsecache": "^7.7",
+        "spatie/laravel-settings": "^3.3",
+        "spatie/laravel-sitemap": "^7.2",
+        "spatie/opening-hours": "^4.0",
         "tightenco/ziggy": "^2.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
-        "larastan/larastan": "^3.9",
-        "laravel/breeze": "^2.3",
-        "laravel/pail": "^1.2.2",
-        "laravel/pint": "^1.24",
-        "laravel/sail": "^1.41",
-        "laravel/telescope": "*",
+        "larastan/larastan": "*",
+        "laravel-lang/common": "^6.7",
+        "laravel-lang/publisher": "^16.7",
+        "laravel/breeze": "^2.0",
+        "laravel/pail": "^1.1",
+        "laravel/pint": "^1.0",
+        "laravel/sail": "^1.26",
+        "laravel/telescope": "^5.16",
         "mockery/mockery": "^1.6",
-        "nunomaduro/collision": "^8.6",
-        "pestphp/pest": "^3.8.6",
-        "pestphp/pest-plugin-arch": "^3.1.1",
-        "phpunit/phpunit": "^11.5.50",
-        "spatie/laravel-typescript-transformer": "^3.0"
+        "nunomaduro/collision": "^8.1",
+        "pestphp/pest": "^2.36",
+        "pestphp/pest-plugin-arch": "^2.7",
+        "pestphp/pest-plugin-laravel": "^2.4",
+        "phpmyadmin/sql-parser": "*",
+        "phpunit/phpunit": "^10.5",
+        "spatie/laravel-typescript-transformer": "^2.5"
     },
     "autoload": {
         "psr-4": {
@@ -62,239 +70,23 @@
         }
     },
     "scripts": {
-        "setup": [
-            "composer install",
-            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
-            "@php artisan key:generate",
-            "@php artisan migrate --force",
-            "npm install",
-            "npm run build"
-        ],
-        "dev": [
-            "Composer\\Config::disableProcessTimeout",
-            "@php scripts/dev-runner.php"
-        ],
-        "test": [
-            "@php artisan config:clear --ansi",
-            "@php artisan migrate:fresh --env=testing --force --ansi",
-            "@php artisan test"
-        ],
-        "test:architecture": [
-            "@php vendor/bin/pest --configuration=phpunit.architecture.xml"
-        ],
-        "test:tenancy": [
-            "@php artisan config:clear --ansi",
-            "@php artisan view:clear --ansi",
-            "@php artisan migrate:fresh --env=testing --force --ansi",
-            "@php vendor/bin/pest tests/Feature/Tenancy/TenantReadIsolationTest.php tests/Feature/Tenancy/TenantWriteIsolationTest.php tests/Feature/Tenancy/MenuSectionWriteIsolationTest.php tests/Feature/FullSystemIsolationTest.php tests/Feature/CouponIsolationTest.php tests/Feature/Exports/SalesExportTest.php tests/Feature/Public/BookingPageRouteTest.php -v"
-        ],
-        "test:filament-critical": [
-            "@php artisan config:clear --ansi",
-            "@php artisan view:clear --ansi",
-            "@php artisan migrate:fresh --env=testing --force --ansi",
-            "@php vendor/bin/pest tests/Feature/Filament/BusinessPageWorkflowTest.php tests/Feature/Filament/BusinessCrudSmokeTest.php tests/Feature/Filament/BusinessPanelSmokeTest.php tests/Feature/Filament/TenantPanelAccessTest.php tests/Feature/Filament/SuperAdminActionWorkflowTest.php tests/Feature/Filament/SuperAdminPanelSmokeTest.php tests/Feature/CRM/CustomerInboxPageTest.php -v"
-        ],
-        "test:filament-critical:stable": [
-            "@php artisan config:clear --ansi",
-            "@php artisan view:clear --ansi",
-            "@php artisan migrate:fresh --env=testing --force --ansi",
-            "@php vendor/bin/pest tests/Feature/Filament/BusinessPageWorkflowTest.php -v",
-            "@php artisan view:clear --ansi",
-            "@php vendor/bin/pest tests/Feature/Filament/BusinessPageWorkflowTest.php -v",
-            "@php artisan view:clear --ansi",
-            "@php vendor/bin/pest tests/Feature/Filament/BusinessPageWorkflowTest.php -v",
-            "@php artisan view:clear --ansi",
-            "@php vendor/bin/pest tests/Feature/Filament/BusinessCrudSmokeTest.php tests/Feature/Filament/BusinessPanelSmokeTest.php tests/Feature/Filament/TenantPanelAccessTest.php tests/Feature/Filament/SuperAdminActionWorkflowTest.php tests/Feature/Filament/SuperAdminPanelSmokeTest.php tests/Feature/CRM/CustomerInboxPageTest.php -v"
-        ],
-        "test:release-critical": [
-            "Composer\\Config::disableProcessTimeout",
-            "@php artisan config:clear --ansi",
-            "@php artisan view:clear --ansi",
-            "@php artisan migrate:fresh --env=testing --force --ansi",
-            "@php vendor/bin/pest tests/Feature/Filament/BusinessPageWorkflowTest.php tests/Feature/CRM/CustomerInboxPageTest.php tests/Feature/Public/BookingFlowTest.php tests/Feature/Public/BookingPageRouteTest.php tests/Feature/Public/CommercialNarrativeGuardTest.php tests/Feature/Public/FavoriteTenantFlowTest.php tests/Feature/Sales/StorefrontOrderTest.php tests/Feature/Monetization/BillingFlowTest.php tests/Feature/Marketing/CampaignAudienceTest.php tests/Feature/Marketing/DispatchCustomerCampaignSegmentTest.php tests/Feature/Filament/SuperAdminActionWorkflowTest.php tests/Feature/Tenancy/TenantReadIsolationTest.php tests/Feature/Tenancy/TenantWriteIsolationTest.php tests/Feature/Tenancy/MenuSectionWriteIsolationTest.php tests/Feature/Tenant/LegacyWorkspaceWriteRedirectTest.php tests/Feature/Tenant/LegacyWorkspaceRoutePolicyTest.php -v"
-        ],
-        "test:parallel-critical:foundation": [
-            "@php vendor/bin/pest --parallel tests/Feature/Auth",
-            "@php vendor/bin/pest --parallel tests/Feature/Sales",
-            "@php vendor/bin/pest --parallel tests/Feature/Tenancy"
-        ],
-        "test:parallel-critical:product": [
-            "@php vendor/bin/pest --parallel tests/Feature/Public",
-            "@php vendor/bin/pest --parallel tests/Feature/Filament",
-            "@php vendor/bin/pest --parallel tests/Feature/Inventory"
-        ],
-        "test:parallel-critical:platform": [
-            "@php vendor/bin/pest --parallel tests/Feature/Analytics",
-            "@php vendor/bin/pest --parallel tests/Feature/Access",
-            "@php vendor/bin/pest --parallel tests/Feature/Api",
-            "@php vendor/bin/pest --parallel tests/Feature/Billing",
-            "@php vendor/bin/pest --parallel tests/Feature/Middleware",
-            "@php vendor/bin/pest --parallel tests/Feature/Web"
-        ],
-        "test:parallel-critical:infrastructure": [
-            "@php vendor/bin/pest --parallel tests/Feature/Infrastructure",
-            "@php vendor/bin/pest tests/Feature/Security -v"
-        ],
-        "test:parallel-schema-contract": [
-            "@php artisan config:clear --ansi",
-            "@php artisan view:clear --ansi",
-            "@php artisan migrate:fresh --env=testing --force --ansi",
-            "@php vendor/bin/pest tests/Contracts/CommandSchemaContractTest.php tests/Architecture/CommandSchemaTest.php tests/Architecture/Contracts/EventSchemaTest.php -v"
-        ],
-        "check:migrations": [
-            "@php artisan db:audit-migrations --json"
-        ],
-        "check:parallel-schema-governance": [
-            "@php artisan config:clear --ansi",
-            "@php artisan view:clear --ansi",
-            "@php artisan migrate:fresh --env=testing --force --ansi",
-            "@php vendor/bin/pest tests/Contracts/CommandSchemaContractTest.php tests/Architecture/CommandSchemaTest.php tests/Architecture/Contracts/EventSchemaTest.php -v"
-        ],
-        "check:rbac-governance": [
-            "@php artisan config:clear --ansi",
-            "@php artisan view:clear --ansi",
-            "@php artisan migrate:fresh --env=testing --force --ansi",
-            "@php -r \"is_dir('reports/rbac-governance') || mkdir('reports/rbac-governance', 0777, true);\"",
-            "@php vendor/bin/pest tests/Unit/Access/PermissionsMatrixContractTest.php tests/Unit/Access/StandardTenantPermissionGuardTest.php tests/Feature/Tenancy/TenantReadIsolationTest.php tests/Feature/Tenancy/TenantWriteIsolationTest.php --log-junit reports/rbac-governance/junit.xml -v"
-        ],
-        "check:directory-guide-contract": [
-            "@php artisan config:clear --ansi",
-            "@php artisan view:clear --ansi",
-            "@php artisan migrate:fresh --env=testing --force --ansi",
-            "@php -r \"is_dir('reports/directory-guide-contract') || mkdir('reports/directory-guide-contract', 0777, true);\"",
-            "@php vendor/bin/pest tests/Feature/Api/DirectoryGuideApiTest.php --log-junit reports/directory-guide-contract/junit.xml -v"
-        ],
-        "check:directory-guide-contract:stable": [
-            "@php artisan config:clear --ansi",
-            "@php artisan view:clear --ansi",
-            "@php artisan migrate:fresh --env=testing --force --ansi",
-            "@php -r \"is_dir('reports/directory-guide-contract-stable') || mkdir('reports/directory-guide-contract-stable', 0777, true);\"",
-            "@php vendor/bin/pest tests/Feature/Api/DirectoryGuideApiTest.php --log-junit reports/directory-guide-contract-stable/run-1.xml -v",
-            "@php artisan view:clear --ansi",
-            "@php vendor/bin/pest tests/Feature/Api/DirectoryGuideApiTest.php --log-junit reports/directory-guide-contract-stable/run-2.xml -v",
-            "@php artisan view:clear --ansi",
-            "@php vendor/bin/pest tests/Feature/Api/DirectoryGuideApiTest.php --log-junit reports/directory-guide-contract-stable/run-3.xml -v"
-        ],
-        "check:audit-foundation-ci": [
-            "composer check:migrations",
-            "composer check:rbac-governance",
-            "composer check:directory-guide-contract:stable"
-        ],
-        "check:saas-surface-contract": [
-            "@php artisan config:clear --ansi",
-            "@php artisan view:clear --ansi",
-            "@php artisan migrate:fresh --env=testing --force --ansi",
-            "@php -r \"is_dir('reports/saas-surface-contract') || mkdir('reports/saas-surface-contract', 0777, true);\"",
-            "Composer\\Config::disableProcessTimeout",
-            "@php vendor/bin/pest tests/Unit/Auth/AuthRedirectorTest.php tests/Feature/Auth/AuthenticationTest.php tests/Feature/Web/RegistrationControllerTest.php tests/Feature/Public/BusinessRegistrationTest.php tests/Feature/Public/TenantStatusMiddlewareTest.php tests/Feature/Api/BusinessClaimControllerTest.php tests/Feature/Api/DirectoryGuideApiTest.php tests/Feature/Filament/TenantPanelAccessTest.php tests/Feature/Filament/BusinessPageWorkflowTest.php tests/Feature/Tenant/OnboardingProgressServiceTest.php tests/Feature/Public/BookingPageRouteTest.php tests/Feature/Public/BookingFlowTest.php tests/Feature/Sales/StorefrontOrderTest.php --log-junit reports/saas-surface-contract/junit.xml -v"
-        ],
-        "check:schema-key-type-governance": [
-            "@php artisan config:clear --ansi",
-            "@php artisan view:clear --ansi",
-            "@php artisan migrate:fresh --env=testing --force --ansi",
-            "@php -r \"is_dir('reports/schema-key-type-governance') || mkdir('reports/schema-key-type-governance', 0777, true);\"",
-            "@php vendor/bin/pest tests/Unit/Database/SchemaKeyTypeGovernanceTest.php --log-junit reports/schema-key-type-governance/junit.xml -v"
-        ],
-        "check:schema-nullability-governance": [
-            "@php artisan config:clear --ansi",
-            "@php artisan view:clear --ansi",
-            "@php artisan migrate:fresh --env=testing --force --ansi",
-            "@php -r \"is_dir('reports/schema-nullability-governance') || mkdir('reports/schema-nullability-governance', 0777, true);\"",
-            "@php vendor/bin/pest tests/Unit/Database/SchemaNullabilityGovernanceTest.php --log-junit reports/schema-nullability-governance/junit.xml -v"
-        ],
-        "check:schema-duplicate-columns-governance": [
-            "@php artisan config:clear --ansi",
-            "@php artisan view:clear --ansi",
-            "@php artisan migrate:fresh --env=testing --force --ansi",
-            "@php -r \"is_dir('reports/schema-duplicate-columns-governance') || mkdir('reports/schema-duplicate-columns-governance', 0777, true);\"",
-            "@php vendor/bin/pest tests/Unit/Database/SchemaDuplicateColumnsGovernanceTest.php --log-junit reports/schema-duplicate-columns-governance/junit.xml -v"
-        ],
-        "check:schema-fk-governance": [
-            "@php artisan config:clear --ansi",
-            "@php artisan view:clear --ansi",
-            "@php artisan migrate:fresh --env=testing --force --ansi",
-            "@php -r \"is_dir('reports/schema-fk-governance') || mkdir('reports/schema-fk-governance', 0777, true);\"",
-            "@php vendor/bin/pest tests/Unit/Database/SchemaFkGovernanceTest.php --log-junit reports/schema-fk-governance/junit.xml -v"
-        ],
-        "check:schema-json-governance": [
-            "@php artisan config:clear --ansi",
-            "@php artisan view:clear --ansi",
-            "@php artisan migrate:fresh --env=testing --force --ansi",
-            "@php -r \"is_dir('reports/schema-json-governance') || mkdir('reports/schema-json-governance', 0777, true);\"",
-            "@php vendor/bin/pest tests/Unit/Database/SchemaJsonGovernanceTest.php --log-junit reports/schema-json-governance/junit.xml -v"
-        ],
-        "check:schema-index-governance": [
-            "@php artisan config:clear --ansi",
-            "@php artisan view:clear --ansi",
-            "@php artisan migrate:fresh --env=testing --force --ansi",
-            "@php -r \"is_dir('reports/schema-index-governance') || mkdir('reports/schema-index-governance', 0777, true);\"",
-            "@php vendor/bin/pest tests/Unit/Database/SchemaIndexGovernanceTest.php --log-junit reports/schema-index-governance/junit.xml -v"
-        ],
-        "check:schema-governance-fast": [
-            "@php artisan config:clear --ansi",
-            "@php artisan view:clear --ansi",
-            "@php artisan migrate:fresh --env=testing --force --ansi",
-            "composer check:schema-governance-fast:warm"
-        ],
-        "check:schema-governance-fast:warm": [
-            "@php -r \"is_dir('reports/schema-governance-fast') || mkdir('reports/schema-governance-fast', 0777, true);\"",
-            "@php vendor/bin/pest tests/Unit/Database/SchemaFkGovernanceTest.php tests/Unit/Database/SchemaDuplicateColumnsGovernanceTest.php tests/Unit/Database/SchemaIndexGovernanceTest.php tests/Unit/Database/SchemaJsonGovernanceTest.php tests/Unit/Database/SchemaKeyTypeGovernanceTest.php tests/Unit/Database/SchemaNullabilityGovernanceTest.php --log-junit reports/schema-governance-fast/junit.xml -v"
-        ],
-        "check:schema-governance-heavy": [
-            "@php artisan config:clear --ansi",
-            "@php artisan view:clear --ansi",
-            "@php artisan migrate:fresh --env=testing --force --ansi",
-            "@php -r \"is_dir('reports/schema-governance-heavy') || mkdir('reports/schema-governance-heavy', 0777, true);\"",
-            "@php vendor/bin/pest tests/Unit/Database/WaveTwoConsolidationGovernanceTest.php tests/Unit/Database/WaveThreeConsolidationGovernanceTest.php tests/Architecture/Scalability/OutboxScalingTest.php --log-junit reports/schema-governance-heavy/junit.xml -v"
-        ],
-        "check:schema-wave2-governance": [
-            "@php artisan config:clear --ansi",
-            "@php artisan view:clear --ansi",
-            "@php artisan migrate:fresh --env=testing --force --ansi",
-            "@php -r \"is_dir('reports/schema-wave2-governance') || mkdir('reports/schema-wave2-governance', 0777, true);\"",
-            "@php vendor/bin/pest tests/Unit/Database/WaveTwoConsolidationGovernanceTest.php --log-junit reports/schema-wave2-governance/junit.xml -v"
-        ],
-        "check:schema-wave3-governance": [
-            "@php artisan config:clear --ansi",
-            "@php artisan view:clear --ansi",
-            "@php artisan migrate:fresh --env=testing --force --ansi",
-            "@php -r \"is_dir('reports/schema-wave3-governance') || mkdir('reports/schema-wave3-governance', 0777, true);\"",
-            "@php vendor/bin/pest tests/Unit/Database/WaveThreeConsolidationGovernanceTest.php --log-junit reports/schema-wave3-governance/junit.xml -v"
-        ],
-        "check:workflow-legacy-warnings": [
-            "node scripts/ci/check-workflow-legacy-warnings.mjs"
-        ],
-        "check:todo-governance": [
-            "git diff --unified=0 --no-color HEAD | node scripts/ci/check-todo-governance.mjs"
-        ],
-        "check:security-governance": [
-            "@php scripts/security/governance-check.php"
-        ],
-        "check:resilience": [
-            "@php artisan config:clear --ansi",
-            "@php artisan view:clear --ansi",
-            "@php artisan migrate:fresh --env=testing --force --ansi",
-            "@php vendor/bin/pest tests/Feature/Infrastructure/SnapshotAggregateTypePersistenceTest.php tests/Feature/Infrastructure/Scale10xTest.php -v"
-        ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
-            "@php artisan package:discover --ansi",
-            "@php artisan filament:optimize",
-            "@php artisan optimize"
+            "@php artisan package:discover --ansi"
         ],
         "post-update-cmd": [
             "@php artisan vendor:publish --tag=laravel-assets --ansi --force"
+        ],
+        "post-install-cmd": [
+            "@php artisan storage:link --quiet || true",
+            "@php artisan optimize --quiet || true"
         ],
         "post-root-package-install": [
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
         ],
         "post-create-project-cmd": [
             "@php artisan key:generate --ansi",
-            "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
-            "@php artisan migrate --graceful --ansi"
-        ],
-        "pre-package-uninstall": [
-            "Illuminate\\Foundation\\ComposerScripts::prePackageUninstall"
+            "@php artisan storage:link --ansi"
         ]
     },
     "extra": {
@@ -309,6 +101,9 @@
         "allow-plugins": {
             "pestphp/pest-plugin": true,
             "php-http/discovery": true
+        },
+        "platform": {
+            "php": "8.2.12"
         }
     },
     "minimum-stability": "stable",

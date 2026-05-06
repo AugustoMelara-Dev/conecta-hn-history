@@ -9,7 +9,7 @@ return new class extends Migration
     /**
      * Run the migrations.
      *
-     * USUARIOS DEL TENANT - Vito Business OS
+     * USUARIOS DEL TENANT - Conecta HN
      * Sistema de roles multi-tenant para delegar acceso (Dueño, Gerente, Empleado)
      */
     public function up(): void

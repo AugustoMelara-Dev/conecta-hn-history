@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Vito Business OS'),
+    'name' => env('APP_NAME', 'Laravel'),
 
     /*
     |--------------------------------------------------------------------------
@@ -68,20 +68,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Product Surface URLs (B2B/B2C Split)
-    |--------------------------------------------------------------------------
-    |
-    | Optional absolute origins to separate operational platform (app)
-    | and consumer directory (www) while keeping a single backend.
-    | When omitted, relative routes are used.
-    |
-    */
-    'platform_app_url' => env('PLATFORM_APP_URL'),
-    'platform_admin_url' => env('PLATFORM_ADMIN_URL'),
-    'platform_directory_url' => env('PLATFORM_DIRECTORY_URL'),
-
-    /*
-    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |
@@ -106,7 +92,7 @@ return [
 
     'locale' => env('APP_LOCALE', 'es'),
 
-    'fallback_locale' => env('APP_FALLBACK_LOCALE', 'es'),
+    'fallback_locale' => env('APP_FALLBACK_LOCALE', 'en'),
 
     'faker_locale' => env('APP_FAKER_LOCALE', 'es_ES'),
 
@@ -148,7 +134,5 @@ return [
         'driver' => env('APP_MAINTENANCE_DRIVER', 'file'),
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
-
-    'e2e_browser_release' => (bool) env('E2E_BROWSER_RELEASE', false),
 
 ];

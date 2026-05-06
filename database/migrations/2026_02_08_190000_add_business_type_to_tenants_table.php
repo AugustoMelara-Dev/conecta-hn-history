@@ -6,10 +6,10 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * Add business_type discriminator to tenants table
- *
+ * 
  * PURPOSE: Enable feature toggling between Commerce (retail/inventory)
  * and Service (appointments/calendar) business models.
- *
+ * 
  * BACKWARD COMPATIBILITY: Default 'retail' ensures existing tenants
  * continue to function without modification.
  */

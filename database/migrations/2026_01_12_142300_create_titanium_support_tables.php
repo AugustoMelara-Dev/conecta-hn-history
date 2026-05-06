@@ -20,11 +20,28 @@ return new class extends Migration
             });
         }
 
+        // Table 2: Outbox Messages (Reliable Events)
+        // CANONICAL SCHEMA: This is THE definitive structure.
+        // All subsequent migrations should use hasColumn checks.
+        if (! Schema::hasTable('outbox_messages')) {
+            Schema::create('outbox_messages', function (Blueprint $table) {
+                $table->uuid('id')->primary();
+                $table->string('type'); // Event FQCN
+                $table->json('payload'); // Event Data
+                $table->timestamp('occurred_at')->nullable();
+                $table->timestamp('published_at')->nullable()->index();
+                $table->string('status')->default('PENDING')->index();
+                $table->timestamps();
+
+                // Critical Index for Polling Performance
+                $table->index(['status', 'occurred_at']);
+            });
+        }
     }
 
     public function down(): void
     {
-
+        Schema::dropIfExists('outbox_messages');
         Schema::dropIfExists('idempotency_keys');
     }
 };

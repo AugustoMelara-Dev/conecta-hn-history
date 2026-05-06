@@ -15,10 +15,6 @@ return [
 
     'default' => env('FILESYSTEM_DISK', 'local'),
 
-    'media_disk' => env('MEDIA_DISK', 'media'),
-
-    'payment_evidence_disk' => env('PAYMENT_EVIDENCE_DISK', env('MEDIA_DISK', 'media')),
-
     /*
     |--------------------------------------------------------------------------
     | Filesystem Disks
@@ -66,7 +62,7 @@ return [
 
         /*
         |--------------------------------------------------------------------------
-        | Cloudflare R2 - Alternativa económica a S3 para Vito Business OS
+        | Cloudflare R2 - Alternativa económica a S3 para Conecta HN
         |--------------------------------------------------------------------------
         | R2 es compatible con S3 API pero sin costos de egress.
         | Ideal para galerías ilimitadas del Plan PRO.
@@ -100,16 +96,10 @@ return [
         | En producción: cambiar MEDIA_DISK a 's3' o 'r2'
         */
         'media' => [
-            'driver' => env('MEDIA_DISK_DRIVER', env('MEDIA_DISK', 'local')),
+            'driver' => env('MEDIA_DISK_DRIVER', 'local'),
             'root' => storage_path('app/public'),
-            'key' => env('MEDIA_ACCESS_KEY_ID', env('R2_ACCESS_KEY_ID', env('AWS_ACCESS_KEY_ID'))),
-            'secret' => env('MEDIA_SECRET_ACCESS_KEY', env('R2_SECRET_ACCESS_KEY', env('AWS_SECRET_ACCESS_KEY'))),
-            'region' => env('MEDIA_REGION', env('AWS_DEFAULT_REGION', 'auto')),
-            'bucket' => env('MEDIA_BUCKET', env('R2_BUCKET', env('AWS_BUCKET'))),
-            'url' => env('MEDIA_DISK_URL', env('R2_URL', env('AWS_URL', env('APP_URL').'/storage'))),
-            'endpoint' => env('MEDIA_ENDPOINT', env('R2_ENDPOINT', env('AWS_ENDPOINT'))),
-            'use_path_style_endpoint' => env('MEDIA_USE_PATH_STYLE_ENDPOINT', env('AWS_USE_PATH_STYLE_ENDPOINT', true)),
-            'visibility' => env('MEDIA_VISIBILITY', 'public'),
+            'url' => env('MEDIA_DISK_URL', env('APP_URL').'/storage'),
+            'visibility' => 'public',
             'throw' => false,
             'report' => false,
         ],

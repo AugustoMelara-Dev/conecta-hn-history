@@ -43,7 +43,6 @@ class OrderItemFactory extends Factory
             'unit_price' => $unitPrice,
             'quantity' => $quantity,
             'total_price' => $unitPrice * $quantity,
-            'line_total' => $unitPrice * $quantity,
             'selected_options' => null,
             'notes' => null,
         ];
@@ -57,7 +56,6 @@ class OrderItemFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'quantity' => $quantity,
             'total_price' => ($attributes['unit_price'] ?? 100) * $quantity,
-            'line_total' => ($attributes['unit_price'] ?? 100) * $quantity,
         ]);
     }
 
@@ -82,7 +80,6 @@ class OrderItemFactory extends Factory
             'product_price' => $product->price,
             'unit_price' => $product->price,
             'total_price' => $product->price * ($attributes['quantity'] ?? 1),
-            'line_total' => $product->price * ($attributes['quantity'] ?? 1),
         ]);
     }
 }
