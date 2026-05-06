@@ -1,279 +1,626 @@
-<p align="center">
-  <img src="public/images/logo.png" alt="Conecta HN Logo" width="200"/>
-</p>
+# Conecta HN (Vito Business OS legacy)
 
-<h1 align="center">🇭🇳 Conecta HN</h1>
-<h3 align="center">La Plataforma Definitiva de Comercio Local en Honduras</h3>
+Conecta HN es una plataforma SaaS multi-tenant para comercio local, catalogos, pedidos, citas, marketing y operacion de negocios. Este repositorio conserva historicamente el nombre interno `Vito Business OS` en varias superficies legacy, pero la marca publica canonica es Conecta HN. El repo concentra el sitio publico, los micrositios de negocio, las apps operativas, los paneles Filament, las APIs y la capa de contratos del sistema.
 
-<p align="center">
-  <strong>SaaS Multi-Tenant · Mobile-First · Growth-Optimized</strong>
-</p>
+Este README documenta el estado actual del proyecto al 2026-05-04.
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Laravel-12.x-FF2D20?style=for-the-badge&logo=laravel&logoColor=white" alt="Laravel 12"/>
-  <img src="https://img.shields.io/badge/Livewire-3.x-FB70A9?style=for-the-badge&logo=livewire&logoColor=white" alt="Livewire 3"/>
-  <img src="https://img.shields.io/badge/FilamentPHP-4.2-FFAE00?style=for-the-badge&logo=laravel&logoColor=white" alt="Filament 4"/>
-  <img src="https://img.shields.io/badge/Tailwind-3.x-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS"/>
-  <img src="https://img.shields.io/badge/Alpine.js-3.x-8BC0D0?style=for-the-badge&logo=alpine.js&logoColor=white" alt="Alpine.js"/>
-  <img src="https://img.shields.io/badge/MySQL-8.0-4479A1?style=for-the-badge&logo=mysql&logoColor=white" alt="MySQL"/>
-</p>
+> Nota de marca y alcance
+> El producto comercial actual se opera como Conecta HN, pero el codebase y varios artefactos todavia conservan naming `Vito Business OS` en vistas, componentes, configs, correos, providers y metadatos. Este README documenta el alcance funcional real actual y no debe leerse como promesa de roadmap no implementado.
 
-<p align="center">
-  <a href="#características-principales">Características</a> •
-  <a href="#stack-tecnológico">Stack</a> •
-  <a href="#ingeniería-de-características">Ingeniería</a> •
-  <a href="#instalación">Instalación</a> •
-  <a href="#roadmap">Roadmap</a>
-</p>
+## Operacion y auditoria (No-MVP)
 
----
+- [Architecture Audit Pack 2026-04](docs/architecture/AUDIT_PACK_NO_MVP_2026-04.md)
+- [Deploy topology Vercel + Railway](docs/architecture/DEPLOY_TOPOLOGY_VERCEL_RAILWAY.md)
+- [Guide RAG readiness blueprint](docs/architecture/GUIDE_RAG_READINESS_BLUEPRINT.md)
+- [Credential incident closure checklist](docs/security/CREDENTIAL_INCIDENT_CLOSURE.md)
+- [Git Ops rapido](docs/git-ops.md)
 
-## 📋 Descripción del Producto
+## Operacion global por lotes (subagentes)
 
-**Conecta HN** no es un simple directorio de negocios. Es una **plataforma SaaS Multi-Tenant** diseñada específicamente para el ecosistema comercial de Honduras, donde el **90% del tráfico web proviene de dispositivos móviles** y donde WhatsApp es el canal de comunicación empresarial dominante. La plataforma resuelve un problema crítico: la **fragmentación del comercio local**, donde miles de pequeños negocios operan de manera informal a través de redes sociales sin presencia web estructurada, perdiendo oportunidades de descubrimiento, credibilidad y conversión.
+Estandar operativo activo para auditoria y mejora continua:
 
-Cada negocio registrado obtiene su propio **Micrositio Optimizado** (`/nombre-negocio`) con SEO avanzado, catálogo de productos, horarios de atención, ubicación GPS y un sistema de conversión integrado hacia WhatsApp. La arquitectura **Mobile-First** garantiza tiempos de carga sub-segundo incluso en redes 3G, mientras que el sistema de **Growth Hacking integrado** proporciona a los dueños de negocios métricas en tiempo real sobre visitas, clics y tasas de conversión, incentivando la retención y el upgrade a planes premium.
+- Auditoria primero, correccion despues.
+- Lotes largos de 8-12h con checkpoints cada 2-3h.
+- Rama y PR separada por frente (ownership disjunto).
+- Cierre por frente solo con: tests pasando + evidencia reproducible + PR lista.
+- Si hay bloqueo externo (infra/credenciales), estado `partial` con operador-step explicito.
 
----
+Frentes de trabajo actuales:
 
-## 🔧 Stack Tecnológico
+- Frente A: negocio + superadmin.
+- Frente B: CRM operativo parcial + campanas + inbox.
+- Frente C: billing + settings.
+- Frente D: calidad transversal (regresion, estabilidad de suite, evidencia de riesgo).
 
-### Backend: Laravel 12
-Laravel actúa como el **orquestador central de lógica de negocio**, manejando autenticación multi-tenant, validación de límites de plan, y una capa de servicios desacoplada. Implementamos:
-- **Route Model Binding** con slugs para URLs SEO-friendly
-- **Eloquent Relationships** polimórficas para flexibilidad
-- **Atomic Database Operations** para contadores de alta concurrencia
-- **Background Jobs** para procesamiento asíncrono de analítica
+Merge order recomendado para lotes de producto critico:
 
-### Frontend Dinámico: Livewire 3 + Alpine.js
-Los componentes Livewire operan en **modo SPA** mediante `wire:navigate`, eliminando recargas de página completas. Esto crea una experiencia nativa de aplicación móvil:
-- **Infinite Scroll** con `x-intersect` para lazy loading de listados
-- **Skeleton Loaders** que mejoran la percepción de velocidad
-- **Reactive State Management** sin JavaScript complejo
-- **Form Wizards** multi-paso para registro de negocios
+1. A
+2. D
+3. B
+4. C
 
-### Panel Administrativo: FilamentPHP 4
-Implementamos **dos paneles completamente separados**:
-- **Super Admin (`/admin`)**: Gestión de tenants, moderación, pagos, analítica global
-- **Tenant App (`/app`)**: Dashboard personalizado por negocio con métricas de conversión
+Nota de repositorio:
 
-Cada panel tiene su propio `Provider`, middleware, tema de colores y widgets contextuales.
+- El remoto canonico de organizacion para integracion es `VitoCode-Technologies/Vito-Business-OS`.
+- La rama principal objetivo de integracion es `main`.
 
-### Estilos: Tailwind CSS 3
-Utilizamos una **paleta semántica** con tokens de color consistentes y un sistema de diseño que prioriza:
-- **Glassmorphism** para elementos flotantes (sticky bars, navigation)
-- **Micro-animaciones** para feedback visual (hover states, transitions)
-- **Dark Mode** nativo en el panel administrativo
-- **Responsive Breakpoints** optimizados para dispositivos hondureños comunes
+## Estado operacional actual (2026-04-26)
 
----
+- Lote 002 (frentes A/B/C/D) ya fue integrado en `main` mediante squash merge por frente.
+- Las protecciones de `main` se mantienen activas: ruleset + branch protection.
+- Modo temporal por billing de GitHub Actions: sin `required status check` obligatorio en `main` para evitar bloqueo operativo por falta de credito.
+- Politica CI temporal (ultra-ahorro): workflows en ejecucion manual (`workflow_dispatch`) para controlar costo mientras se normaliza billing.
+- Se ejecuto limpieza de ramas remotas legacy para reducir ruido operativo.
+- Inventario remoto intencional actual:
+  - `main`
 
-## ⚡ Ingeniería de Características
+## Que contiene este repo
 
-### 🔬 Atomic Analytics Engine
+Hoy el proyecto ya incluye:
 
-El sistema de analítica está diseñado para **alta concurrencia sin bloqueos**. Cuando un usuario visita un micrositio:
+- Sitio publico en `Inertia + React` para landing, discovery, directorio y conversion.
+- Micrositios de negocio con catalogo, SEO, tracking y checkout.
+- Registro publico de negocios con chequeo de slug y flujo de pago pendiente.
+- Autenticacion web con Fortify y autenticacion API con OTP, social login y Sanctum.
+- Cuenta web con registro, login, reset de password, verificacion de email, perfil y favoritos.
+- App operativa del negocio en `workspace/*`.
+- Panel Filament del tenant en `/app`.
+- Panel Filament super admin en `/admin`.
+- Reservas y citas con servicios, proveedores, slots, confirmacion y recordatorios.
+- Cupones, campanas, anuncios, followers, loyalty, notificaciones y reportes exportables.
+- Tracking auxiliar para WhatsApp, llamadas, mapas, geolocalizacion y analitica publica.
+- AI para optimizar perfiles con control de presupuesto y auditoria de consumo (sujeto a configuracion de entorno e integraciones activas).
+- Realtime, broadcast y PWA con Reverb, Echo, Web Push y `vite-plugin-pwa`.
+- Contratos con JSON Schema, Swagger UI, tipos TypeScript generados y proto gRPC.
+- Operacion endurecida con outbox transaccional, idempotencia, signed downloads, uploads firmados, response cache, health checks, workers y scheduler.
+- Soporte operativo con shadow login / impersonation y tenancy por path en local mas soporte por subdominio en configuracion.
 
-```php
-// ShowTenant.php - Atomic increment sin row locking
-Tenant::where('id', $this->tenant->id)->increment('views');
-```
+## Alcance CRM actual (honesto)
 
-Para conversiones (clics en WhatsApp, llamadas, navegación GPS), implementamos un **Middleware de Tracking**:
+El alcance CRM activo hoy es operativo parcial:
 
-```php
-// InteractionController.php - Redirect pattern
-public function whatsapp(Request $request, Tenant $tenant): RedirectResponse
-{
-    // 1. Registrar interacción en DB
-    Interaction::create([
-        'tenant_id' => $tenant->id,
-        'type' => Interaction::TYPE_WHATSAPP_CLICK,
-        'ip_address' => $request->ip(),
-        'metadata' => ['message' => $request->input('text')],
-    ]);
-    
-    // 2. Redirigir a WhatsApp (imperceptible para usuario)
-    return redirect()->away("https://wa.me/{$phone}?text={$message}");
-}
-```
+- perfiles de clientes (`CustomerProfile`)
+- inbox y conversaciones operativas (`CustomerInbox`)
+- notas y tareas de seguimiento (`CustomerNote`, `CustomerTask`)
+- oportunidades comerciales basicas (`CrmDeal`) con pipeline/etapa para tenants habilitados
+- touchpoints y campanas donde la configuracion del tenant lo habilita
 
-Este patrón **captura el 100% de las conversiones** sin afectar la experiencia del usuario.
+No debe interpretarse como CRM enterprise completo. Aunque existen pipelines/etapas/deals basicos para tenants habilitados, todavia faltan capas clave como permisos CRM granulares por accion, import/export robusto, automatizaciones maduras y reporting comercial avanzado.
 
-### 📊 Growth Hacking Dashboard (Bento Grid)
+## Estado de readiness comercial
 
-El dashboard del tenant implementa **psicología de ventas** a nivel de UI:
+- Este repositorio tiene capacidades de produccion en varias superficies, pero el estado "release-ready" depende de gates operativos (smokes desplegados, secretos, colas, storage, observabilidad y checks de CI).
+- Las capacidades de Growth, AI y RAG requieren datos, jobs y configuracion de integraciones (por ejemplo keys y vector store) para operar de forma verificable en cada entorno.
 
-| Plan | Comportamiento Visual |
-|------|----------------------|
-| **FREE** | Gradiente azul-púrpura, mensaje de urgencia ("Estás perdiendo clientes..."), CTA prominente |
-| **PRO** | Gradiente oscuro elegante, badges de verificación, todas las métricas desbloqueadas |
+## Stack actual
 
-```php
-// TenantStatsWidget.php - Lógica de diferenciación
-$this->isPro = (bool) $tenant->is_pro;
-$this->planName = $this->isPro ? 'Plan PRO' : 'Plan Gratuito';
-$this->productLimit = $settings->free_plan_product_limit ?? 10;
-```
+| Capa | Tecnologias |
+| --- | --- |
+| Backend | PHP 8.2, Laravel 12, Sanctum, Fortify |
+| Frontend publico | Inertia.js 2, React 18, TypeScript, Vite 5, Tailwind CSS 3 |
+| Paneles | Filament 4.2, Livewire 3 |
+| UI y estado | Zustand, Recharts, Radix UI, Headless UI, Framer Motion |
+| Realtime y PWA | Laravel Reverb, Laravel Echo, Pusher JS, vite-plugin-pwa, Web Push |
+| Datos | SQLite para local rapido, MySQL o MariaDB para entornos persistentes |
+| Storage y media | Spatie Medialibrary, storage local, signed downloads, pre-signed uploads S3 |
+| Infra recomendada | Redis, Supervisor, Nginx |
+| Observabilidad | Laravel Pail, Telescope, Spatie Health, Spatie Activitylog |
+| Seguridad | Spatie Permission, rate limiting contextual, idempotency middleware, signed URLs |
 
-El widget muestra 4 tarjetas clave: **Visitas Totales**, **Clics WhatsApp**, **Productos Activos**, y **Estado de Suscripción**.
+## Superficies activas del producto
 
-### 🔀 Polymorphic Tenant System
+### Publico
 
-El componente `ShowTenant.php` adapta dinámicamente la UI según el plan:
+| Ruta | Proposito |
+| --- | --- |
+| `/` | Landing publica |
+| `/explore` | Discovery y exploracion |
+| `/directorio` | Directorio de negocios |
+| `/ciudad/{slug}` | Landing SEO por ciudad |
+| `/categoria/{slug}` | Landing SEO por categoria |
+| `/registrar-negocio` | Registro publico de negocio |
+| `/registro/pago-pendiente/{payment}` | Estado de pago post onboarding |
+| `/t/{tenant}` | Micrositio publico del negocio |
+| `/t/{tenant}/book` | Reservas y citas |
+| `/appointments/{appointment}/manage` | Portal publico firmado para gestionar cita |
 
-```php
-// Secciones condicionales en la vista
-@if($tenant->is_pro)
-    <x-structured-hours :schedule="$schedule" />
-    <x-embedded-map :latitude="$lat" :longitude="$lng" />
-    <x-product-gallery :products="$products" />
-@else
-    <x-collapsed-hours />
-    <x-upgrade-banner />
-@endif
-```
+Nota operativa: en local el micrositio usa fallback path-based con `/t/{tenant}`; la base para subdominios en produccion sigue documentada en configuracion y `routes/public.php`.
 
-Además, se implementa **seguridad a nivel de modelo**:
-- Tenants con `is_active = false` retornan 404
-- `previewMode` permite a admins ver perfiles no publicados
+### Cuenta web y soporte
 
-### 🎭 Performance Percibida (Perceived Performance)
+Rutas y flujos web auxiliares que siguen activos:
 
-Implementamos **Skeleton Loaders** en el directorio:
+- `/register`, `/login`, `/forgot-password`, `/reset-password/{token}`
+- `/verify-email`, `/email/verification-notification`, `/confirm-password`
+- `/profile`, `/mi-cuenta`, `/dashboard`
+- `/favorites/toggle`
+- `/impersonate/leave`
 
-```html
-<!-- Skeleton mientras carga el contenido real -->
-<div wire:loading class="animate-pulse">
-    <div class="h-48 bg-gray-200 rounded-xl"></div>
-    <div class="h-4 bg-gray-200 rounded mt-3 w-3/4"></div>
-</div>
-```
+### Servicios auxiliares publicos
 
-Combinado con **Lazy Loading** de imágenes y **x-intersect** para infinite scroll.
+Rutas y endpoints auxiliares que conviene tener ubicados:
 
----
+- `/track/wa/{tenant}`, `/track/call/{tenant}`, `/track/maps/{tenant}`
+- `/location/set`, `/location/clear`, `/api/cities`
+- `/api/check-slug`
+- `/ciudades`
 
-## 🗄️ Estructura de Base de Datos
+### App Inertia del negocio
 
-### Entidades Principales
+Rutas activas bajo `workspace/*`:
 
-| Modelo | Propósito |
-|--------|-----------|
-| `Tenant` | Núcleo del sistema. Representa un negocio con perfil, plan, coordenadas GPS |
-| `Product` | Catálogo de productos/servicios con precios, imágenes, blurhash |
-| `MenuSection` | Organización jerárquica del catálogo (Desayunos, Almuerzos, etc.) |
-| `Interaction` | Analítica granular: visitas, clics WhatsApp, llamadas, navegación |
-| `Payment` | Flujo de pagos manuales con estados (pending, approved, rejected) |
-| `City` / `Category` | Taxonomía geográfica y temática para filtrado y SEO |
+- dashboard
+- productos
+- pedidos
+- billing
+- marketing
+- reportes
+- settings
+- upgrade
+- landing page builder
+- descarga de recibos y tickets
 
-### Migraciones Consolidadas
+### Panel Filament del tenant
 
-Hemos refactorizado **+20 migraciones dispersas** en un esquema semántico:
+Superficie activa bajo `/app` y `/app/{tenant}`:
 
-```
-2025_01_01_000001_create_location_tables.php    # Ciudades, municipios
-2025_01_01_000002_create_categories_table.php   # Categorías con estilos
-2025_01_01_000003_create_tenants_table.php      # Negocios multi-tenant
-2025_01_01_000004_create_products_tables.php    # Catálogo y variantes
-2025_01_01_000005_create_social_tables.php      # Follows, reviews
-2025_01_01_000006_create_marketing_tables.php   # Campaigns, leads
-2025_01_01_000007_create_business_tables.php    # Payments, interactions
-```
+- dashboard y perfil del tenant
+- productos y menu sections
+- pedidos
+- anuncios
+- citas
+- campanas
+- cupones
+- followers y leads
+- loyalty programs y loyalty rewards
+- servicios y service providers
+- tenant users y tenant profile
+- manage billing, manage marketing, settings y upgrade to pro
 
----
+### Panel Filament super admin
 
-## 🚀 Instalación
+Superficie activa bajo `/admin` y `/admin/{tenant}`:
 
-### Requisitos Previos
-- PHP 8.2+
-- Composer 2.x
-- Node.js 18+ & npm
-- MySQL 8.0+
+- dashboard
+- architecture health
+- billing
+- manage general settings
+- activity logs
+- tenants
+- users
+- payments
+- orders
+- products
+- coupons
+- cities
+- categories
 
-### Pasos de Instalación
+### API y contratos
+
+| Superficie | Ruta |
+| --- | --- |
+| REST API | `/api/v1/*` |
+| Swagger UI | `/api/documentation` |
+| Swagger docs | `/docs` |
+| Mock API local | `/mock/{schema}` solo en `local` |
+| Webhook de pago | `/api/webhooks/payment` |
+| gRPC proto | `proto/identity/service.proto` |
+
+## Capacidades por actor
+
+### Visitante y buyer
+
+- landing y discovery
+- directorio con filtros
+- micrositios SEO
+- favoritos
+- reviews
+- CTA a WhatsApp, llamada y mapas
+- checkout publico
+- cupones
+- cuenta web y favoritos persistentes
+- buyer profile
+- reservas y manejo publico de citas
+- sitemap, robots y metadatos SEO
+
+### Owner del negocio
+
+- dashboard operativo
+- CRUD de productos
+- CRUD de menu sections
+- gestion de pedidos y estados
+- ticket y receipt PDF
+- billing, upgrade y reporte de pago manual
+- ajustes de perfil, horarios y landing page
+- marketing con cupones, campanas y anuncios
+- reportes PDF y Excel
+- exports descargables
+- servicios y proveedores
+- loyalty y rewards
+- tenant users
+- notificaciones en base de datos
+
+### Operacion y backoffice
+
+- administracion de tenants
+- administracion de usuarios
+- aprobacion y seguimiento de pagos
+- activity log
+- configuracion global
+- impersonation / shadow login
+- RBAC con roles `super_admin`, `ventas`, `soporte`, `auditor` y `panel_user`
+
+### Plataforma
+
+- outbox transaccional
+- idempotencia
+- response cache
+- signed URLs y pre-signed uploads
+- health checks
+- rate limiting contextual
+- upcasters y versionado de eventos
+- TypeScript sync
+- schemas publicables
+- PWA
+- realtime, broadcast y push
+- AI budget enforcement
+
+## Arquitectura
+
+Vito Business OS sigue una arquitectura de **modular monolith** con **DDD + Ports and Adapters**.
+
+Topologia principal:
+
+- `app/Domain`: entidades, eventos, enums, value objects y contratos de negocio.
+- `app/Application`: comandos, handlers, resultados y orquestacion por modulo.
+- `app/Infrastructure`: persistencia, adapters, integraciones externas, jobs, comandos y middleware tecnico.
+- `app/Http`: controladores, requests, resources y delivery HTTP.
+- `app/Filament`: paneles, pages, resources y widgets.
+- `resources/js`: frontend Inertia, React y TypeScript.
+- `resources/schemas`: contratos JSON Schema.
+- `proto`: contratos gRPC.
+
+Bounded contexts visibles hoy:
+
+- `Identity`
+- `Auth`
+- `Billing`
+- `Sales`
+- `Catalog`
+- `Booking`
+- `Marketing`
+- `Analytics`
+- `Public`
+- `Search`
+- `TenantGovernance`
+- `AIEnrichment`
+- `Reviews`
+- `Directory`
+- `Interactions`
+
+## Inventario funcional del dominio
+
+Modelos Eloquent presentes en `app/Models`:
+
+- negocio y tenancy: `Tenant`, `TenantUser`, `TenantVisit`, `TenantAnalytic`
+- catalogo: `Product`, `ProductImage`, `MenuSection`, `ModifierGroup`, `ModifierOption`, `ProductOption`, `ProductOptionGroup`
+- ventas: `Order`, `OrderItem`, `OrderEvent`, `Payment`, `SubscriptionPayment`
+- marketing y growth: `Coupon`, `Campaign`, `Announcement`, `Lead`, `Favorite`, `Follow`
+- citas y servicios: `Appointment`, `Service`, `ServiceProvider`, `OpeningHour`
+- loyalty: `LoyaltyProgram`, `LoyaltyReward`, `LoyaltyLedger`
+- identidad y auth: `User`, `OneTimePassword`
+- discovery: `Category`, `City`, `Municipality`, `Department`, `Review`, `Interaction`
+- integracion y soporte: `WebhookLog`, `ProcessedEvent`
+
+## Frontend y DX
+
+Entrypoints de frontend:
+
+- `resources/js/app.jsx`: shell Inertia/React principal
+- `resources/js/app.js`: shell JS usado por Filament/Livewire
+
+Layouts React presentes:
+
+- `AppLayout`
+- `AuthenticatedLayout`
+- `GuestLayout`
+- `PublicLayout`
+- `ShopLayout`
+- `StoreLayout`
+- `TenantLayout`
+
+Paginas principales presentes en `resources/js/Pages`:
+
+- `Welcome`
+- `Public/*`
+- `Tenant/*`
+- `Auth/*`
+- `Buyer/*`
+- `Billing/*`
+- `Profile/*`
+- `User/*`
+
+Scripts utiles:
 
 ```bash
-# 1. Clonar repositorio
-git clone https://github.com/AugustoMelara-Dev/conectahn.git
-cd conectahn
-
-# 2. Instalar dependencias PHP
-composer install
-
-# 3. Instalar dependencias Node y compilar assets
-npm install && npm run build
-
-# 4. Configurar entorno
-cp .env.example .env
-php artisan key:generate
-
-# 5. Configurar base de datos en .env
-# DB_CONNECTION=mysql
-# DB_HOST=127.0.0.1
-# DB_PORT=3306
-# DB_DATABASE=conecta_hn
-# DB_USERNAME=root
-# DB_PASSWORD=
-
-# 6. Ejecutar migraciones y seeders
-# ⚠️ Los seeders crean: Admin user, roles/permisos, ciudades, categorías, y negocios de prueba
-php artisan migrate --seed
-
-# 7. Crear link simbólico para storage
-php artisan storage:link
-
-# 8. Iniciar servidor de desarrollo
-php artisan serve
+composer run dev
+composer test
+composer setup
+npm run dev
+npm run build
+npm run type-check
+npm run types:sync
 ```
 
-### Acceso al Sistema
+Scripts auxiliares en `scripts/`:
 
-| URL | Descripción | Credenciales |
-|-----|-------------|--------------|
-| `http://localhost:8000` | Landing Page Pública | - |
-| `http://localhost:8000/directorio` | Directorio de Negocios | - |
-| `http://localhost:8000/admin` | Super Admin Panel | Ver seeder |
-| `http://localhost:8000/app` | Tenant Dashboard | Ver seeder |
+- `run-concurrency-tests.ps1`
+- `run-concurrency-tests.sh`
+- `atomic-commits.ps1`
+- `git-atomic-commits.sh`
 
----
+## API actual
 
-## 🗺️ Roadmap
+Rutas activas bajo `/api/v1` incluyen:
 
-### Fase 2: Monetización Avanzada
-- [ ] **Integración de Pagos en Línea** (Stripe/PayPal para Honduras)
-- [ ] **Planes de Suscripción Automatizados** con renovación automática
-- [ ] **Sistema de Cupones y Descuentos** para promociones
+- `register`
+- `user`
+- `otp/generate`
+- `otp/verify`
+- `auth/social`
+- `interactions`
+- `analytics/track`
+- `analytics/conversion`
+- `products`
+- `coupons`
+- `orders`
+- `checkout/cart-summary`
+- `checkout/remove-coupon`
+- `checkout/validate-coupon`
+- `settings`
+- `reports/*`
+- `reports/download/{path}`
+- `exports/*`
+- `exports/download`
+- `notifications/*`
+- `ai/generate`
+- `ai/optimize-profile`
 
-### Fase 3: Engagement & Retención
-- [ ] **Notificaciones Push vía WhatsApp** (API oficial)
-- [ ] **Reportes Semanales Automáticos** por correo electrónico
-- [ ] **Sistema de Lealtad** (puntos por compra para compradores)
+Controles visibles en la capa API:
 
-### Fase 4: Expansión
-- [ ] **Aplicación Móvil PWA** con notificaciones push
-- [ ] **Marketplace Integrado** con carrito de compras
-- [ ] **Soporte Multi-país** (Guatemala, El Salvador)
+- `auth:sanctum` para rutas protegidas
+- `tenant.ownership` para aislamiento de tenant
+- `signed` para descargas
+- `cacheResponse:600` para catalogo publico
+- rate limiting especifico para OTP, verificacion, transacciones y trafico tenant-aware
 
----
+## Contratos y sincronizacion de tipos
 
-## 👥 Contribución
+Superficies de contratos presentes:
 
-1. Fork el repositorio
-2. Crea tu feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push al branch (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
+- JSON Schemas en `resources/schemas`
+- tipos TS generados en `resources/js/types/generated.d.ts`
+- comando `php artisan typescript:transform`
+- comando `php artisan schema:generate-types`
+- comando `php artisan schema:publish`
+- proto gRPC en `proto/identity/service.proto`
+- Swagger via `l5-swagger`
 
----
+## Realtime y push
 
-## 📄 Licencia
+La capa realtime visible hoy incluye:
 
-Este proyecto está bajo la licencia MIT. Ver el archivo `LICENSE` para más detalles.
+- `resources/js/bootstrap.js` inicializa `Laravel Echo` con broadcaster `reverb`.
+- `routes/channels.php` define canales privados por tenant, tenant admin, usuario y orden.
+- Hay broadcasts para pedidos (`paid`, `cancelled`, `shipped`, `refunded`), low stock, login detectado y actualizaciones de perfil de negocio.
+- El modelo `User` ya soporta Web Push subscriptions.
 
----
+## Asincronia, jobs y notificaciones
 
-<p align="center">
-  <strong>Construido con ❤️ para el comercio hondureño</strong><br>
-  <sub>© 2025 Conecta HN. Todos los derechos reservados.</sub>
-</p>
+Jobs detectados en el repo:
+
+- AI: perfil y enriquecimiento
+- analytics: record y sync
+- exports: sales export
+- reporting: PDF reports
+- governance: stale order release y tenant audits
+- media: blurhash de productos
+- marketing: campaign emails
+- appointments: reminders
+- payments: webhook processing
+
+Notificaciones presentes:
+
+- `NewOrderNotification`
+- `OrderStatusChangedNotification`
+- `ReportReadyNotification`
+- `ExportReadyNotification`
+- `ExportFailedNotification`
+- `ProductRejectedNotification`
+- `SubscriptionExpiringNotification`
+
+Canales de entrega visibles:
+
+- base de datos
+- mail
+- broadcast
+- web push
+
+Mails presentes:
+
+- bienvenida
+- OTP
+- cita confirmada
+- recordatorio de cita
+- payment confirmed / rejected
+- subscription expiring / expired
+- campaign offer
+- login alert
+
+## Scheduler actual
+
+Tareas programadas activas en `routes/console.php`:
+
+- `subscriptions:check-expiry`: diario a las `08:00`
+- liberacion de ordenes stale: cada 15 minutos
+- `storage:cleanup-orphans --grace=60`: cada hora
+- `outbox:process`: cada minuto
+- `auth:prune-idempotency --days=30 --chunk=1000`: diario a las `03:30`
+- `model:prune`: diario a las `04:00`
+- recordatorios de citas: cada hora
+- reconciliacion de suscripciones pendientes: cada hora
+
+## Comandos Artisan propios
+
+Comandos detectados en `app/Console/Commands` y `app/Infrastructure/Console/Commands`:
+
+- seguridad y auth: `security:attack-otp`, `auth:clear-otps`, `auth:prune-idempotency`
+- subscriptions y billing: `subscriptions:check-expiry`, `subscriptions:expire`, `subscription:lifecycle`, `billing:check-status`, `billing:force-promote`, `billing:prune-data`, `billing:reconcile-intents`
+- outbox y eventos: `outbox:process`, `outbox:prune`, `outbox:replay`, `infrastructure:process-outbox`, `infrastructure:outbox-coroner`, `event-sourcing:replay`, `projections:replay`, `app:validate-events`
+- schemas y contracts: `schema:generate-enums`, `schema:generate-types`, `schema:generate-sdk`, `schema:publish`, `schema:check-compatibility`
+- storage, media y sistema: `storage:cleanup-orphans`, `storage:rescue-proofs`, `media:clean-orphans`, `media:cleanup`, `system:prune`
+- DX y utilidades: `make:domain-event`, `seo:generate-sitemap`, `sitemap:generate`, `vito:recalculate-stats`
+
+`vito:recalculate-stats` recalcula ratings y contadores cuando se necesita corregir drift operacional.
+
+## Testing y calidad
+
+El repo contiene **244 archivos de test** al momento de esta actualizacion.
+
+Concentracion principal:
+
+- `tests/Architecture`
+- `tests/Contracts`
+- `tests/Feature`
+- `tests/Arch`
+- `tests/Unit`
+
+Herramientas y gates activos:
+
+- Pest 3
+- Pest Arch
+- PHPUnit 11
+- PHPStan nivel 5
+- Laravel Pint
+- CI en `.github/workflows/ci.yml`
+
+La pipeline principal ejecuta (cuando se dispara manualmente):
+
+- calidad y arquitectura con `pint`, `phpstan` y tests `arch`
+- integridad frontend con `php artisan typescript:transform` y `npm run build`
+- suite del sistema con `php artisan test --parallel`
+
+Cobertura visible en tests:
+
+- seguridad y rate limiting
+- tenancy y aislamiento
+- contratos y schemas
+- outbox y consistencia eventual
+- PWA / push subscriptions
+- broadcasting y payload contracts
+
+## Instalacion local
+
+### Requisitos
+
+- PHP 8.2+
+- Composer 2
+- Node.js 20 recomendado
+- npm 10+
+- SQLite para arranque rapido o MySQL / MariaDB para entornos mas persistentes
+
+### Variables minimas recomendadas
+
+El `.env.example` es minimo. Para que el proyecto y varios comandos de Artisan arranquen sin excepciones, configura al menos esto en local:
+
+```dotenv
+APP_NAME="Conecta HN"
+APP_URL=http://localhost:8000
+DB_CONNECTION=sqlite
+SESSION_DRIVER=database
+CACHE_STORE=database
+QUEUE_CONNECTION=database
+PAYMENT_PROVIDER=generic
+PAYMENT_WEBHOOK_SECRET=local-secret
+```
+
+`PAYMENT_WEBHOOK_SECRET` es importante: el contenedor lo exige al bootear `PaymentWebhookController`, asi que varios comandos de Artisan pueden fallar si esta vacio.
+
+### Arranque rapido con SQLite
+
+```bash
+composer install
+npm install
+cp .env.example .env
+touch database/database.sqlite
+php artisan key:generate
+php artisan migrate --seed
+php artisan storage:link
+composer run dev
+```
+
+Si usas PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+New-Item database/database.sqlite -ItemType File -Force
+```
+
+### Si prefieres MySQL y Redis
+
+1. Copia `.env.example` a `.env`.
+2. Ajusta `DB_*`, `REDIS_*`, `APP_URL`, `SESSION_DOMAIN` y las integraciones necesarias.
+3. Define `PAYMENT_WEBHOOK_SECRET`.
+4. Ejecuta `php artisan migrate --seed`.
+5. Inicia el entorno con `composer run dev`.
+
+### Seeders
+
+`php artisan migrate --seed` crea datos demo locales, incluyendo usuarios de prueba, categorias, ciudades y tenants. Revisa `database/seeders/DatabaseSeeder.php` antes de reutilizar esos datos fuera de local.
+
+## Operacion y despliegue
+
+Directorios de operacion presentes:
+
+- `devops/`: `deploy.sh`, `nginx_app.conf`, `vito-worker.conf`, README de despliegue
+- `deployment/nginx/`: config de `reverb_wss.conf`
+- `deployment/supervisor/`: workers y proceso de Reverb
+- `infrastructure/aws/`: politica de ciclo de vida para S3
+
+Configuracion relacionada con operacion:
+
+- `config/broadcasting.php` y `config/reverb.php` para realtime
+- `config/app.php`, `config/tenancy.php` y `config/cors.php` para tenancy y subdominios
+- `routes/public.php` conserva la referencia de subdomain routing mientras local usa fallback path-based en `/t/{tenant}`
+
+Consulta tambien:
+
+- `devops/README.md`
+- `docs/DEPLOY_JOBS_MIGRATION.md`
+- `SECURITY.md`
+
+## Legacy y piezas no primarias que siguen en el repo
+
+Para que no quede nada "suelto", vale la pena dejar registradas estas piezas:
+
+- `routes/public.php` contiene un mapa alterno/legacy de rutas publicas y documentacion de subdominios; la superficie activa principal hoy vive en `routes/web.php`, `routes/tenant.php`, `routes/auth.php`, `routes/api.php` y `routes/api_mock.php`.
+- Existen controladores como `Api\V1\SearchController` y `Api\V1\FollowController` que no forman parte tan claramente de la ruta principal activa actual.
+- El proyecto conserva vistas Livewire heredadas junto al frontend Inertia/React moderno.
+- `AppServiceProvider` todavia documenta y mantiene compatibilidad para aliases de jobs, modelos y migraciones internas.
+- El branding viejo `Vito Business OS` sigue disperso por Blade, React, emails, PDF, notificaciones, providers, configs y textos de negocio.
+
+## Documentacion relacionada
+
+- `docs/ARCHITECTURE.md`
+- `docs/ADR.md`
+- `docs/architecture/EVENTS_GUIDE.md`
+- `docs/architecture/decisions/*`
+- `docs/code-review/EVENT_REVIEW_CHECKLIST.md`
+- `docs/strategy/README.md`
+- `docs/strategy/VITO_CODE_VISION_MASTER.md`
+- `devops/README.md`
+- `SECURITY.md`
+
+## Licencia
+
+MIT.
