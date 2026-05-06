@@ -1,0 +1,410 @@
+{
+  "baseRef": "origin/main",
+  "sourceRef": "codex/critical-readiness-loop",
+  "targetPrSizeLines": "300-600",
+  "slices": [
+    {
+      "id": "PR-01",
+      "branch": "codex/pr-01-readiness-guardrails",
+      "title": "chore(readiness): guardrails y scripts QA/CI",
+      "scope": "Guardrails y scripts QA/CI de readiness (sin logica de negocio).",
+      "paths": [
+        "scripts/ci/check-ui-guardrails.mjs",
+        "scripts/ci/ui-guardrails-allowlist.json",
+        "scripts/e2e-server.mjs",
+        "scripts/qa/*.ps1",
+        "scripts/qa/*.mjs",
+        "docs/qa/critical-readiness-*.md",
+        "docs/qa/testing-readiness-gates-2026-05-04.md",
+        "docs/runbooks/RAILWAY_RELEASE_WITHOUT_GITHUB_ACTIONS.md",
+        "docs/devops/environment-secrets-baseline.md",
+        "package.json",
+        "phpunit.xml",
+        ".gitignore"
+      ],
+      "validation": [
+        "npm run check:ui-guardrails",
+        "php artisan config:cache"
+      ]
+    },
+    {
+      "id": "PR-02",
+      "branch": "codex/pr-02-i18n-naming-ux",
+      "title": "feat(i18n): naming UX y copy base",
+      "scope": "i18n y naming UX.",
+      "paths": [
+        "lang/es/ui.php",
+        "resources/js/lib/i18n.js",
+        "resources/js/lib/publicBrand.js",
+        "docs/qa/critical-readiness-i18n-naming-evidence-2026-05-04.md"
+      ],
+      "validation": [
+        "npm run build"
+      ]
+    },
+    {
+      "id": "PR-03",
+      "branch": "codex/pr-03-auth-onboarding-ux",
+      "title": "feat(auth): onboarding y robustez de formularios",
+      "scope": "Onboarding/Auth UX y robustez de formularios.",
+      "paths": [
+        "resources/js/Components/Auth/*.jsx",
+        "resources/js/Pages/Auth/*.jsx",
+        "resources/js/Pages/Profile/Partials/*.jsx",
+        "resources/js/Layouts/GuestLayout.jsx",
+        "resources/views/livewire/auth/*.blade.php",
+        "resources/views/livewire/auth/partials/*.blade.php",
+        "app/Domain/TenantGovernance/Services/TenantOnboardingProgressService.php",
+        "app/Http/Controllers/Web/RegistrationController.php",
+        "tests/Feature/Tenant/OnboardingProgressServiceTest.php",
+        "resources/js/__tests__/AuthComponents.test.jsx"
+      ],
+      "validation": [
+        "php artisan test --filter=OnboardingProgressServiceTest --colors=never",
+        "npm run build"
+      ]
+    },
+    {
+      "id": "PR-04",
+      "branch": "codex/pr-04-directory-explore-search",
+      "title": "feat(public): directorio, explore y busqueda",
+      "scope": "Directorio/Explore + busqueda publica.",
+      "paths": [
+        "resources/js/Pages/Directory/Index.jsx",
+        "resources/js/Pages/Public/Explore.jsx",
+        "resources/js/Layouts/PublicLayout.jsx",
+        "resources/js/Components/Organisms/LiveSearch.jsx",
+        "resources/views/components/directory/business-card.blade.php",
+        "resources/views/livewire/pages/partials/directory-filters.blade.php",
+        "app/Http/Controllers/Public/BookingController.php"
+      ],
+      "validation": [
+        "npm run build"
+      ]
+    },
+    {
+      "id": "PR-05",
+      "branch": "codex/pr-05-tenant-storefront-checkout",
+      "title": "feat(storefront): checkout y paginas de compra",
+      "scope": "Tenant storefront y checkout.",
+      "paths": [
+        "resources/js/Pages/Tenant/Checkout.jsx",
+        "resources/js/Pages/Tenant/ProductDetails.jsx",
+        "resources/js/Pages/Tenant/StoreHome.jsx",
+        "resources/js/Components/Tenant/*.jsx",
+        "resources/views/livewire/tenant/shop/show.blade.php",
+        "resources/views/livewire/tenant/upgrade.blade.php",
+        "tests/Feature/Web/BillingControllerTest.php"
+      ],
+      "validation": [
+        "php artisan test --filter=BillingControllerTest --colors=never",
+        "npm run build"
+      ]
+    },
+    {
+      "id": "PR-06",
+      "branch": "codex/pr-06-filament-panel-widgets",
+      "title": "feat(panel): widgets y vistas filament",
+      "scope": "Filament panel widgets/pages.",
+      "paths": [
+        "app/Filament/App/Pages/Dashboard.php",
+        "app/Filament/App/Resources/CrmDealResource.php",
+        "app/Filament/App/Resources/CrmDealResource/Pages/CreateCrmDeal.php",
+        "app/Filament/App/Resources/CrmDealResource/Pages/EditCrmDeal.php",
+        "app/Filament/App/Resources/CrmDealResource/Pages/ListCrmDeals.php",
+        "app/Filament/App/Resources/CrmDealResource/RelationManagers/DealNotesRelationManager.php",
+        "app/Filament/App/Resources/CrmDealResource/RelationManagers/DealTasksRelationManager.php",
+        "app/Filament/App/Resources/CrmPipelineResource.php",
+        "app/Filament/App/Resources/CrmPipelineResource/Pages/CreateCrmPipeline.php",
+        "app/Filament/App/Resources/CrmPipelineResource/Pages/EditCrmPipeline.php",
+        "app/Filament/App/Resources/CrmPipelineResource/Pages/ListCrmPipelines.php",
+        "app/Filament/App/Resources/CrmPipelineResource/RelationManagers/StagesRelationManager.php",
+        "app/Filament/App/Resources/ProductResource.php",
+        "app/Filament/App/Widgets/ProductLimitWidget.php",
+        "app/Filament/Resources/OrderResource.php",
+        "app/Filament/Resources/ProductResource.php",
+        "resources/views/filament/app/pages/business-copilot.blade.php",
+        "resources/views/filament/app/pages/customer-inbox.blade.php",
+        "resources/views/filament/app/pages/dashboard.blade.php",
+        "resources/views/filament/app/pages/dashboard/_business-overview.blade.php",
+        "resources/views/filament/app/pages/growth-center.blade.php",
+        "resources/views/filament/app/pages/kitchen-display.blade.php",
+        "resources/views/filament/app/pages/manage-billing.blade.php",
+        "resources/views/filament/app/pages/manage-marketing.blade.php",
+        "resources/views/filament/app/widgets/account-completeness-widget.blade.php",
+        "resources/views/filament/app/widgets/onboarding-activation-widget.blade.php",
+        "resources/views/filament/app/widgets/pending-review-alert.blade.php",
+        "resources/views/filament/app/widgets/product-limit-warning.blade.php",
+        "resources/views/filament/app/widgets/product-limit-widget.blade.php",
+        "resources/views/filament/app/widgets/quick-actions-widget.blade.php",
+        "resources/views/filament/app/widgets/tenant-stats-widget.blade.php",
+        "resources/views/filament/app/widgets/test-widget.blade.php",
+        "resources/views/filament/components/brand.blade.php",
+        "resources/views/filament/pages/dashboard.blade.php",
+        "resources/views/filament/pages/dashboard/_control-tower.blade.php",
+        "resources/views/filament/qr-card.blade.php",
+        "resources/views/filament/widgets/free-plan-alert.blade.php",
+        "resources/views/filament/widgets/free-plan-upsell.blade.php",
+        "tests/Feature/Filament/BusinessPageWorkflowTest.php",
+        "tests/Feature/Filament/CrmDealResourceGatingTest.php"
+      ],
+      "validation": [
+        "php artisan test --filter=Filament --colors=never"
+      ]
+    },
+    {
+      "id": "PR-07",
+      "branch": "codex/pr-07-new-migrations-may04",
+      "title": "feat(db): migraciones nuevas de mayo",
+      "scope": "Migraciones nuevas aisladas.",
+      "paths": [
+        "database/migrations/2026_05_04_170000_add_status_to_tenants_table.php",
+        "database/migrations/2026_05_04_193000_add_verification_status_to_tenants_table.php",
+        "tests/Feature/DevOps/DockerComposeContractTest.php",
+        "tests/Feature/DevOps/EntrypointProductionGuardTest.php",
+        "tests/Feature/DevOps/EnvExampleSecurityTest.php",
+        "tests/Feature/DevOps/ExceptionFallbackContractTest.php",
+        "tests/Feature/DevOps/LaunchRoutesAvailabilityTest.php",
+        "tests/Feature/DevOps/OnboardingE2EContractTest.php",
+        "tests/Feature/DevOps/ProductClaimsContractTest.php",
+        "tests/Feature/DevOps/SmokeWorkflowContractTest.php"
+      ],
+      "validation": [
+        "php artisan test --colors=never"
+      ]
+    },
+    {
+      "id": "PR-08",
+      "branch": "codex/pr-08-audit-evidence-handoff",
+      "title": "docs(qa): auditoria, evidencia y handoff",
+      "scope": "Docs de auditoria/evidencia/handoff finales.",
+      "paths": [
+        "AUDIT_CRITICAL_REPORT.md",
+        "AUDIT_UIUX_ACCESSIBILITY_REPORT.md",
+        "BACKLOG_CRITICAL_REFACTOR.md",
+        "BACKLOG_UIUX_REFACTOR.md",
+        "docs/frontend/**/*.md",
+        "docs/qa/**/*.md",
+        "docs/brand/**/*.md"
+      ],
+      "validation": [
+        "git diff --stat"
+      ]
+    },
+    {
+      "id": "PR-09",
+      "branch": "codex/pr-09-dynamic-forms-runtime",
+      "title": "feat(dynamic-forms): runtime contracts and persistence hardening",
+      "scope": "Dynamic Forms runtime/contracts/models/services/listeners/commands.",
+      "paths": [
+        "app/Application/DynamicForms/**/*.php",
+        "app/Console/Commands/DynamicForms*.php",
+        "app/Events/DynamicForms/*.php",
+        "app/Filament/App/Resources/Dynamic/**/*.php",
+        "app/Filament/Resources/DynamicPrintTemplateResource/**/*.php",
+        "app/Filament/Resources/EntityDefinitionResource/**/*.php",
+        "app/Filament/Resources/FieldDefinitionResource/**/*.php",
+        "app/Filament/Resources/LayoutDefinitionResource/**/*.php",
+        "app/Jobs/DynamicForms/*.php",
+        "app/Listeners/DynamicForms/*.php",
+        "app/Models/Dynamic/**/*.php",
+        "app/Services/DynamicForms/**/*.php",
+        "database/migrations/2026_04_23_150000_create_dynamic_schema_tables.php",
+        "database/migrations/2026_04_23_150100_create_dynamic_record_tables.php",
+        "database/migrations/2026_04_23_150200_create_dynamic_print_template_tables.php",
+        "database/migrations/2026_04_24_020000_create_dynamic_reindex_pipeline_tables.php",
+        "tests/Feature/Console/DynamicFormsReindexPipelineCommandsTest.php"
+      ],
+      "validation": [
+        "php artisan test --filter=DynamicForms --colors=never"
+      ]
+    },
+    {
+      "id": "PR-10",
+      "branch": "codex/pr-10-tenant-governance-crm-runtime",
+      "title": "feat(governance): tenant CRM services and touchpoint runtime",
+      "scope": "Tenant governance, CRM service runtime, policies, touchpoints and related models.",
+      "paths": [
+        "app/Application/TenantGovernance/**/*.php",
+        "app/Domain/Shared/Exceptions/TenantContextMutationException.php",
+        "app/Domain/TenantGovernance/**/*.php",
+        "app/Enums/TenantRole.php",
+        "app/Filament/App/Resources/CustomerTouchpointResource.php",
+        "app/Filament/App/Resources/Leads/LeadResource.php",
+        "app/Http/Controllers/Api/V1/Crm/*.php",
+        "app/Http/Controllers/Web/BillingController.php",
+        "app/Infrastructure/Repositories/TenantGovernance/**/*.php",
+        "app/Infrastructure/TenantGovernance/**/*.php",
+        "app/Models/Campaign.php",
+        "app/Models/CustomerTouchpoint.php",
+        "app/Models/OperationalPlaybookTask.php",
+        "app/Models/Tenant.php",
+        "app/Policies/LeadPolicy.php",
+        "app/Policies/TenantAwarePolicy.php",
+        "config/permissions-matrix.php",
+        "config/surfaces.php",
+        "database/migrations/2026_03_25_000000_add_crm_watchlist_fields_to_tenants_table.php",
+        "database/migrations/2026_03_25_020000_add_business_segment_key_to_tenants_table.php",
+        "database/migrations/2026_03_25_040000_create_customer_profiles_table.php",
+        "database/migrations/2026_03_25_060000_add_provider_tracking_to_customer_touchpoints_table.php",
+        "database/migrations/2026_03_25_065000_create_customer_loyalty_ledger_table.php",
+        "database/migrations/2026_03_25_067000_add_campaign_assignment_and_filters_to_crm_tables.php",
+        "database/migrations/2026_03_25_070000_add_template_retry_governance_to_customer_touchpoints_table.php",
+        "database/migrations/2026_04_26_212000_add_campaign_dispatch_idempotency.php",
+        "tests/Feature/Domain/TenantContextTest.php",
+        "tests/Feature/Operations/OperationalAutomationNotificationTest.php",
+        "tests/Feature/Web/BillingControllerTest.php"
+      ],
+      "validation": [
+        "php artisan test --filter=Tenant --colors=never",
+        "php artisan test --filter=BillingControllerTest --colors=never"
+      ]
+    },
+    {
+      "id": "PR-11",
+      "branch": "codex/pr-11-infra-directory-rag-ops",
+      "title": "feat(infra): directory sync RAG and runtime operations",
+      "scope": "Directory embeddings, RAG, auth infra listeners/repositories, release notifier and runtime ops.",
+      "paths": [
+        ".env.example",
+        ".github/workflows/smoke-post-deploy.yml",
+        "app/Console/Commands/ProductionStorageGuardCommand.php",
+        "app/Console/Commands/SyncDirectoryEmbeddingsCommand.php",
+        "app/Http/Middleware/HandleInertiaRequests.php",
+        "app/Infrastructure/Auth/**/*.php",
+        "app/Infrastructure/BusinessAi/**/*.php",
+        "app/Jobs/Directory/*.php",
+        "app/Jobs/SendAppointmentReminders.php",
+        "app/Listeners/Directory/*.php",
+        "app/Providers/InfrastructureServiceProvider.php",
+        "app/Settings/GeneralSettings.php",
+        "app/Support/Release/ReleaseAlertNotifier.php",
+        "config/directory.php",
+        "database/migrations/2026_02_17_000000_create_inbound_webhooks_table.php",
+        "docs/audits/*.md",
+        "docs/integrations/*.md",
+        "tests/Feature/Api/BusinessAiRagApiTest.php",
+        "tests/Feature/Console/ProductionStorageGuardCommandTest.php",
+        "tests/e2e/smoke-post-deploy.spec.ts",
+        "tests/e2e/support/fixtures.ts",
+        "tests/e2e/support/smoke-http.ts"
+      ],
+      "validation": [
+        "php artisan test --filter=BusinessAiRagApiTest --colors=never",
+        "php artisan config:cache"
+      ]
+    },
+    {
+      "id": "PR-12",
+      "branch": "codex/pr-12-database-schema-alignment",
+      "title": "feat(db): align core schema migrations and factories",
+      "scope": "Core historical migrations, factories, seeders and persistence schema alignment.",
+      "paths": [
+        "database/factories/UserFactory.php",
+        "database/migrations/0000_01_01_000001_create_tenants_table.php",
+        "database/migrations/2025_01_01_000004_create_products_tables.php",
+        "database/migrations/2025_01_01_000005_create_social_tables.php",
+        "database/migrations/2025_01_03_000000_create_opening_hours_table.php",
+        "database/migrations/2025_12_15_184458_add_style_columns_to_categories_table.php",
+        "database/migrations/2025_12_16_002702_add_hierarchy_fields_to_categories_table.php",
+        "database/migrations/2025_12_17_231630_create_tenant_visits_table.php",
+        "database/migrations/2025_12_22_030912_create_product_modifiers_tables.php",
+        "database/migrations/2025_12_26_020600_add_tracking_uuid_to_orders_table.php",
+        "database/migrations/2025_12_27_231500_add_dashboard_compound_index_to_orders_table.php",
+        "database/migrations/2026_01_20_000003_add_idempotency_key_to_payments_table.php",
+        "database/migrations/2026_01_20_000004_add_version_to_payments_table.php",
+        "database/migrations/2026_02_06_120000_align_order_items_with_model.php",
+        "database/migrations/2026_02_08_180000_create_loyalty_system_tables.php",
+        "database/migrations/2026_02_08_190000_add_business_type_to_tenants_table.php",
+        "database/migrations/2026_02_08_200000_create_service_domain_tables.php",
+        "database/migrations/2026_03_13_000000_create_inventory_holds_table.php",
+        "database/migrations/2026_03_16_020000_create_tenant_memberships_table.php",
+        "database/migrations/2026_03_16_030000_create_locations_table.php",
+        "database/migrations/2026_03_16_040000_create_inventory_levels_table.php",
+        "database/migrations/2026_03_16_040001_create_inventory_movements_table.php",
+        "database/migrations/2026_04_15_120000_consolidate_orders_and_notifications_wave3.php",
+        "database/seeders/E2EStorefrontSeeder.php",
+        "app/Http/Requests/StoreOrderRequest.php",
+        "app/Services/InventoryManager.php",
+        "tests/TestCase.php"
+      ],
+      "validation": [
+        "php artisan test --colors=never"
+      ]
+    },
+    {
+      "id": "PR-13",
+      "branch": "codex/pr-13-react-ui-system-surfaces",
+      "title": "feat(ui): React system surfaces and tenant UX polish",
+      "scope": "React/Inertia shared components, layouts, auth pages, tenant pages and frontend test config.",
+      "paths": [
+        "resources/css/**/*.css",
+        "resources/js/app.jsx",
+        "resources/js/Components/**/*.jsx",
+        "resources/js/Components/**/*.tsx",
+        "resources/js/Layouts/**/*.jsx",
+        "resources/js/Pages/**/*.jsx",
+        "resources/js/lib/tenantPresentation.js",
+        "resources/js/types/**/*.ts",
+        "resources/js/__tests__/*.jsx",
+        "playwright.config.ts",
+        "vitest.config.js"
+      ],
+      "validation": [
+        "npm run build",
+        "npm run test:ui"
+      ]
+    },
+    {
+      "id": "PR-14",
+      "branch": "codex/pr-14-blade-livewire-copy-a11y",
+      "title": "fix(blade): Livewire Blade copy and accessibility polish",
+      "scope": "Blade/Livewire/PDF/email templates, legacy views and copy/a11y cleanup.",
+      "paths": [
+        "resources/views/**/*.blade.php"
+      ],
+      "validation": [
+        "npm run build"
+      ]
+    },
+    {
+      "id": "PR-15",
+      "branch": "codex/pr-15-routes-config-test-harness",
+      "title": "chore(platform): routes config and test harness alignment",
+      "scope": "Routes, composer/docker/test harness and QA helper scripts not owned by product slices.",
+      "paths": [
+        ".github/pull_request_template.md",
+        "composer.json",
+        "docker-compose.testing.yml",
+        "docker-compose.yml",
+        "routes/*.php",
+        "scripts/git/**/*.ps1",
+        "scripts/git/**/*.json",
+        "scripts/qa/*.ps1",
+        "scripts/qa/*.mjs",
+        "docs/qa/surgical-pr-*.md",
+        "docs/qa/testsprite-mcp-setup.md",
+        "tests/Feature/DevOps/**/*.php"
+      ],
+      "validation": [
+        "php artisan route:list",
+        "php artisan config:cache"
+      ]
+    },
+    {
+      "id": "PR-16",
+      "branch": "codex/pr-16-extended-evidence-docs",
+      "title": "docs(audit): extended frontend QA evidence artifacts",
+      "scope": "Extended frontend/QA/brand evidence docs and browser artifacts.",
+      "paths": [
+        "docs/brand/**/*.md",
+        "docs/frontend/**/*.md",
+        "docs/frontend/**/*.png",
+        "docs/qa/**/*.md"
+      ],
+      "validation": [
+        "git diff --stat"
+      ]
+    }
+  ]
+}
