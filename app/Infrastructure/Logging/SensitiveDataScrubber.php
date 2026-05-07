@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Logging;
 
+use App\Application\Shared\Contracts\DataScrubberInterface;
+
 /**
  * SensitiveDataScrubber - PII Shield
  *
  * Recursively sanitizes data structures to prevent PII leakage in logs.
  * Configurable blacklist of sensitive keys.
  */
-final readonly class SensitiveDataScrubber
+final readonly class SensitiveDataScrubber implements DataScrubberInterface
 {
     private const DEFAULT_SENSITIVE_KEYS = [
         'password',

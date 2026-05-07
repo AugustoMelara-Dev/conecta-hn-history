@@ -27,6 +27,11 @@ class Lead extends Model
         'product_id',
         'source',
         'session_id',
+        'utm_source',
+        'utm_medium',
+        'utm_campaign',
+        'utm_term',
+        'utm_content',
         'message',
         'status',
     ];

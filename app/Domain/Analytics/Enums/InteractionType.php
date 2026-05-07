@@ -23,6 +23,12 @@ enum InteractionType: string
     case SOCIAL_SHARE = 'social_share';
     case CONVERSION = 'conversion';
     case PURCHASE = 'purchase';
+    case MICROSITE_VIEW = 'microsite_view';
+    case CHECKOUT_STARTED = 'checkout_started';
+    case CHECKOUT_PAID = 'checkout_paid';
+    case UPGRADE_STARTED = 'upgrade_started';
+    case UPGRADE_PAID = 'upgrade_paid';
+    case LEAD_CREATED = 'lead_created';
 
     /**
      * Get all valid type values as array.
@@ -49,6 +55,12 @@ enum InteractionType: string
             self::SOCIAL_SHARE->value => 'Social Share',
             self::CONVERSION->value => 'Conversion',
             self::PURCHASE->value => 'Purchase',
+            self::MICROSITE_VIEW->value => 'Microsite Visit',
+            self::CHECKOUT_STARTED->value => 'Checkout Started',
+            self::CHECKOUT_PAID->value => 'Checkout Paid',
+            self::UPGRADE_STARTED->value => 'Upgrade Started',
+            self::UPGRADE_PAID->value => 'Upgrade Paid',
+            self::LEAD_CREATED->value => 'Lead Created',
         ];
     }
 }

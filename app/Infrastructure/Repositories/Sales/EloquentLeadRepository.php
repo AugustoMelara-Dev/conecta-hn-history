@@ -6,35 +6,38 @@ namespace App\Infrastructure\Repositories\Sales;
 
 use App\Domain\Sales\Entities\LeadEntity;
 use App\Domain\Sales\Repositories\LeadRepositoryInterface;
+use App\Infrastructure\Sales\Mappers\LeadMapper;
 use App\Models\Lead;
 
-/**
- * EloquentLeadRepository - Infrastructure Adapter for Lead Persistence
- *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  DATA MAPPER: Converts Eloquent models to domain entities.              ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
- */
 final class EloquentLeadRepository implements LeadRepositoryInterface
 {
     /**
      * {@inheritDoc}
      */
     public function createFromInteraction(
-        int $tenantId,
+        string $tenantId,
         ?int $productId,
         string $source,
-        ?string $message = null
+        ?string $message = null,
+        ?string $sessionId = null,
+        array $attribution = [],
     ): LeadEntity {
         $model = Lead::create([
             'tenant_id' => $tenantId,
+            'name' => $source === 'whatsapp_click' ? 'Lead desde WhatsApp' : 'Lead web',
             'product_id' => $productId,
             'source' => $source,
-            'message' => $message ?? 'Clic en WhatsApp desde el Catálogo',
+            'session_id' => $sessionId,
+            'utm_source' => $this->stringAttribution($attribution, 'utm_source'),
+            'utm_medium' => $this->stringAttribution($attribution, 'utm_medium'),
+            'utm_campaign' => $this->stringAttribution($attribution, 'utm_campaign'),
+            'utm_term' => $this->stringAttribution($attribution, 'utm_term'),
+            'utm_content' => $this->stringAttribution($attribution, 'utm_content'),
+            'message' => $message ?? 'Clic en WhatsApp desde el catalogo',
             'status' => 'new',
         ]);
 
-        return LeadEntity::fromModel($model);
+        return LeadMapper::toDomain($model);
     }
 
     /**
@@ -44,6 +47,16 @@ final class EloquentLeadRepository implements LeadRepositoryInterface
     {
         $model = Lead::find($id);
 
-        return $model ? LeadEntity::fromModel($model) : null;
+        return $model ? LeadMapper::toDomain($model) : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $attribution
+     */
+    private function stringAttribution(array $attribution, string $key): ?string
+    {
+        $value = $attribution[$key] ?? null;
+
+        return is_string($value) && $value !== '' ? $value : null;
     }
 }

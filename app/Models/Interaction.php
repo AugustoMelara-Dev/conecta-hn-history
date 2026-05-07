@@ -15,14 +15,28 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * WhatsApp clicks, calls, location views, cart additions.
  *
  * SECURITY: Uses BelongsToTenant trait for automatic tenant isolation
+ *
+ * @property string|null $session_id
+ * @property string|null $ip_address
  */
 class Interaction extends Model
 {
     use BelongsToTenant;
 
     protected $fillable = [
+        'visitor_id',
+        'session_id',
         'product_id',
         'type',
+        'ip_address',
+        'user_agent',
+        'referrer',
+        'url',
+        'utm_source',
+        'utm_medium',
+        'utm_campaign',
+        'utm_term',
+        'utm_content',
         'metadata',
     ];
 
@@ -44,12 +58,30 @@ class Interaction extends Model
      * - Conversion events: conversion (generic), purchase (specific)
      */
     public const TYPE_WHATSAPP_CLICK = 'whatsapp_click';
+
     public const TYPE_CALL_CLICK = 'call';
+
     public const TYPE_LOCATION_VIEW = 'location_view';
+
     public const TYPE_CART_ADD = 'cart_add';
+
     public const TYPE_SOCIAL_SHARE = 'social_share';
+
     public const TYPE_CONVERSION = 'conversion';
+
     public const TYPE_PURCHASE = 'purchase';
+
+    public const TYPE_MICROSITE_VIEW = 'microsite_view';
+
+    public const TYPE_CHECKOUT_STARTED = 'checkout_started';
+
+    public const TYPE_CHECKOUT_PAID = 'checkout_paid';
+
+    public const TYPE_UPGRADE_STARTED = 'upgrade_started';
+
+    public const TYPE_UPGRADE_PAID = 'upgrade_paid';
+
+    public const TYPE_LEAD_CREATED = 'lead_created';
 
     /**
      * Available interaction types.
@@ -66,6 +98,12 @@ class Interaction extends Model
         self::TYPE_SOCIAL_SHARE => 'Social Share',
         self::TYPE_CONVERSION => 'Conversion',
         self::TYPE_PURCHASE => 'Purchase',
+        self::TYPE_MICROSITE_VIEW => 'Microsite Visit',
+        self::TYPE_CHECKOUT_STARTED => 'Checkout Started',
+        self::TYPE_CHECKOUT_PAID => 'Checkout Paid',
+        self::TYPE_UPGRADE_STARTED => 'Upgrade Started',
+        self::TYPE_UPGRADE_PAID => 'Upgrade Paid',
+        self::TYPE_LEAD_CREATED => 'Lead Created',
     ];
 
     /**

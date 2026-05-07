@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 use App\Filament\App\Widgets\OrdersChart;
 use App\Filament\App\Widgets\RevenueChart;
-
-// ═══════════════════════════════════════════════════════════════════════
-// DASHBOARD CHART WIDGETS TESTS
-// ═══════════════════════════════════════════════════════════════════════
+use App\Filament\Pages\Dashboard as SuperAdminDashboard;
+use App\Filament\Widgets\FinancialStatsOverview;
 
 describe('RevenueChart Widget', function () {
     it('exists and is properly configured', function () {
@@ -16,6 +14,7 @@ describe('RevenueChart Widget', function () {
 
     it('extends ChartWidget', function () {
         $reflection = new ReflectionClass(RevenueChart::class);
+
         expect($reflection->getParentClass()->getName())
             ->toBe(\Filament\Widgets\ChartWidget::class);
     });
@@ -24,11 +23,11 @@ describe('RevenueChart Widget', function () {
         $reflection = new ReflectionClass(RevenueChart::class);
         $heading = $reflection->getProperty('heading');
 
-        expect($heading->getDefaultValue())->toBe('Ingresos Estimados (Últimos 30 días)');
+        expect($heading->getDefaultValue())->toBe('Ingresos por Ordenes (Ultimos 30 dias)');
     });
 
     it('is configured as line chart', function () {
-        $widget = new RevenueChart();
+        $widget = new RevenueChart;
         $method = new ReflectionMethod($widget, 'getType');
         $method->setAccessible(true);
 
@@ -50,6 +49,7 @@ describe('OrdersChart Widget', function () {
 
     it('extends ChartWidget', function () {
         $reflection = new ReflectionClass(OrdersChart::class);
+
         expect($reflection->getParentClass()->getName())
             ->toBe(\Filament\Widgets\ChartWidget::class);
     });
@@ -58,11 +58,11 @@ describe('OrdersChart Widget', function () {
         $reflection = new ReflectionClass(OrdersChart::class);
         $heading = $reflection->getProperty('heading');
 
-        expect($heading->getDefaultValue())->toBe('Citas por Día (Última Semana)');
+        expect($heading->getDefaultValue())->toBe('Ordenes por Dia (Ultima Semana)');
     });
 
     it('is configured as bar chart', function () {
-        $widget = new OrdersChart();
+        $widget = new OrdersChart;
         $method = new ReflectionMethod($widget, 'getType');
         $method->setAccessible(true);
 
@@ -71,17 +71,27 @@ describe('OrdersChart Widget', function () {
 });
 
 describe('Widget Registration', function () {
-    it('RevenueChart is registered in AppPanelProvider', function () {
-        $providerPath = app_path('Providers/Filament/AppPanelProvider.php');
+    it('custom dashboard page is available to the admin panel discovery path', function () {
+        $providerPath = dirname(__DIR__, 3).'/app/Providers/Filament/AdminPanelProvider.php';
         $content = file_get_contents($providerPath);
 
-        expect($content)->toContain('RevenueChart::class');
+        expect($content)
+            ->toContain("discoverPages(in: app_path('Filament/Pages')")
+            ->toContain('Dashboard::class');
     });
 
-    it('OrdersChart is registered in AppPanelProvider', function () {
-        $providerPath = app_path('Providers/Filament/AppPanelProvider.php');
+    it('admin dashboard registers financial launch widgets', function () {
+        $providerPath = dirname(__DIR__, 3).'/app/Providers/Filament/AdminPanelProvider.php';
         $content = file_get_contents($providerPath);
 
-        expect($content)->toContain('OrdersChart::class');
+        expect($content)->toContain(FinancialStatsOverview::class);
+    });
+
+    it('super admin dashboard exposes financial launch metrics', function () {
+        $dashboard = new SuperAdminDashboard;
+        $method = new ReflectionMethod($dashboard, 'getHeaderWidgets');
+        $method->setAccessible(true);
+
+        expect($method->invoke($dashboard))->toContain(FinancialStatsOverview::class);
     });
 });

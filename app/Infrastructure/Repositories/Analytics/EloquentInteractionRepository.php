@@ -6,8 +6,9 @@ namespace App\Infrastructure\Repositories\Analytics;
 
 use App\Domain\Analytics\Entities\InteractionEntity;
 use App\Domain\Analytics\Repositories\InteractionRepositoryInterface;
+use App\Infrastructure\Persistence\Eloquent\Scopes\TenantScope;
 use App\Models\Interaction;
-use Carbon\Carbon;
+use DateTimeImmutable;
 
 /**
  * EloquentInteractionRepository - Infrastructure Adapter for Interaction Persistence
@@ -23,14 +24,19 @@ final class EloquentInteractionRepository implements InteractionRepositoryInterf
      * {@inheritDoc}
      */
     public function hasRecentInteraction(
-        int $tenantId,
+        string $tenantId,
         string $visitorId,
         string $type,
         int $withinMinutes = 5
     ): bool {
-        return Interaction::query()
+        return $this->trustedTenantQuery()
             ->where('tenant_id', $tenantId)
-            ->where('visitor_id', $visitorId) // CRITICAL: Per-visitor deduplication
+            ->where(function ($query) use ($visitorId): void {
+                $query
+                    ->where('visitor_id', $visitorId)
+                    ->orWhere('session_id', $visitorId)
+                    ->orWhere('metadata->session_id', $visitorId);
+            })
             ->where('type', $type)
             ->where('created_at', '>=', now()->subMinutes($withinMinutes))
             ->exists();
@@ -40,29 +46,57 @@ final class EloquentInteractionRepository implements InteractionRepositoryInterf
      * {@inheritDoc}
      */
     public function create(
-        int $tenantId,
+        string $tenantId,
         string $visitorId,
         string $type,
-        ?int $productId = null,
+        ?string $productId = null,
         ?string $ipAddress = null,
         ?string $userAgent = null,
         ?string $referrer = null,
         ?string $url = null,
+        array $attribution = [],
         array $metadata = []
     ): InteractionEntity {
-        $model = Interaction::create([
+        $model = new Interaction;
+        $model->forceFill([
             'tenant_id' => $tenantId,
             'visitor_id' => $visitorId,
+            'session_id' => $visitorId,
             'type' => $type,
             'product_id' => $productId,
             'ip_address' => $ipAddress,
             'user_agent' => $userAgent,
             'referrer' => $referrer,
             'url' => $url,
+            'utm_source' => $this->stringAttribution($attribution, 'utm_source'),
+            'utm_medium' => $this->stringAttribution($attribution, 'utm_medium'),
+            'utm_campaign' => $this->stringAttribution($attribution, 'utm_campaign'),
+            'utm_term' => $this->stringAttribution($attribution, 'utm_term'),
+            'utm_content' => $this->stringAttribution($attribution, 'utm_content'),
             'metadata' => $metadata,
         ]);
+        $model->save();
 
         return $this->toEntity($model);
+    }
+
+    private function trustedTenantQuery()
+    {
+        // Public analytics requests arrive without an initialized TenantContext.
+        // This repository already receives an explicit tenant identifier, so we
+        // bypass only the global tenant scope and keep the rest of the model
+        // behavior intact.
+        return Interaction::query()->withoutGlobalScope(TenantScope::class);
+    }
+
+    /**
+     * @param  array<string, mixed>  $attribution
+     */
+    private function stringAttribution(array $attribution, string $key): ?string
+    {
+        $value = $attribution[$key] ?? null;
+
+        return is_string($value) && $value !== '' ? $value : null;
     }
 
     /**
@@ -70,17 +104,21 @@ final class EloquentInteractionRepository implements InteractionRepositoryInterf
      */
     private function toEntity(Interaction $model): InteractionEntity
     {
+        $createdAt = $model->created_at;
+
         return new InteractionEntity(
-            id: $model->id,
-            tenantId: $model->tenant_id,
-            type: $model->type,
-            productId: $model->product_id,
-            ipAddress: $model->ip_address,
-            userAgent: $model->user_agent,
-            referrer: $model->referrer,
-            url: $model->url,
-            metadata: $model->metadata ?? [],
-            createdAt: Carbon::parse($model->created_at),
+            id: (int) $model->getKey(),
+            tenantId: (string) ($model->getAttribute('tenant_id') ?? ''),
+            type: (string) $model->type,
+            productId: is_numeric($model->getAttribute('product_id')) ? (int) $model->getAttribute('product_id') : null,
+            ipAddress: ($value = $model->getAttribute('ip_address')) !== null ? (string) $value : null,
+            userAgent: ($value = $model->getAttribute('user_agent')) !== null ? (string) $value : null,
+            referrer: ($value = $model->getAttribute('referrer')) !== null ? (string) $value : null,
+            url: ($value = $model->getAttribute('url')) !== null ? (string) $value : null,
+            metadata: is_array($model->getAttribute('metadata')) ? $model->getAttribute('metadata') : [],
+            createdAt: $createdAt !== null
+                ? DateTimeImmutable::createFromInterface($createdAt)
+                : new DateTimeImmutable,
         );
     }
 }

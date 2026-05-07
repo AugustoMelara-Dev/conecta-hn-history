@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domain\Interactions\Events;
 
-use Illuminate\Foundation\Events\Dispatchable;
+use DateTimeImmutable;
 
 final readonly class InteractionRecorded
 {
     public function __construct(
-        public int $interactionId,
-        public int $tenantId,
+        public string $interactionId,
+        public string $tenantId,
+        public DateTimeImmutable $occurredAt,
     ) {}
 }

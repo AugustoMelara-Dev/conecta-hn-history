@@ -72,6 +72,18 @@ class AppServiceProvider extends ServiceProvider
             \App\Infrastructure\Logging\LaravelLoggerAdapter::class
         );
         $this->app->bind(
+            \App\Application\Shared\Contracts\DataScrubberInterface::class,
+            \App\Infrastructure\Logging\SensitiveDataScrubber::class
+        );
+        $this->app->bind(
+            \App\Application\Shared\Contracts\MetadataSanitizerInterface::class,
+            \App\Infrastructure\Security\MetadataSanitizer::class
+        );
+        $this->app->bind(
+            \App\Application\Shared\Contracts\TenantRateLimiterInterface::class,
+            \App\Infrastructure\Security\CacheTenantRateLimiter::class
+        );
+        $this->app->bind(
             \App\Contracts\DataExportInterface::class,
             \App\Services\ExcelExportService::class
         );
