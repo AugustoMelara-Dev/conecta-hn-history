@@ -31,6 +31,7 @@ return [
             'price' => 49900, // L. 499.00
             'original_price' => 79900, // Strike-through price
             'currency' => 'HNL',
+            'stripe_price_id' => env('STRIPE_PRICE_PRO'),
             'features' => [
                 'Productos ilimitados',
                 'Integración con WhatsApp',

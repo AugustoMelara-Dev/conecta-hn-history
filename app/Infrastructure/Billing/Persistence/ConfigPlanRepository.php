@@ -8,6 +8,7 @@ use App\Domain\Billing\Entities\PlanEntity;
 use App\Domain\Billing\Repositories\PlanRepositoryInterface;
 use App\Domain\Shared\ValueObjects\Money;
 use App\Domain\TenantGovernance\Enums\TenantPlan;
+use Illuminate\Support\Str;
 
 /**
  * ConfigPlanRepository - Immutable Plan Configuration
@@ -18,7 +19,8 @@ final class ConfigPlanRepository implements PlanRepositoryInterface
 {
     public function findByIdentifier(string $planIdentifier): ?PlanEntity
     {
-        $planEnum = TenantPlan::tryFrom($planIdentifier);
+        $normalized = $planIdentifier === 'free' ? TenantPlan::SEMILLA->value : $planIdentifier;
+        $planEnum = TenantPlan::tryFrom($normalized);
 
         if (! $planEnum) {
             return null;
@@ -37,20 +39,28 @@ final class ConfigPlanRepository implements PlanRepositoryInterface
 
     private function mapEnumToEntity(TenantPlan $plan): PlanEntity
     {
-        // Pricing Logic (Mocked for Level 30 bootstrapping, should come from Config)
-        $prices = [
-            TenantPlan::SEMILLA->value => 0,
-            TenantPlan::PRO->value => 2900, // 29.00 HNL (Example)
-        ];
+        /** @var array<string, mixed> $configuredPlan */
+        $configuredPlan = config('subscriptions.plans.'.$plan->value, []);
+        if ($configuredPlan === [] && $plan === TenantPlan::SEMILLA) {
+            $configuredPlan = config('subscriptions.plans.free', []);
+        }
+
+        $amount = (int) ($configuredPlan['price'] ?? 0);
+        $currency = strtoupper((string) ($configuredPlan['currency'] ?? 'HNL'));
+        $externalGatewayId = (string) ($configuredPlan['stripe_price_id'] ?? '');
+
+        if ($externalGatewayId === '' && $plan === TenantPlan::PRO) {
+            $externalGatewayId = (string) config('services.stripe.price_pro', '');
+        }
 
         return new PlanEntity(
             id: $plan->value,
-            name: ucfirst($plan->value),
+            name: (string) ($configuredPlan['name'] ?? Str::headline($plan->value)),
             price: new Money(
-                amount: $prices[$plan->value] ?? 9900,
-                currency: 'HNL'
+                amount: $amount,
+                currency: $currency
             ),
-            externalGatewayId: 'plan_'.$plan->value
+            externalGatewayId: $externalGatewayId !== '' ? $externalGatewayId : 'plan_'.$plan->value
         );
     }
 }

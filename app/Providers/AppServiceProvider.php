@@ -68,6 +68,10 @@ class AppServiceProvider extends ServiceProvider
             \App\Services\LaravelLoggerAdapter::class
         );
         $this->app->bind(
+            \App\Application\Shared\Contracts\LoggerInterface::class,
+            \App\Infrastructure\Logging\LaravelLoggerAdapter::class
+        );
+        $this->app->bind(
             \App\Contracts\DataExportInterface::class,
             \App\Services\ExcelExportService::class
         );
@@ -200,6 +204,10 @@ class AppServiceProvider extends ServiceProvider
             \App\Infrastructure\Billing\Persistence\ConfigPlanRepository::class
         );
         $this->app->bind(
+            \App\Domain\Billing\Repositories\SubscriptionIntentRepositoryInterface::class,
+            \App\Infrastructure\Billing\Persistence\EloquentSubscriptionIntentRepository::class
+        );
+        $this->app->bind(
             \App\Domain\Marketing\Contracts\CouponReader::class,
             \App\Infrastructure\Marketing\EloquentCouponReader::class
         );
@@ -274,6 +282,10 @@ class AppServiceProvider extends ServiceProvider
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
             \App\Domain\Payment\Repositories\WebhookLogRepositoryInterface::class,
+            \App\Infrastructure\Repositories\Payment\EloquentWebhookLogRepository::class
+        );
+        $this->app->bind(
+            \App\Domain\Billing\Repositories\WebhookLogRepositoryInterface::class,
             \App\Infrastructure\Repositories\Payment\EloquentWebhookLogRepository::class
         );
 
@@ -516,6 +528,18 @@ class AppServiceProvider extends ServiceProvider
             \App\Domain\Billing\Gateways\SubscriptionGatewayInterface::class,
             \App\Infrastructure\Billing\Gateways\ManualSubscriptionGateway::class
         );
+        $this->app->bind(
+            \App\Domain\Billing\Gateways\SubscriptionCheckoutGatewayInterface::class,
+            fn () => strtolower((string) config('services.payment.provider', 'generic')) === 'stripe'
+                ? new \App\Infrastructure\Payments\Stripe\StripeSubscriptionCheckoutGateway
+                : new \App\Infrastructure\Billing\Gateways\ManualSubscriptionCheckoutGateway
+        );
+
+        $this->app->when(\App\Http\Controllers\Webhook\PaymentWebhookController::class)
+            ->needs('$webhookSecret')
+            ->give(fn () => strtolower((string) config('services.payment.provider', 'generic')) === 'stripe'
+                ? (string) config('services.stripe.webhook_secret', '')
+                : (string) config('services.payment.webhook_secret', ''));
 
         // ═══════════════════════════════════════════════════════════════════════
         // BILLING DOMAIN: Handler Decorator Pipelines (Validation Layer)
