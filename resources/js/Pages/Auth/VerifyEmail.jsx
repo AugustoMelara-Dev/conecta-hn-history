@@ -1,50 +1,120 @@
-import PrimaryButton from '@/Components/PrimaryButton';
-import GuestLayout from '@/Layouts/GuestLayout';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from "@inertiajs/react"
+import { ArrowRight, MailCheck, RefreshCcw } from "lucide-react"
 
-export default function VerifyEmail({ status }) {
-    const { post, processing } = useForm({});
+import { Alert, AlertDescription, AlertTitle } from "@/Components/ui/alert"
+import { Button } from "@/Components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/Components/ui/card"
+import { Field, FieldDescription, FieldGroup, FieldSeparator } from "@/Components/ui/field"
 
-    const submit = (e) => {
-        e.preventDefault();
+const COPY = {
+    headTitle: "Verificar correo",
+    title: "Confirma tu correo",
+    descriptionPrefix: "Te enviamos un enlace de verificacion a",
+    descriptionSuffix: "Abre ese correo y vuelve aqui para continuar.",
+    resentTitle: "Enlace reenviado",
+    resentDescription: "Te enviamos un nuevo enlace de verificacion.",
+    nextActionTitle: "Siguiente paso: {title}",
+    progressLabel: "Progreso de onboarding: {progress}%",
+    resendIdle: "Reenviar correo de verificacion",
+    resendProcessing: "Reenviando...",
+    alternateAccount: "o usa otra cuenta",
+    logout: "Cerrar sesion",
+    footerDescription: "Si cambiaste de correo, cierra sesion y vuelve a ingresar con la cuenta correcta.",
+}
 
-        post(route('verification.send'));
-    };
+function t(key, params = {}) {
+    const template = COPY[key] ?? key
+    return Object.entries(params).reduce((text, [paramKey, value]) => text.replace(`{${paramKey}}`, String(value)), template)
+}
+
+export default function VerifyEmail({ status, onboardingNextAction = null }) {
+    const { auth } = usePage().props
+    const { post, processing } = useForm({})
+
+    const submit = (event) => {
+        event.preventDefault()
+        post(route("verification.send"))
+    }
 
     return (
-        <GuestLayout>
-            <Head title="Email Verification" />
+        <>
+            <Head title={t("headTitle")} />
 
-            <div className="mb-4 text-sm text-gray-600 dark:text-gray-400">
-                Thanks for signing up! Before getting started, could you verify
-                your email address by clicking on the link we just emailed to
-                you? If you didn't receive the email, we will gladly send you
-                another.
+            <div className="flex min-h-svh w-full items-center justify-center bg-[#f7f8fb] p-6 md:p-10">
+                <div className="w-full max-w-md">
+                    <Card className="border-slate-200 bg-white text-slate-950 shadow-xl shadow-slate-200/60">
+                        <CardHeader>
+                            <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
+                                <MailCheck className="h-6 w-6" aria-hidden="true" />
+                            </div>
+                            <CardTitle className="text-2xl font-semibold text-slate-950">{t("title")}</CardTitle>
+                            <CardDescription className="text-slate-500">
+                                {t("descriptionPrefix")} <span className="font-medium text-slate-950">{auth?.user?.email}</span>.{" "}
+                                {t("descriptionSuffix")}
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <FieldGroup>
+                                {status === "verification-link-sent" ? (
+                                    <Alert variant="success" aria-live="polite" data-testid="verify-email-feedback">
+                                        <AlertTitle>{t("resentTitle")}</AlertTitle>
+                                        <AlertDescription>{t("resentDescription")}</AlertDescription>
+                                    </Alert>
+                                ) : null}
+
+                                {onboardingNextAction ? (
+                                    <Alert data-testid="verify-email-onboarding-next">
+                                        <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                                        <AlertTitle>{t("nextActionTitle", { title: onboardingNextAction.title })}</AlertTitle>
+                                        <AlertDescription>
+                                            {onboardingNextAction.copy}
+                                            {typeof onboardingNextAction.progress === "number" ? (
+                                                <span className="mt-2 block font-medium text-slate-700">
+                                                    {t("progressLabel", { progress: onboardingNextAction.progress })}
+                                                </span>
+                                            ) : null}
+                                        </AlertDescription>
+                                    </Alert>
+                                ) : null}
+
+                                <Field>
+                                    <form onSubmit={submit}>
+                                        <Button
+                                            type="submit"
+                                            disabled={processing}
+                                            data-testid="verify-email-resend"
+                                            className="w-full bg-slate-950 text-white hover:bg-slate-800"
+                                        >
+                                            <RefreshCcw
+                                                className={`mr-2 h-4 w-4 ${processing ? "animate-spin" : ""}`}
+                                                aria-hidden="true"
+                                            />
+                                            {processing ? t("resendProcessing") : t("resendIdle")}
+                                        </Button>
+                                    </form>
+                                </Field>
+
+                                <FieldSeparator>{t("alternateAccount")}</FieldSeparator>
+
+                                <Field>
+                                    <Button
+                                        variant="outline"
+                                        type="button"
+                                        data-testid="verify-email-logout"
+                                        className="w-full border-slate-200 bg-white text-slate-950 hover:bg-slate-50"
+                                        asChild
+                                    >
+                                        <Link href={route("logout")} method="post" as="button">
+                                            {t("logout")}
+                                        </Link>
+                                    </Button>
+                                    <FieldDescription className="text-center">{t("footerDescription")}</FieldDescription>
+                                </Field>
+                            </FieldGroup>
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
-
-            {status === 'verification-link-sent' && (
-                <div className="mb-4 text-sm font-medium text-green-600 dark:text-green-400">
-                    A new verification link has been sent to the email address
-                    you provided during registration.
-                </div>
-            )}
-
-            <form onSubmit={submit}>
-                <div className="mt-4 flex items-center justify-between">
-                    <PrimaryButton disabled={processing}>
-                        Resend Verification Email
-                    </PrimaryButton>
-
-                    <Link
-                        href={route('logout')}
-                        method="post"
-                        as="button"
-                        className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:text-gray-400 dark:hover:text-gray-100 dark:focus:ring-offset-gray-800"
-                    >
-                        Log Out
-                    </Link>
-                </div>
-            </form>
-        </GuestLayout>
-    );
+        </>
+    )
 }
