@@ -9,7 +9,7 @@ import { createRoot } from 'react-dom/client';
 import { Ziggy } from './ziggy';
 import { route } from 'ziggy-js';
 
-// Global Toast System
+// Global shadcn/sonner toast mount.
 import { ToastProvider } from '@/Components/Toast/ToastProvider';
 
 // Make route() globally available
@@ -49,4 +49,3 @@ createInertiaApp({
         showSpinner: true,
     },
 });
-

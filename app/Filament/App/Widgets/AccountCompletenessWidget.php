@@ -9,31 +9,22 @@ use Filament\Facades\Filament;
 use Filament\Widgets\Widget;
 
 /**
- * AccountCompletenessWidget - Gamificación de Completitud del Perfil
- *
- * Filament v4 Compatible: Usa métodos en lugar de propiedades estáticas.
+ * AccountCompletenessWidget - Perfil operativo del negocio.
  */
 class AccountCompletenessWidget extends Widget
 {
-    /**
-     * Filament v4: Método para la vista
-     */
+    protected static string $view = 'filament.app.widgets.account-completeness-widget';
+
     public function getView(): string
     {
         return 'filament.app.widgets.account-completeness-widget';
     }
 
-    /**
-     * Filament v4: Método dinámico para column span
-     */
     public function getColumnSpan(): int|string|array
     {
         return 'full';
     }
 
-    /**
-     * Filament v4: Método estático para ordenamiento
-     */
     public static function getSort(): int
     {
         return -10;
@@ -72,35 +63,30 @@ class AccountCompletenessWidget extends Widget
             [
                 'field' => 'Logo',
                 'check' => ! empty($tenant->logo_path),
-                'icon' => '📷',
                 'action' => 'Sube tu logo',
-                'url' => "/app/{$tenantSlug}/edit-tenant-profile",
+                'url' => "/app/{$tenantSlug}/settings",
             ],
             [
-                'field' => 'Banner',
+                'field' => 'Portada',
                 'check' => ! empty($tenant->banner_path),
-                'icon' => '🖼️',
                 'action' => 'Agrega portada',
-                'url' => "/app/{$tenantSlug}/edit-tenant-profile",
+                'url' => "/app/{$tenantSlug}/settings",
             ],
             [
-                'field' => 'Descripción',
+                'field' => 'Descripcion',
                 'check' => ! empty($tenant->description) && strlen($tenant->description) > 30,
-                'icon' => '📝',
-                'action' => 'Escribe descripción',
-                'url' => "/app/{$tenantSlug}/edit-tenant-profile",
+                'action' => 'Escribe descripcion',
+                'url' => "/app/{$tenantSlug}/settings",
             ],
             [
                 'field' => 'WhatsApp',
                 'check' => ! empty($tenant->whatsapp_number),
-                'icon' => '📱',
                 'action' => 'Agrega WhatsApp',
-                'url' => "/app/{$tenantSlug}/edit-tenant-profile",
+                'url' => "/app/{$tenantSlug}/settings",
             ],
             [
                 'field' => 'Productos',
                 'check' => $tenant->products()->count() > 0,
-                'icon' => '🛍️',
                 'action' => 'Agrega producto',
                 'url' => "/app/{$tenantSlug}/products/create",
             ],

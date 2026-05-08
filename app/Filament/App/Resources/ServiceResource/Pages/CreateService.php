@@ -3,9 +3,9 @@
 namespace App\Filament\App\Resources\ServiceResource\Pages;
 
 use App\Filament\App\Resources\ServiceResource;
-use Filament\Resources\Pages\CreateRecord;
+use App\Filament\App\Resources\Pages\CreateTenantRecord;
 
-class CreateService extends CreateRecord
+class CreateService extends CreateTenantRecord
 {
     protected static string $resource = ServiceResource::class;
 }

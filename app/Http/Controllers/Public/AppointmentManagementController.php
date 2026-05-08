@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Public;
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -41,7 +42,9 @@ class AppointmentManagementController extends Controller
             'tenant' => [
                 'name' => $appointment->tenant->name,
                 'slug' => $appointment->tenant->slug,
-                'logo_url' => $appointment->tenant->logo_url,
+                'logo_url' => $appointment->tenant->logo_path
+                    ? Storage::url($appointment->tenant->logo_path)
+                    : null,
             ],
         ]);
     }

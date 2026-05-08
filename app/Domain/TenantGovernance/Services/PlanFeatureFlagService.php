@@ -60,7 +60,25 @@ final class PlanFeatureFlagService
         //     return self::PLAN_ENTERPRISE;
         // }
 
-        return $tenant->is_pro ? self::PLAN_PRO : self::PLAN_SEMILLA;
+        $attributes = method_exists($tenant, 'getAttributes')
+            ? $tenant->getAttributes()
+            : [];
+
+        $plan = $attributes['plan_type'] ?? $attributes['plan'] ?? null;
+        $subscriptionStatus = $attributes['subscription_status'] ?? 'active';
+        $active = in_array($subscriptionStatus, ['active', 'trial'], true);
+
+        $computedIsPro = (bool) ($tenant->is_pro ?? false);
+
+        if ($active && $computedIsPro && in_array($plan, [self::PLAN_PRO, self::PLAN_ENTERPRISE], true)) {
+            return $plan;
+        }
+
+        $legacyIsPro = array_key_exists('is_pro', $attributes)
+            ? (bool) $attributes['is_pro']
+            : $computedIsPro;
+
+        return $active && $legacyIsPro ? self::PLAN_PRO : self::PLAN_SEMILLA;
     }
 
     /**
@@ -166,8 +184,14 @@ final class PlanFeatureFlagService
     public function getMaxProductLimit(object $tenant): int
     {
         // If tenant has custom limit set, use that (for upgrades/promotions)
-        if ($tenant->product_limit !== null) {
-            return $tenant->product_limit;
+        try {
+            $customLimit = $tenant->product_limit ?? null;
+        } catch (\Throwable) {
+            $customLimit = null;
+        }
+
+        if ($customLimit !== null) {
+            return (int) $customLimit;
         }
 
         $plan = $this->determinePlan($tenant);

@@ -1,105 +1,96 @@
-/**
- * NotificationBell.jsx - Hybrid Notification Center
- *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  ARCHITECTURE: HYBRID STATE MANAGEMENT                                   ║
- * ╠══════════════════════════════════════════════════════════════════════════╣
- * ║  Source 1 (History): API /api/notifications (Hydrated Links)             ║
- * ║  Source 2 (Real-Time): WebSocket 'export.ready' (Ephemeral Links)        ║
- * ║  Strategy: Merge both sources into a single chronological timeline.      ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
- */
-
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { Bell, Check, CheckCheck, X, Download, AlertCircle, FileText } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AlertCircle, Bell, Check, CheckCheck, Download, FileText } from 'lucide-react';
 import axios from 'axios';
 
+import { Badge } from '@/Components/ui/badge';
+import { Button } from '@/Components/ui/button';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/Components/ui/card';
+import { Separator } from '@/Components/ui/separator';
+import { Spinner } from '@/Components/ui/spinner';
+import { cn } from '@/lib/utils';
+
+const NOTIFICATIONS_ENDPOINT = '/api/v1/notifications';
+
 export function NotificationBell({ onNewNotification }) {
-    // ═══════════════════════════════════════════════════════════════════════
-    // STATE
-    // ═══════════════════════════════════════════════════════════════════════
     const [isOpen, setIsOpen] = useState(false);
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
+    const [isUnavailable, setIsUnavailable] = useState(false);
     const dropdownRef = useRef(null);
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // HYDRATION SOURCE: API (History)
-    // ═══════════════════════════════════════════════════════════════════════
     const fetchNotifications = useCallback(async () => {
+        if (isUnavailable) {
+            return;
+        }
+
         setIsLoading(true);
+
         try {
-            const response = await axios.get('/api/notifications', {
+            const response = await axios.get(NOTIFICATIONS_ENDPOINT, {
                 params: { limit: 10 },
             });
+
             setNotifications(response.data.notifications || []);
             setUnreadCount(response.data.unread_count || 0);
+            setIsUnavailable(false);
         } catch (error) {
+            const status = error?.response?.status;
+
+            if ([401, 403, 404].includes(status)) {
+                setNotifications([]);
+                setUnreadCount(0);
+                setIsUnavailable(true);
+                return;
+            }
+
             console.error('[NotificationBell] Hydration failed:', error);
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [isUnavailable]);
 
-    // Initial Hydration
-    useEffect(() => {
-        fetchNotifications();
-    }, [fetchNotifications]);
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // RESILIENCE: Revalidate on Window Focus (Avoids Dead Links in SPA)
-    // ═══════════════════════════════════════════════════════════════════════
-    useEffect(() => {
-        const handleFocus = () => {
-            fetchNotifications(); // Refresh links when user comes back
-        };
-        window.addEventListener('focus', handleFocus);
-        return () => window.removeEventListener('focus', handleFocus);
-    }, [fetchNotifications]);
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // REAL-TIME SOURCE: WebSocket (Live Events)
-    // ═══════════════════════════════════════════════════════════════════════
     const handleWebSocketNotification = useCallback((notification) => {
-        setUnreadCount((prev) => prev + 1);
+        setUnreadCount((current) => current + 1);
 
-        // Inject new item at top of list (unshift)
         if (notification) {
-            setNotifications((prev) => [
+            setNotifications((current) => [
                 {
                     id: notification.id || `ws-${Date.now()}`,
                     type: notification.type || 'general',
-                    title: notification.title || 'Nueva notificación',
+                    title: notification.title || 'Nueva notificacion',
                     body: notification.body || '',
-                    action_url: notification.action_url || null, // Ephemeral URL from broadcast
+                    action_url: notification.action_url || null,
                     read_at: null,
                     created_at: new Date().toISOString(),
                     time_ago: 'Ahora',
                 },
-                ...prev.slice(0, 9), // Keep max 10
+                ...current.slice(0, 9),
             ]);
         }
+
         onNewNotification?.(notification);
     }, [onNewNotification]);
 
-    // Global Handler for Hook Integration
     useEffect(() => {
         window.__notificationBellHandler = handleWebSocketNotification;
+
         return () => {
             delete window.__notificationBellHandler;
         };
     }, [handleWebSocketNotification]);
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // ACTIONS
-    // ═══════════════════════════════════════════════════════════════════════
     const markAsRead = async (id) => {
         try {
-            const response = await axios.patch(`/api/notifications/${id}/read`);
+            const response = await axios.patch(`${NOTIFICATIONS_ENDPOINT}/${id}/read`);
+
             setUnreadCount(response.data.unread_count);
-            setNotifications((prev) =>
-                prev.map((n) => n.id === id ? { ...n, read_at: new Date().toISOString() } : n)
+            setNotifications((current) =>
+                current.map((notification) =>
+                    notification.id === id
+                        ? { ...notification, read_at: new Date().toISOString() }
+                        : notification
+                )
             );
         } catch (error) {
             console.error('[NotificationBell] Mark read failed:', error);
@@ -108,123 +99,159 @@ export function NotificationBell({ onNewNotification }) {
 
     const markAllAsRead = async () => {
         try {
-            await axios.patch('/api/notifications/read-all');
+            await axios.patch(`${NOTIFICATIONS_ENDPOINT}/read-all`);
             setUnreadCount(0);
-            setNotifications((prev) =>
-                prev.map((n) => ({ ...n, read_at: new Date().toISOString() }))
+            setNotifications((current) =>
+                current.map((notification) => ({ ...notification, read_at: new Date().toISOString() }))
             );
         } catch (error) {
             console.error('[NotificationBell] Mark all failed:', error);
         }
     };
 
-    // Click Outside
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
                 setIsOpen(false);
             }
         };
-        if (isOpen) document.addEventListener('mousedown', handleClickOutside);
+
+        if (isOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [isOpen]);
 
-    // Icon Helper
     const getIcon = (type) => {
         switch (type) {
-            case 'export_ready': return <Download className="w-4 h-4 text-emerald-500" />;
-            case 'export_failed': return <AlertCircle className="w-4 h-4 text-red-500" />;
-            default: return <FileText className="w-4 h-4 text-blue-500" />;
+            case 'export_ready':
+                return <Download className="size-4 text-primary" aria-hidden="true" />;
+            case 'export_failed':
+                return <AlertCircle className="size-4 text-destructive" aria-hidden="true" />;
+            default:
+                return <FileText className="size-4 text-muted-foreground" aria-hidden="true" />;
         }
     };
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // UI RENDER
-    // ═══════════════════════════════════════════════════════════════════════
     return (
         <div className="relative" ref={dropdownRef}>
-            <button
+            <Button
                 type="button"
+                variant="ghost"
+                size="icon"
                 onClick={() => {
                     setIsOpen(!isOpen);
-                    if (!isOpen) fetchNotifications();
+
+                    if (!isOpen) {
+                        fetchNotifications();
+                    }
                 }}
-                className="relative p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="relative"
+                aria-label={`Abrir notificaciones${unreadCount > 0 ? ` (${unreadCount} sin leer)` : ''}`}
             >
-                <Bell className="w-5 h-5" />
+                <Bell className="size-5" aria-hidden="true" />
                 {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-xs font-bold text-white bg-red-500 rounded-full">
+                    <Badge className="absolute -right-1 -top-1 h-[18px] min-w-[18px] justify-center rounded-full bg-destructive px-1 text-[10px] text-destructive-foreground">
                         {unreadCount > 99 ? '99+' : unreadCount}
-                    </span>
+                    </Badge>
                 )}
-            </button>
+            </Button>
 
             {isOpen && (
-                <div
-                    className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-xl z-[9999] overflow-hidden"
-                    style={{ fontFamily: 'Inter, sans-serif' }}
-                >
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">
-                        <h3 className="font-semibold text-gray-900">Notificaciones</h3>
+                <Card className="absolute right-0 z-[9999] mt-2 w-80 overflow-hidden shadow-xl">
+                    <CardHeader className="flex flex-row items-center justify-between gap-3 px-4 py-3">
+                        <CardTitle className="text-sm">Notificaciones</CardTitle>
                         {unreadCount > 0 && (
-                            <button
-                                onClick={markAllAsRead}
-                                className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium"
-                            >
-                                <CheckCheck className="w-3.5 h-3.5" /> Marcar todas
-                            </button>
+                            <Button type="button" variant="ghost" size="sm" onClick={markAllAsRead}>
+                                <CheckCheck className="size-4" aria-hidden="true" />
+                                Marcar todas
+                            </Button>
                         )}
-                    </div>
+                    </CardHeader>
+                    <Separator />
 
-                    <div className="max-h-80 overflow-y-auto">
+                    <CardContent className="max-h-80 overflow-y-auto p-0">
                         {isLoading ? (
-                            <div className="flex justify-center py-8"><div className="w-6 h-6 border-2 border-indigo-500 rounded-full animate-spin border-t-transparent" /></div>
+                            <div className="flex justify-center py-8">
+                                <Spinner />
+                            </div>
+                        ) : isUnavailable ? (
+                            <div className="flex flex-col items-center justify-center gap-2 px-6 py-8 text-center text-muted-foreground">
+                                <Bell className="size-8" aria-hidden="true" />
+                                <p className="text-sm font-medium text-foreground">Notificaciones no disponibles</p>
+                                <p className="text-xs">
+                                    El centro se activara cuando el API este disponible para esta sesion.
+                                </p>
+                            </div>
                         ) : notifications.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-8 text-gray-400">
-                                <Bell className="w-8 h-8 mb-2" />
-                                <p className="text-sm">Sin notificaciones</p>
+                            <div className="flex flex-col items-center justify-center gap-2 px-6 py-8 text-center text-muted-foreground">
+                                <Bell className="size-8" aria-hidden="true" />
+                                <p className="text-sm font-medium text-foreground">Sin notificaciones</p>
+                                <p className="text-xs">Cuando haya novedades importantes apareceran aqui.</p>
                             </div>
                         ) : (
-                            <ul className="divide-y divide-gray-100">
-                                {notifications.map((n) => (
-                                    <li key={n.id} className={`px-4 py-3 hover:bg-gray-50 transition ${!n.read_at ? 'bg-indigo-50/50' : ''}`}>
+                            <ul className="divide-y">
+                                {notifications.map((notification) => (
+                                    <li
+                                        key={notification.id}
+                                        className={cn(
+                                            'px-4 py-3 transition-colors hover:bg-muted/60',
+                                            !notification.read_at && 'bg-muted/50'
+                                        )}
+                                    >
                                         <div className="flex gap-3">
-                                            <div className="mt-0.5">{getIcon(n.type)}</div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium text-gray-900 truncate">{n.title}</p>
-                                                <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{n.body}</p>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <span className="text-xs text-gray-400">{n.time_ago}</span>
-                                                    {n.action_url && (
+                                            <div className="mt-0.5">{getIcon(notification.type)}</div>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="truncate text-sm font-medium text-foreground">
+                                                    {notification.title}
+                                                </p>
+                                                <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                                                    {notification.body}
+                                                </p>
+                                                <div className="mt-1 flex items-center gap-2">
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {notification.time_ago}
+                                                    </span>
+                                                    {notification.action_url && (
                                                         <a
-                                                            href={n.action_url}
+                                                            href={notification.action_url}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
-                                                            onClick={() => !n.read_at && markAsRead(n.id)}
-                                                            className="text-xs text-indigo-600 hover:underline font-medium cursor-pointer"
+                                                            onClick={() => !notification.read_at && markAsRead(notification.id)}
+                                                            className="text-xs font-medium text-primary underline-offset-4 hover:underline"
                                                         >
                                                             Descargar
                                                         </a>
                                                     )}
                                                 </div>
                                             </div>
-                                            {!n.read_at && (
-                                                <button onClick={() => markAsRead(n.id)} className="text-gray-400 hover:text-indigo-600 p-1">
-                                                    <Check className="w-4 h-4" />
-                                                </button>
+                                            {!notification.read_at && (
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => markAsRead(notification.id)}
+                                                    aria-label="Marcar notificacion como leida"
+                                                >
+                                                    <Check className="size-4" aria-hidden="true" />
+                                                </Button>
                                             )}
                                         </div>
                                     </li>
                                 ))}
                             </ul>
                         )}
-                    </div>
+                    </CardContent>
+
                     {notifications.length > 0 && (
-                        <div className="px-4 py-2 border-t border-gray-100 bg-gray-50 text-center">
-                            <button onClick={() => setIsOpen(false)} className="text-xs text-gray-500 hover:text-gray-700 w-full">Cerrar</button>
-                        </div>
+                        <CardFooter className="border-t p-2">
+                            <Button type="button" variant="ghost" size="sm" onClick={() => setIsOpen(false)} className="w-full">
+                                Cerrar
+                            </Button>
+                        </CardFooter>
                     )}
-                </div>
+                </Card>
             )}
         </div>
     );

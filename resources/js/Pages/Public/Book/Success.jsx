@@ -1,82 +1,87 @@
 import { Head, Link } from '@inertiajs/react';
+import { CalendarCheck, CalendarPlus, Home } from 'lucide-react';
 import PublicLayout from '@/Layouts/PublicLayout';
+import { Badge } from '@/Components/ui/badge';
+import { Button } from '@/Components/ui/button';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+} from '@/Components/ui/card';
+import { Separator } from '@/Components/ui/separator';
 
-/**
- * Booking Success Page - Confirmation after appointment creation
- */
 export default function BookingSuccess({ tenant, appointment }) {
     return (
         <PublicLayout>
-            <Head title={`Reserva Confirmada - ${tenant.name}`} />
-            
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
-                <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center">
-                    {/* Success Icon */}
-                    <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <svg 
-                            className="w-10 h-10 text-green-600" 
-                            fill="none" 
-                            stroke="currentColor" 
-                            viewBox="0 0 24 24"
-                        >
-                            <path 
-                                strokeLinecap="round" 
-                                strokeLinejoin="round" 
-                                strokeWidth={2} 
-                                d="M5 13l4 4L19 7" 
-                            />
-                        </svg>
-                    </div>
+            <Head title={`Reserva confirmada - ${tenant.name}`} />
 
-                    <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                        ¡Reserva Confirmada!
-                    </h1>
-                    
-                    <p className="text-gray-600 mb-6">
-                        Hemos recibido tu reserva. Te contactaremos pronto para confirmar.
-                    </p>
+            <div className="min-h-screen bg-background px-4 py-12 sm:px-6 lg:px-8">
+                <div className="mx-auto flex max-w-xl flex-col gap-6">
+                    <Card className="text-center" data-testid="booking-success">
+                        <CardHeader className="items-center gap-4">
+                            <div className="flex size-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                                <CalendarCheck aria-hidden="true" />
+                            </div>
+                            <div className="flex flex-col gap-2">
+                                <Badge variant="secondary" className="mx-auto w-fit">
+                                    Reserva recibida
+                                </Badge>
+                                <CardTitle>Reserva confirmada</CardTitle>
+                                <CardDescription>
+                                    Hemos recibido tu solicitud. El negocio te contactara pronto para confirmar.
+                                </CardDescription>
+                            </div>
+                        </CardHeader>
 
-                    {appointment && (
-                        <div className="bg-gray-50 rounded-lg p-4 mb-6 text-left">
-                            <h3 className="font-medium text-gray-900 mb-3">Detalles de tu cita:</h3>
-                            <dl className="space-y-2 text-sm">
-                                <div className="flex justify-between">
-                                    <dt className="text-gray-500">Servicio:</dt>
-                                    <dd className="font-medium">{appointment.service_name}</dd>
+                        {appointment ? (
+                            <CardContent>
+                                <div className="rounded-lg border bg-muted/30 p-4 text-left">
+                                    <h2 className="text-sm font-semibold text-foreground">
+                                        Detalles de tu cita
+                                    </h2>
+                                    <Separator className="my-3" />
+                                    <dl className="grid gap-3 text-sm">
+                                        <div className="flex items-center justify-between gap-4">
+                                            <dt className="text-muted-foreground">Servicio</dt>
+                                            <dd className="font-medium text-foreground">{appointment.service_name}</dd>
+                                        </div>
+                                        <div className="flex items-center justify-between gap-4">
+                                            <dt className="text-muted-foreground">Profesional</dt>
+                                            <dd className="font-medium text-foreground">{appointment.provider_name}</dd>
+                                        </div>
+                                        <div className="flex items-center justify-between gap-4">
+                                            <dt className="text-muted-foreground">Fecha</dt>
+                                            <dd className="font-medium text-foreground">{appointment.scheduled_at}</dd>
+                                        </div>
+                                        <div className="flex items-center justify-between gap-4">
+                                            <dt className="text-muted-foreground">Hora</dt>
+                                            <dd className="font-medium text-foreground">{appointment.time}</dd>
+                                        </div>
+                                    </dl>
                                 </div>
-                                <div className="flex justify-between">
-                                    <dt className="text-gray-500">Con:</dt>
-                                    <dd className="font-medium">{appointment.provider_name}</dd>
-                                </div>
-                                <div className="flex justify-between">
-                                    <dt className="text-gray-500">Fecha:</dt>
-                                    <dd className="font-medium">{appointment.scheduled_at}</dd>
-                                </div>
-                                <div className="flex justify-between">
-                                    <dt className="text-gray-500">Hora:</dt>
-                                    <dd className="font-medium">{appointment.time}</dd>
-                                </div>
-                            </dl>
-                        </div>
-                    )}
+                            </CardContent>
+                        ) : null}
 
-                    <div className="space-y-3">
-                        <Link
-                            href={`/${tenant.slug}`}
-                            className="block w-full py-3 bg-black text-white font-medium rounded-lg hover:bg-gray-800 transition-colors"
-                        >
-                            Volver al Negocio
-                        </Link>
-                        
-                        <Link
-                            href={`/${tenant.slug}/book`}
-                            className="block w-full py-3 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors"
-                        >
-                            Hacer Otra Reserva
-                        </Link>
-                    </div>
+                        <CardFooter className="flex flex-col gap-3 sm:flex-row">
+                            <Button asChild className="w-full">
+                                <Link href="/" data-testid="booking-success-home">
+                                    <Home data-icon="inline-start" />
+                                    Volver al negocio
+                                </Link>
+                            </Button>
+                            <Button asChild variant="outline" className="w-full">
+                                <Link href="/book" data-testid="booking-success-new">
+                                    <CalendarPlus data-icon="inline-start" />
+                                    Hacer otra reserva
+                                </Link>
+                            </Button>
+                        </CardFooter>
+                    </Card>
 
-                    <p className="text-xs text-gray-400 mt-6">
+                    <p className="text-center text-xs text-muted-foreground">
                         Reserva en {tenant.name}
                     </p>
                 </div>

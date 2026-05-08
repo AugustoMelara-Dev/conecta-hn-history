@@ -28,6 +28,6 @@ class CreateTenantUser extends CreateRecord
 
     public function getTitle(): string
     {
-        return 'Agregar Miembro al Equipo';
+        return 'Agregar miembro al equipo';
     }
 }

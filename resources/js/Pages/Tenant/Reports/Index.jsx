@@ -1,28 +1,39 @@
-/**
- * Tenant/Reports/Index.jsx - Business Intelligence Dashboard
- *
- * FEATURES:
- * - DateRangePicker as unified filter source
- * - Stat cards with trend comparison
- * - CSS-based bar chart for daily sales
- * - Export zone with PDF download buttons
- *
- * PROPS (from ReportController@index):
- * @param {Object} props.stats - { revenue, orders, average_ticket, trends }
- * @param {Array} props.dailySales - [{ date, total }, ...]
- * @param {Object} props.filters - { start_date, end_date }
- * @param {Object} props.tenant - { id, name, slug, is_pro }
- */
-
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Head, router } from '@inertiajs/react';
-import TenantLayout from '@/Layouts/TenantLayout';
-import StatCard from '@/Components/Stats/StatCard';
-import { DownloadSalesReportButton } from '@/Components/Reports/ReportActions';
+import {
+    BarChart3,
+    CalendarDays,
+    ClipboardList,
+    Download,
+    FileBarChart,
+    Lock,
+    PackageSearch,
+    ReceiptText,
+    TrendingUp,
+} from 'lucide-react';
 
-// ═══════════════════════════════════════════════════════════════════════════
-// FORMATTERS
-// ═══════════════════════════════════════════════════════════════════════════
+import { DownloadSalesReportButton } from '@/Components/Reports/ReportActions';
+import { Alert, AlertDescription, AlertTitle } from '@/Components/ui/alert';
+import { Badge } from '@/Components/ui/badge';
+import { Button } from '@/Components/ui/button';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+} from '@/Components/ui/card';
+import {
+    Field,
+    FieldDescription,
+    FieldGroup,
+    FieldLabel,
+} from '@/Components/ui/field';
+import { Input } from '@/Components/ui/input';
+import { Separator } from '@/Components/ui/separator';
+import TenantLayout from '@/Layouts/TenantLayout';
+
 const currencyFormatter = new Intl.NumberFormat('es-HN', {
     style: 'currency',
     currency: 'HNL',
@@ -34,217 +45,330 @@ const dateFormatter = new Intl.DateTimeFormat('es-HN', {
     month: 'short',
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// BAR CHART COMPONENT (Pure CSS)
-// ═══════════════════════════════════════════════════════════════════════════
+function safeRoute(name, fallback) {
+    try {
+        if (route().has(name)) {
+            return route(name, undefined, false);
+        }
+    } catch {
+        return fallback;
+    }
+
+    return fallback;
+}
+
+function safeNamedRoute(name, fallback) {
+    try {
+        if (route().has(name)) {
+            return route(name);
+        }
+    } catch {
+        return fallback;
+    }
+
+    return fallback;
+}
+
+function formatCount(value) {
+    return Number(value || 0).toLocaleString('es-HN');
+}
+
+function normalizeSales(data = []) {
+    return Array.isArray(data)
+        ? data.map((day) => ({
+            date: day.date,
+            total: Number(day.total || 0),
+        }))
+        : [];
+}
+
+function StatSummaryCard({ title, value, description, icon: Icon, trend }) {
+    const hasTrend = trend !== undefined && trend !== null;
+
+    return (
+        <Card>
+            <CardHeader>
+                <div className="flex items-start justify-between gap-4">
+                    <div className="flex flex-col gap-2">
+                        <CardDescription>{title}</CardDescription>
+                        <CardTitle>{value}</CardTitle>
+                    </div>
+                    <span className="flex size-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                        <Icon aria-hidden="true" />
+                    </span>
+                </div>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+                <p className="text-sm leading-6 text-muted-foreground">{description}</p>
+                {hasTrend ? (
+                    <Badge variant="secondary" className="w-fit">
+                        {Number(trend) >= 0 ? '+' : ''}
+                        {trend}% vs periodo anterior
+                    </Badge>
+                ) : null}
+            </CardContent>
+        </Card>
+    );
+}
+
 function DailySalesChart({ data }) {
-    if (!data || data.length === 0) {
+    const normalizedData = normalizeSales(data);
+    const maxValue = Math.max(...normalizedData.map((day) => day.total), 0);
+
+    if (normalizedData.length === 0 || maxValue <= 0) {
         return (
-            <div className="h-64 flex items-center justify-center text-gray-400">
-                No hay datos para mostrar
-            </div>
+            <Alert data-testid="reports-sales-chart" aria-live="polite">
+                <BarChart3 aria-hidden="true" />
+                <AlertTitle>Sin ventas para este rango</AlertTitle>
+                <AlertDescription>
+                    Cambia las fechas o vuelve cuando existan ordenes completadas en el periodo.
+                </AlertDescription>
+            </Alert>
         );
     }
 
-    const maxValue = Math.max(...data.map(d => d.total));
-
     return (
-        <div className="h-64 flex items-end gap-2">
-            {data.map((day, index) => {
-                const height = maxValue > 0 ? (day.total / maxValue) * 100 : 0;
-                return (
+        <div className="flex flex-col gap-4" data-testid="reports-sales-chart" aria-label="Ventas diarias">
+            <div className="flex flex-col gap-3 rounded-lg border bg-muted/30 p-4">
+                {normalizedData.map((day) => (
                     <div
-                        key={index}
-                        className="flex-1 flex flex-col items-center gap-2"
+                        key={`${day.date}-${day.total}`}
+                        className="grid gap-2 sm:grid-cols-[7rem_1fr_8rem] sm:items-center"
                     >
-                        {/* Bar */}
-                        <div
-                            className="w-full bg-gradient-to-t from-blue-600 to-blue-400 rounded-t-lg transition-all duration-500 hover:from-blue-700 hover:to-blue-500"
-                            style={{ height: `${Math.max(height, 2)}%` }}
-                            title={`${currencyFormatter.format(day.total)}`}
-                        />
-                        {/* Label */}
-                        <span className="text-xs text-gray-500 whitespace-nowrap">
+                        <span className="text-sm font-medium">
                             {dateFormatter.format(new Date(day.date))}
                         </span>
+                        <progress
+                            className="h-2 w-full overflow-hidden rounded-full"
+                            max={maxValue}
+                            value={day.total}
+                            aria-label={`Ventas del ${dateFormatter.format(new Date(day.date))}`}
+                        >
+                            {currencyFormatter.format(day.total)}
+                        </progress>
+                        <span className="text-sm text-muted-foreground sm:text-right">
+                            {currencyFormatter.format(day.total)}
+                        </span>
                     </div>
-                );
-            })}
+                ))}
+            </div>
+            <p className="text-sm text-muted-foreground" aria-live="polite">
+                Total maximo diario en el rango: {currencyFormatter.format(maxValue)}.
+            </p>
         </div>
     );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// DATE RANGE PICKER
-// ═══════════════════════════════════════════════════════════════════════════
 function DateRangePicker({ startDate, endDate, onChange }) {
     return (
-        <div className="flex items-center gap-3 bg-white rounded-xl border border-gray-200 p-2">
-            <input
-                type="date"
-                value={startDate}
-                onChange={(e) => onChange({ startDate: e.target.value, endDate })}
-                className="px-3 py-2 bg-gray-50 border-0 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-            />
-            <span className="text-gray-400">—</span>
-            <input
-                type="date"
-                value={endDate}
-                onChange={(e) => onChange({ startDate, endDate: e.target.value })}
-                className="px-3 py-2 bg-gray-50 border-0 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-            />
-        </div>
+        <FieldGroup className="grid gap-4 sm:grid-cols-2" data-testid="reports-date-filter">
+            <Field>
+                <FieldLabel htmlFor="reports-start-date">Fecha inicial</FieldLabel>
+                <Input
+                    id="reports-start-date"
+                    type="date"
+                    value={startDate}
+                    onChange={(event) => onChange({ startDate: event.target.value, endDate })}
+                    aria-describedby="reports-date-help"
+                />
+            </Field>
+            <Field>
+                <FieldLabel htmlFor="reports-end-date">Fecha final</FieldLabel>
+                <Input
+                    id="reports-end-date"
+                    type="date"
+                    value={endDate}
+                    onChange={(event) => onChange({ startDate, endDate: event.target.value })}
+                    aria-describedby="reports-date-help"
+                />
+            </Field>
+            <FieldDescription id="reports-date-help" className="sm:col-span-2">
+                Los datos se actualizan automaticamente y las descargas usan este mismo rango.
+            </FieldDescription>
+        </FieldGroup>
     );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// MAIN PAGE COMPONENT
-// ═══════════════════════════════════════════════════════════════════════════
 export default function ReportsIndex({ stats = {}, dailySales = [], filters = {}, tenant }) {
-    // Default to last 30 days
     const [dateRange, setDateRange] = useState({
         startDate: filters.start_date || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         endDate: filters.end_date || new Date().toISOString().split('T')[0],
     });
 
-    // Reload data when date range changes
+    const reportsUrl = useMemo(() => safeRoute('tenant.reports.index', '/workspace/reports'), []);
+    const inventoryPdfUrl = useMemo(() => safeNamedRoute('reports.inventory-pdf', '/workspace/reports/inventory-pdf'), []);
+
     useEffect(() => {
-        const timer = setTimeout(() => {
+        const timer = window.setTimeout(() => {
             router.get(
-                route('tenant.reports.index'),
+                reportsUrl,
                 {
                     start_date: dateRange.startDate,
                     end_date: dateRange.endDate,
                 },
                 { preserveState: true, preserveScroll: true, replace: true }
             );
-        }, 500); // Debounce
+        }, 500);
 
-        return () => clearTimeout(timer);
-    }, [dateRange]);
+        return () => window.clearTimeout(timer);
+    }, [dateRange, reportsUrl]);
+
+    const salesCount = normalizeSales(dailySales).length;
 
     return (
         <TenantLayout>
             <Head title="Reportes" />
 
-            <div className="min-h-screen bg-gray-50">
-                {/* Header */}
-                <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="flex items-center justify-between h-16">
-                            <h1 className="text-xl font-bold text-gray-900">📊 Reportes</h1>
-                            <DateRangePicker
-                                startDate={dateRange.startDate}
-                                endDate={dateRange.endDate}
-                                onChange={setDateRange}
-                            />
-                        </div>
-                    </div>
-                </header>
-
-                <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                    {/* Stats Summary */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                        <StatCard
-                            title="Ingresos Totales"
-                            value={currencyFormatter.format(stats.revenue || 0)}
-                            trend={stats.revenue_trend}
-                            trendLabel="vs período anterior"
-                            icon={
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            }
-                        />
-                        <StatCard
-                            title="Total Órdenes"
-                            value={stats.orders || 0}
-                            trend={stats.orders_trend}
-                            icon={
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                </svg>
-                            }
-                        />
-                        <StatCard
-                            title="Ticket Promedio"
-                            value={currencyFormatter.format(stats.average_ticket || 0)}
-                            trend={stats.ticket_trend}
-                            icon={
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                        d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
-                                </svg>
-                            }
-                        />
-                    </div>
-
-                    {/* Charts Section */}
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
-                        <h2 className="font-bold text-gray-900 mb-6">Ventas Diarias</h2>
-                        <DailySalesChart data={dailySales} />
-                    </div>
-
-                    {/* Export Zone */}
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                        <h2 className="font-bold text-gray-900 mb-4">📄 Exportar Reportes</h2>
-                        <p className="text-gray-500 text-sm mb-6">
-                            Descarga reportes en PDF basados en el rango de fechas seleccionado.
-                        </p>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {/* Sales Summary */}
-                            <div className="border border-gray-200 rounded-xl p-4 hover:border-blue-300 transition-colors">
-                                <h3 className="font-semibold text-gray-900 mb-2">Resumen de Ventas</h3>
-                                <p className="text-sm text-gray-500 mb-4">
-                                    Ingresos, órdenes y métricas clave del período.
-                                </p>
-                                <DownloadSalesReportButton
+            <main className="min-h-screen bg-background" data-testid="reports-page">
+                <div className="mx-auto flex max-w-7xl flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
+                    <Card>
+                        <CardHeader className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                            <div className="flex max-w-2xl flex-col gap-3">
+                                <Badge variant="secondary" className="w-fit">
+                                    Compat activo
+                                </Badge>
+                                <div className="flex flex-col gap-2">
+                                    <CardTitle className="text-3xl">Reportes</CardTitle>
+                                    <CardDescription>
+                                        Revisa ventas, ordenes y exportaciones PDF sin salir del flujo actual de trabajo.
+                                    </CardDescription>
+                                </div>
+                            </div>
+                            <div className="w-full max-w-xl">
+                                <DateRangePicker
                                     startDate={dateRange.startDate}
                                     endDate={dateRange.endDate}
-                                    className="w-full justify-center"
+                                    onChange={setDateRange}
                                 />
                             </div>
+                        </CardHeader>
+                    </Card>
 
-                            {/* Inventory Manifest */}
-                            <div className="border border-gray-200 rounded-xl p-4 hover:border-blue-300 transition-colors">
-                                <h3 className="font-semibold text-gray-900 mb-2">Inventario Actual</h3>
-                                <p className="text-sm text-gray-500 mb-4">
-                                    Lista completa de productos y disponibilidad.
-                                </p>
-                                <button
-                                    onClick={() => window.open(route('reports.inventory-pdf'), '_blank')}
-                                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors"
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
-                                    Descargar PDF
-                                </button>
-                            </div>
+                    <section className="grid gap-4 md:grid-cols-3" aria-label="Resumen de reportes">
+                        <StatSummaryCard
+                            title="Ingresos totales"
+                            value={currencyFormatter.format(stats.revenue || 0)}
+                            description="Ventas registradas para el rango seleccionado."
+                            icon={ReceiptText}
+                            trend={stats.revenue_trend}
+                        />
+                        <StatSummaryCard
+                            title="Ordenes"
+                            value={formatCount(stats.orders)}
+                            description="Cantidad de pedidos incluidos en el periodo."
+                            icon={ClipboardList}
+                            trend={stats.orders_trend}
+                        />
+                        <StatSummaryCard
+                            title="Ticket promedio"
+                            value={currencyFormatter.format(stats.average_ticket || 0)}
+                            description="Promedio de ingreso por orden confirmada."
+                            icon={TrendingUp}
+                            trend={stats.ticket_trend}
+                        />
+                    </section>
 
-                            {/* PRO: Advanced Reports */}
-                            {!tenant?.is_pro && (
-                                <div className="border border-gray-200 rounded-xl p-4 bg-gray-50 opacity-75">
-                                    <h3 className="font-semibold text-gray-900 mb-2">🔒 Reportes Avanzados</h3>
-                                    <p className="text-sm text-gray-500 mb-4">
-                                        Análisis de tendencias y predicciones.
-                                    </p>
-                                    <button
-                                        disabled
-                                        className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-gray-200 text-gray-400 font-medium rounded-xl cursor-not-allowed"
-                                    >
-                                        Solo PRO
-                                    </button>
+                    <Card>
+                        <CardHeader>
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                <div className="flex flex-col gap-1">
+                                    <CardTitle>Ventas diarias</CardTitle>
+                                    <CardDescription>
+                                        {salesCount > 0
+                                            ? `${salesCount} dias con datos en el rango seleccionado.`
+                                            : 'No hay puntos de venta para graficar en este rango.'}
+                                    </CardDescription>
                                 </div>
-                            )}
-                        </div>
-                    </div>
-                </main>
-            </div>
+                                <Badge variant="outline">{dateRange.startDate} - {dateRange.endDate}</Badge>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <DailySalesChart data={dailySales} />
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Exportar reportes</CardTitle>
+                            <CardDescription>
+                                Las descargas se generan en backend y se abren en una nueva pestana.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid gap-4 md:grid-cols-3">
+                                <Card className="flex flex-col">
+                                    <CardHeader>
+                                        <FileBarChart aria-hidden="true" className="text-muted-foreground" />
+                                        <CardTitle className="text-lg">Resumen de ventas</CardTitle>
+                                        <CardDescription>
+                                            Ingresos, ordenes y metricas clave del periodo filtrado.
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardFooter className="mt-auto">
+                                        <DownloadSalesReportButton
+                                            startDate={dateRange.startDate}
+                                            endDate={dateRange.endDate}
+                                            className="w-full"
+                                            data-testid="reports-sales-pdf"
+                                        />
+                                    </CardFooter>
+                                </Card>
+
+                                <Card className="flex flex-col">
+                                    <CardHeader>
+                                        <PackageSearch aria-hidden="true" className="text-muted-foreground" />
+                                        <CardTitle className="text-lg">Inventario actual</CardTitle>
+                                        <CardDescription>
+                                            Lista de productos, disponibilidad y estado de inventario.
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardFooter className="mt-auto">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            className="w-full"
+                                            onClick={() => window.open(inventoryPdfUrl, '_blank')}
+                                            data-download-url={inventoryPdfUrl}
+                                            data-testid="reports-inventory-pdf"
+                                        >
+                                            <Download data-icon="inline-start" aria-hidden="true" />
+                                            Descargar PDF
+                                        </Button>
+                                    </CardFooter>
+                                </Card>
+
+                                {!tenant?.is_pro ? (
+                                    <Card className="flex flex-col border-dashed">
+                                        <CardHeader>
+                                            <Lock aria-hidden="true" className="text-muted-foreground" />
+                                            <CardTitle className="text-lg">Reportes avanzados</CardTitle>
+                                            <CardDescription>
+                                                Analisis de tendencias y predicciones para planes Pro.
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <Separator />
+                                        </CardContent>
+                                        <CardFooter className="mt-auto">
+                                            <Button type="button" variant="secondary" className="w-full" disabled>
+                                                Solo PRO
+                                            </Button>
+                                        </CardFooter>
+                                    </Card>
+                                ) : (
+                                    <Alert>
+                                        <CalendarDays aria-hidden="true" />
+                                        <AlertTitle>Plan Pro activo</AlertTitle>
+                                        <AlertDescription>
+                                            Los reportes avanzados se mantienen en el pipeline de producto.
+                                        </AlertDescription>
+                                    </Alert>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            </main>
         </TenantLayout>
     );
 }

@@ -7,6 +7,7 @@ namespace App\Scopes;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Scope;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * LocationScope - Session-Driven Geofencing Filter
@@ -80,6 +81,10 @@ class LocationScope implements Scope
 
         // State B: National View (no city selected = show all)
         if ($cityId === null) {
+            return;
+        }
+
+        if (! Schema::hasColumn($model->getTable(), 'city_id')) {
             return;
         }
 

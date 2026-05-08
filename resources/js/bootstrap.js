@@ -34,13 +34,20 @@ window.Pusher = Pusher;
 
 // Defensive scheme normalization (handles "HTTPS", "https ", etc.)
 const reverbScheme = (import.meta.env.VITE_REVERB_SCHEME ?? 'https').toLowerCase().trim();
+const reverbEnabled = String(import.meta.env.VITE_REVERB_ENABLED ?? '').toLowerCase().trim() === 'true';
+const reverbKey = import.meta.env.VITE_REVERB_APP_KEY;
+const reverbHost = import.meta.env.VITE_REVERB_HOST;
 
-window.Echo = new Echo({
-    broadcaster: 'reverb',
-    key: import.meta.env.VITE_REVERB_APP_KEY,
-    wsHost: import.meta.env.VITE_REVERB_HOST,
-    wsPort: import.meta.env.VITE_REVERB_PORT ?? 80,
-    wssPort: import.meta.env.VITE_REVERB_PORT ?? 443,
-    forceTLS: reverbScheme === 'https',
-    enabledTransports: ['ws', 'wss'],
-});
+window.Echo = undefined;
+
+if (reverbEnabled && reverbKey && reverbHost) {
+    window.Echo = new Echo({
+        broadcaster: 'reverb',
+        key: reverbKey,
+        wsHost: reverbHost,
+        wsPort: import.meta.env.VITE_REVERB_PORT ?? 80,
+        wssPort: import.meta.env.VITE_REVERB_PORT ?? 443,
+        forceTLS: reverbScheme === 'https',
+        enabledTransports: ['ws', 'wss'],
+    });
+}

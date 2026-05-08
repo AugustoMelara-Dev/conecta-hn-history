@@ -1,107 +1,165 @@
-/**
- * Components/Public/TenantCard.jsx - Business Card for Directory
- *
- * FEATURES:
- * - Lazy loaded cover image
- * - Logo avatar overlay
- * - Category badge
- * - Entire card is clickable link
- *
- * @param {Object} props
- * @param {Object} props.tenant - Tenant object
- * @param {number} props.tenant.id
- * @param {string} props.tenant.name
- * @param {string} props.tenant.slug
- * @param {string|null} props.tenant.cover_url
- * @param {string|null} props.tenant.logo_url
- * @param {string|null} props.tenant.category
- * @param {string|null} props.tenant.city
- * @param {string|null} props.tenant.description
- * @param {boolean} props.tenant.is_open - Current open status
- */
-
 import { Link } from '@inertiajs/react';
+import { ArrowRight, MapPin, Store } from 'lucide-react';
+
+import FavoriteButton from '@/Components/Public/FavoriteButton';
+import { Avatar, AvatarFallback, AvatarImage } from '@/Components/ui/avatar';
+import { Badge } from '@/Components/ui/badge';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+} from '@/Components/ui/card';
+import { cn } from '@/lib/utils';
+
+function getTenantHref(tenant) {
+    if (!tenant?.slug) {
+        return route('directory.index');
+    }
+
+    try {
+        if (route().has('tenant.microsite.show')) {
+            return route('tenant.microsite.show', { tenant: tenant.slug });
+        }
+    } catch {
+        // Ziggy can be stale in local builds; fall back to the directory.
+    }
+
+    return route('directory.index', { search: tenant.name || '' });
+}
+
+function getInitials(name) {
+    const parts = String(name || 'Negocio')
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+
+    return parts
+        .slice(0, 2)
+        .map((part) => part[0]?.toUpperCase())
+        .join('') || 'N';
+}
+
+function getImageUrl(value) {
+    if (!value) {
+        return null;
+    }
+
+    if (value.startsWith('http') || value.startsWith('/') || value.startsWith('data:')) {
+        return value;
+    }
+
+    return `/storage/${value}`;
+}
 
 export default function TenantCard({ tenant }) {
-    // FIX #6: Defensive programming - prevent crash if tenant.name is undefined
-    // Principle: Nullish Coalescing for fail-safe rendering
-    const firstLetter = tenant?.name?.[0]?.toUpperCase() || '?';
+    const name = tenant?.name || 'Negocio local';
+    const category = typeof tenant?.category === 'string' ? tenant.category : tenant?.category?.name;
+    const city = typeof tenant?.city === 'string' ? tenant.city : tenant?.city?.name;
+    const coverUrl = getImageUrl(tenant?.cover_url || tenant?.banner_path);
+    const logoUrl = getImageUrl(tenant?.logo_url || tenant?.logo_path);
+    const isOpen = typeof tenant?.is_open === 'boolean' ? tenant.is_open : null;
 
-    // Placeholder image for missing covers
-    const placeholderCover = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="200"%3E%3Crect fill="%23e5e7eb" width="400" height="200"/%3E%3C/svg%3E';
-    const placeholderLogo = `data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="80" height="80"%3E%3Crect fill="%236366f1" width="80" height="80" rx="12"/%3E%3Ctext x="40" y="50" text-anchor="middle" fill="white" font-size="32" font-weight="bold"%3E${firstLetter}%3C/text%3E%3C/svg%3E`;
+    const href = getTenantHref(tenant);
 
     return (
-        <Link
-            href={route('tenant.show', tenant.slug)}
-            className="group block bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg hover:border-gray-200 transition-all duration-300"
+        <Card
+            className="group relative flex h-full flex-col overflow-hidden transition-shadow hover:shadow-md"
+            data-testid="tenant-card"
         >
-            {/* Cover Image */}
-            <div className="relative aspect-[16/9] bg-gray-100 overflow-hidden">
-                <img
-                    src={tenant.cover_url || placeholderCover}
-                    alt={`${tenant.name} cover`}
-                    loading="lazy"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-
-                {/* Open/Closed Badge */}
-                {typeof tenant.is_open === 'boolean' && (
-                    <div className={`absolute top-3 right-3 px-2.5 py-1 rounded-full text-xs font-bold ${tenant.is_open
-                        ? 'bg-emerald-500 text-white'
-                        : 'bg-gray-800/80 text-gray-200'
-                        }`}>
-                        {tenant.is_open ? 'Abierto' : 'Cerrado'}
-                    </div>
-                )}
-
-                {/* Logo Avatar */}
-                <div className="absolute -bottom-8 left-4">
-                    <div className="w-16 h-16 rounded-xl border-4 border-white shadow-lg overflow-hidden bg-white">
+            <Link href={href} data-testid="primary-tenant-cta" aria-label={`Ver micrositio de ${name}`}>
+                <div className="relative aspect-[16/9] bg-muted">
+                    {coverUrl ? (
                         <img
-                            src={tenant.logo_url || placeholderLogo}
-                            alt={`${tenant.name} logo`}
+                            src={coverUrl}
+                            alt={`Portada de ${name}`}
                             loading="lazy"
-                            className="w-full h-full object-cover"
+                            className="h-full w-full object-cover"
                         />
-                    </div>
-                </div>
-            </div>
-
-            {/* Content */}
-            <div className="pt-10 pb-5 px-5">
-                {/* Name */}
-                <h3 className="font-bold text-gray-900 text-lg mb-1 group-hover:text-blue-600 transition-colors">
-                    {tenant.name}
-                </h3>
-
-                {/* Location & Category */}
-                <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
-                    {tenant.city && (
-                        <span className="flex items-center gap-1">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            {tenant.city}
-                        </span>
+                    ) : (
+                        <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                            <Store aria-hidden="true" />
+                        </div>
                     )}
-                    {tenant.category && (
-                        <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                            {tenant.category}
-                        </span>
-                    )}
-                </div>
 
-                {/* Description */}
-                {tenant.description && (
-                    <p className="text-sm text-gray-600 line-clamp-2">
-                        {tenant.description}
-                    </p>
-                )}
-            </div>
-        </Link>
+                    {isOpen !== null ? (
+                        <Badge
+                            className="absolute left-3 top-3"
+                            variant={isOpen ? 'default' : 'secondary'}
+                        >
+                            {isOpen ? 'Abierto' : 'Cerrado'}
+                        </Badge>
+                    ) : null}
+                </div>
+            </Link>
+
+            {tenant?.id ? (
+                <div className="absolute right-3 top-3">
+                    <FavoriteButton
+                        tenantId={tenant.id}
+                        isFavorited={Boolean(tenant.is_favorited)}
+                        count={Number(tenant.favorites_count || 0)}
+                        size="sm"
+                        showCount={Boolean(tenant.favorites_count)}
+                    />
+                </div>
+            ) : null}
+
+            <CardHeader className="flex-row items-start gap-4 p-5 pb-3">
+                <Avatar className="size-12 rounded-md">
+                    <AvatarImage src={logoUrl || undefined} alt={`Logo de ${name}`} />
+                    <AvatarFallback className="rounded-md">{getInitials(name)}</AvatarFallback>
+                </Avatar>
+
+                <div className="min-w-0 flex-1">
+                    <Link href={href} className="block" data-testid="primary-tenant-cta">
+                        <CardTitle className="truncate text-base leading-6 group-hover:text-primary">
+                            {name}
+                        </CardTitle>
+                    </Link>
+                    <CardDescription className="mt-1 flex items-center gap-1">
+                        {city ? (
+                            <>
+                                <MapPin aria-hidden="true" />
+                                <span className="truncate">{city}</span>
+                            </>
+                        ) : (
+                            'Negocio en Honduras'
+                        )}
+                    </CardDescription>
+                </div>
+            </CardHeader>
+
+            <CardContent className="flex flex-1 flex-col gap-3 px-5 pb-4 pt-0">
+                    {category ? (
+                        <div>
+                            <Badge variant="outline">{category}</Badge>
+                        </div>
+                    ) : null}
+
+                    {tenant?.description ? (
+                        <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">
+                            {tenant.description}
+                        </p>
+                    ) : (
+                        <p className="text-sm leading-6 text-muted-foreground">
+                            Revisa su informacion, productos y formas de contacto.
+                        </p>
+                    )}
+            </CardContent>
+
+            <CardFooter className="justify-between px-5 pb-5 pt-0 text-sm font-medium text-primary">
+                <Link href={href} className="inline-flex items-center gap-2" data-testid="primary-tenant-cta">
+                    <span>Ver negocio</span>
+                    <ArrowRight
+                        className={cn('transition-transform group-hover:translate-x-0.5')}
+                        data-icon="inline-end"
+                        aria-hidden="true"
+                    />
+                </Link>
+            </CardFooter>
+        </Card>
     );
 }

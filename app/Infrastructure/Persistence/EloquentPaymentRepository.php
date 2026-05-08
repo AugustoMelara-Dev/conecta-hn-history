@@ -99,6 +99,27 @@ final readonly class EloquentPaymentRepository implements PaymentRepositoryInter
     }
 
     /**
+     * @return array{payment: PaymentEntity, tenant_name: string, tenant_user_id: string|null}|null
+     */
+    public function findByIdWithTenant(string $id): ?array
+    {
+        $model = PaymentModel::query()
+            ->withoutGlobalScopes()
+            ->with('tenant:id,name,user_id')
+            ->find($id);
+
+        if (! $model) {
+            return null;
+        }
+
+        return [
+            'payment' => $this->toEntity($model),
+            'tenant_name' => (string) ($model->tenant?->name ?? 'Tu negocio'),
+            'tenant_user_id' => $model->tenant?->user_id ? (string) $model->tenant->user_id : null,
+        ];
+    }
+
+    /**
      * LEVEL 38: STRONG CONSISTENCY - Writer-Pinned Fetching
      *
      * Forces the query to the PRIMARY (Writer) node, bypassing all read replicas.
@@ -152,7 +173,7 @@ final readonly class EloquentPaymentRepository implements PaymentRepositoryInter
         return new PaymentEntity(
             id: (string) $model->id,
             tenantId: (string) $model->tenant_id,
-            amount: new Money($model->amount, 'HNL'), // Default Currency
+            amount: new Money((int) round((float) $model->amount), 'HNL'), // Default Currency
             bank: $model->bank,
             referenceNumber: $model->reference_number,
             status: PaymentStatus::tryFrom($model->status) ?? PaymentStatus::PENDING,

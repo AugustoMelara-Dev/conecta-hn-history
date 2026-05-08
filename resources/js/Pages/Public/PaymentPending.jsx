@@ -1,25 +1,30 @@
-/**
- * Pages/Public/PaymentPending.jsx - Payment Processing Status
- *
- * FEATURES:
- * - Real-time status polling
- * - Animated progress states
- * - Timeout handling
- * - Support contact fallback
- *
- * PROPS:
- * @param {Object} props.payment - { id, status, amount, method, created_at }
- * @param {Object} props.tenant - Tenant info
- * @param {string} props.checkUrl - URL to poll for status updates
- */
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import {
+    AlertCircle,
+    CheckCircle2,
+    Clock3,
+    ExternalLink,
+    HelpCircle,
+    LoaderCircle,
+    ReceiptText,
+} from 'lucide-react';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Head, Link, router } from '@inertiajs/react';
 import PublicLayout from '@/Layouts/PublicLayout';
+import { Alert, AlertDescription, AlertTitle } from '@/Components/ui/alert';
+import { Badge } from '@/Components/ui/badge';
+import { Button } from '@/Components/ui/button';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+} from '@/Components/ui/card';
+import { Progress } from '@/Components/ui/progress';
+import { Separator } from '@/Components/ui/separator';
 
-// ═══════════════════════════════════════════════════════════════════════════
-// FORMATTERS
-// ═══════════════════════════════════════════════════════════════════════════
 const currencyFormatter = new Intl.NumberFormat('es-HN', {
     style: 'currency',
     currency: 'HNL',
@@ -31,254 +36,315 @@ const dateFormatter = new Intl.DateTimeFormat('es-HN', {
     timeStyle: 'short',
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// STATUS COMPONENTS
-// ═══════════════════════════════════════════════════════════════════════════
-function PendingAnimation() {
+const STATUS_META = {
+    pending: {
+        title: 'Verificando tu pago',
+        description: 'Esto puede tomar unos minutos. Puedes dejar esta pagina abierta mientras confirmamos la transaccion.',
+        badge: 'Pago en revision',
+        variant: 'secondary',
+        icon: Clock3,
+        progress: 66,
+    },
+    completed: {
+        title: 'Pago confirmado',
+        description: 'Tu suscripcion fue activada correctamente. Te llevaremos a tu panel en unos segundos.',
+        badge: 'Confirmado',
+        variant: 'default',
+        icon: CheckCircle2,
+        progress: 100,
+    },
+    paid: {
+        title: 'Pago confirmado',
+        description: 'Tu suscripcion fue activada correctamente. Te llevaremos a tu panel en unos segundos.',
+        badge: 'Confirmado',
+        variant: 'default',
+        icon: CheckCircle2,
+        progress: 100,
+    },
+    approved: {
+        title: 'Pago confirmado',
+        description: 'Tu suscripcion fue activada correctamente. Te llevaremos a tu panel en unos segundos.',
+        badge: 'Confirmado',
+        variant: 'default',
+        icon: CheckCircle2,
+        progress: 100,
+    },
+    failed: {
+        title: 'Pago no procesado',
+        description: 'No pudimos confirmar este pago. Revisa los datos o contacta a soporte para que podamos ayudarte.',
+        badge: 'Requiere atencion',
+        variant: 'destructive',
+        icon: AlertCircle,
+        progress: 100,
+    },
+    rejected: {
+        title: 'Pago no procesado',
+        description: 'No pudimos confirmar este pago. Revisa los datos o contacta a soporte para que podamos ayudarte.',
+        badge: 'Requiere atencion',
+        variant: 'destructive',
+        icon: AlertCircle,
+        progress: 100,
+    },
+};
+
+function normalizeStatus(value) {
+    const normalized = String(value || 'pending').toLowerCase();
+    return STATUS_META[normalized] ? normalized : 'pending';
+}
+
+function formatElapsed(seconds) {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+}
+
+function TimelineStep({ active, complete, description, index, label }) {
     return (
-        <div className="relative">
-            <div className="w-32 h-32 rounded-full bg-amber-100 flex items-center justify-center mx-auto">
-                <div className="w-24 h-24 rounded-full bg-amber-200 flex items-center justify-center animate-pulse">
-                    <svg className="w-12 h-12 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                </div>
+        <li className="grid grid-cols-[auto_1fr] gap-3">
+            <div
+                className={[
+                    'flex size-9 items-center justify-center rounded-full border text-sm font-semibold',
+                    complete
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : active
+                            ? 'border-ring bg-secondary text-secondary-foreground'
+                            : 'border-border bg-muted text-muted-foreground',
+                ].join(' ')}
+                aria-hidden="true"
+            >
+                {complete ? <CheckCircle2 /> : index}
             </div>
-            {/* Orbiting dots */}
-            <div className="absolute inset-0 animate-spin" style={{ animationDuration: '3s' }}>
-                <div className="absolute top-0 left-1/2 w-3 h-3 -ml-1.5 bg-amber-500 rounded-full" />
+            <div className="min-w-0 pt-1">
+                <p className="text-sm font-medium text-foreground">{label}</p>
+                <p className="text-sm text-muted-foreground">{description}</p>
             </div>
-            <div className="absolute inset-0 animate-spin" style={{ animationDuration: '3s', animationDelay: '1s' }}>
-                <div className="absolute bottom-0 left-1/2 w-3 h-3 -ml-1.5 bg-amber-400 rounded-full" />
-            </div>
-        </div>
+        </li>
     );
 }
 
-function SuccessAnimation() {
-    return (
-        <div className="w-32 h-32 rounded-full bg-emerald-100 flex items-center justify-center mx-auto animate-bounce-in">
-            <div className="w-24 h-24 rounded-full bg-emerald-500 flex items-center justify-center">
-                <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                </svg>
-            </div>
-        </div>
-    );
-}
-
-function FailedAnimation() {
-    return (
-        <div className="w-32 h-32 rounded-full bg-red-100 flex items-center justify-center mx-auto">
-            <div className="w-24 h-24 rounded-full bg-red-500 flex items-center justify-center">
-                <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </div>
-        </div>
-    );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// TIMELINE
-// ═══════════════════════════════════════════════════════════════════════════
 function PaymentTimeline({ status }) {
+    const currentIndex = ['completed', 'paid', 'approved'].includes(status)
+        ? 3
+        : ['failed', 'rejected'].includes(status)
+            ? 2
+            : 2;
+
     const steps = [
-        { id: 'created', label: 'Orden Creada', description: 'Tu orden ha sido registrada' },
-        { id: 'processing', label: 'Procesando Pago', description: 'Verificando transacción' },
-        { id: 'confirmed', label: 'Pago Confirmado', description: 'Transacción exitosa' },
+        { label: 'Orden registrada', description: 'Recibimos la referencia del pago.' },
+        { label: 'Revision de pago', description: 'Estamos verificando la transaccion.' },
+        { label: 'Activacion', description: 'Tu panel queda listo al confirmar.' },
     ];
 
-    const currentIndex = status === 'pending' ? 1 : status === 'completed' ? 2 : 0;
-
     return (
-        <div className="space-y-4 mt-8">
+        <ol className="flex flex-col gap-4" aria-label="Estado del pago">
             {steps.map((step, index) => (
-                <div key={step.id} className="flex items-start gap-4">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${index < currentIndex
-                            ? 'bg-emerald-500 text-white'
-                            : index === currentIndex
-                                ? 'bg-amber-500 text-white animate-pulse'
-                                : 'bg-gray-200 text-gray-400'
-                        }`}>
-                        {index < currentIndex ? (
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                        ) : (
-                            <span className="font-bold">{index + 1}</span>
-                        )}
-                    </div>
-                    <div className="flex-1 pt-1">
-                        <p className={`font-semibold ${index <= currentIndex ? 'text-gray-900' : 'text-gray-400'}`}>
-                            {step.label}
-                        </p>
-                        <p className="text-sm text-gray-500">{step.description}</p>
-                    </div>
-                </div>
+                <TimelineStep
+                    key={step.label}
+                    index={index + 1}
+                    label={step.label}
+                    description={step.description}
+                    active={index + 1 === currentIndex}
+                    complete={index + 1 < currentIndex || ['completed', 'paid', 'approved'].includes(status)}
+                />
             ))}
-        </div>
+        </ol>
     );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// MAIN PAGE
-// ═══════════════════════════════════════════════════════════════════════════
+function PaymentSummary({ payment }) {
+    if (!payment) return null;
+
+    return (
+        <Card className="bg-muted/40" data-testid="public-payment-summary">
+            <CardContent className="flex flex-col gap-4 p-4">
+                <div className="flex items-start justify-between gap-4">
+                    <span className="text-sm text-muted-foreground">Monto</span>
+                    <span className="text-right text-base font-semibold text-foreground">
+                        {currencyFormatter.format(Number(payment.amount) || 0)}
+                    </span>
+                </div>
+                {payment.method ? (
+                    <>
+                        <Separator />
+                        <div className="flex items-start justify-between gap-4">
+                            <span className="text-sm text-muted-foreground">Metodo</span>
+                            <span className="text-right text-sm font-medium text-foreground">{payment.method}</span>
+                        </div>
+                    </>
+                ) : null}
+                <Separator />
+                <div className="flex items-start justify-between gap-4">
+                    <span className="text-sm text-muted-foreground">Referencia</span>
+                    <span className="text-right font-mono text-sm text-foreground">#{payment.id}</span>
+                </div>
+                {payment.created_at ? (
+                    <>
+                        <Separator />
+                        <div className="flex items-start justify-between gap-4">
+                            <span className="text-sm text-muted-foreground">Registrado</span>
+                            <span className="text-right text-sm text-foreground">
+                                {dateFormatter.format(new Date(payment.created_at))}
+                            </span>
+                        </div>
+                    </>
+                ) : null}
+            </CardContent>
+        </Card>
+    );
+}
+
 export default function PaymentPending({ payment, tenant, checkUrl }) {
-    const [status, setStatus] = useState(payment?.status || 'pending');
+    const { auth } = usePage().props;
+    const [status, setStatus] = useState(() => normalizeStatus(payment?.status));
     const [elapsedTime, setElapsedTime] = useState(0);
+    const panelUrl = auth?.panel_url || auth?.user?.panel_url || '/registrar-negocio';
+    const billingUrl = panelUrl.startsWith('/app/') ? `${panelUrl}/manage-billing` : panelUrl;
+    const statusMeta = STATUS_META[status];
+    const StatusIcon = statusMeta.icon;
+    const isPending = status === 'pending';
+    const isComplete = ['completed', 'paid', 'approved'].includes(status);
+    const isFailed = ['failed', 'rejected'].includes(status);
 
-    // Poll for status updates
     useEffect(() => {
-        if (status !== 'pending') return;
+        if (!isPending) return undefined;
 
-        const pollInterval = setInterval(() => {
-            fetch(checkUrl || `/api/payments/${payment?.id}/status`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.status && data.status !== 'pending') {
-                        setStatus(data.status);
-                        if (data.status === 'completed') {
-                            // Redirect to success page after delay
-                            setTimeout(() => {
-                                router.visit(route('tenant.dashboard'));
-                            }, 2000);
-                        }
+        const pollInterval = window.setInterval(() => {
+            fetch(checkUrl || `/api/payments/${payment?.id}/status`, {
+                headers: { Accept: 'application/json' },
+            })
+                .then((response) => response.json())
+                .then((data) => {
+                    if (data.status && normalizeStatus(data.status) !== 'pending') {
+                        setStatus(normalizeStatus(data.status));
                     }
                 })
-                .catch(() => { });
-        }, 5000); // Poll every 5 seconds
+                .catch(() => {});
+        }, 5000);
 
-        return () => clearInterval(pollInterval);
-    }, [status, checkUrl, payment?.id]);
+        return () => window.clearInterval(pollInterval);
+    }, [checkUrl, isPending, payment?.id]);
 
-    // Elapsed time counter
     useEffect(() => {
-        const timer = setInterval(() => {
-            setElapsedTime(prev => prev + 1);
+        const timer = window.setInterval(() => {
+            setElapsedTime((previous) => previous + 1);
         }, 1000);
-        return () => clearInterval(timer);
+
+        return () => window.clearInterval(timer);
     }, []);
 
-    const formatElapsed = (seconds) => {
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
-    };
+    useEffect(() => {
+        if (!isComplete) return undefined;
+
+        const redirectTimer = window.setTimeout(() => {
+            router.visit(panelUrl);
+        }, 2000);
+
+        return () => window.clearTimeout(redirectTimer);
+    }, [isComplete, panelUrl]);
+
+    const supportHref = useMemo(() => {
+        const subject = encodeURIComponent('Ayuda con pago en Conecta HN');
+        return `mailto:soporte@conectahn.com?subject=${subject}`;
+    }, []);
+
+    const handleRefresh = useCallback(() => {
+        router.reload({ only: ['payment'] });
+    }, []);
 
     return (
         <PublicLayout>
             <Head>
-                <title>Procesando Pago - ConectaHN</title>
+                <title>Procesando pago | Conecta HN</title>
                 <meta name="robots" content="noindex" />
             </Head>
 
-            <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex items-center justify-center py-12 px-4">
-                <div className="max-w-lg w-full">
-                    <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 sm:p-12 text-center">
-                        {/* Status Icon */}
-                        {status === 'pending' && <PendingAnimation />}
-                        {status === 'completed' && <SuccessAnimation />}
-                        {status === 'failed' && <FailedAnimation />}
+            <main className="min-h-screen bg-background px-4 py-12" data-testid="public-payment-pending-page">
+                <div className="mx-auto flex max-w-2xl flex-col gap-6">
+                    <Card data-testid="public-payment-pending-card">
+                        <CardHeader className="items-center gap-5 text-center">
+                            <div className="flex size-16 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
+                                {isPending ? (
+                                    <LoaderCircle className="animate-spin" aria-hidden="true" />
+                                ) : (
+                                    <StatusIcon aria-hidden="true" />
+                                )}
+                            </div>
+                            <div className="flex flex-col items-center gap-3">
+                                <Badge variant={statusMeta.variant}>{statusMeta.badge}</Badge>
+                                <div className="flex flex-col gap-2">
+                                    <CardTitle>{statusMeta.title}</CardTitle>
+                                    <CardDescription>{statusMeta.description}</CardDescription>
+                                </div>
+                            </div>
+                        </CardHeader>
 
-                        {/* Title */}
-                        <h1 className="text-2xl font-bold text-gray-900 mt-8 mb-2">
-                            {status === 'pending' && 'Verificando tu Pago'}
-                            {status === 'completed' && '¡Pago Confirmado!'}
-                            {status === 'failed' && 'Pago No Procesado'}
-                        </h1>
-
-                        <p className="text-gray-500 mb-6">
-                            {status === 'pending' && 'Esto puede tomar unos minutos. No cierres esta página.'}
-                            {status === 'completed' && 'Tu suscripción ha sido activada exitosamente.'}
-                            {status === 'failed' && 'Hubo un problema procesando tu pago. Por favor intenta de nuevo.'}
-                        </p>
-
-                        {/* Payment Summary */}
-                        {payment && (
-                            <div className="bg-gray-50 rounded-2xl p-6 mb-6 text-left">
-                                <div className="flex justify-between items-center mb-3">
-                                    <span className="text-gray-500">Monto</span>
-                                    <span className="text-xl font-bold text-gray-900">
-                                        {currencyFormatter.format(payment.amount)}
+                        <CardContent className="flex flex-col gap-6">
+                            <div aria-live="polite" className="flex flex-col gap-2">
+                                <div className="flex items-center justify-between gap-3 text-sm">
+                                    <span className="text-muted-foreground">Progreso</span>
+                                    <span className="font-medium text-foreground">
+                                        {isPending ? `Tiempo: ${formatElapsed(elapsedTime)}` : statusMeta.badge}
                                     </span>
                                 </div>
-                                {payment.method && (
-                                    <div className="flex justify-between items-center mb-3">
-                                        <span className="text-gray-500">Método</span>
-                                        <span className="font-medium text-gray-700">{payment.method}</span>
-                                    </div>
-                                )}
-                                <div className="flex justify-between items-center">
-                                    <span className="text-gray-500">Referencia</span>
-                                    <span className="font-mono text-sm text-gray-600">#{payment.id}</span>
-                                </div>
+                                <Progress value={statusMeta.progress} aria-label="Progreso de verificacion del pago" />
                             </div>
-                        )}
 
-                        {/* Elapsed Time */}
-                        {status === 'pending' && (
-                            <div className="text-sm text-gray-400 mb-6">
-                                Tiempo transcurrido: {formatElapsed(elapsedTime)}
-                            </div>
-                        )}
-
-                        {/* Timeline */}
-                        {status === 'pending' && (
+                            <PaymentSummary payment={payment} />
                             <PaymentTimeline status={status} />
-                        )}
 
-                        {/* Actions */}
-                        <div className="mt-8 space-y-3">
-                            {status === 'completed' && (
-                                <Link
-                                    href={route('tenant.dashboard')}
-                                    className="block w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-colors"
-                                >
-                                    Ir a mi Panel
-                                </Link>
-                            )}
+                            {tenant?.name ? (
+                                <Alert>
+                                    <ReceiptText aria-hidden="true" />
+                                    <AlertTitle>Negocio en activacion</AlertTitle>
+                                    <AlertDescription>
+                                        Este pago esta asociado a {tenant.name}. Cuando se confirme, el panel quedara disponible con las funciones del plan correspondiente.
+                                    </AlertDescription>
+                                </Alert>
+                            ) : null}
 
-                            {status === 'failed' && (
-                                <>
-                                    <Link
-                                        href={route('tenant.billing.index')}
-                                        className="block w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors"
-                                    >
-                                        Intentar de Nuevo
+                            {isFailed ? (
+                                <Alert variant="destructive">
+                                    <AlertCircle aria-hidden="true" />
+                                    <AlertTitle>Necesitamos revisar este pago</AlertTitle>
+                                    <AlertDescription>
+                                        Si el cargo aparece en tu banco, contacta a soporte con la referencia para evitar duplicar el pago.
+                                    </AlertDescription>
+                                </Alert>
+                            ) : null}
+                        </CardContent>
+
+                        <CardFooter className="flex flex-col gap-3 sm:flex-row">
+                            {isComplete ? (
+                                <Button asChild className="w-full sm:w-auto">
+                                    <Link href={panelUrl}>
+                                        Ir a mi panel
+                                        <ExternalLink data-icon="inline-end" aria-hidden="true" />
                                     </Link>
-                                    <a
-                                        href="mailto:soporte@conectahn.com?subject=Problema con pago"
-                                        className="block w-full py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-colors"
-                                    >
-                                        Contactar Soporte
-                                    </a>
-                                </>
-                            )}
+                                </Button>
+                            ) : null}
 
-                            {status === 'pending' && (
-                                <p className="text-xs text-gray-400">
-                                    ¿Problemas?{' '}
-                                    <a href="mailto:soporte@conectahn.com" className="text-blue-600 hover:underline">
-                                        Contacta a soporte
-                                    </a>
-                                </p>
-                            )}
-                        </div>
-                    </div>
+                            {isFailed ? (
+                                <Button asChild className="w-full sm:w-auto">
+                                    <Link href={billingUrl}>Intentar de nuevo</Link>
+                                </Button>
+                            ) : null}
+
+                            {isPending ? (
+                                <Button type="button" className="w-full sm:w-auto" onClick={handleRefresh}>
+                                    Revisar estado
+                                </Button>
+                            ) : null}
+
+                            <Button asChild variant="outline" className="w-full sm:w-auto">
+                                <a href={supportHref}>
+                                    <HelpCircle data-icon="inline-start" aria-hidden="true" />
+                                    Contactar soporte
+                                </a>
+                            </Button>
+                        </CardFooter>
+                    </Card>
                 </div>
-            </div>
-
-            {/* Custom Animation Styles */}
-            <style>{`
-                @keyframes bounce-in {
-                    0% { transform: scale(0); }
-                    50% { transform: scale(1.1); }
-                    100% { transform: scale(1); }
-                }
-                .animate-bounce-in { animation: bounce-in 0.5s ease-out; }
-            `}</style>
+            </main>
         </PublicLayout>
     );
 }

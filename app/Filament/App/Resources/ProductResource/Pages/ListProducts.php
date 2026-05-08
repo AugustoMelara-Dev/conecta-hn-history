@@ -7,6 +7,7 @@ namespace App\Filament\App\Resources\ProductResource\Pages;
 use App\Filament\App\Resources\ProductResource;
 use App\Settings\GeneralSettings;
 use Filament\Actions;
+use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 
@@ -22,10 +23,10 @@ class ListProducts extends ListRecords
         $limitInfo = ProductResource::getProductLimitInfo();
 
         if ($limitInfo['isPro'] ?? false) {
-            return "Mis Productos ({$limitInfo['count']})";
+            return "Mis productos ({$limitInfo['count']})";
         }
 
-        return "Mis Productos ({$limitInfo['count']}/{$limitInfo['limit']})";
+        return "Mis productos ({$limitInfo['count']}/{$limitInfo['limit']})";
     }
 
     /**
@@ -40,7 +41,7 @@ class ListProducts extends ListRecords
         }
 
         if ($limitInfo['percentage'] >= 80) {
-            return "⚠️ Estás usando el {$limitInfo['percentage']}% de tu límite.";
+            return "Estas usando el {$limitInfo['percentage']}% de tu limite.";
         }
 
         return null;
@@ -56,10 +57,10 @@ class ListProducts extends ListRecords
         return [
             // Botón de upgrade si alcanzó el límite
             Actions\Action::make('upgrade')
-                ->label('🚀 Desbloquear Productos Ilimitados')
+                ->label('Desbloquear productos ilimitados')
                 ->color('warning')
                 ->icon('heroicon-o-sparkles')
-                ->url('/admin/billing')
+                ->url(fn () => route('filament.app.pages.manage-billing', ['tenant' => Filament::getTenant()?->slug]))
                 ->visible(! $limitInfo['canCreate'] && ! ($limitInfo['isPro'] ?? false)),
 
             // Botón de crear
@@ -72,14 +73,14 @@ class ListProducts extends ListRecords
 
                         Notification::make()
                             ->danger()
-                            ->title('¡Tu catálogo está creciendo! 🚀')
-                            ->body("Has alcanzado el límite de {$limitInfo['limit']} productos del Plan Gratuito. Mejora a PRO para subir productos ilimitados.")
+                            ->title('Tu catalogo esta creciendo')
+                            ->body("Has alcanzado el limite de {$limitInfo['limit']} productos del Plan Semilla. Mejora a PRO para subir productos ilimitados.")
                             ->persistent()
                             ->actions([
                                 \Filament\Notifications\Actions\Action::make('upgrade')
                                     ->button()
                                     ->label("Mejorar a PRO - L. {$price}/mes")
-                                    ->url('/admin/billing')
+                                    ->url(route('filament.app.pages.manage-billing', ['tenant' => Filament::getTenant()?->slug]))
                                     ->markAsRead(),
                             ])
                             ->send();

@@ -1,10 +1,13 @@
 import { Head, Link, useForm, usePage } from "@inertiajs/react"
 import { ArrowRight, MailCheck, RefreshCcw } from "lucide-react"
 
+import AuthShadcnShell from "@/Components/Auth/AuthShadcnShell"
 import { Alert, AlertDescription, AlertTitle } from "@/Components/ui/alert"
+import { Badge } from "@/Components/ui/badge"
 import { Button } from "@/Components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/Components/ui/card"
 import { Field, FieldDescription, FieldGroup, FieldSeparator } from "@/Components/ui/field"
+import { Spinner } from "@/Components/ui/spinner"
 
 const COPY = {
     headTitle: "Verificar correo",
@@ -40,81 +43,90 @@ export default function VerifyEmail({ status, onboardingNextAction = null }) {
         <>
             <Head title={t("headTitle")} />
 
-            <div className="flex min-h-svh w-full items-center justify-center bg-[#f7f8fb] p-6 md:p-10">
-                <div className="w-full max-w-md">
-                    <Card className="border-slate-200 bg-white text-slate-950 shadow-xl shadow-slate-200/60">
-                        <CardHeader>
-                            <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
-                                <MailCheck className="h-6 w-6" aria-hidden="true" />
+            <AuthShadcnShell
+                imageAlt="Verificacion de correo para Conecta HN"
+                eyebrow="Correo pendiente"
+                title="Un paso mas para proteger tu cuenta"
+                description="La verificacion confirma que los avisos de acceso y seguridad lleguen al correo correcto."
+            >
+                <Card className="overflow-hidden shadow-sm">
+                    <CardHeader className="gap-3 border-b bg-muted/30">
+                        <div className="flex items-center justify-between gap-3">
+                            <div className="flex size-11 items-center justify-center rounded-lg border bg-background text-muted-foreground">
+                                <MailCheck aria-hidden="true" />
                             </div>
-                            <CardTitle className="text-2xl font-semibold text-slate-950">{t("title")}</CardTitle>
-                            <CardDescription className="text-slate-500">
-                                {t("descriptionPrefix")} <span className="font-medium text-slate-950">{auth?.user?.email}</span>.{" "}
+                            <Badge variant="secondary">Accion requerida</Badge>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <CardTitle>{t("title")}</CardTitle>
+                            <CardDescription>
+                                {t("descriptionPrefix")} <span className="font-medium text-foreground">{auth?.user?.email}</span>.{" "}
                                 {t("descriptionSuffix")}
                             </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <FieldGroup>
-                                {status === "verification-link-sent" ? (
-                                    <Alert variant="success" aria-live="polite" data-testid="verify-email-feedback">
-                                        <AlertTitle>{t("resentTitle")}</AlertTitle>
-                                        <AlertDescription>{t("resentDescription")}</AlertDescription>
-                                    </Alert>
-                                ) : null}
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-5 sm:p-6">
+                        <FieldGroup>
+                            {status === "verification-link-sent" ? (
+                                <Alert variant="success" aria-live="polite" data-testid="verify-email-feedback">
+                                    <AlertTitle>{t("resentTitle")}</AlertTitle>
+                                    <AlertDescription>{t("resentDescription")}</AlertDescription>
+                                </Alert>
+                            ) : null}
 
-                                {onboardingNextAction ? (
-                                    <Alert data-testid="verify-email-onboarding-next">
-                                        <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                                        <AlertTitle>{t("nextActionTitle", { title: onboardingNextAction.title })}</AlertTitle>
-                                        <AlertDescription>
-                                            {onboardingNextAction.copy}
-                                            {typeof onboardingNextAction.progress === "number" ? (
-                                                <span className="mt-2 block font-medium text-slate-700">
-                                                    {t("progressLabel", { progress: onboardingNextAction.progress })}
-                                                </span>
-                                            ) : null}
-                                        </AlertDescription>
-                                    </Alert>
-                                ) : null}
+                            {onboardingNextAction ? (
+                                <Alert data-testid="verify-email-onboarding-next">
+                                    <ArrowRight aria-hidden="true" />
+                                    <AlertTitle>{t("nextActionTitle", { title: onboardingNextAction.title })}</AlertTitle>
+                                    <AlertDescription>
+                                        {onboardingNextAction.copy}
+                                        {typeof onboardingNextAction.progress === "number" ? (
+                                            <span className="mt-2 block font-medium text-foreground">
+                                                {t("progressLabel", { progress: onboardingNextAction.progress })}
+                                            </span>
+                                        ) : null}
+                                    </AlertDescription>
+                                </Alert>
+                            ) : null}
 
-                                <Field>
-                                    <form onSubmit={submit}>
-                                        <Button
-                                            type="submit"
-                                            disabled={processing}
-                                            data-testid="verify-email-resend"
-                                            className="w-full bg-slate-950 text-white hover:bg-slate-800"
-                                        >
-                                            <RefreshCcw
-                                                className={`mr-2 h-4 w-4 ${processing ? "animate-spin" : ""}`}
-                                                aria-hidden="true"
-                                            />
-                                            {processing ? t("resendProcessing") : t("resendIdle")}
-                                        </Button>
-                                    </form>
-                                </Field>
-
-                                <FieldSeparator>{t("alternateAccount")}</FieldSeparator>
-
-                                <Field>
+                            <Field>
+                                <form onSubmit={submit}>
                                     <Button
-                                        variant="outline"
-                                        type="button"
-                                        data-testid="verify-email-logout"
-                                        className="w-full border-slate-200 bg-white text-slate-950 hover:bg-slate-50"
-                                        asChild
+                                        type="submit"
+                                        disabled={processing}
+                                        data-testid="verify-email-resend"
+                                        className="w-full"
                                     >
-                                        <Link href={route("logout")} method="post" as="button">
-                                            {t("logout")}
-                                        </Link>
+                                        {processing ? (
+                                            <Spinner data-icon="inline-start" />
+                                        ) : (
+                                            <RefreshCcw data-icon="inline-start" aria-hidden="true" />
+                                        )}
+                                        {processing ? t("resendProcessing") : t("resendIdle")}
                                     </Button>
-                                    <FieldDescription className="text-center">{t("footerDescription")}</FieldDescription>
-                                </Field>
-                            </FieldGroup>
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
+                                </form>
+                            </Field>
+
+                            <FieldSeparator>{t("alternateAccount")}</FieldSeparator>
+
+                            <Field>
+                                <Button
+                                    variant="outline"
+                                    type="button"
+                                    data-testid="verify-email-logout"
+                                    className="w-full"
+                                    asChild
+                                >
+                                    <Link href={route("logout")} method="post" as="button">
+                                        {t("logout")}
+                                    </Link>
+                                </Button>
+                                <FieldDescription className="text-center">{t("footerDescription")}</FieldDescription>
+                            </Field>
+                        </FieldGroup>
+                    </CardContent>
+                </Card>
+            </AuthShadcnShell>
         </>
     )
 }

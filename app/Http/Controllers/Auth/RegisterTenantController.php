@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Auth;
 use App\Application\Actions\Auth\RegisterTenantAction;
 use App\Domain\Tenant\Contracts\OnboardingReader;
 use App\Http\Controllers\Controller;
+use App\Support\Panel\CanonicalPanelUrlResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -42,7 +43,8 @@ final class RegisterTenantController extends Controller
      */
     public function store(
         Request $request,
-        \App\Application\Shared\Contracts\CommandBusInterface $bus
+        \App\Application\Shared\Contracts\CommandBusInterface $bus,
+        CanonicalPanelUrlResolver $panelUrlResolver
     ): RedirectResponse {
         // Validation
         $request->validate([
@@ -83,7 +85,7 @@ final class RegisterTenantController extends Controller
 
             Auth::login($result['user']);
 
-            return redirect()->intended(route('tenant.dashboard'));
+            return redirect()->intended($panelUrlResolver->forUser($result['user']));
 
         } catch (\Exception $e) {
             return back()

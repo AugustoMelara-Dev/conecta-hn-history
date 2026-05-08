@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
     <meta charset="utf-8">
     <style>
@@ -7,7 +7,7 @@
         .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
         .header { background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); padding: 40px 30px; text-align: center; }
         .header h1 { color: white; margin: 0; font-size: 28px; }
-        .header .icon { font-size: 60px; margin-bottom: 10px; }
+        .header .status { color: white; font-size: 14px; font-weight: 700; letter-spacing: 0.08em; margin-bottom: 10px; text-transform: uppercase; }
         .content { padding: 40px 30px; }
         .alert { background: #f3f4f6; border-left: 4px solid #6b7280; padding: 20px; margin: 20px 0; border-radius: 8px; }
         .alert h3 { color: #374151; margin: 0 0 10px 0; }
@@ -18,15 +18,15 @@
 <body>
     <div class="container">
         <div class="header">
-            <div class="icon">⏸️</div>
-            <h1>Plan PRO Suspendido</h1>
+            <div class="status">Plan pausado</div>
+            <h1>Plan PRO suspendido</h1>
         </div>
-        
+
         <div class="content">
-            <p>Hola <strong>{{ $tenant->user->name ?? 'Cliente' }}</strong>,</p>
-            
-            <p>Te informamos que tu suscripcion PRO de <strong>{{ $tenant->name }}</strong> ha expirado y los beneficios premium han sido desactivados.</p>
-            
+            <p>Hola <strong>{{ $tenant->name ?? 'Cliente' }}</strong>,</p>
+
+            <p>La suscripcion PRO de <strong>{{ $tenant->name }}</strong> expiro y los beneficios premium fueron desactivados.</p>
+
             <div class="alert">
                 <h3>Que significa esto</h3>
                 <p>Tu negocio sigue visible en Conecta HN, pero ahora opera con el plan gratuito:</p>
@@ -37,20 +37,20 @@
                     <li>Sin boton de WhatsApp</li>
                 </ul>
             </div>
-            
-            <p>La buena noticia es que puedes reactivar tu Plan PRO en cualquier momento manteniendo toda tu informacion.</p>
-            
+
+            <p>Puedes reactivar tu Plan PRO en cualquier momento manteniendo tu informacion.</p>
+
             <center>
-                <a href="{{ config('app.url') }}/app" class="btn">Reactivar Plan PRO</a>
+                <a href="{{ url('/login') }}" class="btn">Entrar al panel</a>
             </center>
-            
+
             <p style="text-align: center; color: #6b7280; font-size: 14px;">
                 Estamos aqui para ayudarte. Contactanos si tienes preguntas.
             </p>
         </div>
-        
+
         <div class="footer">
-            <p>© {{ date('Y') }} Conecta HN. Todos los derechos reservados.</p>
+            <p>&copy; {{ date('Y') }} Conecta HN. Todos los derechos reservados.</p>
         </div>
     </div>
 </body>

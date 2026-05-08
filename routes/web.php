@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\ProfileController;
 use App\Http\Controllers\Public\DirectoryController;
 use App\Http\Controllers\Public\ExploreController;
 use App\Http\Controllers\Public\InteractionController;
+use App\Http\Controllers\Public\BookingController;
 use App\Http\Controllers\Public\LocationController;
 use App\Http\Controllers\Public\TenantMicrositeController;
 use App\Http\Controllers\Public\WelcomeController;
@@ -22,6 +23,24 @@ use Inertia\Inertia;
 */
 
 require __DIR__.'/tenant.php';
+
+Route::domain('{tenant}.' . config('app.domain'))->group(function () {
+    Route::get('/', [TenantMicrositeController::class, 'show'])
+        ->name('tenant.microsite.show');
+
+    Route::prefix('book')->group(function () {
+        Route::get('/', [BookingController::class, 'index'])
+            ->name('public.booking.index');
+        Route::post('/', [BookingController::class, 'store'])
+            ->name('public.booking.store');
+        Route::get('/providers/{service}', [BookingController::class, 'getProviders'])
+            ->name('public.booking.providers');
+        Route::get('/slots', [BookingController::class, 'getSlots'])
+            ->name('public.booking.slots');
+        Route::get('/success', [BookingController::class, 'success'])
+            ->name('public.booking.success');
+    });
+});
 
 // ═══════════════════════════════════════════════════════════════════════
 // 1. LANDING PAGE: React/Inertia (Welcome.jsx)
@@ -208,7 +227,7 @@ require __DIR__.'/auth.php';
 | Tenant microsites are now served via subdomain routing:
 | - {tenant}.vito.io → TenantMicrositeController
 |
-| Routes defined in: routes/public.php (Route::domain group)
+| Routes defined before the central `/` route in routes/web.php.
 |
 | DEPRECATED: The old /@{slug} prefix routing has been removed.
 | All legacy URLs will return 404.

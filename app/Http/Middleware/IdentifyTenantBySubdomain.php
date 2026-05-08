@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Domain\Shared\Services\TenantContext;
 use App\Models\Tenant;
 use Closure;
 use Illuminate\Http\Request;
@@ -88,6 +89,7 @@ final class IdentifyTenantBySubdomain
 
         // Bind tenant to container as singleton
         app()->instance('current_tenant', $tenant);
+        app(TenantContext::class)->setTenant((string) $tenant->id);
 
         return $next($request);
     }

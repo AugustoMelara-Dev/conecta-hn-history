@@ -4,9 +4,9 @@
             <div class="biz-stack">
                 <div class="biz-split">
                     <div>
-                        <p class="biz-kicker">Activación 7 días</p>
+                        <p class="biz-kicker">Activacion 7 dias</p>
                         <h3 class="biz-heading">Tu ruta de arranque en Vito Business OS</h3>
-                        <p class="biz-kicker">{{ $businessLabel ?? 'Negocio' }} · Rol: {{ $roleLabel }} · Contexto: {{ $moduleLabel ?? 'General' }}</p>
+                        <p class="biz-kicker">{{ $businessLabel ?? 'Negocio' }} - Rol: {{ $roleLabel }} - Contexto: {{ $moduleLabel ?? 'General' }}</p>
                         <p class="biz-copy">{{ $nextAction['copy'] ?? 'Avanza con el siguiente paso recomendado.' }}</p>
                     </div>
                     <x-filament::badge color="{{ $progress >= 80 ? 'success' : ($progress >= 50 ? 'warning' : 'danger') }}">
@@ -14,17 +14,34 @@
                     </x-filament::badge>
                 </div>
 
-                <div class="biz-progress">
+                <div
+                    class="biz-progress"
+                    role="progressbar"
+                    aria-label="Progreso de activacion"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                    aria-valuenow="{{ $progress }}"
+                >
                     <div
                         class="biz-progress-bar {{ $progress < 50 ? 'biz-progress-bar-danger' : ($progress < 80 ? 'biz-progress-bar-warning' : '') }}"
                         style="width: {{ max(6, $progress) }}%;"
                     ></div>
                 </div>
 
+                @php
+                    $nextHref = $nextAction['href'] ?? '';
+                @endphp
+
                 <div class="biz-button-row">
-                    <a href="{{ $nextAction['href'] ?? '#' }}" class="biz-button">
-                        {{ $nextAction['title'] ?? 'Continuar activación' }}
-                    </a>
+                    @if ($nextHref !== '')
+                        <a href="{{ $nextHref }}" class="biz-button">
+                            {{ $nextAction['title'] ?? 'Continuar activacion' }}
+                        </a>
+                    @else
+                        <span class="biz-button-secondary" role="link" aria-disabled="true">
+                            {{ $nextAction['title'] ?? 'Continuar activacion' }}
+                        </span>
+                    @endif
                 </div>
 
                 @if (! empty($supportTips))
@@ -33,7 +50,7 @@
                             <div class="biz-checklist-item">
                                 <div class="biz-checklist-index is-pending">?</div>
                                 <div>
-                                    <p class="biz-checklist-title">{{ $tip['title'] ?? 'Guía rápida' }}</p>
+                                    <p class="biz-checklist-title">{{ $tip['title'] ?? 'Guia rapida' }}</p>
                                     <p class="biz-checklist-copy">{{ $tip['copy'] ?? '' }}</p>
                                 </div>
                             </div>

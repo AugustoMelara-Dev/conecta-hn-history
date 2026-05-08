@@ -1,24 +1,141 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Head, useForm } from '@inertiajs/react';
 import axios from 'axios';
+import { ArrowLeft, CalendarDays, Check, Clock, Mail, Phone, UserRound } from 'lucide-react';
 import PublicLayout from '@/Layouts/PublicLayout';
+import { Alert, AlertDescription, AlertTitle } from '@/Components/ui/alert';
+import { Badge } from '@/Components/ui/badge';
+import { Button } from '@/Components/ui/button';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/Components/ui/card';
+import {
+    Field,
+    FieldDescription,
+    FieldGroup,
+    FieldLabel,
+} from '@/Components/ui/field';
+import { Input } from '@/Components/ui/input';
+import { Progress } from '@/Components/ui/progress';
+import { Separator } from '@/Components/ui/separator';
+import { Spinner } from '@/Components/ui/spinner';
+import { Textarea } from '@/Components/ui/textarea';
+import { cn } from '@/lib/utils';
 
-/**
- * Booking Wizard - Customer Appointment Booking Flow
- * 
- * 4-Step wizard:
- * 1. Select Service
- * 2. Select Provider  
- * 3. Select Date & Time
- * 4. Enter Contact Info & Confirm
- */
-export default function BookingWizard({ tenant, services, providers }) {
+const STEPS = [
+    { id: 1, label: 'Servicio' },
+    { id: 2, label: 'Profesional' },
+    { id: 3, label: 'Horario' },
+    { id: 4, label: 'Datos' },
+];
+
+function BookingShell({ tenant, step, children }) {
+    const progress = (step / STEPS.length) * 100;
+
+    return (
+        <div className="min-h-screen bg-background px-4 py-8 sm:px-6 lg:px-8">
+            <div className="mx-auto flex max-w-5xl flex-col gap-6">
+                <header className="flex flex-col gap-3 text-center">
+                    <Badge variant="outline" className="mx-auto w-fit">
+                        Reserva publica
+                    </Badge>
+                    <div className="flex flex-col gap-2">
+                        <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+                            Reserva tu cita
+                        </h1>
+                        <p className="text-sm text-muted-foreground">
+                            {tenant.name}
+                        </p>
+                    </div>
+                </header>
+
+                <Card className="mx-auto w-full max-w-3xl">
+                    <CardHeader className="gap-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            {STEPS.map((item) => (
+                                <div
+                                    key={item.id}
+                                    className={cn(
+                                        'flex min-w-24 items-center gap-2 text-sm',
+                                        item.id <= step
+                                            ? 'text-foreground'
+                                            : 'text-muted-foreground'
+                                    )}
+                                >
+                                    <span
+                                        className={cn(
+                                            'flex size-7 items-center justify-center rounded-full border text-xs font-semibold',
+                                            item.id <= step
+                                                ? 'border-primary bg-primary text-primary-foreground'
+                                                : 'border-border bg-muted'
+                                        )}
+                                        aria-hidden="true"
+                                    >
+                                        {item.id < step ? <Check data-icon="inline-start" /> : item.id}
+                                    </span>
+                                    <span>{item.label}</span>
+                                </div>
+                            ))}
+                        </div>
+                        <Progress value={progress} aria-label={`Paso ${step} de ${STEPS.length}`} />
+                    </CardHeader>
+                    <Separator />
+                    <CardContent className="pt-6">
+                        {children}
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
+    );
+}
+
+function StepHeader({ title, description, onBack }) {
+    return (
+        <div className="flex flex-col gap-4">
+            {onBack ? (
+                <Button type="button" variant="ghost" className="w-fit px-0" onClick={onBack}>
+                    <ArrowLeft data-icon="inline-start" />
+                    Volver
+                </Button>
+            ) : null}
+            <div className="flex flex-col gap-1">
+                <h2 className="text-xl font-semibold text-foreground">{title}</h2>
+                <p className="text-sm text-muted-foreground">{description}</p>
+            </div>
+        </div>
+    );
+}
+
+function SelectionCard({ children, descriptionId, onClick, selected = false, testId }) {
+    return (
+        <button
+            type="button"
+            aria-describedby={descriptionId}
+            aria-pressed={selected}
+            data-testid={testId}
+            onClick={onClick}
+            className={cn(
+                'w-full rounded-lg border bg-card p-4 text-left text-card-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                selected && 'border-primary'
+            )}
+        >
+            {children}
+        </button>
+    );
+}
+
+export default function BookingWizard({ tenant, services = [], providers = [] }) {
     const [step, setStep] = useState(1);
     const [selectedService, setSelectedService] = useState(null);
     const [selectedProvider, setSelectedProvider] = useState(null);
     const [selectedDate, setSelectedDate] = useState('');
     const [availableSlots, setAvailableSlots] = useState([]);
     const [loadingSlots, setLoadingSlots] = useState(false);
+    const [slotsError, setSlotsError] = useState('');
 
     const { data, setData, post, processing, errors } = useForm({
         service_id: null,
@@ -31,47 +148,68 @@ export default function BookingWizard({ tenant, services, providers }) {
         customer_notes: '',
     });
 
-    // Fetch slots when date or provider changes
-    useEffect(() => {
-        if (selectedDate && data.service_id) {
-            fetchSlots();
-        }
-    }, [selectedDate, data.service_provider_id]);
+    const bookingBasePath = '/book';
+    const today = new Date().toISOString().split('T')[0];
 
-    const fetchSlots = async () => {
+    const defaultProviderId = useMemo(() => providers[0]?.id ?? null, [providers]);
+
+    const fetchSlots = async (date) => {
         setLoadingSlots(true);
+        setSlotsError('');
+
         try {
-            const response = await axios.get(`/${tenant.slug}/book/slots`, {
+            const response = await axios.get(`${bookingBasePath}/slots`, {
                 params: {
-                    date: selectedDate,
+                    date,
                     service_id: data.service_id,
                     provider_id: data.service_provider_id,
                 },
             });
-            setAvailableSlots(response.data.slots);
+            setAvailableSlots(response.data.slots ?? []);
         } catch (error) {
-            console.error('Error fetching slots:', error);
             setAvailableSlots([]);
+            setSlotsError('No pudimos cargar los horarios. Intenta con otra fecha.');
+        } finally {
+            setLoadingSlots(false);
         }
-        setLoadingSlots(false);
     };
+
+    useEffect(() => {
+        if (selectedDate && data.service_id) {
+            fetchSlots(selectedDate);
+        }
+    }, [selectedDate, data.service_id, data.service_provider_id]);
 
     const handleServiceSelect = (service) => {
         setSelectedService(service);
-        setData('service_id', service.id);
+        setSelectedProvider(null);
+        setAvailableSlots([]);
+        setSelectedDate('');
+        setData({
+            ...data,
+            service_id: service.id,
+            service_provider_id: null,
+            date: '',
+            time: '',
+        });
         setStep(2);
     };
 
     const handleProviderSelect = (provider) => {
         setSelectedProvider(provider);
-        setData('service_provider_id', provider.id);
+        setData('service_provider_id', provider?.id ?? defaultProviderId);
         setStep(3);
     };
 
-    const handleDateChange = (e) => {
-        const date = e.target.value;
+    const handleDateChange = (event) => {
+        const date = event.target.value;
         setSelectedDate(date);
-        setData('date', date);
+        setAvailableSlots([]);
+        setData({
+            ...data,
+            date,
+            time: '',
+        });
     };
 
     const handleTimeSelect = (slot) => {
@@ -79,256 +217,332 @@ export default function BookingWizard({ tenant, services, providers }) {
         setStep(4);
     };
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        post(`/${tenant.slug}/book`);
+    const handleSubmit = (event) => {
+        event.preventDefault();
+        post(bookingBasePath);
     };
 
     const goBack = () => {
-        if (step > 1) setStep(step - 1);
+        setStep((current) => Math.max(1, current - 1));
     };
-
-    // Get today's date for min date attribute
-    const today = new Date().toISOString().split('T')[0];
 
     return (
         <PublicLayout>
             <Head title={`Reservar en ${tenant.name}`} />
-            
-            <div className="min-h-screen bg-gray-50 py-8">
-                <div className="max-w-lg mx-auto px-4">
-                    {/* Header */}
-                    <div className="text-center mb-8">
-                        <h1 className="text-2xl font-bold text-gray-900">
-                            Reserva tu cita
-                        </h1>
-                        <p className="text-gray-600 mt-1">{tenant.name}</p>
-                    </div>
 
-                    {/* Progress Steps */}
-                    <div className="flex justify-between mb-8">
-                        {[1, 2, 3, 4].map((s) => (
-                            <div
-                                key={s}
-                                className={`flex-1 h-2 mx-1 rounded-full ${
-                                    s <= step ? 'bg-black' : 'bg-gray-200'
-                                }`}
-                            />
-                        ))}
-                    </div>
+            <BookingShell tenant={tenant} step={step}>
+                {step === 1 ? (
+                    <div className="flex flex-col gap-5" data-testid="booking-step-service">
+                        <StepHeader
+                            title="Selecciona un servicio"
+                            description="Elige lo que necesitas reservar para ver profesionales y horarios disponibles."
+                        />
 
-                    {/* Step 1: Select Service */}
-                    {step === 1 && (
-                        <div className="space-y-4">
-                            <h2 className="text-lg font-semibold">Selecciona un servicio</h2>
-                            {services.map((service) => (
-                                <button
-                                    key={service.id}
-                                    onClick={() => handleServiceSelect(service)}
-                                    className="w-full p-4 bg-white border border-gray-200 rounded-lg text-left hover:border-black transition-colors"
-                                >
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <h3 className="font-medium text-gray-900">{service.name}</h3>
-                                            {service.description && (
-                                                <p className="text-sm text-gray-500 mt-1">{service.description}</p>
-                                            )}
-                                            <p className="text-sm text-gray-400 mt-1">
-                                                {service.duration_formatted}
-                                            </p>
+                        {services.length === 0 ? (
+                            <Alert>
+                                <AlertTitle>No hay servicios disponibles</AlertTitle>
+                                <AlertDescription>
+                                    Este negocio aun no tiene servicios activos para reservas.
+                                </AlertDescription>
+                            </Alert>
+                        ) : (
+                            <div className="grid gap-3">
+                                {services.map((service) => (
+                                    <SelectionCard
+                                        key={service.id}
+                                        testId="booking-service-option"
+                                        descriptionId={`service-${service.id}-description`}
+                                        selected={selectedService?.id === service.id}
+                                        onClick={() => handleServiceSelect(service)}
+                                    >
+                                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                            <div className="flex flex-col gap-1">
+                                                <span className="font-medium">{service.name}</span>
+                                                {service.description ? (
+                                                    <span
+                                                        id={`service-${service.id}-description`}
+                                                        className="text-sm text-muted-foreground"
+                                                    >
+                                                        {service.description}
+                                                    </span>
+                                                ) : null}
+                                                <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                    <Clock data-icon="inline-start" />
+                                                    {service.duration_formatted}
+                                                </span>
+                                            </div>
+                                            <Badge variant="secondary">{service.price}</Badge>
                                         </div>
-                                        <span className="font-semibold text-gray-900">{service.price}</span>
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-                    )}
+                                    </SelectionCard>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                ) : null}
 
-                    {/* Step 2: Select Provider */}
-                    {step === 2 && (
-                        <div className="space-y-4">
-                            <button onClick={goBack} className="text-gray-500 hover:text-black mb-4">
-                                ← Volver
-                            </button>
-                            <h2 className="text-lg font-semibold">¿Con quién prefieres?</h2>
-                            
-                            <button
-                                onClick={() => {
-                                    setSelectedProvider(null);
-                                    setData('service_provider_id', providers[0]?.id);
-                                    setStep(3);
-                                }}
-                                className="w-full p-4 bg-gray-100 border border-gray-200 rounded-lg text-left hover:border-black transition-colors"
-                            >
-                                <span className="font-medium">Sin preferencia</span>
-                            </button>
+                {step === 2 ? (
+                    <div className="flex flex-col gap-5" data-testid="booking-step-provider">
+                        <StepHeader
+                            title="Elige profesional"
+                            description="Puedes escoger una persona o dejar que el negocio asigne la disponibilidad mas cercana."
+                            onBack={goBack}
+                        />
 
-                            {providers.map((provider) => (
-                                <button
-                                    key={provider.id}
-                                    onClick={() => handleProviderSelect(provider)}
-                                    className="w-full p-4 bg-white border border-gray-200 rounded-lg text-left hover:border-black transition-colors"
+                        {providers.length === 0 ? (
+                            <Alert variant="warning">
+                                <AlertTitle>No hay profesionales activos</AlertTitle>
+                                <AlertDescription>
+                                    Este servicio todavia no tiene profesionales disponibles para reservar.
+                                </AlertDescription>
+                            </Alert>
+                        ) : (
+                            <div className="grid gap-3">
+                                <SelectionCard
+                                    testId="booking-provider-any"
+                                    selected={selectedProvider === null}
+                                    onClick={() => handleProviderSelect(null)}
                                 >
-                                    <span className="font-medium">{provider.name}</span>
-                                </button>
-                            ))}
-                        </div>
-                    )}
+                                    <div className="flex flex-col gap-1">
+                                        <span className="font-medium">Sin preferencia</span>
+                                        <span className="text-sm text-muted-foreground">
+                                            Usaremos el primer profesional disponible.
+                                        </span>
+                                    </div>
+                                </SelectionCard>
 
-                    {/* Step 3: Select Date & Time */}
-                    {step === 3 && (
-                        <div className="space-y-4">
-                            <button onClick={goBack} className="text-gray-500 hover:text-black mb-4">
-                                ← Volver
-                            </button>
-                            <h2 className="text-lg font-semibold">Escoge fecha y hora</h2>
-                            
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Fecha
-                                </label>
-                                <input
+                                {providers.map((provider) => (
+                                    <SelectionCard
+                                        key={provider.id}
+                                        testId="booking-provider-option"
+                                        selected={selectedProvider?.id === provider.id}
+                                        onClick={() => handleProviderSelect(provider)}
+                                    >
+                                        <span className="font-medium">{provider.name}</span>
+                                    </SelectionCard>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                ) : null}
+
+                {step === 3 ? (
+                    <div className="flex flex-col gap-5" data-testid="booking-step-time">
+                        <StepHeader
+                            title="Escoge fecha y hora"
+                            description="Los horarios se cargan segun el servicio y profesional seleccionado."
+                            onBack={goBack}
+                        />
+
+                        <FieldGroup>
+                            <Field data-invalid={Boolean(errors.date)}>
+                                <FieldLabel htmlFor="booking-date">Fecha</FieldLabel>
+                                <Input
+                                    id="booking-date"
                                     type="date"
                                     min={today}
                                     value={selectedDate}
                                     onChange={handleDateChange}
-                                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+                                    aria-invalid={Boolean(errors.date)}
+                                    data-testid="booking-date-input"
                                 />
-                            </div>
+                                {errors.date ? (
+                                    <FieldDescription className="text-destructive" aria-live="polite">
+                                        {errors.date}
+                                    </FieldDescription>
+                                ) : null}
+                            </Field>
 
-                            {selectedDate && (
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Hora disponible
-                                    </label>
+                            {selectedDate ? (
+                                <Field>
+                                    <FieldLabel>Hora disponible</FieldLabel>
                                     {loadingSlots ? (
-                                        <div className="text-center py-8 text-gray-500">
-                                            Cargando horarios...
-                                        </div>
+                                        <Alert aria-live="polite">
+                                            <AlertDescription className="flex items-center gap-2">
+                                                <Spinner />
+                                                Cargando horarios disponibles...
+                                            </AlertDescription>
+                                        </Alert>
+                                    ) : slotsError ? (
+                                        <Alert variant="destructive" aria-live="polite">
+                                            <AlertTitle>Horarios no disponibles</AlertTitle>
+                                            <AlertDescription>{slotsError}</AlertDescription>
+                                        </Alert>
                                     ) : availableSlots.length === 0 ? (
-                                        <div className="text-center py-8 text-gray-500">
-                                            No hay horarios disponibles para esta fecha
-                                        </div>
+                                        <Alert aria-live="polite">
+                                            <AlertTitle>Sin horarios para esta fecha</AlertTitle>
+                                            <AlertDescription>
+                                                Prueba con otro dia o cambia la preferencia de profesional.
+                                            </AlertDescription>
+                                        </Alert>
                                     ) : (
-                                        <div className="grid grid-cols-3 gap-2">
+                                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                                             {availableSlots.map((slot) => (
-                                                <button
+                                                <Button
                                                     key={slot.time}
+                                                    type="button"
+                                                    variant={data.time === slot.time ? 'default' : 'outline'}
                                                     onClick={() => handleTimeSelect(slot)}
-                                                    className={`py-3 px-2 text-sm border rounded-lg transition-colors ${
-                                                        data.time === slot.time
-                                                            ? 'bg-black text-white border-black'
-                                                            : 'bg-white border-gray-200 hover:border-black'
-                                                    }`}
+                                                    data-testid="booking-slot-option"
                                                 >
                                                     {slot.display}
-                                                </button>
+                                                </Button>
                                             ))}
                                         </div>
                                     )}
+                                    {errors.time ? (
+                                        <FieldDescription className="text-destructive" aria-live="polite">
+                                            {errors.time}
+                                        </FieldDescription>
+                                    ) : null}
+                                </Field>
+                            ) : null}
+                        </FieldGroup>
+                    </div>
+                ) : null}
+
+                {step === 4 ? (
+                    <form
+                        onSubmit={handleSubmit}
+                        className="flex flex-col gap-5"
+                        data-testid="booking-step-contact"
+                    >
+                        <StepHeader
+                            title="Completa tu reserva"
+                            description="Deja tus datos para que el negocio pueda confirmar tu cita."
+                            onBack={goBack}
+                        />
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-base">Resumen</CardTitle>
+                                <CardDescription>Revisa los detalles antes de confirmar.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="grid gap-3 text-sm">
+                                <div className="flex items-center justify-between gap-4">
+                                    <span className="text-muted-foreground">Servicio</span>
+                                    <span className="font-medium">{selectedService?.name}</span>
                                 </div>
-                            )}
-                        </div>
-                    )}
+                                <div className="flex items-center justify-between gap-4">
+                                    <span className="text-muted-foreground">Profesional</span>
+                                    <span className="font-medium">{selectedProvider?.name || 'Sin preferencia'}</span>
+                                </div>
+                                <div className="flex items-center justify-between gap-4">
+                                    <span className="text-muted-foreground">Fecha</span>
+                                    <span className="font-medium">{selectedDate}</span>
+                                </div>
+                                <div className="flex items-center justify-between gap-4">
+                                    <span className="text-muted-foreground">Hora</span>
+                                    <span className="font-medium">{data.time}</span>
+                                </div>
+                                <Separator />
+                                <div className="flex items-center justify-between gap-4">
+                                    <span className="text-muted-foreground">Precio</span>
+                                    <Badge>{selectedService?.price}</Badge>
+                                </div>
+                            </CardContent>
+                        </Card>
 
-                    {/* Step 4: Contact Info & Confirm */}
-                    {step === 4 && (
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <button type="button" onClick={goBack} className="text-gray-500 hover:text-black mb-4">
-                                ← Volver
-                            </button>
-                            <h2 className="text-lg font-semibold">Completa tu reserva</h2>
+                        <FieldGroup>
+                            <Field data-invalid={Boolean(errors.customer_name)}>
+                                <FieldLabel htmlFor="customer-name">Tu nombre *</FieldLabel>
+                                <div className="relative">
+                                    <UserRound className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                                    <Input
+                                        id="customer-name"
+                                        value={data.customer_name}
+                                        onChange={(event) => setData('customer_name', event.target.value)}
+                                        className="pl-10"
+                                        placeholder="Juan Perez"
+                                        required
+                                        aria-invalid={Boolean(errors.customer_name)}
+                                        data-testid="booking-customer-name"
+                                    />
+                                </div>
+                                {errors.customer_name ? (
+                                    <FieldDescription className="text-destructive" aria-live="polite">
+                                        {errors.customer_name}
+                                    </FieldDescription>
+                                ) : null}
+                            </Field>
 
-                            {/* Summary */}
-                            <div className="bg-gray-100 p-4 rounded-lg space-y-2">
-                                <p><strong>Servicio:</strong> {selectedService?.name}</p>
-                                <p><strong>Con:</strong> {selectedProvider?.name || 'Sin preferencia'}</p>
-                                <p><strong>Fecha:</strong> {selectedDate}</p>
-                                <p><strong>Hora:</strong> {data.time}</p>
-                                <p><strong>Precio:</strong> {selectedService?.price}</p>
-                            </div>
+                            <Field data-invalid={Boolean(errors.customer_email)}>
+                                <FieldLabel htmlFor="customer-email">Correo electronico *</FieldLabel>
+                                <div className="relative">
+                                    <Mail className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                                    <Input
+                                        id="customer-email"
+                                        type="email"
+                                        value={data.customer_email}
+                                        onChange={(event) => setData('customer_email', event.target.value)}
+                                        className="pl-10"
+                                        placeholder="juan@ejemplo.com"
+                                        required
+                                        aria-invalid={Boolean(errors.customer_email)}
+                                        data-testid="booking-customer-email"
+                                    />
+                                </div>
+                                {errors.customer_email ? (
+                                    <FieldDescription className="text-destructive" aria-live="polite">
+                                        {errors.customer_email}
+                                    </FieldDescription>
+                                ) : null}
+                            </Field>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Tu nombre *
-                                </label>
-                                <input
-                                    type="text"
-                                    value={data.customer_name}
-                                    onChange={(e) => setData('customer_name', e.target.value)}
-                                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
-                                    placeholder="Juan Pérez"
-                                    required
-                                />
-                                {errors.customer_name && (
-                                    <p className="text-red-500 text-sm mt-1">{errors.customer_name}</p>
-                                )}
-                            </div>
+                            <Field data-invalid={Boolean(errors.customer_phone)}>
+                                <FieldLabel htmlFor="customer-phone">Telefono *</FieldLabel>
+                                <div className="relative">
+                                    <Phone className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                                    <Input
+                                        id="customer-phone"
+                                        type="tel"
+                                        value={data.customer_phone}
+                                        onChange={(event) => setData('customer_phone', event.target.value)}
+                                        className="pl-10"
+                                        placeholder="9999-9999"
+                                        required
+                                        aria-invalid={Boolean(errors.customer_phone)}
+                                        data-testid="booking-customer-phone"
+                                    />
+                                </div>
+                                {errors.customer_phone ? (
+                                    <FieldDescription className="text-destructive" aria-live="polite">
+                                        {errors.customer_phone}
+                                    </FieldDescription>
+                                ) : null}
+                            </Field>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Correo Electrónico *
-                                </label>
-                                <input
-                                    type="email"
-                                    value={data.customer_email}
-                                    onChange={(e) => setData('customer_email', e.target.value)}
-                                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
-                                    placeholder="juan@ejemplo.com"
-                                    required
-                                />
-                                {errors.customer_email && (
-                                    <p className="text-red-500 text-sm mt-1">{errors.customer_email}</p>
-                                )}
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Tu teléfono *
-                                </label>
-                                <input
-                                    type="tel"
-                                    value={data.customer_phone}
-                                    onChange={(e) => setData('customer_phone', e.target.value)}
-                                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
-                                    placeholder="9999-9999"
-                                    required
-                                />
-                                {errors.customer_phone && (
-                                    <p className="text-red-500 text-sm mt-1">{errors.customer_phone}</p>
-                                )}
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Notas (opcional)
-                                </label>
-                                <textarea
+                            <Field>
+                                <FieldLabel htmlFor="customer-notes">Notas opcionales</FieldLabel>
+                                <Textarea
+                                    id="customer-notes"
                                     value={data.customer_notes}
-                                    onChange={(e) => setData('customer_notes', e.target.value)}
-                                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+                                    onChange={(event) => setData('customer_notes', event.target.value)}
                                     rows={3}
-                                    placeholder="Algún comentario especial..."
+                                    placeholder="Algun comentario especial..."
+                                    data-testid="booking-customer-notes"
                                 />
-                            </div>
+                            </Field>
+                        </FieldGroup>
 
-                            {errors.time && (
-                                <div className="bg-red-50 text-red-600 p-4 rounded-lg">
-                                    {errors.time}
-                                </div>
-                            )}
+                        {errors.time ? (
+                            <Alert variant="destructive" aria-live="polite">
+                                <AlertTitle>No se pudo reservar ese horario</AlertTitle>
+                                <AlertDescription>{errors.time}</AlertDescription>
+                            </Alert>
+                        ) : null}
 
-                            <button
-                                type="submit"
-                                disabled={processing}
-                                className="w-full py-4 bg-black text-white font-medium rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
-                            >
-                                {processing ? 'Reservando...' : 'Confirmar Reserva'}
-                            </button>
-                        </form>
-                    )}
-                </div>
-            </div>
+                        <Button
+                            type="submit"
+                            disabled={processing}
+                            size="lg"
+                            data-testid="booking-submit"
+                        >
+                            {processing ? <Spinner /> : <CalendarDays data-icon="inline-start" />}
+                            {processing ? 'Reservando...' : 'Confirmar reserva'}
+                        </Button>
+                    </form>
+                ) : null}
+            </BookingShell>
         </PublicLayout>
     );
 }

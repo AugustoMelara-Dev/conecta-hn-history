@@ -8,6 +8,7 @@ use App\Settings\GeneralSettings;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 /**
  * CheckMaintenanceMode - Kill Switch Inteligente
@@ -29,10 +30,20 @@ class CheckMaintenanceMode
     public function handle(Request $request, Closure $next): Response
     {
         // Obtener configuración desde la Torre de Control
-        $settings = app(GeneralSettings::class);
+        try {
+            $settings = app(GeneralSettings::class);
+        } catch (Throwable) {
+            return $next($request);
+        }
+
+        try {
+            $maintenanceMode = (bool) $settings->maintenance_mode;
+        } catch (Throwable) {
+            return $next($request);
+        }
 
         // Si el modo mantenimiento está DESACTIVADO, permitir todo
-        if (! $settings->maintenance_mode) {
+        if (! $maintenanceMode) {
             return $next($request);
         }
 

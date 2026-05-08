@@ -8,7 +8,7 @@ use RuntimeException;
 
 final class TenantContextMutationException extends RuntimeException
 {
-    public static function tenantHopping(int $currentId, int $newId): self
+    public static function tenantHopping(int|string $currentId, int|string $newId): self
     {
         return new self("Security Violation: Attempted to switch Tenant Context from {$currentId} to {$newId} in the same request (Tenant Hopping).");
     }

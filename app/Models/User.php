@@ -25,6 +25,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Schema;
 use Laravel\Sanctum\HasApiTokens;
 use NotificationChannels\WebPush\HasPushSubscriptions;
 
@@ -247,6 +248,10 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
             return true;
         }
 
+        if (! Schema::hasTable('tenant_memberships')) {
+            return false;
+        }
+
         return $this->tenantMemberships()
             ->where('tenant_id', $tenant->id)
             ->whereNotNull('accepted_at')
@@ -266,10 +271,12 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
         }
 
         $owned = $this->tenants()->orderBy('name')->get();
-        $member = $this->memberTenants()
-            ->wherePivotNotNull('accepted_at')
-            ->orderBy('name')
-            ->get();
+        $member = Schema::hasTable('tenant_memberships')
+            ? $this->memberTenants()
+                ->wherePivotNotNull('accepted_at')
+                ->orderBy('name')
+                ->get()
+            : collect();
 
         return $owned
             ->merge($member)
@@ -282,7 +289,7 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
         return match ($panel->getId()) {
             self::PANEL_ADMIN => $this->isSuperAdmin(),
             self::PANEL_APP => $this->tenants()->exists()
-                || $this->tenantMemberships()->whereNotNull('accepted_at')->exists()
+                || (Schema::hasTable('tenant_memberships') && $this->tenantMemberships()->whereNotNull('accepted_at')->exists())
                 || $this->isSuperAdmin(),
             default => false,
         };

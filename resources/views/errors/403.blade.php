@@ -3,28 +3,108 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Acceso Denegado</title>
-        <script src="https://cdn.tailwindcss.com"></script>
+        <title>Acceso denegado</title>
+        <style>
+            :root {
+                color-scheme: light;
+                --background: #fafafa;
+                --foreground: #171717;
+                --muted: #737373;
+                --border: #e5e5e5;
+                --card: #ffffff;
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            body {
+                margin: 0;
+                background: var(--background);
+                color: var(--foreground);
+                font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            }
+
+            main {
+                display: grid;
+                min-height: 100dvh;
+                place-items: center;
+                padding: 24px;
+            }
+
+            .panel {
+                width: min(100%, 440px);
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                background: var(--card);
+                padding: 32px;
+                text-align: center;
+                box-shadow: 0 18px 45px rgb(15 23 42 / 0.08);
+            }
+
+            .code {
+                margin: 0 0 8px;
+                font-size: clamp(48px, 16vw, 72px);
+                font-weight: 700;
+                line-height: 1;
+            }
+
+            h1 {
+                margin: 0 0 12px;
+                font-size: 24px;
+                line-height: 1.2;
+            }
+
+            p {
+                margin: 0;
+                color: var(--muted);
+                line-height: 1.6;
+            }
+
+            .actions {
+                display: grid;
+                gap: 12px;
+                margin-top: 28px;
+            }
+
+            a {
+                display: inline-flex;
+                min-height: 44px;
+                align-items: center;
+                justify-content: center;
+                border-radius: 8px;
+                padding: 10px 16px;
+                font-weight: 600;
+                text-decoration: none;
+            }
+
+            .primary {
+                background: var(--foreground);
+                color: #ffffff;
+            }
+
+            .secondary {
+                border: 1px solid var(--border);
+                color: var(--foreground);
+            }
+
+            a:focus-visible {
+                outline: 2px solid var(--foreground);
+                outline-offset: 3px;
+            }
+        </style>
     </head>
-    <body class="antialiased bg-white font-sans">
-        <div class="min-h-screen flex items-center justify-center px-4">
-            <div class="max-w-md w-full text-center">
-                <div class="mb-8">
-                    <h1 class="text-6xl font-bold text-slate-900 mb-2">403</h1>
-                    <p class="text-2xl font-semibold text-slate-700 mb-4">Acceso Denegado</p>
-                    <p class="text-slate-600">
-                        No tienes permisos para acceder a este recurso.
-                    </p>
+    <body>
+        <main>
+            <section class="panel" aria-labelledby="error-title">
+                <p class="code">403</p>
+                <h1 id="error-title">Acceso denegado</h1>
+                <p>No tienes permisos para abrir este recurso. Si crees que deberias tener acceso, inicia sesion con la cuenta correcta.</p>
+                <div class="actions">
+                    <a class="primary" href="/">Volver al inicio</a>
+                    <a class="secondary" href="/login">Iniciar sesion</a>
                 </div>
-                <div class="space-y-3">
-                    <a href="/" class="inline-block w-full bg-slate-900 text-white px-6 py-3 rounded-lg font-medium hover:bg-slate-800 transition-colors">
-                        Volver al Inicio
-                    </a>
-                    <a href="javascript:history.back()" class="inline-block w-full bg-white text-slate-900 px-6 py-3 rounded-lg font-medium border border-slate-200 hover:bg-slate-50 transition-colors">
-                        Regresar
-                    </a>
-                </div>
-            </div>
-        </div>
+            </section>
+        </main>
     </body>
 </html>

@@ -6,6 +6,7 @@ namespace App\Http\Middleware;
 
 use App\Models\Announcement;
 use App\Models\Tenant;
+use App\Support\Panel\CanonicalPanelUrlResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
@@ -62,12 +63,18 @@ class HandleInertiaRequests extends Middleware
      */
     protected function shareAuthData(Request $request): array
     {
+        $panelUrl = $request->user()
+            ? app(CanonicalPanelUrlResolver::class)->forUser($request->user())
+            : route('tenant.register', absolute: false);
+
         return [
             'auth' => [
+                'panel_url' => $panelUrl,
                 'user' => $request->user() ? [
                     'id' => $request->user()->id,
                     'name' => $request->user()->name,
                     'email' => $request->user()->email,
+                    'panel_url' => $panelUrl,
                 ] : null,
             ],
         ];

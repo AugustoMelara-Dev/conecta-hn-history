@@ -55,7 +55,7 @@ class ProductResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return 'Catálogo';
+        return 'Catalogo';
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -135,10 +135,10 @@ class ProductResource extends Resource
                 // ═══════════════════════════════════════════════════════════
                 // SECCIÓN 1: IMAGEN INSTAGRAM-STYLE
                 // ═══════════════════════════════════════════════════════════
-                Forms\Components\Section::make('📷 Imagen del Producto')
+                Forms\Components\Section::make('Imagen del producto')
                     ->description(fn () => Filament::getTenant()?->is_pro
-                        ? 'Sube hasta 5 imágenes. Arrastra para reordenar.'
-                        : '⚠️ Plan Gratuito: Solo 1 imagen. Actualiza a PRO para más.')
+                        ? 'Sube hasta 5 imagenes. Arrastra para reordenar.'
+                        : 'Plan Semilla: 1 imagen. Actualiza a PRO para subir mas.')
                     ->schema([
                         Forms\Components\FileUpload::make('image_path')
                             ->label('')
@@ -166,10 +166,10 @@ class ProductResource extends Resource
                 // ═══════════════════════════════════════════════════════════
                 // SECCIÓN 2: DATOS ESENCIALES
                 // ═══════════════════════════════════════════════════════════
-                Forms\Components\Section::make('🏷️ Información Básica')
+                Forms\Components\Section::make('Informacion basica')
                     ->schema([
                         Forms\Components\TextInput::make('name')
-                            ->label('Nombre del Producto')
+                            ->label('Nombre del producto')
                             ->required()
                             ->maxLength(100)
                             ->live(onBlur: true)
@@ -188,7 +188,7 @@ class ProductResource extends Resource
                             ->placeholder('0.00'),
 
                         Forms\Components\Textarea::make('description')
-                            ->label('Descripción')
+                            ->label('Descripcion')
                             ->rows(3)
                             ->maxLength(500)
                             ->placeholder('Describe tu producto brevemente...')
@@ -199,17 +199,17 @@ class ProductResource extends Resource
                 // ═══════════════════════════════════════════════════════════
                 // SECCIÓN 3: ORGANIZACIÓN
                 // ═══════════════════════════════════════════════════════════
-                Forms\Components\Section::make('📂 Organización')
+                Forms\Components\Section::make('Organizacion')
                     ->schema([
                         Forms\Components\Select::make('category_id')
                             ->relationship('category', 'name')
-                            ->label('Categoría')
+                            ->label('Categoria')
                             ->searchable()
                             ->preload()
                             ->required(),
 
                         // ═══════════════════════════════════════════════════
-                        // VELVET ROPE: Selector de Sección (PRO-ONLY)
+                        // Selector de sección para negocios PRO.
                         // ═══════════════════════════════════════════════════
                         // VERSIÓN A: Campo funcional para usuarios PRO
                         // - Relación con tenant scoping
@@ -228,15 +228,15 @@ class ProductResource extends Resource
                                     ->where('is_active', true)
                                     ->orderBy('sort_order')
                             )
-                            ->label('Sección del Menú')
-                            ->placeholder('Selecciona o crea una sección...')
+                            ->label('Seccion del menu')
+                            ->placeholder('Selecciona o crea una seccion...')
                             ->searchable()
                             ->preload()
 
-                            // CREACIÓN EN LÍNEA: Modal de alta velocidad
+                            // Creación en línea del catálogo sin salir del producto.
                             ->createOptionForm([
                                 Forms\Components\TextInput::make('name')
-                                    ->label('Nombre de la Sección')
+                                    ->label('Nombre de la seccion')
                                     ->placeholder('Ej: Vinos Importados, Postres Especiales')
                                     ->required()
                                     ->maxLength(100)
@@ -254,16 +254,11 @@ class ProductResource extends Resource
                                 Forms\Components\Hidden::make('sort_order')
                                     ->default(fn () => \App\Models\MenuSection::where('tenant_id', Filament::getTenant()?->id)->max('sort_order') + 1),
                             ])
-                            ->createOptionModalHeading('Crear Nueva Sección')
-                            ->helperText('✨ Organiza tu catálogo en secciones arrastrables'),
+                            ->createOptionModalHeading('Crear nueva seccion')
+                            ->helperText('Organiza tu catalogo en secciones arrastrables.'),
 
                         // ═══════════════════════════════════════════════════
-                        // VELVET ROPE: Campo Señuelo (FREE - UPSELL)
-                        // ═══════════════════════════════════════════════════
-                        // VERSIÓN B: Campo bloqueado que genera FOMO
-                        // - Visible pero disabled para usuarios FREE
-                        // - Link persuasivo hacia upgrade
-                        // ═══════════════════════════════════════════════════
+                        // Campo bloqueado para planes Free, con CTA nativo de Filament.
                         Forms\Components\Select::make('menu_section_id_locked')
                             // Solo visible para usuarios FREE
                             ->visible(fn () => ! (Filament::getTenant()?->is_pro ?? false))
@@ -272,16 +267,17 @@ class ProductResource extends Resource
                             ->disabled()
                             ->dehydrated(false) // No se envía al backend
 
-                            ->label('🔒 Sección del Menú')
+                            ->label('Seccion del menu')
                             ->placeholder('Disponible solo en Plan PRO')
                             ->options([])
 
-                            // Mensaje persuasivo con link de upsell
-                            ->helperText(new \Illuminate\Support\HtmlString(
-                                '<span class="text-gray-600">Organiza tus productos en secciones personalizadas.</span> '.
-                                '<a href="'.route('filament.app.pages.manage-billing', ['tenant' => Filament::getTenant()?->slug ?? '']).'" '.
-                                'class="text-primary-600 font-bold hover:underline">→ Desbloquear con PRO</a>'
-                            )),
+                            ->helperText('Organiza tus productos en secciones personalizadas.')
+                            ->hintAction(
+                                Forms\Components\Actions\Action::make('unlock_menu_sections')
+                                    ->label('Desbloquear con PRO')
+                                    ->icon('heroicon-o-arrow-up-right')
+                                    ->url(fn () => route('filament.app.pages.manage-billing', ['tenant' => Filament::getTenant()?->slug ?? '']))
+                            ),
                     ])
                     ->columns(2)
                     ->collapsible(),
@@ -289,28 +285,28 @@ class ProductResource extends Resource
                 // ═══════════════════════════════════════════════════════════
                 // SECCIÓN 4: CONTROL DE ESTADO
                 // ═══════════════════════════════════════════════════════════
-                Forms\Components\Section::make('⚙️ Control')
+                Forms\Components\Section::make('Control')
                     ->schema([
                         Forms\Components\Toggle::make('is_visible')
-                            ->label('Visible en Catálogo')
+                            ->label('Visible en catalogo')
                             ->default(true)
                             ->helperText('Desactiva para ocultar temporalmente'),
 
                         Forms\Components\Toggle::make('is_featured')
-                            ->label('Producto Destacado')
+                            ->label('Producto destacado')
                             ->default(false)
                             ->visible(fn () => Filament::getTenant()?->is_pro)
-                            ->helperText('Aparecerá primero en tu catálogo'),
+                            ->helperText('Aparecera primero en tu catalogo.'),
 
                         // ═══════════════════════════════════════════════════
-                        // CROSS-SELLING: Producto de Impulso (PRO Feature)
+                        // Producto de impulso para sugerencias en checkout.
                         // ═══════════════════════════════════════════════════
                         Forms\Components\Toggle::make('is_impulse_buy')
-                            ->label('Producto de Impulso (Cross-Selling)')
+                            ->label('Producto de impulso')
                             ->default(false)
                             ->onColor('success')
                             ->visible(fn () => Filament::getTenant()?->is_pro)
-                            ->helperText('Activar esta opción sugerirá este producto en el checkout para aumentar el ticket promedio.'),
+                            ->helperText('Activa esta opcion para sugerir el producto en el checkout y aumentar el ticket promedio.'),
                     ])
                     ->columns(2)
                     ->collapsed(),
@@ -318,48 +314,36 @@ class ProductResource extends Resource
                 // ═══════════════════════════════════════════════════════════
                 // SECCIÓN: UPSELL MARKETING (Solo para Free)
                 // ═══════════════════════════════════════════════════════════
-                Forms\Components\Section::make('✨ Desbloquea Funciones PRO')
-                    ->description('Mejora tu presencia y convierte más clientes.')
+                Forms\Components\Section::make('Funciones PRO')
+                    ->description('Mejora tu presencia y convierte mas clientes.')
                     ->visible(fn () => ! Filament::getTenant()?->is_pro)
                     ->schema([
                         Forms\Components\Placeholder::make('upsell_features')
                             ->label('')
                             ->content(new \Illuminate\Support\HtmlString('
-                                <div class="space-y-3">
-                                    <div class="flex items-center gap-3 p-3 bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 rounded-lg border border-amber-200 dark:border-amber-700">
-                                        <span class="text-2xl">📸</span>
-                                        <div>
-                                            <p class="font-semibold text-amber-800 dark:text-amber-200">Galería de Fotos</p>
-                                            <p class="text-sm text-amber-600 dark:text-amber-400">Sube hasta 5 imágenes por producto</p>
-                                        </div>
+                                <div class="biz-list">
+                                    <div class="biz-split-item">
+                                        <strong>Galeria de fotos</strong>
+                                        <span class="biz-muted">Sube hasta 5 imagenes por producto.</span>
                                     </div>
-                                    <div class="flex items-center gap-3 p-3 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-lg border border-blue-200 dark:border-blue-700">
-                                        <span class="text-2xl">📂</span>
-                                        <div>
-                                            <p class="font-semibold text-blue-800 dark:text-blue-200">Secciones de Menú</p>
-                                            <p class="text-sm text-blue-600 dark:text-blue-400">Organiza tus productos por categorías</p>
-                                        </div>
+                                    <div class="biz-split-item">
+                                        <strong>Secciones de menu</strong>
+                                        <span class="biz-muted">Organiza tus productos por categorias.</span>
                                     </div>
-                                    <div class="flex items-center gap-3 p-3 bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-lg border border-purple-200 dark:border-purple-700">
-                                        <span class="text-2xl">⭐</span>
-                                        <div>
-                                            <p class="font-semibold text-purple-800 dark:text-purple-200">Productos Destacados</p>
-                                            <p class="text-sm text-purple-600 dark:text-purple-400">Muestra tus mejores productos primero</p>
-                                        </div>
+                                    <div class="biz-split-item">
+                                        <strong>Productos destacados</strong>
+                                        <span class="biz-muted">Muestra tus mejores productos primero.</span>
                                     </div>
-                                    <div class="flex items-center gap-3 p-3 bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-lg border border-green-200 dark:border-green-700">
-                                        <span class="text-2xl">🎨</span>
-                                        <div>
-                                            <p class="font-semibold text-green-800 dark:text-green-200">Variantes de Producto</p>
-                                            <p class="text-sm text-green-600 dark:text-green-400">Tallas, colores, sabores con precios extras</p>
-                                        </div>
+                                    <div class="biz-split-item">
+                                        <strong>Variantes de producto</strong>
+                                        <span class="biz-muted">Configura tallas, colores o sabores con precio extra.</span>
                                     </div>
                                 </div>
                             ')),
 
                         Forms\Components\Actions::make([
                             Forms\Components\Actions\Action::make('upgrade_to_pro')
-                                ->label('🚀 Mejorar a Plan PRO')
+                                ->label('Mejorar a Plan PRO')
                                 ->color('warning')
                                 ->size('lg')
                                 ->extraAttributes(['class' => 'w-full justify-center'])
@@ -371,16 +355,16 @@ class ProductResource extends Resource
                 // ═══════════════════════════════════════════════════════════
                 // SECCIÓN 5: VARIANTES (Solo PRO)
                 // ═══════════════════════════════════════════════════════════
-                Forms\Components\Section::make('🎨 Variantes del Producto')
-                    ->description('Define opciones como talla, color, tamaño.')
+                Forms\Components\Section::make('Variantes del producto')
+                    ->description('Define opciones como talla, color o tamano.')
                     ->visible(fn () => Filament::getTenant()?->is_pro)
                     ->schema([
                         Forms\Components\Repeater::make('variants')
                             ->label('')
                             ->schema([
                                 Forms\Components\TextInput::make('name')
-                                    ->label('Opción')
-                                    ->placeholder('Ej: Tamaño')
+                                    ->label('Opcion')
+                                    ->placeholder('Ej: Tamano')
                                     ->required(),
 
                                 Forms\Components\TextInput::make('value')
@@ -389,14 +373,14 @@ class ProductResource extends Resource
                                     ->required(),
 
                                 Forms\Components\TextInput::make('price_modifier')
-                                    ->label('Precio Extra')
+                                    ->label('Precio extra')
                                     ->numeric()
                                     ->prefix('+L.')
                                     ->default(0),
                             ])
                             ->columns(3)
                             ->defaultItems(0)
-                            ->addActionLabel('+ Agregar Variante')
+                            ->addActionLabel('Agregar variante')
                             ->collapsible()
                             ->itemLabel(fn (array $state): ?string => isset($state['name'], $state['value'])
                                     ? "{$state['name']}: {$state['value']}"
@@ -445,7 +429,7 @@ class ProductResource extends Resource
 
                 // Sección del menú
                 Tables\Columns\TextColumn::make('menuSection.name')
-                    ->label('Sección')
+                    ->label('Seccion')
                     ->badge()
                     ->color('gray')
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -460,7 +444,7 @@ class ProductResource extends Resource
                     ->tooltip('Clic para cambiar visibilidad'),
 
                 Tables\Columns\ToggleColumn::make('is_featured')
-                    ->label('⭐')
+                    ->label('Destacado')
                     ->onColor('warning')
                     ->visible(fn () => Filament::getTenant()?->is_pro)
                     ->tooltip('Producto destacado'),
@@ -479,7 +463,7 @@ class ProductResource extends Resource
             // ═══════════════════════════════════════════════════════════════
             ->groups([
                 Tables\Grouping\Group::make('menuSection.name')
-                    ->label('Sección del Menú')
+                    ->label('Seccion del menu')
                     ->collapsible()
                     ->titlePrefixedWithLabel(false),
             ])
@@ -494,7 +478,7 @@ class ProductResource extends Resource
 
                 Tables\Filters\SelectFilter::make('menu_section_id')
                     ->relationship('menuSection', 'name')
-                    ->label('Sección'),
+                    ->label('Seccion'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
@@ -525,7 +509,7 @@ class ProductResource extends Resource
                     })
                     ->successNotificationTitle('Producto duplicado')
                     ->modalHeading('Duplicar producto')
-                    ->modalDescription('Se creará una copia inactiva que podrás editar.')
+                    ->modalDescription('Se creara una copia inactiva que podras editar.')
                     ->modalSubmitActionLabel('Duplicar'),
 
                 Tables\Actions\DeleteAction::make()
@@ -542,18 +526,18 @@ class ProductResource extends Resource
                     // Permite mover múltiples productos a una sección en 1 clic
                     // ═══════════════════════════════════════════════════════════
                     Tables\Actions\BulkAction::make('assign_section')
-                        ->label('Mover a Sección')
+                        ->label('Mover a seccion')
                         ->icon('heroicon-o-folder-arrow-down')
                         ->color('primary')
 
-                        // VELVET ROPE: Solo PRO puede usar esta herramienta
+                        // Solo negocios PRO pueden usar esta herramienta.
                         ->visible(fn () => Filament::getTenant()?->is_pro ?? false)
 
                         // Modal con selector de sección
                         ->form([
                             Forms\Components\Select::make('menu_section_id')
-                                ->label('Selecciona la sección destino')
-                                ->placeholder('¿A qué sección mover estos productos?')
+                                ->label('Selecciona la seccion destino')
+                                ->placeholder('A que seccion mover estos productos?')
                                 ->required()
                                 // SEGURIDAD: Scoped al tenant actual
                                 ->options(function () {
@@ -579,12 +563,12 @@ class ProductResource extends Resource
                             });
 
                             // Obtener nombre de la sección para el mensaje
-                            $sectionName = \App\Models\MenuSection::find($sectionId)?->name ?? 'la sección';
+                            $sectionName = \App\Models\MenuSection::find($sectionId)?->name ?? 'la seccion';
 
                             // Notificación de éxito
                             Notification::make()
                                 ->success()
-                                ->title('¡Productos movidos!')
+                                ->title('Productos movidos')
                                 ->body("Se han movido {$count} productos a \"{$sectionName}\".")
                                 ->icon('heroicon-o-check-circle')
                                 ->send();
@@ -595,15 +579,14 @@ class ProductResource extends Resource
 
                         // Confirmación antes de ejecutar
                         ->requiresConfirmation()
-                        ->modalHeading('Mover productos a sección')
-                        ->modalDescription('Selecciona la sección destino para los productos seleccionados.')
+                        ->modalHeading('Mover productos a seccion')
+                        ->modalDescription('Selecciona la seccion destino para los productos seleccionados.')
                         ->modalSubmitActionLabel('Mover productos'),
                 ]),
             ])
             ->emptyStateHeading('No tienes productos')
             ->emptyStateDescription('Crea tu primer producto para empezar a vender.')
-            ->emptyStateIcon('heroicon-o-shopping-bag')
-            ->poll('30s'); // Actualizar cada 30s
+            ->emptyStateIcon('heroicon-o-shopping-bag');
     }
 
     public static function getRelations(): array

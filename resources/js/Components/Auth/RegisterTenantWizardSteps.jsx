@@ -25,7 +25,7 @@ function PlanCard({ active, recommended = false, title, caption, price, bullets,
     return (
         <label
             htmlFor={id}
-            className={`relative cursor-pointer rounded-[1.75rem] border p-6 text-left transition ${
+            className={`relative cursor-pointer rounded-[1.75rem] border p-6 text-left ${
                 active
                     ? "border-primary bg-primary text-primary-foreground"
                     : "border-border bg-muted text-foreground hover:border-ring/40 hover:bg-background"
@@ -63,7 +63,7 @@ function PlanCard({ active, recommended = false, title, caption, price, bullets,
             <div className="mt-6 flex flex-col gap-3">
                 {bullets.map((bullet) => (
                     <div key={bullet} className={`flex items-center gap-2 text-sm ${active ? "text-primary-foreground/90" : "text-foreground/80"}`}>
-                        <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                        <CheckCircle2 aria-hidden="true" />
                         <span>{bullet}</span>
                     </div>
                 ))}
@@ -76,7 +76,7 @@ function BusinessTypeCard({ active, title, description, capabilities, examples, 
     return (
         <label
             htmlFor={id}
-            className={`cursor-pointer rounded-[1.5rem] border p-5 text-left transition ${
+            className={`cursor-pointer rounded-[1.5rem] border p-5 text-left ${
                 active
                     ? "border-primary bg-primary text-primary-foreground"
                     : "border-border bg-muted text-foreground hover:border-ring/40 hover:bg-background"
@@ -101,7 +101,7 @@ function BusinessTypeCard({ active, title, description, capabilities, examples, 
             <div className="mt-4 flex flex-col gap-2">
                 {capabilities.slice(0, 3).map((capability) => (
                     <div key={capability} className={`flex items-center gap-2 text-sm ${active ? "text-primary-foreground/90" : "text-foreground/80"}`}>
-                        <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                        <CheckCircle2 aria-hidden="true" />
                         <span>{capability}</span>
                     </div>
                 ))}
@@ -149,7 +149,7 @@ export function BusinessStep({
         <FieldGroup>
             <Field data-invalid={errorFor("business_name") ? "true" : undefined}>
                 <FieldLabel htmlFor="business_name">Nombre comercial</FieldLabel>
-                <Input id="business_name" name="business_name" autoComplete="organization" value={data.business_name} onChange={(event) => updateField("business_name", event.target.value)} placeholder="Ej. Cafe La Esperanza" className={inputClass("business_name")} aria-invalid={Boolean(errorFor("business_name"))} aria-describedby={describedBy("business_name", errorFor)} />
+                <Input id="business_name" name="business_name" autoComplete="organization" value={data.business_name} onChange={(event) => updateField("business_name", event.target.value)} placeholder="Ej. Cafe La Esperanza" className={inputClass("business_name")} aria-invalid={Boolean(errorFor("business_name"))} aria-describedby={describedBy("business_name", errorFor)} data-testid="register-business-name-input" />
                 {errorFor("business_name") ? <FieldDescription id={errorId("business_name")} role="alert" className="text-destructive">{errorFor("business_name")}</FieldDescription> : null}
             </Field>
 
@@ -163,7 +163,7 @@ export function BusinessStep({
                         {slugState.status === "available" ? "Disponible" : slugState.status === "checking" ? "Revisando" : slugState.status === "unavailable" ? "Ocupada" : "Pendiente"}
                     </span>
                 </div>
-                <div className={`grid h-12 grid-cols-[minmax(90px,auto)_auto_1fr] items-center gap-1 rounded-xl border bg-muted px-3 text-sm transition focus-within:ring-4 ${
+                <div className={`grid h-12 grid-cols-[minmax(90px,auto)_auto_1fr] items-center gap-1 rounded-xl border bg-muted px-3 text-sm focus-within:ring-4 ${
                     errorFor("slug")
                         ? "border-destructive/50 focus-within:border-destructive/50 focus-within:ring-destructive/20"
                         : "border-border focus-within:border-primary focus-within:ring-ring/30"

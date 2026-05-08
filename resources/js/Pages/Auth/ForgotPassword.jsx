@@ -9,7 +9,12 @@ export default function ForgotPassword({ status = null }) {
         <>
             <Head title={t("auth.forgotPassword.headTitle")} />
 
-            <AuthShadcnShell imageAlt={t("auth.forgotPassword.imageAlt")}>
+            <AuthShadcnShell
+                imageAlt={t("auth.forgotPassword.imageAlt")}
+                eyebrow="Recuperacion segura"
+                title="Recupera el acceso con calma"
+                description="Te enviaremos un enlace al correo de tu cuenta para que puedas volver a entrar de forma segura."
+            >
                 <ForgotPasswordForm status={status} />
             </AuthShadcnShell>
         </>

@@ -18,7 +18,7 @@ class ListOrders extends ListRecords
 
     public function getTitle(): string
     {
-        return 'Centro de Pedidos';
+        return 'Centro de pedidos';
     }
 
     public function getSubheading(): string

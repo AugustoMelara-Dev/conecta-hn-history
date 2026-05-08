@@ -131,20 +131,20 @@ function StepPill({ step, index, currentStep, onClick }) {
             disabled={locked}
             aria-current={active ? "step" : undefined}
             aria-disabled={locked ? "true" : undefined}
-            className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-left transition ${
+            className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-left ${
                 active
-                    ? "border-slate-950 bg-slate-950 text-white"
+                    ? "border-primary bg-primary text-primary-foreground"
                 : complete
-                        ? "border-slate-200 bg-slate-100 text-slate-950"
-                        : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-950"
+                        ? "border-border bg-muted text-foreground"
+                        : "border-border bg-background text-muted-foreground hover:border-ring hover:text-foreground"
             }`}
         >
-            <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${active ? "bg-white/10" : complete ? "bg-white" : "bg-slate-100"}`}>
-                {complete ? <Check className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
+            <span className={`flex size-10 items-center justify-center rounded-xl ${active ? "bg-primary-foreground/10" : complete ? "bg-background" : "bg-muted"}`}>
+                {complete ? <Check aria-hidden="true" /> : <Icon aria-hidden="true" />}
             </span>
             <span className="min-w-0">
                 <span
-                    className={`block text-[10px] font-bold uppercase tracking-[0.22em] ${active ? "text-slate-300" : "text-slate-400"}`}
+                    className={`block text-[10px] font-bold uppercase tracking-[0.22em] ${active ? "text-primary-foreground/70" : "text-muted-foreground"}`}
                     style={{ fontFamily: PUBLIC_LABEL_FONT }}
                 >
                     {step.label}
@@ -158,11 +158,11 @@ function StepPill({ step, index, currentStep, onClick }) {
 
 function SummaryRow({ label, value }) {
     return (
-        <div className="flex items-start justify-between gap-4 rounded-xl bg-slate-50 px-4 py-3">
-            <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
+        <div className="flex items-start justify-between gap-4 rounded-xl bg-muted px-4 py-3">
+            <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
                 {label}
             </span>
-            <span className="text-right text-sm font-semibold text-slate-950">{value}</span>
+            <span className="text-right text-sm font-semibold text-foreground">{value}</span>
         </div>
     )
 }
@@ -182,7 +182,7 @@ export function RegisterTenantWizard({
     const [pendingFocusField, setPendingFocusField] = useState(null)
     const [slugState, setSlugState] = useState({
         status: "idle",
-                message: "La URL se revisa en vivo mientras escribes.",
+        message: "La URL se revisa en vivo mientras escribes.",
         suggestions: [],
     })
 
@@ -291,6 +291,7 @@ export function RegisterTenantWizard({
     }, [])
     const legalTermsUrl = useMemo(() => firstValidUrl(routeUrlIfExists("legal.terms"), "/legal/terms"), [])
     const legalPrivacyUrl = useMemo(() => firstValidUrl(routeUrlIfExists("legal.privacy"), "/legal/privacy"), [])
+    const exploreUrl = useMemo(() => firstValidUrl(routeUrlIfExists("public.explore"), "/explore"), [])
     const businessPreview = data.business_name.trim() || "Tu negocio"
     const slugPreview = data.slug ? `${slugBaseHost}/t/${slugify(data.slug)}` : `${slugBaseHost}/t/tu-negocio`
     const progress = ((step + 1) / STEPS.length) * 100
@@ -453,8 +454,8 @@ export function RegisterTenantWizard({
     }
 
     const inputClass = (field) =>
-        `h-12 rounded-xl border-slate-200 bg-slate-50 px-4 text-slate-950 placeholder:text-slate-400 focus-visible:border-slate-950 focus-visible:ring-slate-300 ${
-            errorFor(field) ? "border-rose-300 focus-visible:ring-rose-200" : ""
+        `h-12 rounded-xl bg-muted px-4 text-foreground placeholder:text-muted-foreground ${
+            errorFor(field) ? "border-destructive/50 focus-visible:ring-destructive/20" : ""
         }`
 
     const validateStep = (targetStep, { focus = false } = {}) => {
@@ -527,17 +528,17 @@ export function RegisterTenantWizard({
         <AuthSplitLayout
             topActions={
                 <>
-                    <Link href={route("login")} className="hidden text-sm font-semibold text-slate-600 transition hover:text-slate-950 md:inline-flex">
-                        Iniciar sesión
-                    </Link>
-                    <Link href={route("public.explore")} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-950">
-                        Explorar
-                    </Link>
+                    <Button variant="ghost" className="hidden md:inline-flex" asChild>
+                        <Link href={route("login")}>Iniciar sesión</Link>
+                    </Button>
+                    <Button variant="outline" asChild>
+                        <Link href={exploreUrl}>Explorar</Link>
+                    </Button>
                 </>
             }
             aside={
                 <>
-                    <div className="max-w-xl space-y-6">
+                    <div className="flex max-w-xl flex-col gap-6">
                         <div
                             className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-300"
                             style={{ fontFamily: PUBLIC_LABEL_FONT }}
@@ -545,7 +546,7 @@ export function RegisterTenantWizard({
                             Onboarding integrado
                         </div>
 
-                        <div className="space-y-4">
+                        <div className="flex flex-col gap-4">
                             <h2 className="max-w-lg text-4xl font-extrabold leading-[1.02] tracking-tight text-white xl:text-5xl" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
                                 Lanza tu negocio en minutos con un registro guiado.
                             </h2>
@@ -555,7 +556,7 @@ export function RegisterTenantWizard({
                         </div>
                     </div>
 
-                    <div className="space-y-5">
+                    <div className="flex flex-col gap-5">
                         <AuthAsideCard
                             invert
                             eyebrow={`Paso ${step + 1} de ${STEPS.length}`}
@@ -571,7 +572,7 @@ export function RegisterTenantWizard({
                             title="Lo que queda listo al enviar"
                             description="Este registro no es demo: crea recursos reales dentro de la plataforma."
                         >
-                            <div className="mt-4 space-y-3">
+                            <div className="mt-4 flex flex-col gap-3">
                                 {[
                                     "Cuenta propietaria con login real",
                                     "Negocio con slug validado y aislado",
@@ -586,7 +587,7 @@ export function RegisterTenantWizard({
                         </AuthAsideCard>
 
                         <AuthAsideCard eyebrow="Vista previa" title={businessPreview} description={slugPreview}>
-                            <div className="mt-4 space-y-3">
+                            <div className="mt-4 flex flex-col gap-3">
                                 <SummaryRow label="Categoría" value={selectedCategory?.name || "Pendiente"} />
                                 <SummaryRow label="Tipo" value={selectedBusinessType?.label || "Pendiente"} />
                                 <SummaryRow label="Segmento" value={selectedSegment?.label || "Pendiente"} />
@@ -600,8 +601,8 @@ export function RegisterTenantWizard({
         >
             <section className="w-full max-w-3xl" style={{ fontFamily: PUBLIC_BODY_FONT }}>
                 <Card className="rounded-[2rem] border-slate-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.06)] sm:p-8">
-                    <div className="space-y-4">
-                        <div className="space-y-2">
+                    <div className="flex flex-col gap-4">
+                        <div className="flex flex-col gap-2">
                             <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
                                 Registro de negocio
                             </p>
@@ -624,7 +625,7 @@ export function RegisterTenantWizard({
                     </div>
 
                     {!canSubmit ? (
-                        <Alert variant="destructive" className="mt-8 rounded-2xl border-rose-200 bg-rose-50 text-rose-700">
+                        <Alert variant="destructive" className="mt-8 rounded-2xl">
                             <AlertTitle>Datos incompletos</AlertTitle>
                             <AlertDescription>
                                 No pudimos cargar ciudades o categorías. Recarga la página e inténtalo de nuevo.

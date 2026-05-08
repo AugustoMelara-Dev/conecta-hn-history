@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Support\Panel\CanonicalPanelUrlResolver;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -11,6 +12,10 @@ use Symfony\Component\HttpFoundation\Response;
 
 class RedirectIfAuthenticated
 {
+    public function __construct(
+        private readonly CanonicalPanelUrlResolver $panelUrlResolver
+    ) {}
+
     /**
      * Handle an incoming request.
      *
@@ -29,14 +34,14 @@ class RedirectIfAuthenticated
                 }
 
                 if ($user->role === 'seller') {
-                    return redirect('/app');
+                    return redirect($this->panelUrlResolver->forUser($user));
                 }
 
                 if ($user->role === 'buyer') {
                     return redirect('/mi-cuenta');
                 }
 
-                return redirect(route('directory'));
+                return redirect($this->panelUrlResolver->forUser($user));
             }
         }
 

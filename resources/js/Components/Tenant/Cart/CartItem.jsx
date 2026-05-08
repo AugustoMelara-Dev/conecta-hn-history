@@ -1,94 +1,98 @@
 import React from 'react';
-import { ShoppingBag, Minus, Plus, Trash2 } from 'lucide-react';
+import { Minus, Plus, ShoppingBag, Trash2 } from 'lucide-react';
+import { Badge } from '@/Components/ui/badge';
+import { Button } from '@/Components/ui/button';
+import { Card, CardContent } from '@/Components/ui/card';
 import { calculateItemTotal } from '@/Stores/useCartStore';
 
 export default function CartItem({ item, onRemove, onUpdateQuantity }) {
     const itemTotal = calculateItemTotal(item.price, item.quantity, item.selectedModifiers);
 
     return (
-        <div className="flex gap-3 p-3 bg-slate-800/50 rounded-xl border border-white/5">
-            {/* Image */}
-            <div className="w-16 h-16 bg-slate-700 rounded-lg overflow-hidden flex-shrink-0">
-                {item.image ? (
-                    <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-full h-full object-cover"
-                    />
-                ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                        <ShoppingBag className="w-6 h-6 text-slate-500" />
-                    </div>
-                )}
-            </div>
+        <Card data-testid="cart-item" className="overflow-hidden">
+            <CardContent className="flex gap-3 p-3">
+                <div className="size-16 flex-shrink-0 overflow-hidden rounded-md bg-muted">
+                    {item.image ? (
+                        <img
+                            src={item.image}
+                            alt={item.name}
+                            className="size-full object-cover"
+                        />
+                    ) : (
+                        <div className="flex size-full items-center justify-center">
+                            <ShoppingBag className="size-6 text-muted-foreground" aria-hidden="true" />
+                        </div>
+                    )}
+                </div>
 
-            {/* Details */}
-            <div className="flex-1 min-w-0">
-                <h4 className="font-semibold text-white truncate">{item.name}</h4>
-
-                {/* Modifiers */}
-                {item.selectedModifiers?.length > 0 && (
-                    <div className="mt-1 space-y-0.5">
-                        {item.selectedModifiers.map((mod, idx) => (
-                            <p key={idx} className="text-xs text-slate-400">
-                                + {mod.name}
-                                {mod.price > 0 && (
-                                    <span className="text-emerald-400 ml-1">
-                                        (+L.{mod.price.toFixed(2)})
-                                    </span>
-                                )}
-                            </p>
-                        ))}
-                    </div>
-                )}
-
-                {/* Notes */}
-                {item.notes && (
-                    <p className="text-xs text-slate-500 mt-1 truncate">
-                        📝 {item.notes}
-                    </p>
-                )}
-
-                {/* Price + Quantity */}
-                <div className="flex items-center justify-between mt-2">
-                    <span
-                        className="font-bold text-sm"
-                        style={{ color: 'var(--primary-color, #818cf8)' }}
-                    >
-                        L. {itemTotal.toFixed(2)}
-                    </span>
-
-                    {/* Quantity Controls */}
-                    <div className="flex items-center gap-1 bg-slate-700/50 rounded-lg">
-                        <button
-                            onClick={() => onUpdateQuantity(item.quantity - 1)}
-                            className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-white"
-                            aria-label="Reducir cantidad"
+                <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                        <h4 className="truncate text-sm font-semibold">{item.name}</h4>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={onRemove}
+                            data-testid="cart-item-remove"
+                            aria-label={`Eliminar ${item.name}`}
+                            className="size-8 flex-shrink-0 text-muted-foreground"
                         >
-                            <Minus className="w-3 h-3" />
-                        </button>
-                        <span className="w-5 text-center text-sm font-medium text-white">
-                            {item.quantity}
+                            <Trash2 className="size-4" aria-hidden="true" />
+                        </Button>
+                    </div>
+
+                    {item.selectedModifiers?.length > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                            {item.selectedModifiers.map((mod, idx) => (
+                                <Badge key={`${mod.name}-${idx}`} variant="secondary" className="font-normal">
+                                    + {mod.name}
+                                    {mod.price > 0 ? ` (+L.${mod.price.toFixed(2)})` : ''}
+                                </Badge>
+                            ))}
+                        </div>
+                    )}
+
+                    {item.notes && (
+                        <p className="mt-1 truncate text-xs text-muted-foreground">
+                            Nota: {item.notes}
+                        </p>
+                    )}
+
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                        <span className="text-sm font-bold text-primary">
+                            L. {itemTotal.toFixed(2)}
                         </span>
-                        <button
-                            onClick={() => onUpdateQuantity(item.quantity + 1)}
-                            className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-white"
-                            aria-label="Aumentar cantidad"
-                        >
-                            <Plus className="w-3 h-3" />
-                        </button>
+
+                        <div className="flex items-center gap-1 rounded-md border bg-background p-1">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => onUpdateQuantity(item.quantity - 1)}
+                                data-testid="cart-item-decrement"
+                                aria-label={`Reducir cantidad de ${item.name}`}
+                                className="size-7"
+                            >
+                                <Minus className="size-3.5" aria-hidden="true" />
+                            </Button>
+                            <span className="min-w-6 text-center text-sm font-medium" aria-live="polite">
+                                {item.quantity}
+                            </span>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => onUpdateQuantity(item.quantity + 1)}
+                                data-testid="cart-item-increment"
+                                aria-label={`Aumentar cantidad de ${item.name}`}
+                                className="size-7"
+                            >
+                                <Plus className="size-3.5" aria-hidden="true" />
+                            </Button>
+                        </div>
                     </div>
                 </div>
-            </div>
-
-            {/* Remove Button */}
-            <button
-                onClick={onRemove}
-                className="w-8 h-8 flex-shrink-0 flex items-center justify-center text-rose-400 hover:text-rose-300 transition-colors"
-                aria-label="Eliminar producto"
-            >
-                <Trash2 className="w-4 h-4" />
-            </button>
-        </div>
+            </CardContent>
+        </Card>
     );
 }

@@ -72,6 +72,8 @@ Desktop.ini
 
 # ═══ TESTING ═══
 /coverage
+/artifacts
+/docs/frontend/audit-artifacts/2026-05-07/browser/
 .phpunit.result.cache
 phpunit.xml.bak
 .pest/

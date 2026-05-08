@@ -31,6 +31,8 @@ const successSound = typeof window !== 'undefined'
     ? new Audio('/sounds/notification_success.mp3')
     : null;
 
+const realtimeEnabled = String(import.meta.env.VITE_REVERB_ENABLED ?? '').toLowerCase().trim() === 'true';
+
 /**
  * useWebSocketNotifications - Custom Hook for WebSocket notifications
  * 
@@ -91,8 +93,7 @@ export function useWebSocketNotifications(user) {
             return;
         }
 
-        if (typeof window === 'undefined' || typeof window.Echo === 'undefined') {
-            console.warn('[WebSocket] Echo not available. Real-time notifications disabled.');
+        if (!realtimeEnabled || typeof window === 'undefined' || typeof window.Echo === 'undefined') {
             return;
         }
 

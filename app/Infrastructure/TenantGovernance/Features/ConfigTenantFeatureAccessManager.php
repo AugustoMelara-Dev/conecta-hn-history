@@ -85,7 +85,11 @@ final readonly class ConfigTenantFeatureAccessManager implements TenantFeatureAc
 
     private function resolvePlanKey(Tenant $tenant): string
     {
-        $rawPlanType = $tenant->getRawOriginal('plan_type') ?? $tenant->getAttribute('plan_type');
+        try {
+            $rawPlanType = $tenant->getRawOriginal('plan_type') ?? $tenant->getAttribute('plan_type');
+        } catch (\Throwable) {
+            $rawPlanType = Tenant::PLAN_SEMILLA;
+        }
 
         return match (true) {
             $rawPlanType instanceof TenantPlan => $rawPlanType->value,

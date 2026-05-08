@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
     <meta charset="utf-8">
     <style>
@@ -7,7 +7,7 @@
         .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
         .header { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 40px 30px; text-align: center; }
         .header h1 { color: white; margin: 0; font-size: 28px; }
-        .header .icon { font-size: 60px; margin-bottom: 10px; }
+        .header .status { color: white; font-size: 14px; font-weight: 700; letter-spacing: 0.08em; margin-bottom: 10px; text-transform: uppercase; }
         .content { padding: 40px 30px; }
         .alert { background: #fef2f2; border-left: 4px solid #ef4444; padding: 20px; margin: 20px 0; border-radius: 8px; }
         .alert h3 { color: #dc2626; margin: 0 0 10px 0; }
@@ -20,43 +20,43 @@
 <body>
     <div class="container">
         <div class="header">
-            <div class="icon">❌</div>
-            <h1>Pago No Aprobado</h1>
+            <div class="status">Revision requerida</div>
+            <h1>Pago no aprobado</h1>
         </div>
-        
+
         <div class="content">
-            <p>Hola <strong>{{ $payment->tenant->user->name ?? 'Cliente' }}</strong>,</p>
-            
-            <p>Lamentamos informarte que tu comprobante de pago no pudo ser aprobado.</p>
-            
+            <p>Hola,</p>
+
+            <p>Tu comprobante de pago no pudo ser aprobado.</p>
+
             <div class="alert">
                 <h3>Se requiere accion de tu parte</h3>
                 <p>Por favor revisa el motivo y sube un nuevo comprobante.</p>
             </div>
-            
+
             <p><strong>Motivo del rechazo:</strong></p>
             <div class="reason">
                 <p>"{{ $reason }}"</p>
             </div>
-            
+
             <p><strong>Que puedes hacer:</strong></p>
             <ol>
-                <li>Verifica que el comprobante sea legible y muestre claramente el monto y referencia</li>
-                <li>Asegurate de que el monto coincida con el plan solicitado</li>
-                <li>Sube un nuevo comprobante desde tu panel</li>
+                <li>Verifica que el comprobante sea legible y muestre claramente el monto y la referencia.</li>
+                <li>Asegurate de que el monto coincida con el plan solicitado.</li>
+                <li>Entra al panel y sube un nuevo comprobante.</li>
             </ol>
-            
+
             <center>
-                <a href="{{ config('app.url') }}/app" class="btn">Subir Nuevo Comprobante</a>
+                <a href="{{ url('/login') }}" class="btn">Entrar al panel</a>
             </center>
-            
+
             <p style="color: #6b7280; font-size: 14px;">
-                Si tienes preguntas, responde a este correo o contactanos en soporte@conectahn.com
+                Si tienes preguntas, responde a este correo o contactanos en soporte@conectahn.com.
             </p>
         </div>
-        
+
         <div class="footer">
-            <p>© {{ date('Y') }} Conecta HN. Todos los derechos reservados.</p>
+            <p>&copy; {{ date('Y') }} Conecta HN. Todos los derechos reservados.</p>
         </div>
     </div>
 </body>

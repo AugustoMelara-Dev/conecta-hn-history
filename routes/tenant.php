@@ -25,28 +25,30 @@ use App\Http\Controllers\Tenant\ProductController;
 use App\Http\Controllers\Tenant\ReportController;
 use App\Http\Controllers\Tenant\SettingsController;
 use App\Http\Controllers\Tenant\UpgradeController;
+use App\Http\Controllers\Tenant\WorkspaceRedirectController;
+use App\Infrastructure\Http\Middleware\IdentifyTenantMiddleware;
 use Illuminate\Support\Facades\Route;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // AUTHENTICATED TENANT ROUTES
 // PREFIX: /workspace (avoids collision with Filament /app panel)
 // ═══════════════════════════════════════════════════════════════════════════
-Route::middleware(['auth', 'verified'])->prefix('workspace')->group(function () {
+Route::middleware(['auth', 'verified', IdentifyTenantMiddleware::class])->prefix('workspace')->group(function () {
 
     // ─────────────────────────────────────────────────────────────────────────
     // DASHBOARD (Home)
     // ─────────────────────────────────────────────────────────────────────────
-    Route::get('/dashboard', [DashboardController::class, 'index'])
+    Route::get('/dashboard', [WorkspaceRedirectController::class, 'dashboard'])
         ->name('tenant.dashboard');
 
     // ─────────────────────────────────────────────────────────────────────────
     // PRODUCTS CRUD
     // ─────────────────────────────────────────────────────────────────────────
     Route::controller(ProductController::class)->prefix('products')->group(function () {
-        Route::get('/', 'index')->name('tenant.products.index');
-        Route::get('/create', 'create')->name('tenant.products.create');
+        Route::get('/', [WorkspaceRedirectController::class, 'products'])->name('tenant.products.index');
+        Route::get('/create', [WorkspaceRedirectController::class, 'createProduct'])->name('tenant.products.create');
         Route::post('/', 'store')->name('tenant.products.store');
-        Route::get('/{product}/edit', 'edit')->name('tenant.products.edit');
+        Route::get('/{product}/edit', [WorkspaceRedirectController::class, 'editProduct'])->name('tenant.products.edit');
         Route::put('/{product}', 'update')->name('tenant.products.update');
         Route::delete('/{product}', 'destroy')->name('tenant.products.destroy');
         Route::put('/{product}/toggle-visibility', 'toggleVisibility')
@@ -57,7 +59,7 @@ Route::middleware(['auth', 'verified'])->prefix('workspace')->group(function () 
     // ORDERS MANAGEMENT
     // ─────────────────────────────────────────────────────────────────────────
     Route::controller(OrderController::class)->prefix('orders')->group(function () {
-        Route::get('/', 'index')->name('tenant.orders.index');
+        Route::get('/', [WorkspaceRedirectController::class, 'orders'])->name('tenant.orders.index');
         Route::put('/{order}/status', 'updateStatus')->name('tenant.orders.update-status');
         Route::get('/{order}/print-ticket', 'printTicket')->name('orders.print-ticket');
     });
@@ -70,7 +72,7 @@ Route::middleware(['auth', 'verified'])->prefix('workspace')->group(function () 
     // BILLING & SUBSCRIPTION
     // ─────────────────────────────────────────────────────────────────────────
     Route::controller(BillingController::class)->prefix('billing')->group(function () {
-        Route::get('/', 'index')->name('tenant.billing.index');
+        Route::get('/', [WorkspaceRedirectController::class, 'billing'])->name('tenant.billing.index');
         Route::post('/report-payment', 'reportPayment')->name('tenant.billing.report-payment');
         Route::post('/upgrade', 'upgrade')->name('tenant.billing.upgrade');
     });
@@ -79,7 +81,7 @@ Route::middleware(['auth', 'verified'])->prefix('workspace')->group(function () 
     // SETTINGS (Unified Hub)
     // ─────────────────────────────────────────────────────────────────────────
     Route::controller(SettingsController::class)->prefix('settings')->group(function () {
-        Route::get('/', 'index')->name('tenant.settings.index');
+        Route::get('/', [WorkspaceRedirectController::class, 'settings'])->name('tenant.settings.index');
         Route::post('/profile', 'updateProfile')->name('tenant.settings.update-profile');
         Route::put('/schedule', 'updateSchedule')->name('tenant.settings.update-schedule');
     });
@@ -97,7 +99,7 @@ Route::middleware(['auth', 'verified'])->prefix('workspace')->group(function () 
     // MARKETING & PROMOTIONS
     // ─────────────────────────────────────────────────────────────────────────
     Route::controller(MarketingController::class)->prefix('marketing')->group(function () {
-        Route::get('/', 'index')->name('tenant.marketing.index');
+        Route::get('/', [WorkspaceRedirectController::class, 'marketing'])->name('tenant.marketing.index');
         Route::post('/coupons', 'store')->name('tenant.coupons.store');
         Route::put('/coupons/{coupon}/toggle', 'toggle')->name('tenant.coupons.toggle');
     });
@@ -105,7 +107,7 @@ Route::middleware(['auth', 'verified'])->prefix('workspace')->group(function () 
     // ─────────────────────────────────────────────────────────────────────────
     // UPGRADE TO PRO
     // ─────────────────────────────────────────────────────────────────────────
-    Route::get('/upgrade', [UpgradeController::class, 'index'])
+    Route::get('/upgrade', [WorkspaceRedirectController::class, 'upgrade'])
         ->name('tenant.upgrade');
 
     // ─────────────────────────────────────────────────────────────────────────

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Web;
 
 use App\Domain\Billing\Repositories\PaymentRepositoryInterface;
+use App\Domain\Billing\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Settings\GeneralSettings;
 use Inertia\Inertia;
@@ -40,11 +41,11 @@ final class BillingController extends Controller
         // Security: Verify ownership
         $user = auth()->user();
         if ($user && $tenantUserId !== $user->id) {
-            abort(403, 'No tienes permiso para ver esta página.');
+            abort(403, 'No tienes permiso para ver esta pagina.');
         }
 
         // If payment is already approved, redirect
-        if ($payment->isApproved()) {
+        if ($payment->status === PaymentStatus::PAID) {
             return Inertia::location(route('login'));
         }
 
@@ -97,9 +98,9 @@ final class BillingController extends Controller
 
         $message = "Hola, acabo de registrar mi negocio *{$tenantName}* en Conecta HN.\n\n";
         $message .= "Adjunto el comprobante de pago:\n";
-        $message .= "📋 Referencia: *{$reference}*\n";
-        $message .= "💰 Monto: *{$formattedAmount}*";
+        $message .= "Referencia: *{$reference}*\n";
+        $message .= "Monto: *{$formattedAmount}*";
 
-        return "https://wa.me/{$phone}?text=".urlencode($message);
+        return "https://wa.me/{$phone}?text=".rawurlencode($message);
     }
 }

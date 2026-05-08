@@ -4,98 +4,111 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Pages;
 
+use App\Models\Category;
+use App\Models\City;
+use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Pages\Tenancy\EditTenantProfile as BaseEditTenantProfile;
-use Illuminate\Support\HtmlString;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 
-/**
- * EditTenantProfile - Centro de Control de Identidad del Negocio
- *
- * ESTRATEGIA DE MONETIZACIÓN:
- * - FREE ("La Jaula"): Campos premium visibles pero DESHABILITADOS
- * - PRO ("El Estudio"): Acceso completo a personalización
- */
 class EditTenantProfile extends BaseEditTenantProfile
 {
     public static function getLabel(): string
     {
-        return 'Perfil de mi Negocio';
+        return 'Perfil del negocio';
+    }
+
+    public function mount(): void
+    {
+        $tenant = Filament::getTenant();
+        $this->tenant = $tenant
+            ? $tenant->newQueryWithoutScopes()->whereKey($tenant->getKey())->first()
+            : null;
+
+        abort_unless($this->tenant && static::canView($this->tenant), 404);
+
+        $this->fillForm();
     }
 
     public function form(Form $form): Form
     {
-        $isPro = Filament::getTenant()?->is_pro ?? false;
-        $billingUrl = '#';
-
-        try {
-            $billingUrl = route('filament.app.pages.manage-billing', ['tenant' => Filament::getTenant()?->slug ?? '']);
-        } catch (\Exception $e) {
-            // Route may not exist during app boot
-        }
+        $tenant = Filament::getTenant();
+        $isPro = (bool) ($tenant?->is_pro ?? false);
+        $tenantAttributes = $this->tenant?->getAttributes() ?? [];
+        $hasCategoryColumn = Schema::hasTable('categories')
+            && Schema::hasColumn('tenants', 'category_id')
+            && array_key_exists('category_id', $tenantAttributes);
+        $hasCityColumn = Schema::hasTable('cities')
+            && Schema::hasColumn('tenants', 'city_id')
+            && array_key_exists('city_id', $tenantAttributes);
 
         return $form
+            ->model($this->tenant)
             ->schema([
                 Forms\Components\Tabs::make('ProfileSettings')
+                    ->extraAttributes(['data-testid' => 'business-profile-tabs'])
                     ->tabs([
-                        // ═══════════════════════════════════════════════════════════
-                        // TAB 1: IDENTIDAD VISUAL
-                        // ═══════════════════════════════════════════════════════════
                         Forms\Components\Tabs\Tab::make('Identidad')
-                            ->label('🎨 Marca')
                             ->icon('heroicon-o-paint-brush')
                             ->schema([
-                                Forms\Components\Section::make('Información del Negocio')
+                                Forms\Components\Section::make('Informacion publica')
+                                    ->description('Estos datos se muestran en el directorio y en tu micrositio.')
                                     ->schema([
                                         Forms\Components\TextInput::make('name')
-                                            ->label('Nombre del Negocio')
+                                            ->label('Nombre del negocio')
                                             ->required()
                                             ->maxLength(100),
 
                                         Forms\Components\TextInput::make('slug')
-                                            ->label('URL Personalizada')
+                                            ->label('URL publica')
                                             ->prefix('conectahn.com/')
                                             ->required()
                                             ->unique(ignoreRecord: true)
                                             ->alphaDash()
-                                            ->helperText(new HtmlString(
-                                                '<span class="text-warning-600">⚠️ Cambiar esto romperá enlaces compartidos.</span>'
-                                            )),
+                                            ->helperText('Cambiar esta URL puede romper enlaces que ya compartiste.'),
 
                                         Forms\Components\TextInput::make('slogan')
-                                            ->label('Eslogan / Frase de Marca')
+                                            ->label('Frase de marca')
                                             ->maxLength(100)
-                                            ->placeholder('La mejor pizza de Honduras...')
-                                            ->helperText('Máximo 100 caracteres. Se muestra en la portada debajo del nombre.')
+                                            ->placeholder('La mejor pizza de Honduras')
+                                            ->helperText('Maximo 100 caracteres. Se muestra debajo del nombre.')
                                             ->columnSpanFull(),
 
                                         Forms\Components\Textarea::make('description')
-                                            ->label('Descripción Corta (SEO)')
+                                            ->label('Descripcion corta')
                                             ->rows(3)
                                             ->maxLength(255)
-                                            ->helperText('Breve descripción para buscadores. Máx 255 caracteres.')
+                                            ->helperText('Resumen breve para buscadores, directorio y tarjetas publicas.')
                                             ->columnSpanFull(),
 
                                         Forms\Components\Textarea::make('about')
-                                            ->label('Nuestra Historia')
+                                            ->label('Historia del negocio')
                                             ->rows(5)
-                                            ->placeholder('Cuéntale a tus clientes la historia de tu negocio, tu pasión, tus valores...')
-                                            ->helperText('Texto extendido para conectar emocionalmente con tus clientes.')
+                                            ->placeholder('Cuenta que hace diferente a tu negocio, tu historia y lo que prometes al cliente.')
+                                            ->helperText('Texto extendido para tu micrositio.')
                                             ->columnSpanFull(),
 
-                                        Forms\Components\Select::make('category_id')
-                                            ->label('Categoría del Negocio')
-                                            ->relationship('category', 'name')
-                                            ->searchable()
-                                            ->preload()
-                                            ->required()
-                                            ->native(false)
-                                            ->helperText('Determina en qué sección apareces en el directorio.'),
+                                        ...($hasCategoryColumn ? [
+                                            Forms\Components\Select::make('category_id')
+                                                ->label('Categoria')
+                                                ->options(fn (): array => Category::query()
+                                                    ->orderBy('name')
+                                                    ->pluck('name', 'id')
+                                                    ->all())
+                                                ->searchable()
+                                                ->preload()
+                                                ->required()
+                                                ->native(false)
+                                                ->helperText('Ayuda a que clientes correctos te encuentren en el directorio.'),
+                                        ] : []),
                                     ])
                                     ->columns(2),
 
                                 Forms\Components\Section::make('Logo')
+                                    ->description('Usa una imagen simple, legible y centrada.')
                                     ->schema([
                                         Forms\Components\FileUpload::make('logo_path')
                                             ->label('Logo')
@@ -105,22 +118,25 @@ class EditTenantProfile extends BaseEditTenantProfile
                                             ->imageCropAspectRatio('1:1')
                                             ->directory('tenants/logos')
                                             ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
-                                            ->maxSize(2048),
+                                            ->maxSize(2048)
+                                            ->helperText('Maximo 2 MB. Recomendado: formato cuadrado.'),
                                     ]),
 
-                                Forms\Components\Section::make('Personalización de Marca')
-                                    ->description($isPro ? '✨ Personaliza tu identidad visual.' : '🔒 Funciones PRO - Actualiza tu plan para desbloquear')
+                                Forms\Components\Section::make('Marca visual')
+                                    ->description($isPro
+                                        ? 'Personaliza la apariencia publica de tu negocio.'
+                                        : 'Disponible en Pro. Puedes preparar los datos y activar el plan cuando lo necesites.')
                                     ->icon('heroicon-o-sparkles')
                                     ->schema([
                                         Forms\Components\ColorPicker::make('brand_color')
-                                            ->label('Color Principal de Marca')
+                                            ->label('Color principal')
                                             ->required()
                                             ->default('#2563EB')
                                             ->regex('/^#[0-9A-Fa-f]{6}$/')
-                                            ->helperText('Se aplica a botones, enlaces y elementos destacados de tu micrositio.'),
+                                            ->helperText('Se usa en botones, enlaces y detalles de tu micrositio.'),
 
                                         Forms\Components\FileUpload::make('hero_image')
-                                            ->label('Imagen de Portada (Hero)')
+                                            ->label('Imagen de portada')
                                             ->image()
                                             ->imageEditor()
                                             ->imageCropAspectRatio('16:9')
@@ -131,11 +147,11 @@ class EditTenantProfile extends BaseEditTenantProfile
                                             ->maxSize(2048)
                                             ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                                             ->disabled(! $isPro)
-                                            ->hint(! $isPro ? '🔒 PRO' : null)
-                                            ->helperText('Máx 2MB. Recomendado: 1920x600px. Se muestra en la cabecera de tu sitio.'),
+                                            ->hint(! $isPro ? 'Pro' : null)
+                                            ->helperText('Maximo 2 MB. Recomendado: 1920 x 600 px.'),
 
                                         Forms\Components\FileUpload::make('banner_path')
-                                            ->label('Banner Secundario')
+                                            ->label('Banner secundario')
                                             ->image()
                                             ->imageEditor()
                                             ->imageCropAspectRatio('16:9')
@@ -143,33 +159,30 @@ class EditTenantProfile extends BaseEditTenantProfile
                                             ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                                             ->maxSize(2048)
                                             ->disabled(! $isPro)
-                                            ->hint(! $isPro ? '🔒 PRO' : null),
+                                            ->hint(! $isPro ? 'Pro' : null),
 
                                         Forms\Components\ColorPicker::make('primary_color')
-                                            ->label('Color Secundario')
+                                            ->label('Color secundario')
                                             ->disabled(! $isPro)
-                                            ->hint(! $isPro ? '🔒 PRO' : null)
-                                            ->helperText('Color alternativo para variaciones.'),
+                                            ->hint(! $isPro ? 'Pro' : null)
+                                            ->helperText('Color alternativo para variaciones de marca.'),
                                     ])
                                     ->columns(2),
                             ]),
 
-                        // ═══════════════════════════════════════════════════════════
-                        // TAB 2: UBICACIÓN
-                        // ═══════════════════════════════════════════════════════════
-                        Forms\Components\Tabs\Tab::make('Ubicación')
-                            ->label('📍 Ubicación')
+                        Forms\Components\Tabs\Tab::make('Ubicacion')
                             ->icon('heroicon-o-map-pin')
                             ->schema([
                                 Forms\Components\Section::make('Contacto')
+                                    ->description('Canales visibles para clientes y pedidos.')
                                     ->schema([
                                         Forms\Components\TextInput::make('email')
-                                            ->label('Email')
+                                            ->label('Correo')
                                             ->email()
                                             ->prefixIcon('heroicon-o-envelope'),
 
                                         Forms\Components\TextInput::make('phone')
-                                            ->label('Teléfono')
+                                            ->label('Telefono')
                                             ->tel()
                                             ->prefixIcon('heroicon-o-phone'),
 
@@ -180,49 +193,51 @@ class EditTenantProfile extends BaseEditTenantProfile
                                     ])
                                     ->columns(3),
 
-                                Forms\Components\Section::make('Dirección')
+                                Forms\Components\Section::make('Direccion')
+                                    ->description('Ubicacion principal para clientes.')
                                     ->schema([
-                                        Forms\Components\Select::make('city_id')
-                                            ->label('Ciudad')
-                                            ->relationship('city', 'name')
-                                            ->searchable()
-                                            ->preload()
-                                            ->required(),
+                                        ...($hasCityColumn ? [
+                                            Forms\Components\Select::make('city_id')
+                                                ->label('Ciudad')
+                                                ->options(fn (): array => City::query()
+                                                    ->orderBy('name')
+                                                    ->pluck('name', 'id')
+                                                    ->all())
+                                                ->searchable()
+                                                ->preload()
+                                                ->required(),
+                                        ] : []),
 
                                         Forms\Components\Textarea::make('address')
-                                            ->label('Dirección')
+                                            ->label('Direccion')
                                             ->rows(2)
                                             ->columnSpanFull(),
                                     ]),
 
-                                Forms\Components\Section::make('GPS')
-                                    ->description($isPro ? 'Pin en el mapa' : '🔒 PRO-only')
+                                Forms\Components\Section::make('Coordenadas')
+                                    ->description($isPro ? 'Opcional para ubicar el negocio en mapa.' : 'Disponible en Pro.')
                                     ->collapsed()
                                     ->schema([
                                         Forms\Components\TextInput::make('latitude')
                                             ->label('Latitud')
                                             ->numeric()
                                             ->disabled(! $isPro)
-                                            ->hint(! $isPro ? '🔒 PRO' : null),
+                                            ->hint(! $isPro ? 'Pro' : null),
 
                                         Forms\Components\TextInput::make('longitude')
                                             ->label('Longitud')
                                             ->numeric()
                                             ->disabled(! $isPro)
-                                            ->hint(! $isPro ? '🔒 PRO' : null),
+                                            ->hint(! $isPro ? 'Pro' : null),
                                     ])
                                     ->columns(2),
                             ]),
 
-                        // ═══════════════════════════════════════════════════════════
-                        // TAB 3: OPERACIONES
-                        // ═══════════════════════════════════════════════════════════
                         Forms\Components\Tabs\Tab::make('Operaciones')
-                            ->label('⏰ Operaciones')
                             ->icon('heroicon-o-clock')
                             ->schema([
-                                Forms\Components\Section::make('Redes Sociales')
-                                    ->description($isPro ? 'Conecta tus redes' : '🔒 PRO-only')
+                                Forms\Components\Section::make('Redes y enlaces')
+                                    ->description($isPro ? 'Conecta canales externos del negocio.' : 'Disponible en Pro.')
                                     ->schema([
                                         Forms\Components\TextInput::make('facebook_url')
                                             ->label('Facebook')
@@ -243,40 +258,40 @@ class EditTenantProfile extends BaseEditTenantProfile
                                             ->prefixIcon('heroicon-o-play'),
 
                                         Forms\Components\TextInput::make('website_url')
-                                            ->label('Sitio Web')
+                                            ->label('Sitio web')
                                             ->url()
                                             ->disabled(! $isPro)
                                             ->prefixIcon('heroicon-o-globe-americas'),
                                     ])
                                     ->columns(2),
 
-                                // Horario Simple para FREE
-                                Forms\Components\Section::make('Horario General')
+                                Forms\Components\Section::make('Horario general')
+                                    ->description('Texto simple para mostrar disponibilidad cuando no usas horarios detallados.')
                                     ->visible(! $isPro)
                                     ->schema([
                                         Forms\Components\TextInput::make('simple_schedule')
-                                            ->label('Horario de Atención')
-                                            ->placeholder('Ej: Lunes a Viernes de 8:00 AM a 5:00 PM')
+                                            ->label('Horario de atencion')
+                                            ->placeholder('Ej: Lunes a viernes de 8:00 AM a 5:00 PM')
                                             ->columnSpanFull(),
                                     ]),
 
-                                // Horario Complejo para PRO
-                                Forms\Components\Section::make('Horarios Detallados')
+                                Forms\Components\Section::make('Horarios detallados')
+                                    ->description('Configura dias y horas de apertura.')
                                     ->visible($isPro)
                                     ->collapsed()
                                     ->schema([
                                         Forms\Components\Repeater::make('hours_data')
-                                            ->label('')
+                                            ->label('Horarios')
                                             ->schema([
                                                 Forms\Components\Select::make('day')
-                                                    ->label('Día')
+                                                    ->label('Dia')
                                                     ->options([
                                                         'lunes' => 'Lunes',
                                                         'martes' => 'Martes',
-                                                        'miercoles' => 'Miércoles',
+                                                        'miercoles' => 'Miercoles',
                                                         'jueves' => 'Jueves',
                                                         'viernes' => 'Viernes',
-                                                        'sabado' => 'Sábado',
+                                                        'sabado' => 'Sabado',
                                                         'domingo' => 'Domingo',
                                                     ])
                                                     ->required(),
@@ -295,44 +310,54 @@ class EditTenantProfile extends BaseEditTenantProfile
                                             ->columns(4)
                                             ->reorderable()
                                             ->collapsible()
-                                            ->addActionLabel('+ Agregar día')
+                                            ->addActionLabel('Agregar dia')
                                             ->defaultItems(0)
                                             ->maxItems(7),
                                     ]),
 
                                 Forms\Components\Section::make('WhatsApp')
+                                    ->description('Mensaje sugerido para iniciar conversaciones con clientes.')
                                     ->collapsed()
                                     ->schema([
                                         Forms\Components\Textarea::make('whatsapp_message')
-                                            ->label('Mensaje Predeterminado')
+                                            ->label('Mensaje predeterminado')
                                             ->rows(2)
-                                            ->placeholder('Hola, me interesa...'),
+                                            ->placeholder('Hola, me interesa hacer un pedido.'),
                                     ]),
                             ]),
                     ])
-                    ->persistTabInQueryString()
                     ->columnSpanFull(),
             ]);
     }
 
     protected function getHeaderActions(): array
     {
-        $isPro = $this->tenant?->is_pro ?? false;
+        $tenant = $this->tenant;
+        $isPro = (bool) ($tenant?->is_pro ?? false);
 
         return [
-            \Filament\Actions\Action::make('view_site')
-                ->label('Ver mi Sitio')
+            Action::make('view_site')
+                ->label('Ver sitio')
                 ->icon('heroicon-o-arrow-top-right-on-square')
                 ->color('gray')
-                ->url(fn () => url('/'.$this->tenant->slug))
+                ->url(fn () => $tenant ? url('/'.$tenant->slug) : url('/directorio'))
                 ->openUrlInNewTab(),
 
-            \Filament\Actions\Action::make('upgrade')
-                ->label('✨ Mejorar a PRO')
+            Action::make('upgrade')
+                ->label('Mejorar plan')
                 ->icon('heroicon-m-sparkles')
                 ->color('warning')
                 ->visible(! $isPro)
-                ->url(fn () => route('filament.app.pages.manage-billing', ['tenant' => $this->tenant->slug])),
+                ->url(fn () => $tenant
+                    ? route('filament.app.pages.manage-billing', ['tenant' => $tenant->slug])
+                    : url('/registrar-negocio')),
         ];
+    }
+
+    public static function canView(Model $tenant): bool
+    {
+        $user = auth()->user();
+
+        return $user?->canAccessTenant($tenant) ?? false;
     }
 }

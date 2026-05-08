@@ -16,7 +16,11 @@ class EditTenantUser extends EditRecord
     {
         return [
             Actions\DeleteAction::make()
-                ->visible(fn () => $this->record->role !== 'owner'),
+                ->label('Eliminar acceso')
+                ->modalHeading('Eliminar miembro del equipo')
+                ->modalDescription('Esta accion quitara el acceso de esta persona al negocio. La cuenta de usuario no se elimina.')
+                ->modalSubmitActionLabel('Eliminar acceso')
+                ->visible(fn () => (string) ($this->record->role->value ?? $this->record->role) !== 'owner'),
         ];
     }
 
@@ -27,6 +31,6 @@ class EditTenantUser extends EditRecord
 
     public function getTitle(): string
     {
-        return 'Editar Miembro: '.$this->record->user->name;
+        return 'Editar miembro: '.$this->record->user->name;
     }
 }

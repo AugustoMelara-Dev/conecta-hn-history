@@ -7,6 +7,7 @@ use App\Models\Appointment;
 use App\Models\Service;
 use App\Models\ServiceProvider;
 use App\Models\Tenant;
+use Illuminate\Support\Facades\Route;
 
 // ═══════════════════════════════════════════════════════════════════════
 // BOOKING FLOW TESTS - Unit Tests (No DB Required)
@@ -75,13 +76,23 @@ it('React booking pages exist', function () {
     expect(file_exists($successPath))->toBeTrue();
 });
 
-// TEST 11: Booking routes are defined in public.php
-it('Booking routes are defined in public.php', function () {
-    $routeFile = base_path('routes/public.php');
-    $contents = file_get_contents($routeFile);
-    
-    expect($contents)->toContain('BookingController');
-    expect($contents)->toContain("public.booking.index");
-    expect($contents)->toContain("public.booking.store");
-    expect($contents)->toContain("public.booking.success");
+// TEST 11: Booking routes are registered on the tenant subdomain
+it('Booking routes are registered on the tenant subdomain', function () {
+    $routes = [
+        'public.booking.index' => ['method' => 'GET', 'uri' => 'book', 'action' => 'index'],
+        'public.booking.store' => ['method' => 'POST', 'uri' => 'book', 'action' => 'store'],
+        'public.booking.providers' => ['method' => 'GET', 'uri' => 'book/providers/{service}', 'action' => 'getProviders'],
+        'public.booking.slots' => ['method' => 'GET', 'uri' => 'book/slots', 'action' => 'getSlots'],
+        'public.booking.success' => ['method' => 'GET', 'uri' => 'book/success', 'action' => 'success'],
+    ];
+
+    foreach ($routes as $name => $expected) {
+        $route = Route::getRoutes()->getByName($name);
+
+        expect($route)->not->toBeNull()
+            ->and($route->methods())->toContain($expected['method'])
+            ->and($route->uri())->toBe($expected['uri'])
+            ->and($route->getDomain())->toContain('{tenant}')
+            ->and($route->getActionName())->toBe(BookingController::class.'@'.$expected['action']);
+    }
 });

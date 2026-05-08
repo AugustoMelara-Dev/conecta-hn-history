@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers\Filament;
 
+use App\Http\Middleware\InitializeFilamentTenantContext;
 use Filament\Facades\Filament;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -163,8 +164,12 @@ class AppPanelProvider extends PanelProvider
             // RENDIMIENTO Y UX
             // ═══════════════════════════════════════════════════════════════
             ->maxContentWidth('full')
-            ->databaseNotifications()
-            ->databaseNotificationsPolling('60s')
+            ->when(
+                ! filter_var(env('UIUX_DISABLE_FILAMENT_DATABASE_NOTIFICATIONS', false), FILTER_VALIDATE_BOOL),
+                fn (Panel $panel): Panel => $panel
+                    ->databaseNotifications()
+                    ->databaseNotificationsPolling('60s'),
+            )
 
             // ═══════════════════════════════════════════════════════════════
             // MIDDLEWARE
@@ -180,6 +185,9 @@ class AppPanelProvider extends PanelProvider
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
             ])
+            ->tenantMiddleware([
+                InitializeFilamentTenantContext::class,
+            ], isPersistent: true)
             ->authMiddleware([
                 Authenticate::class,
             ]);

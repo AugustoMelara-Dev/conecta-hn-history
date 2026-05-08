@@ -6,10 +6,11 @@ namespace App\Application\Tenant\Handlers;
 
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Application\Tenant\Commands\UpdateLandingPageCommand;
-use App\Domain\Identity\Repositories\TenantRepositoryInterface;
 use App\Domain\Tenant\Exceptions\FeatureRequiresProException;
+use App\Models\Tenant;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * UpdateLandingPageHandler - Landing Page Configuration Handler
@@ -23,10 +24,6 @@ final class UpdateLandingPageHandler
 {
     use LogSanitizer;
 
-    public function __construct(
-        private readonly TenantRepositoryInterface $tenantRepository,
-    ) {}
-
     /**
      * Handle landing page update command.
      *
@@ -35,26 +32,37 @@ final class UpdateLandingPageHandler
      */
     public function handle(UpdateLandingPageCommand $command): void
     {
-        // 1. Load Tenant
-        $tenant = $this->tenantRepository->findById($command->tenantId);
+        $tenant = Tenant::query()->find($command->tenantId);
 
-        if ($tenant === null) {
+        if (! $tenant instanceof Tenant) {
             throw new ModelNotFoundException("Tenant not found: {$command->tenantId}");
         }
 
-        // 2. FEATURE GATING: PRO subscription required
-        if (! $tenant->is_pro) {
+        $tenantAttributes = $tenant->getAttributes();
+        $planValue = $tenantAttributes['plan_type'] ?? $tenantAttributes['plan'] ?? null;
+
+        if ($planValue instanceof \BackedEnum) {
+            $planValue = $planValue->value;
+        }
+
+        $isPro = Schema::hasColumn($tenant->getTable(), 'is_pro')
+            ? (bool) ($tenantAttributes['is_pro'] ?? false)
+            : in_array($planValue, ['pro', 'enterprise'], true);
+
+        if (! $isPro) {
             throw FeatureRequiresProException::forLandingPage();
         }
 
-        // 3. Update landing page data (JSON field)
+        if (! Schema::hasColumn($tenant->getTable(), 'landing_page_data')) {
+            throw new \RuntimeException('La configuracion de landing page no esta disponible en este entorno.');
+        }
+
         $tenant->landing_page_data = [
             'sections' => $command->landingData,
             'updated_at' => now()->toIso8601String(),
         ];
 
-        // 4. Persist via Repository
-        $this->tenantRepository->save($tenant);
+        $tenant->save();
 
         Log::info('Tenant landing page updated', $this->sanitizePayload([
             'tenant_id' => $command->tenantId,

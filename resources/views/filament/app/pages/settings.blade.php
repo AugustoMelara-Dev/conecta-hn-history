@@ -1,5 +1,5 @@
 <x-filament-panels::page>
-    <x-filament-panels::form wire:submit="save">
+    <x-filament-panels::form wire:submit="save" data-testid="panel-settings-page">
         {{ $this->form }}
 
         <x-filament-panels::form.actions

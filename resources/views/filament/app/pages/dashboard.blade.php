@@ -1,5 +1,5 @@
 <x-filament-panels::page>
-    <div class="biz-shell">
+    <div class="biz-shell" data-testid="panel-dashboard-page">
         <div class="biz-card">
             <div class="biz-grid-two">
                 <div class="biz-stack">
@@ -74,7 +74,7 @@
                         </div>
 
                         <div class="biz-button-row">
-                            <a href="{{ $publicUrl }}" target="_blank" class="biz-button">Abrir mi página</a>
+                            <a href="{{ $publicUrl }}" target="_blank" class="biz-button">Abrir mi pagina</a>
                             <a href="{{ $profileUrl }}" class="biz-button-secondary">Configurar negocio</a>
                             <a href="{{ $growthUrl }}" class="biz-button-secondary">Centro de crecimiento</a>
                             <a href="{{ $operationsUrl }}" class="biz-button-secondary">Centro operativo</a>
@@ -90,10 +90,10 @@
             <div class="biz-grid-two">
                 <div class="biz-stack">
                     <div>
-                        <p class="biz-kicker">Activación 7 días</p>
-                        <h2 class="biz-heading">Siguiente mejor acción</h2>
+                        <p class="biz-kicker">Activacion 7 dias</p>
+                        <h2 class="biz-heading">Siguiente mejor accion</h2>
                         <p class="biz-muted">
-                            Tu progreso se guarda automáticamente por tenant/rol para que cada sesión empiece con contexto claro.
+                            Tu progreso se guarda automaticamente por tenant/rol para que cada sesion empiece con contexto claro.
                         </p>
                     </div>
 
@@ -108,7 +108,15 @@
                                 {{ $activationProgress >= 80 ? 'Fuerte' : ($activationProgress >= 50 ? 'En progreso' : 'Inicial') }}
                             </x-filament::badge>
                         </div>
-                        <div class="biz-progress" style="margin-top: 0.9rem;">
+                        <div
+                            class="biz-progress"
+                            style="margin-top: 0.9rem;"
+                            role="progressbar"
+                            aria-label="Progreso de activacion"
+                            aria-valuemin="0"
+                            aria-valuemax="100"
+                            aria-valuenow="{{ $activationProgress }}"
+                        >
                             <div
                                 class="biz-progress-bar {{ $activationProgress < 50 ? 'biz-progress-bar-danger' : ($activationProgress < 80 ? 'biz-progress-bar-warning' : '') }}"
                                 style="width: {{ max(6, $activationProgress) }}%;"
@@ -116,10 +124,20 @@
                         </div>
                     </div>
 
+                    @php
+                        $dashboardNextHref = $nextBestAction['href'] ?? '';
+                    @endphp
+
                     <div class="biz-button-row">
-                        <a href="{{ $nextBestAction['href'] ?? '#' }}" class="biz-button">
-                            {{ $nextBestAction['title'] ?? 'Continuar activación' }}
-                        </a>
+                        @if ($dashboardNextHref !== '')
+                            <a href="{{ $dashboardNextHref }}" class="biz-button">
+                                {{ $nextBestAction['title'] ?? 'Continuar activacion' }}
+                            </a>
+                        @else
+                            <span class="biz-button-secondary" role="link" aria-disabled="true">
+                                {{ $nextBestAction['title'] ?? 'Continuar activacion' }}
+                            </span>
+                        @endif
                     </div>
                 </div>
 
@@ -142,7 +160,7 @@
                             </div>
                         @empty
                             <div class="biz-empty-state">
-                                <p class="biz-muted">No encontramos hitos todavía. Refresca y vuelve a intentar.</p>
+                                <p class="biz-muted">No encontramos hitos todavia. Refresca y vuelve a intentar.</p>
                             </div>
                         @endforelse
                     </div>
@@ -227,7 +245,7 @@
                         <p class="biz-kicker">Checklist inicial</p>
                         <h2 class="biz-heading">Lo esencial para {{ $segmentLabel }}</h2>
                         <p class="biz-muted">
-                            El score resume qué tan listo está tu negocio para verse profesional, operar sin fricción y empezar a crecer.
+                            El score resume que tan listo esta tu negocio para verse profesional, operar sin friccion y empezar a crecer.
                         </p>
                     </div>
 
@@ -236,15 +254,23 @@
                             <div>
                                 <p class="biz-stat-label">Score actual</p>
                                 <p class="biz-stat-value">{{ $healthScore }}/100</p>
-                                <p class="biz-stat-copy">Mientras más alto, más consistente se ve tu operación para el cliente.</p>
+                                <p class="biz-stat-copy">Mientras mas alto, mas consistente se ve tu operacion para el cliente.</p>
                             </div>
 
                             <x-filament::badge color="{{ $healthScore >= 80 ? 'success' : ($healthScore >= 50 ? 'warning' : 'danger') }}">
-                                {{ $healthScore >= 80 ? 'Fuerte' : ($healthScore >= 50 ? 'En progreso' : 'Atención') }}
+                                {{ $healthScore >= 80 ? 'Fuerte' : ($healthScore >= 50 ? 'En progreso' : 'Atencion') }}
                             </x-filament::badge>
                         </div>
 
-                        <div class="biz-progress" style="margin-top: 0.9rem;">
+                        <div
+                            class="biz-progress"
+                            style="margin-top: 0.9rem;"
+                            role="progressbar"
+                            aria-label="Score de preparacion del negocio"
+                            aria-valuemin="0"
+                            aria-valuemax="100"
+                            aria-valuenow="{{ $healthScore }}"
+                        >
                             <div
                                 class="biz-progress-bar {{ $healthScore < 50 ? 'biz-progress-bar-danger' : ($healthScore < 80 ? 'biz-progress-bar-warning' : '') }}"
                                 style="width: {{ max(6, $healthCompletionPercent) }}%;"
@@ -272,7 +298,7 @@
                 <div class="biz-stack">
                     <div>
                         <p class="biz-kicker">Prioridades de hoy</p>
-                        <h2 class="biz-heading">Qué conviene mover primero</h2>
+                        <h2 class="biz-heading">Que conviene mover primero</h2>
                         <p class="biz-copy">
                             Esta cola corta te ayuda a actuar como operador, no solo como editor del panel.
                         </p>

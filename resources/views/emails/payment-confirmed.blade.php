@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
     <meta charset="utf-8">
     <style>
@@ -7,7 +7,7 @@
         .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
         .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 40px 30px; text-align: center; }
         .header h1 { color: white; margin: 0; font-size: 28px; }
-        .header .icon { font-size: 60px; margin-bottom: 10px; }
+        .header .status { color: white; font-size: 14px; font-weight: 700; letter-spacing: 0.08em; margin-bottom: 10px; text-transform: uppercase; }
         .content { padding: 40px 30px; }
         .highlight { background: #ecfdf5; border-left: 4px solid #10b981; padding: 20px; margin: 20px 0; border-radius: 8px; }
         .highlight h3 { color: #059669; margin: 0 0 10px 0; }
@@ -21,27 +21,27 @@
 <body>
     <div class="container">
         <div class="header">
-            <div class="icon">✅</div>
-            <h1>Pago Confirmado</h1>
+            <div class="status">Pago verificado</div>
+            <h1>Pago confirmado</h1>
         </div>
-        
+
         <div class="content">
-            <p>Hola <strong>{{ $tenant->user->name ?? 'Cliente' }}</strong>,</p>
-            
-            <p>Excelentes noticias! Tu pago ha sido verificado y confirmado exitosamente.</p>
-            
+            <p>Hola <strong>{{ $tenant->name ?? 'Cliente' }}</strong>,</p>
+
+            <p>Buenas noticias: tu pago fue verificado y confirmado.</p>
+
             <div class="highlight">
-                <h3>Tu Plan PRO esta Activo</h3>
-                <p>Ahora tienes acceso a todas las funcionalidades premium de Conecta HN.</p>
+                <h3>Tu Plan PRO esta activo</h3>
+                <p>Ahora tienes acceso a las funcionalidades premium de Conecta HN.</p>
             </div>
-            
+
             <div class="details">
                 <p><strong>Negocio:</strong> {{ $tenant->name }}</p>
-                <p><strong>Monto Pagado:</strong> L. {{ number_format($payment->amount, 2) }}</p>
-                <p><strong>Fecha de Activacion:</strong> {{ now()->format('d/m/Y') }}</p>
-                <p><strong>Valido Hasta:</strong> {{ $tenant->plan_expires_at ? $tenant->plan_expires_at->format('d/m/Y') : 'N/A' }}</p>
+                <p><strong>Monto pagado:</strong> L. {{ $payment->amount }}</p>
+                <p><strong>Fecha de activacion:</strong> {{ now()->format('d/m/Y') }}</p>
+                <p><strong>Valido hasta:</strong> {{ $tenant->subscriptionEndsAt ? \Illuminate\Support\Carbon::parse($tenant->subscriptionEndsAt)->format('d/m/Y') : 'Pendiente de actualizar' }}</p>
             </div>
-            
+
             <p>Con tu Plan PRO puedes:</p>
             <ul>
                 <li>Subir productos ilimitados</li>
@@ -49,15 +49,15 @@
                 <li>Activar boton de WhatsApp</li>
                 <li>Agregar redes sociales</li>
             </ul>
-            
+
             <center>
-                <a href="{{ config('app.url') }}/app" class="btn">Ir a mi Panel</a>
+                <a href="{{ url('/login') }}" class="btn">Entrar al panel</a>
             </center>
         </div>
-        
+
         <div class="footer">
             <p>Gracias por confiar en Conecta HN</p>
-            <p>© {{ date('Y') }} Conecta HN. Todos los derechos reservados.</p>
+            <p>&copy; {{ date('Y') }} Conecta HN. Todos los derechos reservados.</p>
         </div>
     </div>
 </body>

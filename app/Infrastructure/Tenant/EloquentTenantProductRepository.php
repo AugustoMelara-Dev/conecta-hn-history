@@ -19,7 +19,7 @@ final class EloquentTenantProductRepository implements TenantProductRepository
     /**
      * {@inheritDoc}
      */
-    public function getDashboardList(int $tenantId, string $search = '', int $perPage = 12): LengthAwarePaginator
+    public function getDashboardList(int|string $tenantId, string $search = '', int $perPage = 12): LengthAwarePaginator
     {
         return Product::query()
             ->where('tenant_id', $tenantId)
@@ -33,7 +33,7 @@ final class EloquentTenantProductRepository implements TenantProductRepository
     // or reusing existing methods. Based on context, I am "Updating Infrastructure".
     // I will stick to what is needed for the dashboard list fix.
 
-    public function countByTenant(int $tenantId): int
+    public function countByTenant(int|string $tenantId): int
     {
         return Product::where('tenant_id', $tenantId)->count();
     }

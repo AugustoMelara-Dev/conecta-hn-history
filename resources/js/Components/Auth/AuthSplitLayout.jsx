@@ -130,9 +130,9 @@ export default function AuthSplitLayout({
                 </div>
             </div>
 
-            <aside className="relative hidden overflow-hidden bg-slate-950 xl:block">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.12),transparent_22%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.08),transparent_28%),linear-gradient(135deg,#020617_0%,#111827_48%,#0f172a_100%)]" />
-                <div className="absolute inset-0 opacity-[0.08] [background-image:linear-gradient(to_right,white_1px,transparent_1px),linear-gradient(to_bottom,white_1px,transparent_1px)] [background-size:72px_72px]" />
+            <aside className="relative hidden overflow-hidden bg-primary xl:block">
+                <div className="absolute inset-0 bg-primary" />
+                <div className="absolute inset-0 opacity-10 [background-image:linear-gradient(to_right,currentColor_1px,transparent_1px),linear-gradient(to_bottom,currentColor_1px,transparent_1px)] [background-size:72px_72px]" />
 
                 <div className="relative flex h-full flex-col justify-between p-10 xl:p-14">
                     {aside}

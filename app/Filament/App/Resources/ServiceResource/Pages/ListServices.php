@@ -10,10 +10,13 @@ class ListServices extends ListRecords
 {
     protected static string $resource = ServiceResource::class;
 
+    protected static string $view = 'filament-panels::resources.pages.list-records';
+
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            Actions\CreateAction::make()
+                ->label('Crear servicio'),
         ];
     }
 }

@@ -17,12 +17,25 @@ import {
 import { Input } from "@/Components/ui/input"
 import { cn } from "@/lib/utils"
 
+function safeRoute(name, fallback) {
+    try {
+        if (route().has(name)) {
+            return route(name)
+        }
+    } catch {
+        return fallback
+    }
+
+    return fallback
+}
+
 export function SignupForm({
     categories = [],
     cities = [],
     className,
     ...props
 }) {
+    const exploreUrl = safeRoute("public.explore", "/explore")
     const inputClassName =
         "border-slate-200 bg-white text-slate-950 placeholder:text-slate-400 focus-visible:ring-slate-300 focus-visible:ring-offset-0"
     const selectClassName =
@@ -258,7 +271,7 @@ export function SignupForm({
                                     className="w-full border-slate-200 bg-white text-slate-950 hover:bg-slate-50"
                                     asChild
                                 >
-                                    <Link href={route("public.explore")}>
+                                    <Link href={exploreUrl}>
                                         Explorar negocios
                                     </Link>
                                 </Button>

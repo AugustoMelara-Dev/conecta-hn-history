@@ -18,7 +18,7 @@ interface TenantContext
      *
      * @throws \RuntimeException If context cannot be resolved.
      */
-    public function getTenantId(): int;
+    public function getTenantId(): int|string;
 
     /**
      * Get tenant data as an array (for view/response serialization).

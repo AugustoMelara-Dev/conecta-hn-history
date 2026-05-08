@@ -54,7 +54,7 @@ final class IdentifyTenantMiddleware
 
         // 3. Set Context or Fail
         if ($tenantId) {
-            $this->context->setTenant((int) $tenantId);
+            $this->context->setTenant((string) $tenantId);
         } else {
             // STRICT MODE: Tenant-aware routes MUST have resolved context.
             // Public routes (landing page, directory) should NOT use this middleware.

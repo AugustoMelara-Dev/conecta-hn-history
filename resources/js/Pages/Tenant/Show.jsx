@@ -1,549 +1,306 @@
-/**
- * Tenant/Show.jsx - Unified Microsite View
- * 
- * ARCHITECTURE: Single Source of Truth (DRY Principle)
- * This is the ONE and ONLY view for tenant microsites.
- * It adapts dynamically based on tenantPlan using:
- * 1. Shared components (TenantHeader, ProductGrid, etc.)
- * 2. Strategy pattern (ProductActionArea)
- * 3. Conditional rendering for tier-specific features
- * 
- * NO separate Free/Pro pages exist - everything is unified here.
- */
-
 import { Head, Link } from '@inertiajs/react';
-import { useState, useEffect } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
-import { Badge } from '@/Components/ui/badge';
+import { useEffect } from 'react';
 import {
-    MapPin, Clock, Globe, Star, MessageCircle, ShoppingBag,
-    BadgeCheck, ExternalLink, Phone, Store, Lock
+    BadgeCheck,
+    CalendarClock,
+    Clock,
+    ExternalLink,
+    Globe,
+    Info,
+    MapPin,
+    MessageCircle,
+    Phone,
+    ShoppingBag,
+    Star,
+    Store,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
-// Tenant Components (Strategy Pattern + Shared)
+import { Alert, AlertDescription, AlertTitle } from '@/Components/ui/alert';
+import { Avatar, AvatarFallback, AvatarImage } from '@/Components/ui/avatar';
+import { Badge } from '@/Components/ui/badge';
+import { Button } from '@/Components/ui/button';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+} from '@/Components/ui/card';
+import { Separator } from '@/Components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
 import FloatingCart from '@/Components/Tenant/FloatingCart';
 import ProductActionArea from '@/Components/Tenant/ProductActionArea';
 import UpsellCard from '@/Components/Tenant/UpsellCard';
 import useCartStore from '@/Stores/useCartStore';
-
-// Color Utilities for WCAG-compliant contrast
 import { getContrastColor } from '@/Utils/colorUtils';
+import { cn } from '@/lib/utils';
 
-/**
- * PLAN CONSTANTS
- */
 const PLAN = {
     SEMILLA: 'semilla',
     PRO: 'pro',
     ENTERPRISE: 'enterprise',
 };
 
-export default function TenantShow({
-    tenant,
-    products,
-    tenantPlan = PLAN.SEMILLA,
-    // Soft Gate: Data awareness props from backend
-    hasHiddenProducts = false,
-    totalProductsCount = 0,
-    hiddenProductsCount = 0,
-    // Role awareness: Is viewer the tenant owner?
-    isOwner = false,
-    // Other props
-    isFollowing,
-    followersCount,
-    seoStructuredData,
-    isOpen = true,
-    openingHours = [],
-}) {
-    // Cart initialization (Pro tier only)
-    const initForTenant = useCartStore(state => state.initForTenant);
-
-    useEffect(() => {
-        if (tenantPlan !== PLAN.SEMILLA && tenant?.slug) {
-            initForTenant(
-                tenant.slug,
-                tenant.whatsapp || tenant.whatsapp_number,
-                tenant.name
-            );
+function safeRoute(name, fallback, params) {
+    try {
+        if (route().has(name)) {
+            return route(name, params);
         }
-    }, [tenant?.slug, tenantPlan]);
-
-    // Loading state
-    if (!tenant) {
-        return (
-            <div className="flex items-center justify-center min-h-screen bg-slate-950 text-white">
-                <div className="text-center animate-pulse">
-                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-800 flex items-center justify-center">
-                        <Store className="w-8 h-8 text-slate-600" />
-                    </div>
-                    <p className="text-lg font-medium text-slate-400">Cargando tienda...</p>
-                </div>
-            </div>
-        );
+    } catch {
+        return fallback;
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // DATA ABSTRACTION LAYER: Safe Fallbacks for all nullable fields
-    // These constants guarantee non-null values for DOM injection
-    // ═══════════════════════════════════════════════════════════════════════
-    const safeProducts = Array.isArray(products) ? products : (Array.isArray(tenant.products) ? tenant.products : []);
-    const primaryColor = tenant.brand_color || tenant.primary_color || '#6366f1';
-    const primaryTextColor = getContrastColor(primaryColor);
-    const isPro = tenantPlan !== PLAN.SEMILLA;
-    const isRestaurant = ['Restaurantes', 'Comida', 'Restaurante'].includes(tenant.category?.name);
-    const cityName = typeof tenant.city === 'string' ? tenant.city : (tenant.city?.name || 'Honduras');
-    const whatsappNumber = tenant.whatsapp || tenant.whatsapp_number || '';
+    return fallback;
+}
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // SEO METADATA: Guaranteed safe strings (never null/undefined)
-    // Title Format: "Nombre | Categoría en Ciudad | Conecta HN"
-    // ═══════════════════════════════════════════════════════════════════════
-    const categoryName = tenant.category?.name || 'Negocios';
-    const pageTitle = `${tenant.name || 'Tienda'} | ${categoryName} en ${cityName} | Conecta HN`;
-    const pageDescription = String(
-        tenant.description ||
-        tenant.slogan ||
-        `Descubre ${tenant.name} en Conecta HN. Tu marketplace local de Honduras.`
-    ).substring(0, 160);
-    // og:image MUST never be null - use system fallback
-    const pageImage = tenant.hero_image || tenant.cover || tenant.banner_path || 'https://conecta-hn.com/og-default.jpg';
+function getInitials(name = 'CN') {
+    return String(name)
+        .trim()
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((part) => part.charAt(0).toUpperCase())
+        .join('') || 'CN';
+}
 
-    return (
-        <div
-            style={{
-                '--primary': primaryColor,
-                '--primary-color': primaryColor,
-                '--primary-text-color': primaryTextColor,
-            }}
-            className="min-h-screen bg-slate-950 font-sans"
-        >
-            {/* ═══════════════════════════════════════════════════════════════
-                SEO HEAD: Defensive rendering with guaranteed string values
-                - All content attributes are pre-sanitized
-                - og:image ALWAYS rendered (never null - fallback provided)
-            ═══════════════════════════════════════════════════════════════ */}
-            <Head title={pageTitle}>
-                <meta name="description" content={pageDescription} />
-                <meta property="og:title" content={pageTitle} />
-                <meta property="og:description" content={pageDescription} />
-                <meta property="og:type" content="business.business" />
-                <meta property="og:image" content={pageImage} />
-            </Head>
+function getWhatsappUrl(number, tenantName) {
+    if (!number) {
+        return null;
+    }
 
-            {/* Fixed Navigation */}
-            <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-                    <Link
-                        href={route('directory.index')}
-                        className="pointer-events-auto flex items-center gap-2 text-white/80 hover:text-white bg-black/30 hover:bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full transition-all text-sm font-medium mt-4"
-                    >
-                        ← Directorio
-                    </Link>
+    const phone = String(number).replace(/\D/g, '');
 
-                    {/* Branding for Semilla tier */}
-                    {tenantPlan === PLAN.SEMILLA && (
-                        <Link href="/" className="pointer-events-auto mt-4">
-                            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg border border-white/10">
-                                <span className="text-white font-bold text-sm">C</span>
-                            </div>
-                        </Link>
-                    )}
-                </div>
-            </nav>
+    if (!phone) {
+        return null;
+    }
 
-            {/* ═══════════════════════════════════════════════════════════════
-                HERO SECTION - Adaptive based on plan
-            ═══════════════════════════════════════════════════════════════ */}
-            <header className="relative">
-                {/* Cover Image - min-h prevents CLS */}
-                <div className={cn(
-                    "relative overflow-hidden bg-slate-900",
-                    isPro ? "min-h-[40vh] md:min-h-[50vh]" : "min-h-[12rem]"
-                )}>
-                    {tenant.cover ? (
-                        <img
-                            src={tenant.cover}
-                            alt={tenant.name}
-                            className="w-full h-full object-cover opacity-70"
-                            onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src = 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800&h=600&fit=crop';
-                            }}
-                        />
-                    ) : (
-                        <div
-                            className="w-full h-full flex items-center justify-center"
-                            style={{ backgroundColor: primaryColor }}
-                        >
-                            {isPro ? (
-                                <span className="text-white/10 font-sans text-5xl md:text-9xl font-bold tracking-widest uppercase select-none">
-                                    {tenant.name}
-                                </span>
-                            ) : (
-                                <Store className="w-20 h-20 text-white/20" />
-                            )}
-                        </div>
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent" />
-                </div>
+    return `https://wa.me/${phone}?text=${encodeURIComponent(`Hola ${tenantName || 'equipo'}!`)}`;
+}
 
-                {/* Profile Info */}
-                <div className={cn(
-                    "relative z-10 px-4 md:px-6 lg:px-8",
-                    isPro
-                        ? "absolute bottom-0 left-0 w-full p-6 md:p-12"
-                        : "max-w-3xl mx-auto -mt-16 pb-6 text-center"
-                )}>
-                    <div className={cn(
-                        "flex gap-6",
-                        isPro
-                            ? "flex-col md:flex-row items-end md:items-center max-w-7xl mx-auto"
-                            : "flex-col items-center"
-                    )}>
-                        {/* Logo */}
-                        <div className={cn(
-                            "bg-slate-800 rounded-2xl border-4 border-slate-950 shadow-2xl overflow-hidden flex-shrink-0",
-                            isPro ? "w-24 h-24 md:w-32 md:h-32" : "w-24 h-24"
-                        )}>
-                            {tenant.logo ? (
-                                <img
-                                    src={tenant.logo}
-                                    alt="Logo"
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => {
-                                        e.target.onerror = null;
-                                        e.target.style.display = 'none';
-                                        e.target.parentElement.innerHTML = `<div class="w-full h-full flex items-center justify-center" style="background-color: ${primaryColor}"><span class="text-3xl font-bold text-white">${tenant.name?.substring(0, 2).toUpperCase() || 'CN'}</span></div>`;
-                                    }}
-                                />
-                            ) : (
-                                <div
-                                    className="w-full h-full flex items-center justify-center"
-                                    style={{ backgroundColor: primaryColor }}
-                                >
-                                    <span className="text-3xl font-bold text-white">
-                                        {tenant.name?.substring(0, 2).toUpperCase()}
-                                    </span>
-                                </div>
-                            )}
-                        </div>
+function getCityName(tenant) {
+    if (typeof tenant?.city === 'string') {
+        return tenant.city;
+    }
 
-                        {/* Info */}
-                        <div className={cn(isPro ? "flex-1 mb-2" : "")}>
-                            <h1 className={cn(
-                                "font-bold text-white flex items-center gap-3",
-                                isPro ? "text-3xl md:text-5xl" : "text-2xl justify-center"
-                            )}>
-                                {tenant.name}
-                                {isPro && <BadgeCheck className="w-8 h-8 text-indigo-400 fill-indigo-900/50" />}
-                            </h1>
+    return tenant?.city?.name || 'Honduras';
+}
 
-                            <div className={cn(
-                                "flex flex-wrap items-center gap-3 text-white/90 mt-2",
-                                !isPro && "justify-center"
-                            )}>
-                                <Badge className="bg-white/10 hover:bg-white/20 text-white border-none backdrop-blur-md">
-                                    {tenant.category?.name || 'General'}
-                                </Badge>
-
-                                {/* Rating - Pro only */}
-                                {isPro && (
-                                    <>
-                                        <div className="flex items-center gap-1">
-                                            <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                                            <span className="font-bold">{tenant.rating || '4.8'}</span>
-                                            <span className="opacity-70">({tenant.reviews_count || 0})</span>
-                                        </div>
-                                        <span className="hidden md:inline text-white/40">•</span>
-                                    </>
-                                )}
-
-                                <div className="flex items-center gap-1 text-sm text-slate-300">
-                                    <MapPin className="w-4 h-4" />
-                                    <span>{cityName}</span>
-                                </div>
-                            </div>
-
-                            {/* Status & Actions - Pro */}
-                            {isPro && (
-                                <div className="flex items-center gap-4 mt-4">
-                                    <div className="flex items-center gap-2">
-                                        <div className={cn(
-                                            "w-2 h-2 rounded-full",
-                                            isOpen ? "bg-emerald-500" : "bg-slate-500"
-                                        )} />
-                                        <span className={cn(
-                                            "text-sm",
-                                            isOpen ? "text-emerald-400" : "text-slate-400"
-                                        )}>
-                                            {isOpen ? 'Abierto' : 'Cerrado'}
-                                        </span>
-                                    </div>
-
-                                    {whatsappNumber && (
-                                        <a
-                                            href={`https://wa.me/${whatsappNumber.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola ${tenant.name}!`)}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex items-center gap-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 px-4 py-2 rounded-full text-sm font-medium transition-colors border border-emerald-500/20"
-                                        >
-                                            <MessageCircle className="w-4 h-4" />
-                                            WhatsApp
-                                        </a>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Contact Buttons - Semilla */}
-                            {!isPro && (
-                                <div className="flex gap-3 mt-4 justify-center">
-                                    {whatsappNumber && (
-                                        <a
-                                            href={`https://wa.me/${whatsappNumber.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola ${tenant.name}!`)}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors"
-                                        >
-                                            <MessageCircle className="w-4 h-4" />
-                                            WhatsApp
-                                        </a>
-                                    )}
-                                    {tenant.phone && (
-                                        <a
-                                            href={`tel:${tenant.phone}`}
-                                            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors border border-white/10"
-                                        >
-                                            <Phone className="w-4 h-4" />
-                                            Llamar
-                                        </a>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </header>
-
-            {/* ═══════════════════════════════════════════════════════════════
-                MAIN CONTENT - Tabs for Pro, Simple list for Semilla
-            ═══════════════════════════════════════════════════════════════ */}
-            {isPro ? (
-                // PRO TIER: Full tabs experience
-                <Tabs defaultValue="products" className="w-full">
-                    {/* Tab Navigation */}
-                    <div className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md border-b border-white/5">
-                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                            <TabsList className="h-16 bg-transparent p-0 w-full justify-start gap-6">
-                                <TabsTrigger
-                                    value="products"
-                                    className="h-full rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-500 data-[state=active]:text-indigo-400 px-0 font-medium text-base bg-transparent text-slate-400"
-                                >
-                                    {isRestaurant ? 'Menú' : 'Catálogo'}
-                                </TabsTrigger>
-                                <TabsTrigger
-                                    value="info"
-                                    className="h-full rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-500 data-[state=active]:text-indigo-400 px-0 font-medium text-base bg-transparent text-slate-400"
-                                >
-                                    Información
-                                </TabsTrigger>
-                                <TabsTrigger
-                                    value="reviews"
-                                    className="h-full rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-500 data-[state=active]:text-indigo-400 px-0 font-medium text-base bg-transparent text-slate-400"
-                                >
-                                    Reseñas
-                                </TabsTrigger>
-                            </TabsList>
-                        </div>
-                    </div>
-
-                    <main id="catalogo" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-32">
-                        {/* Products Tab */}
-                        <TabsContent value="products" className="mt-0">
-                            <ProductGridSection
-                                products={safeProducts}
-                                tenant={tenant}
-                                tenantPlan={tenantPlan}
-                                columns={3}
-                                hasHiddenProducts={hasHiddenProducts}
-                                hiddenProductsCount={hiddenProductsCount}
-                                isOwner={isOwner}
-                            />
-                        </TabsContent>
-
-                        {/* Info Tab */}
-                        <TabsContent value="info" className="mt-8">
-                            <InfoSection tenant={tenant} isOpen={isOpen} />
-                        </TabsContent>
-
-                        {/* Reviews Tab */}
-                        <TabsContent value="reviews" className="mt-8">
-                            <div className="text-center py-12 bg-slate-900/50 rounded-2xl border border-dashed border-white/10">
-                                <MessageCircle className="w-12 h-12 text-slate-700 mx-auto mb-4" />
-                                <h3 className="text-lg font-medium text-white">Reseñas</h3>
-                                <p className="text-slate-400">Próximamente disponible.</p>
-                            </div>
-                        </TabsContent>
-                    </main>
-                </Tabs>
-            ) : (
-                // SEMILLA TIER: Simple product list
-                <main className="max-w-3xl mx-auto px-4 py-8 pb-24">
-                    <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-lg font-bold text-white">Productos</h2>
-                        <span className="text-sm text-slate-500">
-                            {safeProducts.length} de {totalProductsCount}
-                        </span>
-                    </div>
-
-                    <ProductGridSection
-                        products={safeProducts}
-                        tenant={tenant}
-                        tenantPlan={tenantPlan}
-                        columns={2}
-                        hasHiddenProducts={hasHiddenProducts}
-                        hiddenProductsCount={hiddenProductsCount}
-                        isOwner={isOwner}
-                    />
-
-                    {/* Business Info */}
-                    <div className="mt-8 bg-slate-900 rounded-2xl border border-white/5 p-6">
-                        <h3 className="font-bold text-white mb-3">Información del negocio</h3>
-                        <p className="text-sm text-slate-400 mb-4">
-                            {tenant.description || 'Bienvenido a nuestro negocio.'}
-                        </p>
-                        <div className="space-y-3 text-sm text-slate-400">
-                            <div className="flex items-center gap-3">
-                                <MapPin className="w-4 h-4 text-slate-500" />
-                                <span>{tenant.address || 'Honduras'}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <Clock className="w-4 h-4 text-slate-500" />
-                                <span>{isOpen ? 'Abierto ahora' : 'Cerrado'}</span>
-                            </div>
-                        </div>
-                    </div>
-                </main>
-            )}
-
-            {/* ═══════════════════════════════════════════════════════════════
-                FLOATING ELEMENTS - Conditional by plan
-            ═══════════════════════════════════════════════════════════════ */}
-
-            {/* Floating Cart - PRO ONLY (Desktop) */}
-            {tenantPlan !== PLAN.SEMILLA && <FloatingCart />}
-
-            {/* ═══════════════════════════════════════════════════════════════
-                MOBILE SHOP NAVIGATION - Walled Garden Pattern
-                Commerce-focused navigation: NO directory links, NO FAB
-                Only actions that drive conversion within the store
-            ═══════════════════════════════════════════════════════════════ */}
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-950/95 backdrop-blur-xl border-t border-white/10 pb-safe">
-                <div className="flex items-center justify-around h-16">
-                    {/* Home - Store main */}
-                    <Link
-                        href={`/${tenant.slug}`}
-                        className="flex flex-col items-center gap-1 text-slate-400 hover:text-white transition-colors px-4 py-2"
-                    >
-                        <Store className="w-5 h-5" />
-                        <span className="text-[10px] font-medium">Inicio</span>
-                    </Link>
-
-                    {/* Catalog - Scroll to products */}
-                    <a
-                        href="#catalogo"
-                        className="flex flex-col items-center gap-1 text-slate-400 hover:text-white transition-colors px-4 py-2"
-                    >
-                        <ShoppingBag className="w-5 h-5" />
-                        <span className="text-[10px] font-medium">Catálogo</span>
-                    </a>
-
-                    {/* Phone - Direct call */}
-                    {whatsappNumber && (
-                        <a
-                            href={`tel:${whatsappNumber}`}
-                            className="flex flex-col items-center gap-1 text-slate-400 hover:text-white transition-colors px-4 py-2"
-                        >
-                            <Phone className="w-5 h-5" />
-                            <span className="text-[10px] font-medium">Llamar</span>
-                        </a>
-                    )}
-
-                    {/* WhatsApp - Primary CTA */}
-                    {whatsappNumber && (
-                        <a
-                            href={`https://wa.me/${whatsappNumber.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola ${tenant.name}!`)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex flex-col items-center gap-1 px-4 py-2"
-                            style={{ color: '#25D366' }}
-                        >
-                            <MessageCircle className="w-5 h-5" />
-                            <span className="text-[10px] font-medium">WhatsApp</span>
-                        </a>
-                    )}
-                </div>
-            </nav>
-
-            {/* Footer - Powered by Conecta HN (Desktop only) */}
-            <footer className="hidden md:block py-6 text-center border-t border-white/5 mt-12">
-                <p className="text-xs text-slate-500">
-                    Powered by{' '}
-                    <Link href="/" className="text-indigo-400 hover:text-indigo-300 transition-colors font-medium">
-                        Conecta HN
-                    </Link>
-                </p>
-            </footer>
-        </div>
+function isRestaurantCategory(categoryName) {
+    return ['restaurantes', 'comida', 'restaurante', 'menu'].includes(
+        String(categoryName || '').toLowerCase()
     );
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   EXTRACTED COMPONENTS - Keep file self-contained but modular
-══════════════════════════════════════════════════════════════════════════════ */
+function formatPrice(product) {
+    if (product?.formatted_price) {
+        return product.formatted_price;
+    }
 
-/**
- * ProductGridSection - Renders product grid with action buttons
- * Now includes Soft Gate UX: UpsellCard injection when products are hidden
- * Role-aware: Different UpsellCard content for owner vs customer
- */
+    const price = Number(product?.price || 0);
+
+    return `L. ${price.toFixed(2)}`;
+}
+
+function LoadingState() {
+    return (
+        <main className="grid min-h-screen place-items-center bg-background px-4">
+            <Card className="w-full max-w-sm text-center">
+                <CardHeader>
+                    <span className="mx-auto grid size-12 place-items-center rounded-md bg-muted text-muted-foreground">
+                        <Store className="size-5" aria-hidden="true" />
+                    </span>
+                    <CardTitle>Cargando tienda</CardTitle>
+                    <CardDescription>Estamos preparando el micrositio del negocio.</CardDescription>
+                </CardHeader>
+            </Card>
+        </main>
+    );
+}
+
+function StatusBadge({ isOpen }) {
+    return (
+        <Badge variant={isOpen ? 'default' : 'secondary'} className="gap-2">
+            <span
+                className={cn(
+                    'size-2 rounded-full',
+                    isOpen ? 'bg-primary-foreground' : 'bg-muted-foreground'
+                )}
+                aria-hidden="true"
+            />
+            {isOpen ? 'Abierto' : 'Cerrado'}
+        </Badge>
+    );
+}
+
+function TenantHero({ tenant, tenantPlan, isOpen, totalProductsCount, productsCount, categoryName, cityName, whatsappUrl }) {
+    const isPro = tenantPlan !== PLAN.SEMILLA;
+
+    return (
+        <header className="border-b bg-muted/30" data-testid="microsite-hero">
+            <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+                <nav className="flex items-center justify-between gap-3" aria-label="Navegacion del micrositio">
+                    <Button variant="outline" size="sm" asChild>
+                        <Link href={safeRoute('directory.index', '/directorio')}>
+                            Directorio
+                        </Link>
+                    </Button>
+                    <Button variant="ghost" size="sm" asChild>
+                        <Link href={safeRoute('home', '/')}>Conecta HN</Link>
+                    </Button>
+                </nav>
+
+                <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-stretch">
+                    <Card className="overflow-hidden">
+                        <div className="relative aspect-[16/7] min-h-56 bg-muted">
+                            {tenant.cover ? (
+                                <img
+                                    src={tenant.cover}
+                                    alt={`Portada de ${tenant.name}`}
+                                    className="h-full w-full object-cover"
+                                />
+                            ) : (
+                                <div className="grid h-full place-items-center bg-[var(--tenant-primary)] text-[var(--tenant-primary-foreground)]">
+                                    <Store className="size-16 opacity-80" aria-hidden="true" />
+                                </div>
+                            )}
+                        </div>
+                        <CardContent className="flex flex-col gap-5 p-5 md:flex-row md:items-end md:p-6">
+                            <Avatar className="size-24 rounded-md border bg-background md:size-28">
+                                <AvatarImage src={tenant.logo || undefined} alt={`Logo de ${tenant.name}`} />
+                                <AvatarFallback className="rounded-md text-xl font-semibold">
+                                    {getInitials(tenant.name)}
+                                </AvatarFallback>
+                            </Avatar>
+
+                            <div className="flex min-w-0 flex-1 flex-col gap-3">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <StatusBadge isOpen={isOpen} />
+                                    <Badge variant="outline">{categoryName}</Badge>
+                                    {isPro && (
+                                        <Badge variant="secondary" className="gap-1">
+                                            <BadgeCheck className="size-3" aria-hidden="true" />
+                                            Plan {tenantPlan}
+                                        </Badge>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <h1 className="text-3xl font-semibold tracking-normal text-foreground md:text-5xl">
+                                        {tenant.name}
+                                    </h1>
+                                    <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
+                                        {tenant.slogan || tenant.description || 'Negocio local disponible en Conecta HN.'}
+                                    </p>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                                    <span className="inline-flex items-center gap-2">
+                                        <MapPin className="size-4" aria-hidden="true" />
+                                        {cityName}
+                                    </span>
+                                    <span className="inline-flex items-center gap-2">
+                                        <ShoppingBag className="size-4" aria-hidden="true" />
+                                        {productsCount} de {totalProductsCount || productsCount} productos visibles
+                                    </span>
+                                    {isPro && (
+                                        <span className="inline-flex items-center gap-2">
+                                            <Star className="size-4" aria-hidden="true" />
+                                            {tenant.rating || '4.8'} ({tenant.reviews_count || 0})
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Contacto rapido</CardTitle>
+                            <CardDescription>Canales principales para comprar o consultar.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="flex flex-col gap-3">
+                            <Button variant="outline" asChild className="justify-start">
+                                <a href="#catalogo">
+                                    <ShoppingBag data-icon="inline-start" aria-hidden="true" />
+                                    Ver {isRestaurantCategory(categoryName) ? 'menu' : 'catalogo'}
+                                </a>
+                            </Button>
+                            {whatsappUrl ? (
+                                <Button asChild className="justify-start">
+                                    <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
+                                        <MessageCircle data-icon="inline-start" aria-hidden="true" />
+                                        Escribir por WhatsApp
+                                    </a>
+                                </Button>
+                            ) : (
+                                <Button disabled className="justify-start">
+                                    <MessageCircle data-icon="inline-start" aria-hidden="true" />
+                                    WhatsApp no disponible
+                                </Button>
+                            )}
+                            {tenant.phone && (
+                                <Button variant="outline" asChild className="justify-start">
+                                    <a href={`tel:${tenant.phone}`}>
+                                        <Phone data-icon="inline-start" aria-hidden="true" />
+                                        Llamar
+                                    </a>
+                                </Button>
+                            )}
+                            {tenant.website_url && (
+                                <Button variant="outline" asChild className="justify-start">
+                                    <a href={tenant.website_url} target="_blank" rel="noopener noreferrer">
+                                        <Globe data-icon="inline-start" aria-hidden="true" />
+                                        Sitio web
+                                    </a>
+                                </Button>
+                            )}
+                        </CardContent>
+                        <CardFooter>
+                            <p className="text-sm leading-6 text-muted-foreground">
+                                {tenant.address || 'Direccion no especificada'}
+                            </p>
+                        </CardFooter>
+                    </Card>
+                </div>
+            </div>
+        </header>
+    );
+}
+
 function ProductGridSection({
     products,
     tenant,
     tenantPlan,
-    columns = 3,
     hasHiddenProducts = false,
     hiddenProductsCount = 0,
-    isOwner = false
+    isOwner = false,
 }) {
     const isPro = tenantPlan !== PLAN.SEMILLA;
 
-    // Empty state with Soft Gate awareness
-    if (!products || products.length === 0) {
-        // If there ARE hidden products but none visible, show special message
-        if (hasHiddenProducts && hiddenProductsCount > 0) {
-            return (
-                <div className="text-center py-12 bg-slate-900/50 rounded-2xl border border-dashed border-indigo-500/20">
-                    <Lock className="w-12 h-12 text-indigo-500 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-white">Productos disponibles en Plan Pro</h3>
-                    <p className="text-slate-400 mb-4">
-                        Este negocio tiene {hiddenProductsCount} productos que no se muestran en el Plan Semilla.
-                    </p>
-                    <Link
-                        href="/"
-                        className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                    >
-                        Ver planes Pro
-                    </Link>
-                </div>
-            );
-        }
-
+    if (!products?.length) {
         return (
-            <div className="text-center py-12 bg-slate-900/50 rounded-2xl border border-dashed border-white/10">
-                <ShoppingBag className="w-12 h-12 text-slate-700 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-white">Catálogo vacío</h3>
-                <p className="text-slate-400">Este negocio aún no ha publicado productos.</p>
+            <div className="flex flex-col gap-4" data-testid="microsite-product-empty">
+                <Alert>
+                    <Info className="mr-2 inline size-4" aria-hidden="true" />
+                    <AlertTitle>
+                        {hasHiddenProducts ? 'Productos limitados por plan' : 'Catalogo vacio'}
+                    </AlertTitle>
+                    <AlertDescription>
+                        {hasHiddenProducts
+                            ? `Este negocio tiene ${hiddenProductsCount} productos que no se muestran en el plan actual.`
+                            : 'Este negocio aun no ha publicado productos visibles.'}
+                    </AlertDescription>
+                </Alert>
+
+                {hasHiddenProducts && (
+                    <UpsellCard
+                        hiddenCount={hiddenProductsCount}
+                        isOwner={isOwner}
+                        tenantWhatsapp={tenant?.whatsapp || tenant?.whatsapp_number}
+                        tenantName={tenant?.name}
+                        tenantSlug={tenant?.slug}
+                    />
+                )}
             </div>
         );
     }
@@ -551,56 +308,41 @@ function ProductGridSection({
     const hasModifiers = (product) => product.has_modifiers || (product.modifier_groups?.length > 0);
 
     return (
-        <div className={cn(
-            "grid gap-4",
-            columns === 3
-                ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
-                : "grid-cols-1 sm:grid-cols-2"
-        )}>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="microsite-product-grid">
             {products.map((product) => (
-                <div
-                    key={product.id}
-                    className="group bg-slate-900 rounded-2xl border border-white/5 overflow-hidden hover:border-indigo-500/30 transition-all"
-                >
-                    {/* Image */}
-                    <div className="aspect-[4/3] bg-slate-800 relative overflow-hidden">
+                <Card key={product.id} className="overflow-hidden" data-testid="microsite-product-card">
+                    <div className="aspect-[4/3] bg-muted">
                         <img
                             src={product.image}
                             alt={product.name}
-                            className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
+                            className="h-full w-full object-cover"
                             loading="lazy"
-                            onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop';
-                            }}
                         />
-
-                        {/* Price Badge */}
-                        <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full text-sm font-bold text-white border border-white/10">
-                            {hasModifiers(product) && isPro ? 'Desde ' : ''}
-                            {product.formatted_price || `L. ${product.price}`}
-                        </div>
-
-                        {/* Modifiers badge - Pro only */}
-                        {hasModifiers(product) && isPro && (
-                            <div className="absolute bottom-3 left-3 bg-indigo-600/90 backdrop-blur-md px-2 py-1 rounded-full text-xs font-medium text-white">
-                                {product.modifier_groups?.length || 0} opciones
-                            </div>
-                        )}
                     </div>
-
-                    {/* Info */}
-                    <div className="p-4">
-                        <h3 className="font-bold text-white mb-1 truncate group-hover:text-indigo-400 transition-colors">
-                            {product.name}
-                        </h3>
-                        <p className="text-sm text-slate-400 line-clamp-2 mb-4 min-h-[2.5rem]">
+                    <CardHeader>
+                        <div className="flex items-start justify-between gap-3">
+                            <CardTitle className="line-clamp-2 text-lg">{product.name}</CardTitle>
+                            <Badge variant="secondary" className="shrink-0">
+                                {hasModifiers(product) && isPro ? 'Desde ' : ''}
+                                {formatPrice(product)}
+                            </Badge>
+                        </div>
+                        <CardDescription className="line-clamp-2 min-h-10">
                             {product.description || 'Producto disponible.'}
-                        </p>
-
-                        {/* Strategy Pattern Action Button */}
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex flex-wrap gap-2">
+                        {hasModifiers(product) && isPro && (
+                            <Badge variant="outline">
+                                {product.modifier_groups?.length || 0} opciones
+                            </Badge>
+                        )}
+                        {product.is_featured && <Badge variant="outline">Destacado</Badge>}
+                    </CardContent>
+                    <CardFooter>
                         <ProductActionArea
                             product={product}
+                            tenantId={tenant.id}
                             tenantPlan={tenantPlan}
                             tenantWhatsapp={tenant.whatsapp || tenant.whatsapp_number}
                             tenantName={tenant.name}
@@ -608,76 +350,296 @@ function ProductGridSection({
                             variant="default"
                             className="w-full"
                         />
-                    </div>
-                </div>
+                    </CardFooter>
+                </Card>
             ))}
 
-            {/* ═══════════════════════════════════════════════════════════════
-                SOFT GATE: UpsellCard injection when products are hidden
-                Role-aware: Different content for owner vs customer
-            ═══════════════════════════════════════════════════════════════ */}
             {hasHiddenProducts && (
                 <UpsellCard
                     hiddenCount={hiddenProductsCount}
                     isOwner={isOwner}
                     tenantWhatsapp={tenant?.whatsapp || tenant?.whatsapp_number}
                     tenantName={tenant?.name}
+                    tenantSlug={tenant?.slug}
                 />
             )}
         </div>
     );
 }
 
-/**
- * InfoSection - Business information tab content
- */
-function InfoSection({ tenant, isOpen }) {
+function InfoSection({ tenant, isOpen, openingHours }) {
     return (
-        <div className="grid md:grid-cols-3 gap-8">
-            <div className="md:col-span-2 space-y-6">
-                <div className="bg-slate-900 border border-white/5 rounded-2xl p-6">
-                    <h3 className="font-bold text-lg text-white mb-4">Sobre Nosotros</h3>
-                    <p className="text-slate-400 leading-relaxed whitespace-pre-line">
-                        {tenant.description || 'Bienvenido a nuestro negocio.'}
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Sobre el negocio</CardTitle>
+                    <CardDescription>Informacion publica para decidir con confianza.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <p className="whitespace-pre-line text-sm leading-6 text-muted-foreground">
+                        {tenant.about || tenant.description || 'Bienvenido a nuestro negocio.'}
                     </p>
-                </div>
-            </div>
-            <div className="space-y-6">
-                <div className="bg-slate-900 border border-white/5 rounded-2xl p-6 space-y-4">
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Detalles</CardTitle>
+                    <CardDescription>Ubicacion, horario y enlaces utiles.</CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-4">
                     <div className="flex items-start gap-3">
-                        <MapPin className="w-5 h-5 mt-0.5 text-indigo-400" />
+                        <MapPin className="mt-0.5 size-4 text-muted-foreground" aria-hidden="true" />
                         <div>
-                            <h4 className="font-medium text-white">Ubicación</h4>
-                            <p className="text-sm text-slate-400">{tenant.address || 'No especificada'}</p>
+                            <p className="text-sm font-medium">Ubicacion</p>
+                            <p className="text-sm text-muted-foreground">{tenant.address || 'No especificada'}</p>
                         </div>
                     </div>
                     <div className="flex items-start gap-3">
-                        <Clock className="w-5 h-5 mt-0.5 text-indigo-400" />
+                        <Clock className="mt-0.5 size-4 text-muted-foreground" aria-hidden="true" />
                         <div>
-                            <h4 className="font-medium text-white">Horario</h4>
-                            <p className={cn("text-sm", isOpen ? "text-emerald-400" : "text-rose-400")}>
-                                {isOpen ? 'Abierto ahora' : 'Cerrado'}
-                            </p>
+                            <p className="text-sm font-medium">Estado</p>
+                            <p className="text-sm text-muted-foreground">{isOpen ? 'Abierto ahora' : 'Cerrado'}</p>
                         </div>
                     </div>
                     {tenant.website_url && (
                         <div className="flex items-start gap-3">
-                            <Globe className="w-5 h-5 mt-0.5 text-indigo-400" />
+                            <Globe className="mt-0.5 size-4 text-muted-foreground" aria-hidden="true" />
                             <div>
-                                <h4 className="font-medium text-white">Sitio Web</h4>
+                                <p className="text-sm font-medium">Sitio web</p>
                                 <a
                                     href={tenant.website_url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-sm text-indigo-400 hover:underline flex items-center gap-1"
+                                    className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
                                 >
-                                    Visitar <ExternalLink className="w-3 h-3" />
+                                    Visitar <ExternalLink className="size-3" aria-hidden="true" />
                                 </a>
                             </div>
                         </div>
                     )}
-                </div>
+                </CardContent>
+            </Card>
+
+            <Card className="lg:col-span-2">
+                <CardHeader>
+                    <CardTitle>Horario</CardTitle>
+                    <CardDescription>Disponibilidad publicada por el negocio.</CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    {openingHours?.length ? (
+                        openingHours.map((hour) => (
+                            <div key={hour.day_of_week} className="rounded-md border bg-muted/30 p-3">
+                                <p className="text-sm font-medium">{hour.day_name}</p>
+                                <p className="mt-1 text-sm text-muted-foreground">{hour.formatted}</p>
+                            </div>
+                        ))
+                    ) : (
+                        <p className="text-sm text-muted-foreground">Horario no publicado.</p>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
+    );
+}
+
+function ReviewsSection({ tenant }) {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Resenas</CardTitle>
+                <CardDescription>Pronto habra comentarios verificados de clientes.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Alert>
+                    <MessageCircle className="mr-2 inline size-4" aria-hidden="true" />
+                    <AlertTitle>Resenas proximamente</AlertTitle>
+                    <AlertDescription>
+                        {tenant.name} todavia no tiene resenas publicadas en esta vista.
+                    </AlertDescription>
+                </Alert>
+            </CardContent>
+        </Card>
+    );
+}
+
+function MobileActionBar({ tenant, whatsappUrl }) {
+    return (
+        <nav
+            className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 backdrop-blur md:hidden"
+            aria-label="Acciones rapidas"
+            data-testid="microsite-mobile-action-bar"
+        >
+            <div className="grid grid-cols-3 gap-1 p-2">
+                <Button variant="ghost" asChild>
+                    <a href="#catalogo">
+                        <ShoppingBag data-icon="inline-start" aria-hidden="true" />
+                        Catalogo
+                    </a>
+                </Button>
+                {tenant.phone ? (
+                    <Button variant="ghost" asChild>
+                        <a href={`tel:${tenant.phone}`}>
+                            <Phone data-icon="inline-start" aria-hidden="true" />
+                            Llamar
+                        </a>
+                    </Button>
+                ) : (
+                    <Button variant="ghost" disabled>
+                        <Phone data-icon="inline-start" aria-hidden="true" />
+                        Llamar
+                    </Button>
+                )}
+                {whatsappUrl ? (
+                    <Button asChild>
+                        <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
+                            <MessageCircle data-icon="inline-start" aria-hidden="true" />
+                            WhatsApp
+                        </a>
+                    </Button>
+                ) : (
+                    <Button disabled>
+                        <MessageCircle data-icon="inline-start" aria-hidden="true" />
+                        WhatsApp
+                    </Button>
+                )}
             </div>
+        </nav>
+    );
+}
+
+export default function TenantShow({
+    tenant,
+    products,
+    tenantPlan = PLAN.SEMILLA,
+    hasHiddenProducts = false,
+    totalProductsCount = 0,
+    hiddenProductsCount = 0,
+    isOwner = false,
+    isFollowing,
+    followersCount,
+    seoStructuredData,
+    isOpen = true,
+    openingHours = [],
+}) {
+    const initForTenant = useCartStore((state) => state.initForTenant);
+
+    useEffect(() => {
+        if (tenantPlan !== PLAN.SEMILLA && tenant?.slug) {
+            initForTenant(
+                tenant.slug,
+                tenant.whatsapp || tenant.whatsapp_number,
+                tenant.name,
+                tenant.id
+            );
+        }
+    }, [initForTenant, tenant?.id, tenant?.name, tenant?.slug, tenant?.whatsapp, tenant?.whatsapp_number, tenantPlan]);
+
+    if (!tenant) {
+        return <LoadingState />;
+    }
+
+    const safeProducts = Array.isArray(products)
+        ? products
+        : Array.isArray(tenant.products)
+            ? tenant.products
+            : [];
+    const primaryColor = tenant.brand_color || tenant.primary_color || '#2563EB';
+    const primaryTextColor = getContrastColor(primaryColor);
+    const categoryName = tenant.category?.name || 'General';
+    const cityName = getCityName(tenant);
+    const whatsappNumber = tenant.whatsapp || tenant.whatsapp_number || '';
+    const whatsappUrl = getWhatsappUrl(whatsappNumber, tenant.name);
+    const catalogLabel = isRestaurantCategory(categoryName) ? 'Menu' : 'Catalogo';
+    const pageTitle = `${tenant.name || 'Tienda'} | ${categoryName} en ${cityName} | Conecta HN`;
+    const pageDescription = String(
+        tenant.description ||
+        tenant.slogan ||
+        `Descubre ${tenant.name} en Conecta HN. Tu marketplace local de Honduras.`
+    ).substring(0, 160);
+    const pageImage = tenant.hero_image || tenant.cover || tenant.banner_path || 'https://conecta-hn.com/og-default.jpg';
+
+    return (
+        <div
+            style={{
+                '--tenant-primary': primaryColor,
+                '--tenant-primary-foreground': primaryTextColor,
+            }}
+            className="min-h-screen bg-background pb-20 text-foreground md:pb-0"
+            data-testid="microsite-page"
+        >
+            <Head title={pageTitle}>
+                <meta name="description" content={pageDescription} />
+                <meta property="og:title" content={pageTitle} />
+                <meta property="og:description" content={pageDescription} />
+                <meta property="og:type" content="business.business" />
+                <meta property="og:image" content={pageImage} />
+                {seoStructuredData && (
+                    <script type="application/ld+json">
+                        {JSON.stringify(seoStructuredData)}
+                    </script>
+                )}
+            </Head>
+
+            <TenantHero
+                tenant={tenant}
+                tenantPlan={tenantPlan}
+                isOpen={isOpen}
+                totalProductsCount={totalProductsCount}
+                productsCount={safeProducts.length}
+                categoryName={categoryName}
+                cityName={cityName}
+                whatsappUrl={whatsappUrl}
+            />
+
+            <main id="catalogo" className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
+                <Alert>
+                    <CalendarClock className="mr-2 inline size-4" aria-hidden="true" />
+                    <AlertTitle>{isOpen ? 'Abierto para consultas' : 'Actualmente cerrado'}</AlertTitle>
+                    <AlertDescription>
+                        Los productos y datos de contacto se mantienen publicados para que puedas consultar disponibilidad.
+                    </AlertDescription>
+                </Alert>
+
+                <Tabs defaultValue="products" className="w-full" data-testid="microsite-tabs">
+                    <TabsList className="grid w-full grid-cols-3 lg:w-[28rem]">
+                        <TabsTrigger value="products">{catalogLabel}</TabsTrigger>
+                        <TabsTrigger value="info">Informacion</TabsTrigger>
+                        <TabsTrigger value="reviews">Resenas</TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="products" className="mt-6">
+                        <ProductGridSection
+                            products={safeProducts}
+                            tenant={tenant}
+                            tenantPlan={tenantPlan}
+                            hasHiddenProducts={hasHiddenProducts}
+                            hiddenProductsCount={hiddenProductsCount}
+                            isOwner={isOwner}
+                        />
+                    </TabsContent>
+
+                    <TabsContent value="info" className="mt-6">
+                        <InfoSection tenant={tenant} isOpen={isOpen} openingHours={openingHours} />
+                    </TabsContent>
+
+                    <TabsContent value="reviews" className="mt-6">
+                        <ReviewsSection tenant={tenant} />
+                    </TabsContent>
+                </Tabs>
+            </main>
+
+            <Separator />
+
+            <footer className="mx-auto hidden max-w-7xl items-center justify-between gap-4 px-4 py-6 text-sm text-muted-foreground sm:px-6 md:flex lg:px-8">
+                <span>Powered by Conecta HN</span>
+                <Button variant="link" asChild className="px-0">
+                    <Link href={safeRoute('home', '/')}>Crear mi micrositio</Link>
+                </Button>
+            </footer>
+
+            {tenantPlan !== PLAN.SEMILLA && <FloatingCart />}
+            <MobileActionBar tenant={tenant} whatsappUrl={whatsappUrl} />
         </div>
     );
 }

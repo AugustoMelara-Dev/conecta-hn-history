@@ -20,6 +20,13 @@ interface PaymentRepositoryInterface
     public function findById(string $id): ?PaymentEntity;
 
     /**
+     * Fetch a payment with the tenant metadata needed by the public pending page.
+     *
+     * @return array{payment: PaymentEntity, tenant_name: string, tenant_user_id: string|null}|null
+     */
+    public function findByIdWithTenant(string $id): ?array;
+
+    /**
      * LEVEL 38: STRONG CONSISTENCY - Writer-Pinned Fetching
      *
      * Forces the query to the PRIMARY (Writer) node, bypassing all read replicas.

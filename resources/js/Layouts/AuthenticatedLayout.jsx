@@ -5,6 +5,18 @@ import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
 import { Link, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
+function safeRoute(name, fallback) {
+    try {
+        if (route().has(name)) {
+            return route(name);
+        }
+    } catch {
+        return fallback;
+    }
+
+    return fallback;
+}
+
 export default function AuthenticatedLayout({ header, children }) {
     const user = usePage().props.auth.user;
 
@@ -62,9 +74,9 @@ export default function AuthenticatedLayout({ header, children }) {
 
                                     <Dropdown.Content>
                                         <Dropdown.Link
-                                            href={route('profile.edit')}
+                                            href={safeRoute('mi-cuenta.edit', '/mi-cuenta')}
                                         >
-                                            Profile
+                                            Mi cuenta
                                         </Dropdown.Link>
                                         <Dropdown.Link
                                             href={route('logout')}
@@ -147,8 +159,8 @@ export default function AuthenticatedLayout({ header, children }) {
                         </div>
 
                         <div className="mt-3 space-y-1">
-                            <ResponsiveNavLink href={route('profile.edit')}>
-                                Profile
+                            <ResponsiveNavLink href={safeRoute('mi-cuenta.edit', '/mi-cuenta')}>
+                                Mi cuenta
                             </ResponsiveNavLink>
                             <ResponsiveNavLink
                                 method="post"

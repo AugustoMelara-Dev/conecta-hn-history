@@ -28,7 +28,11 @@ final class ConfigCapabilityManager implements CapabilityManagerInterface
      */
     public function allForTenant(Tenant $tenant): array
     {
-        $rawPlanType = $tenant->getRawOriginal('plan_type') ?? $tenant->getAttribute('plan_type');
+        try {
+            $rawPlanType = $tenant->getRawOriginal('plan_type') ?? $tenant->getAttribute('plan_type');
+        } catch (\Throwable) {
+            $rawPlanType = TenantPlan::SEMILLA->value;
+        }
         $plan = $rawPlanType instanceof TenantPlan ? $rawPlanType->value : (string) $rawPlanType;
 
         if ($plan !== TenantPlan::PRO->value) {

@@ -22,11 +22,9 @@
 
 import { useState, useMemo, useRef, useEffect, memo } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
-import { RadioGroup } from '@headlessui/react';
 import {
     ArrowLeft,
     ShoppingCart,
-    Check,
     Minus,
     Plus,
     AlertCircle,
@@ -37,6 +35,15 @@ import useTenantContext from '@/Hooks/useTenantContext';
 import { formatCurrency } from '@/Utils/currency';
 import ImageWithFallback from '@/Components/ImageWithFallback';
 import Toast from '@/Components/Toast';
+import { Alert, AlertDescription } from '@/Components/ui/alert';
+import { Badge } from '@/Components/ui/badge';
+import { Button } from '@/Components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
+import { Checkbox } from '@/Components/ui/checkbox';
+import { Field } from '@/Components/ui/field';
+import { RadioGroup, RadioGroupItem } from '@/Components/ui/radio-group';
+import { Separator } from '@/Components/ui/separator';
+import { Textarea } from '@/Components/ui/textarea';
 
 /**
  * Truncate text for SEO meta descriptions (max 160 chars)
@@ -55,69 +62,44 @@ const ModifierGroupRadio = memo(function ModifierGroupRadio({
     group,
     selectedOption,
     onSelect,
-    primaryColor,
 }) {
     return (
-        <div className="space-y-3">
-            <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-gray-900">
-                    {group.name}
-                    {group.required && (
-                        <span className="ml-2 text-xs text-red-500 font-medium">
-                            * Requerido
-                        </span>
-                    )}
-                </h3>
-            </div>
-
-            <RadioGroup value={selectedOption} onChange={onSelect}>
-                <RadioGroup.Label className="sr-only">{group.name}</RadioGroup.Label>
-                <div className="space-y-2">
-                    {group.options?.map((option) => (
-                        <RadioGroup.Option
-                            key={option.id}
-                            value={option.id}
-                            className={({ checked }) =>
-                                `relative flex cursor-pointer rounded-lg border p-4 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2
-                                ${checked
-                                    ? 'border-2 bg-opacity-10'
-                                    : 'border-gray-200 hover:border-gray-300'
-                                }`
-                            }
-                            style={{
-                                borderColor: selectedOption === option.id ? primaryColor : undefined,
-                                backgroundColor: selectedOption === option.id ? `${primaryColor}10` : undefined,
-                                '--tw-ring-color': primaryColor,
-                            }}
-                        >
-                            {({ checked }) => (
-                                <div className="flex w-full items-center justify-between">
-                                    <div className="flex items-center">
-                                        <div
-                                            className={`flex h-5 w-5 items-center justify-center rounded-full border-2 mr-3 transition-colors
-                                                ${checked ? 'border-transparent' : 'border-gray-300'}`}
-                                            style={{
-                                                backgroundColor: checked ? primaryColor : 'transparent',
-                                            }}
-                                        >
-                                            {checked && <Check className="h-3 w-3 text-white" aria-hidden="true" />}
-                                        </div>
-                                        <span className="text-gray-900 font-medium">
-                                            {option.name}
-                                        </span>
-                                    </div>
-                                    {option.price > 0 && (
-                                        <span className="text-sm text-gray-500">
-                                            + {formatCurrency(option.price)}
-                                        </span>
-                                    )}
-                                </div>
-                            )}
-                        </RadioGroup.Option>
-                    ))}
+        <Card>
+            <CardHeader>
+                <div className="flex items-center justify-between gap-3">
+                    <CardTitle className="text-base">{group.name}</CardTitle>
+                    {group.required ? <Badge variant="secondary">Requerido</Badge> : null}
                 </div>
-            </RadioGroup>
-        </div>
+            </CardHeader>
+            <CardContent>
+                <RadioGroup
+                    value={selectedOption == null ? undefined : String(selectedOption)}
+                    onValueChange={(value) => {
+                        const option = group.options?.find((item) => String(item.id) === value);
+                        onSelect(option?.id ?? value);
+                    }}
+                    aria-label={group.name}
+                    className="gap-3"
+                >
+                    {group.options?.map((option) => (
+                        <label
+                            key={option.id}
+                            className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border bg-card p-4"
+                        >
+                            <span className="flex items-center gap-3">
+                                <RadioGroupItem value={String(option.id)} />
+                                <span className="font-medium text-foreground">{option.name}</span>
+                            </span>
+                            {option.price > 0 ? (
+                                <span className="text-sm text-muted-foreground">
+                                    + {formatCurrency(option.price)}
+                                </span>
+                            ) : null}
+                        </label>
+                    ))}
+                </RadioGroup>
+            </CardContent>
+        </Card>
     );
 });
 
@@ -129,74 +111,53 @@ const ModifierGroupCheckbox = memo(function ModifierGroupCheckbox({
     group,
     selectedOptions = [],
     onToggle,
-    primaryColor,
 }) {
     return (
-        <div className="space-y-3">
-            <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-gray-900">
-                    {group.name}
-                    {group.required && (
-                        <span className="ml-2 text-xs text-red-500 font-medium">
-                            * Requerido
-                        </span>
-                    )}
-                </h3>
-                <span className="text-sm text-gray-500">
-                    Máximo: {group.max_selections}
-                </span>
-            </div>
+        <Card>
+            <CardHeader>
+                <div className="flex items-center justify-between gap-3">
+                    <CardTitle className="text-base">{group.name}</CardTitle>
+                    <div className="flex items-center gap-2">
+                        {group.required ? <Badge variant="secondary">Requerido</Badge> : null}
+                        <Badge variant="outline">Maximo: {group.max_selections}</Badge>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <div className="flex flex-col gap-3" role="group" aria-label={group.name}>
+                    {group.options?.map((option) => {
+                        const isSelected = selectedOptions.includes(option.id);
+                        const isDisabled =
+                            !isSelected && selectedOptions.length >= group.max_selections;
 
-            <div className="space-y-2" role="group" aria-label={group.name}>
-                {group.options?.map((option) => {
-                    const isSelected = selectedOptions.includes(option.id);
-                    const isDisabled =
-                        !isSelected && selectedOptions.length >= group.max_selections;
-
-                    return (
-                        <button
-                            key={option.id}
-                            type="button"
-                            onClick={() => onToggle(option.id)}
-                            disabled={isDisabled}
-                            className={`w-full flex items-center justify-between rounded-lg border p-4 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2
-                                ${isSelected
-                                    ? 'border-2 bg-opacity-10'
-                                    : 'border-gray-200 hover:border-gray-300'
-                                }
-                                ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                            style={{
-                                borderColor: isSelected ? primaryColor : undefined,
-                                backgroundColor: isSelected ? `${primaryColor}10` : undefined,
-                                '--tw-ring-color': primaryColor,
-                            }}
-                            aria-pressed={isSelected}
-                            aria-label={`${option.name}${option.price > 0 ? `, + ${formatCurrency(option.price)}` : ''}`}
-                        >
-                            <div className="flex items-center">
-                                <div
-                                    className={`flex h-5 w-5 items-center justify-center rounded border-2 mr-3 transition-colors
-                                        ${isSelected ? 'border-transparent' : 'border-gray-300'}`}
-                                    style={{
-                                        backgroundColor: isSelected ? primaryColor : 'transparent',
-                                    }}
-                                >
-                                    {isSelected && <Check className="h-3 w-3 text-white" aria-hidden="true" />}
-                                </div>
-                                <span className="text-gray-900 font-medium">
-                                    {option.name}
-                                </span>
-                            </div>
-                            {option.price > 0 && (
-                                <span className="text-sm text-gray-500">
-                                    + {formatCurrency(option.price)}
-                                </span>
-                            )}
-                        </button>
-                    );
-                })}
-            </div>
-        </div>
+                        return (
+                            <Field
+                                key={option.id}
+                                data-disabled={isDisabled}
+                                className="rounded-lg border bg-card p-4 data-[disabled=true]:opacity-50"
+                            >
+                                <label className="flex cursor-pointer items-center justify-between gap-4">
+                                    <span className="flex items-center gap-3">
+                                        <Checkbox
+                                            checked={isSelected}
+                                            disabled={isDisabled}
+                                            onCheckedChange={() => onToggle(option.id)}
+                                            aria-label={option.name}
+                                        />
+                                        <span className="font-medium text-foreground">{option.name}</span>
+                                    </span>
+                                    {option.price > 0 ? (
+                                        <span className="text-sm text-muted-foreground">
+                                            + {formatCurrency(option.price)}
+                                        </span>
+                                    ) : null}
+                                </label>
+                            </Field>
+                        );
+                    })}
+                </div>
+            </CardContent>
+        </Card>
     );
 });
 
@@ -205,11 +166,8 @@ const ModifierGroupCheckbox = memo(function ModifierGroupCheckbox({
  */
 export default function ProductDetails({ product }) {
     // Use centralized tenant context hook
-    const { tenant, primaryColor } = useTenantContext();
-
-    // ═══════════════════════════════════════════════════════════════════════
+    const { tenant } = useTenantContext();
     // STATE: Modifier selections & quantity
-    // ═══════════════════════════════════════════════════════════════════════
     const [modifiers, setModifiers] = useState({});
     const [quantity, setQuantity] = useState(1);
     const [notes, setNotes] = useState('');
@@ -218,10 +176,7 @@ export default function ProductDetails({ product }) {
 
     // Cart store - need items to check existing quantity
     const { items, addItem, openCart } = useCartStore();
-
-    // ═══════════════════════════════════════════════════════════════════════
     // SEO: Prepare OpenGraph metadata with ABSOLUTE URLs
-    // ═══════════════════════════════════════════════════════════════════════
     const seoData = useMemo(() => {
         const title = product?.name || 'Producto';
         const description = truncateDescription(
@@ -242,10 +197,7 @@ export default function ProductDetails({ product }) {
 
         return { title, description, image, url, price };
     }, [product?.name, product?.description, product?.image, product?.price, product?.id, tenant?.logo, tenant?.slug]);
-
-    // ═══════════════════════════════════════════════════════════════════════
     // CLEANUP: Clear toast timeout on unmount
-    // ═══════════════════════════════════════════════════════════════════════
     useEffect(() => {
         return () => {
             if (toastTimeoutRef.current) {
@@ -253,17 +205,12 @@ export default function ProductDetails({ product }) {
             }
         };
     }, []);
-
-    // ═══════════════════════════════════════════════════════════════════════
     // Calculate existing quantity in cart for this product
-    // ═══════════════════════════════════════════════════════════════════════
     const existingCartQty = useMemo(() => {
         if (!product?.id) return 0;
         const cartItem = items.find((item) => item.productId === product.id);
         return cartItem?.quantity || 0;
     }, [items, product?.id]);
-
-    // ═══════════════════════════════════════════════════════════════════════
     // STOCK LOGIC: Separated from UI quantity selector
     // 
     // CRITICAL FIX: Previously maxQuantity used Math.max(1, available) which
@@ -274,7 +221,6 @@ export default function ProductDetails({ product }) {
     // - realAvailable: Actual units available (can be 0 or negative)
     // - isStockLimitReached: True when user has max possible in cart
     // - maxQuantityForSelector: Min 1 for UI, but button uses isStockLimitReached
-    // ═══════════════════════════════════════════════════════════════════════
     const stockInfo = useMemo(() => {
         if (!product?.manage_stock) {
             return {
@@ -297,10 +243,7 @@ export default function ProductDetails({ product }) {
             isOutOfStock: totalStock <= 0,
         };
     }, [product?.manage_stock, product?.stock_quantity, existingCartQty]);
-
-    // ═══════════════════════════════════════════════════════════════════════
     // MODIFIER HANDLERS
-    // ═══════════════════════════════════════════════════════════════════════
     const handleRadioSelect = (groupId, optionId) => {
         setModifiers((prev) => ({
             ...prev,
@@ -327,10 +270,7 @@ export default function ProductDetails({ product }) {
             return prev;
         });
     };
-
-    // ═══════════════════════════════════════════════════════════════════════
     // QUANTITY HANDLERS: With input clamping using stockInfo
-    // ═══════════════════════════════════════════════════════════════════════
     const handleIncrement = () => {
         setQuantity((q) => Math.min(stockInfo.maxQuantityForSelector, q + 1));
     };
@@ -338,10 +278,7 @@ export default function ProductDetails({ product }) {
     const handleDecrement = () => {
         setQuantity((q) => Math.max(1, q - 1));
     };
-
-    // ═══════════════════════════════════════════════════════════════════════
     // GATEKEEPER: Validation for required modifiers
-    // ═══════════════════════════════════════════════════════════════════════
     const isSelectionComplete = useMemo(() => {
         if (!product?.modifier_groups) return true;
 
@@ -358,10 +295,7 @@ export default function ProductDetails({ product }) {
         }
         return true;
     }, [product?.modifier_groups, modifiers]);
-
-    // ═══════════════════════════════════════════════════════════════════════
     // PRICE CALCULATION: Base + modifiers * quantity
-    // ═══════════════════════════════════════════════════════════════════════
     const calculatedPrice = useMemo(() => {
         let total = product?.price || 0;
 
@@ -385,10 +319,7 @@ export default function ProductDetails({ product }) {
 
         return total * quantity;
     }, [product, modifiers, quantity]);
-
-    // ═══════════════════════════════════════════════════════════════════════
     // TOAST HELPER with proper cleanup
-    // ═══════════════════════════════════════════════════════════════════════
     const showToast = (message, type = 'success') => {
         if (toastTimeoutRef.current) {
             clearTimeout(toastTimeoutRef.current);
@@ -409,16 +340,13 @@ export default function ProductDetails({ product }) {
         }
         setToast(null);
     };
-
-    // ═══════════════════════════════════════════════════════════════════════
     // CART INJECTION
-    // ═══════════════════════════════════════════════════════════════════════
     const handleAddToCart = () => {
         if (!isSelectionComplete) return;
 
         // Guard: Stock limit already reached
         if (stockInfo.isStockLimitReached) {
-            showToast('Has alcanzado el límite de unidades disponibles', 'error');
+            showToast('Has alcanzado el limite de unidades disponibles', 'error');
             return;
         }
 
@@ -427,7 +355,7 @@ export default function ProductDetails({ product }) {
             const projectedTotal = existingCartQty + quantity;
             if (projectedTotal > product.stock_quantity) {
                 showToast(
-                    `Solo puedes agregar ${stockInfo.realAvailable} unidades más`,
+                    `Solo puedes agregar ${stockInfo.realAvailable} unidades mas`,
                     'error'
                 );
                 return;
@@ -479,24 +407,20 @@ export default function ProductDetails({ product }) {
         openCart();
         router.visit(`/${tenant.slug}/checkout`);
     };
-
-    // ═══════════════════════════════════════════════════════════════════════
     // RENDER: Product not found state
-    // ═══════════════════════════════════════════════════════════════════════
     if (!product) {
         return (
             <StoreLayout>
                 <Head title="Producto no encontrado" />
-                <div className="max-w-7xl mx-auto px-4 py-16 text-center">
-                    <AlertCircle className="h-16 w-16 mx-auto text-gray-300 mb-4" aria-hidden="true" />
-                    <p className="text-gray-500 text-lg">Producto no encontrado.</p>
-                    <Link
-                        href={`/${tenant.slug}`}
-                        className="mt-4 inline-flex items-center gap-2 text-blue-600 hover:underline"
-                    >
-                        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-                        Volver al catálogo
-                    </Link>
+                <div className="max-w-7xl mx-auto px-4 py-16 text-center" data-testid="product-detail-empty">
+                    <AlertCircle className="mx-auto mb-4 size-16 text-muted-foreground" aria-hidden="true" />
+                    <p className="text-lg text-muted-foreground">Producto no encontrado.</p>
+                    <Button asChild variant="link" className="mt-4">
+                        <Link href={`/${tenant.slug}`}>
+                            <ArrowLeft data-icon="inline-start" aria-hidden="true" />
+                            Volver al catalogo
+                        </Link>
+                    </Button>
                 </div>
             </StoreLayout>
         );
@@ -507,9 +431,6 @@ export default function ProductDetails({ product }) {
 
     return (
         <StoreLayout>
-            {/* ═══════════════════════════════════════════════════════════════
-                HEAD: SEO & OpenGraph Meta Tags with ABSOLUTE URLs
-            ═══════════════════════════════════════════════════════════════ */}
             <Head>
                 <title>{seoData.title} | {tenant.name}</title>
 
@@ -541,23 +462,21 @@ export default function ProductDetails({ product }) {
                     message={toast.message}
                     type={toast.type}
                     onClose={hideToast}
-                    primaryColor={primaryColor}
                 />
             )}
 
-            <div className="max-w-7xl mx-auto px-4 py-6">
+            <div className="max-w-7xl mx-auto px-4 py-6" data-testid="product-detail-page">
                 {/* Back Link */}
-                <Link
-                    href={`/${tenant.slug}`}
-                    className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-6"
-                >
-                    <ArrowLeft className="h-4 w-4 mr-2" aria-hidden="true" />
-                    Volver al catálogo
-                </Link>
+                <Button asChild variant="ghost" className="mb-6 justify-start px-0">
+                    <Link href={`/${tenant.slug}`}>
+                        <ArrowLeft data-icon="inline-start" aria-hidden="true" />
+                        Volver al catalogo
+                    </Link>
+                </Button>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* Product Image - with self-healing fallback */}
-                    <div className="aspect-square rounded-2xl overflow-hidden bg-gray-100">
+                    <div className="aspect-square overflow-hidden rounded-2xl bg-muted" data-testid="product-detail-image">
                         {product.image ? (
                             <ImageWithFallback
                                 src={product.image}
@@ -567,13 +486,9 @@ export default function ProductDetails({ product }) {
                                 fadeIn
                             />
                         ) : (
-                            <div
-                                className="w-full h-full flex items-center justify-center"
-                                style={{ backgroundColor: `${primaryColor}15` }}
-                            >
+                            <div className="flex h-full w-full items-center justify-center bg-primary/10">
                                 <ShoppingCart
-                                    className="h-20 w-20 opacity-30"
-                                    style={{ color: primaryColor }}
+                                    className="size-20 text-primary opacity-30"
                                     aria-hidden="true"
                                 />
                             </div>
@@ -581,48 +496,45 @@ export default function ProductDetails({ product }) {
                     </div>
 
                     {/* Product Configuration */}
-                    <div className="space-y-6">
-                        <div>
-                            <h1 className="text-3xl font-bold text-gray-900">
+                    <div className="flex flex-col gap-6" data-testid="product-detail-summary">
+                        <div data-testid="product-detail-heading">
+                            <h1 className="text-3xl font-bold text-foreground">
                                 {product.name}
                             </h1>
                             <div className="flex items-center gap-3 mt-2">
                                 {/* Discount price display */}
                                 {product.price_before_discount &&
                                     product.price_before_discount > product.price && (
-                                        <span className="text-lg text-gray-400 line-through">
+                                        <span className="text-lg text-muted-foreground line-through">
                                             {formatCurrency(product.price_before_discount)}
                                         </span>
                                     )}
-                                <p
-                                    className="text-2xl font-bold"
-                                    style={{ color: primaryColor }}
-                                >
+                                <p className="text-2xl font-bold text-primary">
                                     {formatCurrency(product.price)}
                                 </p>
                             </div>
                         </div>
 
                         {product.description && (
-                            <p className="text-gray-600">{product.description}</p>
+                            <p className="text-muted-foreground">{product.description}</p>
                         )}
 
                         {/* Stock indicator - shows available considering cart */}
                         {product.manage_stock && (
-                            <p className="text-sm text-gray-500">
+                            <p className="text-sm text-muted-foreground">
                                 {isOutOfStock ? (
-                                    <span className="text-red-500 font-medium">
-                                        Agotado{existingCartQty > 0 && ' (tienes el máximo en tu carrito)'}
+                                    <span className="font-medium text-destructive">
+                                        Agotado{existingCartQty > 0 && ' (tienes el maximo en tu carrito)'}
                                     </span>
                                 ) : isStockLimitReached ? (
-                                    <span className="text-amber-500 font-medium">
-                                        Límite alcanzado (tienes {existingCartQty} en tu carrito)
+                                    <span className="font-medium text-accent-foreground">
+                                        Limite alcanzado (tienes {existingCartQty} en tu carrito)
                                     </span>
                                 ) : (
                                     <>
                                         {realAvailable} disponibles
                                         {existingCartQty > 0 && (
-                                            <span className="text-gray-400">
+                                            <span className="text-muted-foreground">
                                                 {' '}(ya tienes {existingCartQty} en tu carrito)
                                             </span>
                                         )}
@@ -633,7 +545,8 @@ export default function ProductDetails({ product }) {
 
                         {/* Modifier Groups */}
                         {product.modifier_groups?.map((group) => (
-                            <div key={group.id} className="border-t border-gray-200 pt-6">
+                            <div key={group.id} className="flex flex-col gap-6 pt-2" data-testid="product-detail-option-group">
+                                <Separator />
                                 {group.max_selections === 1 ? (
                                     <ModifierGroupRadio
                                         group={group}
@@ -641,7 +554,6 @@ export default function ProductDetails({ product }) {
                                         onSelect={(optionId) =>
                                             handleRadioSelect(group.id, optionId)
                                         }
-                                        primaryColor={primaryColor}
                                     />
                                 ) : (
                                     <ModifierGroupCheckbox
@@ -654,117 +566,109 @@ export default function ProductDetails({ product }) {
                                                 group.max_selections
                                             )
                                         }
-                                        primaryColor={primaryColor}
                                     />
                                 )}
                             </div>
                         ))}
 
                         {/* Notes */}
-                        <div className="border-t border-gray-200 pt-6">
+                        <div className="flex flex-col gap-3 pt-2" data-testid="product-detail-notes">
+                            <Separator />
                             <label
                                 htmlFor="notes"
-                                className="block font-semibold text-gray-900 mb-2"
+                                className="font-semibold text-foreground"
                             >
                                 Notas adicionales (opcional)
                             </label>
-                            <textarea
+                            <Textarea
                                 id="notes"
                                 value={notes}
                                 onChange={(e) => setNotes(e.target.value)}
                                 rows={3}
-                                className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-offset-2"
-                                style={{ '--tw-ring-color': primaryColor }}
                                 placeholder="Instrucciones especiales..."
                                 aria-label="Notas adicionales para el producto"
                             />
                         </div>
 
                         {/* Quantity & Add to Cart */}
-                        <div className="border-t border-gray-200 pt-6 space-y-4">
+                        <div className="flex flex-col gap-4 pt-2" data-testid="product-detail-purchase">
+                            <Separator />
                             {/* Quantity Selector with clamping */}
-                            <div className="flex items-center justify-between">
-                                <span className="font-semibold text-gray-900">Cantidad</span>
+                            <div className="flex items-center justify-between" data-testid="product-detail-quantity">
+                                <span className="font-semibold text-foreground">Cantidad</span>
                                 <div className="flex items-center gap-4">
-                                    <button
+                                    <Button
                                         type="button"
+                                        variant="outline"
+                                        size="icon"
                                         onClick={handleDecrement}
                                         disabled={quantity <= 1 || isOutOfStock}
-                                        className={`p-2 rounded-full border border-gray-300 transition-colors
-                                            ${quantity <= 1 || isOutOfStock
-                                                ? 'opacity-50 cursor-not-allowed'
-                                                : 'hover:bg-gray-100'
-                                            }`}
                                         aria-label="Reducir cantidad"
                                     >
-                                        <Minus className="h-4 w-4" aria-hidden="true" />
-                                    </button>
+                                        <Minus data-icon="inline-start" aria-hidden="true" />
+                                    </Button>
                                     <span className="text-xl font-bold w-8 text-center">
                                         {quantity}
                                     </span>
-                                    <button
+                                    <Button
                                         type="button"
+                                        variant="outline"
+                                        size="icon"
                                         onClick={handleIncrement}
                                         disabled={quantity >= maxQuantityForSelector || isOutOfStock || isStockLimitReached}
-                                        className={`p-2 rounded-full border border-gray-300 transition-colors
-                                            ${quantity >= maxQuantityForSelector || isOutOfStock || isStockLimitReached
-                                                ? 'opacity-50 cursor-not-allowed'
-                                                : 'hover:bg-gray-100'
-                                            }`}
                                         aria-label="Aumentar cantidad"
                                     >
-                                        <Plus className="h-4 w-4" aria-hidden="true" />
-                                    </button>
+                                        <Plus data-icon="inline-start" aria-hidden="true" />
+                                    </Button>
                                 </div>
                             </div>
 
                             {/* Stock warning when at max */}
                             {product.manage_stock && quantity >= maxQuantityForSelector && !isOutOfStock && !isStockLimitReached && (
-                                <p className="text-sm text-amber-600">
-                                    Cantidad máxima disponible alcanzada.
-                                </p>
+                                <Alert variant="warning">
+                                    <AlertDescription>
+                                        Cantidad maxima disponible alcanzada.
+                                    </AlertDescription>
+                                </Alert>
                             )}
 
                             {/* Validation Warning */}
                             {!isSelectionComplete && (
-                                <div className="flex items-center gap-2 p-3 bg-amber-50 text-amber-700 rounded-lg">
-                                    <AlertCircle className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
-                                    <p className="text-sm">
+                                <Alert variant="warning" className="flex items-center gap-2">
+                                    <AlertCircle aria-hidden="true" />
+                                    <AlertDescription>
                                         Selecciona las opciones requeridas para continuar.
-                                    </p>
-                                </div>
+                                    </AlertDescription>
+                                </Alert>
                             )}
 
                             {/* Add to Cart Button - CRITICAL: Uses isStockLimitReached to prevent availability illusion */}
-                            <button
+                            <Button
                                 type="button"
                                 onClick={handleAddToCart}
                                 disabled={!isSelectionComplete || isOutOfStock || isStockLimitReached}
-                                className={`w-full flex items-center justify-center gap-2 px-6 py-4 text-white font-bold rounded-xl transition-all
-                                    ${(!isSelectionComplete || isOutOfStock || isStockLimitReached)
-                                        ? 'opacity-50 cursor-not-allowed grayscale'
-                                        : 'hover:opacity-90 hover:scale-[1.02]'
-                                    }`}
-                                style={{ backgroundColor: primaryColor }}
+                                className="w-full gap-2"
                                 aria-label="Agregar al carrito"
+                                data-testid="product-detail-add-to-cart"
                             >
-                                <ShoppingCart className="h-5 w-5" aria-hidden="true" />
+                                <ShoppingCart data-icon="inline-start" aria-hidden="true" />
                                 {isOutOfStock
                                     ? 'Agotado'
                                     : isStockLimitReached
-                                        ? 'Límite alcanzado'
+                                        ? 'Limite alcanzado'
                                         : `Agregar ${formatCurrency(calculatedPrice)}`
                                 }
-                            </button>
+                            </Button>
 
                             {/* Go to Checkout Button */}
-                            <button
+                            <Button
                                 type="button"
+                                variant="ghost"
                                 onClick={handleGoToCheckout}
-                                className="w-full text-center py-3 text-gray-600 hover:text-gray-900 font-medium transition-colors"
+                                className="w-full"
                             >
-                                Ir al carrito →
-                            </button>
+                                Ir al carrito
+                            </Button>
                         </div>
                     </div>
                 </div>

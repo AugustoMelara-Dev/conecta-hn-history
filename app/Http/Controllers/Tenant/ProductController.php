@@ -30,14 +30,28 @@ final class ProductController extends Controller
         private readonly TenantContext $tenantContext
     ) {}
 
-    public function index(): Response
+    public function index(Request $request): Response
     {
         $tenantId = $this->tenantContext->getTenantId();
+        $search = (string) $request->query('search', '');
 
-        $products = $this->repository->getDashboardList($tenantId, 10);
+        $products = $this->repository->getDashboardList($tenantId, $search, 10);
+        $tenant = $this->tenantContext->getTenantData(['id', 'name', 'slug', 'is_pro', 'product_limit']);
+        $currentCount = $this->repository->countByTenant($tenantId);
+        $limit = $tenant['product_limit'] ?? null;
 
         return Inertia::render('Tenant/Products/Index', [
             'products' => $products,
+            'filters' => [
+                'search' => $search,
+            ],
+            'limits' => [
+                'current_count' => $currentCount,
+                'limit' => $limit,
+                'percentage' => $limit ? min(100, round(($currentCount / max((int) $limit, 1)) * 100)) : 0,
+                'can_create' => $limit === null || $currentCount < (int) $limit,
+            ],
+            'tenant' => $tenant,
         ]);
     }
 

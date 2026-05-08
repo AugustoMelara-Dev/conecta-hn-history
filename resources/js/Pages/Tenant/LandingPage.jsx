@@ -1,70 +1,99 @@
-/**
- * Pages/Tenant/LandingPage.jsx - Custom Tenant Landing Page Builder
- *
- * FEATURES:
- * - Drag-and-drop section builder (simplified)
- * - Live preview
- * - Section templates (Hero, Features, CTA, Gallery)
- * - SEO settings
- *
- * PROPS:
- * @param {Object} props.tenant - Tenant info
- * @param {Object} props.landingPageData - Existing landing page config
- * @param {boolean} props.isPro - PRO status (required for this feature)
- */
+import { useCallback, useMemo, useState } from 'react';
+import { Head, router } from '@inertiajs/react';
+import {
+    ArrowDown,
+    ArrowUp,
+    FileText,
+    Home,
+    Image,
+    Layers,
+    Lock,
+    Megaphone,
+    MessageSquareQuote,
+    Pencil,
+    Plus,
+    Save,
+    Sparkles,
+    Trash2,
+} from 'lucide-react';
+import { toast } from 'sonner';
 
-import { useState, useCallback } from 'react';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Alert, AlertDescription, AlertTitle } from '@/Components/ui/alert';
+import { Badge } from '@/Components/ui/badge';
+import { Button } from '@/Components/ui/button';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+} from '@/Components/ui/card';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/Components/ui/dialog';
+import {
+    Field,
+    FieldDescription,
+    FieldGroup,
+    FieldLabel,
+} from '@/Components/ui/field';
+import { Input } from '@/Components/ui/input';
+import { Separator } from '@/Components/ui/separator';
+import { Spinner } from '@/Components/ui/spinner';
+import { Textarea } from '@/Components/ui/textarea';
 import TenantLayout from '@/Layouts/TenantLayout';
 
-// ═══════════════════════════════════════════════════════════════════════════
-// SECTION TEMPLATES
-// ═══════════════════════════════════════════════════════════════════════════
 const SECTION_TEMPLATES = [
     {
         id: 'hero',
-        name: 'Hero',
-        icon: '🏠',
-        description: 'Sección principal con título y botón de acción',
+        name: 'Portada',
+        icon: 'home',
+        description: 'Titulo principal, mensaje corto y boton de accion.',
         defaultData: {
             headline: 'Bienvenido a nuestro negocio',
-            subheadline: 'Descubre nuestros productos y servicios',
-            buttonText: 'Ver Menú',
+            subheadline: 'Descubre nuestros productos y servicios.',
+            buttonText: 'Ver menu',
             buttonUrl: '#products',
         },
     },
     {
         id: 'features',
-        name: 'Características',
-        icon: '⭐',
-        description: 'Lista de beneficios o servicios destacados',
+        name: 'Beneficios',
+        icon: 'sparkles',
+        description: 'Razones claras para elegir este negocio.',
         defaultData: {
-            title: '¿Por qué elegirnos?',
+            title: 'Por que elegirnos',
             items: [
-                { icon: '🚀', title: 'Rápido', description: 'Entrega en minutos' },
-                { icon: '💎', title: 'Calidad', description: 'Ingredientes premium' },
-                { icon: '💰', title: 'Precios justos', description: 'Sin cargos ocultos' },
+                { icon: 'fast', title: 'Rapido', description: 'Atencion agil para tus pedidos.' },
+                { icon: 'quality', title: 'Calidad', description: 'Productos preparados con cuidado.' },
+                { icon: 'value', title: 'Precio justo', description: 'Opciones claras para cada cliente.' },
             ],
         },
     },
     {
         id: 'gallery',
-        name: 'Galería',
-        icon: '🖼️',
-        description: 'Galería de imágenes de tus productos',
+        name: 'Galeria',
+        icon: 'image',
+        description: 'Espacio para mostrar productos o ambiente del negocio.',
         defaultData: {
-            title: 'Nuestros Productos',
+            title: 'Nuestros productos',
             images: [],
         },
     },
     {
         id: 'cta',
-        name: 'Llamada a Acción',
-        icon: '📢',
-        description: 'Sección para promociones o contacto',
+        name: 'Llamado a la accion',
+        icon: 'megaphone',
+        description: 'Promocion, contacto o invitacion directa.',
         defaultData: {
-            title: '¿Listo para ordenar?',
-            description: 'Contactanos ahora y recibe un descuento especial',
+            title: 'Listo para ordenar',
+            description: 'Contactanos ahora y revisamos tu pedido.',
             buttonText: 'Contactar por WhatsApp',
             buttonUrl: 'https://wa.me/',
         },
@@ -72,343 +101,643 @@ const SECTION_TEMPLATES = [
     {
         id: 'testimonials',
         name: 'Testimonios',
-        icon: '💬',
-        description: 'Opiniones de clientes satisfechos',
+        icon: 'quote',
+        description: 'Opiniones de clientes satisfechos.',
         defaultData: {
             title: 'Lo que dicen nuestros clientes',
             testimonials: [
-                { name: 'María González', text: 'Excelente servicio, muy recomendado!' },
+                { name: 'Maria Gonzalez', text: 'Excelente servicio, muy recomendado.' },
             ],
         },
     },
 ];
 
-// ═══════════════════════════════════════════════════════════════════════════
-// SECTION EDITOR MODAL
-// ═══════════════════════════════════════════════════════════════════════════
-function SectionEditor({ section, onSave, onClose }) {
-    const [data, setData] = useState(section.data);
+const TEMPLATE_ICONS = {
+    cta: Megaphone,
+    features: Sparkles,
+    gallery: Image,
+    hero: Home,
+    testimonials: MessageSquareQuote,
+};
+
+function safeNamedRoute(name, fallback) {
+    try {
+        if (route().has(name)) {
+            const url = route(name);
+
+            if (typeof window !== 'undefined') {
+                const parsedUrl = new URL(url, window.location.origin);
+
+                return `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
+            }
+
+            return url;
+        }
+    } catch {
+        return fallback;
+    }
+
+    return fallback;
+}
+
+function normalizeSections(sections = []) {
+    return Array.isArray(sections)
+        ? sections.map((section, index) => {
+            const templateId = section.template?.id || section.type || section.template?.icon;
+            const template = SECTION_TEMPLATES.find((item) => item.id === templateId) || section.template || SECTION_TEMPLATES[0];
+
+            return {
+                id: section.id || `${template.id}-${index}`,
+                template,
+                data: section.data || {},
+            };
+        })
+        : [];
+}
+
+function SectionIcon({ icon: Icon }) {
+    return (
+        <span className="flex size-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
+            <Icon aria-hidden="true" />
+        </span>
+    );
+}
+
+function normalizeEditableItems(items, fallbackItems) {
+    return Array.isArray(items) && items.length > 0 ? items : fallbackItems;
+}
+
+function SectionEditor({ section, open, onSave, onOpenChange }) {
+    const [data, setData] = useState(section?.data || {});
+    const templateId = section?.template?.id;
+    const featureItems = normalizeEditableItems(data.items, section?.template?.defaultData?.items || []);
+    const testimonials = normalizeEditableItems(data.testimonials, section?.template?.defaultData?.testimonials || []);
 
     const handleChange = (key, value) => {
-        setData(prev => ({ ...prev, [key]: value }));
+        setData((current) => ({ ...current, [key]: value }));
     };
 
+    const handleListChange = (collection, index, key, value) => {
+        setData((current) => {
+            const currentItems = Array.isArray(current[collection])
+                ? current[collection]
+                : section?.template?.defaultData?.[collection] || [];
+            const nextItems = currentItems.map((item, itemIndex) => (
+                itemIndex === index ? { ...item, [key]: value } : item
+            ));
+
+            return { ...current, [collection]: nextItems };
+        });
+    };
+
+    const fieldId = (key) => `landing-${templateId || 'section'}-${key}`;
+
     return (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-            <div className="fixed inset-0 bg-gray-500/75" onClick={onClose} />
-            <div className="flex min-h-full items-center justify-center p-4">
-                <div className="relative bg-white rounded-2xl shadow-xl max-w-lg w-full p-6">
-                    <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-xl font-bold text-gray-900">
-                            Editar {section.template.name}
-                        </h3>
-                        <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-h-[90vh] overflow-y-auto" data-testid="landing-editor-dialog">
+                <DialogHeader>
+                    <DialogTitle>Editar {section?.template?.name}</DialogTitle>
+                    <DialogDescription>
+                        Ajusta el contenido visible de esta seccion. El contrato guardado sigue siendo `sections`.
+                    </DialogDescription>
+                </DialogHeader>
 
-                    <div className="space-y-4">
-                        {section.template.id === 'hero' && (
-                            <>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Título Principal</label>
-                                    <input
-                                        type="text"
-                                        value={data.headline}
-                                        onChange={(e) => handleChange('headline', e.target.value)}
-                                        className="w-full px-4 py-3 border border-gray-200 rounded-xl"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Subtítulo</label>
-                                    <input
-                                        type="text"
-                                        value={data.subheadline}
-                                        onChange={(e) => handleChange('subheadline', e.target.value)}
-                                        className="w-full px-4 py-3 border border-gray-200 rounded-xl"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Texto del Botón</label>
-                                    <input
-                                        type="text"
-                                        value={data.buttonText}
-                                        onChange={(e) => handleChange('buttonText', e.target.value)}
-                                        className="w-full px-4 py-3 border border-gray-200 rounded-xl"
-                                    />
-                                </div>
-                            </>
-                        )}
+                <FieldGroup>
+                    {templateId === 'hero' ? (
+                        <>
+                            <Field>
+                                <FieldLabel htmlFor={fieldId('headline')}>Titulo principal</FieldLabel>
+                                <Input
+                                    id={fieldId('headline')}
+                                    value={data.headline || ''}
+                                    onChange={(event) => handleChange('headline', event.target.value)}
+                                />
+                            </Field>
+                            <Field>
+                                <FieldLabel htmlFor={fieldId('subheadline')}>Texto de apoyo</FieldLabel>
+                                <Textarea
+                                    id={fieldId('subheadline')}
+                                    value={data.subheadline || ''}
+                                    onChange={(event) => handleChange('subheadline', event.target.value)}
+                                    rows={3}
+                                />
+                            </Field>
+                            <Field>
+                                <FieldLabel htmlFor={fieldId('buttonText')}>Texto del boton</FieldLabel>
+                                <Input
+                                    id={fieldId('buttonText')}
+                                    value={data.buttonText || ''}
+                                    onChange={(event) => handleChange('buttonText', event.target.value)}
+                                />
+                            </Field>
+                            <Field>
+                                <FieldLabel htmlFor={fieldId('buttonUrl')}>URL del boton</FieldLabel>
+                                <Input
+                                    id={fieldId('buttonUrl')}
+                                    value={data.buttonUrl || ''}
+                                    onChange={(event) => handleChange('buttonUrl', event.target.value)}
+                                    placeholder="#products"
+                                />
+                                <FieldDescription id={`${fieldId('buttonUrl')}-description`}>
+                                    Usa una ruta interna, un ancla o un enlace completo si ya existe.
+                                </FieldDescription>
+                            </Field>
+                        </>
+                    ) : null}
 
-                        {section.template.id === 'cta' && (
-                            <>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Título</label>
-                                    <input
-                                        type="text"
-                                        value={data.title}
-                                        onChange={(e) => handleChange('title', e.target.value)}
-                                        className="w-full px-4 py-3 border border-gray-200 rounded-xl"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-                                    <textarea
-                                        value={data.description}
-                                        onChange={(e) => handleChange('description', e.target.value)}
-                                        rows={3}
-                                        className="w-full px-4 py-3 border border-gray-200 rounded-xl"
-                                    />
-                                </div>
-                            </>
-                        )}
-                    </div>
+                    {templateId === 'cta' ? (
+                        <>
+                            <Field>
+                                <FieldLabel htmlFor={fieldId('title')}>Titulo</FieldLabel>
+                                <Input
+                                    id={fieldId('title')}
+                                    value={data.title || ''}
+                                    onChange={(event) => handleChange('title', event.target.value)}
+                                />
+                            </Field>
+                            <Field>
+                                <FieldLabel htmlFor={fieldId('description')}>Descripcion</FieldLabel>
+                                <Textarea
+                                    id={fieldId('description')}
+                                    value={data.description || ''}
+                                    onChange={(event) => handleChange('description', event.target.value)}
+                                    rows={3}
+                                />
+                            </Field>
+                            <Field>
+                                <FieldLabel htmlFor={fieldId('buttonText')}>Texto del boton</FieldLabel>
+                                <Input
+                                    id={fieldId('buttonText')}
+                                    value={data.buttonText || ''}
+                                    onChange={(event) => handleChange('buttonText', event.target.value)}
+                                />
+                            </Field>
+                            <Field>
+                                <FieldLabel htmlFor={fieldId('buttonUrl')}>URL del boton</FieldLabel>
+                                <Input
+                                    id={fieldId('buttonUrl')}
+                                    value={data.buttonUrl || ''}
+                                    onChange={(event) => handleChange('buttonUrl', event.target.value)}
+                                    placeholder="https://wa.me/"
+                                />
+                                <FieldDescription id={`${fieldId('buttonUrl')}-description`}>
+                                    Mantiene el enlace guardado dentro de la misma estructura de secciones.
+                                </FieldDescription>
+                            </Field>
+                        </>
+                    ) : null}
 
-                    <div className="flex gap-3 mt-6">
-                        <button
-                            onClick={onClose}
-                            className="flex-1 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl"
-                        >
-                            Cancelar
-                        </button>
-                        <button
-                            onClick={() => onSave(data)}
-                            className="flex-1 py-3 bg-blue-600 text-white font-semibold rounded-xl"
-                        >
-                            Guardar
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
+                    {['features', 'gallery', 'testimonials'].includes(templateId) ? (
+                        <Field>
+                            <FieldLabel htmlFor={fieldId('title')}>Titulo de la seccion</FieldLabel>
+                            <Input
+                                id={fieldId('title')}
+                                value={data.title || ''}
+                                onChange={(event) => handleChange('title', event.target.value)}
+                            />
+                            <FieldDescription>
+                                Los elementos internos se conservan para no cambiar el contrato actual.
+                            </FieldDescription>
+                        </Field>
+                    ) : null}
+
+                    {templateId === 'features' ? (
+                        <div className="flex flex-col gap-3" data-testid="landing-features-editor">
+                            {featureItems.map((item, index) => (
+                                <Card key={`feature-${index}`}>
+                                    <CardHeader>
+                                        <CardTitle className="text-base">Beneficio {index + 1}</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="grid gap-4">
+                                        <Field>
+                                            <FieldLabel htmlFor={fieldId(`feature-${index}-title`)}>Titulo</FieldLabel>
+                                            <Input
+                                                id={fieldId(`feature-${index}-title`)}
+                                                value={item.title || ''}
+                                                onChange={(event) => handleListChange('items', index, 'title', event.target.value)}
+                                            />
+                                        </Field>
+                                        <Field>
+                                            <FieldLabel htmlFor={fieldId(`feature-${index}-description`)}>Descripcion</FieldLabel>
+                                            <Textarea
+                                                id={fieldId(`feature-${index}-description`)}
+                                                value={item.description || ''}
+                                                onChange={(event) => handleListChange('items', index, 'description', event.target.value)}
+                                                rows={2}
+                                            />
+                                        </Field>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    ) : null}
+
+                    {templateId === 'gallery' ? (
+                        <Alert data-testid="landing-gallery-editor-note">
+                            <Image aria-hidden="true" />
+                            <AlertTitle>Galeria preparada</AlertTitle>
+                            <AlertDescription>
+                                Este corte mantiene la lista de imagenes actual para no cambiar la carga de archivos ni el contrato guardado.
+                            </AlertDescription>
+                        </Alert>
+                    ) : null}
+
+                    {templateId === 'testimonials' ? (
+                        <div className="flex flex-col gap-3" data-testid="landing-testimonials-editor">
+                            {testimonials.map((testimonial, index) => (
+                                <Card key={`testimonial-${index}`}>
+                                    <CardHeader>
+                                        <CardTitle className="text-base">Testimonio {index + 1}</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="grid gap-4">
+                                        <Field>
+                                            <FieldLabel htmlFor={fieldId(`testimonial-${index}-name`)}>Nombre</FieldLabel>
+                                            <Input
+                                                id={fieldId(`testimonial-${index}-name`)}
+                                                value={testimonial.name || ''}
+                                                onChange={(event) => handleListChange('testimonials', index, 'name', event.target.value)}
+                                            />
+                                        </Field>
+                                        <Field>
+                                            <FieldLabel htmlFor={fieldId(`testimonial-${index}-text`)}>Opinion</FieldLabel>
+                                            <Textarea
+                                                id={fieldId(`testimonial-${index}-text`)}
+                                                value={testimonial.text || ''}
+                                                onChange={(event) => handleListChange('testimonials', index, 'text', event.target.value)}
+                                                rows={3}
+                                            />
+                                        </Field>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    ) : null}
+                </FieldGroup>
+
+                <DialogFooter className="gap-2 sm:gap-0">
+                    <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                        Cancelar
+                    </Button>
+                    <Button type="button" onClick={() => onSave(data)}>
+                        <Save data-icon="inline-start" aria-hidden="true" />
+                        Guardar seccion
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// SECTION PREVIEW
-// ═══════════════════════════════════════════════════════════════════════════
 function SectionPreview({ section, onEdit, onDelete, onMoveUp, onMoveDown, isFirst, isLast }) {
-    return (
-        <div className="group relative bg-white border border-gray-200 rounded-xl p-4 hover:border-blue-300 transition-colors">
-            {/* Actions */}
-            <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button
-                    onClick={onMoveUp}
-                    disabled={isFirst}
-                    className="p-1.5 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50"
-                    title="Mover arriba"
-                >
-                    ↑
-                </button>
-                <button
-                    onClick={onMoveDown}
-                    disabled={isLast}
-                    className="p-1.5 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50"
-                    title="Mover abajo"
-                >
-                    ↓
-                </button>
-                <button
-                    onClick={onEdit}
-                    className="p-1.5 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200"
-                    title="Editar"
-                >
-                    ✏️
-                </button>
-                <button
-                    onClick={onDelete}
-                    className="p-1.5 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
-                    title="Eliminar"
-                >
-                    🗑️
-                </button>
-            </div>
+    const Icon = TEMPLATE_ICONS[section.template.id] || FileText;
+    const title = section.data.headline || section.data.title || 'Sin titulo';
 
-            {/* Content */}
-            <div className="flex items-center gap-3">
-                <span className="text-2xl">{section.template.icon}</span>
-                <div>
-                    <p className="font-semibold text-gray-900">{section.template.name}</p>
-                    <p className="text-sm text-gray-500">{section.data.headline || section.data.title || 'Sin título'}</p>
+    return (
+        <Card data-testid="landing-section-card">
+            <CardHeader>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex items-start gap-3">
+                        <SectionIcon icon={Icon} />
+                        <div className="flex flex-col gap-1">
+                            <CardTitle className="text-lg">{section.template.name}</CardTitle>
+                            <CardDescription>{title}</CardDescription>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={onMoveUp}
+                            disabled={isFirst}
+                            aria-label="Mover seccion arriba"
+                        >
+                            <ArrowUp aria-hidden="true" />
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={onMoveDown}
+                            disabled={isLast}
+                            aria-label="Mover seccion abajo"
+                        >
+                            <ArrowDown aria-hidden="true" />
+                        </Button>
+                        <Button type="button" variant="outline" size="icon" onClick={onEdit} aria-label="Editar seccion">
+                            <Pencil aria-hidden="true" />
+                        </Button>
+                        <Button type="button" variant="outline" size="icon" onClick={onDelete} aria-label="Eliminar seccion">
+                            <Trash2 aria-hidden="true" />
+                        </Button>
+                    </div>
                 </div>
-            </div>
-        </div>
+            </CardHeader>
+        </Card>
     );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// MAIN PAGE
-// ═══════════════════════════════════════════════════════════════════════════
+function LandingLivePreview({ sections, tenantName }) {
+    const hero = sections.find((section) => section.template.id === 'hero');
+    const featureSection = sections.find((section) => section.template.id === 'features');
+    const cta = sections.find((section) => section.template.id === 'cta');
+    const heroData = hero?.data || {};
+    const featureItems = Array.isArray(featureSection?.data?.items)
+        ? featureSection.data.items.slice(0, 3)
+        : [];
+    const ctaData = cta?.data || {};
+
+    return (
+        <Card className="overflow-hidden" data-testid="landing-live-preview">
+            <CardHeader>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex flex-col gap-1">
+                        <CardTitle>Vista previa</CardTitle>
+                        <CardDescription>
+                            Una lectura rapida de como se sentira la landing publica.
+                        </CardDescription>
+                    </div>
+                    <Badge variant="secondary">Borrador</Badge>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <div className="rounded-lg border bg-muted/30 p-4 sm:p-6">
+                    <div className="flex flex-col gap-5 rounded-md border bg-background p-5 shadow-sm">
+                        <div className="flex flex-col gap-3">
+                            <Badge variant="outline" className="w-fit">{tenantName || 'Tu negocio'}</Badge>
+                            <h2 className="text-2xl font-semibold tracking-normal text-foreground sm:text-3xl">
+                                {heroData.headline || 'Bienvenido a nuestro negocio'}
+                            </h2>
+                            <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+                                {heroData.subheadline || 'Agrega una portada para presentar tu propuesta con claridad.'}
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                                <Button type="button" size="sm">
+                                    {heroData.buttonText || 'Ver catalogo'}
+                                </Button>
+                                <Button type="button" variant="outline" size="sm">
+                                    Contactar
+                                </Button>
+                            </div>
+                        </div>
+
+                        <Separator />
+
+                        <div className="grid gap-3 sm:grid-cols-3">
+                            {(featureItems.length ? featureItems : [
+                                { title: 'Atencion clara', description: 'Describe por que elegir este negocio.' },
+                                { title: 'Oferta visible', description: 'Muestra beneficios sin inventar funciones.' },
+                                { title: 'Accion directa', description: 'Guia al cliente hacia el siguiente paso.' },
+                            ]).map((item, index) => (
+                                <div key={`${item.title}-${index}`} className="rounded-md border bg-card p-3">
+                                    <p className="text-sm font-medium text-card-foreground">{item.title}</p>
+                                    <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.description}</p>
+                                </div>
+                            ))}
+                        </div>
+
+                        <Alert>
+                            <Megaphone aria-hidden="true" />
+                            <AlertTitle>{ctaData.title || 'Listo para recibir clientes'}</AlertTitle>
+                            <AlertDescription>
+                                {ctaData.description || 'Agrega un llamado a la accion para convertir visitas en conversaciones.'}
+                            </AlertDescription>
+                        </Alert>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
+
 export default function LandingPage({ tenant, landingPageData, isPro }) {
-    const [sections, setSections] = useState(landingPageData?.sections || []);
+    const [sections, setSections] = useState(() => normalizeSections(landingPageData?.sections));
     const [editingSection, setEditingSection] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
+    const updateUrl = useMemo(() => safeNamedRoute('tenant.landing-page.update', '/workspace/landing-page'), []);
+    const upgradeUrl = useMemo(() => safeNamedRoute('tenant.upgrade', '/workspace/upgrade'), []);
 
-    // Add new section
     const addSection = useCallback((template) => {
         const newSection = {
-            id: Date.now(),
+            id: `${template.id}-${Date.now()}`,
             template,
             data: { ...template.defaultData },
         };
-        setSections(prev => [...prev, newSection]);
+
+        setSections((current) => [...current, newSection]);
     }, []);
 
-    // Update section
     const updateSection = useCallback((sectionId, newData) => {
-        setSections(prev => prev.map(s =>
-            s.id === sectionId ? { ...s, data: newData } : s
-        ));
+        setSections((current) => current.map((section) => (
+            section.id === sectionId ? { ...section, data: newData } : section
+        )));
         setEditingSection(null);
     }, []);
 
-    // Delete section
     const deleteSection = useCallback((sectionId) => {
-        setSections(prev => prev.filter(s => s.id !== sectionId));
+        setSections((current) => current.filter((section) => section.id !== sectionId));
     }, []);
 
-    // Move section
     const moveSection = useCallback((sectionId, direction) => {
-        setSections(prev => {
-            const index = prev.findIndex(s => s.id === sectionId);
-            if (index === -1) return prev;
+        setSections((current) => {
+            const index = current.findIndex((section) => section.id === sectionId);
+            if (index === -1) {
+                return current;
+            }
 
-            const newIndex = direction === 'up' ? index - 1 : index + 1;
-            if (newIndex < 0 || newIndex >= prev.length) return prev;
+            const nextIndex = direction === 'up' ? index - 1 : index + 1;
+            if (nextIndex < 0 || nextIndex >= current.length) {
+                return current;
+            }
 
-            const newSections = [...prev];
-            [newSections[index], newSections[newIndex]] = [newSections[newIndex], newSections[index]];
-            return newSections;
+            const nextSections = [...current];
+            [nextSections[index], nextSections[nextIndex]] = [nextSections[nextIndex], nextSections[index]];
+            return nextSections;
         });
     }, []);
 
-    // Save landing page
     const handleSave = useCallback(() => {
         setIsSaving(true);
         router.put(
-            route('tenant.landing-page.update'),
+            updateUrl,
             { sections },
             {
                 preserveScroll: true,
                 onFinish: () => setIsSaving(false),
+                onSuccess: () => toast.success('Landing guardada', {
+                    description: 'Las secciones del negocio quedaron actualizadas.',
+                }),
+                onError: () => toast.error('No se pudo guardar la landing', {
+                    description: 'Revisa los campos e intenta de nuevo.',
+                }),
             }
         );
-    }, [sections]);
+    }, [sections, updateUrl]);
 
-    // PRO gate
     if (!isPro) {
         return (
             <TenantLayout>
-                <Head title="Landing Page Builder" />
-                <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12">
-                    <div className="text-center max-w-md">
-                        <div className="w-24 h-24 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <span className="text-4xl">🔒</span>
-                        </div>
-                        <h1 className="text-2xl font-bold text-gray-900 mb-2">Función PRO</h1>
-                        <p className="text-gray-500 mb-6">
-                            El constructor de landing pages está disponible solo para cuentas PRO.
-                        </p>
-                        <a
-                            href={route('tenant.upgrade')}
-                            className="inline-block px-6 py-3 bg-blue-600 text-white font-bold rounded-xl"
-                        >
-                            Upgrade a PRO
-                        </a>
+                <Head title="Constructor de landing" />
+                <main className="min-h-screen bg-background px-4 py-12" data-testid="landing-pro-gate">
+                    <div className="mx-auto flex max-w-2xl flex-col gap-6">
+                        <Alert>
+                            <Lock aria-hidden="true" />
+                            <AlertTitle>Constructor disponible en plan Pro</AlertTitle>
+                            <AlertDescription>
+                                Activa Pro para crear una pagina promocional propia para {tenant?.name || 'tu negocio'}.
+                            </AlertDescription>
+                        </Alert>
+                        <Card>
+                            <CardHeader>
+                                <Badge variant="secondary" className="w-fit">Compat activo</Badge>
+                                <CardTitle>Landing page del negocio</CardTitle>
+                                <CardDescription>
+                                    Esta herramienta permite componer secciones y guardarlas como configuracion del tenant.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardFooter>
+                                <Button asChild>
+                                    <a href={upgradeUrl}>Ver opciones Pro</a>
+                                </Button>
+                            </CardFooter>
+                        </Card>
                     </div>
-                </div>
+                </main>
             </TenantLayout>
         );
     }
 
     return (
         <TenantLayout>
-            <Head title="Landing Page Builder" />
+            <Head title="Constructor de landing" />
 
-            <div className="min-h-screen bg-gray-50">
-                {/* Header */}
-                <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="flex items-center justify-between h-16">
-                            <h1 className="text-xl font-bold text-gray-900">🎨 Landing Page Builder</h1>
-                            <button
-                                onClick={handleSave}
-                                disabled={isSaving}
-                                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-50"
-                            >
-                                {isSaving ? 'Guardando...' : 'Guardar Cambios'}
-                            </button>
-                        </div>
-                    </div>
-                </header>
-
-                <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        {/* Section Templates */}
-                        <div className="lg:col-span-1">
-                            <div className="bg-white rounded-2xl border border-gray-100 p-6 sticky top-24">
-                                <h2 className="font-bold text-gray-900 mb-4">Agregar Sección</h2>
-                                <div className="space-y-2">
-                                    {SECTION_TEMPLATES.map((template) => (
-                                        <button
-                                            key={template.id}
-                                            onClick={() => addSection(template)}
-                                            className="w-full flex items-center gap-3 p-3 text-left bg-gray-50 hover:bg-blue-50 rounded-xl transition-colors"
-                                        >
-                                            <span className="text-2xl">{template.icon}</span>
-                                            <div>
-                                                <p className="font-semibold text-gray-900">{template.name}</p>
-                                                <p className="text-xs text-gray-500">{template.description}</p>
-                                            </div>
-                                        </button>
-                                    ))}
+            <main className="min-h-screen bg-background" data-testid="landing-builder-page">
+                <div className="mx-auto flex max-w-7xl flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
+                    <Card>
+                        <CardHeader className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                            <div className="flex max-w-3xl flex-col gap-3">
+                                <Badge variant="secondary" className="w-fit">Compat activo</Badge>
+                                <div className="flex flex-col gap-2">
+                                    <CardTitle className="text-3xl">Constructor de landing</CardTitle>
+                                    <CardDescription>
+                                        Arma una pagina promocional para {tenant?.name || 'tu negocio'} con secciones simples y guardado controlado.
+                                    </CardDescription>
                                 </div>
                             </div>
-                        </div>
+                            <Button type="button" onClick={handleSave} disabled={isSaving} data-testid="landing-save">
+                                {isSaving ? <Spinner data-icon="inline-start" /> : <Save data-icon="inline-start" aria-hidden="true" />}
+                                {isSaving ? 'Guardando' : 'Guardar cambios'}
+                            </Button>
+                        </CardHeader>
+                    </Card>
 
-                        {/* Section List */}
-                        <div className="lg:col-span-2">
-                            <div className="bg-white rounded-2xl border border-gray-100 p-6">
-                                <h2 className="font-bold text-gray-900 mb-4">Tus Secciones</h2>
+                    <div className="grid gap-6 lg:grid-cols-[22rem_1fr]">
+                        <Card className="h-fit lg:sticky lg:top-8">
+                            <CardHeader>
+                                <div className="flex items-start gap-3">
+                                    <SectionIcon icon={Layers} />
+                                    <div className="flex flex-col gap-1">
+                                        <CardTitle>Agregar seccion</CardTitle>
+                                        <CardDescription>
+                                            Elige una plantilla y ajusta su contenido despues.
+                                        </CardDescription>
+                                    </div>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="flex flex-col gap-3">
+                                {SECTION_TEMPLATES.map((template) => {
+                                    const Icon = TEMPLATE_ICONS[template.id] || FileText;
 
-                                {sections.length === 0 ? (
-                                    <div className="text-center py-12 text-gray-500">
-                                        <p className="text-4xl mb-4">📄</p>
-                                        <p>No tienes secciones aún.</p>
-                                        <p className="text-sm">Haz clic en una plantilla para comenzar.</p>
+                                    return (
+                                        <Button
+                                            key={template.id}
+                                            type="button"
+                                            variant="outline"
+                                            className="h-auto justify-start gap-3 whitespace-normal p-4 text-left"
+                                            onClick={() => addSection(template)}
+                                            data-testid="landing-template-card"
+                                        >
+                                            <Icon data-icon="inline-start" aria-hidden="true" />
+                                            <span className="flex flex-col gap-1">
+                                                <span className="font-medium">{template.name}</span>
+                                                <span className="text-sm font-normal text-muted-foreground">{template.description}</span>
+                                            </span>
+                                        </Button>
+                                    );
+                                })}
+                            </CardContent>
+                        </Card>
+
+                        <div className="flex flex-col gap-6">
+                            <Card>
+                                <CardHeader>
+                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                        <div className="flex flex-col gap-1">
+                                            <CardTitle>Tus secciones</CardTitle>
+                                            <CardDescription>
+                                                {sections.length > 0
+                                                    ? `${sections.length} secciones listas para guardar.`
+                                                    : 'Agrega una seccion para comenzar.'}
+                                            </CardDescription>
+                                        </div>
+                                        <Badge variant="outline" aria-live="polite">
+                                            {sections.length} secciones
+                                        </Badge>
                                     </div>
-                                ) : (
-                                    <div className="space-y-3">
-                                        {sections.map((section, index) => (
-                                            <SectionPreview
-                                                key={section.id}
-                                                section={section}
-                                                onEdit={() => setEditingSection(section)}
-                                                onDelete={() => deleteSection(section.id)}
-                                                onMoveUp={() => moveSection(section.id, 'up')}
-                                                onMoveDown={() => moveSection(section.id, 'down')}
-                                                isFirst={index === 0}
-                                                isLast={index === sections.length - 1}
-                                            />
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
+                                </CardHeader>
+                                <CardContent>
+                                    {sections.length === 0 ? (
+                                        <Alert aria-live="polite" data-testid="landing-empty-state">
+                                            <FileText aria-hidden="true" />
+                                            <AlertTitle>Sin secciones todavia</AlertTitle>
+                                            <AlertDescription>
+                                                Usa las plantillas de la izquierda para crear la primera seccion de la landing.
+                                            </AlertDescription>
+                                        </Alert>
+                                    ) : (
+                                        <div className="flex flex-col gap-3">
+                                            {sections.map((section, index) => (
+                                                <SectionPreview
+                                                    key={section.id}
+                                                    section={section}
+                                                    onEdit={() => setEditingSection(section)}
+                                                    onDelete={() => deleteSection(section.id)}
+                                                    onMoveUp={() => moveSection(section.id, 'up')}
+                                                    onMoveDown={() => moveSection(section.id, 'down')}
+                                                    isFirst={index === 0}
+                                                    isLast={index === sections.length - 1}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
+                                </CardContent>
+                                <CardFooter className="flex flex-col items-start gap-4">
+                                    <Separator />
+                                    <p className="text-sm text-muted-foreground">
+                                        El guardado actualiza solo la configuracion de secciones de este negocio.
+                                    </p>
+                                </CardFooter>
+                            </Card>
+
+                            <LandingLivePreview sections={sections} tenantName={tenant?.name} />
                         </div>
                     </div>
-                </main>
+                </div>
 
-                {/* Editor Modal */}
-                {editingSection && (
+                {editingSection ? (
                     <SectionEditor
+                        key={editingSection.id}
                         section={editingSection}
+                        open={Boolean(editingSection)}
                         onSave={(data) => updateSection(editingSection.id, data)}
-                        onClose={() => setEditingSection(null)}
+                        onOpenChange={(open) => {
+                            if (!open) {
+                                setEditingSection(null);
+                            }
+                        }}
                     />
-                )}
-            </div>
+                ) : null}
+            </main>
         </TenantLayout>
     );
 }

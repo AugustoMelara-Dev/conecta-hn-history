@@ -1,213 +1,318 @@
-/**
- * Pages/Public/Home.jsx - Landing Page
- *
- * FEATURES:
- * - Hero search bar
- * - Category pills (horizontal scroll)
- * - Featured tenants section
- * - SEO optimized with Head component
- *
- * PROPS (from HomeController@index):
- * @param {Array} props.featuredTenants - Top rated/new tenants
- * @param {Array} props.categories - Popular categories
- * @param {Object} props.stats - { total_tenants, total_cities }
- */
-
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
-import PublicLayout from '@/Layouts/PublicLayout';
-import TenantCard from '@/Components/Public/TenantCard';
+import {
+    ArrowRight,
+    Building2,
+    HeartPulse,
+    MapPin,
+    Search,
+    ShoppingBag,
+    Sparkles,
+    Store,
+    Utensils,
+    Wrench,
+} from 'lucide-react';
 
-// ═══════════════════════════════════════════════════════════════════════════
-// HERO SECTION
-// ═══════════════════════════════════════════════════════════════════════════
+import TenantCard from '@/Components/Public/TenantCard';
+import { Alert, AlertDescription, AlertTitle } from '@/Components/ui/alert';
+import { Badge } from '@/Components/ui/badge';
+import { Button } from '@/Components/ui/button';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/Components/ui/card';
+import { Field, FieldGroup, FieldLabel } from '@/Components/ui/field';
+import { Input } from '@/Components/ui/input';
+import { Separator } from '@/Components/ui/separator';
+import PublicLayout from '@/Layouts/PublicLayout';
+
+const fallbackCategories = [
+    { slug: 'comida', name: 'Comida', icon: Utensils },
+    { slug: 'salud', name: 'Salud', icon: HeartPulse },
+    { slug: 'servicios', name: 'Servicios', icon: Wrench },
+    { slug: 'tiendas', name: 'Tiendas', icon: ShoppingBag },
+];
+
+const directoryPath = '/directorio';
+
+function safeRoute(name, fallback, params) {
+    try {
+        if (route().has(name)) {
+            return route(name, params);
+        }
+    } catch {
+        return fallback;
+    }
+
+    return fallback;
+}
+
+function formatCount(value, fallback = 0) {
+    const number = Number(value ?? fallback);
+
+    if (!Number.isFinite(number)) {
+        return String(fallback);
+    }
+
+    return new Intl.NumberFormat('es-HN').format(number);
+}
+
 function HeroSection({ stats }) {
     const [searchQuery, setSearchQuery] = useState('');
+    const tenantCount = formatCount(stats?.total_tenants);
+    const cityCount = formatCount(stats?.total_cities);
 
-    const handleSearch = (e) => {
-        e.preventDefault();
-        if (searchQuery.trim()) {
-            router.get(route('directory.index'), { search: searchQuery });
-        }
+    const handleSearch = (event) => {
+        event.preventDefault();
+
+        const search = searchQuery.trim();
+        router.get(
+            directoryPath,
+            search ? { search } : {},
+            { preserveScroll: true }
+        );
     };
 
     return (
-        <section className="relative bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 text-white overflow-hidden">
-            {/* Background Pattern */}
-            <div className="absolute inset-0 opacity-10">
-                <div className="absolute inset-0" style={{
-                    backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
-                    backgroundSize: '32px 32px'
-                }} />
-            </div>
+        <section className="border-b bg-muted/30" data-testid="explore-page">
+            <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[1fr_360px] lg:px-8 lg:py-20">
+                <div className="flex flex-col justify-center gap-8">
+                    <div className="flex flex-col gap-5">
+                        <Badge className="w-fit" variant="secondary">
+                            Directorio publico de Conecta HN
+                        </Badge>
 
-            <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 lg:py-32">
-                <div className="max-w-3xl mx-auto text-center">
-                    {/* Badge */}
-                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur rounded-full text-sm font-medium mb-8">
-                        <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-                        {stats?.total_tenants || 500}+ negocios registrados
+                        <div className="flex flex-col gap-4">
+                            <h1 className="max-w-3xl text-4xl font-semibold leading-tight tracking-normal text-foreground sm:text-5xl">
+                                Encuentra negocios locales en Honduras sin perder tiempo.
+                            </h1>
+                            <p className="max-w-2xl text-lg leading-8 text-muted-foreground">
+                                Explora servicios, tiendas y lugares de confianza. Busca por nombre, categoria o ciudad y abre el micrositio del negocio que te interesa.
+                            </p>
+                        </div>
                     </div>
 
-                    {/* Headline */}
-                    <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold mb-6 leading-tight">
-                        Encuentra el mejor servicio
-                        <span className="block text-yellow-300">en Honduras</span>
-                    </h1>
-
-                    <p className="text-lg sm:text-xl text-blue-100 mb-10 max-w-xl mx-auto">
-                        Conecta con negocios locales de confianza. Restaurantes, servicios, salud y más.
-                    </p>
-
-                    {/* Search Bar */}
-                    <form onSubmit={handleSearch} className="max-w-2xl mx-auto">
-                        <div className="relative flex items-center bg-white rounded-2xl shadow-2xl shadow-black/20 overflow-hidden">
-                            <svg className="w-6 h-6 text-gray-400 absolute left-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                            <input
-                                type="text"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="¿Qué estás buscando? (ej: Tacos, Mecánico, Dentista)"
-                                className="flex-1 pl-14 pr-4 py-5 text-gray-900 text-lg border-0 focus:ring-0 placeholder:text-gray-400"
-                            />
-                            <button
-                                type="submit"
-                                className="m-2 px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors"
-                            >
-                                Buscar
-                            </button>
-                        </div>
+                    <form onSubmit={handleSearch} role="search" data-testid="explore-search">
+                        <FieldGroup className="gap-3">
+                            <Field>
+                                <FieldLabel htmlFor="explore-search-input">
+                                    Buscar negocio o servicio
+                                </FieldLabel>
+                                <div className="flex flex-col gap-3 rounded-lg border bg-card p-3 shadow-sm sm:flex-row">
+                                    <div className="relative flex-1">
+                                        <Search
+                                            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                                            aria-hidden="true"
+                                        />
+                                        <Input
+                                            id="explore-search-input"
+                                            value={searchQuery}
+                                            onChange={(event) => setSearchQuery(event.target.value)}
+                                            placeholder="Ej. restaurante, mecanico, dentista"
+                                            className="pl-9"
+                                            data-testid="explore-search-control"
+                                        />
+                                    </div>
+                                    <Button type="submit">
+                                        <Search data-icon="inline-start" aria-hidden="true" />
+                                        Buscar
+                                    </Button>
+                                </div>
+                            </Field>
+                        </FieldGroup>
                     </form>
                 </div>
-            </div>
 
-            {/* Wave Divider */}
-            <div className="absolute bottom-0 left-0 right-0">
-                <svg viewBox="0 0 1440 120" fill="none" className="w-full h-auto">
-                    <path d="M0 120L60 105C120 90 240 60 360 45C480 30 600 30 720 37.5C840 45 960 60 1080 67.5C1200 75 1320 75 1380 75L1440 75V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0Z" fill="#f9fafb" />
-                </svg>
+                <Card className="h-fit">
+                    <CardHeader>
+                        <CardTitle className="text-lg">Marketplace activo</CardTitle>
+                        <CardDescription>
+                            Datos publicos disponibles para explorar negocios registrados.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex flex-col gap-4">
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="rounded-lg border bg-background p-4">
+                                <p className="text-2xl font-semibold">{tenantCount}</p>
+                                <p className="text-sm text-muted-foreground">Negocios</p>
+                            </div>
+                            <div className="rounded-lg border bg-background p-4">
+                                <p className="text-2xl font-semibold">{cityCount}</p>
+                                <p className="text-sm text-muted-foreground">Ciudades</p>
+                            </div>
+                        </div>
+
+                        <Separator />
+
+                        <div className="flex items-start gap-3 text-sm text-muted-foreground">
+                            <MapPin className="mt-0.5 text-primary" aria-hidden="true" />
+                            <p>
+                                Usa filtros del directorio para comparar ubicacion, categoria y disponibilidad.
+                            </p>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
         </section>
     );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// CATEGORY PILLS
-// ═══════════════════════════════════════════════════════════════════════════
 function CategoryPills({ categories }) {
-    const defaultCategories = [
-        { slug: 'food', name: 'Comida', icon: '🍔' },
-        { slug: 'health', name: 'Salud', icon: '🏥' },
-        { slug: 'beauty', name: 'Belleza', icon: '💇' },
-        { slug: 'automotive', name: 'Autos', icon: '🚗' },
-        { slug: 'services', name: 'Servicios', icon: '🔧' },
-        { slug: 'shopping', name: 'Tiendas', icon: '🛍️' },
-        { slug: 'entertainment', name: 'Entretenimiento', icon: '🎬' },
-        { slug: 'education', name: 'Educación', icon: '📚' },
-    ];
+    const items = useMemo(() => {
+        if (Array.isArray(categories) && categories.length > 0) {
+            return categories.map((category) => ({
+                ...category,
+                icon: Building2,
+            }));
+        }
 
-    const items = categories?.length ? categories : defaultCategories;
+        return fallbackCategories;
+    }, [categories]);
 
     return (
-        <section className="py-12 bg-gray-50">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
-                    Explora por Categoría
-                </h2>
-                <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
-                    {items.map((cat) => (
-                        <Link
-                            key={cat.slug}
-                            href={route('directory.index', { category: cat.slug })}
-                            className="flex items-center gap-2 px-5 py-3 bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all whitespace-nowrap shrink-0"
-                        >
-                            <span className="text-2xl">{cat.icon}</span>
-                            <span className="font-medium text-gray-700">{cat.name}</span>
-                        </Link>
-                    ))}
-                </div>
-            </div>
-        </section>
-    );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// FEATURED TENANTS
-// ═══════════════════════════════════════════════════════════════════════════
-function FeaturedSection({ tenants }) {
-    if (!tenants?.length) return null;
-
-    return (
-        <section className="py-16 bg-white">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex items-center justify-between mb-8">
+        <section className="bg-background py-12">
+            <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 sm:px-6 lg:px-8">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                     <div>
-                        <h2 className="text-2xl font-bold text-gray-900">Destacados</h2>
-                        <p className="text-gray-500 mt-1">Los negocios más populares</p>
+                        <Badge variant="outline">Categorias</Badge>
+                        <h2 className="mt-3 text-2xl font-semibold tracking-normal text-foreground">
+                            Explora por tipo de negocio
+                        </h2>
                     </div>
-                    <Link
-                        href={route('directory.index')}
-                        className="text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
-                    >
-                        Ver todos
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                    </Link>
+                    <Button variant="ghost" asChild>
+                        <Link href={directoryPath}>
+                            Ver directorio
+                            <ArrowRight data-icon="inline-end" aria-hidden="true" />
+                        </Link>
+                    </Button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {tenants.map((tenant) => (
-                        <TenantCard key={tenant.id} tenant={tenant} />
-                    ))}
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    {items.map((category) => {
+                        const Icon = category.icon || Building2;
+
+                        return (
+                            <Button
+                                key={category.slug || category.name}
+                                variant="outline"
+                                className="h-auto justify-start gap-3 p-4"
+                                asChild
+                            >
+                                <Link
+                                    href={`${directoryPath}?category=${encodeURIComponent(category.slug)}`}
+                                    data-testid="explore-category"
+                                >
+                                    <Icon aria-hidden="true" />
+                                    <span className="flex min-w-0 flex-col items-start gap-1">
+                                        <span className="truncate font-medium">{category.name}</span>
+                                        {category.tenants_count ? (
+                                            <span className="text-xs text-muted-foreground">
+                                                {formatCount(category.tenants_count)} negocios
+                                            </span>
+                                        ) : null}
+                                    </span>
+                                </Link>
+                            </Button>
+                        );
+                    })}
                 </div>
             </div>
         </section>
     );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// CTA SECTION
-// FIX #3: Route corrected to tenant.register (was: register)
-// Principle: Conversion Alignment - CTA leads to business registration
-// ═══════════════════════════════════════════════════════════════════════════
+function FeaturedSection({ tenants }) {
+    return (
+        <section className="bg-muted/30 py-14">
+            <div className="mx-auto flex max-w-7xl flex-col gap-8 px-4 sm:px-6 lg:px-8">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                        <Badge variant="secondary">Destacados</Badge>
+                        <h2 className="mt-3 text-2xl font-semibold tracking-normal text-foreground">
+                            Negocios para descubrir
+                        </h2>
+                        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                            Una seleccion de negocios visibles en el marketplace publico.
+                        </p>
+                    </div>
+                    <Button variant="outline" asChild>
+                        <Link href={directoryPath}>
+                            Ver todos
+                            <ArrowRight data-icon="inline-end" aria-hidden="true" />
+                        </Link>
+                    </Button>
+                </div>
+
+                {tenants?.length ? (
+                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                        {tenants.map((tenant) => (
+                            <TenantCard key={tenant.id || tenant.slug} tenant={tenant} />
+                        ))}
+                    </div>
+                ) : (
+                    <Alert data-testid="explore-empty-state">
+                        <Sparkles aria-hidden="true" />
+                        <AlertTitle>No hay negocios destacados todavia</AlertTitle>
+                        <AlertDescription>
+                            Puedes abrir el directorio completo o registrar un negocio para aparecer en el marketplace.
+                        </AlertDescription>
+                    </Alert>
+                )}
+            </div>
+        </section>
+    );
+}
+
 function CtaSection() {
     return (
-        <section className="py-20 bg-gradient-to-r from-indigo-600 to-purple-600">
-            <div className="max-w-4xl mx-auto px-4 text-center text-white">
-                <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-                    ¿Tienes un negocio?
-                </h2>
-                <p className="text-lg text-indigo-100 mb-8 max-w-xl mx-auto">
-                    Únete a ConectaHN y llega a miles de clientes potenciales. Regístrate gratis hoy.
-                </p>
-                <Link
-                    href={route('tenant.register')}
-                    className="inline-flex items-center gap-2 px-8 py-4 bg-white text-indigo-600 font-bold rounded-xl hover:bg-gray-100 transition-colors shadow-lg"
-                >
-                    Crear mi Perfil Gratis
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                    </svg>
-                </Link>
+        <section className="bg-background py-14">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <Card>
+                    <CardContent className="flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex max-w-2xl flex-col gap-2">
+                            <Badge className="w-fit" variant="outline">
+                                Para negocios
+                            </Badge>
+                            <h2 className="text-2xl font-semibold tracking-normal text-foreground">
+                                Publica tu negocio y comparte tu micrositio.
+                            </h2>
+                            <p className="text-sm leading-6 text-muted-foreground">
+                                Crea tu perfil, muestra informacion clave y facilita que clientes te encuentren desde el directorio.
+                            </p>
+                        </div>
+                        <Button asChild>
+                            <Link
+                                href={safeRoute('tenant.register', '/registrar-negocio')}
+                                data-testid="explore-register-cta"
+                            >
+                                Registrar negocio
+                                <ArrowRight data-icon="inline-end" aria-hidden="true" />
+                            </Link>
+                        </Button>
+                    </CardContent>
+                </Card>
             </div>
         </section>
     );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// MAIN PAGE
-// ═══════════════════════════════════════════════════════════════════════════
 export default function Home({ featuredTenants = [], categories = [], stats = {} }) {
     return (
         <PublicLayout>
             <Head>
-                <title>ConectaHN - Negocios Locales en Honduras</title>
-                <meta name="description" content="Encuentra los mejores negocios locales en Honduras. Restaurantes, servicios, salud, belleza y más. Conecta con empresas de confianza cerca de ti." />
-                <meta name="keywords" content="negocios Honduras, directorio empresas, restaurantes Honduras, servicios locales" />
-                <link rel="canonical" href={route('home')} />
+                <title>Explorar negocios en Honduras - Conecta HN</title>
+                <meta
+                    name="description"
+                    content="Explora negocios locales en Honduras por categoria, ciudad o nombre. Encuentra micrositios publicos y formas de contacto reales."
+                />
+                <meta
+                    name="keywords"
+                    content="negocios Honduras, directorio empresas, restaurantes Honduras, servicios locales"
+                />
+                <link rel="canonical" href={safeRoute('public.explore', '/explore')} />
             </Head>
 
             <HeroSection stats={stats} />

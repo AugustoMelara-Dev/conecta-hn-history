@@ -7,6 +7,7 @@ namespace App\Application\Tenant\Transformers;
 use App\Domain\TenantGovernance\Services\PlanFeatureFlagService;
 use App\Models\OpeningHour;
 use App\Models\Tenant;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -42,45 +43,46 @@ final class TenantMicrositeTransformer
     public function transform(Tenant $tenant): array
     {
         $plan = $this->planService->determinePlan($tenant);
+        $cityName = $this->tenantCityName($tenant);
 
         return [
             'id' => $tenant->id,
             'name' => $tenant->name,
             'slug' => $tenant->slug,
-            'description' => $tenant->description ?? 'Bienvenido a nuestro negocio.',
-            'about' => $tenant->about, // Premium: Extended storytelling "Our Story"
+            'description' => $this->tenantAttribute($tenant, 'description') ?? 'Bienvenido a nuestro negocio.',
+            'about' => $this->tenantAttribute($tenant, 'about'), // Premium: Extended storytelling "Our Story"
 
             // Images with Storage URLs and fallbacks
-            'logo' => $this->resolveImageUrl($tenant->logo_path, 'logo'),
-            'cover' => $this->resolveImageUrl($tenant->cover_path, 'cover'),
-            'banner_path' => $tenant->banner_path ?? $tenant->cover_path,
-            'blur_hash' => $tenant->blur_hash,
-            'primary_color' => $tenant->brand_color ?? $tenant->primary_color ?? '#2563EB',
+            'logo' => $this->resolveImageUrl($this->tenantAttribute($tenant, 'logo_path'), 'logo'),
+            'cover' => $this->resolveImageUrl($this->tenantAttribute($tenant, 'cover_path'), 'cover'),
+            'banner_path' => $this->tenantAttribute($tenant, 'banner_path') ?? $this->tenantAttribute($tenant, 'cover_path'),
+            'blur_hash' => $this->tenantAttribute($tenant, 'blur_hash'),
+            'primary_color' => $this->tenantAttribute($tenant, 'brand_color') ?? $this->tenantAttribute($tenant, 'primary_color') ?? '#2563EB',
 
             // Brand customization (Pro feature check)
-            'brand_color' => $tenant->brand_color ?? '#2563EB',
-            'hero_image' => $this->planService->canCustomizeHero($tenant) && $tenant->hero_image
-                ? $this->resolveImageUrl($tenant->hero_image, 'hero')
+            'brand_color' => $this->tenantAttribute($tenant, 'brand_color') ?? '#2563EB',
+            'hero_image' => $this->planService->canCustomizeHero($tenant) && $this->tenantAttribute($tenant, 'hero_image')
+                ? $this->resolveImageUrl($this->tenantAttribute($tenant, 'hero_image'), 'hero')
                 : null,
-            'slogan' => $tenant->slogan,
+            'slogan' => $this->tenantAttribute($tenant, 'slogan'),
 
             // Contact info with formatted phone
-            'whatsapp' => $this->planService->formatPhoneWithCountryCode($tenant->whatsapp_number),
-            'whatsapp_number' => $this->planService->formatPhoneWithCountryCode($tenant->whatsapp_number),
-            'phone' => $this->planService->formatPhoneWithCountryCode($tenant->phone),
-            'email' => $tenant->email,
-            'address' => $tenant->address ?? 'Honduras',
+            'whatsapp' => $this->planService->formatPhoneWithCountryCode($this->tenantAttribute($tenant, 'whatsapp_number')),
+            'whatsapp_number' => $this->planService->formatPhoneWithCountryCode($this->tenantAttribute($tenant, 'whatsapp_number')),
+            'phone' => $this->planService->formatPhoneWithCountryCode($this->tenantAttribute($tenant, 'phone')),
+            'email' => $this->tenantAttribute($tenant, 'email'),
+            'address' => $this->tenantAttribute($tenant, 'address') ?? 'Honduras',
 
             // Location (flat legacy + structured for Map component)
-            'city' => $tenant->city?->name ?? 'Honduras',
-            'city_id' => $tenant->city_id,
-            'latitude' => $tenant->latitude,
-            'longitude' => $tenant->longitude,
+            'city' => $cityName,
+            'city_id' => $this->tenantAttribute($tenant, 'city_id'),
+            'latitude' => $this->tenantAttribute($tenant, 'latitude'),
+            'longitude' => $this->tenantAttribute($tenant, 'longitude'),
             'location' => [ // Premium: Structured for Map components
-                'lat' => $tenant->latitude !== null ? (float) $tenant->latitude : null,
-                'lng' => $tenant->longitude !== null ? (float) $tenant->longitude : null,
-                'address' => $tenant->address ?? 'Honduras',
-                'city' => $tenant->city?->name ?? 'Honduras',
+                'lat' => $this->tenantAttribute($tenant, 'latitude') !== null ? (float) $this->tenantAttribute($tenant, 'latitude') : null,
+                'lng' => $this->tenantAttribute($tenant, 'longitude') !== null ? (float) $this->tenantAttribute($tenant, 'longitude') : null,
+                'address' => $this->tenantAttribute($tenant, 'address') ?? 'Honduras',
+                'city' => $cityName,
             ],
 
             // Category
@@ -88,24 +90,24 @@ final class TenantMicrositeTransformer
 
             // Status flags
             'is_pro' => (bool) $tenant->is_pro,
-            'is_active' => (bool) $tenant->is_active,
+            'is_active' => (bool) $this->tenantAttribute($tenant, 'is_active'),
             'plan' => $plan,
 
             // Social links (legacy flat + structured grouping)
-            'facebook_url' => $this->planService->canShowSocialGraph($tenant) ? $tenant->facebook_url : null,
-            'instagram_url' => $this->planService->canShowSocialGraph($tenant) ? $tenant->instagram_url : null,
-            'tiktok_url' => $this->planService->canShowSocialGraph($tenant) ? $tenant->tiktok_url : null,
-            'website_url' => $tenant->website_url,
+            'facebook_url' => $this->planService->canShowSocialGraph($tenant) ? $this->tenantAttribute($tenant, 'facebook_url') : null,
+            'instagram_url' => $this->planService->canShowSocialGraph($tenant) ? $this->tenantAttribute($tenant, 'instagram_url') : null,
+            'tiktok_url' => $this->planService->canShowSocialGraph($tenant) ? $this->tenantAttribute($tenant, 'tiktok_url') : null,
+            'website_url' => $this->tenantAttribute($tenant, 'website_url'),
             'social' => $this->planService->canShowSocialGraph($tenant) ? [ // Premium: Grouped for frontend
-                'facebook' => $tenant->facebook_url,
-                'instagram' => $tenant->instagram_url,
-                'tiktok' => $tenant->tiktok_url,
-                'website' => $tenant->website_url,
+                'facebook' => $this->tenantAttribute($tenant, 'facebook_url'),
+                'instagram' => $this->tenantAttribute($tenant, 'instagram_url'),
+                'tiktok' => $this->tenantAttribute($tenant, 'tiktok_url'),
+                'website' => $this->tenantAttribute($tenant, 'website_url'),
             ] : null,
 
             // Products embedded in tenant
             'products' => $this->transformProducts($tenant),
-            'menuSections' => $tenant->menuSections,
+            'menuSections' => $tenant->relationLoaded('menuSections') ? $tenant->menuSections : collect(),
 
             // Reviews (Pro feature)
             'rating' => $this->planService->canShowReviews($tenant) ? 4.8 : null,
@@ -133,7 +135,9 @@ final class TenantMicrositeTransformer
             return [];
         }
 
-        $canShowModifiers = $this->planService->canShowModifiers($tenant);
+        $canShowModifiers = $this->planService->canShowModifiers($tenant)
+            && Schema::hasTable('modifier_groups')
+            && Schema::hasTable('modifier_options');
 
         return $products->map(function ($product) use ($tenant, $canShowModifiers) {
             $baseProduct = [
@@ -146,16 +150,16 @@ final class TenantMicrositeTransformer
                 'image' => $this->resolveImageUrl($product->image ?? null, 'product'),
                 'is_visible' => (bool) ($product->is_visible ?? true),
                 'is_featured' => (bool) ($product->is_featured ?? false),
-                'category_id' => $product->category_id,
-                'menu_section_id' => $product->menu_section_id,
+                'category_id' => $this->modelAttribute($product, 'category_id'),
+                'menu_section_id' => $this->modelAttribute($product, 'menu_section_id'),
 
                 // Tenant context for WhatsApp generation
-                'tenant_whatsapp' => $this->planService->formatPhoneWithCountryCode($tenant->whatsapp_number),
+                'tenant_whatsapp' => $this->planService->formatPhoneWithCountryCode($this->tenantAttribute($tenant, 'whatsapp_number')),
                 'tenant_name' => $tenant->name,
             ];
 
             // FEATURE FLAG: Modifiers only for Pro/Enterprise
-            if (! $canShowModifiers) {
+            if (! $canShowModifiers || ! $product->relationLoaded('modifierGroups')) {
                 $baseProduct['modifiers'] = [];
                 $baseProduct['modifier_groups'] = [];
                 $baseProduct['has_modifiers'] = false;
@@ -168,13 +172,17 @@ final class TenantMicrositeTransformer
                     'is_required' => (bool) ($group->is_required ?? false),
                     'min_selections' => $group->min_selections ?? 0,
                     'max_selections' => $group->max_selections ?? 1,
-                    'options' => ($group->options ?? collect([]))->map(fn ($opt) => [
-                        'id' => $opt->id,
-                        'name' => $opt->name,
-                        'price' => (float) ($opt->price ?? 0),
-                        'formatted_price' => $opt->price > 0 ? '+L. '.number_format((float) $opt->price, 2) : 'Gratis',
-                        'is_default' => (bool) ($opt->is_default ?? false),
-                    ])->toArray(),
+                    'options' => ($group->options ?? collect([]))->map(function ($opt): array {
+                        $price = (float) ($opt->price_adjustment ?? $opt->price ?? 0);
+
+                        return [
+                            'id' => $opt->id,
+                            'name' => $opt->name,
+                            'price' => $price,
+                            'formatted_price' => $price > 0 ? '+L. '.number_format($price, 2) : 'Gratis',
+                            'is_default' => (bool) ($opt->is_default ?? false),
+                        ];
+                    })->toArray(),
                 ])->toArray();
 
                 $baseProduct['modifiers'] = $baseProduct['modifier_groups'];
@@ -254,14 +262,14 @@ final class TenantMicrositeTransformer
             '@context' => 'https://schema.org',
             '@type' => 'LocalBusiness',
             'name' => $tenant->name,
-            'description' => $tenant->description ?? 'Negocio local en Honduras',
+                'description' => $this->tenantAttribute($tenant, 'description') ?? 'Negocio local en Honduras',
             'url' => url("/{$tenant->slug}"),
             'telephone' => $this->planService->formatPhoneWithCountryCode(
-                $tenant->whatsapp_number ?? $tenant->phone
+                $this->tenantAttribute($tenant, 'whatsapp_number') ?? $this->tenantAttribute($tenant, 'phone')
             ),
             'address' => [
                 '@type' => 'PostalAddress',
-                'addressLocality' => $tenant->city?->name ?? 'Honduras',
+                'addressLocality' => $this->tenantCityName($tenant),
                 'addressCountry' => 'HN',
             ],
         ];
@@ -280,6 +288,10 @@ final class TenantMicrositeTransformer
      */
     private function transformCategory(Tenant $tenant): array
     {
+        if (! Schema::hasColumn('tenants', 'category_id')) {
+            return ['id' => 0, 'name' => 'General', 'slug' => 'general'];
+        }
+
         if (! $tenant->category) {
             return ['id' => 0, 'name' => 'General', 'slug' => 'general'];
         }
@@ -289,6 +301,29 @@ final class TenantMicrositeTransformer
             'name' => $tenant->category->name,
             'slug' => $tenant->category->slug,
         ];
+    }
+
+    private function tenantCityName(Tenant $tenant): string
+    {
+        if (! Schema::hasColumn('tenants', 'city_id')) {
+            return 'Honduras';
+        }
+
+        return $tenant->city?->name ?? 'Honduras';
+    }
+
+    private function tenantAttribute(Tenant $tenant, string $key): mixed
+    {
+        return $tenant->getAttributes()[$key] ?? null;
+    }
+
+    private function modelAttribute(object $model, string $key): mixed
+    {
+        if (method_exists($model, 'getAttributes')) {
+            return $model->getAttributes()[$key] ?? null;
+        }
+
+        return $model->{$key} ?? null;
     }
 
     /**

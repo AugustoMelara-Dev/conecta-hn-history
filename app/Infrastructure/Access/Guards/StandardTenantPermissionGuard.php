@@ -11,12 +11,21 @@ use App\Domain\TenantGovernance\Enums\Capability;
 use App\Models\Tenant;
 use App\Models\TenantMembership;
 use App\Models\User;
+use Illuminate\Support\Facades\Schema;
 
 final class StandardTenantPermissionGuard implements TenantPermissionGuardInterface
 {
     public function allows(User $user, Tenant $tenant, Capability $capability, Permission $permission): bool
     {
         if (! $tenant->hasCapability($capability)) {
+            return false;
+        }
+
+        if ((string) $tenant->user_id === (string) $user->id) {
+            return true;
+        }
+
+        if (! Schema::hasTable('tenant_memberships')) {
             return false;
         }
 
@@ -54,6 +63,6 @@ final class StandardTenantPermissionGuard implements TenantPermissionGuardInterf
             );
         }
 
-        return (string) $tenant->user_id === (string) $user->id;
+        return false;
     }
 }

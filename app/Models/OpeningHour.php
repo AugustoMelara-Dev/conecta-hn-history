@@ -140,7 +140,9 @@ class OpeningHour extends Model
      */
     public function getRawOpeningTime(): ?string
     {
-        return $this->getOriginal('opening_time');
+        $value = $this->getRawOriginal('opening_time');
+
+        return $value instanceof Carbon ? $value->format('H:i:s') : $value;
     }
 
     /**
@@ -149,7 +151,9 @@ class OpeningHour extends Model
      */
     public function getRawClosingTime(): ?string
     {
-        return $this->getOriginal('closing_time');
+        $value = $this->getRawOriginal('closing_time');
+
+        return $value instanceof Carbon ? $value->format('H:i:s') : $value;
     }
 
     // ═══════════════════════════════════════════════════════════════════════

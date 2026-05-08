@@ -9,8 +9,6 @@ use Filament\Pages\Page;
 
 class UpgradeToPro extends Page
 {
-    // Navigation Icon removed to fix type error in Filament v4
-
     protected static string $view = 'filament.app.pages.upgrade-to-pro';
 
     public static function getNavigationLabel(): string
@@ -20,7 +18,7 @@ class UpgradeToPro extends Page
 
     public function getTitle(): string
     {
-        return 'Mejora tu Negocio a PRO';
+        return 'Mejora tu negocio a PRO';
     }
 
     public static function getNavigationSort(): ?int
@@ -42,33 +40,33 @@ class UpgradeToPro extends Page
             'features' => [
                 [
                     'icon' => 'heroicon-o-chat-bubble-left-right',
-                    'title' => 'Integración WhatsApp',
-                    'description' => 'Botón de contacto directo para que tus clientes te escriban al instante.',
+                    'title' => 'WhatsApp conectado',
+                    'description' => 'Boton de contacto visible para que tus clientes te escriban desde el micrositio.',
                 ],
                 [
                     'icon' => 'heroicon-o-cube',
-                    'title' => 'Productos Ilimitados',
-                    'description' => 'Sin límite de 10 productos. Muestra todo tu catálogo completo.',
+                    'title' => 'Catalogo amplio',
+                    'description' => 'Publica mas productos y mantiene tu oferta organizada para vender con menos friccion.',
                 ],
                 [
                     'icon' => 'heroicon-o-paint-brush',
-                    'title' => 'Marca Personalizada',
+                    'title' => 'Marca personalizada',
                     'description' => 'Colores de tu marca, banner personalizado y logo destacado.',
                 ],
                 [
                     'icon' => 'heroicon-o-users',
-                    'title' => 'Ver Seguidores',
-                    'description' => 'Conoce quiénes siguen tu negocio y construye tu comunidad.',
+                    'title' => 'Seguidores',
+                    'description' => 'Consulta las personas que siguen tu negocio y da seguimiento comercial.',
                 ],
                 [
                     'icon' => 'heroicon-o-megaphone',
-                    'title' => 'Campañas de Marketing',
-                    'description' => 'Envía promociones y novedades a todos tus seguidores.',
+                    'title' => 'Marketing',
+                    'description' => 'Organiza promociones y novedades para mantener vivo el contacto con clientes.',
                 ],
                 [
                     'icon' => 'heroicon-o-chart-bar',
-                    'title' => 'Estadísticas Avanzadas',
-                    'description' => 'Métricas detalladas de visitas y rendimiento de tu negocio.',
+                    'title' => 'Reportes',
+                    'description' => 'Revisa senales de visitas, pedidos y rendimiento para decidir que mover primero.',
                 ],
             ],
             'price' => 'L. 1,500',

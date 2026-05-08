@@ -12,6 +12,7 @@ use App\Models\Tenant;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -21,7 +22,7 @@ use Inertia\Response;
  * Handles the customer-facing booking wizard for SERVICE-type tenants.
  * This is a PUBLIC controller - no authentication required.
  * 
- * SECURITY: All queries are scoped to the resolved tenant via route binding.
+ * SECURITY: All queries are scoped to the tenant resolved from the subdomain middleware.
  */
 class BookingController extends Controller
 {
@@ -30,8 +31,10 @@ class BookingController extends Controller
      * 
      * GET /{tenant:slug}/book
      */
-    public function index(Tenant $tenant): Response
+    public function index(Request $request): Response
     {
+        $tenant = $this->resolveTenant();
+
         // Ensure tenant has service-type business
         $services = $tenant->services()
             ->active()
@@ -54,7 +57,7 @@ class BookingController extends Controller
                 'id' => $tenant->id,
                 'name' => $tenant->name,
                 'slug' => $tenant->slug,
-                'logo_url' => $tenant->logo_url,
+                'logo_url' => $this->tenantLogoUrl($tenant),
                 'primary_color' => $tenant->primary_color ?? '#000000',
             ],
             'services' => $services,
@@ -67,8 +70,10 @@ class BookingController extends Controller
      * 
      * GET /{tenant:slug}/book/providers/{service}
      */
-    public function getProviders(Tenant $tenant, Service $service): JsonResponse
+    public function getProviders(Request $request, Service $service): JsonResponse
     {
+        $tenant = $this->resolveTenant();
+
         // Security: Ensure service belongs to this tenant
         if ($service->tenant_id !== $tenant->id) {
             abort(404, 'Service not found');
@@ -88,8 +93,10 @@ class BookingController extends Controller
      * 
      * GET /{tenant:slug}/book/slots
      */
-    public function getSlots(Request $request, Tenant $tenant): JsonResponse
+    public function getSlots(Request $request): JsonResponse
     {
+        $tenant = $this->resolveTenant();
+
         $validated = $request->validate([
             'date' => 'required|date|after_or_equal:today',
             'service_id' => 'required|exists:services,id',
@@ -109,7 +116,7 @@ class BookingController extends Controller
             $tenant,
             $date,
             $service->duration_minutes,
-            $validated['provider_id'] ?? null
+            isset($validated['provider_id']) ? (int) $validated['provider_id'] : null
         );
 
         return response()->json(['slots' => $slots]);
@@ -120,8 +127,10 @@ class BookingController extends Controller
      * 
      * POST /{tenant:slug}/book
      */
-    public function store(Request $request, Tenant $tenant)
+    public function store(Request $request)
     {
+        $tenant = $this->resolveTenant();
+
         $validated = $request->validate([
             'service_id' => 'required|exists:services,id',
             'service_provider_id' => 'required|exists:service_providers,id',
@@ -147,7 +156,7 @@ class BookingController extends Controller
         // Check provider availability (prevent double-booking)
         if (!$provider->isAvailableAt($scheduledAt, $endAt)) {
             return back()->withErrors([
-                'time' => 'Este horario ya no está disponible. Por favor selecciona otro.',
+                'time' => 'Este horario ya no esta disponible. Por favor selecciona otro.',
             ]);
         }
 
@@ -167,7 +176,7 @@ class BookingController extends Controller
         $appointment->save();
 
         return redirect()->route('public.booking.success', [
-            'tenant' => $tenant,
+            'tenant' => $tenant->slug,
             'appointment' => $appointment->id,
         ]);
     }
@@ -177,8 +186,9 @@ class BookingController extends Controller
      * 
      * GET /{tenant:slug}/book/success
      */
-    public function success(Tenant $tenant, Request $request): Response
+    public function success(Request $request): Response
     {
+        $tenant = $this->resolveTenant();
         $appointmentId = $request->query('appointment');
         $appointment = null;
 
@@ -266,5 +276,21 @@ class BookingController extends Controller
         }
 
         return $slots;
+    }
+
+    private function resolveTenant(): Tenant
+    {
+        $tenant = app('current_tenant');
+
+        if (! $tenant instanceof Tenant) {
+            abort(404, 'Business not found');
+        }
+
+        return Tenant::query()->withoutGlobalScopes()->findOrFail($tenant->id);
+    }
+
+    private function tenantLogoUrl(Tenant $tenant): ?string
+    {
+        return $tenant->logo_path ? Storage::url($tenant->logo_path) : null;
     }
 }

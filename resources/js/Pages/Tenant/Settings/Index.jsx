@@ -1,36 +1,142 @@
-/**
- * Tenant/Settings/Index.jsx - Unified Settings Hub
- *
- * FEATURES:
- * - Tabbed Interface (Profile, Schedule, Security)
- * - Isolated useForm hooks for each section
- * - Logo/Cover upload with preview
- * - Schedule matrix with day toggles
- *
- * PROPS (from SettingsController@index):
- * @param {Object} props.tenant - All tenant data
- * @param {Object} props.schedule - { monday: { isOpen, open, close }, ... }
- * @param {Object} props.dayLabels - { monday: 'Lunes', ... }
- */
-
-import { useState, useEffect } from 'react';
-import { Head, router, useForm } from '@inertiajs/react';
+import { useEffect, useMemo, useState } from 'react';
+import { Head, useForm } from '@inertiajs/react';
+import {
+    Building2,
+    CalendarDays,
+    Camera,
+    Clock,
+    Globe,
+    ImageIcon,
+    MapPin,
+    MessageCircle,
+    Phone,
+    Save,
+    Shield,
+    Store,
+    Upload,
+} from 'lucide-react';
 import TenantLayout from '@/Layouts/TenantLayout';
+import { Alert, AlertDescription, AlertTitle } from '@/Components/ui/alert';
+import { Avatar, AvatarFallback, AvatarImage } from '@/Components/ui/avatar';
+import { Button } from '@/Components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/Components/ui/card';
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/Components/ui/field';
+import { Input } from '@/Components/ui/input';
+import { Separator } from '@/Components/ui/separator';
+import { Spinner } from '@/Components/ui/spinner';
+import { Switch } from '@/Components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
+import { Textarea } from '@/Components/ui/textarea';
 
-// ═══════════════════════════════════════════════════════════════════════════
-// TAB CONFIGURATION
-// ═══════════════════════════════════════════════════════════════════════════
-const TABS = [
-    { id: 'profile', label: '📝 Perfil', icon: 'profile' },
-    { id: 'schedule', label: '🕐 Horarios', icon: 'schedule' },
-    { id: 'security', label: '🔒 Seguridad', icon: 'security' },
+const DEFAULT_DAY_LABELS = {
+    monday: 'Lunes',
+    tuesday: 'Martes',
+    wednesday: 'Miercoles',
+    thursday: 'Jueves',
+    friday: 'Viernes',
+    saturday: 'Sabado',
+    sunday: 'Domingo',
+};
+
+const SOCIAL_FIELDS = [
+    { name: 'phone', label: 'Telefono', type: 'tel', placeholder: '+504 9999-9999', icon: Phone },
+    { name: 'whatsapp_number', label: 'WhatsApp', type: 'tel', placeholder: '+504 9999-9999', icon: MessageCircle },
+    { name: 'address', label: 'Direccion', type: 'text', placeholder: 'Colonia Kennedy, Tegucigalpa', icon: MapPin, wide: true },
+    { name: 'instagram_url', label: 'Instagram', type: 'url', placeholder: 'https://instagram.com/tunegocio', icon: Camera },
+    { name: 'facebook_url', label: 'Facebook', type: 'url', placeholder: 'https://facebook.com/tunegocio', icon: Store },
+    { name: 'tiktok_url', label: 'TikTok', type: 'url', placeholder: 'https://tiktok.com/@tunegocio', icon: ImageIcon },
+    { name: 'website_url', label: 'Sitio web', type: 'url', placeholder: 'https://tunegocio.com', icon: Globe },
 ];
 
-// ═══════════════════════════════════════════════════════════════════════════
-// PROFILE TAB (Isolated Form 1)
-// ═══════════════════════════════════════════════════════════════════════════
+function safeNamedRoute(name, fallback) {
+    try {
+        if (typeof route === 'function' && route().has(name)) {
+            return route(name);
+        }
+    } catch (error) {
+        return fallback;
+    }
+
+    return fallback;
+}
+
+function initials(name) {
+    return String(name || 'TN')
+        .trim()
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((part) => part.charAt(0))
+        .join('')
+        .toUpperCase() || 'TN';
+}
+
+function usePreview(initialValue) {
+    const [preview, setPreview] = useState(initialValue || null);
+
+    useEffect(() => {
+        return () => {
+            if (preview?.startsWith('blob:')) {
+                URL.revokeObjectURL(preview);
+            }
+        };
+    }, [preview]);
+
+    const updatePreview = (file) => {
+        setPreview((current) => {
+            if (current?.startsWith('blob:')) {
+                URL.revokeObjectURL(current);
+            }
+
+            return file ? URL.createObjectURL(file) : initialValue || null;
+        });
+    };
+
+    return [preview, updatePreview];
+}
+
+function fieldError(errors, name) {
+    return errors?.[name];
+}
+
+function ErrorMessage({ id, error }) {
+    if (!error) {
+        return null;
+    }
+
+    return (
+        <FieldDescription id={id} className="text-destructive">
+            {error}
+        </FieldDescription>
+    );
+}
+
+function SubmitButton({ processing, children }) {
+    return (
+        <Button type="submit" disabled={processing}>
+            {processing ? <Spinner data-icon="inline-start" /> : <Save data-icon="inline-start" />}
+            {processing ? 'Guardando...' : children}
+        </Button>
+    );
+}
+
+function FileControl({ id, label, description, onChange, children, testId }) {
+    return (
+        <Field>
+            <FieldLabel htmlFor={id}>{label}</FieldLabel>
+            <FieldDescription>{description}</FieldDescription>
+            <Button asChild variant="outline">
+                <label htmlFor={id} className="cursor-pointer" data-testid={testId}>
+                    <Upload data-icon="inline-start" />
+                    {children}
+                </label>
+            </Button>
+            <input id={id} type="file" accept="image/*" onChange={onChange} className="sr-only" />
+        </Field>
+    );
+}
+
 function ProfileTab({ tenant }) {
-    const { data, setData, post, processing, errors, progress } = useForm({
+    const { data, setData, post, processing, errors } = useForm({
         name: tenant?.name || '',
         description: tenant?.description || '',
         about: tenant?.about || '',
@@ -46,386 +152,448 @@ function ProfileTab({ tenant }) {
         _method: 'PUT',
     });
 
-    const [logoPreview, setLogoPreview] = useState(tenant?.logo_url || null);
-    const [coverPreview, setCoverPreview] = useState(tenant?.cover_url || null);
+    const [logoPreview, setLogoPreview] = usePreview(tenant?.logo_url || null);
+    const [coverPreview, setCoverPreview] = usePreview(tenant?.cover_url || null);
+    const profileAction = safeNamedRoute('tenant.settings.update-profile', '/workspace/settings/profile');
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // MEMORY MANAGEMENT: Revoke Blob URLs on cleanup or change
-    // Prevents browser memory leaks from accumulated object URLs
-    // ═══════════════════════════════════════════════════════════════════════════
-    useEffect(() => {
-        return () => {
-            if (logoPreview && logoPreview.startsWith('blob:')) {
-                URL.revokeObjectURL(logoPreview);
-            }
-        };
-    }, [logoPreview]);
+    const hasErrors = Object.keys(errors || {}).length > 0;
 
-    useEffect(() => {
-        return () => {
-            if (coverPreview && coverPreview.startsWith('blob:')) {
-                URL.revokeObjectURL(coverPreview);
-            }
-        };
-    }, [coverPreview]);
-
-    const handleLogoChange = (e) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            setData('logo', file);
-            // Revoke previous URL before creating new one
-            if (logoPreview && logoPreview.startsWith('blob:')) {
-                URL.revokeObjectURL(logoPreview);
-            }
-            setLogoPreview(URL.createObjectURL(file));
-        }
+    const handleFile = (field, updatePreview) => (event) => {
+        const file = event.target.files?.[0] || null;
+        setData(field, file);
+        updatePreview(file);
     };
 
-    const handleCoverChange = (e) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            setData('cover', file);
-            // Revoke previous URL before creating new one
-            if (coverPreview && coverPreview.startsWith('blob:')) {
-                URL.revokeObjectURL(coverPreview);
-            }
-            setCoverPreview(URL.createObjectURL(file));
-        }
-    };
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        post(route('tenant.settings.update-profile'), { forceFormData: true });
+    const handleSubmit = (event) => {
+        event.preventDefault();
+        post(profileAction, { forceFormData: true, preserveScroll: true });
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Visual Branding Card */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                {/* Cover Image */}
-                <div className="relative h-40 bg-gradient-to-r from-blue-500 to-indigo-600">
-                    {coverPreview && (
-                        <img src={coverPreview} alt="Cover" className="w-full h-full object-cover" />
-                    )}
-                    <label className="absolute bottom-3 right-3 px-3 py-1.5 bg-white/90 backdrop-blur text-gray-700 text-sm font-medium rounded-lg cursor-pointer hover:bg-white transition-colors">
-                        <input type="file" accept="image/*" onChange={handleCoverChange} className="hidden" />
-                        📷 Cambiar Portada
-                    </label>
-                </div>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6" data-testid="settings-profile-form">
+            {hasErrors ? (
+                <Alert variant="destructive" aria-live="polite">
+                    <AlertTitle>Revisa la informacion</AlertTitle>
+                    <AlertDescription>Hay campos que necesitan correccion antes de guardar.</AlertDescription>
+                </Alert>
+            ) : null}
 
-                {/* Logo */}
-                <div className="relative -mt-12 ml-6">
-                    <div className="w-24 h-24 rounded-xl bg-white shadow-lg border-4 border-white overflow-hidden">
-                        {logoPreview ? (
-                            <img src={logoPreview} alt="Logo" className="w-full h-full object-cover" />
+            <Card>
+                <CardHeader>
+                    <CardTitle>Identidad publica</CardTitle>
+                    <CardDescription>
+                        Ajusta la imagen, el nombre y la descripcion que ven tus clientes.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-6">
+                    <div className="overflow-hidden rounded-lg border bg-muted">
+                        {coverPreview ? (
+                            <img
+                                src={coverPreview}
+                                alt={`Portada de ${data.name || 'tu negocio'}`}
+                                className="h-44 w-full object-cover"
+                            />
                         ) : (
-                            <div className="w-full h-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-2xl font-bold">
-                                {data.name?.substring(0, 2) || 'T'}
+                            <div className="flex h-44 items-center justify-center text-sm text-muted-foreground">
+                                Portada del negocio
                             </div>
                         )}
                     </div>
-                    <label className="absolute -bottom-1 -right-1 p-1.5 bg-blue-600 text-white rounded-full cursor-pointer hover:bg-blue-700">
-                        <input type="file" accept="image/*" onChange={handleLogoChange} className="hidden" />
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                    </label>
-                </div>
 
-                {/* Basic Info */}
-                <div className="p-6 pt-4 space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del Negocio *</label>
-                        <input
-                            type="text"
-                            value={data.name}
-                            onChange={(e) => setData('name', e.target.value)}
-                            className={`w-full px-4 py-3 bg-gray-50 border rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 ${errors.name ? 'border-red-300' : 'border-gray-200'}`}
-                        />
-                        {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name}</p>}
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                        <div className="flex items-center gap-4">
+                            <Avatar className="size-24 rounded-lg border bg-background">
+                                <AvatarImage src={logoPreview || undefined} alt={`Logo de ${data.name || 'tu negocio'}`} />
+                                <AvatarFallback className="rounded-lg text-xl font-semibold">{initials(data.name)}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                                <p className="text-sm font-medium text-foreground">Logo del negocio</p>
+                                <p className="text-sm text-muted-foreground">
+                                    Usa una imagen cuadrada y legible en tamanos pequenos.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            <FileControl
+                                id="settings-cover"
+                                label="Portada"
+                                description="Imagen horizontal para el micrositio."
+                                onChange={handleFile('cover', setCoverPreview)}
+                                testId="settings-cover-upload"
+                            >
+                                Cambiar portada
+                            </FileControl>
+                            <FileControl
+                                id="settings-logo"
+                                label="Logo"
+                                description="Marca principal del negocio."
+                                onChange={handleFile('logo', setLogoPreview)}
+                                testId="settings-logo-upload"
+                            >
+                                Cambiar logo
+                            </FileControl>
+                        </div>
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Descripción Corta</label>
-                        <textarea
-                            rows={2}
-                            value={data.description}
-                            onChange={(e) => setData('description', e.target.value)}
-                            placeholder="Una frase que define tu negocio..."
-                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 resize-none"
-                        />
-                    </div>
+                    <Separator />
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Nuestra Historia</label>
-                        <textarea
-                            rows={4}
-                            value={data.about}
-                            onChange={(e) => setData('about', e.target.value)}
-                            placeholder="Cuéntale a tus clientes quiénes son..."
-                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 resize-none"
-                        />
-                    </div>
-                </div>
-            </div>
+                    <FieldGroup>
+                        <Field data-invalid={Boolean(fieldError(errors, 'name'))}>
+                            <FieldLabel htmlFor="settings-name">Nombre del negocio *</FieldLabel>
+                            <Input
+                                id="settings-name"
+                                value={data.name}
+                                onChange={(event) => setData('name', event.target.value)}
+                                aria-invalid={Boolean(fieldError(errors, 'name'))}
+                                aria-describedby={fieldError(errors, 'name') ? 'settings-name-error' : undefined}
+                                data-testid="settings-business-name"
+                            />
+                            <ErrorMessage id="settings-name-error" error={fieldError(errors, 'name')} />
+                        </Field>
 
-            {/* Contact & Social */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <h2 className="font-semibold text-gray-900 mb-4">📞 Contacto y Redes</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <InputWithIcon label="Teléfono" icon="📱" value={data.phone} onChange={(v) => setData('phone', v)} placeholder="+504 9999-9999" />
-                    <InputWithIcon label="WhatsApp" icon="💬" value={data.whatsapp_number} onChange={(v) => setData('whatsapp_number', v)} placeholder="+504 9999-9999" />
-                    <div className="md:col-span-2">
-                        <InputWithIcon label="Dirección" icon="📍" value={data.address} onChange={(v) => setData('address', v)} placeholder="Colonia Kennedy, Tegucigalpa" />
-                    </div>
-                    <InputWithIcon label="Instagram" icon="📸" value={data.instagram_url} onChange={(v) => setData('instagram_url', v)} type="url" placeholder="https://instagram.com/tunegocio" />
-                    <InputWithIcon label="Facebook" icon="👍" value={data.facebook_url} onChange={(v) => setData('facebook_url', v)} type="url" placeholder="https://facebook.com/tunegocio" />
-                    <InputWithIcon label="TikTok" icon="🎵" value={data.tiktok_url} onChange={(v) => setData('tiktok_url', v)} type="url" placeholder="https://tiktok.com/@tunegocio" />
-                    <InputWithIcon label="Sitio Web" icon="🌐" value={data.website_url} onChange={(v) => setData('website_url', v)} type="url" placeholder="https://tunegocio.com" />
-                </div>
-            </div>
+                        <Field data-invalid={Boolean(fieldError(errors, 'description'))}>
+                            <FieldLabel htmlFor="settings-description">Descripcion corta</FieldLabel>
+                            <Textarea
+                                id="settings-description"
+                                rows={2}
+                                value={data.description}
+                                onChange={(event) => setData('description', event.target.value)}
+                                placeholder="Una frase clara sobre lo que vende tu negocio."
+                                aria-invalid={Boolean(fieldError(errors, 'description'))}
+                                aria-describedby={fieldError(errors, 'description') ? 'settings-description-error' : undefined}
+                            />
+                            <ErrorMessage id="settings-description-error" error={fieldError(errors, 'description')} />
+                        </Field>
 
-            {/* Submit Button */}
-            <div className="flex justify-end">
-                <button
-                    type="submit"
-                    disabled={processing}
-                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-lg transition-all disabled:opacity-50"
-                >
-                    {processing ? 'Guardando...' : 'Guardar Perfil'}
-                </button>
-            </div>
+                        <Field data-invalid={Boolean(fieldError(errors, 'about'))}>
+                            <FieldLabel htmlFor="settings-about">Historia del negocio</FieldLabel>
+                            <Textarea
+                                id="settings-about"
+                                rows={5}
+                                value={data.about}
+                                onChange={(event) => setData('about', event.target.value)}
+                                placeholder="Cuenta que haces, donde atiendes y que debe esperar un cliente."
+                                aria-invalid={Boolean(fieldError(errors, 'about'))}
+                                aria-describedby={fieldError(errors, 'about') ? 'settings-about-error' : undefined}
+                            />
+                            <ErrorMessage id="settings-about-error" error={fieldError(errors, 'about')} />
+                        </Field>
+                    </FieldGroup>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Contacto y redes</CardTitle>
+                    <CardDescription>
+                        Mantén estos datos actualizados para que el cliente pueda encontrarte sin friccion.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <FieldGroup className="grid gap-5 md:grid-cols-2">
+                        {SOCIAL_FIELDS.map(({ name, label, type, placeholder, icon: Icon, wide }) => {
+                            const error = fieldError(errors, name);
+                            const id = `settings-${name}`;
+
+                            return (
+                                <Field key={name} className={wide ? 'md:col-span-2' : ''} data-invalid={Boolean(error)}>
+                                    <FieldLabel htmlFor={id} className="inline-flex items-center gap-2">
+                                        <Icon data-icon="inline-start" />
+                                        {label}
+                                    </FieldLabel>
+                                    <Input
+                                        id={id}
+                                        type={type}
+                                        value={data[name]}
+                                        onChange={(event) => setData(name, event.target.value)}
+                                        placeholder={placeholder}
+                                        aria-invalid={Boolean(error)}
+                                        aria-describedby={error ? `${id}-error` : undefined}
+                                    />
+                                    <ErrorMessage id={`${id}-error`} error={error} />
+                                </Field>
+                            );
+                        })}
+                    </FieldGroup>
+                </CardContent>
+                <CardFooter className="justify-end">
+                    <SubmitButton processing={processing}>Guardar perfil</SubmitButton>
+                </CardFooter>
+            </Card>
         </form>
     );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// SCHEDULE TAB (Isolated Form 2)
-// ═══════════════════════════════════════════════════════════════════════════
+function normalizeSchedule(initialSchedule, dayLabels) {
+    const labels = Object.keys(dayLabels || {}).length ? dayLabels : DEFAULT_DAY_LABELS;
+
+    return Object.keys(labels).reduce((carry, day) => {
+        const value = initialSchedule?.[day] || {};
+        carry[day] = {
+            isOpen: Boolean(value.isOpen),
+            open: value.open || '',
+            close: value.close || '',
+        };
+        return carry;
+    }, {});
+}
+
 function ScheduleTab({ schedule: initialSchedule, dayLabels }) {
+    const labels = Object.keys(dayLabels || {}).length ? dayLabels : DEFAULT_DAY_LABELS;
+    const normalizedSchedule = useMemo(
+        () => normalizeSchedule(initialSchedule, labels),
+        [initialSchedule, labels],
+    );
     const { data, setData, put, processing, errors } = useForm({
-        schedule: initialSchedule || {},
+        schedule: normalizedSchedule,
     });
+    const scheduleAction = safeNamedRoute('tenant.settings.update-schedule', '/workspace/settings/schedule');
 
-    const handleToggleDay = (day) => {
+    const updateDay = (day, patch) => {
         setData('schedule', {
             ...data.schedule,
-            [day]: { ...data.schedule[day], isOpen: !data.schedule[day]?.isOpen },
+            [day]: {
+                ...data.schedule[day],
+                ...patch,
+            },
         });
     };
 
-    const handleTimeChange = (day, field, value) => {
-        setData('schedule', {
-            ...data.schedule,
-            [day]: { ...data.schedule[day], [field]: value },
-        });
-    };
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        put(route('tenant.settings.update-schedule'));
+    const handleSubmit = (event) => {
+        event.preventDefault();
+        put(scheduleAction, { preserveScroll: true });
     };
 
     return (
-        <form onSubmit={handleSubmit}>
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <h2 className="font-semibold text-gray-900 mb-4">🕐 Horarios de Atención</h2>
-                <div className="space-y-3">
-                    {Object.entries(dayLabels).map(([day, label]) => (
-                        <div
-                            key={day}
-                            className={`flex items-center gap-4 p-3 bg-gray-50 rounded-xl ${!data.schedule[day]?.isOpen ? 'opacity-50' : ''}`}
-                        >
-                            <div className="w-24 font-medium text-gray-900">{label}</div>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6" data-testid="settings-schedule-form">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Horarios de atencion</CardTitle>
+                    <CardDescription>
+                        Define cuando tu negocio esta disponible para recibir clientes y solicitudes.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-4">
+                    {Object.entries(labels).map(([day, label]) => {
+                        const item = data.schedule[day] || { isOpen: false, open: '', close: '' };
+                        const openError = fieldError(errors, `schedule.${day}.open`);
+                        const closeError = fieldError(errors, `schedule.${day}.close`);
+                        const openId = `settings-${day}-open`;
+                        const closeId = `settings-${day}-close`;
 
-                            {/* Toggle */}
-                            <button
-                                type="button"
-                                onClick={() => handleToggleDay(day)}
-                                className={`relative w-12 h-7 rounded-full transition-colors ${data.schedule[day]?.isOpen ? 'bg-emerald-500' : 'bg-gray-300'
-                                    }`}
-                            >
-                                <span className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-all ${data.schedule[day]?.isOpen ? 'right-1' : 'left-1'
-                                    }`} />
-                            </button>
+                        return (
+                            <Card key={day} className="border-border/80 shadow-none">
+                                <CardContent className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_minmax(15rem,20rem)] lg:items-center">
+                                    <Field className="gap-3">
+                                        <div className="flex items-center justify-between gap-4">
+                                            <div>
+                                                <FieldLabel htmlFor={`settings-${day}-switch`} className="text-base">
+                                                    {label}
+                                                </FieldLabel>
+                                                <FieldDescription>
+                                                    {item.isOpen ? 'Abierto para atencion.' : 'Cerrado este dia.'}
+                                                </FieldDescription>
+                                            </div>
+                                            <Switch
+                                                id={`settings-${day}-switch`}
+                                                checked={item.isOpen}
+                                                onCheckedChange={(checked) => updateDay(day, { isOpen: checked })}
+                                                aria-label={`Marcar ${label} como ${item.isOpen ? 'cerrado' : 'abierto'}`}
+                                                data-testid={`settings-${day}-switch`}
+                                            />
+                                        </div>
+                                    </Field>
 
-                            <span className={`text-sm ${data.schedule[day]?.isOpen ? 'text-emerald-600' : 'text-gray-500'}`}>
-                                {data.schedule[day]?.isOpen ? 'Abierto' : 'Cerrado'}
-                            </span>
+                                    <div className="grid gap-3 sm:grid-cols-2">
+                                        <Field data-invalid={Boolean(openError)}>
+                                            <FieldLabel htmlFor={openId}>Apertura</FieldLabel>
+                                            <Input
+                                                id={openId}
+                                                type="time"
+                                                value={item.open}
+                                                onChange={(event) => updateDay(day, { open: event.target.value })}
+                                                disabled={!item.isOpen}
+                                                aria-invalid={Boolean(openError)}
+                                                aria-describedby={openError ? `${openId}-error` : undefined}
+                                            />
+                                            <ErrorMessage id={`${openId}-error`} error={openError} />
+                                        </Field>
 
-                            {/* Time Inputs */}
-                            <div className="flex items-center gap-2 ml-auto">
-                                <input
-                                    type="time"
-                                    value={data.schedule[day]?.open || ''}
-                                    onChange={(e) => handleTimeChange(day, 'open', e.target.value)}
-                                    disabled={!data.schedule[day]?.isOpen}
-                                    className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm disabled:opacity-40"
-                                />
-                                <span className="text-gray-400">—</span>
-                                <input
-                                    type="time"
-                                    value={data.schedule[day]?.close || ''}
-                                    onChange={(e) => handleTimeChange(day, 'close', e.target.value)}
-                                    disabled={!data.schedule[day]?.isOpen}
-                                    className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm disabled:opacity-40"
-                                />
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            <div className="flex justify-end mt-6">
-                <button
-                    type="submit"
-                    disabled={processing}
-                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-lg transition-all disabled:opacity-50"
-                >
-                    {processing ? 'Guardando...' : 'Guardar Horarios'}
-                </button>
-            </div>
+                                        <Field data-invalid={Boolean(closeError)}>
+                                            <FieldLabel htmlFor={closeId}>Cierre</FieldLabel>
+                                            <Input
+                                                id={closeId}
+                                                type="time"
+                                                value={item.close}
+                                                onChange={(event) => updateDay(day, { close: event.target.value })}
+                                                disabled={!item.isOpen}
+                                                aria-invalid={Boolean(closeError)}
+                                                aria-describedby={closeError ? `${closeId}-error` : undefined}
+                                            />
+                                            <ErrorMessage id={`${closeId}-error`} error={closeError} />
+                                        </Field>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        );
+                    })}
+                </CardContent>
+                <CardFooter className="justify-end">
+                    <SubmitButton processing={processing}>Guardar horarios</SubmitButton>
+                </CardFooter>
+            </Card>
         </form>
     );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// SECURITY TAB (Isolated Form 3)
-// ═══════════════════════════════════════════════════════════════════════════
 function SecurityTab() {
     const { data, setData, put, processing, errors, reset } = useForm({
         current_password: '',
         password: '',
         password_confirmation: '',
     });
+    const passwordAction = safeNamedRoute('password.update', '/password');
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        put(route('password.update'), {
+    const handleSubmit = (event) => {
+        event.preventDefault();
+        put(passwordAction, {
             preserveScroll: true,
             onSuccess: () => reset(),
         });
     };
 
     return (
-        <form onSubmit={handleSubmit}>
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <h2 className="font-semibold text-gray-900 mb-4">🔒 Cambiar Contraseña</h2>
-                <div className="space-y-4 max-w-md">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña Actual</label>
-                        <input
-                            type="password"
-                            value={data.current_password}
-                            onChange={(e) => setData('current_password', e.target.value)}
-                            className={`w-full px-4 py-3 bg-gray-50 border rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 ${errors.current_password ? 'border-red-300' : 'border-gray-200'}`}
-                        />
-                        {errors.current_password && <p className="mt-1 text-sm text-red-500">{errors.current_password}</p>}
-                    </div>
+        <form onSubmit={handleSubmit} data-testid="settings-security-form">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Cambiar contrasena</CardTitle>
+                    <CardDescription>
+                        Actualiza tu acceso sin afectar la informacion publica del negocio.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <FieldGroup className="max-w-xl">
+                        <Field data-invalid={Boolean(fieldError(errors, 'current_password'))}>
+                            <FieldLabel htmlFor="settings-current-password">Contrasena actual</FieldLabel>
+                            <Input
+                                id="settings-current-password"
+                                type="password"
+                                value={data.current_password}
+                                onChange={(event) => setData('current_password', event.target.value)}
+                                aria-invalid={Boolean(fieldError(errors, 'current_password'))}
+                                aria-describedby={fieldError(errors, 'current_password') ? 'settings-current-password-error' : undefined}
+                            />
+                            <ErrorMessage id="settings-current-password-error" error={fieldError(errors, 'current_password')} />
+                        </Field>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Nueva Contraseña</label>
-                        <input
-                            type="password"
-                            value={data.password}
-                            onChange={(e) => setData('password', e.target.value)}
-                            className={`w-full px-4 py-3 bg-gray-50 border rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 ${errors.password ? 'border-red-300' : 'border-gray-200'}`}
-                        />
-                        {errors.password && <p className="mt-1 text-sm text-red-500">{errors.password}</p>}
-                    </div>
+                        <Field data-invalid={Boolean(fieldError(errors, 'password'))}>
+                            <FieldLabel htmlFor="settings-password">Nueva contrasena</FieldLabel>
+                            <Input
+                                id="settings-password"
+                                type="password"
+                                value={data.password}
+                                onChange={(event) => setData('password', event.target.value)}
+                                aria-invalid={Boolean(fieldError(errors, 'password'))}
+                                aria-describedby={fieldError(errors, 'password') ? 'settings-password-error' : undefined}
+                            />
+                            <ErrorMessage id="settings-password-error" error={fieldError(errors, 'password')} />
+                        </Field>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Confirmar Nueva Contraseña</label>
-                        <input
-                            type="password"
-                            value={data.password_confirmation}
-                            onChange={(e) => setData('password_confirmation', e.target.value)}
-                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500"
-                        />
-                    </div>
-                </div>
-            </div>
-
-            <div className="flex justify-end mt-6">
-                <button
-                    type="submit"
-                    disabled={processing}
-                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-lg transition-all disabled:opacity-50"
-                >
-                    {processing ? 'Actualizando...' : 'Actualizar Contraseña'}
-                </button>
-            </div>
+                        <Field data-invalid={Boolean(fieldError(errors, 'password_confirmation'))}>
+                            <FieldLabel htmlFor="settings-password-confirmation">Confirmar nueva contrasena</FieldLabel>
+                            <Input
+                                id="settings-password-confirmation"
+                                type="password"
+                                value={data.password_confirmation}
+                                onChange={(event) => setData('password_confirmation', event.target.value)}
+                                aria-invalid={Boolean(fieldError(errors, 'password_confirmation'))}
+                                aria-describedby={
+                                    fieldError(errors, 'password_confirmation')
+                                        ? 'settings-password-confirmation-error'
+                                        : undefined
+                                }
+                            />
+                            <ErrorMessage
+                                id="settings-password-confirmation-error"
+                                error={fieldError(errors, 'password_confirmation')}
+                            />
+                        </Field>
+                    </FieldGroup>
+                </CardContent>
+                <CardFooter className="justify-end">
+                    <SubmitButton processing={processing}>Actualizar contrasena</SubmitButton>
+                </CardFooter>
+            </Card>
         </form>
     );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// HELPER COMPONENT
-// ═══════════════════════════════════════════════════════════════════════════
-function InputWithIcon({ label, icon, value, onChange, type = 'text', placeholder }) {
-    return (
-        <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-            <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2">{icon}</span>
-                <input
-                    type={type}
-                    value={value}
-                    onChange={(e) => onChange(e.target.value)}
-                    placeholder={placeholder}
-                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500"
-                />
-            </div>
-        </div>
-    );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// MAIN PAGE COMPONENT
-// ═══════════════════════════════════════════════════════════════════════════
 export default function SettingsIndex({ tenant, schedule, dayLabels }) {
     const [activeTab, setActiveTab] = useState('profile');
 
     return (
         <TenantLayout>
-            <Head title="Configuración" />
+            <Head title="Configuracion" />
 
-            <div className="min-h-screen bg-gray-50">
-                {/* Header */}
-                <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
-                    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="flex items-center justify-between h-16">
-                            <h1 className="text-xl font-bold text-gray-900">⚙️ Configuración</h1>
-                        </div>
-                    </div>
-                </header>
+            <main className="min-h-screen bg-background" data-testid="settings-page">
+                <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
+                    <Card>
+                        <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                            <div className="flex items-start gap-4">
+                                <div className="rounded-lg border bg-muted p-3" aria-hidden="true">
+                                    <Building2 />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-2xl">Configuracion del negocio</CardTitle>
+                                    <CardDescription>
+                                        Administra perfil, horarios y seguridad desde una sola pantalla.
+                                    </CardDescription>
+                                </div>
+                            </div>
+                            <Alert className="max-w-md">
+                                <AlertTitle>Sin cambios de contrato</AlertTitle>
+                                <AlertDescription>
+                                    Esta vista conserva las rutas y payloads actuales de configuracion.
+                                </AlertDescription>
+                            </Alert>
+                        </CardHeader>
+                    </Card>
 
-                <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                    {/* Tab Navigation */}
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-1 mb-6">
-                        <nav className="flex gap-1">
-                            {TABS.map((tab) => (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => setActiveTab(tab.id)}
-                                    className={`flex-1 px-4 py-2.5 text-sm font-medium rounded-lg transition-colors ${activeTab === tab.id
-                                        ? 'bg-blue-600 text-white shadow-sm'
-                                        : 'text-gray-600 hover:bg-gray-100'
-                                        }`}
-                                >
-                                    {tab.label}
-                                </button>
-                            ))}
-                        </nav>
-                    </div>
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col gap-6">
+                        <TabsList className="grid h-auto w-full grid-cols-1 gap-1 sm:grid-cols-3">
+                            <TabsTrigger value="profile" data-testid="settings-profile-tab">
+                                <Store data-icon="inline-start" />
+                                Perfil
+                            </TabsTrigger>
+                            <TabsTrigger value="schedule" data-testid="settings-schedule-tab">
+                                <Clock data-icon="inline-start" />
+                                Horarios
+                            </TabsTrigger>
+                            <TabsTrigger value="security" data-testid="settings-security-tab">
+                                <Shield data-icon="inline-start" />
+                                Seguridad
+                            </TabsTrigger>
+                        </TabsList>
 
-                    {/* Tab Content */}
-                    {activeTab === 'profile' && <ProfileTab tenant={tenant} />}
-                    {activeTab === 'schedule' && <ScheduleTab schedule={schedule} dayLabels={dayLabels} />}
-                    {activeTab === 'security' && <SecurityTab />}
-                </main>
-            </div>
+                        <TabsContent value="profile" className="mt-0">
+                            <ProfileTab tenant={tenant} />
+                        </TabsContent>
+                        <TabsContent value="schedule" className="mt-0">
+                            <ScheduleTab schedule={schedule} dayLabels={dayLabels} />
+                        </TabsContent>
+                        <TabsContent value="security" className="mt-0">
+                            <SecurityTab />
+                        </TabsContent>
+                    </Tabs>
+
+                    <Card>
+                        <CardContent className="flex flex-col gap-3 p-4 text-sm text-muted-foreground sm:flex-row sm:items-center">
+                            <CalendarDays data-icon="inline-start" />
+                            Los cambios se guardan en los endpoints existentes del modulo legacy de settings.
+                        </CardContent>
+                    </Card>
+                </div>
+            </main>
         </TenantLayout>
     );
 }

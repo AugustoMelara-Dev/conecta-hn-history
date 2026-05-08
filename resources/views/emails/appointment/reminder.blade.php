@@ -1,5 +1,5 @@
 @component('mail::message')
-# Recordatorio de Cita
+# Recordatorio de cita
 
 Hola,
 
@@ -17,13 +17,13 @@ Te recordamos que tienes una cita programada:
 
 ---
 
-Si necesitas cancelar o reprogramar tu cita, haz clic en el siguiente botón:
+Si necesitas cancelar o reprogramar tu cita, usa el boton de abajo.
 
 @component('mail::button', ['url' => $managementUrl])
-Gestionar Cita
+Gestionar cita
 @endcomponent
 
-¡Te esperamos!
+Te esperamos.
 
 Saludos,<br>
 {{ $tenantName }}

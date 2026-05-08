@@ -1,31 +1,50 @@
-/**
- * Tenant/Products/Form.jsx - Smart Product Form (Create/Edit)
- *
- * FEATURES:
- * - Dual Mode: Create (product=null) vs Edit (product={...})
- * - Method Spoofing: POST with _method: 'PUT' for file uploads
- * - Image Preview: URL.createObjectURL for instant feedback
- * - PRO-only fields with lock overlay
- *
- * PROPS (from ProductController@create or @edit):
- * @param {Object|null} props.product - Existing product data or null for creation
- * @param {Array} props.sections - Menu sections (categories) for PRO
- * @param {Object} props.stockOptions - { in_stock: 'Disponible', ... }
- * @param {Object} props.tenant - { id, name, slug, is_pro }
- */
-
-import { useState, useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Head, Link, router, useForm } from '@inertiajs/react';
+import { ArrowLeft, ImageIcon, Lock, Plus, Trash2, Upload } from 'lucide-react';
 import TenantLayout from '@/Layouts/TenantLayout';
+import { Badge } from '@/Components/ui/badge';
+import { Button } from '@/Components/ui/button';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/Components/ui/card';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/Components/ui/dialog';
+import {
+    Field,
+    FieldDescription,
+    FieldGroup,
+    FieldLabel,
+} from '@/Components/ui/field';
+import { Input } from '@/Components/ui/input';
+import { Progress } from '@/Components/ui/progress';
+import {
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/Components/ui/select';
+import { Separator } from '@/Components/ui/separator';
+import { Switch } from '@/Components/ui/switch';
+import { Textarea } from '@/Components/ui/textarea';
 
-// ═══════════════════════════════════════════════════════════════════════════
-// MAIN COMPONENT
-// ═══════════════════════════════════════════════════════════════════════════
+const NO_CATEGORY = '__none__';
+
 export default function ProductForm({ product, sections = [], stockOptions = {}, tenant }) {
-    const isEditing = !!product;
+    const isEditing = Boolean(product);
 
-    // Inertia Form Hook
-    const { data, setData, post, processing, errors, reset, progress } = useForm({
+    const { data, setData, post, processing, errors, progress } = useForm({
         name: product?.name || '',
         price: product?.price || '',
         description: product?.description || '',
@@ -35,31 +54,29 @@ export default function ProductForm({ product, sections = [], stockOptions = {},
         is_featured: product?.is_featured ?? false,
         is_new: product?.is_new ?? false,
         image: null,
-        _method: isEditing ? 'PUT' : undefined, // Method spoofing for file uploads
+        _method: isEditing ? 'PUT' : undefined,
     });
 
-    // Image preview state
     const [imagePreview, setImagePreview] = useState(product?.image_url || null);
-    const [showCategoryModal, setShowCategoryModal] = useState(false);
+    const [showCategoryDialog, setShowCategoryDialog] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState('');
     const fileInputRef = useRef(null);
 
-    // ─────────────────────────────────────────────────────────────────────
-    // HANDLERS
-    // ─────────────────────────────────────────────────────────────────────
-
     const handleImageChange = (e) => {
         const file = e.target.files?.[0];
-        if (file) {
-            setData('image', file);
-            // Instant preview via URL.createObjectURL
-            setImagePreview(URL.createObjectURL(file));
+
+        if (!file) {
+            return;
         }
+
+        setData('image', file);
+        setImagePreview(URL.createObjectURL(file));
     };
 
     const handleRemoveImage = () => {
         setData('image', null);
         setImagePreview(null);
+
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
@@ -68,22 +85,20 @@ export default function ProductForm({ product, sections = [], stockOptions = {},
     const handleSubmit = (e) => {
         e.preventDefault();
 
-        // Use POST for both create and update (with _method spoofing for PUT)
         const url = isEditing
             ? route('tenant.products.update', product.id)
             : route('tenant.products.store');
 
         post(url, {
-            forceFormData: true, // Required for file uploads
+            forceFormData: true,
             preserveScroll: true,
-            onSuccess: () => {
-                // Redirect handled by controller
-            },
         });
     };
 
     const handleCreateCategory = () => {
-        if (!newCategoryName.trim()) return;
+        if (!newCategoryName.trim()) {
+            return;
+        }
 
         router.post(
             route('tenant.menu-sections.store'),
@@ -92,7 +107,7 @@ export default function ProductForm({ product, sections = [], stockOptions = {},
                 preserveScroll: true,
                 onSuccess: () => {
                     setNewCategoryName('');
-                    setShowCategoryModal(false);
+                    setShowCategoryDialog(false);
                 },
             }
         );
@@ -100,257 +115,267 @@ export default function ProductForm({ product, sections = [], stockOptions = {},
 
     return (
         <TenantLayout>
-            <Head title={isEditing ? 'Editar Producto' : 'Nuevo Producto'} />
+            <Head title={isEditing ? 'Editar producto' : 'Nuevo producto'} />
 
-            <div className="min-h-screen bg-gray-50">
-                {/* Header */}
-                <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
-                    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="flex items-center justify-between h-16">
-                            <div className="flex items-center gap-4">
-                                <Link href={route('tenant.products.index')} className="text-gray-500 hover:text-gray-700">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                                    </svg>
+            <div className="min-h-screen bg-background">
+                <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
+                    <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-4 sm:px-6 lg:px-8">
+                        <div className="flex items-center gap-3">
+                            <Button variant="ghost" size="icon" asChild>
+                                <Link href={route('tenant.products.index')} aria-label="Volver a productos">
+                                    <ArrowLeft aria-hidden="true" />
                                 </Link>
-                                <h1 className="text-xl font-bold text-gray-900">
-                                    {isEditing ? 'Editar Producto' : 'Nuevo Producto'}
+                            </Button>
+                            <div>
+                                <h1 className="text-xl font-semibold text-foreground">
+                                    {isEditing ? 'Editar producto' : 'Nuevo producto'}
                                 </h1>
+                                <p className="text-sm text-muted-foreground">
+                                    Mantiene tu catalogo listo para vender.
+                                </p>
                             </div>
-                            {tenant?.is_pro && (
-                                <span className="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs font-medium rounded-full">
-                                    PRO
-                                </span>
-                            )}
                         </div>
+                        {tenant?.is_pro ? <Badge variant="secondary">PRO</Badge> : null}
                     </div>
                 </header>
 
-                <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            {/* ═══════════════════════════════════════════════════════ */}
-                            {/* LEFT COLUMN: Form Fields */}
-                            {/* ═══════════════════════════════════════════════════════ */}
-                            <div className="lg:col-span-2 space-y-6">
-                                {/* Block 1: Basic Info */}
-                                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                                    <h2 className="font-semibold text-gray-900 mb-4">Información del Producto</h2>
+                <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+                    <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+                        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                            <div className="flex flex-col gap-6 lg:col-span-2">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Informacion del producto</CardTitle>
+                                        <CardDescription>
+                                            Nombre, precio, descripcion y disponibilidad visible para clientes.
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <FieldGroup>
+                                            <Field data-invalid={Boolean(errors.name)}>
+                                                <FieldLabel htmlFor="name">Nombre del producto *</FieldLabel>
+                                                <Input
+                                                    id="name"
+                                                    value={data.name}
+                                                    onChange={(e) => setData('name', e.target.value)}
+                                                    placeholder="Ej: Hamburguesa clasica"
+                                                    aria-invalid={Boolean(errors.name)}
+                                                />
+                                                {errors.name ? (
+                                                    <FieldDescription className="text-destructive">
+                                                        {errors.name}
+                                                    </FieldDescription>
+                                                ) : null}
+                                            </Field>
 
-                                    {/* Name */}
-                                    <div className="mb-5">
-                                        <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                                            Nombre del producto *
-                                        </label>
-                                        <input
-                                            id="name"
-                                            type="text"
-                                            value={data.name}
-                                            onChange={(e) => setData('name', e.target.value)}
-                                            placeholder="Ej: Hamburguesa Clásica"
-                                            className={`w-full px-4 py-3 bg-gray-50 border rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all
-                                                ${errors.name ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
-                                        />
-                                        {errors.name && <p className="mt-1.5 text-sm text-red-500">{errors.name}</p>}
-                                    </div>
+                                            <Field data-invalid={Boolean(errors.price)}>
+                                                <FieldLabel htmlFor="price">Precio (Lempiras) *</FieldLabel>
+                                                <div className="relative">
+                                                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
+                                                        L.
+                                                    </span>
+                                                    <Input
+                                                        id="price"
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        value={data.price}
+                                                        onChange={(e) => setData('price', e.target.value)}
+                                                        placeholder="0.00"
+                                                        className="pl-10"
+                                                        aria-invalid={Boolean(errors.price)}
+                                                    />
+                                                </div>
+                                                {errors.price ? (
+                                                    <FieldDescription className="text-destructive">
+                                                        {errors.price}
+                                                    </FieldDescription>
+                                                ) : null}
+                                            </Field>
 
-                                    {/* Price */}
-                                    <div className="mb-5">
-                                        <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-2">
-                                            Precio (Lempiras) *
-                                        </label>
-                                        <div className="relative">
-                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">L.</span>
-                                            <input
-                                                id="price"
-                                                type="number"
-                                                step="0.01"
-                                                min="0"
-                                                value={data.price}
-                                                onChange={(e) => setData('price', e.target.value)}
-                                                placeholder="0.00"
-                                                className={`w-full pl-12 pr-4 py-3 bg-gray-50 border rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all
-                                                    ${errors.price ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
-                                            />
-                                        </div>
-                                        {errors.price && <p className="mt-1.5 text-sm text-red-500">{errors.price}</p>}
-                                    </div>
+                                            <Field>
+                                                <FieldLabel htmlFor="description">Descripcion</FieldLabel>
+                                                <Textarea
+                                                    id="description"
+                                                    rows={3}
+                                                    value={data.description}
+                                                    onChange={(e) => setData('description', e.target.value)}
+                                                    placeholder="Describe tu producto..."
+                                                />
+                                            </Field>
 
-                                    {/* Description */}
-                                    <div className="mb-5">
-                                        <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
-                                            Descripción
-                                        </label>
-                                        <textarea
-                                            id="description"
-                                            rows={3}
-                                            value={data.description}
-                                            onChange={(e) => setData('description', e.target.value)}
-                                            placeholder="Describe tu producto..."
-                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
-                                        />
-                                    </div>
+                                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                                <Field className="rounded-lg border bg-card p-4">
+                                                    <div className="flex items-center justify-between gap-4">
+                                                        <div>
+                                                            <FieldLabel htmlFor="is-visible">Visibilidad</FieldLabel>
+                                                            <FieldDescription>
+                                                                {data.is_visible ? 'Visible en el micrositio' : 'Oculto para clientes'}
+                                                            </FieldDescription>
+                                                        </div>
+                                                        <Switch
+                                                            id="is-visible"
+                                                            checked={Boolean(data.is_visible)}
+                                                            onCheckedChange={(checked) => setData('is_visible', checked)}
+                                                        />
+                                                    </div>
+                                                </Field>
 
-                                    {/* Visibility & Stock */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {/* Visibility Toggle */}
-                                        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                                                <Field>
+                                                    <FieldLabel htmlFor="stock-status">Disponibilidad</FieldLabel>
+                                                    <Select
+                                                        value={data.stock_status}
+                                                        onValueChange={(value) => setData('stock_status', value)}
+                                                    >
+                                                        <SelectTrigger id="stock-status">
+                                                            <SelectValue placeholder="Selecciona estado" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectGroup>
+                                                                {Object.entries(stockOptions).map(([value, label]) => (
+                                                                    <SelectItem key={value} value={value}>
+                                                                        {label}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectGroup>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </Field>
+                                            </div>
+                                        </FieldGroup>
+                                    </CardContent>
+                                </Card>
+
+                                <Card className={!tenant?.is_pro ? 'opacity-75' : undefined}>
+                                    <CardHeader>
+                                        <div className="flex items-start justify-between gap-4">
                                             <div>
-                                                <h3 className="font-medium text-gray-900 text-sm">Visibilidad</h3>
-                                                <p className="text-xs text-gray-500">{data.is_visible ? 'Visible' : 'Oculto'}</p>
+                                                <CardTitle>Organizacion y marketing</CardTitle>
+                                                <CardDescription>
+                                                    Categorias, destacados y etiquetas visibles para clientes.
+                                                </CardDescription>
                                             </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => setData('is_visible', !data.is_visible)}
-                                                className={`relative w-12 h-7 rounded-full transition-colors ${data.is_visible ? 'bg-emerald-500' : 'bg-gray-300'
-                                                    }`}
-                                            >
-                                                <span className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-all ${data.is_visible ? 'right-1' : 'left-1'
-                                                    }`} />
-                                            </button>
+                                            {tenant?.is_pro ? <Badge variant="secondary">PRO</Badge> : null}
                                         </div>
-
-                                        {/* Stock Status */}
-                                        <div className="p-4 bg-gray-50 rounded-xl">
-                                            <label className="block text-sm font-medium text-gray-900 mb-2">Disponibilidad</label>
-                                            <select
-                                                value={data.stock_status}
-                                                onChange={(e) => setData('stock_status', e.target.value)}
-                                                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                            >
-                                                {Object.entries(stockOptions).map(([value, label]) => (
-                                                    <option key={value} value={value}>{label}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Block 2: PRO Features */}
-                                <div className={`bg-white rounded-xl shadow-sm border border-gray-100 p-6 relative ${!tenant?.is_pro ? 'opacity-60' : ''}`}>
-                                    {/* PRO Lock Overlay */}
-                                    {!tenant?.is_pro && (
-                                        <div className="absolute inset-0 bg-gray-50/50 backdrop-blur-[1px] rounded-xl z-10 flex items-center justify-center">
-                                            <div className="text-center p-4">
-                                                <svg className="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                                </svg>
-                                                <p className="text-sm font-medium text-gray-600 mb-2">🔒 Funcionalidad PRO</p>
-                                                <Link
-                                                    href={`/upgrade/${tenant?.slug}`}
-                                                    className="inline-block px-4 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700"
-                                                >
-                                                    Activar PRO
-                                                </Link>
+                                    </CardHeader>
+                                    <CardContent className="relative">
+                                        {!tenant?.is_pro ? (
+                                            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-b-lg bg-background/80 backdrop-blur-sm">
+                                                <div className="flex max-w-xs flex-col items-center gap-3 text-center">
+                                                    <Lock aria-hidden="true" className="text-muted-foreground" />
+                                                    <div>
+                                                        <p className="font-medium text-foreground">Funcionalidad PRO</p>
+                                                        <p className="text-sm text-muted-foreground">
+                                                            Activa PRO para organizar el catalogo por categorias y destacar productos.
+                                                        </p>
+                                                    </div>
+                                                    <Button size="sm" asChild>
+                                                        <Link href={`/upgrade/${tenant?.slug}`}>Activar PRO</Link>
+                                                    </Button>
+                                                </div>
                                             </div>
-                                        </div>
-                                    )}
+                                        ) : null}
 
-                                    <div className="flex items-center justify-between mb-4">
-                                        <h2 className="font-semibold text-gray-900">Organización y Marketing</h2>
-                                        {tenant?.is_pro && (
-                                            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-medium rounded-full">PRO</span>
-                                        )}
-                                    </div>
+                                        <FieldGroup>
+                                            <Field>
+                                                <FieldLabel htmlFor="menu-section">Categoria</FieldLabel>
+                                                <div className="flex gap-2">
+                                                    <Select
+                                                        value={data.menu_section_id ? String(data.menu_section_id) : NO_CATEGORY}
+                                                        onValueChange={(value) => setData('menu_section_id', value === NO_CATEGORY ? '' : value)}
+                                                        disabled={!tenant?.is_pro}
+                                                    >
+                                                        <SelectTrigger id="menu-section">
+                                                            <SelectValue placeholder="Sin categoria" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectGroup>
+                                                                <SelectItem value={NO_CATEGORY}>Sin categoria</SelectItem>
+                                                                {sections.map((section) => (
+                                                                    <SelectItem key={section.id} value={String(section.id)}>
+                                                                        {section.name}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectGroup>
+                                                        </SelectContent>
+                                                    </Select>
+                                                    {tenant?.is_pro ? (
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            size="icon"
+                                                            onClick={() => setShowCategoryDialog(true)}
+                                                            aria-label="Nueva categoria"
+                                                        >
+                                                            <Plus aria-hidden="true" />
+                                                        </Button>
+                                                    ) : null}
+                                                </div>
+                                            </Field>
 
-                                    {/* Category */}
-                                    <div className="mb-5">
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Categoría</label>
-                                        <div className="flex gap-2">
-                                            <select
-                                                value={data.menu_section_id}
-                                                onChange={(e) => setData('menu_section_id', e.target.value)}
-                                                disabled={!tenant?.is_pro}
-                                                className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500"
-                                            >
-                                                <option value="">Sin categoría</option>
-                                                {sections.map((section) => (
-                                                    <option key={section.id} value={section.id}>{section.name}</option>
-                                                ))}
-                                            </select>
-                                            {tenant?.is_pro && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setShowCategoryModal(true)}
-                                                    className="px-4 py-3 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-colors"
-                                                    title="Nueva categoría"
-                                                >
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                                    </svg>
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
+                                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                                <Field className="rounded-lg border bg-card p-4">
+                                                    <div className="flex items-center justify-between gap-4">
+                                                        <div>
+                                                            <FieldLabel htmlFor="is-featured">Destacado</FieldLabel>
+                                                            <FieldDescription>Mostrar primero</FieldDescription>
+                                                        </div>
+                                                        <Switch
+                                                            id="is-featured"
+                                                            checked={Boolean(data.is_featured)}
+                                                            onCheckedChange={(checked) => setData('is_featured', checked)}
+                                                            disabled={!tenant?.is_pro}
+                                                        />
+                                                    </div>
+                                                </Field>
 
-                                    {/* Marketing Toggles */}
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                                            <div>
-                                                <h3 className="font-medium text-gray-900 text-sm">⭐ Destacado</h3>
-                                                <p className="text-xs text-gray-500">Mostrar primero</p>
+                                                <Field className="rounded-lg border bg-card p-4">
+                                                    <div className="flex items-center justify-between gap-4">
+                                                        <div>
+                                                            <FieldLabel htmlFor="is-new">Nuevo</FieldLabel>
+                                                            <FieldDescription>Mostrar badge Nuevo</FieldDescription>
+                                                        </div>
+                                                        <Switch
+                                                            id="is-new"
+                                                            checked={Boolean(data.is_new)}
+                                                            onCheckedChange={(checked) => setData('is_new', checked)}
+                                                            disabled={!tenant?.is_pro}
+                                                        />
+                                                    </div>
+                                                </Field>
                                             </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => tenant?.is_pro && setData('is_featured', !data.is_featured)}
-                                                disabled={!tenant?.is_pro}
-                                                className={`relative w-12 h-7 rounded-full transition-colors ${data.is_featured ? 'bg-amber-500' : 'bg-gray-300'
-                                                    }`}
-                                            >
-                                                <span className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-all ${data.is_featured ? 'right-1' : 'left-1'
-                                                    }`} />
-                                            </button>
-                                        </div>
-
-                                        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                                            <div>
-                                                <h3 className="font-medium text-gray-900 text-sm">🆕 Nuevo</h3>
-                                                <p className="text-xs text-gray-500">Badge "Nuevo"</p>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => tenant?.is_pro && setData('is_new', !data.is_new)}
-                                                disabled={!tenant?.is_pro}
-                                                className={`relative w-12 h-7 rounded-full transition-colors ${data.is_new ? 'bg-blue-500' : 'bg-gray-300'
-                                                    }`}
-                                            >
-                                                <span className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-all ${data.is_new ? 'right-1' : 'left-1'
-                                                    }`} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
+                                        </FieldGroup>
+                                    </CardContent>
+                                </Card>
                             </div>
 
-                            {/* ═══════════════════════════════════════════════════════ */}
-                            {/* RIGHT COLUMN: Image Upload */}
-                            {/* ═══════════════════════════════════════════════════════ */}
-                            <div className="space-y-6">
-                                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                                    <h2 className="font-semibold text-gray-900 mb-4">Imagen</h2>
-
-                                    {/* Image Preview */}
-                                    <div className="mb-4">
+                            <div className="flex flex-col gap-6">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Imagen</CardTitle>
+                                        <CardDescription>Usa una imagen clara del producto.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="flex flex-col gap-4">
                                         {imagePreview ? (
-                                            <div className="relative aspect-square bg-gray-100 rounded-xl overflow-hidden">
+                                            <div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
                                                 <img
                                                     src={imagePreview}
-                                                    alt="Vista previa"
-                                                    className="w-full h-full object-cover"
+                                                    alt="Vista previa del producto"
+                                                    className="h-full w-full object-cover"
                                                 />
-                                                <button
+                                                <Button
                                                     type="button"
+                                                    variant="destructive"
+                                                    size="icon"
                                                     onClick={handleRemoveImage}
-                                                    className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600"
+                                                    className="absolute right-2 top-2"
+                                                    aria-label="Quitar imagen"
                                                 >
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                                    </svg>
-                                                </button>
+                                                    <Trash2 aria-hidden="true" />
+                                                </Button>
                                             </div>
                                         ) : (
-                                            <label className="block aspect-square bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-100 hover:border-gray-400 transition-colors">
+                                            <label className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-dashed bg-muted/40 text-center text-muted-foreground hover:bg-muted">
                                                 <input
                                                     ref={fileInputRef}
                                                     type="file"
@@ -358,123 +383,89 @@ export default function ProductForm({ product, sections = [], stockOptions = {},
                                                     onChange={handleImageChange}
                                                     className="hidden"
                                                 />
-                                                <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
-                                                    <svg className="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                                                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                    </svg>
-                                                    <span className="text-sm font-medium">Subir imagen</span>
-                                                    <span className="text-xs mt-1">Máx. 1MB</span>
-                                                </div>
+                                                <ImageIcon aria-hidden="true" />
+                                                <span className="text-sm font-medium">Subir imagen</span>
+                                                <span className="text-xs">Max. 1MB</span>
                                             </label>
                                         )}
-                                    </div>
 
-                                    {/* Progress bar */}
-                                    {progress && (
-                                        <div className="mb-4">
-                                            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                                                <div
-                                                    className="h-full bg-blue-500 transition-all"
-                                                    style={{ width: `${progress.percentage}%` }}
-                                                />
+                                        {progress ? (
+                                            <div className="flex flex-col gap-2">
+                                                <Progress value={progress.percentage} />
+                                                <p className="text-center text-xs text-muted-foreground">
+                                                    {progress.percentage}%
+                                                </p>
                                             </div>
-                                            <p className="text-xs text-gray-500 mt-1 text-center">{progress.percentage}%</p>
-                                        </div>
-                                    )}
+                                        ) : null}
 
-                                    {errors.image && <p className="mt-2 text-sm text-red-500">{errors.image}</p>}
+                                        {errors.image ? (
+                                            <p className="text-sm text-destructive">{errors.image}</p>
+                                        ) : null}
 
-                                    {/* Replace image button */}
-                                    {imagePreview && (
-                                        <label className="block mt-4">
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                onChange={handleImageChange}
-                                                className="hidden"
-                                            />
-                                            <span className="inline-flex items-center justify-center w-full gap-2 px-4 py-2 bg-gray-100 text-gray-700 font-medium rounded-xl cursor-pointer hover:bg-gray-200 transition-colors">
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                                </svg>
-                                                Cambiar imagen
-                                            </span>
-                                        </label>
-                                    )}
-                                </div>
+                                        {imagePreview ? (
+                                            <Button type="button" variant="outline" asChild>
+                                                <label className="cursor-pointer">
+                                                    <Upload data-icon="inline-start" />
+                                                    Cambiar imagen
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        onChange={handleImageChange}
+                                                        className="hidden"
+                                                    />
+                                                </label>
+                                            </Button>
+                                        ) : null}
+                                    </CardContent>
+                                </Card>
                             </div>
                         </div>
 
-                        {/* Submit Button */}
-                        <div className="flex items-center justify-end gap-4 pt-4">
-                            <Link
-                                href={route('tenant.products.index')}
-                                className="px-6 py-3 text-gray-700 font-medium hover:text-gray-900"
-                            >
-                                Cancelar
-                            </Link>
-                            <button
-                                type="submit"
-                                disabled={processing}
-                                className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 transition-all disabled:opacity-50 disabled:cursor-wait"
-                            >
-                                {processing ? (
-                                    <>
-                                        <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                        </svg>
-                                        Guardando...
-                                    </>
-                                ) : (
-                                    isEditing ? 'Guardar Cambios' : 'Crear Producto'
-                                )}
-                            </button>
+                        <Separator />
+
+                        <div className="flex items-center justify-end gap-3">
+                            <Button type="button" variant="ghost" asChild>
+                                <Link href={route('tenant.products.index')}>Cancelar</Link>
+                            </Button>
+                            <Button type="submit" disabled={processing}>
+                                {processing ? 'Guardando...' : isEditing ? 'Guardar cambios' : 'Crear producto'}
+                            </Button>
                         </div>
                     </form>
                 </main>
 
-                {/* Category Modal */}
-                {showCategoryModal && (
-                    <div className="fixed inset-0 z-50 overflow-y-auto">
-                        <div className="fixed inset-0 bg-gray-500/75 transition-opacity" onClick={() => setShowCategoryModal(false)} />
-                        <div className="flex min-h-full items-center justify-center p-4">
-                            <div className="relative bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
-                                <h3 className="text-lg font-bold text-gray-900 mb-4">Nueva Categoría</h3>
-                                <div className="mb-4">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Nombre</label>
-                                    <input
-                                        type="text"
-                                        value={newCategoryName}
-                                        onChange={(e) => setNewCategoryName(e.target.value)}
-                                        onKeyDown={(e) => e.key === 'Enter' && handleCreateCategory()}
-                                        placeholder="Ej: Postres"
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500"
-                                        autoFocus
-                                    />
-                                </div>
-                                <div className="flex gap-3">
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowCategoryModal(false)}
-                                        className="flex-1 px-4 py-2.5 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 font-medium"
-                                    >
-                                        Cancelar
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={handleCreateCategory}
-                                        className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium"
-                                    >
-                                        Crear
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                <Dialog open={showCategoryDialog} onOpenChange={setShowCategoryDialog}>
+                    <DialogContent className="sm:max-w-sm">
+                        <DialogHeader>
+                            <DialogTitle>Nueva categoria</DialogTitle>
+                            <DialogDescription>
+                                Agrega una categoria para organizar tus productos PRO.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <Field>
+                            <FieldLabel htmlFor="new-category-name">Nombre</FieldLabel>
+                            <Input
+                                id="new-category-name"
+                                value={newCategoryName}
+                                onChange={(e) => setNewCategoryName(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        handleCreateCategory();
+                                    }
+                                }}
+                                placeholder="Ej: Postres"
+                            />
+                        </Field>
+                        <DialogFooter className="gap-2 sm:gap-0">
+                            <Button type="button" variant="outline" onClick={() => setShowCategoryDialog(false)}>
+                                Cancelar
+                            </Button>
+                            <Button type="button" onClick={handleCreateCategory}>
+                                Crear
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
         </TenantLayout>
     );

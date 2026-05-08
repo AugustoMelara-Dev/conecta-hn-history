@@ -7,6 +7,7 @@ use App\Models\ServiceProvider;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
+use Filament\Support\Enums\FontWeight;
 use Filament\Tables;
 use Filament\Tables\Table;
 
@@ -18,51 +19,64 @@ class ServiceProviderResource extends Resource
 
     protected static ?string $navigationGroup = 'Servicios';
 
-    protected static ?string $navigationLabel = 'Personal / Staff';
+    protected static ?string $navigationLabel = 'Equipo de atención';
 
     protected static ?int $navigationSort = 2;
+
+    public static function getModelLabel(): string
+    {
+        return 'miembro del equipo';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'equipo de atención';
+    }
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\Section::make('Información del Personal')
+                Forms\Components\Section::make('Información del equipo')
+                    ->description('Registra a las personas que pueden atender reservas y citas.')
                     ->schema([
                         Forms\Components\TextInput::make('name')
-                            ->label('Nombre Completo')
+                            ->label('Nombre completo')
+                            ->placeholder('Ej. Ana Hernández')
                             ->required()
                             ->maxLength(255),
 
                         Forms\Components\TextInput::make('email')
-                            ->label('Correo Electrónico')
+                            ->label('Correo electrónico')
+                            ->placeholder('ana@negocio.com')
                             ->email()
                             ->maxLength(255),
 
                         Forms\Components\TextInput::make('phone')
                             ->label('Teléfono')
+                            ->placeholder('9999-9999')
                             ->tel(),
 
                         Forms\Components\Toggle::make('is_active')
-                            ->label('Disponible para Reservas')
+                            ->label('Disponible para reservas')
+                            ->helperText('Desactívalo si esta persona no debe aparecer como opción al reservar.')
                             ->default(true),
-                    ])->columns(2),
+                    ])
+                    ->columns(2),
 
-                // ═══════════════════════════════════════════════════════════════
-                // SCHEDULE OVERRIDE - Provider-specific availability
-                // ═══════════════════════════════════════════════════════════════
-                Forms\Components\Section::make('Horario Personalizado')
-                    ->description('Opcional: Define un horario específico para este miembro. Si está vacío, se usará el horario general del negocio.')
+                Forms\Components\Section::make('Horario personalizado')
+                    ->description('Opcional. Define un horario específico para esta persona. Si queda vacío, se usará el horario general del negocio.')
                     ->icon('heroicon-o-clock')
                     ->schema([
                         Forms\Components\KeyValue::make('schedule_config')
-                            ->label('')
-                            ->keyLabel('Día (en inglés)')
-                            ->valueLabel('Horario (ej: 09:00-17:00)')
+                            ->label('Disponibilidad por día')
+                            ->keyLabel('Día en inglés')
+                            ->valueLabel('Horario')
                             ->keyPlaceholder('monday')
                             ->valuePlaceholder('09:00-17:00')
                             ->reorderable()
-                            ->addActionLabel('Agregar Día')
-                            ->helperText('Días válidos: monday, tuesday, wednesday, thursday, friday, saturday, sunday. Formato de hora: HH:MM-HH:MM'),
+                            ->addActionLabel('Agregar día')
+                            ->helperText('Días válidos: monday, tuesday, wednesday, thursday, friday, saturday, sunday. Formato: HH:MM-HH:MM.'),
                     ])
                     ->collapsed()
                     ->collapsible(),
@@ -77,15 +91,17 @@ class ServiceProviderResource extends Resource
                     ->label('Nombre')
                     ->searchable()
                     ->sortable()
-                    ->weight('bold'),
+                    ->weight(FontWeight::SemiBold),
 
                 Tables\Columns\TextColumn::make('email')
-                    ->label('Email')
-                    ->icon('heroicon-o-envelope'),
+                    ->label('Correo')
+                    ->icon('heroicon-o-envelope')
+                    ->placeholder('Sin correo'),
 
                 Tables\Columns\TextColumn::make('phone')
                     ->label('Teléfono')
-                    ->icon('heroicon-o-phone'),
+                    ->icon('heroicon-o-phone')
+                    ->placeholder('Sin teléfono'),
 
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Disponible')
@@ -98,16 +114,35 @@ class ServiceProviderResource extends Resource
             ])
             ->filters([
                 Tables\Filters\TernaryFilter::make('is_active')
-                    ->label('Disponibilidad'),
+                    ->label('Disponibilidad')
+                    ->placeholder('Todo el equipo')
+                    ->trueLabel('Disponible')
+                    ->falseLabel('No disponible'),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->label('Editar'),
+                Tables\Actions\DeleteAction::make()
+                    ->label('Eliminar')
+                    ->modalHeading('Eliminar miembro del equipo')
+                    ->modalDescription('Esta acción quita a la persona de las opciones de atención. Las citas existentes no se modifican.')
+                    ->modalSubmitActionLabel('Eliminar miembro'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->label('Eliminar seleccionados')
+                        ->modalHeading('Eliminar miembros seleccionados')
+                        ->modalDescription('Esta acción quita a estas personas de las opciones de atención para nuevas reservas.')
+                        ->modalSubmitActionLabel('Eliminar miembros'),
                 ]),
+            ])
+            ->emptyStateIcon('heroicon-o-user-group')
+            ->emptyStateHeading('Aún no hay equipo disponible')
+            ->emptyStateDescription('Agrega a la primera persona que atenderá reservas y citas del negocio.')
+            ->emptyStateActions([
+                Tables\Actions\CreateAction::make()
+                    ->label('Agregar miembro'),
             ]);
     }
 

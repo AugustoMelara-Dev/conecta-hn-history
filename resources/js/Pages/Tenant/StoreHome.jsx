@@ -24,13 +24,25 @@
 
 import { useState, useRef, useEffect, useMemo, memo } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
-import { ShoppingBag, Plus } from 'lucide-react';
+import { ArrowRight, ImageOff, PackageSearch, Plus, ShoppingBag, Sparkles } from 'lucide-react';
 import StoreLayout from '@/Layouts/StoreLayout';
 import useCartStore from '@/Stores/useCartStore';
 import useTenantContext from '@/Hooks/useTenantContext';
 import { formatCurrency } from '@/Utils/currency';
 import ImageWithFallback from '@/Components/ImageWithFallback';
 import Toast from '@/Components/Toast';
+import { Alert, AlertDescription, AlertTitle } from '@/Components/ui/alert';
+import { Badge } from '@/Components/ui/badge';
+import { Button } from '@/Components/ui/button';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+} from '@/Components/ui/card';
+import { Separator } from '@/Components/ui/separator';
 
 /**
  * ProductCard - Atomic product display with separated click areas
@@ -39,104 +51,94 @@ import Toast from '@/Components/Toast';
 const ProductCard = memo(function ProductCard({ product, tenant, onQuickAdd, isAddingDisabled }) {
     const productUrl = `/${tenant.slug}/product/${product.id}`;
     const isOutOfStock = product.manage_stock && product.stock_quantity <= 0;
+    const hasDiscount = product.price_before_discount &&
+        product.price_before_discount > product.price;
 
     return (
-        <div className="group bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-            {/* Image Area - Navigates to product details */}
-            <Link href={productUrl} className="block relative aspect-square overflow-hidden">
+        <Card
+            data-testid="microsite-product-card"
+            className="group flex h-full flex-col overflow-hidden transition-shadow hover:shadow-md"
+        >
+            <Link
+                href={productUrl}
+                className="relative block aspect-square overflow-hidden bg-muted"
+                aria-label={`Ver ${product.name}`}
+            >
                 {product.image ? (
                     <ImageWithFallback
                         src={product.image}
                         alt={product.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
                         loading="lazy"
                         fadeIn
                     />
                 ) : (
-                    <div
-                        className="w-full h-full flex items-center justify-center"
-                        style={{ backgroundColor: `${tenant.primary_color}15` }}
-                    >
-                        <ShoppingBag
-                            className="h-12 w-12 opacity-30"
-                            style={{ color: tenant.primary_color }}
-                            aria-hidden="true"
-                        />
+                    <div className="flex size-full items-center justify-center text-muted-foreground">
+                        <ImageOff className="size-12 opacity-60" aria-hidden="true" />
                     </div>
                 )}
 
-                {/* Out of Stock Badge */}
                 {isOutOfStock && (
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                        <span className="bg-white text-gray-900 px-3 py-1 rounded-full text-sm font-medium">
-                            Agotado
-                        </span>
+                    <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+                        <Badge variant="secondary">Agotado</Badge>
                     </div>
                 )}
             </Link>
 
-            {/* Content Area */}
-            <div className="p-4">
-                {/* Title - Navigates to product details */}
-                <Link href={productUrl}>
-                    <h3 className="font-medium text-gray-900 line-clamp-2 hover:text-gray-600 transition-colors">
-                        {product.name}
-                    </h3>
-                </Link>
-
-                {/* Description */}
-                {product.description && (
-                    <p className="mt-1 text-sm text-gray-500 line-clamp-2">
-                        {product.description}
-                    </p>
-                )}
-
-                {/* Price Display with Discount Support */}
-                <div className="mt-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        {/* Original Price (strikethrough if discounted) */}
-                        {product.price_before_discount &&
-                            product.price_before_discount > product.price && (
-                                <span className="text-sm text-gray-400 line-through">
-                                    {formatCurrency(product.price_before_discount)}
-                                </span>
-                            )}
-                        {/* Current Price */}
-                        <span
-                            className="text-lg font-bold"
-                            style={{ color: tenant.primary_color }}
-                        >
-                            {formatCurrency(product.price)}
-                        </span>
-                    </div>
-
-                    {/* Quick Add Button - Separated click area */}
-                    {!isOutOfStock && (
-                        <button
-                            type="button"
-                            onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                onQuickAdd(product);
-                            }}
-                            disabled={isAddingDisabled}
-                            className={`p-2 rounded-full text-white transition-all focus:outline-none focus:ring-2 focus:ring-offset-2
-                                ${isAddingDisabled
-                                    ? 'opacity-50 cursor-not-allowed'
-                                    : 'hover:scale-110'
-                                }`}
-                            style={{
-                                backgroundColor: tenant.primary_color,
-                                '--tw-ring-color': tenant.primary_color,
-                            }}
-                            aria-label={`Agregar ${product.name} al carrito`}
-                        >
-                            <Plus className="h-5 w-5" aria-hidden="true" />
-                        </button>
-                    )}
+            <CardHeader className="gap-2 p-4 pb-0">
+                <div className="flex items-start justify-between gap-3">
+                    <Link href={productUrl} className="min-w-0">
+                        <CardTitle className="line-clamp-2 text-base leading-snug transition-colors hover:text-primary">
+                            {product.name}
+                        </CardTitle>
+                    </Link>
+                    {hasDiscount && <Badge variant="outline">Oferta</Badge>}
                 </div>
-            </div>
-        </div>
+
+                {product.description && (
+                    <CardDescription className="line-clamp-2">
+                        {product.description}
+                    </CardDescription>
+                )}
+            </CardHeader>
+
+            <CardContent className="flex flex-1 flex-col justify-end p-4 pt-4">
+                <div className="flex flex-wrap items-baseline gap-2">
+                    {hasDiscount && (
+                        <span className="text-sm text-muted-foreground line-through">
+                            {formatCurrency(product.price_before_discount)}
+                        </span>
+                    )}
+                    <span className="text-lg font-semibold text-foreground">
+                        {formatCurrency(product.price)}
+                    </span>
+                </div>
+            </CardContent>
+
+            <CardFooter className="p-4 pt-0">
+                {!isOutOfStock ? (
+                    <Button
+                        type="button"
+                        className="w-full"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onQuickAdd(product);
+                        }}
+                        disabled={isAddingDisabled}
+                        aria-label={`Agregar ${product.name} al carrito`}
+                        data-testid="microsite-add-to-cart"
+                    >
+                        <Plus data-icon="inline-start" aria-hidden="true" />
+                        Agregar
+                    </Button>
+                ) : (
+                    <Button type="button" variant="secondary" className="w-full" disabled>
+                        Agotado
+                    </Button>
+                )}
+            </CardFooter>
+        </Card>
     );
 });
 
@@ -202,7 +204,7 @@ export default function StoreHome({ sections = [] }) {
             toastCountRef.current += 1;
             const count = toastCountRef.current;
             const displayMessage = count > 1
-                ? `Producto agregado ×${count}`
+                ? `Producto agregado x${count}`
                 : message;
             setToast({ message: displayMessage, type });
         } else {
@@ -305,50 +307,85 @@ export default function StoreHome({ sections = [] }) {
             {/* ═══════════════════════════════════════════════════════════════
                 HERO SECTION: Smart Banner with Gradient Fallback
             ═══════════════════════════════════════════════════════════════ */}
-            <section className="relative">
-                {tenant.banner_url ? (
-                    <div className="aspect-[21/9] w-full overflow-hidden">
-                        <ImageWithFallback
-                            src={tenant.banner_url}
-                            alt={`Banner de ${tenant.name}`}
-                            className="w-full h-full object-cover"
-                            loading="eager"
-                            fadeIn
-                        />
-                    </div>
-                ) : (
-                    /* Gradient Fallback using tenant's primary color */
-                    <div
-                        className="aspect-[21/9] w-full flex items-center justify-center"
-                        style={{
-                            background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}80 50%, ${primaryColor}40 100%)`,
-                        }}
-                    >
-                        <div className="text-center text-white">
-                            <h1 className="text-3xl md:text-5xl font-bold drop-shadow-lg">
-                                {tenant.name}
-                            </h1>
-                            {tenant.tagline && (
-                                <p className="mt-2 text-lg md:text-xl opacity-90">
-                                    {tenant.tagline}
-                                </p>
-                            )}
+            <div data-testid="microsite-page" className="bg-background text-foreground">
+                <section data-testid="microsite-hero" className="relative border-b bg-muted/30">
+                    <div className="relative aspect-[16/10] overflow-hidden sm:aspect-[21/9]">
+                        {tenant.banner_url ? (
+                            <ImageWithFallback
+                                src={tenant.banner_url}
+                                alt={`Banner de ${tenant.name}`}
+                                className="size-full object-cover"
+                                loading="eager"
+                                fadeIn
+                            />
+                        ) : (
+                            <div className="flex size-full items-center justify-center bg-muted text-muted-foreground">
+                                <ShoppingBag className="size-16 opacity-60" aria-hidden="true" />
+                            </div>
+                        )}
+                        <div className="absolute inset-0 bg-background/70" aria-hidden="true" />
+                        <div className="absolute inset-x-0 bottom-0">
+                            <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-6 sm:px-6 lg:px-8">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <Badge variant="secondary">
+                                        <Sparkles className="mr-1 size-3" aria-hidden="true" />
+                                        Micrositio oficial
+                                    </Badge>
+                                    {sections.length > 0 && (
+                                        <Badge variant="outline">
+                                            {sections.length} {sections.length === 1 ? 'categoria' : 'categorias'}
+                                        </Badge>
+                                    )}
+                                </div>
+                                <div className="max-w-3xl">
+                                    <h1 className="text-3xl font-semibold tracking-tight sm:text-5xl">
+                                        {tenant.name || 'Tienda'}
+                                    </h1>
+                                    <p className="mt-3 max-w-2xl text-base text-muted-foreground sm:text-lg">
+                                        {tenant.tagline || tenant.description || 'Explora productos, agrega al carrito y compra directamente desde el negocio.'}
+                                    </p>
+                                </div>
+                                {sections[0] && (
+                                    <div className="flex flex-wrap gap-3">
+                                        <Button asChild>
+                                            <a href={`#category-${sections[0].id}`}>
+                                                Ver productos
+                                                <ArrowRight data-icon="inline-end" aria-hidden="true" />
+                                            </a>
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
-                )}
-            </section>
+                </section>
+
+                <div data-testid="microsite-tabs" className="border-b bg-background">
+                    <div className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-4 py-4 sm:px-6 lg:px-8">
+                        {sections.length > 0 ? (
+                            sections.map((section) => (
+                                <Button key={section.id} asChild variant="outline" size="sm">
+                                    <a href={`#category-${section.id}`}>{section.name}</a>
+                                </Button>
+                            ))
+                        ) : (
+                            <Badge variant="outline">Catalogo en preparacion</Badge>
+                        )}
+                    </div>
+                </div>
 
             {/* ═══════════════════════════════════════════════════════════════
                 CATALOG SECTIONS: With scroll-margin for Browser-Native offset
             ═══════════════════════════════════════════════════════════════ */}
-            <div className="max-w-7xl mx-auto px-4 py-8">
+            <div className="mx-auto flex max-w-7xl flex-col gap-10 px-4 py-8 sm:px-6 lg:px-8">
                 {sections.length === 0 ? (
-                    <div className="text-center py-16">
-                        <ShoppingBag className="h-16 w-16 mx-auto text-gray-300 mb-4" aria-hidden="true" />
-                        <p className="text-gray-500 text-lg">
-                            No hay productos disponibles en este momento.
-                        </p>
-                    </div>
+                    <Alert data-testid="microsite-product-empty" className="mx-auto max-w-2xl">
+                        <PackageSearch className="mb-3 size-8 text-muted-foreground" aria-hidden="true" />
+                        <AlertTitle>Catalogo en preparacion</AlertTitle>
+                        <AlertDescription>
+                            No hay productos disponibles en este momento. Vuelve pronto para ver las novedades de {tenant.name || 'este negocio'}.
+                        </AlertDescription>
+                    </Alert>
                 ) : (
                     sections.map((section) => (
                         <section
@@ -358,35 +395,44 @@ export default function StoreHome({ sections = [] }) {
                                scroll-mt-40: Browser-Native offset (160px)
                             ═══════════════════════════════════════════════════ */
                             id={`category-${section.id}`}
-                            className="scroll-mt-40 mb-12"
+                            className="scroll-mt-40"
                         >
-                            {/* Section Header */}
-                            <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                                {section.name}
-                            </h2>
-
-                            {/* Product Grid */}
-                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                                {section.products?.map((product) => (
-                                    <ProductCard
-                                        key={product.id}
-                                        product={product}
-                                        tenant={tenant}
-                                        onQuickAdd={handleQuickAdd}
-                                        isAddingDisabled={false}
-                                    />
-                                ))}
+                            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                                <div>
+                                    <Badge variant="secondary" className="mb-3">
+                                        {section.products?.length || 0} productos
+                                    </Badge>
+                                    <h2 className="text-2xl font-semibold tracking-tight">
+                                        {section.name}
+                                    </h2>
+                                </div>
                             </div>
+                            <Separator className="mb-6" />
 
-                            {/* Empty Section State */}
-                            {(!section.products || section.products.length === 0) && (
-                                <p className="text-gray-400 text-center py-8">
-                                    No hay productos en esta categoría.
-                                </p>
+                            {section.products?.length > 0 ? (
+                                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+                                    {section.products.map((product) => (
+                                        <ProductCard
+                                            key={product.id}
+                                            product={product}
+                                            tenant={tenant}
+                                            onQuickAdd={handleQuickAdd}
+                                            isAddingDisabled={false}
+                                        />
+                                    ))}
+                                </div>
+                            ) : (
+                                <Alert data-testid="microsite-product-empty">
+                                    <AlertTitle>Sin productos en esta categoria</AlertTitle>
+                                    <AlertDescription>
+                                        Esta categoria todavia no tiene productos publicados.
+                                    </AlertDescription>
+                                </Alert>
                             )}
                         </section>
                     ))
                 )}
+            </div>
             </div>
         </StoreLayout>
     );

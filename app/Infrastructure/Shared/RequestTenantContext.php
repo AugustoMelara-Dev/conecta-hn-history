@@ -22,7 +22,7 @@ final class RequestTenantContext implements TenantContext
     /**
      * {@inheritDoc}
      */
-    public function getTenantId(): int
+    public function getTenantId(): int|string
     {
         // Try resolving from authenticated user
         // We use dynamic property access to avoid hard import of User model class
@@ -40,7 +40,23 @@ final class RequestTenantContext implements TenantContext
             throw new \RuntimeException('Tenant Context Error: User has no associated tenant.');
         }
 
-        return (int) $tenantId;
+        if (is_object($tenantId)) {
+            if (method_exists($tenantId, 'toString')) {
+                return $tenantId->toString();
+            }
+
+            if (property_exists($tenantId, 'value') && is_string($tenantId->value)) {
+                return $tenantId->value;
+            }
+
+            if (method_exists($tenantId, '__toString')) {
+                return (string) $tenantId;
+            }
+
+            throw new \RuntimeException('Tenant Context Error: Tenant identifier object cannot be converted.');
+        }
+
+        return is_numeric($tenantId) ? (int) $tenantId : (string) $tenantId;
     }
 
     /**
@@ -58,7 +74,35 @@ final class RequestTenantContext implements TenantContext
 
         // If $only is specified, filter to those keys only
         if ($only !== null) {
-            return $tenant->only($only);
+            $needsFullTenant = in_array('is_pro', $only, true) || in_array('landing_page_data', $only, true);
+            $tenantKey = $needsFullTenant ? $this->getTenantId() : (
+                method_exists($tenant, 'getRawOriginal')
+                    ? $tenant->getRawOriginal($tenant->getKeyName())
+                    : $tenant->getKey()
+            );
+            $sourceTenant = $needsFullTenant
+                ? (\App\Models\Tenant::withoutGlobalScopes()->find((string) $tenantKey) ?? $tenant)
+                : $tenant;
+            $attributes = method_exists($sourceTenant, 'getAttributes') ? $sourceTenant->getAttributes() : [];
+            $plan = $attributes['plan_type'] ?? $attributes['plan'] ?? null;
+            $subscriptionStatus = $attributes['subscription_status'] ?? 'active';
+
+            return collect($only)
+                ->mapWithKeys(function (string $key) use ($sourceTenant, $attributes, $plan, $subscriptionStatus): array {
+                    if (array_key_exists($key, $attributes)) {
+                        return [$key => $attributes[$key]];
+                    }
+
+                    return match ($key) {
+                        'is_pro' => [
+                            $key => in_array($plan, ['pro', 'enterprise'], true)
+                                && ! in_array($subscriptionStatus, ['past_due', 'canceled'], true),
+                        ],
+                        'landing_page_data' => [$key => ['sections' => []]],
+                        default => [$key => null],
+                    };
+                })
+                ->all();
         }
 
         // Default: return essential public fields

@@ -227,48 +227,55 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
 
     public function getIsProAttribute(): bool
     {
-        // Handling Enum or String (if called before cast takes effect or legacy)
-        $value = $this->plan_type instanceof TenantPlan ? $this->plan_type->value : $this->plan_type;
+        $value = $this->attributes['plan_type'] ?? $this->attributes['plan'] ?? self::PLAN_SEMILLA;
 
         if (! in_array($value, ['pro', 'enterprise'])) {
             return false;
         }
 
-        if (in_array($this->subscription_status, ['past_due', 'canceled'])) {
+        $subscriptionStatus = $this->attributes['subscription_status'] ?? self::DEFAULT_SUBSCRIPTION_STATUS;
+
+        if (in_array($subscriptionStatus, ['past_due', 'canceled'], true)) {
             return false;
         }
 
-        if (! in_array($this->subscription_status, ['active', 'trial'])) {
+        if (! in_array($subscriptionStatus, ['active', 'trial'], true)) {
             return false;
         }
 
-        if ($this->subscription_ends_at === null) {
+        $subscriptionEndsAt = $this->attributes['subscription_ends_at'] ?? null;
+
+        if ($subscriptionEndsAt === null) {
             return true;
         }
 
-        return $this->subscription_ends_at->isFuture();
+        return $this->asDateTime($subscriptionEndsAt)->isFuture();
     }
 
     public function isSubscriptionActive(): bool
     {
-        if ($this->subscription_status !== 'active') {
+        if (($this->attributes['subscription_status'] ?? null) !== 'active') {
             return false;
         }
 
-        if ($this->subscription_ends_at === null) {
+        $subscriptionEndsAt = $this->attributes['subscription_ends_at'] ?? null;
+
+        if ($subscriptionEndsAt === null) {
             return true;
         }
 
-        return $this->subscription_ends_at->isFuture();
+        return $this->asDateTime($subscriptionEndsAt)->isFuture();
     }
 
     public function getDaysUntilExpiryAttribute(): ?int
     {
-        if ($this->subscription_ends_at === null) {
+        $subscriptionEndsAt = $this->attributes['subscription_ends_at'] ?? null;
+
+        if ($subscriptionEndsAt === null) {
             return null;
         }
 
-        return max(0, now()->diffInDays($this->subscription_ends_at, false));
+        return max(0, now()->diffInDays($this->asDateTime($subscriptionEndsAt), false));
     }
 
     public function isExpiringSoon(int $days = 7): bool
@@ -284,6 +291,8 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
 
     public function getSubscriptionStatusLabelAttribute(): string
     {
+        $subscriptionStatus = $this->attributes['subscription_status'] ?? self::DEFAULT_SUBSCRIPTION_STATUS;
+
         $labels = [
             'active' => 'Activo',
             'trial' => 'Período de Prueba',
@@ -291,12 +300,12 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
             'canceled' => 'Cancelado',
         ];
 
-        return $labels[$this->subscription_status] ?? 'Desconocido';
+        return $labels[$subscriptionStatus] ?? 'Desconocido';
     }
 
     public function getPlanTypeLabelAttribute(): string
     {
-        $value = $this->plan_type instanceof TenantPlan ? $this->plan_type->value : $this->plan_type;
+        $value = $this->attributes['plan_type'] ?? $this->attributes['plan'] ?? self::PLAN_SEMILLA;
 
         $labels = [
             'semilla' => 'Plan Semilla',

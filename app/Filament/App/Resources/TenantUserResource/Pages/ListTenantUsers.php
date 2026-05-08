@@ -16,18 +16,18 @@ class ListTenantUsers extends ListRecords
     {
         return [
             Actions\CreateAction::make()
-                ->label('Agregar Miembro')
+                ->label('Agregar miembro')
                 ->icon('heroicon-o-user-plus'),
         ];
     }
 
     public function getTitle(): string
     {
-        return 'Tu Equipo';
+        return 'Equipo';
     }
 
     public function getSubheading(): string
     {
-        return 'Gestiona quién puede acceder a tu negocio';
+        return 'Gestiona quien puede acceder a tu negocio y con que permisos.';
     }
 }

@@ -6,9 +6,14 @@ import { ConfirmPasswordForm } from "@/Components/Auth/ConfirmPasswordForm"
 export default function ConfirmPassword() {
     return (
         <>
-            <Head title="Confirmar contraseña | Conecta HN" />
+            <Head title="Confirmar contrasena | Conecta HN" />
 
-            <AuthShadcnShell imageAlt="Panel para confirmar contraseña">
+            <AuthShadcnShell
+                imageAlt="Panel para confirmar contrasena"
+                eyebrow="Paso de seguridad"
+                title="Confirma que eres tu"
+                description="Protegemos acciones sensibles pidiendo tu contrasena antes de continuar."
+            >
                 <ConfirmPasswordForm />
             </AuthShadcnShell>
         </>

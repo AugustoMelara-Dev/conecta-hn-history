@@ -1,28 +1,49 @@
-/**
- * Tenant/Products/Index.jsx - Searchable Product Catalog
- *
- * FEATURES:
- * - Debounced Search (300ms, server-side via Inertia get)
- * - Pagination (Laravel links)
- * - Quota Indicator (product limits)
- * - Visibility Toggle (Optimistic UI)
- * - Delete with Confirmation
- *
- * PROPS (from ProductController@index):
- * @param {Object} props.products - Laravel Paginator { data: [], links: [], meta: {} }
- * @param {Object} props.filters - Current filters { search: string }
- * @param {Object} props.limits - Quota { current_count, limit, percentage, can_create }
- * @param {Object} props.tenant - { id, name, slug }
- */
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Head, Link, router } from '@inertiajs/react';
+import {
+    ArrowLeft,
+    Eye,
+    EyeOff,
+    Package,
+    Pencil,
+    Plus,
+    Search,
+    Trash2,
+} from 'lucide-react';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { Head, Link, router, usePage } from '@inertiajs/react';
 import TenantLayout from '@/Layouts/TenantLayout';
+import { Badge } from '@/Components/ui/badge';
+import { Button } from '@/Components/ui/button';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+} from '@/Components/ui/card';
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/Components/ui/dialog';
+import {
+    Field,
+    FieldGroup,
+    FieldLabel,
+} from '@/Components/ui/field';
+import { Input } from '@/Components/ui/input';
+import { Progress } from '@/Components/ui/progress';
+import { Separator } from '@/Components/ui/separator';
+import { Skeleton } from '@/Components/ui/skeleton';
 
-// ═══════════════════════════════════════════════════════════════════════════
-// CONSTANTS
-// ═══════════════════════════════════════════════════════════════════════════
 const DEBOUNCE_MS = 300;
+const workspaceProductsUrl = '/workspace/products';
+const productUrl = (productId, suffix = '') => `${workspaceProductsUrl}/${productId}${suffix}`;
 
 const currencyFormatter = new Intl.NumberFormat('es-HN', {
     style: 'currency',
@@ -30,186 +51,230 @@ const currencyFormatter = new Intl.NumberFormat('es-HN', {
     minimumFractionDigits: 2,
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// QUOTA BAR COMPONENT
-// ═══════════════════════════════════════════════════════════════════════════
+function paginationLabel(label = '') {
+    return label
+        .replace(/&laquo;|«/g, 'Anterior')
+        .replace(/&raquo;|»/g, 'Siguiente')
+        .replace(/<[^>]*>/g, '')
+        .trim();
+}
+
 function QuotaIndicator({ current, limit, percentage }) {
-    const barColor = percentage >= 80 ? 'bg-red-500' : 'bg-blue-500';
+    const hasNumericLimit = Number.isFinite(Number(limit)) && Number(limit) > 0;
+    const safePercentage = Math.min(Math.max(Number(percentage) || 0, 0), 100);
+
     return (
-        <div className="hidden md:flex items-center gap-3 text-sm">
-            <span className="text-gray-500">{current} / {limit} productos</span>
-            <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-                <div
-                    className={`h-full ${barColor} rounded-full transition-all`}
-                    style={{ width: `${Math.min(percentage, 100)}%` }}
-                />
-            </div>
+        <Card className="hidden min-w-[260px] md:block">
+            <CardContent className="flex flex-col gap-3 p-4">
+                <div className="flex items-center justify-between gap-3 text-sm">
+                    <span className="font-medium text-foreground">Uso del catálogo</span>
+                    <Badge variant={safePercentage >= 80 ? 'destructive' : 'secondary'}>
+                        {current} / {hasNumericLimit ? limit : 'sin límite'}
+                    </Badge>
+                </div>
+                {hasNumericLimit ? (
+                    <Progress value={safePercentage} aria-label="Uso del límite de productos" />
+                ) : null}
+            </CardContent>
+        </Card>
+    );
+}
+
+function ProductImage({ product }) {
+    if (product.image_url) {
+        return (
+            <img
+                src={product.image_url}
+                alt={product.name}
+                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                loading="lazy"
+            />
+        );
+    }
+
+    return (
+        <div className="flex h-full w-full items-center justify-center bg-muted text-muted-foreground">
+            <Package className="size-12" aria-hidden="true" />
         </div>
     );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// PRODUCT CARD COMPONENT
-// ═══════════════════════════════════════════════════════════════════════════
 function ProductCard({ product, onToggleVisibility, onDelete }) {
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden group hover:shadow-md transition-shadow">
-            {/* Image */}
-            <div className="aspect-square bg-gray-100 relative overflow-hidden">
-                {product.image_url ? (
-                    <img
-                        src={product.image_url}
-                        alt={product.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-400">
-                        <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
-                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                    </div>
-                )}
-
-                {/* Visibility Badge */}
-                <div className="absolute top-2 right-2">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${product.is_visible
-                        ? 'bg-emerald-500 text-white'
-                        : 'bg-gray-500 text-white'
-                        }`}>
-                        {product.is_visible ? 'Visible' : 'Oculto'}
-                    </span>
-                </div>
+        <Card data-testid="products-card" className="group flex h-full flex-col overflow-hidden">
+            <div className="relative aspect-square overflow-hidden bg-muted">
+                <ProductImage product={product} />
+                <Badge
+                    variant={product.is_visible ? 'default' : 'secondary'}
+                    className="absolute right-3 top-3"
+                >
+                    {product.is_visible ? 'Visible' : 'Oculto'}
+                </Badge>
             </div>
 
-            {/* Content */}
-            <div className="p-4">
-                <h3 className="font-semibold text-gray-900 line-clamp-2 mb-1">{product.name}</h3>
-                <p className="text-lg font-bold text-blue-600">
-                    {currencyFormatter.format(product.price)}
+            <CardHeader className="gap-2">
+                <CardTitle className="line-clamp-2 text-base">{product.name}</CardTitle>
+                <CardDescription className="line-clamp-2">
+                    {product.description || 'Sin descripción pública todavía.'}
+                </CardDescription>
+            </CardHeader>
+
+            <CardContent className="mt-auto">
+                <p className="text-lg font-semibold text-foreground">
+                    {currencyFormatter.format(Number(product.price) || 0)}
                 </p>
+            </CardContent>
 
-                {/* Actions */}
-                <div className="mt-4 flex items-center gap-2">
-                    {/* Visibility Toggle */}
-                    <button
-                        onClick={() => onToggleVisibility(product.id)}
-                        className={`flex-1 py-2 px-3 text-sm font-medium rounded-lg transition-colors ${product.is_visible
-                            ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                            : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
-                            }`}
-                    >
-                        {product.is_visible ? 'Ocultar' : 'Mostrar'}
-                    </button>
+            <CardFooter className="grid grid-cols-[1fr_auto_auto] gap-2">
+                <Button
+                    type="button"
+                    variant={product.is_visible ? 'secondary' : 'outline'}
+                    onClick={() => onToggleVisibility(product.id)}
+                    aria-label={product.is_visible ? `Ocultar ${product.name}` : `Mostrar ${product.name}`}
+                >
+                    {product.is_visible ? (
+                        <EyeOff data-icon="inline-start" aria-hidden="true" />
+                    ) : (
+                        <Eye data-icon="inline-start" aria-hidden="true" />
+                    )}
+                    {product.is_visible ? 'Ocultar' : 'Mostrar'}
+                </Button>
 
-                    {/* Edit */}
+                <Button variant="outline" size="icon" asChild>
                     <Link
-                        href={route('tenant.products.edit', product.id)}
-                        className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                        href={productUrl(product.id, '/edit')}
+                        data-testid="products-edit-cta"
+                        aria-label={`Editar ${product.name}`}
                     >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
+                        <Pencil aria-hidden="true" />
                     </Link>
+                </Button>
 
-                    {/* Delete */}
-                    <button
-                        onClick={() => onDelete(product)}
-                        className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
-                    >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
-        </div>
+                <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    onClick={() => onDelete(product)}
+                    aria-label={`Eliminar ${product.name}`}
+                >
+                    <Trash2 aria-hidden="true" />
+                </Button>
+            </CardFooter>
+        </Card>
     );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// PAGINATION COMPONENT
-// ═══════════════════════════════════════════════════════════════════════════
 function Pagination({ links }) {
     if (!links || links.length <= 3) return null;
 
     return (
-        <nav className="flex items-center justify-center gap-1 mt-8">
-            {links.map((link, index) => (
-                <Link
-                    key={index}
-                    href={link.url || '#'}
-                    preserveState
-                    className={`px-3 py-2 text-sm rounded-lg transition-colors ${link.active
-                        ? 'bg-blue-600 text-white'
-                        : link.url
-                            ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            : 'bg-gray-50 text-gray-400 cursor-not-allowed'
-                        }`}
-                    dangerouslySetInnerHTML={{ __html: link.label }}
-                />
-            ))}
+        <nav className="mt-8 flex flex-wrap items-center justify-center gap-2" aria-label="Paginación de productos">
+            {links.map((link, index) => {
+                const label = paginationLabel(link.label);
+
+                if (!link.url) {
+                    return (
+                        <Button key={`${label}-${index}`} variant="outline" size="sm" disabled>
+                            {label}
+                        </Button>
+                    );
+                }
+
+                return (
+                    <Button key={`${label}-${index}`} variant={link.active ? 'default' : 'outline'} size="sm" asChild>
+                        <Link href={link.url} preserveState>
+                            {label}
+                        </Link>
+                    </Button>
+                );
+            })}
         </nav>
     );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// FIX #11: SKELETON LOADER
-// Principle: Perceived Performance - visual feedback during async operations
-// ═══════════════════════════════════════════════════════════════════════════
 function ProductSkeleton() {
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden animate-pulse">
-            {/* Image skeleton */}
-            <div className="aspect-square bg-gray-200" />
-            {/* Content skeleton */}
-            <div className="p-4 space-y-3">
-                <div className="h-4 bg-gray-200 rounded w-3/4" />
-                <div className="h-5 bg-gray-200 rounded w-1/2" />
-                <div className="flex gap-2 mt-4">
-                    <div className="h-9 bg-gray-200 rounded flex-1" />
-                    <div className="h-9 w-9 bg-gray-200 rounded" />
-                    <div className="h-9 w-9 bg-gray-200 rounded" />
-                </div>
-            </div>
-        </div>
+        <Card className="overflow-hidden">
+            <Skeleton className="aspect-square rounded-none" />
+            <CardHeader>
+                <Skeleton className="h-5 w-3/4" />
+                <Skeleton className="h-4 w-full" />
+            </CardHeader>
+            <CardContent>
+                <Skeleton className="h-6 w-1/2" />
+            </CardContent>
+            <CardFooter className="grid grid-cols-[1fr_auto_auto] gap-2">
+                <Skeleton className="h-10" />
+                <Skeleton className="size-10" />
+                <Skeleton className="size-10" />
+            </CardFooter>
+        </Card>
     );
 }
 
 function SkeletonGrid({ count = 8 }) {
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {Array.from({ length: count }).map((_, i) => (
-                <ProductSkeleton key={i} />
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {Array.from({ length: count }).map((_, index) => (
+                <ProductSkeleton key={index} />
             ))}
         </div>
     );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// MAIN PAGE COMPONENT
-// ═══════════════════════════════════════════════════════════════════════════
+function EmptyProducts({ search, canCreate }) {
+    return (
+        <Card className="mx-auto max-w-2xl text-center">
+            <CardHeader className="items-center">
+                <div className="mb-2 flex size-16 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                    <Package className="size-8" aria-hidden="true" />
+                </div>
+                <CardTitle>
+                    {search ? 'No se encontraron productos' : 'Aún no tienes productos'}
+                </CardTitle>
+                <CardDescription>
+                    {search
+                        ? 'Prueba con otro término de búsqueda o limpia el filtro para volver al catálogo completo.'
+                        : 'Comienza añadiendo tu primer producto a la vitrina de tu negocio.'}
+                </CardDescription>
+            </CardHeader>
+            {!search && canCreate ? (
+                <CardFooter className="justify-center">
+                    <Button asChild data-testid="products-create-cta">
+                        <Link href={`${workspaceProductsUrl}/create`}>
+                            <Plus data-icon="inline-start" aria-hidden="true" />
+                            Crear mi primer producto
+                        </Link>
+                    </Button>
+                </CardFooter>
+            ) : null}
+        </Card>
+    );
+}
+
 export default function ProductsIndex({ products, filters, limits, tenant }) {
     const [search, setSearch] = useState(filters?.search || '');
-    const [optimisticProducts, setOptimisticProducts] = useState(products.data);
+    const [optimisticProducts, setOptimisticProducts] = useState(products.data || []);
     const [deleteTarget, setDeleteTarget] = useState(null);
+    const [isSearching, setIsSearching] = useState(false);
+    const isFirstRender = useRef(true);
 
-    // Keep optimistic products in sync with server data
+    const currentCount = limits?.current_count ?? products.total ?? optimisticProducts.length;
+    const limit = limits?.limit ?? null;
+    const percentage = limits?.percentage ?? (limit ? (currentCount / limit) * 100 : 0);
+    const canCreate = limits?.can_create ?? true;
+    const backHref = tenant?.slug ? `/app/${tenant.slug}` : route('dashboard');
+
+    const productCountLabel = useMemo(() => {
+        const count = products.total ?? optimisticProducts.length;
+        return count === 1 ? '1 producto' : `${count} productos`;
+    }, [optimisticProducts.length, products.total]);
+
     useEffect(() => {
-        setOptimisticProducts(products.data);
+        setOptimisticProducts(products.data || []);
     }, [products.data]);
 
-    // ─────────────────────────────────────────────────────────────────────
-    // FIX #7: Debounce with lifecycle control
-    // Principle: Skip initial mount to prevent unnecessary HTTP request
-    // ─────────────────────────────────────────────────────────────────────
-    const isFirstRender = useRef(true);
-    const [isSearching, setIsSearching] = useState(false);
-
     useEffect(() => {
-        // Skip first render - no search on mount
         if (isFirstRender.current) {
             isFirstRender.current = false;
             return;
@@ -218,187 +283,170 @@ export default function ProductsIndex({ products, filters, limits, tenant }) {
         setIsSearching(true);
         const timer = setTimeout(() => {
             router.get(
-                route('tenant.products.index'),
+                workspaceProductsUrl,
                 { search: search || undefined },
                 {
                     preserveState: true,
                     preserveScroll: true,
                     replace: true,
                     onFinish: () => setIsSearching(false),
-                }
+                },
             );
         }, DEBOUNCE_MS);
 
         return () => clearTimeout(timer);
     }, [search]);
 
-    // ─────────────────────────────────────────────────────────────────────
-    // TOGGLE VISIBILITY (Optimistic UI)
-    // ─────────────────────────────────────────────────────────────────────
     const handleToggleVisibility = useCallback((productId) => {
-        // Optimistic update
-        setOptimisticProducts(prev =>
-            prev.map(p =>
-                p.id === productId ? { ...p, is_visible: !p.is_visible } : p
-            )
+        setOptimisticProducts((previousProducts) =>
+            previousProducts.map((product) =>
+                product.id === productId ? { ...product, is_visible: !product.is_visible } : product,
+            ),
         );
 
-        // Background sync
         router.put(
-            route('tenant.products.toggle-visibility', productId),
+            productUrl(productId, '/toggle-visibility'),
             {},
             {
                 preserveScroll: true,
                 preserveState: true,
-                onError: () => {
-                    // Rollback on error
-                    setOptimisticProducts(products.data);
-                },
-            }
+                onError: () => setOptimisticProducts(products.data || []),
+            },
         );
     }, [products.data]);
 
-    // ─────────────────────────────────────────────────────────────────────
-    // DELETE PRODUCT
-    // ─────────────────────────────────────────────────────────────────────
-    const handleDelete = useCallback((product) => {
-        if (!confirm(`¿Estás seguro de eliminar '${product.name}'? Esta acción no se puede deshacer.`)) {
-            return;
-        }
+    const confirmDelete = useCallback(() => {
+        if (!deleteTarget) return;
 
-        router.delete(route('tenant.products.destroy', product.id), {
+        router.delete(productUrl(deleteTarget.id), {
             preserveScroll: true,
+            onFinish: () => setDeleteTarget(null),
         });
-    }, []);
+    }, [deleteTarget]);
 
     return (
         <TenantLayout>
-            <Head title="Mis Productos" />
+            <Head title="Mis productos" />
 
-            <div className="min-h-screen bg-gray-50">
-                {/* Header */}
-                <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="flex items-center justify-between h-16">
-                            <div className="flex items-center gap-4">
-                                <Link href={`/app/${tenant?.slug}`} className="text-gray-500 hover:text-gray-700">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                                    </svg>
+            <main data-testid="products-page" className="min-h-screen bg-background">
+                <div className="mx-auto flex max-w-7xl flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
+                    <header className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+                        <div className="flex min-w-0 flex-col gap-4">
+                            <Button variant="ghost" className="w-fit px-0" asChild>
+                                <Link href={backHref}>
+                                    <ArrowLeft data-icon="inline-start" aria-hidden="true" />
+                                    Volver al panel
                                 </Link>
-                                <h1 className="text-xl font-bold text-gray-900">Mis Productos</h1>
+                            </Button>
+                            <div className="flex flex-col gap-2">
+                                <Badge variant="secondary" className="w-fit">
+                                    {productCountLabel}
+                                </Badge>
+                                <h1 className="text-3xl font-semibold tracking-normal text-foreground">
+                                    Mis productos
+                                </h1>
+                                <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+                                    Administra la vitrina de tu negocio, controla qué productos están visibles y mantén el catálogo listo para vender.
+                                </p>
                             </div>
-
-                            <QuotaIndicator
-                                current={limits?.current_count || 0}
-                                limit={limits?.limit || 10}
-                                percentage={limits?.percentage || 0}
-                            />
-                        </div>
-                    </div>
-                </header>
-
-                <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                    {/* Search and Actions Bar */}
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-                        {/* Search */}
-                        <div className="relative flex-1 max-w-md">
-                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                </svg>
-                            </div>
-                            <input
-                                type="text"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                placeholder="Buscar productos..."
-                                className="w-full pl-11 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            />
                         </div>
 
-                        {/* Create Button */}
-                        {limits?.can_create ? (
-                            <Link
-                                href={route('tenant.products.create')}
-                                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all shadow-lg shadow-blue-500/25"
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                </svg>
-                                Nuevo Producto
-                            </Link>
+                        <QuotaIndicator current={currentCount} limit={limit} percentage={percentage} />
+                    </header>
+
+                    <Separator />
+
+                    <section className="flex flex-col gap-4 rounded-lg border bg-card p-4 text-card-foreground md:flex-row md:items-center md:justify-between">
+                        <form className="w-full md:max-w-md" role="search" onSubmit={(event) => event.preventDefault()}>
+                            <FieldGroup>
+                                <Field>
+                                    <FieldLabel htmlFor="products-search" className="sr-only">
+                                        Buscar productos
+                                    </FieldLabel>
+                                    <div className="relative">
+                                        <Search
+                                            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                                            aria-hidden="true"
+                                        />
+                                        <Input
+                                            id="products-search"
+                                            data-testid="products-search"
+                                            value={search}
+                                            onChange={(event) => setSearch(event.target.value)}
+                                            placeholder="Buscar productos..."
+                                            className="pl-9"
+                                        />
+                                    </div>
+                                </Field>
+                            </FieldGroup>
+                        </form>
+
+                        {canCreate ? (
+                            <Button asChild data-testid="products-create-cta">
+                                <Link href={`${workspaceProductsUrl}/create`}>
+                                    <Plus data-icon="inline-start" aria-hidden="true" />
+                                    Nuevo producto
+                                </Link>
+                            </Button>
                         ) : (
-                            <div className="relative group">
-                                <button
-                                    disabled
-                                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gray-300 text-gray-500 font-semibold rounded-xl cursor-not-allowed"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                    </svg>
-                                    Nuevo Producto
-                                </button>
-                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                                    Límite del plan alcanzado
-                                    <Link href={`/upgrade/${tenant?.slug}`} className="text-blue-300 hover:underline ml-1">
-                                        Mejorar
-                                    </Link>
-                                </div>
-                            </div>
+                            <Card className="border-dashed md:max-w-sm">
+                                <CardContent className="flex flex-col gap-2 p-4 text-sm text-muted-foreground">
+                                    <span className="font-medium text-foreground">Límite del plan alcanzado</span>
+                                    <span>Actualiza tu plan para publicar más productos en el catálogo.</span>
+                                    {tenant?.slug ? (
+                                        <Button variant="outline" size="sm" asChild>
+                                            <Link href={`/upgrade/${tenant.slug}`}>Ver opciones</Link>
+                                        </Button>
+                                    ) : null}
+                                </CardContent>
+                            </Card>
                         )}
-                    </div>
+                    </section>
 
-                    {/* Products Grid - with Skeleton Loading */}
-                    {isSearching ? (
-                        <SkeletonGrid count={8} />
-                    ) : optimisticProducts.length > 0 ? (
-                        <>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                                {optimisticProducts.map((product) => (
-                                    <ProductCard
-                                        key={product.id}
-                                        product={product}
-                                        onToggleVisibility={handleToggleVisibility}
-                                        onDelete={handleDelete}
-                                    />
-                                ))}
-                            </div>
-                            <Pagination links={products.links} />
-                        </>
-                    ) : (
-                        /* Empty State */
-                        <div className="text-center py-16">
-                            <div className="inline-flex items-center justify-center w-24 h-24 bg-gray-100 rounded-full mb-6">
-                                <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                                        d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                                </svg>
-                            </div>
-                            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                                {search ? 'No se encontraron productos' : 'Aún no tienes productos'}
-                            </h3>
-                            <p className="text-gray-500 mb-6">
-                                {search
-                                    ? 'Intenta con otro término de búsqueda'
-                                    : 'Comienza añadiendo tu primer producto a la vitrina'}
-                            </p>
-                            {!search && limits?.can_create && (
-                                <Link
-                                    href={route('tenant.products.create')}
-                                    className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all shadow-lg shadow-blue-500/25"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                    </svg>
-                                    Crear mi primer producto
-                                </Link>
-                            )}
-                        </div>
-                    )}
-                </main>
-            </div>
+                    <section aria-live="polite" aria-busy={isSearching}>
+                        {isSearching ? (
+                            <SkeletonGrid count={8} />
+                        ) : optimisticProducts.length > 0 ? (
+                            <>
+                                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                                    {optimisticProducts.map((product) => (
+                                        <ProductCard
+                                            key={product.id}
+                                            product={product}
+                                            onToggleVisibility={handleToggleVisibility}
+                                            onDelete={setDeleteTarget}
+                                        />
+                                    ))}
+                                </div>
+                                <Pagination links={products.links} />
+                            </>
+                        ) : (
+                            <EmptyProducts search={search} canCreate={canCreate} />
+                        )}
+                    </section>
+                </div>
+            </main>
+
+            <Dialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+                <DialogContent data-testid="products-delete-dialog">
+                    <DialogHeader>
+                        <DialogTitle>Eliminar producto</DialogTitle>
+                        <DialogDescription>
+                            Esta acción eliminará {deleteTarget?.name ? `"${deleteTarget.name}"` : 'este producto'} de tu catálogo. No se puede deshacer.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button type="button" variant="outline">
+                                Cancelar
+                            </Button>
+                        </DialogClose>
+                        <Button type="button" variant="destructive" onClick={confirmDelete}>
+                            Eliminar producto
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </TenantLayout>
     );
 }

@@ -15,7 +15,7 @@ final readonly class UpdateLandingPageCommand
 {
     public function __construct(
         /** Tenant ID to update */
-        public int $tenantId,
+        public int|string $tenantId,
 
         /**
          * Landing page configuration data.

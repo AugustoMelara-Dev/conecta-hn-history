@@ -1,226 +1,190 @@
 <x-filament-panels::page>
-    {{-- ═══════════════════════════════════════════════════════════════════════ --}}
-    {{-- VELVET ROPE: PAYWALL PARA USUARIOS FREE --}}
-    {{-- ═══════════════════════════════════════════════════════════════════════ --}}
-    @if(!$isPro)
-    <div class="flex items-center justify-center min-h-[60vh]">
-        <div class="max-w-lg w-full bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden">
-            {{-- Gradiente Header --}}
-            <div class="bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 py-10 px-8 text-center">
-                <div class="text-6xl mb-4">🚀</div>
-                <h2 class="text-2xl font-bold text-white mb-2">
-                    Multiplica tus Ventas
-                </h2>
-                <p class="text-white/80">
-                    Pack de Marketing Digital PRO
-                </p>
-            </div>
+    <div data-testid="marketing-page" class="flex flex-col gap-6">
+        @if(!$isPro)
+            <x-filament::section data-testid="marketing-free-paywall">
+                <div class="mx-auto flex max-w-3xl flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
+                    <div class="flex max-w-xl flex-col gap-4">
+                        <x-filament::badge color="warning" size="lg">
+                            Plan PRO
+                        </x-filament::badge>
 
-            {{-- Beneficios --}}
-            <div class="p-8 space-y-5">
-                <div class="flex items-start gap-4">
-                    <div class="w-10 h-10 flex-shrink-0 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                        <x-heroicon-o-qr-code class="w-5 h-5 text-green-600 dark:text-green-400" />
-                    </div>
-                    <div>
-                        <h3 class="font-semibold text-gray-900 dark:text-white">Cartelería QR Profesional</h3>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Descarga carteles listos para pegar en tu local. Tus clientes escanean y ven tu menú al instante.</p>
-                    </div>
-                </div>
+                        <div class="flex flex-col gap-3">
+                            <h2 class="text-2xl font-semibold tracking-tight text-gray-950 dark:text-white">
+                                Herramientas para vender con QR y WhatsApp
+                            </h2>
+                            <p class="text-sm leading-6 text-gray-600 dark:text-gray-400">
+                                Activa Marketing para crear carteles QR, personalizar mensajes de WhatsApp y ordenar las secciones que ve el cliente en tu menu publico.
+                            </p>
+                        </div>
 
-                <div class="flex items-start gap-4">
-                    <div class="w-10 h-10 flex-shrink-0 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                        <x-heroicon-o-chat-bubble-left-right class="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                    </div>
-                    <div>
-                        <h3 class="font-semibold text-gray-900 dark:text-white">WhatsApp Inteligente</h3>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Configura mensajes personalizados con el nombre del producto incluido. Convierte visitantes en clientes.</p>
-                    </div>
-                </div>
-
-                <div class="flex items-start gap-4">
-                    <div class="w-10 h-10 flex-shrink-0 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                        <x-heroicon-o-folder class="w-5 h-5 text-amber-600 dark:text-amber-400" />
-                    </div>
-                    <div>
-                        <h3 class="font-semibold text-gray-900 dark:text-white">Secciones de Menú</h3>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Organiza tus productos en categorías arrastrables: Entradas, Platos Fuertes, Bebidas, etc.</p>
-                    </div>
-                </div>
-
-                {{-- CTA --}}
-                <div class="pt-4">
-                    <a 
-                        href="{{ route('filament.app.pages.manage-billing', ['tenant' => filament()->getTenant()->slug]) }}"
-                        class="block w-full py-4 px-6 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-center rounded-xl shadow-lg transition-all hover:shadow-xl hover:scale-[1.02]"
-                    >
-                        ✨ Activar Plan PRO - L. 99/mes
-                    </a>
-                    <p class="text-center text-xs text-gray-400 mt-3">
-                        Cancela cuando quieras
-                    </p>
-                </div>
-            </div>
-        </div>
-    </div>
-    @else
-    {{-- ═══════════════════════════════════════════════════════════════════════ --}}
-    {{-- DASHBOARD DE HERRAMIENTAS PRO --}}
-    {{-- ═══════════════════════════════════════════════════════════════════════ --}}
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {{-- ═══════════════════════════════════════════════════════════════════ --}}
-        {{-- HERRAMIENTA 1: CONFIGURADOR DE WHATSAPP --}}
-        {{-- ═══════════════════════════════════════════════════════════════════ --}}
-        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-green-500 to-emerald-600">
-                <div class="flex items-center gap-3">
-                    <div class="p-2 bg-white/20 rounded-lg">
-                        <x-heroicon-o-chat-bubble-left-right class="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                        <h3 class="font-bold text-white">Configurador de WhatsApp</h3>
-                        <p class="text-sm text-white/80">Personaliza tus mensajes automáticos</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="p-6 space-y-6">
-                {{-- Formulario --}}
-                {{ $this->form }}
-
-                {{-- Live Preview --}}
-                <div class="pt-4 border-t border-gray-100 dark:border-gray-700">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                        Vista Previa del Mensaje
-                    </label>
-                    
-                    {{-- WhatsApp Chat Bubble --}}
-                    <div class="bg-[#E5DDD5] dark:bg-gray-700 rounded-xl p-4 max-w-sm">
-                        {{-- Burbuja de mensaje saliente --}}
-                        <div class="flex justify-end">
-                            <div class="bg-[#DCF8C6] dark:bg-green-700 rounded-lg rounded-tr-none px-3 py-2 max-w-[85%] shadow-sm relative">
-                                <p class="text-gray-800 dark:text-gray-100 text-sm whitespace-pre-line">{{ $messagePreview }}</p>
-                                <div class="flex items-center justify-end gap-1 mt-1">
-                                    <span class="text-[10px] text-gray-500 dark:text-gray-400">{{ now()->format('g:i A') }}</span>
-                                    {{-- Doble check azul --}}
-                                    <svg class="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41zM.41 13.41L6 19l1.41-1.41L1.83 12 .41 13.41z"/>
-                                    </svg>
-                                </div>
+                        <div class="grid gap-3 sm:grid-cols-3">
+                            <div class="rounded-xl border border-gray-200 p-4 dark:border-white/10">
+                                <x-heroicon-o-qr-code class="mb-3 size-6 text-primary-600 dark:text-primary-400" />
+                                <h3 class="text-sm font-semibold text-gray-950 dark:text-white">Carteles QR</h3>
+                                <p class="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">Listos para imprimir y poner en el local.</p>
+                            </div>
+                            <div class="rounded-xl border border-gray-200 p-4 dark:border-white/10">
+                                <x-heroicon-o-chat-bubble-left-right class="mb-3 size-6 text-primary-600 dark:text-primary-400" />
+                                <h3 class="text-sm font-semibold text-gray-950 dark:text-white">WhatsApp</h3>
+                                <p class="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">Mensajes con producto y precio incluidos.</p>
+                            </div>
+                            <div class="rounded-xl border border-gray-200 p-4 dark:border-white/10">
+                                <x-heroicon-o-folder class="mb-3 size-6 text-primary-600 dark:text-primary-400" />
+                                <h3 class="text-sm font-semibold text-gray-950 dark:text-white">Secciones</h3>
+                                <p class="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">Orden del catalogo sin editar codigo.</p>
                             </div>
                         </div>
                     </div>
 
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                        Así verán el mensaje tus clientes al hacer clic en "WhatsApp"
-                    </p>
-                </div>
-            </div>
-        </div>
-
-        {{-- ═══════════════════════════════════════════════════════════════════ --}}
-        {{-- HERRAMIENTA 2: GENERADOR DE CARTELERÍA QR --}}
-        {{-- ═══════════════════════════════════════════════════════════════════ --}}
-        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-violet-500 to-purple-600">
-                <div class="flex items-center gap-3">
-                    <div class="p-2 bg-white/20 rounded-lg">
-                        <x-heroicon-o-qr-code class="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                        <h3 class="font-bold text-white">Cartelería QR</h3>
-                        <p class="text-sm text-white/80">Póster listo para imprimir</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="p-6 text-center">
-                {{-- Vista previa del QR --}}
-                <div class="bg-gray-50 dark:bg-gray-900 rounded-xl p-8 inline-block mb-6">
-                    @if($qrCodeSvg)
-                        <div class="mx-auto" style="width: 250px; height: 250px;">
-                            {!! $qrCodeSvg !!}
+                    <div class="flex w-full max-w-sm flex-col gap-4 rounded-2xl bg-gray-50 p-6 ring-1 ring-gray-200 dark:bg-white/5 dark:ring-white/10">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Desde</p>
+                            <p class="mt-1 text-3xl font-semibold text-gray-950 dark:text-white">L. 99/mes</p>
                         </div>
-                    @else
-                        <div class="w-64 h-64 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
-                            <x-heroicon-o-qr-code class="w-24 h-24 text-gray-400" />
+
+                        <x-filament::button
+                            tag="a"
+                            size="lg"
+                            icon="heroicon-o-arrow-up-right"
+                            href="{{ route('filament.app.pages.manage-billing', ['tenant' => filament()->getTenant()->slug]) }}"
+                        >
+                            Ver planes
+                        </x-filament::button>
+
+                        <p class="text-xs leading-5 text-gray-500 dark:text-gray-400">
+                            Puedes revisar el plan antes de enviar cualquier comprobante de pago.
+                        </p>
+                    </div>
+                </div>
+            </x-filament::section>
+        @else
+            <section data-testid="marketing-pro-tools" class="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)]">
+                <x-filament::section>
+                    <x-slot name="heading">
+                        WhatsApp del negocio
+                    </x-slot>
+
+                    <x-slot name="description">
+                        Ajusta el mensaje que recibe el cliente cuando pregunta por un producto.
+                    </x-slot>
+
+                    <div class="flex flex-col gap-6">
+                        {{ $this->form }}
+
+                        <div data-testid="marketing-whatsapp-preview" class="rounded-2xl bg-gray-50 p-4 ring-1 ring-gray-200 dark:bg-white/5 dark:ring-white/10">
+                            <div class="mb-3 flex items-center justify-between gap-3">
+                                <div>
+                                    <p class="text-sm font-medium text-gray-950 dark:text-white">Vista previa</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">Ejemplo del mensaje antes de abrir WhatsApp.</p>
+                                </div>
+                                <x-filament::badge color="success">Activo</x-filament::badge>
+                            </div>
+
+                            <div class="rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200 dark:bg-gray-950 dark:ring-white/10">
+                                <p class="whitespace-pre-line text-sm leading-6 text-gray-700 dark:text-gray-300">{{ $messagePreview }}</p>
+                                <p class="mt-3 text-right text-xs text-gray-400">{{ now()->format('g:i A') }}</p>
+                            </div>
                         </div>
-                    @endif
+                    </div>
+                </x-filament::section>
+
+                <x-filament::section data-testid="marketing-qr-card">
+                    <x-slot name="heading">
+                        Cartel QR
+                    </x-slot>
+
+                    <x-slot name="description">
+                        Descarga un PDF imprimible con el enlace de tu negocio.
+                    </x-slot>
+
+                    <div class="flex flex-col gap-5">
+                        <div class="flex justify-center rounded-2xl bg-gray-50 p-6 ring-1 ring-gray-200 dark:bg-white/5 dark:ring-white/10">
+                            @if($qrCodeSvg)
+                                <div class="size-[250px]" aria-label="Codigo QR del negocio">
+                                    {!! $qrCodeSvg !!}
+                                </div>
+                            @else
+                                <div class="flex size-[250px] items-center justify-center rounded-xl border border-dashed border-gray-300 dark:border-white/20">
+                                    <x-heroicon-o-qr-code class="size-16 text-gray-400" />
+                                </div>
+                            @endif
+                        </div>
+
+                        <div class="rounded-xl border border-gray-200 p-4 dark:border-white/10">
+                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Enlace publico</p>
+                            <a href="{{ $businessUrl }}" target="_blank" rel="noreferrer" class="mt-1 block truncate text-sm font-medium text-primary-600 hover:underline dark:text-primary-400">
+                                {{ $businessUrl }}
+                            </a>
+                        </div>
+
+                        <ul class="grid gap-2 text-sm text-gray-600 dark:text-gray-400">
+                            <li class="flex items-center gap-2">
+                                <x-heroicon-o-check-circle class="size-5 text-success-600 dark:text-success-400" />
+                                QR grande para mostrador o mesas.
+                            </li>
+                            <li class="flex items-center gap-2">
+                                <x-heroicon-o-check-circle class="size-5 text-success-600 dark:text-success-400" />
+                                Nombre del negocio y enlace en texto.
+                            </li>
+                            <li class="flex items-center gap-2">
+                                <x-heroicon-o-check-circle class="size-5 text-success-600 dark:text-success-400" />
+                                Tamano carta, listo para imprimir.
+                            </li>
+                        </ul>
+
+                        <x-filament::button
+                            type="button"
+                            size="lg"
+                            icon="heroicon-o-arrow-down-tray"
+                            wire:click="downloadPoster"
+                            data-testid="marketing-download-poster"
+                        >
+                            Descargar cartel PDF
+                        </x-filament::button>
+                    </div>
+                </x-filament::section>
+            </section>
+
+            <x-filament::section data-testid="marketing-menu-sections">
+                <x-slot name="heading">
+                    Secciones del menu
+                </x-slot>
+
+                <x-slot name="description">
+                    Ordena categorias, edita nombres en linea y controla que se muestra en el menu publico.
+                </x-slot>
+
+                {{ $this->table }}
+            </x-filament::section>
+
+            <x-filament::section data-testid="marketing-usage-tips">
+                <div class="flex flex-col gap-4 md:flex-row md:items-start">
+                    <div class="flex size-11 shrink-0 items-center justify-center rounded-xl bg-warning-50 ring-1 ring-warning-200 dark:bg-warning-400/10 dark:ring-warning-400/20">
+                        <x-heroicon-o-light-bulb class="size-6 text-warning-600 dark:text-warning-300" />
+                    </div>
+
+                    <div class="flex flex-col gap-3">
+                        <div>
+                            <h3 class="text-base font-semibold text-gray-950 dark:text-white">Ideas rapidas para usar Marketing</h3>
+                            <p class="mt-1 text-sm leading-6 text-gray-600 dark:text-gray-400">
+                                Coloca el QR donde el cliente espera, usa {producto} para evitar preguntas repetidas y reordena secciones segun lo que mas vendes.
+                            </p>
+                        </div>
+
+                        <div class="grid gap-3 md:grid-cols-3">
+                            <div class="rounded-xl border border-gray-200 p-4 text-sm text-gray-600 dark:border-white/10 dark:text-gray-400">
+                                Mostrador: el cliente puede revisar el menu antes de ordenar.
+                            </div>
+                            <div class="rounded-xl border border-gray-200 p-4 text-sm text-gray-600 dark:border-white/10 dark:text-gray-400">
+                                Mesas: QR visible para ver fotos y precios sin esperar.
+                            </div>
+                            <div class="rounded-xl border border-gray-200 p-4 text-sm text-gray-600 dark:border-white/10 dark:text-gray-400">
+                                WhatsApp: menos ida y vuelta, mas contexto en cada mensaje.
+                            </div>
+                        </div>
+                    </div>
                 </div>
-
-                {{-- URL del negocio --}}
-                <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
-                    <span class="font-medium">Tu enlace:</span>
-                    <a href="{{ $businessUrl }}" target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline">
-                        {{ $businessUrl }}
-                    </a>
-                </p>
-
-                {{-- Información del cartel --}}
-                <div class="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-4 mb-6 text-left">
-                    <h4 class="font-semibold text-purple-900 dark:text-purple-300 mb-2">El cartel PDF incluye:</h4>
-                    <ul class="text-sm text-purple-700 dark:text-purple-400 space-y-1">
-                        <li>✓ Código QR gigante de alta resolución</li>
-                        <li>✓ Nombre de tu negocio destacado</li>
-                        <li>✓ Instrucciones para escanear</li>
-                        <li>✓ URL en texto (backup)</li>
-                        <li>✓ Tamaño carta, listo para imprimir</li>
-                    </ul>
-                </div>
-
-                {{-- Botón de descarga --}}
-                <button 
-                    type="button"
-                    wire:click="downloadPoster"
-                    class="w-full py-4 px-6 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white font-bold rounded-xl shadow-lg transition-all hover:shadow-xl flex items-center justify-center gap-2"
-                >
-                    <x-heroicon-o-arrow-down-tray class="w-5 h-5" />
-                    Descargar Cartel PDF
-                </button>
-            </div>
-        </div>
+            </x-filament::section>
+        @endif
     </div>
-
-    {{-- ═══════════════════════════════════════════════════════════════════════ --}}
-    {{-- HERRAMIENTA 3: GESTOR DE SECCIONES DE MENÚ --}}
-    {{-- ═══════════════════════════════════════════════════════════════════════ --}}
-    <div class="mt-6 bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-amber-500 to-orange-500">
-            <div class="flex items-center gap-3">
-                <div class="p-2 bg-white/20 rounded-lg">
-                    <x-heroicon-o-folder class="w-6 h-6 text-white" />
-                </div>
-                <div>
-                    <h3 class="font-bold text-white">Secciones de Menú</h3>
-                    <p class="text-sm text-white/80">Organiza tus productos en categorías arrastrables</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="p-6">
-            {{-- Filament Table --}}
-            {{ $this->table }}
-        </div>
-    </div>
-
-    {{-- ═══════════════════════════════════════════════════════════════════════ --}}
-    {{-- CONSEJOS DE USO --}}
-    {{-- ═══════════════════════════════════════════════════════════════════════ --}}
-    <div class="mt-6 bg-amber-50 dark:bg-amber-900/20 rounded-2xl p-6">
-        <div class="flex items-start gap-4">
-            <div class="p-2 bg-amber-100 dark:bg-amber-900/40 rounded-lg">
-                <x-heroicon-o-light-bulb class="w-6 h-6 text-amber-600 dark:text-amber-400" />
-            </div>
-            <div>
-                <h3 class="font-bold text-amber-900 dark:text-amber-300 mb-2">💡 Consejos de Marketing</h3>
-                <ul class="text-sm text-amber-800 dark:text-amber-400 space-y-2">
-                    <li><strong>En la caja registradora:</strong> Coloca el cartel QR donde los clientes esperan. Pueden ver el menú mientras hacen fila.</li>
-                    <li><strong>En las mesas:</strong> Un QR en cada mesa permite a los clientes ver fotos de los platillos antes de ordenar.</li>
-                    <li><strong>Mensajes de WhatsApp:</strong> Usa {producto} para saber exactamente qué quiere el cliente sin ida y vuelta.</li>
-                    <li><strong>Secciones de Menú:</strong> Arrastra y suelta las secciones para definir el orden en que aparecen en tu menú público.</li>
-                </ul>
-            </div>
-        </div>
-    </div>
-    @endif
 </x-filament-panels::page>

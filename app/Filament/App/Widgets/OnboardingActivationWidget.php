@@ -13,7 +13,7 @@ final class OnboardingActivationWidget extends Widget
 {
     protected static bool $isLazy = false;
 
-    protected string $view = 'filament.app.widgets.onboarding-activation-widget';
+    protected static string $view = 'filament.app.widgets.onboarding-activation-widget';
 
     public function getColumnSpan(): string
     {
@@ -51,7 +51,7 @@ final class OnboardingActivationWidget extends Widget
                     'key' => 'none',
                     'title' => 'Sin acciones disponibles',
                     'copy' => 'No se detecto un tenant activo.',
-                    'href' => '#',
+                    'href' => '',
                 ],
                 'supportTips' => [],
             ];
@@ -75,7 +75,7 @@ final class OnboardingActivationWidget extends Widget
                 'key' => 'none',
                 'title' => 'Sin acciones disponibles',
                 'copy' => 'No se detecto una siguiente accion.',
-                'href' => '#',
+                'href' => '',
             ]),
         ];
     }

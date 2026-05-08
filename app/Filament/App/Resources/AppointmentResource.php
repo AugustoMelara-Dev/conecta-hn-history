@@ -18,32 +18,45 @@ class AppointmentResource extends Resource
 
     protected static ?string $navigationGroup = 'Servicios';
 
-    protected static ?string $navigationLabel = 'Agenda de Citas';
+    protected static ?string $navigationLabel = 'Agenda';
 
     protected static ?int $navigationSort = 3;
+
+    public static function getModelLabel(): string
+    {
+        return 'cita';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'citas';
+    }
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\Section::make('Detalles de la Cita')
+                Forms\Components\Section::make('Detalles de la cita')
+                    ->description('Registra el servicio, la persona que atiende y el horario confirmado para el cliente.')
                     ->schema([
                         Forms\Components\Select::make('user_id')
-                            ->label('Cliente Registrado')
+                            ->label('Cliente registrado')
                             ->relationship('user', 'name')
                             ->searchable()
                             ->preload()
-                            ->helperText('Dejar vacío para clientes sin cuenta'),
+                            ->helperText('Opcional. Déjalo vacío si el cliente no tiene cuenta.'),
 
                         Forms\Components\Grid::make(2)
                             ->schema([
                                 Forms\Components\TextInput::make('customer_name')
-                                    ->label('Nombre (Walk-in)')
+                                    ->label('Nombre del cliente')
+                                    ->placeholder('Ej. María López')
                                     ->maxLength(255),
 
                                 Forms\Components\TextInput::make('customer_phone')
                                     ->label('Teléfono')
-                                    ->tel(),
+                                    ->tel()
+                                    ->placeholder('Ej. 50499999999'),
                             ]),
 
                         Forms\Components\Select::make('service_id')
@@ -66,12 +79,13 @@ class AppointmentResource extends Resource
                             ->label('Atendido por')
                             ->relationship('provider', 'name')
                             ->required()
-                            ->preload(),
+                            ->preload()
+                            ->helperText('Selecciona quién prestará el servicio.'),
 
                         Forms\Components\Grid::make(2)
                             ->schema([
                                 Forms\Components\DateTimePicker::make('scheduled_at')
-                                    ->label('Hora de Inicio')
+                                    ->label('Inicio')
                                     ->required()
                                     ->seconds(false)
                                     ->reactive()
@@ -86,7 +100,7 @@ class AppointmentResource extends Resource
                                     }),
 
                                 Forms\Components\DateTimePicker::make('end_at')
-                                    ->label('Hora de Fin')
+                                    ->label('Fin')
                                     ->required()
                                     ->seconds(false),
                             ]),
@@ -94,17 +108,18 @@ class AppointmentResource extends Resource
                         Forms\Components\Select::make('status')
                             ->label('Estado')
                             ->options([
-                                'pending' => '⏳ Pendiente',
-                                'confirmed' => '✅ Confirmada',
-                                'completed' => '🎉 Completada',
-                                'cancelled' => '❌ Cancelada',
+                                'pending' => 'Pendiente',
+                                'confirmed' => 'Confirmada',
+                                'completed' => 'Completada',
+                                'cancelled' => 'Cancelada',
                             ])
                             ->default('confirmed')
                             ->required()
                             ->native(false),
 
                         Forms\Components\Textarea::make('staff_notes')
-                            ->label('Notas Internas')
+                            ->label('Notas internas')
+                            ->placeholder('Indicaciones para el equipo. No se muestran al cliente.')
                             ->rows(2)
                             ->columnSpanFull(),
                     ])->columns(2),
@@ -114,9 +129,16 @@ class AppointmentResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->emptyStateIcon('heroicon-o-calendar-days')
+            ->emptyStateHeading('Aún no hay citas')
+            ->emptyStateDescription('Cuando un cliente reserve un servicio, lo verás aquí con fecha, persona asignada y estado.')
+            ->emptyStateActions([
+                Tables\Actions\CreateAction::make()
+                    ->label('Crear cita'),
+            ])
             ->columns([
                 Tables\Columns\TextColumn::make('scheduled_at')
-                    ->label('Fecha/Hora')
+                    ->label('Fecha y hora')
                     ->dateTime('D d M, h:i A')
                     ->sortable(),
 
@@ -130,7 +152,8 @@ class AppointmentResource extends Resource
                     ->color('info'),
 
                 Tables\Columns\TextColumn::make('provider.name')
-                    ->label('Staff'),
+                    ->label('Atiende')
+                    ->placeholder('Sin asignar'),
 
                 Tables\Columns\TextColumn::make('status_label')
                     ->label('Estado')
@@ -149,7 +172,7 @@ class AppointmentResource extends Resource
                     ]),
 
                 Tables\Filters\SelectFilter::make('service_provider_id')
-                    ->label('Staff')
+                    ->label('Atiende')
                     ->relationship('provider', 'name'),
             ])
             ->actions([
@@ -158,6 +181,9 @@ class AppointmentResource extends Resource
                     ->icon('heroicon-o-check')
                     ->color('success')
                     ->visible(fn ($record) => $record->status === 'pending')
+                    ->requiresConfirmation()
+                    ->modalHeading('Confirmar cita')
+                    ->modalDescription('La cita pasará a estado confirmada.')
                     ->action(fn ($record) => $record->confirm()),
 
                 Tables\Actions\Action::make('complete')
@@ -165,13 +191,18 @@ class AppointmentResource extends Resource
                     ->icon('heroicon-o-check-circle')
                     ->color('info')
                     ->visible(fn ($record) => $record->status === 'confirmed')
+                    ->requiresConfirmation()
+                    ->modalHeading('Marcar cita como completada')
+                    ->modalDescription('Usa esta acción solo cuando el servicio ya fue atendido.')
                     ->action(fn ($record) => $record->complete()),
 
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->label('Editar'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->label('Eliminar seleccionadas'),
                 ]),
             ]);
     }

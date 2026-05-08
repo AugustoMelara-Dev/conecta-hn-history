@@ -8,31 +8,14 @@ use App\Settings\GeneralSettings;
 use Filament\Facades\Filament;
 use Filament\Widgets\Widget;
 
-/**
- * ProductLimitWidget - Monitor Inteligente de Recursos
- *
- * Widget de alto impacto que cambia radicalmente según el plan:
- * - FREE: Barra de progreso con semáforo + CTA de upgrades
- * - PRO: Tarjeta VIP premium con validación de beneficios
- *
- * Posicionado en la parte superior del dashboard (sort: -10)
- * Ocupa todo el ancho (columnSpan: 'full')
- */
 class ProductLimitWidget extends Widget
 {
-    /**
-     * Vista del widget (non-static in v4.2)
-     */
     protected static string $view = 'filament.app.widgets.product-limit-widget';
 
-    /**
-     * Prioridad: Aparece primero en el dashboard (static in v4.2)
-     */
+    protected static bool $isLazy = false;
+
     protected static ?int $sort = -10;
 
-    /**
-     * Propiedades públicas accesibles en la vista
-     */
     public bool $isPro = false;
 
     public int $currentCount = 0;
@@ -47,17 +30,11 @@ class ProductLimitWidget extends Widget
 
     public ?string $planExpiresAt = null;
 
-    /**
-     * Configuración del layout
-     */
     public function getColumnSpan(): int|string|array
     {
         return 'full';
     }
 
-    /**
-     * Inicialización y cálculo de métricas
-     */
     public function mount(): void
     {
         $tenant = Filament::getTenant();
@@ -66,77 +43,63 @@ class ProductLimitWidget extends Widget
             return;
         }
 
-        // Determinar tipo de plan
         $this->isPro = (bool) $tenant->is_pro;
 
-        // URLs de navegación (puede fallar durante boot)
         try {
             $this->upgradeUrl = route('filament.app.pages.manage-billing', ['tenant' => $tenant->slug]);
             $this->billingUrl = route('filament.app.pages.manage-billing', ['tenant' => $tenant->slug]);
         } catch (\Exception $e) {
-            $this->upgradeUrl = '#';
-            $this->billingUrl = '#';
+            $this->upgradeUrl = url('/app');
+            $this->billingUrl = url('/app');
         }
 
-        // Fecha de expiración PRO
-        if ($this->isPro && $tenant->plan_expires_at) {
+        if (
+            $this->isPro
+            && array_key_exists('plan_expires_at', $tenant->getAttributes())
+            && $tenant->plan_expires_at
+        ) {
             $this->planExpiresAt = $tenant->plan_expires_at->format('d/m/Y');
         }
 
-        // ═══════════════════════════════════════════════════════════════
-        // CÁLCULO DE MÉTRICAS (Solo para usuarios Free)
-        // ═══════════════════════════════════════════════════════════════
         if (! $this->isPro) {
-            // Conteo eficiente de productos
             $this->currentCount = $tenant->products()->count();
 
-            // Límite: primero del tenant, luego de settings globales
             $this->limit = $tenant->product_limit
                 ?? app(GeneralSettings::class)->free_plan_product_limit
                 ?? 10;
 
-            // Porcentaje de saturación (manejo de división por cero)
             $this->percentage = $this->limit > 0
                 ? min(100, round(($this->currentCount / $this->limit) * 100, 1))
                 : 0;
         }
     }
 
-    /**
-     * Determina el color del semáforo según el porcentaje
-     */
     public function getProgressColor(): string
     {
         if ($this->percentage < 50) {
-            return 'bg-success-500'; // Verde
+            return 'bg-success-500';
         } elseif ($this->percentage < 80) {
-            return 'bg-warning-500'; // Ámbar
-        } else {
-            return 'bg-danger-600'; // Rojo
+            return 'bg-warning-500';
         }
+
+        return 'bg-danger-600';
     }
 
-    /**
-     * Determina si está en zona crítica
-     */
     public function isInDangerZone(): bool
     {
         return $this->percentage >= 90;
     }
 
-    /**
-     * Obtiene el mensaje de estado según el uso
-     */
     public function getStatusMessage(): string
     {
         if ($this->percentage < 50) {
-            return '¡Tienes espacio de sobra! Sigue agregando productos.';
+            return 'Todavia tienes espacio para seguir ordenando el catalogo.';
         } elseif ($this->percentage < 80) {
-            return 'Estás aprovechando bien tu plan. Considera actualizar pronto.';
+            return 'Estas usando bien tu plan actual. Revisa PRO cuando necesites mas catalogo.';
         } elseif ($this->percentage < 100) {
-            return '¡Atención! Estás a punto de quedarte sin espacio.';
-        } else {
-            return '⚠️ Has alcanzado el límite. Actualiza para seguir creciendo.';
+            return 'Estas cerca del limite de productos del plan Semilla.';
         }
+
+        return 'Alcanzaste el limite de productos del plan actual.';
     }
 }

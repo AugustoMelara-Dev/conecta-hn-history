@@ -7,6 +7,8 @@ namespace App\Infrastructure\Public;
 use App\Domain\Public\Contracts\TenantStorefrontRepository;
 use App\Domain\TenantGovernance\Services\PlanFeatureFlagService;
 use App\Models\Tenant;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * EloquentTenantStorefrontRepository - Optimized Read Implementation
@@ -19,7 +21,9 @@ final class EloquentTenantStorefrontRepository implements TenantStorefrontReposi
 
     public function findBySlug(string $slug): ?object
     {
-        $tenant = Tenant::where('slug', $slug)->first();
+        $tenant = Tenant::withoutGlobalScopes()
+            ->where('slug', $slug)
+            ->first();
 
         if (! $tenant) {
             return null;
@@ -29,19 +33,40 @@ final class EloquentTenantStorefrontRepository implements TenantStorefrontReposi
         $productLimit = $this->planService->getMaxProductLimit($tenant);
         $canShowModifiers = $this->planService->canShowModifiers($tenant);
 
-        $relations = [
-            'city:id,name,slug',
-            'category:id,name,slug,icon',
-            'openingHours',
-            'menuSections' => fn ($q) => $q->where('is_active', true)->orderBy('name'),
-            'products' => function ($query) use ($productLimit) {
+        $relations = [];
+
+        if (Schema::hasTable('opening_hours')) {
+            $relations[] = 'openingHours';
+        }
+
+        if (Schema::hasTable('menu_sections')) {
+            $relations['menuSections'] = fn ($q) => $q->where('is_active', true)->orderBy('name');
+        }
+
+        if (Schema::hasTable('products')) {
+            $relations['products'] = function ($query) use ($productLimit) {
                 $query->where('is_visible', true)
                     ->orderBy('name')
                     ->limit($productLimit);
-            },
-        ];
+            };
+        } else {
+            $tenant->setRelation('products', new EloquentCollection());
+        }
 
-        if ($canShowModifiers) {
+        if (Schema::hasColumn('tenants', 'city_id')) {
+            $relations[] = 'city:id,name,slug';
+        }
+
+        if (Schema::hasColumn('tenants', 'category_id')) {
+            $relations[] = 'category:id,name,slug,icon';
+        }
+
+        if (
+            $canShowModifiers
+            && Schema::hasTable('products')
+            && Schema::hasTable('modifier_groups')
+            && Schema::hasTable('modifier_options')
+        ) {
             $relations['products.modifierGroups'] = fn ($q) => $q
                 ->where('is_active', true)
                 ->orderBy('sort_order');
@@ -50,6 +75,6 @@ final class EloquentTenantStorefrontRepository implements TenantStorefrontReposi
                 ->orderBy('sort_order');
         }
 
-        return $tenant->load($relations);
+        return $relations === [] ? $tenant : $tenant->load($relations);
     }
 }

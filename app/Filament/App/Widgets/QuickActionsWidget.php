@@ -12,6 +12,8 @@ use Filament\Widgets\Widget;
  */
 class QuickActionsWidget extends Widget
 {
+    protected static string $view = 'filament.app.widgets.quick-actions-widget';
+
     public function getView(): string
     {
         return 'filament.app.widgets.quick-actions-widget';

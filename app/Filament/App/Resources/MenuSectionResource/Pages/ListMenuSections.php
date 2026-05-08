@@ -15,7 +15,7 @@ class ListMenuSections extends ListRecords
     {
         return [
             \Filament\Actions\CreateAction::make()
-                ->label('Nueva Sección')
+                ->label('Nueva sección')
                 ->icon('heroicon-o-plus'),
         ];
     }

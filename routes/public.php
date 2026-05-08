@@ -1,9 +1,12 @@
 <?php
 
+use App\Http\Controllers\Public\ExploreController;
+use App\Http\Controllers\Public\WelcomeController;
 use App\Models\Category;
 use App\Models\City;
 use App\Models\Tenant;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -25,60 +28,12 @@ use Inertia\Inertia;
 // ═══════════════════════════════════════════════════════════════════════════
 // HOME - B2B Landing Page (Sales Engine)
 // ═══════════════════════════════════════════════════════════════════════════
-Route::get('/', function () {
-    // Minimal stats for social proof - avoid heavy queries
-    $stats = [
-        'total_tenants' => Tenant::where('is_visible', true)->count(),
-        'total_cities' => City::has('tenants')->count(),
-    ];
-
-    return Inertia::render('Welcome', [
-        'auth' => [
-            'user' => Auth::user(),
-        ],
-        'stats' => $stats,
-    ]);
-})->name('home');
+Route::get('/', WelcomeController::class)->name('home');
 
 // ═══════════════════════════════════════════════════════════════════════════
 // EXPLORE - Marketplace Discovery (Featured Tenants)
 // ═══════════════════════════════════════════════════════════════════════════
-Route::get('/explore', function () {
-    // Featured tenants (visible, with cover images)
-    $featuredTenants = Tenant::query()
-        ->where('is_visible', true)
-        ->whereNotNull('logo_path')
-        ->latest()
-        ->limit(12)
-        ->get()
-        ->map(fn (Tenant $t) => [
-            'id' => $t->id,
-            'name' => $t->name,
-            'slug' => $t->slug,
-            'cover_url' => $t->cover_url,
-            'logo_url' => $t->logo_url,
-            'category' => $t->category?->name,
-            'city' => $t->city?->name,
-            'description' => \Illuminate\Support\Str::limit($t->description, 80),
-        ]);
-
-    // Categories for pills
-    $categories = Category::query()
-        ->withCount('tenants')
-        ->having('tenants_count', '>', 0)
-        ->orderByDesc('tenants_count')
-        ->limit(8)
-        ->get(['id', 'name', 'slug', 'icon']);
-
-    return Inertia::render('Public/Home', [
-        'featuredTenants' => $featuredTenants,
-        'categories' => $categories,
-        'stats' => [
-            'total_tenants' => Tenant::where('is_visible', true)->count(),
-            'total_cities' => City::has('tenants')->count(),
-        ],
-    ]);
-})->name('public.explore');
+Route::get('/explore', ExploreController::class)->name('public.explore');
 
 // ═══════════════════════════════════════════════════════════════════════════
 // DIRECTORY - Search Engine (Full Filtering)
@@ -89,11 +44,17 @@ Route::get('/directory', function (\Illuminate\Http\Request $request) {
     $category = $request->string('category')->toString();
     $sort = $request->string('sort', 'newest')->toString();
 
+    $tenantColumns = collect([
+        'id', 'name', 'slug', 'description', 'cover_path', 'hero_image', 'banner_path',
+        'logo_path', 'city_id', 'category_id', 'is_visible', 'created_at',
+    ])->filter(fn (string $column): bool => Schema::hasColumn('tenants', $column))->values()->all();
+
     $query = Tenant::query()
-        ->where('is_visible', true)
-        ->when($search, fn ($q) => $q->where('name', 'LIKE', "%{$search}%"))
-        ->when($city, fn ($q) => $q->whereHas('city', fn ($c) => $c->where('slug', $city)))
-        ->when($category, fn ($q) => $q->whereHas('category', fn ($c) => $c->where('slug', $category)));
+        ->select($tenantColumns)
+        ->when(Schema::hasColumn('tenants', 'is_visible'), fn ($q) => $q->where('is_visible', true))
+        ->when($search && Schema::hasColumn('tenants', 'name'), fn ($q) => $q->where('name', 'LIKE', "%{$search}%"))
+        ->when($city && Schema::hasColumn('tenants', 'city_id'), fn ($q) => $q->whereHas('city', fn ($c) => $c->where('slug', $city)))
+        ->when($category && Schema::hasColumn('tenants', 'category_id'), fn ($q) => $q->whereHas('category', fn ($c) => $c->where('slug', $category)));
 
     // Sorting
     $query = match ($sort) {
@@ -102,17 +63,23 @@ Route::get('/directory', function (\Illuminate\Http\Request $request) {
         default => $query->latest(),
     };
 
-    $tenants = $query->paginate(12)->through(fn (Tenant $t) => [
-        'id' => $t->id,
-        'name' => $t->name,
-        'slug' => $t->slug,
-        'cover_url' => $t->cover_url,
-        'logo_url' => $t->logo_url,
-        'category' => $t->category?->name,
-        'city' => $t->city?->name,
-        'description' => \Illuminate\Support\Str::limit($t->description, 80),
-        'is_open' => $t->isCurrentlyOpen(),
-    ]);
+    $tenants = $query->paginate(12)->through(function (Tenant $t): array {
+        $attributes = $t->getAttributes();
+        $coverPath = $attributes['cover_path'] ?? $attributes['hero_image'] ?? $attributes['banner_path'] ?? null;
+        $logoPath = $attributes['logo_path'] ?? null;
+
+        return [
+            'id' => $attributes['id'] ?? $t->id,
+            'name' => $attributes['name'] ?? 'Negocio local',
+            'slug' => $attributes['slug'] ?? '',
+            'cover_url' => $coverPath ? Storage::url($coverPath) : null,
+            'logo_url' => $logoPath ? Storage::url($logoPath) : null,
+            'category' => $t->relationLoaded('category') ? $t->category?->name : null,
+            'city' => $t->relationLoaded('city') ? $t->city?->name : null,
+            'description' => \Illuminate\Support\Str::limit($attributes['description'] ?? '', 80),
+            'is_open' => method_exists($t, 'isCurrentlyOpen') ? $t->isCurrentlyOpen() : true,
+        ];
+    });
 
     return Inertia::render('Public/Directory/Index', [
         'tenants' => $tenants->items(),
@@ -133,35 +100,19 @@ Route::get('/directory', function (\Illuminate\Http\Request $request) {
 })->name('directory.index');
 
 // ═══════════════════════════════════════════════════════════════════════════
-// TENANT SUBDOMAIN ROUTES - {tenant}.vito.io
+// TENANT SUBDOMAIN ROUTES
 // ═══════════════════════════════════════════════════════════════════════════
-// Subdomain-based multi-tenancy: Tenant resolved via IdentifyTenantBySubdomain middleware.
-// The tenant is available via app('current_tenant') - no route parameters needed.
+// Moved to routes/web.php before the central `/` route so the domain-specific
+// microsite route wins over the root landing route.
 // ═══════════════════════════════════════════════════════════════════════════
 
-Route::domain('{tenant}.' . config('app.domain'))->group(function () {
     // ═══════════════════════════════════════════════════════════════════════
     // TENANT MICROSITE - Public Profile (CQRS: READ-ONLY Controller)
     // ═══════════════════════════════════════════════════════════════════════
-    Route::get('/', [\App\Http\Controllers\Public\TenantMicrositeController::class, 'show'])
-        ->name('tenant.microsite.show');
 
     // ═══════════════════════════════════════════════════════════════════════
     // BOOKING WIZARD - Public Appointment Booking (SERVICE-type tenants)
     // ═══════════════════════════════════════════════════════════════════════
-    Route::prefix('book')->group(function () {
-        Route::get('/', [\App\Http\Controllers\Public\BookingController::class, 'index'])
-            ->name('public.booking.index');
-        Route::post('/', [\App\Http\Controllers\Public\BookingController::class, 'store'])
-            ->name('public.booking.store');
-        Route::get('/providers/{service}', [\App\Http\Controllers\Public\BookingController::class, 'getProviders'])
-            ->name('public.booking.providers');
-        Route::get('/slots', [\App\Http\Controllers\Public\BookingController::class, 'getSlots'])
-            ->name('public.booking.slots');
-        Route::get('/success', [\App\Http\Controllers\Public\BookingController::class, 'success'])
-            ->name('public.booking.success');
-    });
-});
 
 // ═══════════════════════════════════════════════════════════════════════════
 // GUEST APPOINTMENT PORTAL - Signed URL Access (No Auth Required)

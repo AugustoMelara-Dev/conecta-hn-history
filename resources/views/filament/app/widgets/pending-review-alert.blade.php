@@ -1,53 +1,64 @@
 @php
     $tenant = \Filament\Facades\Filament::getTenant();
-    $status = $tenant->status;
+    $status = $tenant?->status;
     $isRejected = $status === 'rejected';
+    $profileUrl = $tenant
+        ? route('filament.app.tenant.profile', ['tenant' => $tenant->slug])
+        : url('/app');
+    $settingsUrl = $tenant
+        ? route('filament.app.pages.settings', ['tenant' => $tenant->slug])
+        : url('/app');
 @endphp
 
 <x-filament::widget>
-    <x-filament::section
-        class="{{ $isRejected ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200' }}"
-    >
-        <div class="flex items-start gap-4">
-            {{-- Icon --}}
-            <div class="p-2 rounded-full {{ $isRejected ? 'bg-red-200 text-red-600' : 'bg-amber-100 text-amber-600 animate-pulse' }}">
-                @if($isRejected)
-                    <x-heroicon-o-exclamation-triangle class="w-6 h-6" />
-                @else
-                    <x-heroicon-o-clock class="w-6 h-6" />
-                @endif
+    <x-filament::section class="{{ $isRejected ? 'biz-card-warning' : '' }}">
+        <div class="biz-split">
+            <div class="biz-stack">
+                <div class="biz-button-row">
+                    <x-filament::badge color="{{ $isRejected ? 'danger' : 'warning' }}" size="lg">
+                        {{ $isRejected ? 'Requiere cambios' : 'En verificacion' }}
+                    </x-filament::badge>
+                </div>
+
+                <div>
+                    <h2 class="biz-heading">
+                        @if($isRejected)
+                            Tu solicitud requiere cambios
+                        @else
+                            Tu negocio esta en proceso de verificacion
+                        @endif
+                    </h2>
+
+                    <p class="biz-muted">
+                        @if($isRejected)
+                            Revisa los datos del perfil del negocio para resolver la observacion y volver a enviarlo.
+                        @else
+                            Nuestro equipo esta validando tu informacion. Mientras tanto, puedes configurar tu catalogo y subir fotos. Tu tienda sera visible al publico cuando sea aprobada.
+                        @endif
+                    </p>
+                </div>
             </div>
 
-            {{-- Content --}}
-            <div class="flex-1">
-                <h2 class="text-lg font-bold {{ $isRejected ? 'text-red-800' : 'text-amber-800' }}">
-                    @if($isRejected)
-                        Atención: Tu solicitud requiere cambios
-                    @else
-                        Tu negocio está en proceso de verificación
-                    @endif
-                </h2>
-                
-                <p class="mt-2 text-sm {{ $isRejected ? 'text-red-700 w-full' : 'text-amber-700 w-full' }} leading-relaxed">
-                    @if($isRejected)
-                        Hemos detectado un problema con tu perfil. Por favor revisa los detalles o contacta a soporte para resolverlo.
-                    @else
-                        Bienvenido a Conecta HN. Para garantizar la seguridad de la comunidad, nuestro equipo está validando tu información. 
-                        Mientras tanto, puedes configurar tu catálogo y subir fotos. 
-                        <strong>Tu tienda será visible al público en cuanto sea aprobada.</strong>
-                    @endif
-                </p>
+            <div class="biz-button-row">
+                <x-filament::button
+                    tag="a"
+                    color="{{ $isRejected ? 'danger' : 'warning' }}"
+                    icon="{{ $isRejected ? 'heroicon-o-exclamation-triangle' : 'heroicon-o-clock' }}"
+                    href="{{ $profileUrl }}"
+                >
+                    {{ $isRejected ? 'Revisar perfil' : 'Completar perfil' }}
+                </x-filament::button>
 
-                {{-- CTA --}}
-                <div class="mt-4">
-                    <a 
-                        href="https://wa.me/50499999999" 
-                        target="_blank"
-                        class="inline-flex items-center text-sm font-medium hover:underline {{ $isRejected ? 'text-red-600 hover:text-red-800' : 'text-amber-600 hover:text-amber-800' }}"
+                @if($isRejected)
+                    <x-filament::button
+                        tag="a"
+                        color="gray"
+                        icon="heroicon-o-adjustments-horizontal"
+                        href="{{ $settingsUrl }}"
                     >
-                        ¿Necesitas ayuda urgente? Contáctanos por WhatsApp &rarr;
-                    </a>
-                </div>
+                        Ver configuracion
+                    </x-filament::button>
+                @endif
             </div>
         </div>
     </x-filament::section>

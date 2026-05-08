@@ -6,6 +6,7 @@ namespace App\Filament\App\Widgets;
 
 use Filament\Facades\Filament;
 use Filament\Widgets\Widget;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * PendingReviewAlert - Alerta de Revisión Pendiente
@@ -14,6 +15,8 @@ use Filament\Widgets\Widget;
  */
 class PendingReviewAlert extends Widget
 {
+    protected static string $view = 'filament.app.widgets.pending-review-alert';
+
     public function getView(): string
     {
         return 'filament.app.widgets.pending-review-alert';
@@ -37,7 +40,12 @@ class PendingReviewAlert extends Widget
             return false;
         }
 
-        // Show if pending, rejected, or inactive
-        return in_array($tenant->status, ['pending', 'rejected']) || ! $tenant->is_active;
+        $isPendingOrRejected = Schema::hasColumn($tenant->getTable(), 'status')
+            && in_array($tenant->getAttribute('status'), ['pending', 'rejected'], true);
+
+        $isInactive = Schema::hasColumn($tenant->getTable(), 'is_active')
+            && ! (bool) $tenant->getAttribute('is_active');
+
+        return $isPendingOrRejected || $isInactive;
     }
 }

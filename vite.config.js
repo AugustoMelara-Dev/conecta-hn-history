@@ -2,6 +2,10 @@ import { defineConfig } from "vite";
 import laravel from "laravel-vite-plugin";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
     plugins: [
@@ -81,6 +85,11 @@ export default defineConfig({
         strictPort: true,
         cors: {
             origin: ["http://localhost:8000", "http://127.0.0.1:8000"],
+        },
+    },
+    resolve: {
+        alias: {
+            "@": path.resolve(__dirname, "resources/js"),
         },
     },
 });

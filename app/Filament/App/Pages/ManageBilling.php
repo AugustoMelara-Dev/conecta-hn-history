@@ -11,7 +11,6 @@ use App\Domain\Access\Enums\Permission;
 use App\Domain\Billing\Gateways\SubscriptionCheckoutGatewayInterface;
 use App\Domain\TenantGovernance\Enums\Capability;
 use App\Domain\TenantGovernance\Enums\TenantFeature;
-use App\Infrastructure\TenantGovernance\Presentation\TenantPlanPresentationReader;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
 use App\Models\User;
@@ -32,6 +31,7 @@ use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Support\HtmlString;
 
@@ -61,6 +61,8 @@ class ManageBilling extends Page implements HasForms, HasTable
 
     /** @var array<string, mixed>|null */
     public ?array $data = [];
+
+    public bool $paymentsTableAvailable = true;
 
     public float $subscriptionAmount = 99.00;
 
@@ -126,19 +128,23 @@ class ManageBilling extends Page implements HasForms, HasTable
         }
 
         $this->loadSettings();
-        $this->planPresentation = app(TenantPlanPresentationReader::class)->forTenant($tenant);
+        $this->planPresentation = $this->resolvePlanPresentation($tenant);
+        $this->paymentsTableAvailable = Schema::hasTable((new SubscriptionPayment())->getTable());
 
-        $this->pendingPayment = SubscriptionPayment::query()
-            ->where('tenant_id', $tenant->getKey())
-            ->where('status', SubscriptionPayment::STATUS_PENDING)
-            ->latest()
-            ->first();
+        $this->pendingPayment = $this->paymentsTableAvailable
+            ? SubscriptionPayment::query()
+                ->where('tenant_id', $tenant->getKey())
+                ->where('status', SubscriptionPayment::STATUS_PENDING)
+                ->latest()
+                ->first()
+            : null;
 
         $this->isPending = $this->pendingPayment instanceof SubscriptionPayment;
         $this->isPro = ! $tenant->hasFeature(TenantFeature::UPGRADE_PROMPT) && ! $this->isPending;
         $this->isFree = ! $this->isPending && ! $this->isPro;
 
-        $subscriptionEndsAt = $tenant->subscription_ends_at;
+        $subscriptionEndsAt = $tenant->getRawOriginal('subscription_ends_at');
+        $subscriptionEndsAt = $subscriptionEndsAt ? Carbon::parse($subscriptionEndsAt) : null;
 
         if ($this->isPro && $subscriptionEndsAt) {
             $this->daysRemaining = max(0, (int) Carbon::now()->diffInDays($subscriptionEndsAt, false));
@@ -219,11 +225,11 @@ class ManageBilling extends Page implements HasForms, HasTable
                         </div>
                         <div class="biz-split-item">
                             <span class="biz-muted">Monto</span>
-                            <strong style="font-size: 1.4rem; color: #34d399;">'.$price.'</strong>
+                            <strong class="biz-heading">'.$price.'</strong>
                         </div>
                     </div>
 
-                    <div class="biz-empty-state" style="padding: 1rem; text-align: left;">
+                    <div class="biz-empty-state">
                         <p class="biz-action-copy">
                             Guarda una captura clara del deposito. El equipo revisa el pago manualmente y activa tu negocio cuando la transferencia queda validada.
                         </p>
@@ -253,6 +259,16 @@ class ManageBilling extends Page implements HasForms, HasTable
             Notification::make()
                 ->warning()
                 ->title('No tienes permisos para reportar pagos')
+                ->send();
+
+            return;
+        }
+
+        if (! $this->paymentsTableAvailable) {
+            Notification::make()
+                ->warning()
+                ->title('Historial de pagos no disponible')
+                ->body('La tabla de pagos no existe en este entorno. Revisa migraciones antes de reportar comprobantes.')
                 ->send();
 
             return;
@@ -309,7 +325,7 @@ class ManageBilling extends Page implements HasForms, HasTable
         if (! $user instanceof User || ! app(TenantPermissionGuardInterface::class)->allows($user, $tenant, Capability::CATALOG_BASIC, Permission::BILLING_MANAGE)) {
             Notification::make()
                 ->warning()
-                ->title('No tienes permisos para gestionar billing')
+                ->title('No tienes permisos para gestionar pagos')
                 ->send();
 
             return null;
@@ -363,7 +379,7 @@ class ManageBilling extends Page implements HasForms, HasTable
         if (! $user instanceof User || ! app(TenantPermissionGuardInterface::class)->allows($user, $tenant, Capability::CATALOG_BASIC, Permission::BILLING_MANAGE)) {
             Notification::make()
                 ->warning()
-                ->title('No tienes permisos para gestionar billing')
+                ->title('No tienes permisos para gestionar pagos')
                 ->send();
 
             return null;
@@ -427,7 +443,7 @@ class ManageBilling extends Page implements HasForms, HasTable
                     }),
             ])
             ->actions([
-                Action::make('download_receipt')
+                Tables\Actions\Action::make('download_receipt')
                     ->label('Recibo')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('gray')
@@ -540,6 +556,22 @@ class ManageBilling extends Page implements HasForms, HasTable
         }
     }
 
+    /**
+     * @return array<string, string>
+     */
+    private function resolvePlanPresentation(Tenant $tenant): array
+    {
+        $planLabel = $tenant->is_pro ? 'Plan PRO' : 'Plan Base';
+
+        return [
+            'marketingLabel' => $planLabel,
+            'marketingCopy' => $tenant->is_pro
+                ? 'Tu negocio ya tiene activadas las funciones premium del panel.'
+                : 'Activa el plan y habilita funciones premium del panel.',
+            'brandingCopy' => 'Sigue el flujo para transferir, subir el comprobante y dejar tu negocio listo para revision.',
+        ];
+    }
+
     public function billingBadge(): string
     {
         if ($this->isPending) {
@@ -552,10 +584,10 @@ class ManageBilling extends Page implements HasForms, HasTable
     public function billingHeroTitle(): string
     {
         if ($this->isPending) {
-            return 'Tu pago está en revisión';
+            return 'Tu pago esta en revision';
         }
 
-        return $this->isPro ? 'Suscripción activa' : 'Activa tu plan PRO';
+        return $this->isPro ? 'Suscripcion activa' : 'Activa tu plan PRO';
     }
 
     public function billingHeroCopy(): string

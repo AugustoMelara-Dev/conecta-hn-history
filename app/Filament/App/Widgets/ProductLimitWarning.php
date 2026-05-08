@@ -7,11 +7,12 @@ namespace App\Filament\App\Widgets;
 use App\Filament\App\Resources\ProductResource;
 use Filament\Widgets\Widget;
 
-/**
- * ProductLimitWarning - Banner de Advertencia de Límite
- */
 class ProductLimitWarning extends Widget
 {
+    protected static string $view = 'filament.app.widgets.product-limit-warning';
+
+    protected static bool $isLazy = false;
+
     public function getView(): string
     {
         return 'filament.app.widgets.product-limit-warning';

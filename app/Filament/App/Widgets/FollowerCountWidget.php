@@ -13,6 +13,8 @@ use Filament\Widgets\Widget;
  */
 class FollowerCountWidget extends Widget
 {
+    protected static string $view = 'filament.app.widgets.follower-count';
+
     public function getView(): string
     {
         return 'filament.app.widgets.follower-count';

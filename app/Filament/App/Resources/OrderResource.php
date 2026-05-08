@@ -53,9 +53,15 @@ class OrderResource extends Resource
             return null;
         }
 
-        $count = static::getModel()::where('tenant_id', $tenant->id)
-            ->where('status', 'pending')
-            ->count();
+        try {
+            $count = static::getModel()::query()
+                ->withoutGlobalScopes()
+                ->where('tenant_id', $tenant->id)
+                ->where('status', 'pending')
+                ->count();
+        } catch (\Throwable) {
+            return null;
+        }
 
         return $count > 0 ? (string) $count : null;
     }
@@ -84,7 +90,7 @@ class OrderResource extends Resource
                     ->sortable()
                     ->weight('bold')
                     ->copyable()
-                    ->copyMessage('Número copiado'),
+                    ->copyMessage('Numero copiado'),
 
                 // ═══ CLIENTE ═══
                 Tables\Columns\TextColumn::make('customer_name')
@@ -97,12 +103,12 @@ class OrderResource extends Resource
                     ->label('Estado')
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'pending' => '⏳ Pendiente',
-                        'confirmed' => '✓ Confirmado',
-                        'preparing' => '👨‍🍳 En Cocina',
-                        'ready' => '✅ Listo',
-                        'delivered' => '📦 Entregado',
-                        'cancelled' => '❌ Cancelado',
+                        'pending' => 'Pendiente',
+                        'confirmed' => 'Confirmado',
+                        'preparing' => 'En cocina',
+                        'ready' => 'Listo',
+                        'delivered' => 'Entregado',
+                        'cancelled' => 'Cancelado',
                         default => $state,
                     })
                     ->color(fn (string $state): string => match ($state) {
@@ -161,13 +167,13 @@ class OrderResource extends Resource
                     ->options([
                         'pending' => 'Pendiente',
                         'confirmed' => 'Confirmado',
-                        'preparing' => 'En Cocina',
+                        'preparing' => 'En cocina',
                         'ready' => 'Listo',
                         'delivered' => 'Entregado',
                         'cancelled' => 'Cancelado',
                     ]),
                 Tables\Filters\Filter::make('today')
-                    ->label('Solo Hoy')
+                    ->label('Solo hoy')
                     ->query(fn (Builder $query): Builder => $query->whereDate('created_at', today()))
                     ->default(),
             ])
@@ -183,7 +189,7 @@ class OrderResource extends Resource
                         try {
                             app(\App\Services\OrderStateService::class)->transition($record, 'confirmed');
                             \Filament\Notifications\Notification::make()
-                                ->title('Pedido Confirmado')
+                                ->title('Pedido confirmado')
                                 ->success()
                                 ->send();
                         } catch (\Exception $e) {
@@ -204,7 +210,7 @@ class OrderResource extends Resource
                         try {
                             app(\App\Services\OrderStateService::class)->transition($record, 'processing');
                             \Filament\Notifications\Notification::make()
-                                ->title('En Cocina')
+                                ->title('En cocina')
                                 ->success()
                                 ->send();
                         } catch (\Exception $e) {
@@ -225,7 +231,7 @@ class OrderResource extends Resource
                         try {
                             app(\App\Services\OrderStateService::class)->transition($record, 'ready');
                             \Filament\Notifications\Notification::make()
-                                ->title('Pedido Listo')
+                                ->title('Pedido listo')
                                 ->success()
                                 ->send();
                         } catch (\Exception $e) {
@@ -247,7 +253,7 @@ class OrderResource extends Resource
                         try {
                             app(\App\Services\OrderStateService::class)->transition($record, 'delivered');
                             \Filament\Notifications\Notification::make()
-                                ->title('Pedido Entregado')
+                                ->title('Pedido entregado')
                                 ->success()
                                 ->send();
                         } catch (\Exception $e) {
@@ -271,7 +277,7 @@ class OrderResource extends Resource
             ->striped()
             ->defaultSort('created_at', 'desc')
             ->emptyStateHeading('Sin pedidos')
-            ->emptyStateDescription('Los pedidos de tus clientes aparecerán aquí.')
+            ->emptyStateDescription('Los pedidos de tus clientes apareceran aqui.')
             ->emptyStateIcon('heroicon-o-clipboard-document-list');
     }
 
@@ -293,7 +299,7 @@ class OrderResource extends Resource
                                     ->size('lg'),
 
                                 Infolists\Components\TextEntry::make('customer_phone')
-                                    ->label('Teléfono')
+                                    ->label('Telefono')
                                     ->icon('heroicon-o-phone')
                                     ->copyable(),
 
@@ -303,7 +309,7 @@ class OrderResource extends Resource
                                     ->visible(fn ($state) => ! empty($state)),
 
                                 Infolists\Components\TextEntry::make('delivery_address')
-                                    ->label('Dirección')
+                                    ->label('Direccion')
                                     ->icon('heroicon-o-map-pin')
                                     ->visible(fn ($state) => ! empty($state))
                                     ->columnSpanFull(),
@@ -325,7 +331,7 @@ class OrderResource extends Resource
                             ->columnSpan(1)
                             ->schema([
                                 Infolists\Components\TextEntry::make('order_number')
-                                    ->label('Número')
+                                    ->label('Numero')
                                     ->weight('bold')
                                     ->copyable(),
 
@@ -335,7 +341,7 @@ class OrderResource extends Resource
                                     ->formatStateUsing(fn (string $state): string => match ($state) {
                                         'pending' => 'Pendiente',
                                         'confirmed' => 'Confirmado',
-                                        'preparing' => 'En Cocina',
+                                        'preparing' => 'En cocina',
                                         'ready' => 'Listo',
                                         'delivered' => 'Entregado',
                                         'cancelled' => 'Cancelado',
@@ -352,17 +358,17 @@ class OrderResource extends Resource
                                     }),
 
                                 Infolists\Components\TextEntry::make('payment_method')
-                                    ->label('Método de Pago')
+                                    ->label('Metodo de pago')
                                     ->badge()
                                     ->formatStateUsing(fn (string $state): string => match ($state) {
-                                        'cash' => '💵 Efectivo',
-                                        'transfer' => '🏦 Transferencia',
-                                        'card' => '💳 Tarjeta',
-                                        default => '⏳ Pendiente',
+                                        'cash' => 'Efectivo',
+                                        'transfer' => 'Transferencia',
+                                        'card' => 'Tarjeta',
+                                        default => 'Pendiente',
                                     }),
 
                                 Infolists\Components\TextEntry::make('payment_status')
-                                    ->label('Estado de Pago')
+                                    ->label('Estado de pago')
                                     ->badge()
                                     ->color(fn (string $state): string => match ($state) {
                                         'paid' => 'success',
@@ -371,7 +377,7 @@ class OrderResource extends Resource
                                     }),
 
                                 Infolists\Components\TextEntry::make('customer_notes')
-                                    ->label('Notas del Cliente')
+                                    ->label('Notas del cliente')
                                     ->visible(fn ($state) => ! empty($state))
                                     ->columnSpanFull()
                                     ->prose(),
@@ -445,7 +451,7 @@ class OrderResource extends Resource
                                             ->money('HNL')
                                             ->visible(fn ($state) => $state > 0),
                                         Infolists\Components\TextEntry::make('delivery_fee')
-                                            ->label('Envío')
+                                            ->label('Envio')
                                             ->money('HNL')
                                             ->visible(fn ($state) => $state > 0),
                                         Infolists\Components\TextEntry::make('total')

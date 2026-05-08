@@ -39,7 +39,7 @@ export function QuickAccessForm({ className = "", onAuthenticated }) {
             setOtpIdentifier(identifier)
             setTenantId(response.data.tenant_id || "")
             setDeliveryMode(response.data.delivery_mode || "code")
-            setNotice(response.data.message || "Te enviamos un código de acceso.")
+            setNotice(response.data.message || "Te enviamos un codigo de acceso.")
             setStep("verify")
         } catch (requestError) {
             setError(
@@ -77,7 +77,7 @@ export function QuickAccessForm({ className = "", onAuthenticated }) {
                 requestError.response?.data?.errors?.otp_code?.[0]
                 || requestError.response?.data?.errors?.code?.[0]
                 || requestError.response?.data?.message
-                || "Código inválido o vencido. Solicita uno nuevo si el correo tardó en llegar."
+                || "Codigo invalido o vencido. Solicita uno nuevo si el correo tardo en llegar."
             )
         } finally {
             setIsLoading(false)
@@ -99,25 +99,21 @@ export function QuickAccessForm({ className = "", onAuthenticated }) {
             <form onSubmit={submitCode} className={className} data-testid="otp-verify-form">
                 <FieldGroup>
                     <Alert variant="success">
-                        <div className="flex gap-3">
-                            <MailCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                            <div>
-                                <AlertTitle>Revisa tu correo</AlertTitle>
-                                <AlertDescription>
-                                    {deliveryMode === "magic_link_and_code"
-                                        ? `Toca el enlace seguro en este dispositivo o escribe el código enviado a ${otpIdentifier}.`
-                                        : `Escribe el código de 6 dígitos enviado a ${otpIdentifier}.`}
-                                </AlertDescription>
-                            </div>
-                        </div>
+                        <MailCheck aria-hidden="true" />
+                        <AlertTitle>Revisa tu correo</AlertTitle>
+                        <AlertDescription>
+                            {deliveryMode === "magic_link_and_code"
+                                ? `Toca el enlace seguro en este dispositivo o escribe el codigo enviado a ${otpIdentifier}.`
+                                : `Escribe el codigo de 6 digitos enviado a ${otpIdentifier}.`}
+                        </AlertDescription>
                     </Alert>
 
                     {notice ? (
-                        <FieldDescription className="text-slate-600">{notice}</FieldDescription>
+                        <FieldDescription>{notice}</FieldDescription>
                     ) : null}
 
                     <Field>
-                        <FieldLabel htmlFor="otp-code">Código de respaldo</FieldLabel>
+                        <FieldLabel htmlFor="otp-code">Codigo de respaldo</FieldLabel>
                         <InputOTP
                             id="otp-code"
                             value={code}
@@ -127,7 +123,7 @@ export function QuickAccessForm({ className = "", onAuthenticated }) {
                             data-testid="otp-code-input"
                         />
                         <FieldDescription>
-                            Úsalo si abriste el correo en otro dispositivo o si prefieres escribirlo manualmente.
+                            Usalo si abriste el correo en otro dispositivo o si prefieres escribirlo manualmente.
                         </FieldDescription>
                     </Field>
 
@@ -140,11 +136,11 @@ export function QuickAccessForm({ className = "", onAuthenticated }) {
 
                     <div className="grid grid-cols-[0.7fr_1fr] gap-2">
                         <Button type="button" variant="outline" onClick={reset} disabled={isLoading}>
-                            <RotateCcw className="mr-2 h-4 w-4" data-icon="inline-start" />
+                            <RotateCcw data-icon="inline-start" aria-hidden="true" />
                             Cambiar correo
                         </Button>
                         <Button type="submit" disabled={isLoading || code.length !== 6}>
-                            {isLoading ? <Spinner className="mr-2" /> : <KeyRound className="mr-2 h-4 w-4" data-icon="inline-start" />}
+                            {isLoading ? <Spinner data-icon="inline-start" /> : <KeyRound data-icon="inline-start" aria-hidden="true" />}
                             Verificar y entrar
                         </Button>
                     </div>
@@ -170,7 +166,7 @@ export function QuickAccessForm({ className = "", onAuthenticated }) {
                         data-testid="otp-identifier-input"
                     />
                     <FieldDescription>
-                        Te enviaremos un enlace seguro si está habilitado y un código de 6 dígitos como respaldo.
+                        Te enviaremos un enlace seguro si esta habilitado y un codigo de 6 digitos como respaldo.
                     </FieldDescription>
                 </Field>
 
@@ -182,7 +178,7 @@ export function QuickAccessForm({ className = "", onAuthenticated }) {
                 ) : null}
 
                 <Button type="submit" disabled={isLoading} className="w-full">
-                    {isLoading ? <Spinner className="mr-2" /> : <Send className="mr-2 h-4 w-4" data-icon="inline-start" />}
+                    {isLoading ? <Spinner data-icon="inline-start" /> : <Send data-icon="inline-start" aria-hidden="true" />}
                     Enviar acceso
                 </Button>
             </FieldGroup>

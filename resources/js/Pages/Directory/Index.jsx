@@ -1,172 +1,346 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
-import AppLayout from '@/Layouts/AppLayout';
-import { Button } from '@/Components/ui/button';
-import { Input } from '@/Components/ui/input';
-import CategoryRail from '@/Components/Organisms/CategoryRail';
-import BlurImage from '@/Components/Molecules/BlurImage';
 import {
-    MapPin, Star, Search, Building2, BadgeCheck, X, Filter, ChevronDown
+    ArrowRight,
+    BadgeCheck,
+    Building2,
+    Filter,
+    MapPin,
+    Search,
+    Store,
+    X,
 } from 'lucide-react';
+
+import PublicLayout from '@/Layouts/PublicLayout';
+import { Badge } from '@/Components/ui/badge';
+import { Button } from '@/Components/ui/button';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+} from '@/Components/ui/card';
+import { Field, FieldGroup, FieldLabel } from '@/Components/ui/field';
+import { Input } from '@/Components/ui/input';
+import { Separator } from '@/Components/ui/separator';
+import {
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/Components/ui/select';
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+    SheetTrigger,
+} from '@/Components/ui/sheet';
 import { cn } from '@/lib/utils';
 
-// ═══════════════════════════════════════════════════════════════════════════
-// UTILITY: Clean empty params from URL
-// ═══════════════════════════════════════════════════════════════════════════
+const ALL_VALUE = 'all';
+
 function cleanParams(params) {
     return Object.fromEntries(
-        Object.entries(params).filter(([_, v]) => v !== null && v !== undefined && v !== '')
+        Object.entries(params).filter(([, value]) => value !== null && value !== undefined && value !== '')
     );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// COMPONENT: TenantCard - Individual Business Card
-// ═══════════════════════════════════════════════════════════════════════════
-function TenantCard({ tenant }) {
+function getTenantHref(tenant) {
+    if (!tenant?.slug) {
+        return route('directory.index');
+    }
+
+    try {
+        if (route().has('tenant.microsite.show')) {
+            return route('tenant.microsite.show', { tenant: tenant.slug });
+        }
+    } catch {
+        // Fall through to legacy route/fallback below.
+    }
+
+    return route('directory.index', { search: tenant.name || '' });
+}
+
+function getStorageUrl(path) {
+    if (!path) {
+        return null;
+    }
+
+    if (path.startsWith('http') || path.startsWith('/')) {
+        return path;
+    }
+
+    return `/storage/${path}`;
+}
+
+function getPaginatorItems(tenants) {
+    if (Array.isArray(tenants?.data)) {
+        return tenants.data;
+    }
+
+    if (Array.isArray(tenants)) {
+        return tenants;
+    }
+
+    return [];
+}
+
+function getResultCount(tenants, items) {
+    return tenants?.total ?? tenants?.meta?.total ?? items.length;
+}
+
+function DirectoryCard({ tenant }) {
+    const imageUrl = getStorageUrl(tenant.banner_path || tenant.cover_url || tenant.logo_url);
+    const cityName = typeof tenant.city === 'string' ? tenant.city : tenant.city?.name;
+    const categoryName = typeof tenant.category === 'string' ? tenant.category : tenant.category?.name;
+
     return (
-        <Link
-            href={route('tenant.show', tenant.slug)}
-            className="group block h-full"
-        >
-            <div className={cn(
-                "bg-card rounded-2xl border transition-all duration-300 overflow-hidden h-full flex flex-col hover:shadow-xl hover:-translate-y-1",
-                tenant.is_pro ? "border-primary/20 shadow-sm" : "border-border"
-            )}>
-                {/* Image with lazy loading */}
-                <div className="aspect-video relative overflow-hidden bg-muted">
-                    {tenant.banner_path ? (
-                        <BlurImage
-                            src={`/storage/${tenant.banner_path}`}
-                            blurhash={tenant.blur_hash}
-                            alt={tenant.name}
+        <Card className="flex h-full flex-col overflow-hidden transition-shadow hover:shadow-md" data-testid="tenant-card">
+            <Link href={getTenantHref(tenant)} className="flex h-full flex-col" data-testid="primary-tenant-cta">
+                <div className="grid aspect-video place-items-center bg-muted">
+                    {imageUrl ? (
+                        <img
+                            src={imageUrl}
+                            alt={`Imagen de ${tenant.name}`}
                             loading="lazy"
-                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                            className="h-full w-full object-cover"
                         />
                     ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted/50">
-                            <Building2 className="w-12 h-12 text-muted-foreground/20" />
-                        </div>
+                        <Store className="h-10 w-10 text-muted-foreground" aria-hidden="true" />
                     )}
-
-                    {/* Badges */}
-                    <div className="absolute top-3 right-3 flex gap-2">
-                        {tenant.is_pro && (
-                            <div className="bg-background/90 backdrop-blur text-foreground text-[10px] font-bold px-2 py-1 rounded-full shadow-sm flex items-center gap-1 border border-border/50">
-                                <BadgeCheck className="w-3 h-3 text-blue-500 fill-blue-500/10" />
-                                VERIFICADO
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Category Badge */}
-                    <div className="absolute bottom-3 left-3">
-                        <div className="bg-black/60 backdrop-blur text-white text-[10px] font-medium px-2 py-1 rounded-full flex items-center gap-1">
-                            {tenant.category?.name || 'Negocio'}
-                        </div>
-                    </div>
                 </div>
 
-                {/* Content */}
-                <div className="p-4 flex-1 flex flex-col">
-                    <div className="flex justify-between items-start gap-2 mb-1">
-                        <h3 className="font-bold text-lg line-clamp-1 group-hover:text-primary transition-colors flex items-center gap-1.5">
-                            {tenant.name}
-                            {tenant.is_pro && (
-                                <BadgeCheck className="w-4 h-4 text-blue-500 fill-blue-500/10 shrink-0" />
-                            )}
-                        </h3>
-                    </div>
+                <CardHeader className="gap-3">
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                            <CardTitle className="truncate text-lg leading-6">
+                                {tenant.name}
+                            </CardTitle>
+                            <CardDescription className="mt-1 truncate">
+                                {categoryName || 'Comercio local'}
+                            </CardDescription>
+                        </div>
 
-                    <p className="text-sm text-muted-foreground line-clamp-2 mb-3 flex-1 leading-relaxed">
-                        {tenant.description || 'Sin descripción disponible.'}
+                        {tenant.is_pro && (
+                            <Badge variant="secondary" className="shrink-0">
+                                <BadgeCheck className="mr-1 h-3 w-3" aria-hidden="true" />
+                                PRO
+                            </Badge>
+                        )}
+                    </div>
+                </CardHeader>
+
+                <CardContent className="flex flex-1 flex-col gap-4">
+                    <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">
+                        {tenant.description || 'Descubre lo que este negocio tiene para ti.'}
                     </p>
 
-                    {/* Tags Pills (max 3) */}
                     {tenant.tags?.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mb-3">
-                            {tenant.tags.slice(0, 3).map((tag, idx) => (
-                                <span
-                                    key={idx}
-                                    className="text-[10px] font-medium px-2 py-0.5 bg-muted text-muted-foreground rounded-full"
-                                >
+                        <div className="flex flex-wrap gap-2">
+                            {tenant.tags.slice(0, 3).map((tag) => (
+                                <Badge key={tag} variant="outline">
                                     {tag}
-                                </span>
+                                </Badge>
                             ))}
                         </div>
                     )}
+                </CardContent>
 
-                    <div className="flex items-center justify-between pt-3 border-t mt-auto">
-                        <div className="flex items-center text-xs text-muted-foreground truncate max-w-[65%]">
-                            <MapPin className="w-3.5 h-3.5 mr-1.5 shrink-0 text-primary/70" />
-                            <span className="truncate font-medium">{tenant.city?.name || 'Honduras'}</span>
-                        </div>
-                        <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-950/30 px-2 py-0.5 rounded-md border border-amber-100 dark:border-amber-900/50">
-                            <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
-                            <span className="text-xs font-bold text-amber-700 dark:text-amber-400">4.8</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </Link>
+                <CardFooter className="mt-auto justify-between gap-3">
+                    <span className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
+                        <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
+                        <span className="truncate">{cityName || 'Honduras'}</span>
+                    </span>
+                    <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                </CardFooter>
+            </Link>
+        </Card>
     );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// COMPONENT: FilterPanel - Desktop & Mobile Filter Controls
-// ═══════════════════════════════════════════════════════════════════════════
-function FilterPanel({ cities, filters, onFilterChange, className = '' }) {
+function FilterControls({ categories, cities, filters, onFilterChange }) {
     return (
-        <div className={cn("space-y-4", className)}>
-            {/* City Dropdown */}
-            <div>
-                <label className="block text-sm font-medium mb-2 text-foreground">Ciudad</label>
-                <div className="relative">
-                    <select
-                        value={filters.city || ''}
-                        onChange={(e) => onFilterChange('city', e.target.value)}
-                        className="w-full h-10 px-3 pr-8 rounded-lg border border-input bg-background text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    >
-                        <option value="">Todas las ciudades</option>
-                        {cities.map((city) => (
-                            <option key={city.id} value={city.slug}>{city.name}</option>
-                        ))}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                </div>
+        <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-2">
+                <label htmlFor="directory-city-filter" className="text-sm font-medium">
+                    Ciudad
+                </label>
+                <Select
+                    value={filters.city || ALL_VALUE}
+                    onValueChange={(value) => onFilterChange('city', value === ALL_VALUE ? '' : value)}
+                >
+                    <SelectTrigger id="directory-city-filter" data-testid="directory-filter-control">
+                        <SelectValue placeholder="Todas las ciudades" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectGroup>
+                            <SelectItem value={ALL_VALUE}>Todas las ciudades</SelectItem>
+                            {cities.map((city) => (
+                                <SelectItem key={city.id ?? city.slug} value={city.slug}>
+                                    {city.name}
+                                </SelectItem>
+                            ))}
+                        </SelectGroup>
+                    </SelectContent>
+                </Select>
             </div>
 
-            {/* Clear Filters */}
-            {(filters.search || filters.city || filters.category) && (
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onFilterChange('clear', null)}
-                    className="w-full"
+            <div className="flex flex-col gap-2">
+                <label htmlFor="directory-category-filter" className="text-sm font-medium">
+                    Categoria
+                </label>
+                <Select
+                    value={filters.category || ALL_VALUE}
+                    onValueChange={(value) => onFilterChange('category', value === ALL_VALUE ? '' : value)}
                 >
-                    <X className="w-4 h-4 mr-2" />
-                    Limpiar filtros
-                </Button>
-            )}
+                    <SelectTrigger id="directory-category-filter" data-testid="directory-filter-control">
+                        <SelectValue placeholder="Todas las categorias" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectGroup>
+                            <SelectItem value={ALL_VALUE}>Todas las categorias</SelectItem>
+                            {categories.map((category) => (
+                                <SelectItem key={category.id ?? category.slug} value={category.slug}>
+                                    {category.name}
+                                </SelectItem>
+                            ))}
+                        </SelectGroup>
+                    </SelectContent>
+                </Select>
+            </div>
+
+            <Separator />
+
+                <Button variant="outline" onClick={() => onFilterChange('clear', null)}>
+                <X className="mr-2 h-4 w-4" aria-hidden="true" />
+                Limpiar filtros
+            </Button>
         </div>
     );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// MAIN PAGE COMPONENT
-// ═══════════════════════════════════════════════════════════════════════════
-export default function DirectoryIndex({ tenants, categories, cities, activeCity, filters }) {
+function ActiveFilters({ categories, cities, filters, onFilterChange }) {
+    const category = categories.find((item) => item.slug === filters.category);
+    const city = cities.find((item) => item.slug === filters.city);
+    const active = [
+        filters.search ? { key: 'search', label: `Busqueda: ${filters.search}` } : null,
+        city ? { key: 'city', label: `Ciudad: ${city.name}` } : null,
+        category ? { key: 'category', label: `Categoria: ${category.name}` } : null,
+    ].filter(Boolean);
+
+    if (!active.length) {
+        return null;
+    }
+
+    return (
+        <div className="flex flex-wrap gap-2">
+            {active.map((item) => (
+                <Badge key={item.key} variant="secondary" className="gap-2">
+                    {item.label}
+                    <button
+                        type="button"
+                        onClick={() => onFilterChange(item.key, '')}
+                        className="rounded-sm text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        aria-label={`Quitar filtro ${item.label}`}
+                    >
+                        <X className="h-3 w-3" aria-hidden="true" />
+                    </button>
+                </Badge>
+            ))}
+        </div>
+    );
+}
+
+function EmptyState({ filters, onClear }) {
+    return (
+        <Card className="border-dashed" data-testid="directory-empty-state">
+            <CardContent className="flex flex-col items-center gap-5 py-16 text-center">
+                <span className="grid h-16 w-16 place-items-center rounded-md bg-muted text-muted-foreground">
+                    <Search className="h-7 w-7" aria-hidden="true" />
+                </span>
+                <div className="max-w-md">
+                    <h2 className="text-xl font-semibold">
+                        {filters.search ? `No encontramos "${filters.search}"` : 'No hay negocios disponibles'}
+                    </h2>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                        Prueba con otra busqueda, cambia ciudad o limpia los filtros para ver mas negocios.
+                    </p>
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row">
+                    <Button variant="outline" onClick={onClear}>
+                        <X className="mr-2 h-4 w-4" aria-hidden="true" />
+                        Limpiar filtros
+                    </Button>
+                    <Button asChild>
+                        <Link href={route('register')}>
+                            <Building2 className="mr-2 h-4 w-4" aria-hidden="true" />
+                            Registrar mi negocio
+                        </Link>
+                    </Button>
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
+
+function Pagination({ links }) {
+    if (!links?.length) {
+        return null;
+    }
+
+    return (
+        <nav className="mt-10 flex flex-wrap justify-center gap-2" aria-label="Paginacion del directorio">
+            {links.map((link, index) => {
+                const label = link.label
+                    .replace('&laquo;', 'Anterior')
+                    .replace('&raquo;', 'Siguiente')
+                    .replace('Previous', 'Anterior')
+                    .replace('Next', 'Siguiente');
+
+                if (!link.url) {
+                    return (
+                        <Button key={`${label}-${index}`} variant="outline" disabled>
+                            {label}
+                        </Button>
+                    );
+                }
+
+                return (
+                    <Button
+                        key={`${label}-${index}`}
+                        variant={link.active ? 'default' : 'outline'}
+                        asChild
+                    >
+                        <Link href={link.url}>{label}</Link>
+                    </Button>
+                );
+            })}
+        </nav>
+    );
+}
+
+export default function DirectoryIndex({
+    tenants = {},
+    categories = [],
+    cities = [],
+    activeCity = null,
+    filters = {},
+}) {
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
     const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+    const items = useMemo(() => getPaginatorItems(tenants), [tenants]);
+    const resultCount = getResultCount(tenants, items);
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // FILTER HANDLER: Single source of truth for all filter changes
-    // ═══════════════════════════════════════════════════════════════════════
-    const applyFilters = useCallback((newFilters) => {
-        const cleanedParams = cleanParams(newFilters);
-
+    const applyFilters = useCallback((nextFilters) => {
         router.get(
             route('directory.index'),
-            cleanedParams,
+            cleanParams(nextFilters),
             { preserveState: true, preserveScroll: true, replace: true }
         );
     }, []);
@@ -175,210 +349,168 @@ export default function DirectoryIndex({ tenants, categories, cities, activeCity
         if (key === 'clear') {
             setSearchTerm('');
             applyFilters({});
+            setMobileFiltersOpen(false);
             return;
         }
 
-        const newFilters = { ...filters, [key]: value || null };
+        const nextFilters = {
+            ...filters,
+            [key]: value || null,
+        };
 
-        // If changing search, update local state
         if (key === 'search') {
-            setSearchTerm(value);
+            setSearchTerm(value || '');
         }
 
-        applyFilters(newFilters);
+        applyFilters(nextFilters);
         setMobileFiltersOpen(false);
-    }, [filters, applyFilters]);
+    }, [applyFilters, filters]);
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // DEBOUNCED SEARCH: 500ms delay to prevent API spam
-    // ═══════════════════════════════════════════════════════════════════════
     useEffect(() => {
-        const handler = setTimeout(() => {
-            if (searchTerm !== (filters.search || '')) {
-                applyFilters({ ...filters, search: searchTerm || null });
-            }
-        }, 500);
+        setSearchTerm(filters.search || '');
+    }, [filters.search]);
 
-        return () => clearTimeout(handler);
-    }, [searchTerm, filters, applyFilters]); // Full dependency array prevents stale closures
+    useEffect(() => {
+        const timer = window.setTimeout(() => {
+            if (searchTerm !== (filters.search || '')) {
+                applyFilters({
+                    ...filters,
+                    search: searchTerm || null,
+                });
+            }
+        }, 400);
+
+        return () => window.clearTimeout(timer);
+    }, [applyFilters, filters, searchTerm]);
+
+    const pageTitle = activeCity?.name
+        ? `Directorio en ${activeCity.name}`
+        : filters.category
+            ? categories.find((category) => category.slug === filters.category)?.name || 'Directorio'
+            : 'Directorio de negocios';
 
     return (
-        <AppLayout>
-            <Head title={`Directorio ${activeCity ? `en ${activeCity.name}` : 'de Negocios'}`} />
+        <PublicLayout>
+            <Head title={`${pageTitle} - Conecta HN`} />
 
-            <div className="min-h-screen bg-background">
-                <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-                    {/* Category Rail */}
-                    <div className="mb-8">
-                        <CategoryRail
-                            categories={[{ id: 'all', name: 'Ver Todos', slug: '', icon: '🔍' }, ...categories]}
-                            activeCategory={filters.category}
-                        />
-                    </div>
-
-                    {/* Filters Bar */}
-                    <div className="flex flex-col lg:flex-row gap-4 mb-6">
-                        {/* Search Input */}
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                            <Input
-                                type="text"
-                                placeholder="Buscar negocios, productos, servicios..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10 h-11"
-                            />
-                        </div>
-
-                        {/* Desktop City Filter */}
-                        <div className="hidden lg:block w-64">
-                            <div className="relative">
-                                <select
-                                    value={filters.city || ''}
-                                    onChange={(e) => handleFilterChange('city', e.target.value)}
-                                    className="w-full h-11 px-3 pr-8 rounded-lg border border-input bg-background text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                >
-                                    <option value="">Todas las ciudades</option>
-                                    {cities.map((city) => (
-                                        <option key={city.id} value={city.slug}>{city.name}</option>
-                                    ))}
-                                </select>
-                                <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                            </div>
-                        </div>
-
-                        {/* Mobile Filter Button */}
-                        <Button
-                            variant="outline"
-                            onClick={() => setMobileFiltersOpen(true)}
-                            className="lg:hidden"
-                        >
-                            <Filter className="w-4 h-4 mr-2" />
-                            Filtrar
-                        </Button>
-                    </div>
-
-                    {/* Results Header */}
-                    <div className="flex items-center justify-between mb-6">
-                        <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                            {filters.category
-                                ? categories.find(c => c.slug === filters.category)?.name
-                                : activeCity
-                                    ? `Explora ${activeCity.name}`
-                                    : 'Descubre lo mejor de Honduras'}
-                        </h1>
-                        <span className="text-sm font-medium text-muted-foreground bg-muted px-3 py-1 rounded-full">
-                            {tenants.data?.length || 0} resultados
-                        </span>
-                    </div>
-
-                    {/* Results Grid */}
-                    {(tenants.data || tenants).length > 0 ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {(tenants.data || tenants).map((tenant) => (
-                                <TenantCard key={tenant.id} tenant={tenant} />
-                            ))}
-                        </div>
-                    ) : (
-                        /* Empty State */
-                        <div className="flex flex-col items-center justify-center py-24 text-center">
-                            <div className="w-24 h-24 bg-muted/30 rounded-full flex items-center justify-center mb-6">
-                                <Search className="w-10 h-10 text-muted-foreground/50" />
-                            </div>
-                            <h3 className="text-xl font-bold mb-2 text-foreground">
-                                {filters.search
-                                    ? `No encontramos "${filters.search}"`
-                                    : 'No hay negocios disponibles'}
-                            </h3>
-                            <p className="text-muted-foreground max-w-md mx-auto mb-8">
-                                {filters.search
-                                    ? `No hay negocios que coincidan con tu búsqueda. ¿Conoces un negocio de "${filters.search}"? ¡Invítalos a registrarse!`
-                                    : 'No hay negocios que coincidan con tus filtros. Intenta limpiar los filtros para ver todo el catálogo.'}
+            <section className="border-b bg-muted/40" data-testid="directory-page">
+                <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+                    <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+                        <div>
+                            <Badge variant="outline">Directorio</Badge>
+                            <h1 className="mt-4 text-3xl font-semibold tracking-normal sm:text-4xl">
+                                {pageTitle}
+                            </h1>
+                            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+                                Explora negocios locales por ciudad, categoria o busqueda directa.
                             </p>
+                        </div>
+                        <Badge variant="secondary" className="w-fit">
+                            {resultCount} resultados
+                        </Badge>
+                    </div>
+                </div>
+            </section>
 
-                            <div className="flex flex-col sm:flex-row gap-4">
-                                <Button
-                                    variant="outline"
-                                    size="lg"
-                                    onClick={() => handleFilterChange('clear', null)}
-                                    className="rounded-full px-8"
-                                >
-                                    <X className="w-4 h-4 mr-2" />
-                                    Limpiar filtros
-                                </Button>
+            <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+                <div className="grid gap-8 lg:grid-cols-[18rem_1fr]">
+                    <aside className="hidden lg:block">
+                        <Card className="sticky top-24">
+                            <CardHeader>
+                                <CardTitle className="text-lg">Filtros</CardTitle>
+                                <CardDescription>Ajusta la vista del directorio.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <FilterControls
+                                    categories={categories}
+                                    cities={cities}
+                                    filters={filters}
+                                    onFilterChange={handleFilterChange}
+                                />
+                            </CardContent>
+                        </Card>
+                    </aside>
 
-                                <Link
-                                    href={route('register')}
-                                    className="inline-flex items-center justify-center gap-2 px-8 h-11 rounded-full bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors"
-                                >
-                                    <Building2 className="w-4 h-4" />
-                                    Registrar mi negocio
-                                </Link>
+                    <div className="min-w-0">
+                        <div className="flex flex-col gap-4">
+                            <div className="flex gap-3">
+                                <FieldGroup className="flex-1 gap-0">
+                                    <Field>
+                                        <FieldLabel htmlFor="directory-search" className="sr-only">
+                                            Buscar negocios
+                                        </FieldLabel>
+                                        <div className="relative">
+                                            <Search
+                                                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                                                aria-hidden="true"
+                                            />
+                                            <Input
+                                                id="directory-search"
+                                                type="search"
+                                                value={searchTerm}
+                                                onChange={(event) => setSearchTerm(event.target.value)}
+                                                placeholder="Buscar negocios, productos o servicios..."
+                                                className="pl-9"
+                                                data-testid="directory-search-control"
+                                            />
+                                        </div>
+                                    </Field>
+                                </FieldGroup>
+
+                                <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
+                                    <SheetTrigger asChild>
+                                        <Button variant="outline" className="lg:hidden">
+                                            <Filter className="mr-2 h-4 w-4" aria-hidden="true" />
+                                            Filtros
+                                        </Button>
+                                    </SheetTrigger>
+                                    <SheetContent side="right">
+                                        <SheetHeader>
+                                            <SheetTitle>Filtros del directorio</SheetTitle>
+                                            <SheetDescription>
+                                                Ajusta la busqueda, categoria o ciudad para encontrar negocios disponibles.
+                                            </SheetDescription>
+                                        </SheetHeader>
+                                        <div className="mt-6">
+                                            <FilterControls
+                                                categories={categories}
+                                                cities={cities}
+                                                filters={filters}
+                                                onFilterChange={handleFilterChange}
+                                            />
+                                        </div>
+                                    </SheetContent>
+                                </Sheet>
                             </div>
-                        </div>
-                    )}
 
-                    {/* Pagination */}
-                    {tenants.links && tenants.data?.length > 0 && (
-                        <div className="flex justify-center gap-2 mt-12">
-                            {tenants.links.map((link, index) => {
-                                // Sanitize label: replace HTML entities with readable text
-                                const label = link.label
-                                    .replace('&laquo;', '«')
-                                    .replace('&raquo;', '»')
-                                    .replace('Previous', 'Anterior')
-                                    .replace('Next', 'Siguiente');
-
-                                return (
-                                    <Link
-                                        key={index}
-                                        href={link.url || '#'}
-                                        className={cn(
-                                            "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                                            link.active
-                                                ? "bg-primary text-primary-foreground"
-                                                : "bg-muted hover:bg-muted/80 text-foreground",
-                                            !link.url && "opacity-50 pointer-events-none"
-                                        )}
-                                    >
-                                        {label}
-                                    </Link>
-                                );
-                            })}
-                        </div>
-                    )}
-                </main>
-            </div>
-
-            {/* Mobile Filter Drawer */}
-            {mobileFiltersOpen && (
-                <div className="fixed inset-0 z-50 lg:hidden">
-                    <div
-                        className="fixed inset-0 bg-black/50"
-                        onClick={() => setMobileFiltersOpen(false)}
-                    />
-                    <div className="fixed inset-y-0 right-0 w-full max-w-xs bg-background shadow-xl">
-                        <div className="flex items-center justify-between p-4 border-b">
-                            <h2 className="font-bold text-lg">Filtros</h2>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => setMobileFiltersOpen(false)}
-                            >
-                                <X className="w-5 h-5" />
-                            </Button>
-                        </div>
-                        <div className="p-4">
-                            <FilterPanel
+                            <ActiveFilters
+                                categories={categories}
                                 cities={cities}
                                 filters={filters}
                                 onFilterChange={handleFilterChange}
                             />
                         </div>
+
+                        <Separator className="my-6" />
+
+                        {items.length > 0 ? (
+                            <>
+                                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                                    {items.map((tenant) => (
+                                        <DirectoryCard key={tenant.id} tenant={tenant} />
+                                    ))}
+                                </div>
+                                <Pagination links={tenants.links} />
+                            </>
+                        ) : (
+                            <EmptyState
+                                filters={filters}
+                                onClear={() => handleFilterChange('clear', null)}
+                            />
+                        )}
                     </div>
                 </div>
-            )}
-        </AppLayout>
+            </section>
+        </PublicLayout>
     );
 }

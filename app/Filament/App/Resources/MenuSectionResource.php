@@ -12,17 +12,8 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Schema;
 
-/**
- * MenuSectionResource - Velvet Rope Feature (PRO-Only)
- *
- * Permite a usuarios PRO organizar su catálogo en secciones:
- * - Entradas, Bebidas, Postres, etc.
- *
- * ESTRATEGIA "VELVET ROPE":
- * - Usuarios Free no pueden ver ni acceder a este módulo
- * - Implementado en canViewAny() y shouldRegisterNavigation()
- */
 class MenuSectionResource extends Resource
 {
     protected static ?string $model = MenuSection::class;
@@ -33,17 +24,17 @@ class MenuSectionResource extends Resource
 
     public static function getNavigationLabel(): string
     {
-        return 'Secciones de Menú';
+        return 'Secciones del menú';
     }
 
     public static function getModelLabel(): string
     {
-        return 'Sección';
+        return 'sección';
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'Secciones de Menú';
+        return 'Secciones del menú';
     }
 
     public static function getNavigationGroup(): ?string
@@ -51,33 +42,31 @@ class MenuSectionResource extends Resource
         return 'Catálogo';
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // VELVET ROPE: Política de Bloqueo PRO-Only
-    // ═══════════════════════════════════════════════════════════════════════
-
-    /**
-     * Solo usuarios PRO pueden ver este recurso
-     */
     public static function canViewAny(): bool
     {
-        $tenant = Filament::getTenant();
-
-        return $tenant?->is_pro ?? false;
+        return static::tenantCanUseMenuSections();
     }
 
-    /**
-     * Ocultar del menú de navegación para usuarios Free
-     */
     public static function shouldRegisterNavigation(): bool
+    {
+        return static::tenantCanUseMenuSections();
+    }
+
+    protected static function tenantCanUseMenuSections(): bool
     {
         $tenant = Filament::getTenant();
 
+        if (! $tenant) {
+            return false;
+        }
+
+        if (! Schema::hasColumn('tenants', 'is_pro') && ! Schema::hasColumn('tenants', 'plan_type')) {
+            return true;
+        }
+
         return $tenant?->is_pro ?? false;
     }
 
-    /**
-     * Badge de navegación mostrando cantidad
-     */
     public static function getNavigationBadge(): ?string
     {
         $tenant = Filament::getTenant();
@@ -98,49 +87,34 @@ class MenuSectionResource extends Resource
         return 'primary';
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // FORMULARIO MINIMALISTA (CERO FRICCIÓN)
-    // ═══════════════════════════════════════════════════════════════════════
-    // Objetivo: Crear una sección en menos de 10 segundos
-    // - Solo el nombre es visible y requerido
-    // - sort_order se calcula automáticamente (último + 1)
-    // - is_active por defecto encendido
-    // ═══════════════════════════════════════════════════════════════════════
-
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\Section::make('Nueva Sección')
-                    ->description('Crea categorías para organizar tu menú: Entradas, Bebidas, Postres...')
+                Forms\Components\Section::make('Nueva sección')
+                    ->description('Organiza tu menú por categorías como entradas, bebidas, platos fuertes o postres.')
                     ->icon('heroicon-o-folder-plus')
                     ->schema([
-                        // ═══ ÚNICO CAMPO VISIBLE ═══
                         Forms\Components\TextInput::make('name')
-                            ->label('¿Cómo se llama esta sección?')
+                            ->label('Nombre de la sección')
                             ->required()
                             ->maxLength(100)
-                            ->placeholder('Ej: Platos Fuertes, Bebidas, Postres')
+                            ->placeholder('Ej: Platos fuertes, Bebidas, Postres')
+                            ->helperText('Usa un nombre corto y claro para que tus clientes encuentren rápido lo que buscan.')
                             ->autofocus()
                             ->columnSpanFull(),
 
-                        // ═══ CAMPOS AUTOMÁTICOS (OCULTOS) ═══
                         Forms\Components\Hidden::make('sort_order')
                             ->default(fn () => MenuSection::where('tenant_id', Filament::getTenant()?->id)->max('sort_order') + 1),
 
-                        // ═══ TOGGLE SIMPLE (DEFAULTS TRUE) ═══
                         Forms\Components\Toggle::make('is_active')
                             ->label('Visible en mi menú')
                             ->default(true)
                             ->inline(false)
-                            ->helperText('Desactívala para ocultar temporalmente esta sección y sus productos'),
+                            ->helperText('Desactiva esta opción para ocultar temporalmente la sección y sus productos.'),
                     ]),
             ]);
     }
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // TABLA
-    // ═══════════════════════════════════════════════════════════════════════
 
     public static function table(Table $table): Table
     {
@@ -153,12 +127,6 @@ class MenuSectionResource extends Resource
                     ->weight('bold')
                     ->icon('heroicon-o-folder'),
 
-                // ═══════════════════════════════════════════════════════════
-                // FEEDBACK DE INVENTARIO: Conteo con colores condicionales
-                // ═══════════════════════════════════════════════════════════
-                // Rojo = Sección vacía (alerta de acción)
-                // Verde = Sección con productos (saludable)
-                // ═══════════════════════════════════════════════════════════
                 Tables\Columns\TextColumn::make('products_count')
                     ->label('Productos')
                     ->counts('products')
@@ -167,7 +135,7 @@ class MenuSectionResource extends Resource
                     ->icon(fn ($state): string => $state > 0 ? 'heroicon-o-check-circle' : 'heroicon-o-exclamation-triangle')
                     ->tooltip(fn ($state): string => $state > 0
                         ? "Esta sección tiene {$state} productos"
-                        : '⚠️ Sección vacía - Agrega productos'),
+                        : 'Sección vacía. Agrega productos para publicarla mejor.'),
 
                 Tables\Columns\TextColumn::make('sort_order')
                     ->label('Orden')
@@ -180,7 +148,7 @@ class MenuSectionResource extends Resource
                     ->label('Activa')
                     ->onColor('success')
                     ->offColor('danger')
-                    ->tooltip('Activar/Desactivar sección'),
+                    ->tooltip('Activar o desactivar sección'),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Creado')
@@ -201,25 +169,22 @@ class MenuSectionResource extends Resource
                 Tables\Actions\EditAction::make()
                     ->iconButton(),
 
-                // ═══════════════════════════════════════════════════════════
-                // BORRADO SEGURO: Modal que elimina ansiedad operativa
-                // ═══════════════════════════════════════════════════════════
                 Tables\Actions\DeleteAction::make()
                     ->iconButton()
-                    ->modalHeading('¿Eliminar esta sección?')
-                    ->modalDescription('⚠️ Los productos dentro de esta sección NO se eliminarán. Simplemente quedarán sin categoría asignada y podrás reorganizarlos después.')
-                    ->modalSubmitActionLabel('Sí, eliminar sección')
+                    ->modalHeading('Eliminar esta sección')
+                    ->modalDescription('Los productos dentro de esta sección no se eliminarán. Solo quedarán sin sección asignada para que puedas reorganizarlos después.')
+                    ->modalSubmitActionLabel('Eliminar sección')
                     ->successNotificationTitle('Sección eliminada'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
-                        ->modalHeading('¿Eliminar secciones seleccionadas?')
-                        ->modalDescription('Los productos dentro de estas secciones NO se eliminarán.'),
+                        ->modalHeading('Eliminar secciones seleccionadas')
+                        ->modalDescription('Los productos dentro de estas secciones no se eliminarán. Solo quedarán sin sección asignada.'),
                 ]),
             ])
             ->emptyStateHeading('No tienes secciones creadas')
-            ->emptyStateDescription('Crea secciones para organizar tu catálogo como un profesional: Entradas, Bebidas, Postres, etc.')
+            ->emptyStateDescription('Crea secciones para organizar tu catálogo: entradas, bebidas, platos fuertes, postres y más.')
             ->emptyStateIcon('heroicon-o-folder-plus')
             ->emptyStateActions([
                 Tables\Actions\CreateAction::make()

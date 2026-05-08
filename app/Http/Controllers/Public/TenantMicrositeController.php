@@ -11,6 +11,7 @@ use App\Domain\TenantGovernance\Services\PlanFeatureFlagService;
 // Assumed Event exists or will be created
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -40,6 +41,8 @@ final class TenantMicrositeController extends Controller
             abort(404, 'Business not found');
         }
 
+        $tenant = $this->repository->findBySlug($tenant->slug) ?? $tenant;
+
         // 2. Gatekeeper Logic (Domain Service)
         $this->visibilityService->check($tenant);
 
@@ -51,7 +54,9 @@ final class TenantMicrositeController extends Controller
         }
 
         // 4. Transform & Respond
-        $totalProductsCount = $tenant->products()->where('is_visible', true)->count();
+        $totalProductsCount = Schema::hasTable('products')
+            ? $tenant->products()->where('is_visible', true)->count()
+            : 0;
         $productLimit = $this->planService->getMaxProductLimit($tenant);
 
         $tenantData = $this->transformer->transform($tenant);
@@ -71,7 +76,7 @@ final class TenantMicrositeController extends Controller
             'isFollowing' => false,
             'followersCount' => 0,
             'isOpen' => $this->transformer->isCurrentlyOpen($tenant),
-            'openingHours' => $this->transformer->transformOpeningHours($tenant->openingHours),
+            'openingHours' => $this->transformer->transformOpeningHours($tenant->relationLoaded('openingHours') ? $tenant->openingHours : collect()),
             'seoStructuredData' => $this->transformer->buildStructuredData($tenant),
             'canonicalUrl' => route('tenant.microsite.show', $tenant),
         ]);

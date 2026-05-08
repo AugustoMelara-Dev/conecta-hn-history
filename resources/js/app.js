@@ -6,5 +6,4 @@
  * technologies to coexist in the Majestic Monolith.
  */
 
-// Import Alpine.js and Livewire styles if needed
-// These are typically handled by Filament automatically
+import './bootstrap';

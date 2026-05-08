@@ -1,5 +1,11 @@
 import React from 'react';
-import { Tag, X, Loader2 } from 'lucide-react';
+import { Tag, X } from 'lucide-react';
+import { Alert, AlertDescription } from '@/Components/ui/alert';
+import { Badge } from '@/Components/ui/badge';
+import { Button } from '@/Components/ui/button';
+import { Field, FieldLabel } from '@/Components/ui/field';
+import { Input } from '@/Components/ui/input';
+import { Spinner } from '@/Components/ui/spinner';
 
 export default function CouponSection({
     couponCode,
@@ -12,85 +18,107 @@ export default function CouponSection({
     removeCoupon,
     couponError
 }) {
-    return (
-        <div className="space-y-2">
-            {couponCode ? (
-                // ✅ Applied coupon display
-                <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-3 py-2">
-                    <div className="flex items-center gap-2">
-                        <Tag className="w-4 h-4 text-emerald-400" />
-                        <span className="text-sm font-medium text-emerald-300">{couponCode}</span>
-                    </div>
-                    <button
-                        onClick={() => {
-                            removeCoupon();
-                            // Show input again for retry
-                            setShowCouponInput(true);
-                        }}
-                        className="text-slate-400 hover:text-rose-400 transition-colors"
-                        title="Eliminar cupón"
-                    >
-                        <X className="w-4 h-4" />
-                    </button>
-                </div>
-            ) : showCouponInput ? (
-                // 📝 Coupon input form (revealed)
-                <div className="space-y-2">
-                    <div className="flex gap-2">
-                        <input
-                            type="text"
-                            value={couponInput}
-                            onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
-                            placeholder="Ingresa tu código"
-                            autoFocus
-                            className="flex-1 px-3 py-2 bg-slate-800 border border-white/10 rounded-lg text-white text-sm placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        />
-                        <button
-                            onClick={async () => {
-                                const result = await applyCoupon(couponInput);
-                                if (result.success) {
-                                    setCouponInput('');
-                                    setShowCouponInput(false);
-                                }
-                            }}
-                            disabled={isApplyingCoupon || !couponInput}
-                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-1"
-                        >
-                            {isApplyingCoupon ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                                'Aplicar'
-                            )}
-                        </button>
-                    </div>
+    const couponErrorId = couponError ? 'coupon-code-error' : undefined;
 
-                    {/* Cancel button to hide input */}
-                    <button
-                        onClick={() => {
-                            setShowCouponInput(false);
-                            setCouponInput('');
-                            // Clear any previous error when closing
-                        }}
-                        className="text-xs text-slate-500 hover:text-slate-400 transition-colors"
-                    >
-                        Cancelar
-                    </button>
+    if (couponCode) {
+        return (
+            <div
+                data-testid="coupon-applied"
+                className="flex items-center justify-between rounded-md border border-primary/25 bg-primary/10 px-3 py-2"
+            >
+                <div className="flex items-center gap-2">
+                    <Tag className="size-4 text-primary" aria-hidden="true" />
+                    <Badge variant="secondary">{couponCode}</Badge>
                 </div>
-            ) : (
-                // 🎯 Trigger link (hidden state - Progressive Disclosure)
-                <button
-                    onClick={() => setShowCouponInput(true)}
-                    className="flex items-center gap-1.5 text-sm text-indigo-400 hover:text-indigo-300 hover:underline transition-colors"
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                        removeCoupon();
+                        setShowCouponInput(true);
+                    }}
+                    data-testid="coupon-remove"
+                    aria-label="Eliminar cupon"
+                    className="size-8 text-muted-foreground"
                 >
-                    <Tag className="w-3.5 h-3.5" />
-                    ¿Tienes un código de descuento?
-                </button>
-            )}
+                    <X className="size-4" aria-hidden="true" />
+                </Button>
+            </div>
+        );
+    }
 
-            {/* Coupon error */}
-            {couponError && showCouponInput && (
-                <p className="text-xs text-rose-400">{couponError}</p>
+    if (!showCouponInput) {
+        return (
+            <Button
+                type="button"
+                variant="link"
+                size="sm"
+                onClick={() => setShowCouponInput(true)}
+                data-testid="coupon-reveal"
+                className="h-auto justify-start px-0 text-primary"
+            >
+                <Tag className="mr-1.5 size-3.5" aria-hidden="true" />
+                Tienes un codigo de descuento?
+            </Button>
+        );
+    }
+
+    return (
+        <Field>
+            <FieldLabel htmlFor="coupon-code">Codigo de descuento</FieldLabel>
+            <div className="flex gap-2">
+                <Input
+                    id="coupon-code"
+                    type="text"
+                    value={couponInput}
+                    onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                    placeholder="Ingresa tu codigo"
+                    autoFocus
+                    aria-invalid={!!couponError}
+                    aria-describedby={couponErrorId}
+                    data-testid="coupon-input"
+                />
+                <Button
+                    type="button"
+                    onClick={async () => {
+                        const result = await applyCoupon(couponInput);
+                        if (result.success) {
+                            setCouponInput('');
+                            setShowCouponInput(false);
+                        }
+                    }}
+                    disabled={isApplyingCoupon || !couponInput}
+                    data-testid="coupon-apply"
+                    className="min-w-24"
+                >
+                    {isApplyingCoupon ? (
+                        <Spinner />
+                    ) : (
+                        'Aplicar'
+                    )}
+                </Button>
+            </div>
+
+            <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                    setShowCouponInput(false);
+                    setCouponInput('');
+                }}
+                data-testid="coupon-cancel"
+                className="w-fit px-0 text-muted-foreground"
+            >
+                Cancelar
+            </Button>
+
+            {couponError && (
+                <Alert id={couponErrorId} variant="destructive" aria-live="polite">
+                    <AlertDescription>{couponError}</AlertDescription>
+                </Alert>
             )}
-        </div>
+        </Field>
     );
 }

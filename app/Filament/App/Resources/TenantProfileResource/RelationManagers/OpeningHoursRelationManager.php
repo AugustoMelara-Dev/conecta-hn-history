@@ -10,48 +10,34 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
 
-/**
- * OpeningHoursRelationManager - Tenant Business Hours Configuration
- *
- * Manages the opening_hours table for the current tenant.
- * SECURITY: Automatically scoped via the Tenant relationship.
- */
 class OpeningHoursRelationManager extends RelationManager
 {
     protected static string $relationship = 'openingHours';
 
-    protected static ?string $title = 'Horario de Atención';
+    protected static ?string $title = 'Horario de atencion';
 
-    protected static ?string $modelLabel = 'Horario';
+    protected static ?string $modelLabel = 'horario';
 
-    protected static ?string $pluralModelLabel = 'Horarios';
+    protected static ?string $pluralModelLabel = 'horarios';
 
     public function form(Form $form): Form
     {
         return $form
             ->schema([
                 Forms\Components\Select::make('day_of_week')
-                    ->label('Día de la Semana')
-                    ->options([
-                        0 => 'Domingo',
-                        1 => 'Lunes',
-                        2 => 'Martes',
-                        3 => 'Miércoles',
-                        4 => 'Jueves',
-                        5 => 'Viernes',
-                        6 => 'Sábado',
-                    ])
+                    ->label('Dia de la semana')
+                    ->options(self::days())
                     ->required()
                     ->native(false),
 
                 Forms\Components\TimePicker::make('opening_time')
-                    ->label('Hora de Apertura')
+                    ->label('Hora de apertura')
                     ->seconds(false)
                     ->required()
                     ->native(false),
 
                 Forms\Components\TimePicker::make('closing_time')
-                    ->label('Hora de Cierre')
+                    ->label('Hora de cierre')
                     ->seconds(false)
                     ->required()
                     ->native(false)
@@ -63,19 +49,12 @@ class OpeningHoursRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('day_of_week')
+            ->emptyStateHeading('Sin horarios configurados')
+            ->emptyStateDescription('Agrega horarios para que tus clientes sepan cuando estas disponible.')
             ->columns([
                 Tables\Columns\TextColumn::make('day_of_week')
-                    ->label('Día')
-                    ->formatStateUsing(fn (int $state): string => match ($state) {
-                        0 => 'Domingo',
-                        1 => 'Lunes',
-                        2 => 'Martes',
-                        3 => 'Miércoles',
-                        4 => 'Jueves',
-                        5 => 'Viernes',
-                        6 => 'Sábado',
-                        default => 'Desconocido',
-                    })
+                    ->label('Dia')
+                    ->formatStateUsing(fn (int $state): string => self::days()[$state] ?? 'Desconocido')
                     ->sortable()
                     ->badge()
                     ->color(fn (int $state): string => $state === 0 || $state === 6 ? 'warning' : 'primary'),
@@ -91,21 +70,37 @@ class OpeningHoursRelationManager extends RelationManager
                     ->icon('heroicon-o-moon'),
             ])
             ->defaultSort('day_of_week')
-            ->filters([
-                //
-            ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
-                    ->label('Agregar Horario'),
+                    ->label('Agregar horario'),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->label('Editar'),
+                Tables\Actions\DeleteAction::make()
+                    ->label('Eliminar'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->label('Eliminar seleccionados'),
                 ]),
             ]);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private static function days(): array
+    {
+        return [
+            0 => 'Domingo',
+            1 => 'Lunes',
+            2 => 'Martes',
+            3 => 'Miercoles',
+            4 => 'Jueves',
+            5 => 'Viernes',
+            6 => 'Sabado',
+        ];
     }
 }

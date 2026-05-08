@@ -1,10 +1,12 @@
 /**
  * ProductGrid - Shared Product Grid Component for Both Tiers
- * 
+ *
  * Renders a grid of ProductCard components with empty state handling.
  */
 
 import { ShoppingBag } from 'lucide-react';
+
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/Components/ui/card';
 import ProductCard from './ProductCard';
 import { cn } from '@/lib/utils';
 
@@ -19,11 +21,16 @@ export default function ProductGrid({
 }) {
     if (!products || products.length === 0) {
         return (
-            <div className="text-center py-12 bg-slate-900/50 rounded-2xl border border-dashed border-white/10">
-                <ShoppingBag className="w-12 h-12 text-slate-700 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-white">Catálogo vacío</h3>
-                <p className="text-slate-400">{emptyMessage}</p>
-            </div>
+            <Card className="border-dashed text-center">
+                <CardHeader>
+                    <span className="mx-auto grid size-12 place-items-center rounded-md bg-muted text-muted-foreground">
+                        <ShoppingBag className="size-5" aria-hidden="true" />
+                    </span>
+                    <CardTitle>Catálogo vacío</CardTitle>
+                    <CardDescription>{emptyMessage}</CardDescription>
+                </CardHeader>
+                <CardContent />
+            </Card>
         );
     }
 
