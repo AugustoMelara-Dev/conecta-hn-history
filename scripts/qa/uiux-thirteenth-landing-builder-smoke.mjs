@@ -493,6 +493,7 @@ try {
     await login(mobilePage, fixture.pro, "pro_mobile")
     await validateBuilder(mobilePage, "pro_mobile")
     await screenshot(mobilePage, "landing-builder-mobile")
+    await mobileContext.close().catch(() => {})
 
     const seedContext = await browser.newContext({ viewport: { width: 1366, height: 900 } })
     const seedPage = await seedContext.newPage()
@@ -500,6 +501,7 @@ try {
     await login(seedPage, fixture.seed, "seed")
     await validateProGate(seedPage)
     await screenshot(seedPage, "landing-builder-pro-gate")
+    await seedContext.close().catch(() => {})
 
     await assertAuthenticatedHttpRoute(desktopContext, "/workspace/reports", "reports")
     await assertAuthenticatedHttpRoute(desktopContext, "/dashboard", "dashboard")

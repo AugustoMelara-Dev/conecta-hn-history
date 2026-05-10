@@ -250,13 +250,13 @@ class Announcement extends Model
             return 'Inactivo';
         }
 
-        $now = CarbonImmutable::now('America/Tegucigalpa');
+        $now = CarbonImmutable::now('UTC');
 
-        if ($now->isBefore($this->starts_at)) {
+        if ($this->starts_at_utc !== null && $now->isBefore($this->starts_at_utc)) {
             return 'Programado';
         }
 
-        if ($now->isAfter($this->expires_at)) {
+        if ($this->expires_at_utc !== null && $now->isAfter($this->expires_at_utc)) {
             return 'Expirado';
         }
 

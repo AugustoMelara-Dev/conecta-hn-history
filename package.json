@@ -41,6 +41,7 @@
         "test:e2e:uiux-thirty-third-services": "node scripts/qa/uiux-thirty-third-services-smoke.mjs",
         "test:e2e:uiux-thirty-fourth-team": "node scripts/qa/uiux-thirty-fourth-team-smoke.mjs",
         "test:e2e:uiux-thirty-fifth-menu-sections": "node scripts/qa/uiux-thirty-fifth-menu-sections-smoke.mjs",
+        "test:e2e:uiux-thirty-sixth-announcements": "node scripts/qa/uiux-thirty-sixth-announcements-smoke.mjs",
         "test:e2e:visual-smoke:host": "powershell -ExecutionPolicy Bypass -File scripts/qa/playwright-smoke-host.ps1",
         "test:e2e:a11y-smoke": "playwright test tests/e2e/uiux-visual-smoke.spec.ts --grep \"accessibility|payment pending exposes live region\" --reporter=list,html,junit",
         "test:e2e:pr-smoke-auth": "playwright test tests/e2e/smoke-auth-core.spec.ts tests/e2e/auth-flow.spec.ts --reporter=list,html,junit",

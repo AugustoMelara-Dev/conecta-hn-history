@@ -6,11 +6,12 @@ namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\AnnouncementResource\Pages;
 use App\Models\Announcement;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
@@ -19,29 +20,22 @@ use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Table;
-
-/**
- * AnnouncementResource - Filament Admin Interface for Scheduled Banners
- *
- * Features:
- * - Restricted RichEditor (no images)
- * - Type-based color preview
- * - Quick toggle for activation
- * - Honduras timezone compliance
- */
+use Illuminate\Database\Eloquent\Builder;
 class AnnouncementResource extends Resource
 {
     protected static ?string $model = Announcement::class;
+
+    protected static ?string $tenantOwnershipRelationshipName = 'business';
 
     protected static ?string $navigationIcon = 'heroicon-o-megaphone';
 
     protected static ?string $navigationGroup = 'Marketing';
 
-    protected static ?string $navigationLabel = 'Anuncios';
+    protected static ?string $navigationLabel = 'Avisos';
 
-    protected static ?string $modelLabel = 'Anuncio';
+    protected static ?string $modelLabel = 'aviso';
 
-    protected static ?string $pluralModelLabel = 'Anuncios';
+    protected static ?string $pluralModelLabel = 'Avisos';
 
     protected static ?int $navigationSort = 2;
 
@@ -49,69 +43,60 @@ class AnnouncementResource extends Resource
     {
         return $form
             ->schema([
-                Section::make('Contenido del Anuncio')
-                    ->description('Configure el mensaje y tipo de banner')
+                Section::make('Contenido del aviso')
+                    ->description('Define el mensaje que verán tus clientes en las superficies públicas.')
                     ->schema([
-                        // Type Selector with color preview
                         Select::make('type')
-                            ->label('Tipo de Anuncio')
+                            ->label('Tipo de aviso')
                             ->required()
                             ->live()
                             ->options([
-                                Announcement::TYPE_INFO => '🔵 Información (Azul)',
-                                Announcement::TYPE_WARNING => '🟡 Advertencia (Amarillo)',
-                                Announcement::TYPE_PROMO => '🟢 Promoción (Verde)',
+                                Announcement::TYPE_INFO => 'Información',
+                                Announcement::TYPE_WARNING => 'Advertencia',
+                                Announcement::TYPE_PROMO => 'Promoción',
                             ])
                             ->default(Announcement::TYPE_INFO)
                             ->helperText(fn (Get $get): string => match ($get('type')) {
-                                Announcement::TYPE_INFO => 'Se mostrará con fondo azul - ideal para avisos generales',
-                                Announcement::TYPE_WARNING => 'Se mostrará con fondo amarillo - ideal para avisos importantes',
-                                Announcement::TYPE_PROMO => 'Se mostrará con gradiente verde - ideal para promociones',
-                                default => 'Seleccione un tipo de anuncio',
+                                Announcement::TYPE_INFO => 'Úsalo para horarios especiales, novedades o mensajes generales.',
+                                Announcement::TYPE_WARNING => 'Úsalo para cambios importantes, cierres temporales o condiciones de servicio.',
+                                Announcement::TYPE_PROMO => 'Úsalo para promociones, descuentos o temporadas especiales.',
+                                default => 'Selecciona un tipo de aviso.',
                             }),
 
-                        // Content - Restricted RichEditor
-                        RichEditor::make('content')
-                            ->label('Contenido')
+                        Textarea::make('content')
+                            ->label('Mensaje')
                             ->required()
-                            ->toolbarButtons([
-                                'bold',
-                                'italic',
-                                'link',
-                                'bulletList',
-                            ])
-                            ->helperText('Solo estilos básicos permitidos. Las imágenes están deshabilitadas.')
+                            ->rows(4)
+                            ->maxLength(500)
+                            ->helperText('Usa texto breve y directo. Evita incluir datos sensibles o instrucciones que cambien el precio final.')
                             ->columnSpanFull(),
                     ]),
 
                 Section::make('Programación')
-                    ->description('Configure cuándo se mostrará el anuncio')
+                    ->description('Define cuándo debe aparecer y cuándo debe dejar de mostrarse.')
                     ->schema([
                         Grid::make(2)
                             ->schema([
-                                // Start Date
-                                DateTimePicker::make('starts_at')
-                                    ->label('Fecha de Inicio')
+                                DateTimePicker::make('starts_at_utc')
+                                    ->label('Fecha de inicio')
                                     ->required()
                                     ->timezone('America/Tegucigalpa')
                                     ->displayFormat('d/m/Y H:i')
                                     ->default(now())
-                                    ->helperText('Cuándo comenzará a mostrarse'),
+                                    ->helperText('Momento en que el aviso comenzará a mostrarse.'),
 
-                                // End Date
-                                DateTimePicker::make('expires_at')
-                                    ->label('Fecha de Expiración')
+                                DateTimePicker::make('expires_at_utc')
+                                    ->label('Fecha de expiración')
                                     ->required()
                                     ->timezone('America/Tegucigalpa')
                                     ->displayFormat('d/m/Y H:i')
-                                    ->after('starts_at')
-                                    ->helperText('Cuándo dejará de mostrarse'),
+                                    ->after('starts_at_utc')
+                                    ->helperText('Momento en que el aviso dejará de mostrarse.'),
 
-                                // Active Toggle
                                 Toggle::make('is_active')
-                                    ->label('Anuncio Activo')
+                                    ->label('Aviso activo')
                                     ->default(true)
-                                    ->helperText('Desactivar para pausar el anuncio sin eliminarlo')
+                                    ->helperText('Desactívalo para pausar el aviso sin eliminarlo.')
                                     ->columnSpanFull(),
                             ]),
                     ]),
@@ -122,14 +107,13 @@ class AnnouncementResource extends Resource
     {
         return $table
             ->columns([
-                // Type Badge (null-safe for consistency)
                 TextColumn::make('type')
                     ->label('Tipo')
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => match ($state) {
-                        Announcement::TYPE_INFO => 'Info',
-                        Announcement::TYPE_WARNING => 'Aviso',
-                        Announcement::TYPE_PROMO => 'Promo',
+                        Announcement::TYPE_INFO => 'Información',
+                        Announcement::TYPE_WARNING => 'Advertencia',
+                        Announcement::TYPE_PROMO => 'Promoción',
                         default => $state ?? '',
                     })
                     ->color(fn (?string $state): string => match ($state) {
@@ -139,37 +123,32 @@ class AnnouncementResource extends Resource
                         default => 'gray',
                     }),
 
-                // Content Preview - Stripped HTML, Limited
                 TextColumn::make('content')
-                    ->label('Contenido')
-                    ->limit(50)
+                    ->label('Mensaje')
+                    ->limit(70)
                     ->html(false)
                     ->formatStateUsing(fn (?string $state): string => $state ? strip_tags($state) : '')
                     ->wrap()
                     ->searchable(),
 
-                // Status Badge (computed attribute - needs getStateUsing)
                 TextColumn::make('status')
                     ->label('Estado')
                     ->getStateUsing(fn (Announcement $record): string => $record->status)
                     ->badge()
-                    ->formatStateUsing(fn (Announcement $record): string => $record->status_label)
                     ->color(fn (Announcement $record): string => $record->status_color),
 
-                // Schedule Period
-                TextColumn::make('starts_at')
+                TextColumn::make('starts_at_utc')
                     ->label('Inicio')
                     ->dateTime('d/m/Y H:i')
                     ->timezone('America/Tegucigalpa')
                     ->sortable(),
 
-                TextColumn::make('expires_at')
+                TextColumn::make('expires_at_utc')
                     ->label('Expira')
                     ->dateTime('d/m/Y H:i')
                     ->timezone('America/Tegucigalpa')
                     ->sortable(),
 
-                // Quick Toggle
                 ToggleColumn::make('is_active')
                     ->label('Activo'),
             ])
@@ -183,7 +162,10 @@ class AnnouncementResource extends Resource
                     ]),
 
                 Tables\Filters\TernaryFilter::make('is_active')
-                    ->label('Activos'),
+                    ->label('Estado')
+                    ->placeholder('Todos')
+                    ->trueLabel('Activos')
+                    ->falseLabel('Pausados'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
@@ -194,7 +176,27 @@ class AnnouncementResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
-            ->defaultSort('starts_at', 'desc');
+            ->emptyStateHeading('No tienes avisos creados')
+            ->emptyStateDescription('Crea un aviso para comunicar horarios especiales, promociones o mensajes importantes a tus clientes.')
+            ->emptyStateIcon('heroicon-o-megaphone')
+            ->emptyStateActions([
+                Tables\Actions\CreateAction::make()
+                    ->label('Crear primer aviso')
+                    ->icon('heroicon-o-plus'),
+            ])
+            ->defaultSort('starts_at_utc', 'desc');
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+        $tenant = Filament::getTenant();
+
+        if (! $tenant) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where('business_id', $tenant->getKey());
     }
 
     public static function getRelations(): array

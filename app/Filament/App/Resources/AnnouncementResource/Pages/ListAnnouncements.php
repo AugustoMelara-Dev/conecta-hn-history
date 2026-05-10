@@ -15,7 +15,7 @@ class ListAnnouncements extends ListRecords
     {
         return [
             \Filament\Actions\CreateAction::make()
-                ->label('Nuevo Anuncio'),
+                ->label('Nuevo aviso'),
         ];
     }
 }
