@@ -32,6 +32,7 @@ final class TenantOnboardingProgressService
         $role = $this->normalizeRole($user);
         $tenantSlug = (string) ($tenant->slug ?? '');
         $businessType = $this->businessType($tenant);
+        $commercialMode = $this->commercialMode($tenant);
         $manifestOnboarding = $this->manifestOnboardingForTenant($tenant);
 
         $hasCatalog = $tenant->products()->withoutGlobalScopes()->exists()
@@ -52,7 +53,7 @@ final class TenantOnboardingProgressService
         $milestones = match ($role) {
             UserRole::STAFF->value => $this->staffMilestones($tenantSlug, $hasProfileEssentials, $hasSchedule, $hasContactChannel, $hasMicrositeReady, $hasOperations),
             UserRole::CUSTOMER->value => $this->customerMilestones($tenantSlug, $tenant, $hasProfileEssentials, $hasContactChannel, $hasOperations),
-            default => $this->ownerMilestones($tenantSlug, $businessType, $hasProfileEssentials, $hasCatalog, $hasSchedule, $hasContactChannel, $hasMicrositeReady, $manifestOnboarding),
+            default => $this->ownerMilestones($tenantSlug, $businessType, $commercialMode, $hasProfileEssentials, $hasCatalog, $hasSchedule, $hasContactChannel, $hasMicrositeReady, $manifestOnboarding),
         };
 
         $completedCount = collect($milestones)->where('completed', true)->count();
@@ -65,7 +66,7 @@ final class TenantOnboardingProgressService
         return [
             'role' => $role,
             'businessType' => $businessType,
-            'businessLabel' => $this->businessLabel($tenant, $businessType),
+            'businessLabel' => $this->businessLabel($tenant, $businessType, $commercialMode),
             'progress' => $progress,
             'milestones' => $milestones,
             'nextAction' => [
@@ -74,7 +75,7 @@ final class TenantOnboardingProgressService
                 'copy' => (string) $nextAction['copy'],
                 'href' => (string) $nextAction['href'],
             ],
-            'supportTips' => $this->supportTips($businessType, $progress, $manifestOnboarding),
+            'supportTips' => $this->supportTips($businessType, $commercialMode, $progress, $manifestOnboarding),
             'lastCompletedAt' => $lastCompletedAt,
         ];
     }
@@ -534,6 +535,7 @@ final class TenantOnboardingProgressService
     private function ownerMilestones(
         string $tenantSlug,
         string $businessType,
+        string $commercialMode,
         bool $hasProfile,
         bool $hasCatalog,
         bool $hasSchedule,
@@ -542,29 +544,45 @@ final class TenantOnboardingProgressService
         array $manifestOnboarding = [],
     ): array
     {
-        $catalogTitle = match ($businessType) {
+        $offerIsReady = $hasCatalog || ($commercialMode === 'consulting_leads' && $hasProfile && $hasContact);
+
+        $offerTitle = match ($commercialMode) {
+            'consulting_leads' => 'Consulta lista para captar prospectos',
+            'appointments' => 'Primer servicio reservable',
+            'hybrid' => 'Primer flujo comercial combinado',
+            'products' => 'Primera oferta vendible',
+            default => match ($businessType) {
             'food' => 'Primer plato o combo',
             'service' => 'Primer servicio reservable',
-            'hybrid' => 'Primera oferta vendible',
+            'hybrid' => 'Primer flujo comercial combinado',
             default => 'Primer producto publicado',
+            },
         };
 
-        $catalogCopy = match ($businessType) {
+        $offerCopy = match ($commercialMode) {
+            'consulting_leads' => 'Deja claro que problema resuelves y activa WhatsApp o formulario para dar seguimiento en CRM.',
+            'appointments' => 'Define un servicio con duracion, precio y disponibilidad para recibir reservas claras.',
+            'hybrid' => 'Empieza con una oferta principal y activa productos o agenda solo donde ya tengas operacion real.',
+            'products' => 'Publica productos con precio y canal de pedido para que el directorio no mande clientes a una vitrina vacia.',
+            default => match ($businessType) {
             'food' => 'Carga al menos un plato con precio para que el cliente pueda decidir rapido.',
             'service' => 'Define un servicio con duracion, precio y disponibilidad para recibir solicitudes claras.',
             'hybrid' => 'Publica un producto o servicio base antes de invitar clientes al perfil.',
             default => 'Publica tu primera oferta para que el directorio no mande clientes a una vitrina vacia.',
+            },
         };
 
-        $scheduleCopy = match ($businessType) {
-            'food' => 'Configura horarios reales de atencion, cocina o delivery para evitar reclamos.',
-            'service' => 'Configura disponibilidad para que las reservas no choquen con tu operacion.',
+        $scheduleCopy = match ($commercialMode) {
+            'appointments' => 'Configura disponibilidad real para que las reservas no choquen con tu operacion.',
+            'consulting_leads' => 'Configura ventanas de respuesta para convertir consultas sin enfriar leads.',
+            'hybrid' => 'Define horarios y capacidad por flujo para evitar sobreventa o sobreagenda.',
             default => 'Define disponibilidad real para evitar friccion comercial.',
         };
 
         $manifestMilestones = $this->ownerMilestonesFromManifest(
             tenantSlug: $tenantSlug,
             businessType: $businessType,
+            commercialMode: $commercialMode,
             hasProfile: $hasProfile,
             hasCatalog: $hasCatalog,
             hasSchedule: $hasSchedule,
@@ -576,7 +594,7 @@ final class TenantOnboardingProgressService
         if ($manifestMilestones !== []) {
             $legacyMilestones = [
                 $this->milestone('owner_profile', 'Perfil confiable', $hasProfile, 'Agrega descripcion, direccion y datos base para que el cliente entienda que vendes y donde atiendes.', $this->settingsHref($tenantSlug)),
-                $this->milestone('owner_catalog', $catalogTitle, $hasCatalog, $catalogCopy, $this->catalogHref($tenantSlug, $businessType)),
+                $this->milestone('owner_catalog', $offerTitle, $offerIsReady, $offerCopy, $this->catalogHref($tenantSlug, $businessType, $commercialMode)),
                 $this->milestone('owner_schedule', 'Horario o disponibilidad', $hasSchedule, $scheduleCopy, $this->settingsHref($tenantSlug)),
                 $this->milestone('owner_contact', 'Canal principal activo', $hasContact, 'Activa WhatsApp o telefono para que el cliente sepa como contactarte sin escribir a soporte.', $this->settingsHref($tenantSlug)),
                 $this->milestone('owner_publish', 'Micrositio publicado', $isPublished, 'Abre tu pagina publica y revisa que nombre, contacto y oferta se vean correctos.', $this->micrositeHref($tenantSlug)),
@@ -592,7 +610,7 @@ final class TenantOnboardingProgressService
 
         return [
             $this->milestone('owner_profile', 'Perfil confiable', $hasProfile, 'Agrega descripcion, direccion y datos base para que el cliente entienda que vendes y donde atiendes.', $this->settingsHref($tenantSlug)),
-            $this->milestone('owner_catalog', $catalogTitle, $hasCatalog, $catalogCopy, $this->catalogHref($tenantSlug, $businessType)),
+            $this->milestone('owner_catalog', $offerTitle, $offerIsReady, $offerCopy, $this->catalogHref($tenantSlug, $businessType, $commercialMode)),
             $this->milestone('owner_schedule', 'Horario o disponibilidad', $hasSchedule, $scheduleCopy, $this->settingsHref($tenantSlug)),
             $this->milestone('owner_contact', 'Canal principal activo', $hasContact, 'Activa WhatsApp o telefono para que el cliente sepa como contactarte sin escribir a soporte.', $this->settingsHref($tenantSlug)),
             $this->milestone('owner_publish', 'Micrositio publicado', $isPublished, 'Abre tu pagina publica y revisa que nombre, contacto y oferta se vean correctos.', $this->micrositeHref($tenantSlug)),
@@ -605,6 +623,7 @@ final class TenantOnboardingProgressService
     private function ownerMilestonesFromManifest(
         string $tenantSlug,
         string $businessType,
+        string $commercialMode,
         bool $hasProfile,
         bool $hasCatalog,
         bool $hasSchedule,
@@ -620,7 +639,7 @@ final class TenantOnboardingProgressService
         }
 
         return $healthChecks
-            ->map(function (mixed $check, int $index) use ($tenantSlug, $businessType, $hasProfile, $hasCatalog, $hasSchedule, $hasContact, $isPublished): array {
+            ->map(function (mixed $check, int $index) use ($tenantSlug, $businessType, $commercialMode, $hasProfile, $hasCatalog, $hasSchedule, $hasContact, $isPublished): array {
                 $state = is_array($check) ? (string) ($check['state'] ?? '') : (string) $check;
                 $title = is_array($check) ? (string) ($check['title'] ?? '') : '';
                 $pendingCopy = is_array($check) ? (string) ($check['pending_copy'] ?? '') : '';
@@ -634,7 +653,7 @@ final class TenantOnboardingProgressService
                     $completed
                         ? ($completeCopy !== '' ? $completeCopy : 'Este frente ya esta cubierto.')
                         : ($pendingCopy !== '' ? $pendingCopy : 'Completa este frente para destrabar el siguiente paso del negocio.'),
-                    $this->manifestStateHref($tenantSlug, $businessType, $state),
+                    $this->manifestStateHref($tenantSlug, $businessType, $commercialMode, $state),
                 );
             })
             ->all();
@@ -753,7 +772,19 @@ final class TenantOnboardingProgressService
         return in_array($raw, ['retail', 'food', 'service', 'hybrid'], true) ? (string) $raw : 'retail';
     }
 
-    private function businessLabel(Tenant $tenant, string $businessType): string
+    private function commercialMode(Tenant $tenant): string
+    {
+        $raw = $tenant->commercial_mode ?? null;
+        if ($raw instanceof BackedEnum) {
+            return (string) $raw->value;
+        }
+
+        return in_array($raw, ['products', 'appointments', 'consulting_leads', 'hybrid'], true)
+            ? (string) $raw
+            : ($this->businessType($tenant) === 'service' ? 'appointments' : 'products');
+    }
+
+    private function businessLabel(Tenant $tenant, string $businessType, string $commercialMode): string
     {
         $label = (string) data_get($this->manifestForTenant($tenant), 'presentation.label', '');
 
@@ -761,16 +792,22 @@ final class TenantOnboardingProgressService
             return $label;
         }
 
-        return match ($businessType) {
+        return match ($commercialMode) {
+            'products' => 'Starter Products',
+            'appointments' => 'Starter Appointments',
+            'consulting_leads' => 'Starter Consulting',
+            'hybrid' => 'Operacion comercial mixta',
+            default => match ($businessType) {
             'food' => 'Restaurante y comida',
             'service' => 'Servicios y citas',
             'hybrid' => 'Negocio mixto',
-            default => 'Tienda y catalogo',
+            default => 'Operacion comercial',
+            },
         };
     }
 
     /** @return list<array{title:string,copy:string}> */
-    private function supportTips(string $businessType, int $progress, array $manifestOnboarding = []): array
+    private function supportTips(string $businessType, string $commercialMode, int $progress, array $manifestOnboarding = []): array
     {
         $primary = $progress >= 100
             ? ['title' => 'Listo para compartir', 'copy' => 'Tu base esta completa. Ahora comparte el micrositio y empieza a medir contactos, pedidos o reservas.']
@@ -785,11 +822,17 @@ final class TenantOnboardingProgressService
             ]];
         }
 
-        $specific = match ($businessType) {
+        $specific = match ($commercialMode) {
+            'products' => ['title' => 'Starter Products', 'copy' => 'Prioriza oferta accionable, precio y canal de pedido. El objetivo es convertir rapido, no solo exhibir catalogo.'],
+            'appointments' => ['title' => 'Starter Appointments', 'copy' => 'Prioriza servicios, disponibilidad y confianza antes de abrir agenda publica. Reserva confirmada es la metrica principal.'],
+            'consulting_leads' => ['title' => 'Starter Consulting', 'copy' => 'Prioriza autoridad, CTA principal y seguimiento comercial. Un profesional no debe parecer tienda.'],
+            'hybrid' => ['title' => 'Para flujo mixto', 'copy' => 'Activa productos y agenda por etapas. Si todo se abre sin operacion real, aumenta el soporte y baja la confianza.'],
+            default => match ($businessType) {
             'food' => ['title' => 'Para comida', 'copy' => 'Prioriza menu, horarios y WhatsApp. Es lo que mas evita reclamos de clientes hambrientos.'],
             'service' => ['title' => 'Para servicios', 'copy' => 'Prioriza servicios, disponibilidad y confianza del perfil antes de abrir agenda.'],
             'hybrid' => ['title' => 'Para negocio mixto', 'copy' => 'Empieza con una oferta principal y luego activa productos, servicios o agenda segun demanda.'],
-            default => ['title' => 'Para tienda', 'copy' => 'Prioriza catalogo, precios y contacto. Sin oferta visible el directorio no convierte.'],
+            default => ['title' => 'Para tienda', 'copy' => 'Prioriza oferta accionable, precio y contacto. Sin oferta visible el directorio no convierte.'],
+            },
         };
 
         return [$primary, $specific];
@@ -820,10 +863,10 @@ final class TenantOnboardingProgressService
             : 'Hito del rubro';
     }
 
-    private function manifestStateHref(string $tenantSlug, string $businessType, string $state): string
+    private function manifestStateHref(string $tenantSlug, string $businessType, string $commercialMode, string $state): string
     {
         return match ($state) {
-            'has_products', 'has_menu_items', 'has_products_or_services', 'products', 'services' => $this->catalogHref($tenantSlug, $businessType),
+            'has_products', 'has_menu_items', 'has_products_or_services', 'products', 'services' => $this->catalogHref($tenantSlug, $businessType, $commercialMode),
             'has_provider', 'schedule', 'booking_ready', 'staff' => $this->appointmentsHref($tenantSlug),
             'coverage', 'pickup_delivery', 'hybrid_coverage' => $this->micrositeHref($tenantSlug),
             default => $this->settingsHref($tenantSlug),
@@ -846,10 +889,14 @@ final class TenantOnboardingProgressService
         return $tenantSlug !== '' ? $this->safeRoute('filament.app.pages.settings', ['tenant' => $tenantSlug]) : '#';
     }
 
-    private function catalogHref(string $tenantSlug, string $businessType = 'retail'): string
+    private function catalogHref(string $tenantSlug, string $businessType = 'retail', string $commercialMode = 'products'): string
     {
         if ($tenantSlug === '') {
             return '#';
+        }
+
+        if ($commercialMode === 'consulting_leads') {
+            return $this->settingsHref($tenantSlug);
         }
 
         $resource = $businessType === 'service'
