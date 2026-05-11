@@ -40,7 +40,7 @@ const STEPS = [
 ]
 
 const STEP_FIELDS = {
-    0: ["business_name", "slug", "category_id", "business_type"],
+    0: ["business_name", "slug", "category_id", "commercial_mode"],
     1: ["city_id", "whatsapp"],
     2: ["name", "email", "password", "password_confirmation"],
     3: ["selected_plan", "terms_accepted", "privacy_accepted"],
@@ -190,7 +190,8 @@ export function RegisterTenantWizard({
         business_name: "",
         slug: "",
         category_id: "",
-        business_type: businessTypes[0]?.value || "retail",
+        commercial_mode: businessTypes[0]?.value || "products",
+        business_type: businessTypes[0]?.business_type || "retail",
         rubro_key: businessTypes[0]?.rubro_key || "",
         city_id: "",
         whatsapp: "",
@@ -211,8 +212,8 @@ export function RegisterTenantWizard({
         [categories, data.category_id]
     )
     const selectedBusinessType = useMemo(
-        () => businessTypes.find((item) => item.value === data.business_type) || null,
-        [businessTypes, data.business_type]
+        () => businessTypes.find((item) => item.value === data.commercial_mode) || null,
+        [businessTypes, data.commercial_mode]
     )
     const selectedCity = useMemo(
         () => cities.find((item) => String(item.id) === String(data.city_id)),
@@ -226,13 +227,19 @@ export function RegisterTenantWizard({
         return businessTypeSuggestions[selectedCategory.slug] || null
     }, [businessTypeSuggestions, selectedCategory])
     const segmentCandidates = useMemo(() => {
-        const profiles = segmentProfiles.filter((item) => item.businessType === data.business_type)
+        const profiles = segmentProfiles.filter((item) => {
+            if (item.commercialMode) {
+                return item.commercialMode === data.commercial_mode
+            }
+
+            return true
+        })
         const categoryMatches = selectedCategory?.slug
             ? profiles.filter((item) => item.categories.includes(selectedCategory.slug))
             : []
 
         return (categoryMatches.length > 0 ? categoryMatches : profiles).slice(0, 4)
-    }, [data.business_type, selectedCategory, segmentProfiles])
+    }, [data.commercial_mode, selectedCategory, segmentProfiles])
     const selectedSegment = segmentCandidates[0] || null
     useEffect(() => {
         const nextRubroKey = selectedSegment?.key || selectedBusinessType?.rubro_key || ""
@@ -291,7 +298,7 @@ export function RegisterTenantWizard({
     }, [])
     const legalTermsUrl = useMemo(() => firstValidUrl(routeUrlIfExists("legal.terms"), "/legal/terms"), [])
     const legalPrivacyUrl = useMemo(() => firstValidUrl(routeUrlIfExists("legal.privacy"), "/legal/privacy"), [])
-    const exploreUrl = useMemo(() => firstValidUrl(routeUrlIfExists("public.explore"), "/explore"), [])
+    const exploreUrl = useMemo(() => firstValidUrl(routeUrlIfExists("directory.index"), "/directorio"), [])
     const businessPreview = data.business_name.trim() || "Tu negocio"
     const slugPreview = data.slug ? `${slugBaseHost}/t/${slugify(data.slug)}` : `${slugBaseHost}/t/tu-negocio`
     const progress = ((step + 1) / STEPS.length) * 100
@@ -308,7 +315,9 @@ export function RegisterTenantWizard({
 
         window.requestAnimationFrame(() => {
             const fallbackId = field === "business_type"
-                ? `business-type-${data.business_type}`
+                ? `business-type-${data.commercial_mode}`
+                : field === "commercial_mode"
+                    ? `business-type-${data.commercial_mode}`
                 : field === "selected_plan"
                     ? `plan-${data.selected_plan}`
                     : field
@@ -356,12 +365,14 @@ export function RegisterTenantWizard({
             return
         }
 
-        if (!suggestedBusinessType || suggestedBusinessType === data.business_type) {
+        if (!suggestedBusinessType || suggestedBusinessType === data.commercial_mode) {
             return
         }
 
-        setData("business_type", suggestedBusinessType)
-    }, [businessTypeTouched, data.business_type, setData, suggestedBusinessType])
+        const suggestedMode = businessTypes.find((item) => item.value === suggestedBusinessType)
+        setData("commercial_mode", suggestedBusinessType)
+        if (suggestedMode?.rubro_key) setData("rubro_key", suggestedMode.rubro_key)
+    }, [businessTypeTouched, businessTypes, data.commercial_mode, setData, suggestedBusinessType])
 
     useEffect(() => {
         const slug = slugify(data.slug)
@@ -393,10 +404,25 @@ export function RegisterTenantWizard({
                 let response = null
 
                 for (const endpoint of slugCheckCandidates) {
-                    const candidateResponse = await fetch(`${endpoint}?slug=${encodeURIComponent(slug)}`, {
-                        headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
-                        signal: controller.signal,
-                    })
+                    const endpointController = new AbortController()
+                    const syncAbort = () => endpointController.abort()
+                    controller.signal.addEventListener("abort", syncAbort, { once: true })
+                    const endpointTimeout = window.setTimeout(() => endpointController.abort(), 4000)
+
+                    let candidateResponse
+                    try {
+                        candidateResponse = await fetch(`${endpoint}?slug=${encodeURIComponent(slug)}`, {
+                            headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
+                            signal: endpointController.signal,
+                        })
+                    } catch {
+                        controller.signal.removeEventListener("abort", syncAbort)
+                        window.clearTimeout(endpointTimeout)
+                        continue
+                    }
+
+                    controller.signal.removeEventListener("abort", syncAbort)
+                    window.clearTimeout(endpointTimeout)
                     const contentType = candidateResponse.headers.get("content-type") || ""
                     const candidatePayload = contentType.includes("application/json")
                         ? await candidateResponse.json()
@@ -466,10 +492,9 @@ export function RegisterTenantWizard({
             if (!data.business_name.trim()) nextErrors.business_name = "Escribe el nombre comercial."
             if (!slug) nextErrors.slug = "Define una URL para el negocio."
             else if (slug.length < 3) nextErrors.slug = "La URL necesita al menos 3 caracteres."
-            else if (slugState.status === "checking") nextErrors.slug = "Espera a que termine la revisión de la URL."
             else if (slugState.status === "unavailable") nextErrors.slug = "Esa URL ya está ocupada."
             if (!String(data.category_id).trim()) nextErrors.category_id = "Selecciona una categoría."
-            if (!String(data.business_type).trim()) nextErrors.business_type = "Selecciona el tipo de negocio."
+            if (!String(data.commercial_mode).trim()) nextErrors.commercial_mode = "Selecciona como quieres recibir clientes."
         }
 
         if (targetStep === 1 && !String(data.city_id).trim()) {

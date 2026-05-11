@@ -72,11 +72,15 @@ function PlanCard({ active, recommended = false, title, caption, price, bullets,
     )
 }
 
-function BusinessTypeCard({ active, title, description, capabilities, examples, id, value }) {
+function BusinessTypeCard({ active, title, description, capabilities, examples, id, value, disabled = false, badge = null, starterPack = null }) {
     return (
         <label
             htmlFor={id}
+            aria-disabled={disabled ? "true" : undefined}
             className={`cursor-pointer rounded-[1.5rem] border p-5 text-left ${
+                disabled
+                    ? "border-dashed border-border bg-muted/50 text-muted-foreground"
+                    :
                 active
                     ? "border-primary bg-primary text-primary-foreground"
                     : "border-border bg-muted text-foreground hover:border-ring/40 hover:bg-background"
@@ -87,13 +91,24 @@ function BusinessTypeCard({ active, title, description, capabilities, examples, 
                     <p className="text-lg font-extrabold tracking-tight">
                         {title}
                     </p>
+                    {badge ? (
+                        <span className={`w-fit rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${active ? "bg-primary-foreground/10 text-primary-foreground" : "bg-background text-muted-foreground"}`}>
+                            {badge}
+                        </span>
+                    ) : null}
                     <p className={`text-sm leading-7 ${active ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
                         {description}
                     </p>
+                    {starterPack ? (
+                        <span className={`w-fit rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${active ? "bg-primary-foreground/10 text-primary-foreground" : "bg-background text-muted-foreground"}`}>
+                            {starterPack}
+                        </span>
+                    ) : null}
                 </div>
                 <RadioGroupItem
                     id={id}
                     value={value}
+                    disabled={disabled}
                     className={`mt-1 shrink-0 ${active ? "border-background bg-background text-foreground" : "border-input bg-background"}`}
                 />
             </div>
@@ -233,44 +248,49 @@ export function BusinessStep({
                 {errorFor("category_id") ? <FieldDescription id={errorId("category_id")} role="alert" className="text-destructive">{errorFor("category_id")}</FieldDescription> : null}
             </Field>
 
-            <Field data-invalid={errorFor("business_type") ? "true" : undefined}>
+            <Field data-invalid={errorFor("commercial_mode") ? "true" : undefined}>
                 <div className="flex flex-col gap-2">
-                    <FieldLabel>Tipo de negocio</FieldLabel>
-                    <FieldDescription id={helpId("business_type")}>
-                        Elige la operacion que mejor representa como vendes hoy.
+                    <FieldLabel>Como quieres recibir clientes</FieldLabel>
+                    <FieldDescription id={helpId("commercial_mode")}>
+                        Elige la ruta comercial principal. La categoria queda para SEO y recomendaciones, no para limitar tu negocio.
                     </FieldDescription>
                 </div>
 
                 <RadioGroup
-                    name="business_type"
-                    value={data.business_type}
+                    name="commercial_mode"
+                    value={data.commercial_mode}
                     onValueChange={(value) => {
                         const nextType = businessTypes.find((item) => item.value === value)
+                        if (nextType?.disabled) return
                         setBusinessTypeTouched(true)
-                        updateField("business_type", value)
+                        updateField("commercial_mode", value)
+                        if (nextType?.business_type) updateField("business_type", nextType.business_type)
                         if (nextType?.rubro_key) updateField("rubro_key", nextType.rubro_key)
                     }}
                     className="grid gap-4 xl:grid-cols-2"
-                    aria-label="Tipo de negocio"
-                    aria-describedby={describedBy("business_type", errorFor, helpId("business_type"))}
+                    aria-label="Ruta comercial"
+                    aria-describedby={describedBy("commercial_mode", errorFor, helpId("commercial_mode"))}
                 >
                     {businessTypes.map((item) => (
                         <BusinessTypeCard
                             key={item.value}
                             id={`business-type-${item.value}`}
                             value={item.value}
-                            active={data.business_type === item.value}
+                            active={data.commercial_mode === item.value}
                             title={item.label}
                             description={item.description}
                             capabilities={item.capabilities}
                             examples={item.examples}
+                            disabled={Boolean(item.disabled)}
+                            badge={item.badge}
+                            starterPack={item.starter_pack ?? null}
                         />
                     ))}
                 </RadioGroup>
 
                 {suggestedBusinessType && !businessTypeTouched ? (
                     <FieldDescription>
-                        Te sugerimos <strong>{businessTypes.find((item) => item.value === suggestedBusinessType)?.label || "este tipo"}</strong> por la categoria que elegiste.
+                        Te sugerimos <strong>{businessTypes.find((item) => item.value === suggestedBusinessType)?.label || "esta ruta"}</strong> por la categoria que elegiste.
                     </FieldDescription>
                 ) : null}
 
@@ -335,7 +355,7 @@ export function BusinessStep({
                     </div>
                 ) : null}
 
-                {errorFor("business_type") ? <FieldDescription id={errorId("business_type")} role="alert" className="text-destructive">{errorFor("business_type")}</FieldDescription> : null}
+                {errorFor("commercial_mode") ? <FieldDescription id={errorId("commercial_mode")} role="alert" className="text-destructive">{errorFor("commercial_mode")}</FieldDescription> : null}
             </Field>
         </FieldGroup>
     )
@@ -437,6 +457,54 @@ export function PlanSummaryStep({
     legalTermsUrl,
     legalPrivacyUrl,
 }) {
+    const mode = selectedBusinessType?.value || data.commercial_mode
+    const modeBasicBullets = {
+        appointments: [
+            "Perfil digital publico",
+            "Servicios y agenda inicial listos para reservar",
+            "Panel base para operar reservas y contacto",
+        ],
+        consulting_leads: [
+            "Perfil digital publico",
+            "Landing consultiva y CTA principal activos",
+            "Panel base para seguimiento comercial",
+        ],
+        products: [
+            "Perfil digital publico",
+            `Catalogo de ${freeLimit} productos`,
+            "Panel base para operar pedidos y contacto",
+        ],
+        hybrid: [
+            "Perfil digital publico",
+            "Operacion mixta disponible solo por piloto",
+            "Panel base con activacion por allowlist",
+        ],
+    }
+    const modeProBullets = {
+        appointments: [
+            "Reservas y servicios sin limite operativo",
+            "Analiticas avanzadas",
+            "Capacidad comercial ampliada para agenda y equipo",
+        ],
+        consulting_leads: [
+            "Captura y seguimiento comercial ampliados",
+            "Analiticas avanzadas",
+            "Capacidad comercial ampliada para consultas y conversion",
+        ],
+        products: [
+            "Ventas ilimitadas",
+            "Analiticas avanzadas",
+            `Capacidad comercial de ${proLimit} productos`,
+        ],
+        hybrid: [
+            "Operacion mixta avanzada",
+            "Analiticas avanzadas",
+            "Capacidad comercial ampliada por piloto",
+        ],
+    }
+    const basicBullets = modeBasicBullets[mode] || modeBasicBullets.products
+    const proBullets = modeProBullets[mode] || modeProBullets.products
+
     return (
         <FieldGroup>
             <RadioGroup
@@ -447,8 +515,8 @@ export function PlanSummaryStep({
                 aria-label="Plan de activacion"
                 aria-describedby={describedBy("selected_plan", errorFor)}
             >
-                <PlanCard id="plan-free" value="free" active={data.selected_plan === "free"} title="Plan Basic" caption="Lo esencial para iniciar" price={`L. ${freePrice}`} bullets={["Perfil digital publico", `Catalogo de ${freeLimit} productos`, "Panel base para operar"]} />
-                <PlanCard id="plan-pro" value="pro" active={data.selected_plan === "pro"} recommended title="Plan Business Pro" caption="Potencia total" price={`L. ${proPrice}`} bullets={["Ventas ilimitadas", "Analiticas avanzadas", `Capacidad comercial de ${proLimit} productos`]} />
+                <PlanCard id="plan-free" value="free" active={data.selected_plan === "free"} title="Plan Basic" caption="Lo esencial para iniciar" price={`L. ${freePrice}`} bullets={basicBullets} />
+                <PlanCard id="plan-pro" value="pro" active={data.selected_plan === "pro"} recommended title="Plan Business Pro" caption="Potencia total" price={`L. ${proPrice}`} bullets={proBullets} />
             </RadioGroup>
             {errorFor("selected_plan") ? <FieldDescription id={errorId("selected_plan")} role="alert" className="text-destructive">{errorFor("selected_plan")}</FieldDescription> : null}
 
