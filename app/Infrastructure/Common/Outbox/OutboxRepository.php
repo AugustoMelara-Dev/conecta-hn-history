@@ -23,6 +23,16 @@ final readonly class OutboxRepository
             return;
         }
 
-        DB::table('outbox_messages')->insert($messages);
+        $normalized = array_map(static function (array $message): array {
+            if (array_key_exists('processed_at', $message) && ! array_key_exists('published_at', $message)) {
+                $message['published_at'] = $message['processed_at'];
+            }
+
+            unset($message['processed_at']);
+
+            return $message;
+        }, $messages);
+
+        DB::table('outbox_messages')->insert($normalized);
     }
 }

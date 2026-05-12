@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import {
+    ArrowRight,
+    BadgeCheck,
     Building2,
     Filter,
+    MapPin,
     Search,
+    Store,
     X,
 } from 'lucide-react';
 
-import TenantCard from '@/Components/Public/TenantCard';
 import PublicLayout from '@/Layouts/PublicLayout';
 import { Badge } from '@/Components/ui/badge';
 import { Button } from '@/Components/ui/button';
@@ -15,6 +18,7 @@ import {
     Card,
     CardContent,
     CardDescription,
+    CardFooter,
     CardHeader,
     CardTitle,
 } from '@/Components/ui/card';
@@ -37,6 +41,7 @@ import {
     SheetTitle,
     SheetTrigger,
 } from '@/Components/ui/sheet';
+import { cn } from '@/lib/utils';
 
 const ALL_VALUE = 'all';
 
@@ -44,6 +49,34 @@ function cleanParams(params) {
     return Object.fromEntries(
         Object.entries(params).filter(([, value]) => value !== null && value !== undefined && value !== '')
     );
+}
+
+function getTenantHref(tenant) {
+    if (!tenant?.slug) {
+        return route('directory.index');
+    }
+
+    try {
+        if (route().has('tenant.microsite.show')) {
+            return route('tenant.microsite.show', { tenant: tenant.slug });
+        }
+    } catch {
+        // Fall through to legacy route/fallback below.
+    }
+
+    return route('directory.index', { search: tenant.name || '' });
+}
+
+function getStorageUrl(path) {
+    if (!path) {
+        return null;
+    }
+
+    if (path.startsWith('http') || path.startsWith('/')) {
+        return path;
+    }
+
+    return `/storage/${path}`;
 }
 
 function getPaginatorItems(tenants) {
@@ -60,6 +93,75 @@ function getPaginatorItems(tenants) {
 
 function getResultCount(tenants, items) {
     return tenants?.total ?? tenants?.meta?.total ?? items.length;
+}
+
+function DirectoryCard({ tenant }) {
+    const imageUrl = getStorageUrl(tenant.banner_path || tenant.cover_url || tenant.logo_url);
+    const cityName = typeof tenant.city === 'string' ? tenant.city : tenant.city?.name;
+    const categoryName = typeof tenant.category === 'string' ? tenant.category : tenant.category?.name;
+
+    return (
+        <Card className="flex h-full flex-col overflow-hidden transition-shadow hover:shadow-md" data-testid="tenant-card">
+            <Link href={getTenantHref(tenant)} className="flex h-full flex-col" data-testid="primary-tenant-cta">
+                <div className="grid aspect-video place-items-center bg-muted">
+                    {imageUrl ? (
+                        <img
+                            src={imageUrl}
+                            alt={`Imagen de ${tenant.name}`}
+                            loading="lazy"
+                            className="h-full w-full object-cover"
+                        />
+                    ) : (
+                        <Store className="size-10 text-muted-foreground" aria-hidden="true" />
+                    )}
+                </div>
+
+                <CardHeader className="gap-3">
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                            <CardTitle className="truncate text-lg leading-6">
+                                {tenant.name}
+                            </CardTitle>
+                            <CardDescription className="mt-1 truncate">
+                                {categoryName || 'Comercio local'}
+                            </CardDescription>
+                        </div>
+
+                        {tenant.is_pro && (
+                                <Badge variant="secondary" className="shrink-0">
+                                    <BadgeCheck className="mr-1 size-3" aria-hidden="true" />
+                                    PRO
+                                </Badge>
+                            )}
+                    </div>
+                </CardHeader>
+
+                <CardContent className="flex flex-1 flex-col gap-4">
+                    <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">
+                        {tenant.description || 'Descubre lo que este negocio tiene para ti.'}
+                    </p>
+
+                    {tenant.tags?.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                            {tenant.tags.slice(0, 3).map((tag) => (
+                                <Badge key={tag} variant="outline">
+                                    {tag}
+                                </Badge>
+                            ))}
+                        </div>
+                    )}
+                </CardContent>
+
+                <CardFooter className="mt-auto justify-between gap-3">
+                    <span className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
+                        <MapPin className="size-4 shrink-0" aria-hidden="true" />
+                        <span className="truncate">{cityName || 'Honduras'}</span>
+                    </span>
+                    <ArrowRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                </CardFooter>
+            </Link>
+        </Card>
+    );
 }
 
 function FilterControls({ categories, cities, filters, onFilterChange }) {
@@ -116,7 +218,7 @@ function FilterControls({ categories, cities, filters, onFilterChange }) {
             <Separator />
 
             <Button variant="outline" onClick={() => onFilterChange('clear', null)}>
-                <X className="mr-2 h-4 w-4" aria-hidden="true" />
+                <X className="mr-2 size-4" aria-hidden="true" />
                 Limpiar filtros
             </Button>
         </div>
@@ -147,7 +249,7 @@ function ActiveFilters({ categories, cities, filters, onFilterChange }) {
                         className="rounded-sm text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         aria-label={`Quitar filtro ${item.label}`}
                     >
-                        <X className="h-3 w-3" aria-hidden="true" />
+                        <X className="size-3" aria-hidden="true" />
                     </button>
                 </Badge>
             ))}
@@ -160,7 +262,7 @@ function EmptyState({ filters, onClear }) {
         <Card className="border-dashed" data-testid="directory-empty-state">
             <CardContent className="flex flex-col items-center gap-5 py-16 text-center">
                 <span className="grid h-16 w-16 place-items-center rounded-md bg-muted text-muted-foreground">
-                    <Search className="h-7 w-7" aria-hidden="true" />
+                    <Search className="size-7" aria-hidden="true" />
                 </span>
                 <div className="max-w-md">
                     <h2 className="text-xl font-semibold">
@@ -172,12 +274,12 @@ function EmptyState({ filters, onClear }) {
                 </div>
                 <div className="flex flex-col gap-3 sm:flex-row">
                     <Button variant="outline" onClick={onClear}>
-                        <X className="mr-2 h-4 w-4" aria-hidden="true" />
+                        <X className="mr-2 size-4" aria-hidden="true" />
                         Limpiar filtros
                     </Button>
                     <Button asChild>
-                        <Link href={route('tenant.register')}>
-                            <Building2 className="mr-2 h-4 w-4" aria-hidden="true" />
+                        <Link href={route('register')}>
+                            <Building2 className="mr-2 size-4" aria-hidden="true" />
                             Registrar mi negocio
                         </Link>
                     </Button>
@@ -303,7 +405,7 @@ export default function DirectoryIndex({
                                 Explora negocios locales por ciudad, categoria o busqueda directa.
                             </p>
                         </div>
-                        <Badge variant="secondary" className="w-fit">
+                        <Badge variant="secondary" className="w-fit" role="status" aria-live="polite">
                             {resultCount} resultados
                         </Badge>
                     </div>
@@ -339,7 +441,7 @@ export default function DirectoryIndex({
                                         </FieldLabel>
                                         <div className="relative">
                                             <Search
-                                                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                                                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
                                                 aria-hidden="true"
                                             />
                                             <Input
@@ -358,7 +460,7 @@ export default function DirectoryIndex({
                                 <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
                                     <SheetTrigger asChild>
                                         <Button variant="outline" className="lg:hidden">
-                                            <Filter className="mr-2 h-4 w-4" aria-hidden="true" />
+                                            <Filter className="mr-2 size-4" aria-hidden="true" />
                                             Filtros
                                         </Button>
                                     </SheetTrigger>
@@ -395,7 +497,7 @@ export default function DirectoryIndex({
                             <>
                                 <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                                     {items.map((tenant) => (
-                                        <TenantCard key={tenant.id || tenant.slug} tenant={tenant} />
+                                        <DirectoryCard key={tenant.id} tenant={tenant} />
                                     ))}
                                 </div>
                                 <Pagination links={tenants.links} />

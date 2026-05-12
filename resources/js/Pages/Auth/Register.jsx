@@ -98,16 +98,16 @@ export default function Register() {
     return (
         <>
             <Head>
-                <title>Registrar cuenta | Conecta HN</title>
+                <title>Registrar negocio | Vito Business OS</title>
                 <meta
                     name="description"
-                    content="Crea una cuenta de negocio en Conecta HN con URL publica, datos de acceso y validaciones claras."
+                    content="Crea una cuenta de negocio en Vito Business OS con URL publica, datos de acceso y validaciones claras."
                 />
                 <link rel="canonical" href={route("register")} />
             </Head>
 
             <AuthShadcnShell
-                imageAlt="Acceso para registrar un negocio en Conecta HN"
+                imageAlt="Acceso para registrar un negocio en Vito Business OS"
                 maxWidthClassName="max-w-xl"
                 eyebrow="Registro de negocio"
                 title="Crea una cuenta lista para operar"
@@ -133,7 +133,7 @@ export default function Register() {
                                 <Alert>
                                     <Store aria-hidden="true" />
                                     <AlertDescription>
-                                        Para elegir rubro, ciudad y plan desde el inicio puedes usar{" "}
+                                        Para elegir modo comercial, ciudad y plan desde el inicio puedes usar{" "}
                                         <Link href={route("tenant.register")} className="font-medium underline underline-offset-4">
                                             registrar negocio
                                         </Link>
@@ -176,7 +176,7 @@ export default function Register() {
                                     >
                                         <div className="grid min-h-10 grid-cols-[auto_1fr] items-center rounded-md border border-input bg-background focus-within:ring-2 focus-within:ring-ring">
                                             <span className="flex h-full items-center border-r border-border px-3 text-sm text-muted-foreground">
-                                                conectahn.com/
+                                                tu-url/
                                             </span>
                                             <Input
                                                 id="slug"

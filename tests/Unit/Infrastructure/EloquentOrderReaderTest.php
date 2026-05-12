@@ -6,10 +6,10 @@ use App\Infrastructure\Sales\EloquentOrderReader;
 use App\Models\Order;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
-uses(TestCase::class, RefreshDatabase::class);
+uses(TestCase::class, DatabaseTransactions::class);
 
 describe('EloquentOrderReader Tenant Isolation', function () {
 

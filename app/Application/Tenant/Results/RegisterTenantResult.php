@@ -52,15 +52,16 @@ final readonly class RegisterTenantResult
         object $user,
         ?string $appUrl = null
     ): self {
-        // Domain construction logic
-        $host = parse_url($appUrl ?? config('app.url'), PHP_URL_HOST) ?: config('app.domain', 'localhost');
-        $domain = $tenant->slug.'.'.$host;
-        $setupUrl = ($appUrl ?? config('app.url'))."/tenant/{$tenant->slug}/setup";
+        $tenantDomain = method_exists($tenant, 'domain') ? (string) $tenant->domain() : (string) ($tenant->slug ?? '');
+        $tenantId = method_exists($tenant, 'id') ? (string) $tenant->id() : (string) ($tenant->id ?? '');
+        $ownerEmail = method_exists($user, 'email') ? (string) $user->email() : (string) ($user->email ?? '');
+        $baseUrl = rtrim((string) ($appUrl ?? config('app.url')), '/');
+        $setupUrl = "{$baseUrl}/app/{$tenantDomain}";
 
         return new self(
-            tenantId: (string) $tenant->id,
-            domain: $domain,
-            ownerEmail: $user->email,
+            tenantId: $tenantId,
+            domain: $tenantDomain,
+            ownerEmail: $ownerEmail,
             setupUrl: $setupUrl,
         );
     }

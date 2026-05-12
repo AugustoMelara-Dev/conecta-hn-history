@@ -18,6 +18,8 @@ class RegisterTenantValidator
             'slug' => ['required', 'alpha_dash', 'min:3', 'unique:tenants,slug'],
             'ownerName' => ['required', 'string'],
             'email' => ['required', 'email'],
+            // HTTP layer already validates password_confirmation.
+            // Command layer receives only canonical fields.
             'password' => ['required', 'min:8'],
         ];
     }

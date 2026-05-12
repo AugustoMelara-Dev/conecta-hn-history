@@ -8,28 +8,51 @@ use App\Infrastructure\Auth\SanctumAuthTokenService;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
-uses(TestCase::class, RefreshDatabase::class);
+uses(TestCase::class, DatabaseTransactions::class);
 
 beforeEach(function () {
+    if (! Schema::hasTable('personal_access_tokens')) {
+        Schema::create('personal_access_tokens', function (Blueprint $table) {
+            $table->id();
+            $table->uuidMorphs('tokenable');
+            $table->string('name');
+            $table->string('token', 64)->unique();
+            $table->text('abilities')->nullable();
+            $table->timestamp('last_used_at')->nullable();
+            $table->timestamp('expires_at')->nullable();
+            $table->timestamps();
+        });
+    }
+
+    // Crear usuario para Tenant A
     $this->userA = User::factory()->create(['name' => 'User A']);
+
+    // Crear tenant propiedad de User A (relacion hasMany por user_id)
+    $this->tenantA = Tenant::factory()->create([
+        'name' => 'Tenant A',
+        'user_id' => $this->userA->id,
+    ]);
+
+    // Crear usuario para Tenant B
     $this->userB = User::factory()->create(['name' => 'User B']);
 
-    // Crear dos tenants separados con ownership canonico por user_id.
-    $this->tenantA = Tenant::factory()->create(['name' => 'Tenant A', 'user_id' => $this->userA->id]);
-    $this->tenantB = Tenant::factory()->create(['name' => 'Tenant B', 'user_id' => $this->userB->id]);
-
-    $this->userA->forceFill(['tenant_id' => $this->tenantA->id])->save();
-    $this->userB->forceFill(['tenant_id' => $this->tenantB->id])->save();
+    // Crear tenant propiedad de User B
+    $this->tenantB = Tenant::factory()->create([
+        'name' => 'Tenant B',
+        'user_id' => $this->userB->id,
+    ]);
 });
 
 /**
  * Helper: Crear TenantContext mock para un tenant específico
  */
-function mockTenantContext(int|string|null $tenantId): TenantContextInterface
+function mockTenantContext(int|string $tenantId): TenantContextInterface
 {
     $mock = Mockery::mock(TenantContextInterface::class);
     $mock->shouldReceive('getTenantId')->andReturn($tenantId);

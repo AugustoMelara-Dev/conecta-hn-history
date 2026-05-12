@@ -54,7 +54,7 @@ class RegisterUserEndpointTest extends TestCase
         ]);
 
         $this->assertDatabaseHas('tenants', [
-            'domain' => $payload['tenant_domain'],
+            'slug' => $payload['tenant_domain'],
         ]);
     }
 

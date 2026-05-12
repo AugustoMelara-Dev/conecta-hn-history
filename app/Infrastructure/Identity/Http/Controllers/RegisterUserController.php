@@ -46,14 +46,11 @@ class RegisterUserController extends Controller
                     'attributes' => [
                         'email' => $result->email,
                         'tenant_id' => $result->tenantId,
-                        'requires_verification' => $result->requiresVerification,
+                        'requires_verification' => true,
                     ],
                 ],
             ],
-            status: 201,
-            headers: [
-                'Location' => url('/api/v1/users/'.$result->id),
-            ]
+            status: 201
         );
     }
 }

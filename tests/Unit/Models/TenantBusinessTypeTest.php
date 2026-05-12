@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Domain\TenantGovernance\Enums\BusinessType;
+use App\Domain\TenantGovernance\Enums\CommercialMode;
 use App\Models\Tenant;
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -35,8 +36,19 @@ it('Tenant model casts business_type to enum', function () {
     expect($casts['business_type'])->toBe(BusinessType::class);
 });
 
+it('Tenant model casts commercial_mode to enum', function () {
+    $casts = (new Tenant)->getCasts();
+    expect($casts)->toHaveKey('commercial_mode');
+    expect($casts['commercial_mode'])->toBe(CommercialMode::class);
+});
+
 // TEST 5: Tenant model has business_type in fillable
 it('Tenant model has business_type in fillable', function () {
     $fillable = (new Tenant)->getFillable();
     expect($fillable)->toContain('business_type');
+});
+
+it('Tenant model has commercial_mode in fillable', function () {
+    $fillable = (new Tenant)->getFillable();
+    expect($fillable)->toContain('commercial_mode');
 });

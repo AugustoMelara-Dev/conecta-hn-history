@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Tests\Unit\Models;
 
 use App\Models\OrderEvent;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
 
-uses(RefreshDatabase::class);
+uses(TestCase::class);
 
 /**
  * VC-AUDIT-005 Verification: OrderEvent Mass Assignment Protection

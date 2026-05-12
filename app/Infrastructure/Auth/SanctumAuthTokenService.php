@@ -66,13 +66,8 @@ final class SanctumAuthTokenService implements AuthTokenServiceInterface
                     'action' => 'BLOCKED',
                 ]);
 
-                throw new TenantMismatchException(
-                    message: 'User not found for the current tenant context',
-                    contextData: [
-                        'resource_type' => 'User',
-                        'resource_id' => (string) $userId,
-                    ],
-                );
+                // Throw specific security exception
+                throw TenantMismatchException::forResource('User', $userId, $currentTenantId);
             }
 
             // User genuinely doesn't exist

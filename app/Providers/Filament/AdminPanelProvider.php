@@ -58,7 +58,7 @@ class AdminPanelProvider extends PanelProvider
             ->profile()         // User Self-Management enabled
             // BRANDING: Logo y Nombre
             // ═══════════════════════════════════════════════════════════════
-            ->brandName('Conecta HN Admin')
+            ->brandName('Vito Business OS Admin')
             ->brandLogo(fn () => view('filament.components.brand'))
             ->brandLogoHeight('2.5rem')
             ->favicon(asset('favicon.ico'))

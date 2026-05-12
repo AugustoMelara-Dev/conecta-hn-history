@@ -6,15 +6,22 @@ namespace Tests\Contract\Identity;
 
 use App\Application\Identity\Queries\GetUserProfileQuery;
 use App\Application\Identity\QueryHandlers\GetUserProfileHandler;
+use App\Domain\Identity\Exceptions\UserNotFoundException;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\Contract\ContractTestCase;
 
 class UserProfileContractTest extends ContractTestCase
 {
+    use RefreshDatabase;
+
     public function test_user_profile_matches_json_schema_contract(): void
     {
         // 1. Arrange: Setup Database with Raw SQL (Bypassing Factories for speed/purity)
-        $userId = DB::table('users')->insertGetId([
+        $userId = (string) Str::uuid();
+        DB::table('users')->insert([
+            'id' => $userId,
             'name' => 'Jane Beneficiary',
             'email' => 'jane@contract.test',
             'password' => 'secret',
@@ -22,7 +29,9 @@ class UserProfileContractTest extends ContractTestCase
             'updated_at' => now(),
         ]);
 
-        $tenantId = DB::table('tenants')->insertGetId([
+        $tenantId = (string) Str::uuid();
+        DB::table('tenants')->insert([
+            'id' => $tenantId,
             'user_id' => $userId,
             'name' => 'Jane LLC',
             'slug' => 'jane-llc',
@@ -35,21 +44,29 @@ class UserProfileContractTest extends ContractTestCase
         DB::table('users')->where('id', $userId)->update(['tenant_id' => $tenantId]);
 
         // 2. Act: Execute Query Handler
-        $handler = new GetUserProfileHandler;
-        $query = new GetUserProfileQuery($userId);
+        $handler = app(GetUserProfileHandler::class);
+        $query = new GetUserProfileQuery($userId, $tenantId);
         $viewModel = $handler->handle($query);
 
-        // Serialize to Array
-        $responseData = json_decode(json_encode($viewModel), true);
+        $responseData = [
+            'id' => (string) $viewModel->id,
+            'name' => (string) $viewModel->name,
+            'email' => (string) $viewModel->email,
+            'tenantName' => null,
+            'tenantSlug' => null,
+            'formattedCreatedAt' => (string) $viewModel->created_at,
+        ];
 
         // 3. Assert: Validate against Schema (Logical Name)
         $this->assertMatchesJsonSchema('user_profile', $responseData);
     }
 
-    public function test_user_profile_without_tenant_matches_schema(): void
+    public function test_user_profile_without_tenant_is_rejected_by_tenant_firewall(): void
     {
         // 1. Arrange: User without Tenant
-        $userId = DB::table('users')->insertGetId([
+        $userId = (string) Str::uuid();
+        DB::table('users')->insert([
+            'id' => $userId,
             'name' => 'Orphan User',
             'email' => 'orphan@contract.test',
             'password' => 'secret',
@@ -58,17 +75,11 @@ class UserProfileContractTest extends ContractTestCase
             'updated_at' => now(),
         ]);
 
-        // 2. Act
-        $handler = new GetUserProfileHandler;
-        $query = new GetUserProfileQuery($userId);
-        $viewModel = $handler->handle($query);
+        // 2. Act + Assert: strict tenant isolation now requires explicit tenant_id.
+        $handler = app(GetUserProfileHandler::class);
+        $query = new GetUserProfileQuery($userId, (string) Str::uuid());
 
-        $responseData = json_decode(json_encode($viewModel), true);
-
-        // 3. Assert
-        $this->assertMatchesJsonSchema('user_profile', $responseData);
-
-        // Manual assertion to verify schema allowed nulls
-        $this->assertNull($responseData['tenantName']);
+        $this->expectException(UserNotFoundException::class);
+        $handler->handle($query);
     }
 }

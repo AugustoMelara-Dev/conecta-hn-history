@@ -45,7 +45,7 @@ final readonly class UpdateUserPassword implements UpdatesUserPasswords
         $this->commandBus->dispatch(
             new UpdateUserPasswordCommand(
                 userId: (string) $user->id,
-                requestingTenantId: (string) $user->tenant_id,
+                requestingTenantId: (string) ($user->tenant_id ?? $user->id),
                 currentPassword: $input['current_password'],
                 newPassword: $input['password'],
                 refreshRememberToken: true,

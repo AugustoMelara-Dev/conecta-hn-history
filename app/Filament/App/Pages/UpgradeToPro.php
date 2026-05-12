@@ -46,12 +46,12 @@ class UpgradeToPro extends Page
                 [
                     'icon' => 'heroicon-o-cube',
                     'title' => 'Catalogo amplio',
-                    'description' => 'Publica mas productos y mantiene tu oferta organizada para vender con menos friccion.',
+                    'description' => 'Supera el limite Free de 10 productos y mantiene tu oferta organizada para vender con menos friccion.',
                 ],
                 [
-                    'icon' => 'heroicon-o-paint-brush',
-                    'title' => 'Marca personalizada',
-                    'description' => 'Colores de tu marca, banner personalizado y logo destacado.',
+                    'icon' => 'heroicon-o-calendar-days',
+                    'title' => 'Reservas avanzadas',
+                    'description' => 'Activa mas control operativo para agenda, servicios y seguimiento cuando el negocio ya lo necesite.',
                 ],
                 [
                     'icon' => 'heroicon-o-users',
@@ -67,6 +67,11 @@ class UpgradeToPro extends Page
                     'icon' => 'heroicon-o-chart-bar',
                     'title' => 'Reportes',
                     'description' => 'Revisa senales de visitas, pedidos y rendimiento para decidir que mover primero.',
+                ],
+                [
+                    'icon' => 'heroicon-o-sparkles',
+                    'title' => 'Agente IA del negocio',
+                    'description' => 'Valor PRO con activacion segura por tenant, permiso ai.use y datos siempre filtrados al negocio actual.',
                 ],
             ],
             'price' => 'L. 1,500',

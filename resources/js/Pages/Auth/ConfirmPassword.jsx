@@ -6,7 +6,7 @@ import { ConfirmPasswordForm } from "@/Components/Auth/ConfirmPasswordForm"
 export default function ConfirmPassword() {
     return (
         <>
-            <Head title="Confirmar contrasena | Conecta HN" />
+            <Head title="Confirmar contrasena | Vito Business OS" />
 
             <AuthShadcnShell
                 imageAlt="Panel para confirmar contrasena"

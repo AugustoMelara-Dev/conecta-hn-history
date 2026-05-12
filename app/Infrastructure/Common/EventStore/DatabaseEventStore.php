@@ -57,11 +57,10 @@ final readonly class DatabaseEventStore implements EventStoreRepositoryInterface
 
                     // 2. TRANSACTIONAL OUTBOX (Guaranteed Delivery)
                     // 2. TRANSACTIONAL OUTBOX (Guaranteed Delivery)
-                    DB::table('domain_outbox_messages')->insert([
+                    DB::table('outbox_messages')->insert([
                         'id' => (string) \Illuminate\Support\Str::uuid(),
                         'type' => $eventClass,
                         'aggregate_id' => $aggregateId, // Debug context
-                        'aggregate_type' => $aggregateType,
                         'payload' => $payloadJson,
                         'published_at' => null, // PENDING
                         'occurred_at' => now(), // Mapped from created_at

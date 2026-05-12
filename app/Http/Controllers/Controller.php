@@ -8,8 +8,8 @@ use OpenApi\Attributes as OA;
 
 #[OA\Info(
     version: '1.0.0',
-    title: 'Conecta HN API',
-    description: 'Enterprise API for Conecta HN Multi-tenant SaaS Platform',
+    title: 'Vito Business OS API',
+    description: 'Enterprise API for Vito Business OS multi-tenant SaaS platform',
     contact: new OA\Contact(email: 'tech@conecta.hn')
 )]
 #[OA\Server(

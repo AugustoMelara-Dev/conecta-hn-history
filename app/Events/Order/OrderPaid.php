@@ -8,7 +8,7 @@ use App\Contracts\Events\DomainEvent;
 use App\Traits\HasDomainMetadata;
 use App\ValueObjects\Money;
 use App\ValueObjects\OrderNumber;
-use App\ValueObjects\TenantId;
+use App\Domain\Shared\ValueObjects\TenantId;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**

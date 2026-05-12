@@ -97,7 +97,7 @@ describe("GlobalLoginModal Component", () => {
     it("renders with quick access active by default", () => {
         render(<GlobalLoginModal />)
 
-        expect(screen.getByText("Entrar a Conecta HN")).toBeInTheDocument()
+        expect(screen.getByText("Entrar a Vito Business OS")).toBeInTheDocument()
         expect(screen.getByRole("tab", { name: /acceso con correo/i })).toBeInTheDocument()
         expect(screen.getByRole("tab", { name: /acceso rápido/i })).toBeInTheDocument()
     })
@@ -170,7 +170,7 @@ describe("Auth catalog-backed forms", () => {
         render(<LoginForm />)
 
         expect(screen.getByText("Acceso seguro")).toBeInTheDocument()
-        expect(screen.getByText("Entra a Conecta HN")).toBeInTheDocument()
+        expect(screen.getByText("Entra a Vito Business OS")).toBeInTheDocument()
         expect(screen.getByText(/Usa contrasena para el panel de negocio/i)).toBeInTheDocument()
         expect(screen.getByLabelText("Contrasena")).toBeInTheDocument()
         expect(screen.getByRole("button", { name: /Iniciar sesion/i })).toBeInTheDocument()

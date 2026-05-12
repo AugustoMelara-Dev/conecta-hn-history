@@ -8,8 +8,8 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     {{-- SEO Meta --}}
-    <title>{{ $title ?? 'Conecta HN' }}</title>
-    <meta name="description" content="{{ $description ?? 'Conecta HN - El directorio más completo de Honduras' }}">
+    <title>{{ $title ?? 'Vito Business OS' }}</title>
+    <meta name="description" content="{{ $description ?? 'Vito Business OS - El directorio más completo de Honduras' }}">
     
     {{-- Favicon --}}
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">

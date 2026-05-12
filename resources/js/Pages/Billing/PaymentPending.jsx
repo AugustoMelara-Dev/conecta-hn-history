@@ -55,14 +55,14 @@ export default function PaymentPending({ payment, bankInstructions, whatsappUrl 
     return (
         <>
             <Head>
-                <title>Completar pago | Conecta HN</title>
+                <title>Completar pago | Vito Business OS</title>
                 <meta
                     name="description"
-                    content="Instrucciones para completar el pago PRO de un negocio registrado en Conecta HN."
+                    content="Instrucciones para completar el pago PRO de un negocio registrado en Vito Business OS."
                 />
             </Head>
 
-            <AuthShadcnShell imageAlt="Estado de pago pendiente de Conecta HN" maxWidthClassName="max-w-lg">
+            <AuthShadcnShell imageAlt="Estado de pago pendiente de Vito Business OS" maxWidthClassName="max-w-lg">
                 <Card data-testid="payment-pending-card">
                     <CardHeader className="gap-4 text-center">
                         <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-secondary text-secondary-foreground">

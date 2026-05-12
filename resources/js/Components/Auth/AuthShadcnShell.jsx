@@ -12,7 +12,7 @@ export default function AuthShadcnShell({
     maxWidthClassName = "max-w-md",
     eyebrow = "Acceso seguro",
     title = "Gestiona tu negocio con claridad",
-    description = "Entra a tu cuenta, confirma tu correo o recupera el acceso sin salir del flujo principal de Conecta HN.",
+    description = "Entra a tu cuenta, confirma tu correo o recupera el acceso sin salir del flujo principal de Vito Business OS.",
 }) {
     return (
         <div className="grid min-h-svh bg-background text-foreground lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
@@ -25,7 +25,7 @@ export default function AuthShadcnShell({
                         <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
                             <GalleryVerticalEnd aria-hidden="true" />
                         </div>
-                        Conecta HN
+                        Vito Business OS
                     </Link>
                 </div>
                 <div className="flex flex-1 items-center justify-center">

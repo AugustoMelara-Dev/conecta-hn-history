@@ -49,6 +49,7 @@ final class OutboxMessage extends Model
     protected $fillable = [
         'id',
         'type',
+        'aggregate_type',
         'aggregate_id',
         'partition_key',
         'sequence_number',

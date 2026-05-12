@@ -5,7 +5,7 @@
         </x-slot>
 
         <x-slot name="description">
-            Revisa cuantos productos tienes publicados y que opciones de plan aplican para tu negocio.
+            Free valida tu negocio con hasta 10 productos. PRO amplia catalogo, reservas/reportes, campanas e IA operativa activable.
         </x-slot>
 
         <div class="biz-stack" data-testid="dashboard-product-usage">
@@ -19,9 +19,9 @@
 
                         <div>
                             <p class="biz-kicker">Estado del plan</p>
-                            <p class="biz-heading">Tu catalogo no tiene el limite del plan Semilla.</p>
+                            <p class="biz-heading">Tu catalogo tiene capacidad ampliada frente al limite Free.</p>
                             <p class="biz-muted">
-                                Puedes seguir administrando productos y revisar la vigencia desde facturacion.
+                                Puedes seguir administrando productos y revisar reservas, reportes, campanas e IA segun las capacidades activadas.
                             </p>
                         </div>
 
@@ -88,7 +88,7 @@
 
                     <div class="biz-action">
                         <p class="biz-action-title">Upgrade opcional</p>
-                        <p class="biz-action-copy">PRO tiene sentido cuando el catalogo ya necesita mas profundidad o mas control comercial.</p>
+                        <p class="biz-action-copy">PRO tiene sentido cuando necesitas mas productos, reservas/reportes, campanas o IA privada con activacion segura.</p>
                     </div>
                 </div>
 
@@ -97,7 +97,7 @@
                         <div class="biz-split">
                             <div>
                                 <p class="biz-action-title">Estas cerca del limite del catalogo</p>
-                                <p class="biz-muted">Revisa si conviene ordenar productos existentes o pasar a PRO antes de agregar mas.</p>
+                                <p class="biz-muted">Revisa si conviene ordenar productos existentes o pasar a PRO antes de agregar mas catalogo.</p>
                             </div>
 
                             <x-filament::badge color="warning">Revisar plan</x-filament::badge>

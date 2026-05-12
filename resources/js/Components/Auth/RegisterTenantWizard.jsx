@@ -215,6 +215,23 @@ export function RegisterTenantWizard({
         () => businessTypes.find((item) => item.value === data.commercial_mode) || null,
         [businessTypes, data.commercial_mode]
     )
+    const suggestedCategoryForMode = useMemo(() => {
+        const mode = String(data.commercial_mode || "").trim()
+        if (!mode || categories.length === 0) return null
+
+        const slugByMode = {
+            appointments: ["servicios", "salud"],
+            products: ["tiendas", "restaurantes"],
+            consulting_leads: ["consultorias", "abogados", "servicios"],
+        }
+
+        const preferredSlugs = slugByMode[mode] || []
+        const bySlug = preferredSlugs
+            .map((slug) => categories.find((item) => item?.slug === slug))
+            .find(Boolean)
+
+        return bySlug || categories[0] || null
+    }, [categories, data.commercial_mode])
     const selectedCity = useMemo(
         () => cities.find((item) => String(item.id) === String(data.city_id)),
         [cities, data.city_id]
@@ -248,6 +265,17 @@ export function RegisterTenantWizard({
             setData("rubro_key", nextRubroKey)
         }
     }, [data.rubro_key, selectedBusinessType, selectedSegment, setData])
+    useEffect(() => {
+        if (String(data.category_id || "").trim()) {
+            return
+        }
+
+        if (!suggestedCategoryForMode?.id) {
+            return
+        }
+
+        setData("category_id", String(suggestedCategoryForMode.id))
+    }, [data.category_id, setData, suggestedCategoryForMode])
     const slugBaseHost = useMemo(() => {
         const currentHost = typeof window !== "undefined" ? normalizeHost(window.location?.host) : null
         const configuredDirectoryHost = normalizeHost(settings?.directoryHost)

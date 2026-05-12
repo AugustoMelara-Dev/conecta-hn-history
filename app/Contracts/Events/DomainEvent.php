@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Contracts\Events;
 
-use App\ValueObjects\TenantId;
+use App\Domain\Shared\ValueObjects\TenantId;
 use DateTimeImmutable;
 
 /**

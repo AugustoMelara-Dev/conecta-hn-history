@@ -1,5 +1,5 @@
 {{--
-    LANDING PAGE - Página de Ventas B2B para Conecta HN
+    LANDING PAGE - Pagina de ventas B2B para Vito Business OS
     
     Objetivo: Convencer a dueños de negocios de registrarse
     Transmite: Confianza, modernidad, "cero fricción"
@@ -26,7 +26,7 @@
                 <a href="/" class="flex items-center gap-2.5 group">
                     {{-- Isotipo con gradiente --}}
                     <div class="w-9 h-9 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:shadow-indigo-500/40 transition-shadow">
-                        <span class="text-white font-bold text-lg">C</span>
+                        <span class="text-white font-bold text-lg">V</span>
                     </div>
                     {{-- Logotipo --}}
                     <span class="font-extrabold tracking-tight text-xl text-slate-900">
@@ -236,7 +236,7 @@
                     <div class="mt-10 flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
                         {{-- CTA Primario --}}
                         <a 
-                            href="/app/register"
+                            href="{{ route('tenant.register') }}"
                             class="group inline-flex items-center justify-center gap-3 h-14 sm:h-16 px-8 sm:px-10 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-lg shadow-xl shadow-indigo-500/30 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-indigo-500/40"
                         >
                             <span>🚀</span>
@@ -248,7 +248,7 @@
                         
                         {{-- CTA Secundario --}}
                         <a 
-                            href="{{ route('directory') }}"
+                            href="{{ route('directory.index') }}"
                             class="group inline-flex items-center justify-center gap-3 h-14 sm:h-16 px-8 rounded-full bg-white border-2 border-slate-200 hover:border-indigo-300 text-slate-700 hover:text-indigo-600 font-semibold text-lg transition-all duration-300 hover:bg-indigo-50/50"
                         >
                             <svg class="w-6 h-6 text-indigo-500" fill="currentColor" viewBox="0 0 24 24">
@@ -328,7 +328,7 @@
                                     <div class="mt-12 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
                                         <div class="flex items-center gap-2">
                                             <div class="w-8 h-8 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center shadow-lg">
-                                                <span class="text-white text-sm font-bold">C</span>
+                                                <span class="text-white text-sm font-bold">V</span>
                                             </div>
                                             <div>
                                                 <span class="text-sm font-bold text-slate-900 block leading-tight">Pizzería Italia</span>
@@ -499,11 +499,11 @@
                 ¿Listo para vender más?
             </h2>
             <p class="mt-6 text-xl text-slate-400 max-w-2xl mx-auto">
-                Únete a cientos de negocios hondureños que ya están creciendo con Conecta HN.
+                Unete a los negocios que estan ordenando su presencia digital con Vito Business OS.
             </p>
             
             <a 
-                href="/app/register"
+                href="{{ route('tenant.register') }}"
                 class="inline-flex items-center justify-center gap-2 h-16 px-10 mt-10 rounded-full bg-white hover:bg-slate-100 text-slate-900 font-bold text-lg transition-all transform hover:-translate-y-1 shadow-2xl"
             >
                 <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
@@ -526,19 +526,19 @@
             <div class="flex flex-col md:flex-row items-center justify-between gap-6">
                 <div class="flex items-center gap-2">
                     <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-                        <span class="text-white font-bold text-lg">C</span>
+                        <span class="text-white font-bold text-lg">V</span>
                     </div>
-                    <span class="font-bold text-xl text-white">Conecta HN</span>
+                    <span class="font-bold text-xl text-white">Vito Business OS</span>
                 </div>
                 
                 <div class="flex items-center gap-6 text-sm text-slate-400">
-                    <a href="{{ route('directory') }}" class="hover:text-white transition-colors">Directorio</a>
+                    <a href="{{ route('directory.index') }}" class="hover:text-white transition-colors">Directorio</a>
                     <a href="/login" class="hover:text-white transition-colors">Acceso</a>
-                    <a href="/registrar-negocio" class="hover:text-white transition-colors">Registrarse</a>
+                    <a href="{{ route('tenant.register') }}" class="hover:text-white transition-colors">Registrar negocio</a>
                 </div>
 
                 <p class="text-sm text-slate-500">
-                    © {{ date('Y') }} Conecta HN. La vitrina digital de Honduras.
+                    © {{ date('Y') }} Vito Business OS. La vitrina digital para negocios locales.
                 </p>
             </div>
         </div>

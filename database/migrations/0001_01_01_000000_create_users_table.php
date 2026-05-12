@@ -18,7 +18,9 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->string('role')->default('user'); // admin, tenant, user
-            $table->foreignUuid('tenant_id')->nullable()->constrained('tenants')->nullOnDelete();
+            // NOTE: keep this as a plain indexed UUID to avoid cross-migration
+            // FK deadlocks in local MySQL/XAMPP test runs.
+            $table->uuid('tenant_id')->nullable()->index();
             $table->string('phone')->nullable();
             $table->timestamp('banned_at')->nullable();
             $table->rememberToken();

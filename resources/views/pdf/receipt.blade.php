@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Recibo de Pago - Conecta HN</title>
+    <title>Recibo de Pago - Vito Business OS</title>
     <style>
         * {
             margin: 0;
@@ -263,7 +263,7 @@
             <div class="logo-section">
                 <div class="logo">C</div>
                 <div>
-                    <div class="company-name">Conecta HN</div>
+                    <div class="company-name">Vito Business OS</div>
                     <div class="company-tagline">La vitrina digital de Honduras</div>
                 </div>
             </div>
@@ -298,7 +298,7 @@
                     <td>
                         <strong>Suscripción Plan PRO Empresario</strong>
                         <div class="description">
-                            Acceso completo por 30 días: productos ilimitados, cartelería QR, 
+                            Acceso completo por 30 dias: catalogo ampliado, carteleria QR,
                             personalización de marca, y más.
                         </div>
                     </td>
@@ -337,8 +337,7 @@
         <div class="footer">
             <p class="thanks">¡Gracias por tu confianza!</p>
             <p>Este documento es un comprobante válido de pago.</p>
-            <p>Para cualquier consulta, contáctanos en soporte@conectahn.com</p>
-            <p style="margin-top: 15px;">www.conectahn.com</p>
+            <p>Para cualquier consulta, contacta soporte desde tu panel o canal asignado.</p>
         </div>
     </div>
 </body>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Domain\Shared\Services\TenantContext;
 use App\Models\Coupon;
 use App\Models\Tenant;
 use App\Models\User;
@@ -44,8 +45,15 @@ class CheckoutApiTest extends TestCase
 
         // Bind tenant to container
         app()->instance('currentTenant', $this->tenant);
+        app(TenantContext::class)->setTenant($this->tenant->id);
 
-        $this->apiEndpoint = '/api/checkout/validate-coupon';
+        $this->apiEndpoint = '/api/v1/checkout/validate-coupon';
+    }
+
+    protected function tearDown(): void
+    {
+        app(TenantContext::class)->reset();
+        parent::tearDown();
     }
 
     // ═══════════════════════════════════════════════════════════════════════════════
@@ -437,7 +445,7 @@ class CheckoutApiTest extends TestCase
             'is_active' => true,
         ]);
 
-        $response = $this->postJson('/api/checkout/cart-summary', [
+        $response = $this->postJson('/api/v1/checkout/cart-summary', [
             'subtotal' => 100.00,
             'shipping_cost' => 20.00,
             'coupon_code' => 'SUMMARY10',
@@ -465,7 +473,7 @@ class CheckoutApiTest extends TestCase
      */
     public function it_removes_coupon_and_returns_original_total(): void
     {
-        $response = $this->postJson('/api/checkout/remove-coupon', [
+        $response = $this->postJson('/api/v1/checkout/remove-coupon', [
             'subtotal' => 100.00,
             'shipping_cost' => 25.00,
         ]);

@@ -25,8 +25,8 @@ final class TenantMismatchException extends DomainException
 {
     public function __construct(
         string $message = 'Conflicto de contexto de acceso a datos detectado',
-        private readonly ?int $expectedTenantId = null,
-        private readonly ?int $actualTenantId = null,
+        private readonly int|string|null $expectedTenantId = null,
+        private readonly int|string|null $actualTenantId = null,
         private readonly array $contextData = [],
         ?\Throwable $previous = null,
     ) {
@@ -56,12 +56,12 @@ final class TenantMismatchException extends DomainException
         return 'TENANT_MISMATCH';
     }
 
-    public function expectedTenantId(): ?int
+    public function expectedTenantId(): int|string|null
     {
         return $this->expectedTenantId;
     }
 
-    public function actualTenantId(): ?int
+    public function actualTenantId(): int|string|null
     {
         return $this->actualTenantId;
     }
@@ -88,7 +88,7 @@ final class TenantMismatchException extends DomainException
     /**
      * Factory: Create for generic resource tenant mismatch.
      */
-    public static function forResource(string $resource, int $resourceId, int $expectedTenantId, ?int $actualTenantId = null): self
+    public static function forResource(string $resource, int|string $resourceId, int|string $expectedTenantId, int|string|null $actualTenantId = null): self
     {
         return new self(
             message: "Recurso {$resource} {$resourceId} no encontrado para el negocio {$expectedTenantId}",

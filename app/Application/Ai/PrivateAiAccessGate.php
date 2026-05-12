@@ -22,7 +22,7 @@ class PrivateAiAccessGate
             return false;
         }
 
-        if ((bool) config('ai.private.enabled', false) !== true) {
+        if (! $this->privateAgentEnabled()) {
             return false;
         }
 
@@ -42,9 +42,14 @@ class PrivateAiAccessGate
 
     private function tenantIsAllowlisted(Tenant $tenant): bool
     {
+        $allowlist = array_merge(
+            (array) config('ai.private.tenant_allowlist', []),
+            (array) config('conecta.features.tenant_private_agent_tenants', []),
+        );
+
         $allowlist = array_map(
             static fn (mixed $value): string => strtolower(trim((string) $value)),
-            (array) config('ai.private.tenant_allowlist', []),
+            $allowlist,
         );
 
         if ($allowlist === []) {
@@ -53,5 +58,14 @@ class PrivateAiAccessGate
 
         return in_array(strtolower((string) $tenant->id), $allowlist, true)
             || in_array(strtolower((string) $tenant->slug), $allowlist, true);
+    }
+
+    private function privateAgentEnabled(): bool
+    {
+        if ((bool) config('ai.private.enabled', false) === true) {
+            return true;
+        }
+
+        return (array) config('conecta.features.tenant_private_agent_tenants', []) !== [];
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Exports;
 
 use App\Domain\Shared\ValueObjects\TenantId;
+use App\Domain\Shared\Services\TenantContext;
 use App\Events\Audit\SalesExportCreated;
 use App\Exports\Criteria\SalesExportCriteria;
 use App\Exports\SalesExport;
@@ -37,8 +38,15 @@ class SalesExportTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        app(TenantContext::class)->setAsSystemRoot();
         // Aislamiento de eventos para evitar efectos secundarios (Emails, Logs, etc)
         Event::fake([SalesExportCreated::class]);
+    }
+
+    protected function tearDown(): void
+    {
+        app(TenantContext::class)->reset();
+        parent::tearDown();
     }
 
     /**
@@ -125,7 +133,7 @@ class SalesExportTest extends TestCase
         );
 
         Event::assertDispatched(SalesExportCreated::class, function ($event) use ($data) {
-            return $event->tenantId->toString() === (string) $data['tenantA']->id
+            return $event->tenantId->toString() === $data['tenantA']->id
                 && $event->userId === 42
                 && $event->format === 'xlsx'
                 && ! empty($event->criteriaHash);

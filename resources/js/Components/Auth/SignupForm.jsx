@@ -35,7 +35,7 @@ export function SignupForm({
     className,
     ...props
 }) {
-    const exploreUrl = safeRoute("public.explore", "/explore")
+    const exploreUrl = safeRoute("directory.index", "/directorio")
     const inputClassName =
         "border-slate-200 bg-white text-slate-950 placeholder:text-slate-400 focus-visible:ring-slate-300 focus-visible:ring-offset-0"
     const selectClassName =

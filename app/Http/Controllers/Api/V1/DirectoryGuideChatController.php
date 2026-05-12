@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 final class DirectoryGuideChatController extends Controller
 {
@@ -15,10 +16,15 @@ final class DirectoryGuideChatController extends Controller
     {
         $validated = $request->validate([
             'message' => ['required', 'string', 'min:3', 'max:500'],
+            'budget' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $message = (string) $validated['message'];
-        $budget = $this->extractBudget($message);
+        $budget = isset($validated['budget'])
+            ? (float) $validated['budget']
+            : $this->extractBudget($message);
+
+        $hasStatusColumn = Schema::hasColumn('products', 'status');
 
         $query = Product::query()
             ->withoutGlobalScopes()
@@ -28,6 +34,12 @@ final class DirectoryGuideChatController extends Controller
             ->whereHas('tenant', fn ($query) => $query->where('is_active', true))
             ->orderBy('price')
             ->limit(5);
+
+        if ($hasStatusColumn) {
+            $query->where(function ($query): void {
+                $query->whereNull('status')->orWhere('status', 'active');
+            });
+        }
 
         if ($budget !== null) {
             $query->where('price', '<=', $budget);
@@ -40,9 +52,10 @@ final class DirectoryGuideChatController extends Controller
                 'answer' => $budget === null
                     ? 'Todavia no encontre opciones publicas que coincidan. Proba con un producto, servicio o presupuesto mas especifico.'
                     : 'No encontre opciones publicas dentro de ese presupuesto. Proba ampliar el rango o revisar el directorio.',
-                'results' => [],
+                'items' => [],
                 'source' => 'public_directory',
                 'fallback' => true,
+                'meta' => $this->meta(),
             ]);
         }
 
@@ -55,10 +68,12 @@ final class DirectoryGuideChatController extends Controller
 
         return response()->json([
             'answer' => 'Con datos publicos del directorio, podes revisar: '.$lines->implode('; ').'.',
-            'results' => $products->map(fn (Product $product): array => [
+            'items' => $products->map(fn (Product $product): array => [
                 'type' => 'product',
                 'name' => $product->name,
+                'business_name' => $product->tenant?->name,
                 'price' => (float) $product->price,
+                'price_label' => 'L. '.number_format((float) $product->price, 2),
                 'tenant' => [
                     'name' => $product->tenant?->name,
                     'slug' => $product->tenant?->slug,
@@ -69,7 +84,21 @@ final class DirectoryGuideChatController extends Controller
             ])->values(),
             'source' => 'public_directory',
             'fallback' => true,
+            'meta' => $this->meta(),
         ]);
+    }
+
+    /**
+     * @return array{llm_used:false,privacy_scope:string,source:string,fallback:true}
+     */
+    private function meta(): array
+    {
+        return [
+            'llm_used' => false,
+            'privacy_scope' => 'public_directory_only',
+            'source' => 'public_directory',
+            'fallback' => true,
+        ];
     }
 
     private function extractBudget(string $message): ?float

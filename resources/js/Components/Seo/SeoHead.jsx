@@ -25,7 +25,7 @@ export default function SeoHead({
     // ═══════════════════════════════════════════════════════════════════════
     // DEFAULTS & FALLBACKS
     // ═══════════════════════════════════════════════════════════════════════
-    const siteName = "Conecta HN";
+    const siteName = "Vito Business OS";
     // Fallback image prevents "Grey Card" in WhatsApp/iMessage
     const defaultImage = "/images/og-default.svg";
     const finalImage = image || defaultImage;

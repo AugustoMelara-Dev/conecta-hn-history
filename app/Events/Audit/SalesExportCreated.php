@@ -8,7 +8,7 @@ use App\Contracts\Events\AuditEvent;
 use App\Enums\Severity;
 use App\ValueObjects\AuditContext;
 use App\ValueObjects\IpAddress;
-use App\ValueObjects\TenantId;
+use App\Domain\Shared\ValueObjects\TenantId;
 use DateTimeImmutable;
 
 /**
@@ -144,7 +144,7 @@ final readonly class SalesExportCreated implements AuditEvent
 
         return new self(
             exportId: $data['export_id'] ?? uniqid('exp_'),
-            tenantId: new TenantId($tenantId),
+            tenantId: TenantId::fromString((string) $tenantId),
             userId: $userId,
             format: $data['format'] ?? 'unknown',
             criteriaHash: $data['criteria_hash'] ?? '',

@@ -106,7 +106,7 @@ final class ResolveTenantFromRequest
         // 3. Cache Miss - Database Query (Optimized Memory Footprint)
         // Select ONLY essential columns to keep Redis serialization light.
         $query = Tenant::query()
-            ->select(['id', 'slug', 'domain', 'name', 'is_active', 'is_pro', 'logo_path'])
+            ->select(['id', 'slug', 'name', 'is_active', 'is_pro', 'logo_path'])
             ->take(1);
 
         $this->applyResolutionLogic($query, $request);
@@ -120,7 +120,6 @@ final class ResolveTenantFromRequest
             $payload = [
                 'id' => $tenant->id,
                 'slug' => $tenant->slug,
-                'domain' => $tenant->domain,
                 'name' => $tenant->name,
                 'is_active' => $tenant->is_active,
                 'is_pro' => $tenant->is_pro,

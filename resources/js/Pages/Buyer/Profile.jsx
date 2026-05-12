@@ -9,14 +9,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
 export default function Profile({ auth, favorites = [], followedTenants = [] }) {
     return (
         <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
-            <Head title="Mi Perfil - Conecta HN" />
+            <Head title="Mi Perfil - Vito Business OS" />
 
             {/* Navbar */}
             <nav className="bg-white border-b border-slate-200 sticky top-0 z-50">
                 <div className="container mx-auto px-4 h-16 flex items-center justify-between">
                     <Link href="/" className="flex items-center gap-2 font-bold text-xl tracking-tight">
                         <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center text-white">C</div>
-                        Conecta HN
+                        Vito Business OS
                     </Link>
                     <div className="flex items-center gap-4">
                         <Link href="/directorio">

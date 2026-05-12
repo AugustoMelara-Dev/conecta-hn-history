@@ -14,14 +14,14 @@
                 <div>
                     <h1 class="biz-title">Activa mas herramientas para tu negocio</h1>
                     <p class="biz-muted">
-                        PRO suma funciones comerciales para negocios que ya necesitan mas catalogo,
-                        seguimiento y una presencia publica mas completa.
+                        PRO suma mas catalogo, reservas avanzadas, reportes/campanas e IA operativa activable
+                        para negocios que ya validaron demanda con Free.
                     </p>
                 </div>
 
                 <div class="biz-button-row">
                     <a
-                        href="https://wa.me/50495000000?text={{ urlencode('Hola, quiero actualizar mi negocio ' . ($tenant->name ?? '') . ' a PRO en Conecta HN') }}"
+                        href="https://wa.me/50495000000?text={{ urlencode('Hola, quiero actualizar mi negocio ' . ($tenant->name ?? '') . ' a PRO en Vito Business OS') }}"
                         target="_blank"
                         rel="noopener noreferrer"
                         class="biz-button"
@@ -78,13 +78,13 @@
                         <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                             <tr>
                                 <td class="px-4 py-3 text-gray-700 dark:text-gray-300">Productos publicados</td>
-                                <td class="px-4 py-3 text-center text-gray-600 dark:text-gray-400">Limitado</td>
-                                <td class="px-4 py-3 text-center font-semibold text-gray-900 dark:text-white">Catalogo amplio</td>
+                                <td class="px-4 py-3 text-center text-gray-600 dark:text-gray-400">Hasta 10</td>
+                                <td class="px-4 py-3 text-center font-semibold text-gray-900 dark:text-white">Catalogo ampliado</td>
                             </tr>
                             <tr>
-                                <td class="px-4 py-3 text-gray-700 dark:text-gray-300">WhatsApp visible</td>
+                                <td class="px-4 py-3 text-gray-700 dark:text-gray-300">WhatsApp, llamada y mapa</td>
                                 <td class="px-4 py-3 text-center">
-                                    <x-filament::badge color="gray">No incluido</x-filament::badge>
+                                    <x-filament::badge color="success">Incluido</x-filament::badge>
                                 </td>
                                 <td class="px-4 py-3 text-center">
                                     <x-filament::badge color="success">Incluido</x-filament::badge>
@@ -100,14 +100,19 @@
                                 </td>
                             </tr>
                             <tr>
-                                <td class="px-4 py-3 text-gray-700 dark:text-gray-300">Marketing y seguimiento</td>
-                                <td class="px-4 py-3 text-center text-gray-600 dark:text-gray-400">Inicial</td>
-                                <td class="px-4 py-3 text-center font-semibold text-gray-900 dark:text-white">Mas herramientas</td>
+                                <td class="px-4 py-3 text-gray-700 dark:text-gray-300">Reservas</td>
+                                <td class="px-4 py-3 text-center text-gray-600 dark:text-gray-400">Basicas/legacy segun rubro</td>
+                                <td class="px-4 py-3 text-center font-semibold text-gray-900 dark:text-white">Avanzadas segun capacidad</td>
                             </tr>
                             <tr>
-                                <td class="px-4 py-3 text-gray-700 dark:text-gray-300">Reportes</td>
-                                <td class="px-4 py-3 text-center text-gray-600 dark:text-gray-400">Basicos</td>
-                                <td class="px-4 py-3 text-center font-semibold text-gray-900 dark:text-white">Mas senales</td>
+                                <td class="px-4 py-3 text-gray-700 dark:text-gray-300">Reportes y campanas</td>
+                                <td class="px-4 py-3 text-center text-gray-600 dark:text-gray-400">Inicial</td>
+                                <td class="px-4 py-3 text-center font-semibold text-gray-900 dark:text-white">Mas senales y herramientas</td>
+                            </tr>
+                            <tr>
+                                <td class="px-4 py-3 text-gray-700 dark:text-gray-300">Agente IA privado</td>
+                                <td class="px-4 py-3 text-center text-gray-600 dark:text-gray-400">No incluido</td>
+                                <td class="px-4 py-3 text-center font-semibold text-gray-900 dark:text-white">Activable por tenant</td>
                             </tr>
                         </tbody>
                     </table>

@@ -4,11 +4,8 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Jobs\AI;
 
-use App\Application\Tenant\Commands\EnhanceTenantProfileCommand;
-use App\Application\Tenant\Handlers\EnhanceTenantProfileHandler;
 use App\Domain\Shared\Middleware\TenantQueueMiddleware;
-use App\Models\Tenant;
-use App\Services\AiProfileGeneratorService;
+use App\Application\Tenant\Commands\EnhanceTenantProfileCommand;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -39,28 +36,17 @@ class EnhanceTenantProfileJob implements ShouldBeUnique, ShouldQueue
 
     public int $tries = 3;
 
-    public int $timeout = 120;
-
-    public array $backoff = [30, 60, 120];
+    public int $timeout = 180;
 
     public int $uniqueFor = 3600;
 
-    public readonly EnhanceTenantProfileCommand $command;
-
-    public int|string $tenantId;
-
-    public function __construct(EnhanceTenantProfileCommand|int|string $data)
-    {
-        $this->command = $data instanceof EnhanceTenantProfileCommand
-            ? $data
-            : new EnhanceTenantProfileCommand($data);
-        $this->tenantId = $this->command->tenantId;
-        $this->onQueue('ai-enrichment');
-    }
+    public function __construct(
+        public readonly EnhanceTenantProfileCommand $data
+    ) {}
 
     public function uniqueId(): string
     {
-        return 'enhance-tenant-'.$this->tenantId;
+        return 'enhance_'.$this->data->tenantId;
     }
 
     /**
@@ -74,60 +60,22 @@ class EnhanceTenantProfileJob implements ShouldBeUnique, ShouldQueue
      *
      * All wrapped in a transaction for atomicity.
      *
+     * @throws ModelNotFoundException if tenant does not exist
+     * @throws TenantDomainException if business invariants are violated
      */
     public function handle(
-        EnhanceTenantProfileHandler|AiProfileGeneratorService $handler
+        \App\Application\Tenant\Handlers\EnhanceTenantProfileHandler $handler
     ): void {
-        if ($handler instanceof EnhanceTenantProfileHandler) {
-            $handler->handle($this->command);
-
-            return;
-        }
-
-        $this->handleLegacyService($handler);
+        $handler->handle($this->data);
     }
 
     public function middleware(): array
     {
-        return [new TenantQueueMiddleware($this->tenantId)];
+        return [new TenantQueueMiddleware($this->data->tenantId)];
     }
 
     public function tags(): array
     {
-        return ['ai', 'enhance', 'tenant:'.$this->tenantId];
-    }
-
-    private function handleLegacyService(AiProfileGeneratorService $service): void
-    {
-        $tenant = Tenant::withoutGlobalScopes()->find($this->tenantId);
-
-        if (! $tenant || $tenant->is_ai_enhanced) {
-            return;
-        }
-
-        $result = $service->generate(
-            (string) $tenant->name,
-            (string) ($this->command->description ?? $tenant->description ?? ''),
-            (string) ($tenant->category?->name ?? 'General')
-        );
-
-        if (($result['status'] ?? null) === 'flagged') {
-            $tenant->forceFill([
-                'status' => 'banned',
-                'is_active' => false,
-                'admin_notes' => trim((string) ($tenant->admin_notes ?? '')."\nAI MODERATION: ".($result['risk_analysis'] ?? 'flagged')),
-            ])->save();
-
-            return;
-        }
-
-        $tenant->forceFill([
-            'name' => $result['business_name_clean'] ?? $tenant->name,
-            'slogan' => $result['tagline'] ?? $tenant->slogan,
-            'description' => $result['full_description_html'] ?? ($result['short_description'] ?? $tenant->description),
-            'seo_description' => $result['short_description'] ?? $tenant->seo_description,
-            'tags' => $result['seo_keywords'] ?? $tenant->tags,
-            'is_ai_enhanced' => true,
-        ])->save();
+        return ['ai', 'enhance', 'tenant:'.$this->data->tenantId];
     }
 }

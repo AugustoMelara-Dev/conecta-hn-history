@@ -40,7 +40,7 @@ final class PlanFeatureFlagService
      * Default product limits by plan.
      */
     private const PRODUCT_LIMITS = [
-        self::PLAN_SEMILLA => 12,
+        self::PLAN_SEMILLA => 10,
         self::PLAN_PRO => 100,
         self::PLAN_ENTERPRISE => PHP_INT_MAX,
     ];
@@ -68,7 +68,7 @@ final class PlanFeatureFlagService
         $subscriptionStatus = $attributes['subscription_status'] ?? 'active';
         $active = in_array($subscriptionStatus, ['active', 'trial'], true);
 
-        $computedIsPro = (bool) ($tenant->is_pro ?? false);
+        $computedIsPro = (bool) ($attributes['is_pro'] ?? false);
 
         if ($active && $computedIsPro && in_array($plan, [self::PLAN_PRO, self::PLAN_ENTERPRISE], true)) {
             return $plan;

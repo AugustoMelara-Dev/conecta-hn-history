@@ -74,18 +74,7 @@ class InfrastructureServiceProvider extends ServiceProvider
             \App\Infrastructure\Shared\Services\JsonSchemaValidatorService::class
         );
 
-        $this->app->bind(
-            \App\Application\Shared\Contracts\OutboxRepositoryInterface::class,
-            function ($app) {
-                $inner = $app->make(\App\Infrastructure\Shared\Persistence\EloquentOutboxRepository::class);
-                $validator = $app->make(\App\Application\Shared\Contracts\SchemaValidatorInterface::class);
-
-                return new \App\Infrastructure\Shared\Persistence\Decorators\SchemaValidatingOutboxRepository(
-                    $inner,
-                    $validator
-                );
-            }
-        );
+        // NOTE: OutboxRepositoryInterface binding is centralized in AppServiceProvider.
 
         // ═══════════════════════════════════════════════════════════════════════
         // CONTROLLER DECOUPLING BINDINGS (Hexagonal Architecture)
@@ -117,6 +106,24 @@ class InfrastructureServiceProvider extends ServiceProvider
         $this->app->bind(
             \App\Application\Auth\Contracts\AuthTokenServiceInterface::class,
             \App\Infrastructure\Auth\SanctumAuthTokenService::class
+        );
+
+        // Tenant registration password hashing contract
+        $this->app->bind(
+            \App\Domain\Security\Contracts\HasherInterface::class,
+            \App\Infrastructure\Security\LaravelHasher::class
+        );
+
+        // Event-sourcing snapshot infrastructure
+        $this->app->bind(
+            \App\Domain\Common\Contracts\SnapshotRepositoryInterface::class,
+            \App\Infrastructure\Common\Snapshots\DatabaseSnapshotRepository::class
+        );
+        $this->app->bind(
+            \App\Domain\Common\Contracts\SnapshotStrategyInterface::class,
+            fn () => new \App\Infrastructure\Common\Snapshots\Strategies\EventCountSnapshotStrategy(
+                (int) config('eventsourcing.snapshot_threshold', 50)
+            )
         );
     }
 
@@ -203,9 +210,17 @@ class InfrastructureServiceProvider extends ServiceProvider
             return Limit::perMinute(3)->by($request->ip());
         });
 
+        RateLimiter::for('api.otp-generation', function (Request $request) {
+            return Limit::perMinute(3)->by($request->user()?->id ?: $request->ip());
+        });
+
         // 4. VERIFICATION LIMIT: Prevent Code Guessing
         // 5 attempts per minute per User (Verifying Code)
         RateLimiter::for('otp-verify', function (Request $request) {
+            return Limit::perMinute(5)->by($request->user()?->id ?: $request->ip());
+        });
+
+        RateLimiter::for('api.verification', function (Request $request) {
             return Limit::perMinute(5)->by($request->user()?->id ?: $request->ip());
         });
 
@@ -230,6 +245,10 @@ class InfrastructureServiceProvider extends ServiceProvider
         // 8. NOTIFICATION POLLING
         RateLimiter::for('notifications', function (Request $request) {
             return Limit::perMinute(30)->by($request->user()?->id ?: $request->ip());
+        });
+
+        RateLimiter::for('api.transactions', function (Request $request) {
+            return Limit::perMinute(20)->by($request->user()?->id ?: $request->ip());
         });
     }
 }

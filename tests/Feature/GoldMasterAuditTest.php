@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use PHPUnit\Framework\Attributes\Skip;
 use Tests\TestCase;
 
 /**
@@ -14,23 +13,26 @@ use Tests\TestCase;
  * - TenantAnalytic model migrado
  * - Redis no disponible en CI
  */
-#[Skip('Pendiente refactorización: Jobs y Models han cambiado')]
 class GoldMasterAuditTest extends TestCase
 {
-    use RefreshDatabase;
-
     public function test_landing_page_renders_correctly(): void
     {
-        $this->markTestSkipped('Pendiente refactorización');
+        $this->get('/')->assertOk();
     }
 
     public function test_directory_city_filter_works(): void
     {
-        $this->markTestSkipped('Pendiente refactorización');
+        $response = $this->get('/directorio?city=tocoa');
+        $this->assertNotEquals(500, $response->status());
     }
 
     public function test_analytics_pipeline_works(): void
     {
-        $this->markTestSkipped('Pendiente refactorización');
+        $response = $this->postJson('/api/v1/analytics/track', [
+            'event' => 'page_view',
+            'tenant_slug' => 'demo-tenant',
+        ]);
+
+        $this->assertNotEquals(500, $response->status());
     }
 }

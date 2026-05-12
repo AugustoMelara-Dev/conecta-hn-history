@@ -15,7 +15,7 @@ import { ToastProvider } from '@/Components/Toast/ToastProvider';
 // Make route() globally available
 window.route = (name, params, absolute) => route(name, params, absolute, Ziggy);
 
-const appName = import.meta.env.VITE_APP_NAME || 'Conecta HN';
+const appName = import.meta.env.VITE_APP_NAME || 'Vito Business OS';
 
 createInertiaApp({
     title: (title) => title ? `${title} - ${appName}` : appName,

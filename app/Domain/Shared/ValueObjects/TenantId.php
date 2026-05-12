@@ -20,14 +20,30 @@ final readonly class TenantId
     private function __construct(
         public string $value
     ) {
-        if (! Str::isUuid($this->value)) {
-            throw new InvalidArgumentException("TenantId must be a valid UUID string. Received: {$this->value}");
+        $isUuid = Str::isUuid($this->value);
+        $isPositiveInt = ctype_digit($this->value) && (int) $this->value > 0;
+
+        if (! $isUuid && ! $isPositiveInt) {
+            throw new InvalidArgumentException("TenantId must be a valid UUID or positive integer. Received: {$this->value}");
         }
     }
 
     public static function fromString(string $value): self
     {
         return new self($value);
+    }
+
+    public static function fromInt(int|string $value): self
+    {
+        if (is_string($value) && ctype_digit($value)) {
+            $value = (int) $value;
+        }
+
+        if (! is_int($value) || $value <= 0) {
+            throw new InvalidArgumentException("TenantId must be a positive integer. Received: {$value}");
+        }
+
+        return new self((string) $value);
     }
 
     public function __toString(): string
@@ -38,5 +54,14 @@ final readonly class TenantId
     public function toString(): string
     {
         return $this->value;
+    }
+
+    public function toInt(): int
+    {
+        if (! ctype_digit($this->value)) {
+            throw new InvalidArgumentException("TenantId is not numeric and cannot be converted to int. Received: {$this->value}");
+        }
+
+        return (int) $this->value;
     }
 }

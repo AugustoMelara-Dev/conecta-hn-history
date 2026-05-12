@@ -89,9 +89,12 @@ final class TenantMicrositeTransformer
             'category' => $this->transformCategory($tenant),
 
             // Status flags
-            'is_pro' => (bool) $tenant->is_pro,
+            'is_pro' => (bool) ($this->tenantAttribute($tenant, 'is_pro') ?? false),
             'is_active' => (bool) $this->tenantAttribute($tenant, 'is_active'),
             'plan' => $plan,
+            'business_type' => $this->tenantStringAttribute($tenant, 'business_type', 'retail'),
+            'commercial_mode' => $this->tenantStringAttribute($tenant, 'commercial_mode', 'products'),
+            'conversion_profile' => $this->conversionProfile($tenant),
 
             // Social links (legacy flat + structured grouping)
             'facebook_url' => $this->planService->canShowSocialGraph($tenant) ? $this->tenantAttribute($tenant, 'facebook_url') : null,
@@ -120,6 +123,7 @@ final class TenantMicrositeTransformer
                 'can_show_social' => $this->planService->canShowSocialGraph($tenant),
                 'can_use_cart' => $this->planService->canUseCart($tenant),
                 'can_use_coupons' => $this->planService->canUseCoupons($tenant),
+                'commercial_mode' => $this->tenantStringAttribute($tenant, 'commercial_mode', 'products'),
             ],
         ];
     }
@@ -332,6 +336,17 @@ final class TenantMicrositeTransformer
         return number_format((float) $value, 8, '.', '');
     }
 
+    private function tenantStringAttribute(Tenant $tenant, string $key, string $default): string
+    {
+        $value = $tenant->getAttribute($key);
+
+        if ($value instanceof \BackedEnum) {
+            return (string) $value->value;
+        }
+
+        return is_string($value) && $value !== '' ? $value : $default;
+    }
+
     private function modelAttribute(object $model, string $key): mixed
     {
         if (method_exists($model, 'getAttributes')) {
@@ -342,6 +357,43 @@ final class TenantMicrositeTransformer
     }
 
     /**
+     * Public copy contract for microsites that are not catalog-first.
+     *
+     * @return array{label:string,headline:string,cta:string,empty:string}
+     */
+    private function conversionProfile(Tenant $tenant): array
+    {
+        $mode = $this->tenantStringAttribute($tenant, 'commercial_mode', 'products');
+
+        return match ($mode) {
+            'appointments' => [
+                'label' => 'Reservas y servicios',
+                'headline' => 'Agenda una atencion con el negocio.',
+                'cta' => 'Consultar disponibilidad',
+                'empty' => 'Este negocio aun esta preparando sus servicios reservables.',
+            ],
+            'consulting_leads' => [
+                'label' => 'Consultas profesionales',
+                'headline' => 'Conoce la propuesta y solicita una consulta.',
+                'cta' => 'Solicitar consulta',
+                'empty' => 'Este negocio aun esta preparando su oferta consultiva, pero puedes contactarlo directamente.',
+            ],
+            'hybrid' => [
+                'label' => 'Productos y servicios',
+                'headline' => 'Explora ofertas, servicios y canales de atencion.',
+                'cta' => 'Consultar oferta',
+                'empty' => 'Este negocio esta configurando su operacion mixta.',
+            ],
+            default => [
+                'label' => 'Venta de productos',
+                'headline' => 'Explora productos y confirma tu pedido.',
+                'cta' => 'Ver catalogo',
+                'empty' => 'Este negocio aun no ha publicado productos visibles.',
+            ],
+        };
+    }
+
+    /**
      * Resolve image path to full URL with placeholder fallback.
      */
     private function resolveImageUrl(?string $path, string $type): string
@@ -349,7 +401,7 @@ final class TenantMicrositeTransformer
         if (empty($path)) {
             return match ($type) {
                 'cover' => 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800&h=600&fit=crop',
-                'logo' => 'https://ui-avatars.com/api/?name=ConectaHN&background=0ea5e9&color=fff&size=200',
+                'logo' => 'https://ui-avatars.com/api/?name=Vito&background=0ea5e9&color=fff&size=200',
                 'product' => 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop',
                 default => 'https://via.placeholder.com/400',
             };

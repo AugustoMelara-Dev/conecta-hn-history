@@ -51,12 +51,12 @@
             </center>
 
             <p style="color: #6b7280; font-size: 14px;">
-                Si tienes preguntas, responde a este correo o contactanos en soporte@conectahn.com.
+                Si tienes preguntas, responde a este correo o contactanos en soporte.
             </p>
         </div>
 
         <div class="footer">
-            <p>&copy; {{ date('Y') }} Conecta HN. Todos los derechos reservados.</p>
+            <p>&copy; {{ date('Y') }} Vito Business OS. Todos los derechos reservados.</p>
         </div>
     </div>
 </body>

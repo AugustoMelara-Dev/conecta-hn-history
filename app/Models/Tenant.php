@@ -16,6 +16,7 @@ use App\Application\TenantGovernance\Contracts\TenantFeatureAccessManagerInterfa
 use App\Domain\Shared\Traits\HasDomainEvents;
 use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Domain\TenantGovernance\Enums\Capability;
+use App\Domain\TenantGovernance\Enums\CommercialMode;
 use App\Domain\TenantGovernance\Enums\TenantFeature;
 use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Domain\TenantGovernance\Exceptions\TenantDomainException;
@@ -123,6 +124,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         // TITANIUM UPGRADE: STRICT CASTING
         'plan_type' => TenantPlan::class,
         'business_type' => BusinessType::class,
+        'commercial_mode' => CommercialMode::class,
     ];
 
     protected $appends = [

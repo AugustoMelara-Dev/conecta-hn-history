@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (! Schema::hasTable('categories')) {
+            return;
+        }
+
         Schema::table('categories', function (Blueprint $table) {
             // Campo de ordenamiento para merchandising
             if (! Schema::hasColumn('categories', 'sort_order')) {
@@ -29,6 +33,10 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (! Schema::hasTable('categories')) {
+            return;
+        }
+
         Schema::table('categories', function (Blueprint $table) {
             if (Schema::hasColumn('categories', 'sort_order')) {
                 $table->dropColumn('sort_order');

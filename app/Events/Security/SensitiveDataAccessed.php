@@ -7,7 +7,7 @@ namespace App\Events\Security;
 use App\Contracts\Events\AuditEvent;
 use App\Enums\Severity;
 use App\ValueObjects\AuditContext;
-use App\ValueObjects\TenantId;
+use App\Domain\Shared\ValueObjects\TenantId;
 
 /**
  * SensitiveDataAccessed - Compliance Event for Data Access Logging

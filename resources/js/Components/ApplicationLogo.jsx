@@ -10,7 +10,7 @@ export default function ApplicationLogo({ className = '', showText = true }) {
             {/* Logo Text (optional) */}
             {showText && (
                 <span className={`font-bold text-xl tracking-tight text-slate-900 dark:text-white ${className}`}>
-                    ConectaHN
+                    Vito Business OS
                 </span>
             )}
         </Link>

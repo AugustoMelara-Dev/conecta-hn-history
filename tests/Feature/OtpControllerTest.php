@@ -2,8 +2,9 @@
 
 namespace Tests\Feature;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use PHPUnit\Framework\Attributes\Skip;
+use App\Http\Requests\Auth\GenerateOtpRequest;
+use App\Http\Requests\Auth\VerifyOtpRequest;
+use Illuminate\Support\Facades\Validator;
 use Tests\TestCase;
 
 /**
@@ -11,18 +12,24 @@ use Tests\TestCase;
  *
  * @todo Refactorizar para nueva arquitectura - OTP ahora usa API diferente
  */
-#[Skip('Pendiente refactorización para nueva arquitectura OTP')]
 class OtpControllerTest extends TestCase
 {
-    use RefreshDatabase;
-
     public function test_otp_generation_requires_phone(): void
     {
-        $this->markTestSkipped('Pendiente refactorización');
+        $validator = Validator::make([], (new GenerateOtpRequest())->rules());
+        $this->assertTrue($validator->fails());
+        $this->assertArrayHasKey('identifier', $validator->errors()->toArray());
     }
 
     public function test_otp_verification_works(): void
     {
-        $this->markTestSkipped('Pendiente refactorización');
+        $validator = Validator::make([
+            'uuid' => 'not-a-uuid',
+            'otp_code' => '12',
+        ], (new VerifyOtpRequest())->rules());
+        $this->assertTrue($validator->fails());
+        $errors = $validator->errors()->toArray();
+        $this->assertArrayHasKey('uuid', $errors);
+        $this->assertArrayHasKey('otp_code', $errors);
     }
 }

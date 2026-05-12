@@ -6,6 +6,9 @@ use App\Models\OpeningHour;
 use App\Models\ServiceProvider;
 use App\Models\Tenant;
 use Spatie\OpeningHours\OpeningHours;
+use Tests\TestCase;
+
+uses(TestCase::class);
 
 // ═══════════════════════════════════════════════════════════════════════
 // AVAILABILITY ENGINE TESTS - Service Hours Integration

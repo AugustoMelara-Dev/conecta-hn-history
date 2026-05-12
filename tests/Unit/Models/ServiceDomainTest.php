@@ -6,6 +6,9 @@ use App\Models\Appointment;
 use App\Models\Service;
 use App\Models\ServiceProvider;
 use App\Models\Tenant;
+use Tests\TestCase;
+
+uses(TestCase::class);
 
 // ═══════════════════════════════════════════════════════════════════════
 // SERVICE DOMAIN TESTS - Model Configuration and Relationships

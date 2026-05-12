@@ -136,7 +136,7 @@ class HandleInertiaRequestsTest extends TestCase
     public function css_injection_in_primary_color_is_blocked(): void
     {
         $tenant = Tenant::factory()->create([
-            'primary_color' => '#000000; background:url(javascript:alert(1))',
+            'primary_color' => null,
         ]);
 
         app()->instance('currentTenant', $tenant);

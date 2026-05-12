@@ -9,7 +9,7 @@ use App\Enums\Severity;
 use App\Traits\HasDomainMetadata;
 use App\ValueObjects\AuditContext;
 use App\ValueObjects\IpAddress;
-use App\ValueObjects\TenantId;
+use App\Domain\Shared\ValueObjects\TenantId;
 use DateTimeImmutable;
 
 /**

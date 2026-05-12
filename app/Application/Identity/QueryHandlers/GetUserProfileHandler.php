@@ -30,7 +30,7 @@ final readonly class GetUserProfileHandler
             ->first();
 
         if ($user === null) {
-            throw new UserNotFoundException('User not found or access denied.');
+            throw UserNotFoundException::withIdAndTenant($query->id, $query->tenantId);
         }
 
         return $user;

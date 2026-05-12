@@ -51,7 +51,7 @@ export function resolveTenantCategoryName(tenant) {
     return 'Negocio local';
 }
 
-export function resolveTenantDescription(tenant, fallback = 'Negocio local activo dentro de Conecta HN.') {
+export function resolveTenantDescription(tenant, fallback = 'Negocio local activo dentro de Vito Business OS.') {
     if (typeof tenant?.description === 'string' && tenant.description.trim() !== '') {
         return tenant.description;
     }

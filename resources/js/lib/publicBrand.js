@@ -1,10 +1,10 @@
 export const PUBLIC_BRAND = {
-    name: 'Conecta HN',
-    shortName: 'CHN',
-    supportEmail: 'soporte@conectahn.com',
+    name: 'Vito Business OS',
+    shortName: 'Vito',
+    supportEmail: null,
     supportWhatsAppUrl: 'https://wa.me/50499999999',
-    websiteUrl: 'https://conectahn.com',
+    websiteUrl: null,
 };
 
 export const PUBLIC_BRAND_POLICY_NOTE =
-    'Marca p?blica can?nica: Conecta HN. El naming legacy queda reservado para artefactos internos o excepciones documentadas.';
+    'Marca publica canonica: Vito Business OS. El naming legacy queda reservado para artefactos internos o excepciones documentadas.';

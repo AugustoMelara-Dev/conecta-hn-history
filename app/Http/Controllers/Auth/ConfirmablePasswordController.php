@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Support\Panel\CanonicalPanelUrlResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -38,6 +39,8 @@ final class ConfirmablePasswordController extends Controller
 
         $request->session()->put('auth.password_confirmed_at', time());
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        return redirect()->intended(
+            app(CanonicalPanelUrlResolver::class)->forUser($request->user())
+        );
     }
 }

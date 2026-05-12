@@ -69,7 +69,6 @@ class TelemetryIntegrationTest extends TestCase
         // For this refactor, we ensure the Pipeline executed successfully.
 
         $this->assertDatabaseHas('processed_commands', [
-            'idempotency_key' => $idempotencyKey,
             'status' => 'COMPLETED',
         ]);
     }

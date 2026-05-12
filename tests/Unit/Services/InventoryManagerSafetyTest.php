@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 use App\Models\Order;
 use App\Services\InventoryManager;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
 
-uses(RefreshDatabase::class);
+uses(TestCase::class);
 
 /**
  * VC-AUDIT-102 / VC-AUDIT-104 Test Suite

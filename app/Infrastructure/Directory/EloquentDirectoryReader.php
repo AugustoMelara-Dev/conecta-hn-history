@@ -9,6 +9,7 @@ use App\Domain\Directory\DTOs\DirectorySearchData;
 use App\Models\Category;
 use App\Models\City;
 use App\Models\Tenant;
+use Illuminate\Pagination\LengthAwarePaginator as LaravelLengthAwarePaginator;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -24,6 +25,10 @@ final class EloquentDirectoryReader implements DirectoryReader
     public function getFeaturedTenants(int $limit = 8): Collection
     {
         return Cache::remember("directory_featured_{$limit}", now()->addMinutes(self::CACHE_TTL_MINUTES), function () use ($limit) {
+            if (! Schema::hasTable('tenants')) {
+                return collect();
+            }
+
             return Tenant::query()
                 ->select($this->tenantColumns([
                     'id', 'name', 'slug', 'description', 'tags', 'is_active',
@@ -52,6 +57,16 @@ final class EloquentDirectoryReader implements DirectoryReader
             $cacheKey,
             now()->addMinutes(self::CACHE_TTL_MINUTES),
             function () use ($filters) {
+                if (! Schema::hasTable('tenants')) {
+                    return new LaravelLengthAwarePaginator(
+                        collect(),
+                        0,
+                        $filters->perPage,
+                        $filters->page,
+                        ['path' => request()->url(), 'pageName' => 'page']
+                    );
+                }
+
                 return Tenant::query()
                     // PROJECTION: Only fields needed for card rendering
                     ->select($this->tenantColumns([
@@ -95,7 +110,7 @@ final class EloquentDirectoryReader implements DirectoryReader
 
             return Category::query()
                 ->when(Schema::hasColumn('categories', 'is_active'), fn ($query) => $query->where('is_active', true))
-                ->select($this->categoryColumns(['id', 'name', 'slug', 'icon']))
+                ->select($this->categoryColumns(['id', 'name', 'slug', 'icon']) ?: ['*'])
                 ->orderBy('name')
                 ->get()
                 ->map(function (Category $cat): array {
@@ -130,7 +145,7 @@ final class EloquentDirectoryReader implements DirectoryReader
         }
 
         return Category::query()
-            ->select($this->categoryColumns(['id', 'name', 'slug', 'icon']))
+            ->select($this->categoryColumns(['id', 'name', 'slug', 'icon']) ?: ['*'])
             ->where('slug', $slug)
             ->first();
     }
@@ -168,7 +183,11 @@ final class EloquentDirectoryReader implements DirectoryReader
         }
 
         if (Schema::hasTable('categories') && Schema::hasColumn('tenants', 'category_id')) {
-            $relations[] = 'category:'.implode(',', $this->categoryColumns(['id', 'name', 'slug', 'icon']));
+            $categoryColumns = $this->categoryColumns(['id', 'name', 'slug', 'icon']);
+
+            $relations[] = $categoryColumns !== []
+                ? 'category:'.implode(',', $categoryColumns)
+                : 'category';
         }
 
         return $relations;

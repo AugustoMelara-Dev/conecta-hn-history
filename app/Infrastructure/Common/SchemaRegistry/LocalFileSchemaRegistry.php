@@ -16,11 +16,42 @@ final readonly class LocalFileSchemaRegistry implements SchemaRegistryInterface
 
     public function getSchema(string $subject): array
     {
-        // Safe Path Construction
-        $path = $this->basePath.DIRECTORY_SEPARATOR.$subject.'.json';
+        $versionedSnakeSubject = $subject;
+        $segments = explode('.', $subject);
+        if (count($segments) >= 2) {
+            $version = array_pop($segments);
+            $versionedSnakeSubject = implode('_', $segments).'.'.$version;
+        }
 
-        if (! file_exists($path)) {
-            throw new SchemaNotFoundException("Schema not found for subject [{$subject}] at path: {$path}");
+        $paths = [
+            $this->basePath.DIRECTORY_SEPARATOR.$subject.'.json',
+            $this->basePath.DIRECTORY_SEPARATOR.$subject.'.schema.json',
+            $this->basePath.DIRECTORY_SEPARATOR.'events'.DIRECTORY_SEPARATOR.$subject.'.json',
+            $this->basePath.DIRECTORY_SEPARATOR.'events'.DIRECTORY_SEPARATOR.$subject.'.schema.json',
+            $this->basePath.DIRECTORY_SEPARATOR.'auth'.DIRECTORY_SEPARATOR.$subject.'.json',
+            $this->basePath.DIRECTORY_SEPARATOR.'auth'.DIRECTORY_SEPARATOR.$subject.'.schema.json',
+            $this->basePath.DIRECTORY_SEPARATOR.str_replace('.', '_', $subject).'.json',
+            $this->basePath.DIRECTORY_SEPARATOR.str_replace('.', '_', $subject).'.schema.json',
+            $this->basePath.DIRECTORY_SEPARATOR.'events'.DIRECTORY_SEPARATOR.str_replace('.', '_', $subject).'.json',
+            $this->basePath.DIRECTORY_SEPARATOR.'events'.DIRECTORY_SEPARATOR.str_replace('.', '_', $subject).'.schema.json',
+            $this->basePath.DIRECTORY_SEPARATOR.'auth'.DIRECTORY_SEPARATOR.str_replace('.', '_', $subject).'.json',
+            $this->basePath.DIRECTORY_SEPARATOR.'auth'.DIRECTORY_SEPARATOR.str_replace('.', '_', $subject).'.schema.json',
+            $this->basePath.DIRECTORY_SEPARATOR.$versionedSnakeSubject.'.json',
+            $this->basePath.DIRECTORY_SEPARATOR.$versionedSnakeSubject.'.schema.json',
+            $this->basePath.DIRECTORY_SEPARATOR.'events'.DIRECTORY_SEPARATOR.$versionedSnakeSubject.'.json',
+            $this->basePath.DIRECTORY_SEPARATOR.'events'.DIRECTORY_SEPARATOR.$versionedSnakeSubject.'.schema.json',
+            $this->basePath.DIRECTORY_SEPARATOR.'auth'.DIRECTORY_SEPARATOR.$versionedSnakeSubject.'.json',
+            $this->basePath.DIRECTORY_SEPARATOR.'auth'.DIRECTORY_SEPARATOR.$versionedSnakeSubject.'.schema.json',
+        ];
+        $path = null;
+        foreach ($paths as $candidate) {
+            if (file_exists($candidate)) {
+                $path = $candidate;
+                break;
+            }
+        }
+        if ($path === null) {
+            throw new SchemaNotFoundException("Schema not found for subject [{$subject}]");
         }
 
         $content = file_get_contents($path);

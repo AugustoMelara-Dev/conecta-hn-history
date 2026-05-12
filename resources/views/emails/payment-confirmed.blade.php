@@ -32,7 +32,7 @@
 
             <div class="highlight">
                 <h3>Tu Plan PRO esta activo</h3>
-                <p>Ahora tienes acceso a las funcionalidades premium de Conecta HN.</p>
+                <p>Ahora tienes acceso a las funcionalidades premium de Vito Business OS.</p>
             </div>
 
             <div class="details">
@@ -44,7 +44,7 @@
 
             <p>Con tu Plan PRO puedes:</p>
             <ul>
-                <li>Subir productos ilimitados</li>
+                <li>Ampliar el catalogo de productos</li>
                 <li>Personalizar colores y banner</li>
                 <li>Activar boton de WhatsApp</li>
                 <li>Agregar redes sociales</li>
@@ -56,8 +56,8 @@
         </div>
 
         <div class="footer">
-            <p>Gracias por confiar en Conecta HN</p>
-            <p>&copy; {{ date('Y') }} Conecta HN. Todos los derechos reservados.</p>
+            <p>Gracias por confiar en Vito Business OS</p>
+            <p>&copy; {{ date('Y') }} Vito Business OS. Todos los derechos reservados.</p>
         </div>
     </div>
 </body>

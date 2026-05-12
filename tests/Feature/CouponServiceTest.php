@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Exceptions\InvalidCouponException;
+use App\Domain\Shared\Services\TenantContext;
 use App\Models\Coupon;
 use App\Models\Tenant;
 use App\Models\User;
@@ -46,12 +47,14 @@ class CouponServiceTest extends TestCase
 
         // Bind tenant to container (simulates TenantMiddleware)
         app()->instance('currentTenant', $this->tenant);
+        app(TenantContext::class)->setTenant($this->tenant->id);
     }
 
     protected function tearDown(): void
     {
         // Reset schema cache after tests
         CouponValidatorService::resetSchemaCache();
+        app(TenantContext::class)->reset();
         parent::tearDown();
     }
 

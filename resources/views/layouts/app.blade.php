@@ -8,7 +8,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     {{-- SEO Meta --}}
-    <title>{{ $title ?? 'Conecta HN - Dashboard' }}</title>
+    <title>{{ $title ?? 'Vito Business OS - Dashboard' }}</title>
     
     {{-- Favicon --}}
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">

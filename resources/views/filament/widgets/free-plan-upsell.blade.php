@@ -5,7 +5,7 @@
         </x-slot>
 
         <x-slot name="description">
-            Puedes seguir operando con el plan actual. PRO tiene sentido cuando necesitas mas catalogo, marca y seguimiento comercial.
+            Free sirve para validar: micrositio, directorio, contacto y hasta 10 productos. PRO tiene sentido cuando necesitas mas operacion.
         </x-slot>
 
         <div class="biz-stack" data-testid="free-plan-upsell-widget">
@@ -16,18 +16,18 @@
 
             <div class="biz-actions">
                 <div class="biz-action">
-                    <p class="biz-action-title">WhatsApp visible</p>
-                    <p class="biz-action-copy">Reduce preguntas repetidas y lleva al cliente al canal correcto.</p>
+                    <p class="biz-action-title">Free para validar</p>
+                    <p class="biz-action-copy">Micrositio, directorio, WhatsApp/llamada/mapa y limite inicial de 10 productos.</p>
                 </div>
 
                 <div class="biz-action">
-                    <p class="biz-action-title">Marca y catalogo mas completos</p>
-                    <p class="biz-action-copy">Usa portada, colores y mas productos cuando el negocio lo necesite.</p>
+                    <p class="biz-action-title">PRO para crecer</p>
+                    <p class="biz-action-copy">Mas catalogo, reservas avanzadas, reportes, campanas y mejores senales comerciales.</p>
                 </div>
 
                 <div class="biz-action">
-                    <p class="biz-action-title">Seguimiento comercial</p>
-                    <p class="biz-action-copy">Ordena la presencia publica y las senales que ayudan a decidir.</p>
+                    <p class="biz-action-title">IA privada activable</p>
+                    <p class="biz-action-copy">El agente IA requiere PRO, allowlist por tenant y permiso ai.use antes de consultar datos privados.</p>
                 </div>
             </div>
 

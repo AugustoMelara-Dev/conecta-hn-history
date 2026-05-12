@@ -11,7 +11,7 @@ use Tests\TestCase;
 
 class IdempotencyLifecycleTest extends TestCase
 {
-    // use RefreshDatabase; // DISABLE GLOBAL MIGRATIONS (Broken on SQLite)
+    use RefreshDatabase;
 
     private AtomicIdempotencyInterface $service;
 
@@ -19,37 +19,7 @@ class IdempotencyLifecycleTest extends TestCase
     {
         parent::setUp();
 
-        // Manual Isolation: Create only the table we need
-        Schema::dropIfExists('processed_commands');
-        Schema::create('processed_commands', function (\Illuminate\Database\Schema\Blueprint $table) {
-            $table->engine = 'InnoDB';
-            $table->string('idempotency_key', 36)->primary();
-            $table->uuid('tenant_id')->index();
-            $table->string('command_hash', 64);
-            $table->enum('status', ['PROCESSING', 'COMPLETED', 'FAILED']);
-            $table->json('response_payload')->nullable();
-
-            if (DB::connection()->getDriverName() === 'sqlite') {
-                $table->timestamp('created_at')->nullable();
-                $table->timestamp('updated_at')->nullable();
-            } else {
-                $table->timestamp('created_at', 6)->nullable();
-                $table->timestamp('updated_at', 6)->nullable();
-            }
-
-            $table->index(['status', 'created_at']);
-        });
-
         $this->service = $this->app->make(AtomicIdempotencyInterface::class);
-    }
-
-    protected function tearDown(): void
-    {
-        if (Schema::hasTable('processed_commands')) {
-            DB::table('processed_commands')->delete();
-        }
-
-        parent::tearDown();
     }
 
     /** @test */

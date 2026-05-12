@@ -57,7 +57,7 @@ class ListProducts extends ListRecords
         return [
             // Botón de upgrade si alcanzó el límite
             Actions\Action::make('upgrade')
-                ->label('Desbloquear productos ilimitados')
+                ->label('Ampliar catalogo con PRO')
                 ->color('warning')
                 ->icon('heroicon-o-sparkles')
                 ->url(fn () => route('filament.app.pages.manage-billing', ['tenant' => Filament::getTenant()?->slug]))
@@ -74,7 +74,7 @@ class ListProducts extends ListRecords
                         Notification::make()
                             ->danger()
                             ->title('Tu catalogo esta creciendo')
-                            ->body("Has alcanzado el limite de {$limitInfo['limit']} productos del Plan Semilla. Mejora a PRO para subir productos ilimitados.")
+                            ->body("Has alcanzado el limite de {$limitInfo['limit']} productos del Plan Semilla. Mejora a PRO para ampliar catalogo, reservas/reportes, campanas e IA activable.")
                             ->persistent()
                             ->actions([
                                 \Filament\Notifications\Actions\Action::make('upgrade')

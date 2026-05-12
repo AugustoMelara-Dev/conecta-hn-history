@@ -24,6 +24,36 @@ return [
          */
         'coupon_user_tracking' => (bool) env('CONECTA_COUPON_USER_TRACKING', true),
 
+        /*
+         * Hybrid commercial mode stays off globally. Enable only for explicit
+         * tenant IDs/slugs while product + services + agenda behavior matures.
+         */
+        'hybrid_commercial_mode_tenants' => array_filter(array_map(
+            'trim',
+            explode(',', (string) env('CONECTA_HYBRID_COMMERCIAL_MODE_TENANTS', ''))
+        )),
+
+        /*
+         * Private tenant AI stays deny-by-default. A tenant must be listed here
+         * before the deterministic v0 agent can answer from private data.
+         */
+        'tenant_private_agent_tenants' => array_filter(array_map(
+            'trim',
+            explode(',', (string) env('TENANT_PRIVATE_AGENT_TENANTS', ''))
+        )),
+
+        /*
+         * Reserved for the future LLM/RAG provider. The v0 agent remains
+         * deterministic and returns honest fallbacks while this is false.
+         */
+        'tenant_private_rag_llm_enabled' => (bool) env('TENANT_PRIVATE_RAG_LLM_ENABLED', false),
+
     ],
+
+    /*
+     * Optional B2C app host. Locally this lets app.localhost render the same
+     * directory experience as /directorio without replacing the path fallback.
+     */
+    'directory_app_host' => env('DIRECTORY_APP_HOST', 'app.localhost'),
 
 ];

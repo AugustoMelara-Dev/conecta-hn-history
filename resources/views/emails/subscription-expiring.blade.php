@@ -58,7 +58,7 @@
         </div>
 
         <div class="footer">
-            <p>&copy; {{ date('Y') }} Conecta HN. Todos los derechos reservados.</p>
+            <p>&copy; {{ date('Y') }} Vito Business OS. Todos los derechos reservados.</p>
         </div>
     </div>
 </body>

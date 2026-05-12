@@ -19,7 +19,7 @@
     
     // Obtener configuración por defecto
     $settings = app(GeneralSettings::class);
-    $siteName = config('app.name', 'Conecta HN');
+    $siteName = config('app.name', 'Vito Business OS');
     $siteUrl = config('app.url', 'https://conecta.hn');
     
     // ═══════════════════════════════════════════════════════════════════════
@@ -48,7 +48,7 @@
     } elseif (isset($model->description)) {
         $seoDescription = Str::limit(strip_tags($model->description), 160);
     } else {
-        $seoDescription = 'Descubre los mejores negocios de Honduras en Conecta HN. Restaurantes, tiendas, servicios y más.';
+        $seoDescription = 'Descubre los mejores negocios de Honduras en Vito Business OS. Restaurantes, tiendas, servicios y más.';
     }
     
     // PALABRAS CLAVE

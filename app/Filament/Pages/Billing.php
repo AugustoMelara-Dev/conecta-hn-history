@@ -84,7 +84,7 @@ class Billing extends Page
             'account_type' => 'Cuenta de Ahorro',
             'account_number' => '2060-1234567-8',
             'account_holder' => 'CONECTA HN S.A. de C.V.',
-            'email' => 'pagos@conectahn.com',
+            'email' => 'Contacta soporte desde tu panel',
         ];
     }
 
@@ -97,7 +97,7 @@ class Billing extends Page
             'monthly' => [
                 'price' => 299,
                 'period' => 'mes',
-                'features' => ['Carrito de compras', 'Personalización de marca', 'Sin límite de productos'],
+                'features' => ['Carrito de compras', 'Personalizacion de marca', 'Catalogo ampliado'],
             ],
             'annual' => [
                 'price' => 2499,

@@ -9,7 +9,7 @@
                         <p class="biz-kicker">Torre de control multi-negocio</p>
                         <h1 class="biz-title">Colas, SLA, churn y seguimiento entre tenants</h1>
                         <p class="biz-copy">
-                            Opera Conecta HN como una consola de ejecución real: pagos, altas,
+                            Opera Vito Business OS como una consola de ejecución real: pagos, altas,
                             playbooks comerciales, renovaciones y riesgo de churn en un solo frente.
                         </p>
                     </div>
@@ -596,10 +596,10 @@
             <div class="biz-card">
                 <div class="biz-stack">
                     <div>
-                        <p class="biz-kicker">Revenue ops</p>
-                        <h2 class="biz-heading">Cohortes de activacion</h2>
+                        <p class="biz-kicker">Motor comercial</p>
+                        <h2 class="biz-heading">Cohortes de activacion por modo comercial</h2>
                         <p class="biz-muted">
-                            Mide si las cuentas nuevas realmente logran pasar de alta a operacion y PRO.
+                            Mide si cada motor (Starter Products, Starter Appointments, Starter Consulting) pasa de alta a operacion y PRO.
                         </p>
                     </div>
 
@@ -636,9 +636,9 @@
                         </div>
                     @else
                         @include('filament.app.components.table-empty-state', [
-                            'badge' => 'Revenue ops',
+                            'badge' => 'Motor comercial',
                             'heading' => 'Todavía no hay cohortes visibles',
-                            'description' => 'Cuando entre mas base, aqui veras si activacion y upgrade realmente estan avanzando.',
+                            'description' => 'Cuando entre mas base, aqui veras si cada modo comercial activa y convierte de forma saludable.',
                             'buttonLabel' => 'Abrir negocios',
                             'buttonUrl' => $tenantsUrl,
                         ])
@@ -649,10 +649,10 @@
             <div class="biz-card">
                 <div class="biz-stack">
                     <div>
-                        <p class="biz-kicker">Expansión</p>
-                        <h2 class="biz-heading">Expansión por segmento</h2>
+                        <p class="biz-kicker">Expansión por modo</p>
+                        <h2 class="biz-heading">Expansión por motor comercial</h2>
                         <p class="biz-muted">
-                            Detecta donde la red ya tiene base lista para mover plan PRO, servicios premium o playbooks de growth.
+                            Detecta que motor comercial ya tiene base lista para mover plan PRO, servicios premium o playbooks de growth.
                         </p>
                     </div>
 
@@ -679,8 +679,8 @@
                     @else
                         @include('filament.app.components.table-empty-state', [
                             'badge' => 'Expansión',
-                            'heading' => 'Todavía no hay segmentos listos para crecer',
-                            'description' => 'Cuando la red tenga base con oferta, canal de cierre y contexto comercial, aqui veras la mejor expansion por vertical.',
+                            'heading' => 'Todavía no hay modos listos para crecer',
+                            'description' => 'Cuando la red tenga base con oferta y canal de cierre por modo, aqui veras la mejor expansion por motor comercial.',
                             'buttonLabel' => 'Abrir negocios',
                             'buttonUrl' => $tenantsUrl,
                         ])

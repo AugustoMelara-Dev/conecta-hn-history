@@ -9,6 +9,9 @@ use App\Notifications\NewOrderNotification;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Support\Facades\Notification;
+use Tests\TestCase;
+
+uses(TestCase::class);
 
 /**
  * NewOrderNotification Broadcasting Tests

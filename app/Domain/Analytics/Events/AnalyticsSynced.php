@@ -6,7 +6,7 @@ namespace App\Domain\Analytics\Events;
 
 use App\Contracts\Events\DomainEvent;
 use App\Traits\HasDomainMetadata;
-use App\ValueObjects\TenantId;
+use App\Domain\Shared\ValueObjects\TenantId;
 use DateTimeImmutable;
 
 /**

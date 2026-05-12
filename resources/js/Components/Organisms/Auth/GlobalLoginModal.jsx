@@ -43,7 +43,7 @@ export default function GlobalLoginModal() {
         <Dialog open={isLoginModalOpen} onOpenChange={handleClose}>
             <DialogContent className="sm:max-w-[460px]">
                 <DialogHeader>
-                    <DialogTitle className="text-2xl font-semibold">Entrar a Conecta HN</DialogTitle>
+                    <DialogTitle className="text-2xl font-semibold">Entrar a Vito Business OS</DialogTitle>
                     <DialogDescription>
                         Elige acceso con contraseña o enlace/código de respaldo.
                     </DialogDescription>

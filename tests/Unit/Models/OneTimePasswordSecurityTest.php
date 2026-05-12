@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 use App\Models\OneTimePassword;
+use Tests\TestCase;
+
+uses(TestCase::class);
 
 /**
  * VC-AUDIT-103 Test Suite

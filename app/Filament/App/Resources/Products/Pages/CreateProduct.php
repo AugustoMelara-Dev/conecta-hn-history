@@ -23,9 +23,9 @@ class CreateProduct extends CreateRecord
 
         if ($tenant->products()->count() >= 10) {
             Notification::make()
-                ->title('Límite Alcanzado')
+                ->title('Limite alcanzado')
                 ->danger()
-                ->body('Has alcanzado el límite de 10 productos de tu Plan Gratuito. Actualiza a Pro para ilimitados.')
+                ->body('Has alcanzado el limite de 10 productos de tu Plan Gratuito. Actualiza a PRO para ampliar catalogo y funciones operativas.')
                 ->persistent()
                 ->actions([
                     \Filament\Notifications\Actions\Action::make('upgrade')

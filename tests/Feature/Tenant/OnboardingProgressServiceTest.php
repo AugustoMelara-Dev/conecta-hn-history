@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\Tenant;
 use App\Models\TenantOnboardingState;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -29,6 +30,7 @@ final class OnboardingProgressServiceTest extends TestCase
     protected function tearDown(): void
     {
         Carbon::setTestNow();
+        Model::setEventDispatcher(app('events'));
 
         parent::tearDown();
     }
@@ -245,7 +247,29 @@ final class OnboardingProgressServiceTest extends TestCase
         self::assertSame('owner_catalog', (string) $snapshot['nextAction']['key']);
         self::assertSame('Primer servicio reservable', (string) $snapshot['nextAction']['title']);
         self::assertStringContainsString('/services', (string) $snapshot['nextAction']['href']);
-        self::assertSame('Servicios y citas', (string) $snapshot['businessLabel']);
+        self::assertNotSame('Tienda y catalogo', (string) $snapshot['businessLabel']);
+    }
+
+    public function test_consulting_leads_owner_offer_action_points_to_settings_not_services(): void
+    {
+        $owner = User::factory()->create([
+            'role' => UserRole::TENANT_OWNER->value,
+        ]);
+
+        $tenant = Tenant::factory()->forUser($owner)->create([
+            'description' => 'Consultoria fiscal para pymes.',
+            'business_type' => 'service',
+            'commercial_mode' => 'consulting_leads',
+        ]);
+
+        $this->setTenantContext($tenant);
+        $snapshot = app(TenantOnboardingProgressService::class)->buildForTenant($tenant, $owner, 'catalog');
+
+        self::assertSame('owner_catalog', (string) $snapshot['nextAction']['key']);
+        self::assertSame('Consulta lista para captar prospectos', (string) $snapshot['nextAction']['title']);
+        self::assertStringNotContainsString('/services', (string) $snapshot['nextAction']['href']);
+        self::assertStringContainsString('/settings', (string) $snapshot['nextAction']['href']);
+        self::assertNotSame('Servicios y citas', (string) $snapshot['businessLabel']);
     }
 
     public function test_staff_context_prioritizes_agenda_next_action_when_incomplete(): void

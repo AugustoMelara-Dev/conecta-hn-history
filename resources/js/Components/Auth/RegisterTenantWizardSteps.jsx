@@ -222,7 +222,7 @@ export function BusinessStep({
             </Field>
 
             <Field data-invalid={errorFor("category_id") ? "true" : undefined}>
-                <FieldLabel htmlFor="category_id">Categoria</FieldLabel>
+                <FieldLabel htmlFor="category_id">Rubro de referencia</FieldLabel>
                 <Select
                     value={selectedCategoryValue}
                     onValueChange={(value) => updateField("category_id", value === "none" ? "" : value)}
@@ -234,18 +234,22 @@ export function BusinessStep({
                         aria-describedby={describedBy("category_id", errorFor)}
                         className={`h-12 rounded-xl border-border bg-muted px-4 text-foreground focus:ring-4 focus:ring-ring/30 ${errorFor("category_id") ? "border-destructive/50 focus:ring-destructive/20" : ""}`}
                     >
-                        <SelectValue placeholder="Selecciona una categoria" />
+                        <SelectValue placeholder="Selecciona una categoria base" />
                     </SelectTrigger>
                     <SelectContent>
                         <SelectGroup>
-                            <SelectItem value="none">Selecciona una categoria</SelectItem>
+                            <SelectItem value="none">Selecciona una categoria base</SelectItem>
                             {categories.map((item) => (
                                 <SelectItem key={item.id} value={String(item.id)}>{item.name}</SelectItem>
                             ))}
                         </SelectGroup>
                     </SelectContent>
                 </Select>
-                {errorFor("category_id") ? <FieldDescription id={errorId("category_id")} role="alert" className="text-destructive">{errorFor("category_id")}</FieldDescription> : null}
+                {errorFor("category_id") ? (
+                    <FieldDescription id={errorId("category_id")} role="alert" className="text-destructive">{errorFor("category_id")}</FieldDescription>
+                ) : (
+                    <FieldDescription>Se usa para SEO y recomendaciones. Tu operacion la define el modo comercial.</FieldDescription>
+                )}
             </Field>
 
             <Field data-invalid={errorFor("commercial_mode") ? "true" : undefined}>
@@ -461,18 +465,18 @@ export function PlanSummaryStep({
     const modeBasicBullets = {
         appointments: [
             "Perfil digital publico",
-            "Servicios y agenda inicial listos para reservar",
-            "Panel base para operar reservas y contacto",
+            "Servicios visibles y contacto para validar demanda",
+            `Hasta ${freeLimit} productos/servicios publicados`,
         ],
         consulting_leads: [
             "Perfil digital publico",
             "Landing consultiva y CTA principal activos",
-            "Panel base para seguimiento comercial",
+            `Hasta ${freeLimit} ofertas o servicios publicados`,
         ],
         products: [
             "Perfil digital publico",
-            `Catalogo de ${freeLimit} productos`,
-            "Panel base para operar pedidos y contacto",
+            `Catalogo de hasta ${freeLimit} productos`,
+            "Directorio, WhatsApp, llamada y mapa para validar",
         ],
         hybrid: [
             "Perfil digital publico",
@@ -482,19 +486,19 @@ export function PlanSummaryStep({
     }
     const modeProBullets = {
         appointments: [
-            "Reservas y servicios sin limite operativo",
-            "Analiticas avanzadas",
-            "Capacidad comercial ampliada para agenda y equipo",
+            "Reservas avanzadas y agenda con mas control",
+            "Reportes, campanas e IA operativa activable",
+            `Capacidad comercial ampliada hasta ${proLimit} productos/servicios`,
         ],
         consulting_leads: [
             "Captura y seguimiento comercial ampliados",
-            "Analiticas avanzadas",
+            "Reportes, campanas e IA operativa activable",
             "Capacidad comercial ampliada para consultas y conversion",
         ],
         products: [
-            "Ventas ilimitadas",
-            "Analiticas avanzadas",
-            `Capacidad comercial de ${proLimit} productos`,
+            `Capacidad comercial de hasta ${proLimit} productos`,
+            "Reservas/reportes y campanas segun capacidades",
+            "Agente IA privado con activacion segura por tenant",
         ],
         hybrid: [
             "Operacion mixta avanzada",

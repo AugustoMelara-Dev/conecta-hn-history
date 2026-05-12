@@ -41,7 +41,7 @@ export function ResetPasswordForm({ token, email, className, ...props }) {
             <CardHeader className="gap-2 border-b bg-muted/30 text-center">
                 <CardTitle>Cambia tu contrasena</CardTitle>
                 <CardDescription>
-                    Crea una contrasena nueva para recuperar el acceso a Conecta HN.
+                    Crea una contrasena nueva para recuperar el acceso a Vito Business OS.
                 </CardDescription>
             </CardHeader>
 

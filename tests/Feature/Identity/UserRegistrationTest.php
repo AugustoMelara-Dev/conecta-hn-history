@@ -46,7 +46,8 @@ test('it creates new tenant and owner when no tenant_id provided', function () {
 
 test('it joins existing tenant as staff when tenant_id provided', function () {
     // Arrange
-    $tenant = Tenant::factory()->create();
+    $owner = User::factory()->create();
+    $tenant = Tenant::factory()->create(['user_id' => $owner->id]);
     $action = app(CreateNewUser::class);
     
     $input = [

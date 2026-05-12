@@ -76,10 +76,21 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
         // Use forceFill to bypass mass assignment protection for guarded fields
         $model->forceFill([
             'id' => $tenant->id(),
+            'user_id' => $tenant->ownerUserId(),
             'name' => $tenant->name(),
             'slug' => $tenant->domain(), // TenantEntity uses "domain" for what Eloquent calls "slug"
             'domain' => $tenant->domain(),
             'plan' => 'SEED', // Default plan for new registrations
+            'plan_type' => $tenant->planType() ?? 'semilla',
+            'product_limit' => $tenant->productLimit() ?? 50,
+            'is_pro' => $tenant->isPro(),
+            'logo_path' => $tenant->logoPath(),
+            'category_id' => $tenant->categoryId(),
+            'city_id' => $tenant->cityId(),
+            'whatsapp_number' => $tenant->whatsapp(),
+            'business_type' => $tenant->businessType()->value,
+            'commercial_mode' => $tenant->commercialMode()->value,
+            'rubro_key' => $tenant->rubroKey(),
             'is_active' => $tenant->isActive(),
         ]);
 
@@ -115,6 +126,17 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
             'created_at' => $model->created_at?->toIso8601String(),
             'updated_at' => $model->updated_at?->toIso8601String(),
             'plan_id' => $plan->value,
+            'plan_type' => $plan->value,
+            'is_pro' => (bool) ($model->is_pro ?? false),
+            'product_limit' => $model->product_limit,
+            'logo_path' => $model->logo_path,
+            'category_id' => $model->category_id,
+            'city_id' => $model->city_id,
+            'whatsapp_number' => $model->whatsapp_number,
+            'business_type' => $model->business_type?->value ?? $model->business_type,
+            'commercial_mode' => $model->commercial_mode?->value ?? $model->commercial_mode,
+            'rubro_key' => $model->rubro_key ?? null,
+            'user_id' => $model->user_id,
             'subscription_ends_at' => $model->subscription_ends_at?->toIso8601String(),
             'subscription_reference' => null,
             // 'user_id' is NOT present in Domain Entity? 

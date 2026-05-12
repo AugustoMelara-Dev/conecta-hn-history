@@ -7,6 +7,7 @@ namespace App\Infrastructure\Shared\Persistence\Decorators;
 use App\Application\Shared\Contracts\OutboxRepositoryInterface;
 use App\Application\Shared\Contracts\SchemaValidatorInterface;
 use App\Domain\Shared\Entities\DomainEventMessage;
+use App\Infrastructure\Models\OutboxMessage;
 use Illuminate\Support\Str;
 
 /**
@@ -18,7 +19,6 @@ use Illuminate\Support\Str;
 final readonly class SchemaValidatingOutboxRepository implements OutboxRepositoryInterface
 {
     public function __construct(
-        private OutboxRepositoryInterface $inner,
         private SchemaValidatorInterface $validator
     ) {}
 
@@ -39,8 +39,26 @@ final readonly class SchemaValidatingOutboxRepository implements OutboxRepositor
             $this->validator->validate($subject, $payload);
         }
 
-        // 4. Delegate to Inner Repository
-        $this->inner->save($message);
+        $decodedPayload = json_decode($message->payload, true);
+        if (! is_array($decodedPayload)) {
+            $decodedPayload = ['data' => $message->payload];
+        }
+
+        OutboxMessage::query()->create([
+            'id' => $message->eventId ?: (string) Str::ulid(),
+            'type' => $message->type,
+            'aggregate_id' => $message->aggregateId,
+            'partition_key' => abs(crc32((string) $message->aggregateId)) % OutboxMessage::PARTITION_COUNT,
+            'sequence_number' => 0,
+            'payload' => [
+                'meta' => $message->metadata,
+                'data' => $decodedPayload,
+            ],
+            'occurred_at' => $message->occurredAt,
+            'status' => OutboxMessage::STATUS_PENDING,
+            'attempts' => 0,
+            'recovery_count' => 0,
+        ]);
     }
 
     private function resolveSubject(string $eventType): ?string

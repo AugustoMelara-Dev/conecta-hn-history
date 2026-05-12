@@ -27,7 +27,7 @@ trait HasSEO
      *
      * Cascada:
      * 1. seo_title personalizado
-     * 2. "{name} | Conecta HN"
+     * 2. "{name} | Vito Business OS"
      */
     public function getSeoTitle(): string
     {
@@ -37,7 +37,7 @@ trait HasSEO
 
         $name = $this->name ?? $this->title ?? 'Página';
 
-        return "{$name} | Conecta HN";
+        return "{$name} | Vito Business OS";
     }
 
     /**
@@ -60,7 +60,7 @@ trait HasSEO
 
         $name = $this->name ?? $this->title ?? 'esta página';
 
-        return "Descubre {$name} en Conecta HN - El directorio de negocios más completo de Honduras.";
+        return "Descubre {$name} en Vito Business OS - Directorio y plataforma para negocios locales.";
     }
 
     /**

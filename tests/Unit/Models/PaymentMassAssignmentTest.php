@@ -7,10 +7,11 @@ namespace Tests\Unit\Models;
 use App\Domain\Shared\Services\TenantContext;
 use App\Models\Payment;
 use App\Models\Tenant;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Database\Eloquent\MassAssignmentException;
 use Tests\TestCase;
 
-uses(TestCase::class, RefreshDatabase::class);
+uses(TestCase::class, DatabaseTransactions::class);
 
 /**
  * VC-AUDIT-002 Verification: Payment Mass Assignment Protection
@@ -24,20 +25,15 @@ test('payment model guards tenant_id against mass assignment', function () {
     $tenant2 = Tenant::factory()->create();
 
     // Act: Set tenant context to tenant1 and attempt to create payment for tenant2
-    app(TenantContext::class)->set($tenant1->id);
+    app(TenantContext::class)->setTenant($tenant1->id);
 
-    $payment = Payment::create([
+    expect(fn () => Payment::create([
         'tenant_id' => $tenant2->id,  // Malicious: attempt cross-tenant
         'amount' => 99.99,
         'status' => 'pending',
         'reference_number' => 'REF-TEST-001',
         'bank' => 'Test Bank',
-        'proof_path' => 'proofs/test.jpg',
-    ]);
-
-    // Assert: tenant_id should be from context (tenant1), NOT from the malicious input
-    expect($payment->tenant_id)->toBe($tenant1->id)
-        ->and($payment->tenant_id)->not->toBe($tenant2->id);
+    ]))->toThrow(MassAssignmentException::class);
 });
 
 test('payment tenant_id is in guarded array', function () {

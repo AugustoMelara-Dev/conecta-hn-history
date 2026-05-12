@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://conecta-hn.com/schemas/auth/otp_generated.v1.json",
+  "title": "OtpGenerated Event v1",
+  "description": "Domain event payload emitted when an OTP is generated.",
+  "type": "object",
+  "required": ["otp_id", "tenant_id", "occurred_at"],
+  "additionalProperties": true,
+  "properties": {
+    "otp_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "user_id": {
+      "type": ["string", "null"],
+      "format": "uuid"
+    },
+    "tenant_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

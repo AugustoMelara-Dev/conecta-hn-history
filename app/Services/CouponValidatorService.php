@@ -68,8 +68,7 @@ final class CouponValidatorService
         $tenantId = $this->resolveTenantId($user, $tenant);
 
         // STEP 1: Find coupon by code (case-insensitive via model boot)
-        $coupon = Coupon::withoutGlobalScopes()
-            ->where('code', strtoupper(trim($code)))
+        $coupon = Coupon::where('code', strtoupper(trim($code)))
             ->where('tenant_id', $tenantId)
             ->first();
 
@@ -224,7 +223,7 @@ final class CouponValidatorService
     {
         // Strategy 0: Explicit tenant parameter (highest priority for guests)
         if ($tenant !== null) {
-            return (string) $tenant->id;
+            return $tenant->id;
         }
 
         // Strategy 1: Filament context (works regardless of user)
@@ -232,7 +231,7 @@ final class CouponValidatorService
             try {
                 $filamentTenant = \Filament\Facades\Filament::getTenant();
                 if ($filamentTenant !== null) {
-                    return (string) $filamentTenant->id;
+                    return $filamentTenant->id;
                 }
             } catch (\Throwable) {
                 // Filament not initialized
@@ -243,7 +242,7 @@ final class CouponValidatorService
         if (app()->has('currentTenant')) {
             $containerTenant = app('currentTenant');
             if ($containerTenant !== null) {
-                return (string) $containerTenant->id;
+                return $containerTenant->id;
             }
         }
 
@@ -252,20 +251,20 @@ final class CouponValidatorService
             // Direct tenant_id attribute on User
             $tenantId = $user->getAttribute('tenant_id');
             if ($tenantId !== null) {
-                return (string) $tenantId;
+                return $tenantId;
             }
 
             // User has tenants() relationship
             if (method_exists($user, 'tenants')) {
                 $tenantId = $user->tenants()->value('id');
                 if ($tenantId !== null) {
-                    return (string) $tenantId;
+                    return $tenantId;
                 }
             }
 
             // User has tenant() singular relationship
             if (method_exists($user, 'tenant') && $user->tenant !== null) {
-                return (string) $user->tenant->id;
+                return $user->tenant->id;
             }
         }
 

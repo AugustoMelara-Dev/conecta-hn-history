@@ -34,7 +34,7 @@ return new class extends Migration
             Schema::table('leads', function (Blueprint $table): void {
                 foreach ($this->attributionColumns() as $column => $length) {
                     if (! Schema::hasColumn('leads', $column)) {
-                        $table->string($column, $length)->nullable()->after('session_id');
+                        $table->string($column, $length)->nullable();
                     }
                 }
             });

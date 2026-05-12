@@ -33,7 +33,7 @@ final class SendLowStockNotification implements ShouldQueue
     {
         // UUID STRING: Use toString() for tenant context
         return [
-            new \App\Domain\Shared\Middleware\TenantQueueMiddleware((string) $event->product->tenant_id),
+            new \App\Domain\Shared\Middleware\TenantQueueMiddleware($event->tenantId()->toString()),
         ];
     }
 
@@ -42,7 +42,7 @@ final class SendLowStockNotification implements ShouldQueue
      */
     public function handle(LowStockThresholdReached $event): void
     {
-        $productId = (string) $event->product->id;
+        $productId = (string) $event->product->getKey();
         $tenantIdString = (string) $event->product->tenant_id;
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -51,14 +51,14 @@ final class SendLowStockNotification implements ShouldQueue
         // CRITICAL: We NEVER use Product::find() in background jobs.
         // Background workers may not have the global tenant scope booted.
         // We always enforce tenant isolation at the SQL WHERE clause level.
-        $product = \App\Models\Product::withoutGlobalScopes()
+        $product = \App\Models\Product::query()
             ->where('id', $productId)
             ->where('tenant_id', $tenantIdString) // THE IMMUTABLE FIREWALL
             ->first();
 
         if (! $product) {
             // Check if product exists but belongs to different tenant (security probe)
-            $existsElsewhere = \App\Models\Product::withoutGlobalScopes()->where('id', $productId)->exists();
+            $existsElsewhere = \App\Models\Product::where('id', $productId)->exists();
 
             if ($existsElsewhere) {
                 // SECURITY ALERT: Cross-tenant access attempt blocked

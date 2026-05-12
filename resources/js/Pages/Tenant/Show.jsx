@@ -3,16 +3,20 @@ import { useEffect } from 'react';
 import {
     BadgeCheck,
     CalendarClock,
+    CheckCircle2,
     Clock,
+    Columns3,
     ExternalLink,
     Globe,
     Info,
+    KanbanSquare,
     MapPin,
     MessageCircle,
     Phone,
     ShoppingBag,
     Star,
     Store,
+    Trophy,
 } from 'lucide-react';
 
 import { Alert, AlertDescription, AlertTitle } from '@/Components/ui/alert';
@@ -34,6 +38,7 @@ import ProductActionArea from '@/Components/Tenant/ProductActionArea';
 import UpsellCard from '@/Components/Tenant/UpsellCard';
 import useCartStore from '@/Stores/useCartStore';
 import { getContrastColor } from '@/Utils/colorUtils';
+import { safeJsonLd } from '@/lib/safeJsonLd';
 import { cn } from '@/lib/utils';
 
 const PLAN = {
@@ -53,7 +58,6 @@ function safeRoute(name, fallback, params) {
 
     return fallback;
 }
-
 function getInitials(name = 'CN') {
     return String(name)
         .trim()
@@ -99,6 +103,21 @@ function formatPrice(product) {
     const price = Number(product?.price || 0);
 
     return `L. ${price.toFixed(2)}`;
+}
+
+function formatMoney(value, currency = 'HNL') {
+    const amount = Number(value || 0);
+    const normalizedCurrency = String(currency || 'HNL').toUpperCase();
+
+    try {
+        return new Intl.NumberFormat('es-HN', {
+            style: 'currency',
+            currency: normalizedCurrency,
+            maximumFractionDigits: 2,
+        }).format(amount);
+    } catch {
+        return `L. ${amount.toFixed(2)}`;
+    }
 }
 
 function LoadingState() {
@@ -240,7 +259,7 @@ function TenantHero({ tenant, tenantPlan, isOpen, totalProductsCount, productsCo
                             )}
                             {tenant.phone && (
                                 <Button variant="outline" asChild className="justify-start">
-                                    <a href={`tel:${tenant.phone}`}>
+                                    <a href={`tel:${tenant.phone}`} aria-label={`Llamar a ${tenant.name}`}>
                                         <Phone data-icon="inline-start" aria-hidden="true" />
                                         Llamar
                                     </a>
@@ -463,6 +482,122 @@ function ReviewsSection({ tenant }) {
     );
 }
 
+function CrmSection({ crmMicrosite }) {
+    if (!crmMicrosite?.enabled) {
+        return (
+            <Alert>
+                <Info className="mr-2 inline size-4" aria-hidden="true" />
+                <AlertTitle>CRM en despliegue gradual</AlertTitle>
+                <AlertDescription>
+                    El mini-CRM aun no esta habilitado para este negocio en el rollout actual.
+                </AlertDescription>
+            </Alert>
+        );
+    }
+
+    const summary = crmMicrosite.summary || {};
+    const pipelines = Array.isArray(crmMicrosite.pipelines) ? crmMicrosite.pipelines : [];
+    const deals = Array.isArray(crmMicrosite.deals) ? crmMicrosite.deals : [];
+    const tasks = Array.isArray(crmMicrosite.tasks) ? crmMicrosite.tasks : [];
+
+    return (
+        <div className="flex flex-col gap-4" data-testid="microsite-crm-tab">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardDescription>Pipelines</CardDescription>
+                        <CardTitle className="text-2xl">{summary.pipelines || 0}</CardTitle>
+                    </CardHeader>
+                </Card>
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardDescription>Deals abiertos</CardDescription>
+                        <CardTitle className="text-2xl">{summary.open_deals || 0}</CardTitle>
+                    </CardHeader>
+                </Card>
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardDescription>Deals ganados</CardDescription>
+                        <CardTitle className="text-2xl">{summary.won_deals || 0}</CardTitle>
+                    </CardHeader>
+                </Card>
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardDescription>Tareas por vencer</CardDescription>
+                        <CardTitle className="text-2xl">{summary.tasks_due || 0}</CardTitle>
+                    </CardHeader>
+                </Card>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-3">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <KanbanSquare className="size-4" aria-hidden="true" />
+                            Pipelines
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex flex-col gap-2">
+                        {pipelines.length > 0 ? pipelines.map((pipeline) => (
+                            <div key={pipeline.id} className="rounded-md border p-3">
+                                <p className="text-sm font-medium">{pipeline.name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                    {pipeline.stages_count || 0} etapas
+                                </p>
+                            </div>
+                        )) : (
+                            <p className="text-sm text-muted-foreground">Sin pipelines visibles.</p>
+                        )}
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Trophy className="size-4" aria-hidden="true" />
+                            Deals recientes
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex flex-col gap-2">
+                        {deals.length > 0 ? deals.map((deal) => (
+                            <div key={deal.id} className="rounded-md border p-3">
+                                <p className="text-sm font-medium">{deal.title}</p>
+                                <p className="text-xs text-muted-foreground">
+                                    {deal.pipeline || 'Pipeline'} - {deal.stage || 'Etapa'}
+                                </p>
+                                <p className="mt-1 text-sm">{formatMoney(deal.value, deal.currency)}</p>
+                            </div>
+                        )) : (
+                            <p className="text-sm text-muted-foreground">Sin deals visibles.</p>
+                        )}
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <CheckCircle2 className="size-4" aria-hidden="true" />
+                            Tareas activas
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex flex-col gap-2">
+                        {tasks.length > 0 ? tasks.map((task) => (
+                            <div key={task.id} className="rounded-md border p-3">
+                                <p className="text-sm font-medium">{task.title}</p>
+                                <p className="text-xs text-muted-foreground">
+                                    {task.task_type || 'seguimiento'} - {task.priority || 'normal'}
+                                </p>
+                            </div>
+                        )) : (
+                            <p className="text-sm text-muted-foreground">Sin tareas activas.</p>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
+    );
+}
+
 function MobileActionBar({ tenant, whatsappUrl }) {
     return (
         <nav
@@ -472,7 +607,7 @@ function MobileActionBar({ tenant, whatsappUrl }) {
         >
             <div className="grid grid-cols-3 gap-1 p-2">
                 <Button variant="ghost" asChild>
-                    <a href="#catalogo">
+                    <a href="#catalogo" aria-label="Ir a catalogo">
                         <ShoppingBag data-icon="inline-start" aria-hidden="true" />
                         Catalogo
                     </a>
@@ -516,11 +651,10 @@ export default function TenantShow({
     totalProductsCount = 0,
     hiddenProductsCount = 0,
     isOwner = false,
-    isFollowing,
-    followersCount,
     seoStructuredData,
     isOpen = true,
     openingHours = [],
+    crmMicrosite = null,
 }) {
     const initForTenant = useCartStore((state) => state.initForTenant);
 
@@ -576,7 +710,7 @@ export default function TenantShow({
                 <meta property="og:image" content={pageImage} />
                 {seoStructuredData && (
                     <script type="application/ld+json">
-                        {JSON.stringify(seoStructuredData)}
+                        {safeJsonLd(seoStructuredData)}
                     </script>
                 )}
             </Head>
@@ -602,10 +736,14 @@ export default function TenantShow({
                 </Alert>
 
                 <Tabs defaultValue="products" className="w-full" data-testid="microsite-tabs">
-                    <TabsList className="grid w-full grid-cols-3 lg:w-[28rem]">
+                    <TabsList className="grid w-full grid-cols-4 lg:w-[36rem]">
                         <TabsTrigger value="products">{catalogLabel}</TabsTrigger>
                         <TabsTrigger value="info">Informacion</TabsTrigger>
                         <TabsTrigger value="reviews">Resenas</TabsTrigger>
+                        <TabsTrigger value="crm">
+                            <Columns3 aria-hidden="true" />
+                            CRM
+                        </TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="products" className="mt-6">
@@ -625,6 +763,10 @@ export default function TenantShow({
 
                     <TabsContent value="reviews" className="mt-6">
                         <ReviewsSection tenant={tenant} />
+                    </TabsContent>
+
+                    <TabsContent value="crm" className="mt-6">
+                        <CrmSection crmMicrosite={crmMicrosite} />
                     </TabsContent>
                 </Tabs>
             </main>

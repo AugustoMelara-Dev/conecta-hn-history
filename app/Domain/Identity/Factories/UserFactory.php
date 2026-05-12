@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace App\Domain\Identity\Factories;
 
 use App\Domain\Identity\Entities\UserEntity;
+use App\Domain\Identity\Enums\UserRole;
 use App\Domain\Shared\Contracts\ClockInterface;
-use App\Domain\Shared\ValueObjects\EmailAddress;
+use Illuminate\Support\Str;
 
 final readonly class UserFactory
 {
@@ -20,15 +21,16 @@ final readonly class UserFactory
         string $hashedPassword,
         string $role = 'customer'
     ): UserEntity {
-        return new UserEntity(
-            id: 0, // Transient ID
-            tenantId: 0, // Default/Global
-            email: new EmailAddress($email),
+        $resolvedRole = UserRole::tryFrom($role) ?? UserRole::CUSTOMER;
+
+        return UserEntity::register(
+            uuid: (string) Str::orderedUuid(),
             name: $name,
-            role: $role,
-            createdAt: $this->clock->now(), // Deterministic Time
-            updatedAt: $this->clock->now(),
-            password: $hashedPassword,
+            email: $email,
+            passwordHash: $hashedPassword,
+            role: $resolvedRole,
+            // Tenant is created in the same workflow; keep an explicit placeholder.
+            tenantId: (string) Str::orderedUuid(),
         );
     }
 }

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domain\TenantGovernance\Entities;
 
 use App\Domain\Common\Traits\EventSourcedAggregate;
+use App\Domain\TenantGovernance\Enums\BusinessType;
+use App\Domain\TenantGovernance\Enums\CommercialMode;
 use App\Domain\TenantGovernance\Events\TenantCreated;
 use DateTimeImmutable;
 
@@ -37,6 +39,28 @@ final class TenantEntity
     private ?\DateTimeImmutable $subscriptionEndsAt = null;
 
     private ?string $subscriptionReference = null;
+
+    private ?string $planType = null;
+
+    private bool $isPro = false;
+
+    private ?int $productLimit = null;
+
+    private ?string $logoPath = null;
+
+    private ?int $categoryId = null;
+
+    private ?int $cityId = null;
+
+    private ?string $whatsapp = null;
+
+    private BusinessType $businessType = BusinessType::RETAIL;
+
+    private CommercialMode $commercialMode = CommercialMode::PRODUCTS;
+
+    private ?string $rubroKey = null;
+
+    private ?string $ownerUserId = null;
 
     private function __construct() {}
 
@@ -101,9 +125,86 @@ final class TenantEntity
         return $this->createdAt;
     }
 
-    public function updatedAt(): DateTimeImmutable
+    public function configureCommercialProfile(
+        string $planType,
+        bool $isPro,
+        int $productLimit,
+        ?string $logoPath,
+        ?int $categoryId,
+        int $cityId,
+        ?string $whatsapp,
+        BusinessType $businessType,
+        CommercialMode $commercialMode,
+        ?string $rubroKey,
+        ?string $ownerUserId = null
+    ): void {
+        $this->planType = $planType;
+        $this->isPro = $isPro;
+        $this->productLimit = $productLimit;
+        $this->logoPath = $logoPath;
+        $this->categoryId = $categoryId;
+        $this->cityId = $cityId;
+        $this->whatsapp = $whatsapp;
+        $this->businessType = $businessType;
+        $this->commercialMode = $commercialMode;
+        $this->rubroKey = $rubroKey;
+        $this->ownerUserId = $ownerUserId;
+        $this->updatedAt = new DateTimeImmutable;
+    }
+
+    public function planType(): ?string
     {
-        return $this->updatedAt;
+        return $this->planType;
+    }
+
+    public function isPro(): bool
+    {
+        return $this->isPro;
+    }
+
+    public function productLimit(): ?int
+    {
+        return $this->productLimit;
+    }
+
+    public function logoPath(): ?string
+    {
+        return $this->logoPath;
+    }
+
+    public function categoryId(): ?int
+    {
+        return $this->categoryId;
+    }
+
+    public function cityId(): ?int
+    {
+        return $this->cityId;
+    }
+
+    public function whatsapp(): ?string
+    {
+        return $this->whatsapp;
+    }
+
+    public function businessType(): BusinessType
+    {
+        return $this->businessType;
+    }
+
+    public function commercialMode(): CommercialMode
+    {
+        return $this->commercialMode;
+    }
+
+    public function rubroKey(): ?string
+    {
+        return $this->rubroKey;
+    }
+
+    public function ownerUserId(): ?string
+    {
+        return $this->ownerUserId;
     }
 
     // -- DOMAIN BEHAVIOR --
@@ -178,6 +279,17 @@ final class TenantEntity
             'plan_id' => $this->planId,
             'subscription_ends_at' => $this->subscriptionEndsAt?->format(\DateTimeInterface::ATOM),
             'subscription_reference' => $this->subscriptionReference,
+            'plan_type' => $this->planType,
+            'is_pro' => $this->isPro,
+            'product_limit' => $this->productLimit,
+            'logo_path' => $this->logoPath,
+            'category_id' => $this->categoryId,
+            'city_id' => $this->cityId,
+            'whatsapp_number' => $this->whatsapp,
+            'business_type' => $this->businessType->value,
+            'commercial_mode' => $this->commercialMode->value,
+            'rubro_key' => $this->rubroKey,
+            'user_id' => $this->ownerUserId,
         ];
     }
 
@@ -215,6 +327,20 @@ final class TenantEntity
         $tenant->subscriptionReference = isset($state['subscription_reference'])
             ? (string) $state['subscription_reference']
             : null;
+        $tenant->planType = isset($state['plan_type']) ? (string) $state['plan_type'] : null;
+        $tenant->isPro = (bool) ($state['is_pro'] ?? false);
+        $tenant->productLimit = isset($state['product_limit']) ? (int) $state['product_limit'] : null;
+        $tenant->logoPath = isset($state['logo_path']) ? (string) $state['logo_path'] : null;
+        $tenant->categoryId = isset($state['category_id']) ? (int) $state['category_id'] : null;
+        $tenant->cityId = isset($state['city_id']) ? (int) $state['city_id'] : null;
+        $tenant->whatsapp = isset($state['whatsapp_number']) ? (string) $state['whatsapp_number'] : null;
+        $tenant->businessType = BusinessType::tryFrom((string) ($state['business_type'] ?? '')) ?? BusinessType::RETAIL;
+        $tenant->commercialMode = CommercialMode::safeFrom(
+            isset($state['commercial_mode']) ? (string) $state['commercial_mode'] : null,
+            $tenant->businessType
+        );
+        $tenant->rubroKey = isset($state['rubro_key']) ? (string) $state['rubro_key'] : null;
+        $tenant->ownerUserId = isset($state['user_id']) ? (string) $state['user_id'] : null;
 
         // Event Sourcing compatibility
         $tenant->version = (int) ($state['version'] ?? 0);

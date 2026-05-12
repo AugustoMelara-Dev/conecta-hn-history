@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Infrastructure\Persistence\Eloquent\Traits\BelongsToTenant;
+use Illuminate\Database\Eloquent\MassAssignmentException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use Spatie\Activitylog\LogOptions;
@@ -66,7 +67,9 @@ class Payment extends Model
 
     public function fill(array $attributes)
     {
-        unset($attributes['tenant_id']);
+        if (array_key_exists('tenant_id', $attributes) && ! static::isUnguarded()) {
+            throw new MassAssignmentException('Add [tenant_id] to fillable property to allow mass assignment on ['.static::class.'].');
+        }
 
         return parent::fill($attributes);
     }

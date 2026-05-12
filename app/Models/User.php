@@ -18,6 +18,7 @@ use Filament\Panel;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\MassAssignmentException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -71,7 +72,9 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
 
     public function fill(array $attributes)
     {
-        unset($attributes['tenant_id']);
+        if (array_key_exists('tenant_id', $attributes) && ! static::isUnguarded()) {
+            throw new MassAssignmentException('Add [tenant_id] to fillable property to allow mass assignment on ['.static::class.'].');
+        }
 
         return parent::fill($attributes);
     }

@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (! Schema::hasTable('categories')) {
+            return;
+        }
+
         Schema::table('categories', function (Blueprint $table) {
             // Jerarquia padre-hijo (solo si no existe)
             if (! Schema::hasColumn('categories', 'parent_id')) {
@@ -44,6 +48,10 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (! Schema::hasTable('categories')) {
+            return;
+        }
+
         Schema::table('categories', function (Blueprint $table) {
             if (Schema::hasColumn('categories', 'parent_id')) {
                 $table->dropForeign(['parent_id']);

@@ -6,13 +6,13 @@ namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\MenuSectionResource\Pages;
 use App\Models\MenuSection;
+use App\Support\Product\TenantAccessMatrix;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Schema;
 
 class MenuSectionResource extends Resource
 {
@@ -54,17 +54,7 @@ class MenuSectionResource extends Resource
 
     protected static function tenantCanUseMenuSections(): bool
     {
-        $tenant = Filament::getTenant();
-
-        if (! $tenant) {
-            return false;
-        }
-
-        if (! Schema::hasColumn('tenants', 'is_pro') && ! Schema::hasColumn('tenants', 'plan_type')) {
-            return true;
-        }
-
-        return $tenant?->is_pro ?? false;
+        return TenantAccessMatrix::currentTenantCanAccess(TenantAccessMatrix::MODULE_MENU_SECTIONS);
     }
 
     public static function getNavigationBadge(): ?string

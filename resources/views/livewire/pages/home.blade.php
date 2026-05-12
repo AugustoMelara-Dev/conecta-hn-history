@@ -1,5 +1,5 @@
 {{--
-    HOME - Página Principal Conecta HN
+    HOME - Pagina principal de Vito Business OS
     
     Arquitectura Mobile-First con máximo SEO y velocidad.
     Stack: Livewire + Alpine.js + Tailwind CSS
@@ -255,7 +255,7 @@
             <div class="flex items-center justify-between mb-8">
                 <div>
                     <h2 class="text-2xl md:text-3xl font-bold text-gray-900">
-                        Nuevos en Conecta HN
+                        Nuevos en Vito App
                     </h2>
                     <p class="text-gray-500 mt-1">Los negocios recién llegados a la plataforma</p>
                 </div>
@@ -340,7 +340,7 @@
                 Únete a la plataforma y conecta con miles de clientes potenciales.
             </p>
             <a 
-                href="{{ route('register') }}"
+                href="{{ route('tenant.register') }}"
                 class="inline-flex items-center gap-2 px-8 py-4
                        bg-white text-blue-600 font-bold
                        rounded-full shadow-xl hover:shadow-2xl

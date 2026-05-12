@@ -22,7 +22,7 @@ class CreateProduct extends CreateRecord
     {
         $tenant = Filament::getTenant();
 
-        // PRO tiene productos ilimitados
+        // PRO usa capacidad de catalogo ampliada.
         if ($tenant?->is_pro) {
             return;
         }
@@ -37,7 +37,7 @@ class CreateProduct extends CreateRecord
             Notification::make()
                 ->danger()
                 ->title('Límite del Plan Alcanzado')
-                ->body("Has alcanzado el límite de {$limit} productos de tu plan. Actualiza a PRO para productos ilimitados.")
+                ->body("Has alcanzado el limite Free de {$limit} productos. Actualiza a PRO para ampliar tu catalogo y funciones operativas.")
                 ->persistent()
                 ->actions([
                     \Filament\Notifications\Actions\Action::make('upgrade')

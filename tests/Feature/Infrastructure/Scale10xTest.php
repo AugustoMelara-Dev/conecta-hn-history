@@ -62,11 +62,18 @@ class Scale10xTest extends TestCase
             'payload' => json_encode($envelope),
             'metadata' => json_encode(['trace_id' => '123']),
             'status' => 'PENDING',
+            'occurred_at' => now(),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
 
-        // 2. Assert: Verify the event can be upcasted to the V2 structure
+        // 2. Act: Run ProcessOutboxCommand
+        // We need to Mock the Event Dispatcher so we can inspect what was dispatched
+        Event::fake();
+
+        $this->artisan('outbox:process', ['--once' => true]);
+
+        // 3. Assert: Verify the event dispatched has the V2 structure
 
         /** @var UpcasterChain $chain */
         $chain = $this->app->make(UpcasterChain::class);
@@ -82,7 +89,7 @@ class Scale10xTest extends TestCase
     public function phase_3_idempotency_middleware_enforces_header()
     {
         // 1. Test Missing Header -> 400
-        $response = $this->postJson('/api/v1/auth/otp/generate', [
+        $response = $this->postJson('/api/v1/otp/generate', [
             // payload doesn't matter much if middleware runs first
         ]);
 

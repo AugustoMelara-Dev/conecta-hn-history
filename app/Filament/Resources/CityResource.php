@@ -116,7 +116,7 @@ class CityResource extends Resource
                             ->required()
                             ->unique(City::class, 'slug', ignoreRecord: true)
                             ->prefix(config('app.url').'/')
-                            ->helperText('Editable para optimizacion SEO. Ej: "tocoa" para conectahn.com/tocoa'),
+                            ->helperText('Editable para optimizacion SEO. Ej: "tocoa" para la URL publica de la ciudad.'),
 
                         Select::make('department')
                             ->label('Departamento')
@@ -168,7 +168,7 @@ class CityResource extends Resource
                         TextInput::make('meta_title')
                             ->label('Meta Title (SEO)')
                             ->maxLength(70)
-                            ->placeholder('Negocios en [Ciudad] | Conecta HN')
+                            ->placeholder('Negocios en [Ciudad] | Vito Business OS')
                             ->helperText('Titulo para Google. Max 70 caracteres.'),
 
                         TextInput::make('meta_description')

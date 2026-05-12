@@ -2,9 +2,9 @@ const messages = {
     auth: {
         verifyEmail: {
             title: "Verifica tu correo",
-            headTitle: "Verifica tu correo | Conecta HN",
+            headTitle: "Verifica tu correo | Vito Business OS",
             descriptionPrefix: "Enviamos un enlace de verificacion a",
-            descriptionSuffix: "Abrelo para desbloquear el panel correcto de Conecta HN.",
+            descriptionSuffix: "Abrelo para desbloquear el panel correcto de Vito Business OS.",
             resentTitle: "Correo reenviado",
             resentDescription: "Te enviamos un nuevo enlace de verificacion. Revisa tambien spam o promociones.",
             nextActionTitle: "Despues de verificar: {title}",
@@ -16,8 +16,8 @@ const messages = {
             footerDescription: "Verifica tu correo para continuar al panel que corresponde a tu cuenta.",
         },
         login: {
-            headTitle: "Iniciar sesion | Conecta HN",
-            metaDescription: "Accede a Conecta HN para administrar operaciones, clientes y ventas desde un solo panel.",
+            headTitle: "Iniciar sesion | Vito Business OS",
+            metaDescription: "Accede a Vito Business OS para administrar operaciones, clientes y ventas desde un solo panel.",
             backToSite: "Volver al sitio",
             eyebrow: "Business Operating System",
             heroTitle: "Una entrada limpia para operar tu negocio sin friccion.",
@@ -27,7 +27,7 @@ const messages = {
             proofVerifiedEmail: "Correo verificado",
             mobileHome: "Inicio",
             badge: "Acceso seguro",
-            title: "Entra a Conecta HN",
+            title: "Entra a Vito Business OS",
             description: "Usa contrasena para el panel de negocio o acceso rapido con correo y codigo.",
             passwordTab: "Acceso con correo",
             quickTab: "Acceso rapido",
@@ -41,7 +41,7 @@ const messages = {
             placeholderEmail: "nombre@negocio.hn",
         },
         forgotPassword: {
-            headTitle: "Recuperar acceso | Conecta HN",
+            headTitle: "Recuperar acceso | Vito Business OS",
             imageAlt: "Panel de recuperacion de acceso",
             title: "Recupera tu acceso",
             description: "Escribe tu correo y enviaremos un enlace seguro para cambiar la contrasena.",
@@ -54,7 +54,7 @@ const messages = {
             login: "Iniciar sesion",
         },
         globalLogin: {
-            title: "Entrar a Conecta HN",
+            title: "Entrar a Vito Business OS",
             description: "Elige acceso con contrasena o enlace/codigo de respaldo.",
             passwordTab: "Acceso con correo",
             quickTab: "Acceso rapido",
@@ -65,7 +65,7 @@ const messages = {
     },
     billing: {
         paymentPending: {
-            headTitle: "Completar pago | Conecta HN",
+            headTitle: "Completar pago | Vito Business OS",
             initialLiveMessage: "Tu pago esta pendiente de validacion.",
             updatedLiveMessage: "Pago pendiente. Envia el comprobante para continuar la validacion.",
             approvedLiveMessage: "Pago aprobado. Ya puedes continuar en el panel.",
@@ -83,7 +83,7 @@ const messages = {
             whatsappAction: "Enviar comprobante por WhatsApp",
             whatsappUnavailableTitle: "Soporte por WhatsApp no disponible",
             whatsappUnavailableDescription:
-                "Envia el comprobante a soporte@conectahn.com e incluye la referencia {reference}.",
+                "Envia el comprobante a soporte e incluye la referencia {reference}.",
             noFakeApproval:
                 "No cerramos este estado hasta recibir validacion real. Si ya enviaste comprobante, el equipo te confirmara por correo.",
             approvedStatus: "El pago ya fue aprobado. Puedes continuar con la configuracion del negocio en el panel.",
@@ -105,7 +105,7 @@ const messages = {
         },
         account: {
             headTitle: "Mi cuenta",
-            headTitleFull: "Mi cuenta - Conecta HN",
+            headTitleFull: "Mi cuenta - Vito Business OS",
             eyebrow: "Cuenta personal",
             greeting: "Hola, {name}",
             summary:

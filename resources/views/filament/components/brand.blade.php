@@ -1,5 +1,5 @@
 {{--
-    BRAND COMPONENT - Conecta HN Text Logo
+    BRAND COMPONENT - Vito Business OS Text Logo
     
     Simple text-based logo.
     Used in both AdminPanelProvider and AppPanelProvider.

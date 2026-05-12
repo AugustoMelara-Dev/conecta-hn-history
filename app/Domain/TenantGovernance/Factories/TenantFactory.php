@@ -7,8 +7,7 @@ namespace App\Domain\TenantGovernance\Factories;
 use App\Domain\Identity\Entities\UserEntity;
 use App\Domain\Shared\Contracts\ClockInterface;
 use App\Domain\TenantGovernance\Entities\TenantEntity;
-use App\Domain\TenantGovernance\Enums\TenantPlan;
-use DateTimeImmutable;
+use App\Domain\TenantGovernance\Enums\CommercialMode;
 use Illuminate\Support\Str;
 
 final readonly class TenantFactory
@@ -23,48 +22,59 @@ final readonly class TenantFactory
         ?string $businessName = null,
         ?string $customSlug = null
     ): TenantEntity {
-        // 1. Fallback Logic for Business Name
         $finalName = ($businessName !== null && $businessName !== '')
             ? $businessName
-            : ($owner->name."'s Store");
+            : ($owner->name()."'s Store");
 
-        // 2. Fallback Logic for Slug (Collision check in Handler)
         $finalSlug = ($customSlug !== null && $customSlug !== '')
             ? $customSlug
             : Str::slug($finalName);
 
-        // 3. Construct Entity with strict source tracking
-        return new TenantEntity(
-            id: 0,
-            userId: $owner->id,
+        return TenantEntity::create(
+            id: (string) Str::orderedUuid(),
             name: $finalName,
-            slug: $finalSlug,
-            source: $source,
-            planType: TenantPlan::SEMILLA, // PASSED AS OBJECT
-            subscriptionStatus: 'active',
-            isActive: true,
-            createdAt: new DateTimeImmutable,
-            updatedAt: new DateTimeImmutable,
+            domain: $finalSlug,
         );
     }
 
     public function createCommercialTenant(
-        int $userId,
+        string $userId,
         string $name,
         string $slug,
-        TenantPlan $planType // STRICTLY ENUM
+        mixed $planType = null,
+        mixed $isPro = null,
+        mixed $productLimit = null,
+        mixed $logoPath = null,
+        mixed $categoryId = null,
+        mixed $cityId = null,
+        mixed $whatsapp = null,
+        mixed $businessType = null,
+        mixed $commercialMode = null,
+        mixed $rubroKey = null,
+        mixed $tenantId = null,
     ): TenantEntity {
-        return new TenantEntity(
-            id: 0,
-            userId: $userId,
+        $mode = CommercialMode::safeFrom(is_string($commercialMode) ? $commercialMode : null);
+        $derivedBusinessType = $mode->businessType();
+        $tenant = TenantEntity::create(
+            id: is_string($tenantId) && $tenantId !== '' ? $tenantId : (string) Str::orderedUuid(),
             name: $name,
-            slug: $slug,
-            source: 'commercial_onboarding',
-            planType: $planType, // PASSED AS OBJECT
-            subscriptionStatus: 'active',
-            isActive: true,
-            createdAt: $this->clock->now(),
-            updatedAt: $this->clock->now(),
+            domain: $slug,
         );
+
+        $tenant->configureCommercialProfile(
+            planType: (string) ($planType ?? 'semilla'),
+            isPro: (bool) $isPro,
+            productLimit: (int) ($productLimit ?? 10),
+            logoPath: is_string($logoPath) && $logoPath !== '' ? $logoPath : null,
+            categoryId: is_numeric($categoryId) ? (int) $categoryId : null,
+            cityId: (int) $cityId,
+            whatsapp: is_string($whatsapp) && $whatsapp !== '' ? $whatsapp : null,
+            businessType: $derivedBusinessType,
+            commercialMode: $mode,
+            rubroKey: is_string($rubroKey) && $rubroKey !== '' ? $rubroKey : null,
+            ownerUserId: $userId,
+        );
+
+        return $tenant;
     }
 }

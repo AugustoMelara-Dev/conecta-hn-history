@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (! Schema::hasTable('categories')) {
+            return;
+        }
+
         Schema::table('categories', function (Blueprint $table) {
             if (! Schema::hasColumn('categories', 'color')) {
                 $table->string('color')->nullable()->default('#000000')->after('slug');
@@ -26,8 +30,21 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (! Schema::hasTable('categories')) {
+            return;
+        }
+
         Schema::table('categories', function (Blueprint $table) {
-            $table->dropColumn(['color', 'icon']);
+            $columns = [];
+            if (Schema::hasColumn('categories', 'color')) {
+                $columns[] = 'color';
+            }
+            if (Schema::hasColumn('categories', 'icon')) {
+                $columns[] = 'icon';
+            }
+            if ($columns !== []) {
+                $table->dropColumn($columns);
+            }
         });
     }
 };

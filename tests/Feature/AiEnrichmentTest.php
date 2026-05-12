@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Application\Tenant\Commands\EnhanceTenantProfileCommand;
+use App\Application\Tenant\Handlers\EnhanceTenantProfileHandler;
 use App\Infrastructure\Jobs\AI\EnhanceTenantProfileJob;
 use App\Models\Tenant;
 use App\Models\User;
@@ -203,46 +205,31 @@ test('service handles flagged content response', function () {
 // JOB TESTS: EnhanceTenantProfileJob
 // ═══════════════════════════════════════════════════════════════════════════════
 
-test('job skips processing when tenant not found', function () {
-    $job = new EnhanceTenantProfileJob(999999);
-    $mockService = Mockery::mock(AiProfileGeneratorService::class);
-    $mockService->shouldNotReceive('generate');
-
-    $job->handle($mockService);
-    // Test passes if no exception thrown - tenant not found is handled gracefully
-    expect(true)->toBeTrue();
-});
-
-test('job skips already enriched tenants (idempotency)', function () {
-    $tenant = createTestTenant([
-        'is_ai_enhanced' => true, // Already processed
-    ]);
-
-    $job = new EnhanceTenantProfileJob($tenant->id);
-    $mockService = Mockery::mock(AiProfileGeneratorService::class);
-    $mockService->shouldNotReceive('generate');
-
-    $job->handle($mockService);
-});
-
 test('job can be dispatched to queue', function () {
     Queue::fake();
 
-    $tenant = createTestTenant();
+    $tenantId = 123;
+    $command = new EnhanceTenantProfileCommand($tenantId);
 
-    EnhanceTenantProfileJob::dispatch($tenant->id);
+    EnhanceTenantProfileJob::dispatch($command);
 
-    Queue::assertPushed(EnhanceTenantProfileJob::class, function ($job) use ($tenant) {
-        return $job->uniqueId() === 'enhance-tenant-'.$tenant->id;
+    Queue::assertPushed(EnhanceTenantProfileJob::class, function ($job) use ($tenantId) {
+        return $job->uniqueId() === 'enhance_'.$tenantId;
     });
 });
 
 test('job has correct queue configuration', function () {
-    $job = new EnhanceTenantProfileJob(1);
+    $job = new EnhanceTenantProfileJob(new EnhanceTenantProfileCommand(1));
 
     expect($job->tries)->toBe(3);
-    expect($job->backoff)->toBe([30, 60, 120]);
     expect($job->uniqueFor)->toBe(3600);
-    expect($job->timeout)->toBe(120);
-    expect($job->tenantId)->toBe(1);
+    expect($job->timeout)->toBe(180);
+    expect($job->uniqueId())->toBe('enhance_1');
+});
+
+test('job handle signature is aligned with handler contract', function () {
+    $method = new ReflectionMethod(EnhanceTenantProfileJob::class, 'handle');
+    $param = $method->getParameters()[0];
+
+    expect($param->getType()?->getName())->toBe(EnhanceTenantProfileHandler::class);
 });

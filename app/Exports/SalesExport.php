@@ -391,7 +391,7 @@ class SalesExport implements FromQuery, ShouldQueue, WithChunkReading, WithHeadi
         try {
             event(SalesExportCreated::create(
                 exportId: $this->exportId,
-                tenantId: \App\ValueObjects\TenantId::fromString($this->tenantId->toString()),
+                tenantId: \App\Domain\Shared\ValueObjects\TenantId::fromString($this->tenantId->toString()),
                 userId: $this->userId,
                 format: 'xlsx',
                 criteriaHash: $this->criteria->toHash(),

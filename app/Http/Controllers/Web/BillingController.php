@@ -96,7 +96,7 @@ final class BillingController extends Controller
             $phone = '504'.$phone;
         }
 
-        $message = "Hola, acabo de registrar mi negocio *{$tenantName}* en Conecta HN.\n\n";
+        $message = "Hola, acabo de registrar mi negocio *{$tenantName}* en Vito Business OS.\n\n";
         $message .= "Adjunto el comprobante de pago:\n";
         $message .= "Referencia: *{$reference}*\n";
         $message .= "Monto: *{$formattedAmount}*";

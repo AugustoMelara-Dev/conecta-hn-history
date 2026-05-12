@@ -32,29 +32,32 @@ final readonly class IdempotentCreateOrderHandler implements CreateOrderHandlerI
             return $cachedResult;
         }
 
-        if ($this->service->getState($key) === 'PROCESSING') {
-            throw new ConcurrencyException('Order processing already in progress for this request.');
-        }
-
-        $this->service->registerProcessing($key);
-
+        // 2. Acquire Atomic Processing Registration
         try {
-            // 3. Double-Check inside Lock (Critical for high concurrency)
+            $this->service->registerProcessing($key, 60);
+        } catch (\App\Application\Common\Exceptions\ConcurrentRequestException) {
+            // If we can't get lock, it means another process is working on this key.
+            // We check once more if result appeared (Double-Check Locking variant via Cache)
+            // or we throw ConcurrencyException / 429.
             $cachedResult = $this->service->get($key);
             if ($cachedResult instanceof CreateOrderResult) {
                 return $cachedResult;
             }
-
-            // 4. Execution
-            $result = $this->inner->handle($command);
-
-            // 5. Store Result (Release Lock implicitly by expiration or logic, but we store result)
-            $this->service->store($key, $result);
-
-            return $result;
-
-        } finally {
-            //
+            throw new ConcurrencyException('Order processing already in progress for this request.');
         }
+
+        // 3. Double-Check inside Lock (Critical for high concurrency)
+        $cachedResult = $this->service->get($key);
+        if ($cachedResult instanceof CreateOrderResult) {
+            return $cachedResult;
+        }
+
+        // 4. Execution
+        $result = $this->inner->handle($command);
+
+        // 5. Store Result (Release Lock implicitly by expiration or logic, but we store result)
+        $this->service->store($key, $result);
+
+        return $result;
     }
 }

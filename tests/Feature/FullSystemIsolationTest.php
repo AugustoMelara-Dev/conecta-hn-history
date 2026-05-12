@@ -5,6 +5,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Domain\Shared\Services\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 
@@ -18,6 +19,7 @@ uses(RefreshDatabase::class);
  * ══════════════════════════════════════════════════════════════════════════════
  */
 beforeEach(function () {
+    app(TenantContext::class)->setAsSystemRoot();
     // VICTIM ENVIRONMENT
     $this->victimUser = User::factory()->create([
         'name' => 'Victor Victim',
@@ -172,7 +174,7 @@ test('it prevents cross tenant coupon usage', function () {
         'is_active' => true,
     ]);
 
-    $response = $this->postJson('/api/coupons/verify', [
+    $response = $this->postJson('/api/v1/coupons/verify', [
         'tenant_id' => $this->attackerTenant->id,
         'code' => 'VICTIM_EXCLUSIVE_50',
         'cart_subtotal' => 1000.00,
@@ -270,3 +272,7 @@ test('it prevents admin panel cross tenant access', function () {
         "ADMIN BREACH: Attacker accessed victim's product! Status: {$response->status()}"
     );
 })->group('security', 'admin_panel');
+
+afterEach(function () {
+    app(TenantContext::class)->reset();
+});

@@ -64,7 +64,7 @@ class EditTenantProfile extends BaseEditTenantProfile
 
                                         Forms\Components\TextInput::make('slug')
                                             ->label('URL publica')
-                                            ->prefix('conectahn.com/')
+                                            ->prefix(rtrim((string) config('app.url'), '/').'/')
                                             ->required()
                                             ->unique(ignoreRecord: true)
                                             ->alphaDash()

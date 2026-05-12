@@ -5,11 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ $title ?? 'Conecta HN - Tu Micrositio Profesional' }}</title>
+    <title>{{ $title ?? 'Vito Business OS - Tu Micrositio Profesional' }}</title>
     <meta name="description" content="{{ $description ?? 'Crea tu catálogo digital gratis. Vende más rápido con pedidos directos por WhatsApp.' }}">
 
     <!-- Open Graph -->
-    <meta property="og:title" content="{{ $title ?? 'Conecta HN' }}">
+    <meta property="og:title" content="{{ $title ?? 'Vito Business OS' }}">
     <meta property="og:description" content="{{ $description ?? 'La vitrina digital de Honduras' }}">
     <meta property="og:type" content="website">
 

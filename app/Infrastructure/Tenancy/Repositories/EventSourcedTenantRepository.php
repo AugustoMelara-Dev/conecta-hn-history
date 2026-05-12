@@ -93,14 +93,13 @@ final class EventSourcedTenantRepository implements TenantRepositoryInterface
             [
                 'id' => $tenant->id(),
                 'name' => $tenant->name(),
-                'domain' => $tenant->domain(),
                 'created_at' => $tenant->createdAt(),
-                'updated_at' => $tenant->updatedAt(),
+                'updated_at' => now(),
                 // Assumed fields based on SQL table definition
                 'slug' => $tenant->domain(), // Mapping domain to slug if 1:1, or entity should expose slug
             ],
             ['id'],
-            ['name', 'domain', 'updated_at']
+            ['name', 'slug', 'updated_at']
         );
     }
 }

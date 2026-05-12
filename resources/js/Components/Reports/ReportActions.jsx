@@ -25,10 +25,16 @@ export function DownloadReceiptButton({ orderId, className = '' }) {
     const [isLoading, setIsLoading] = useState(false);
 
     const handleDownload = () => {
+        const downloadUrl = safeNamedRoute('receipt.download', null, orderId);
+
+        if (!downloadUrl) {
+            return;
+        }
+
         setIsLoading(true);
 
         window.open(
-            safeNamedRoute('receipt.download', `/workspace/orders/${orderId}/receipt`, orderId),
+            downloadUrl,
             '_blank'
         );
 
@@ -51,13 +57,13 @@ export function DownloadReceiptButton({ orderId, className = '' }) {
 
 export function DownloadSalesReportButton({ startDate, endDate, className = '', ...props }) {
     const [isLoading, setIsLoading] = useState(false);
-    const disabled = isLoading || !startDate || !endDate;
-    const baseUrl = safeNamedRoute('reports.sales-pdf', '/workspace/reports/sales-pdf');
+    const baseUrl = safeNamedRoute('reports.sales-pdf', null);
+    const disabled = isLoading || !startDate || !endDate || !baseUrl;
     const queryParams = new URLSearchParams({
         start_date: startDate || '',
         end_date: endDate || '',
     }).toString();
-    const downloadUrl = `${baseUrl}?${queryParams}`;
+    const downloadUrl = baseUrl ? `${baseUrl}?${queryParams}` : '';
 
     const handleDownload = () => {
         if (disabled) {
@@ -91,10 +97,16 @@ export function PrintOrderTicket({ orderId, variant = 'button' }) {
     const [isLoading, setIsLoading] = useState(false);
 
     const handlePrint = () => {
+        const ticketUrl = safeNamedRoute('orders.print-ticket', null, orderId);
+
+        if (!ticketUrl) {
+            return;
+        }
+
         setIsLoading(true);
 
         const printWindow = window.open(
-            safeNamedRoute('orders.print-ticket', `/workspace/orders/${orderId}/print-ticket`, orderId),
+            ticketUrl,
             'print_ticket',
             'width=300,height=500'
         );

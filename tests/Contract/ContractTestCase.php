@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Contract;
 
-use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
-use Tests\CreatesApplication;
+use Tests\TestCase as BaseTestCase;
 
 /**
  * ContractTestCase
@@ -15,8 +14,6 @@ use Tests\CreatesApplication;
  */
 abstract class ContractTestCase extends BaseTestCase
 {
-    use CreatesApplication;
-
     /**
      * Assert that the given data matches the defined JSON Schema.
      *

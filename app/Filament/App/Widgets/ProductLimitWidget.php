@@ -93,13 +93,13 @@ class ProductLimitWidget extends Widget
     public function getStatusMessage(): string
     {
         if ($this->percentage < 50) {
-            return 'Todavia tienes espacio para seguir ordenando el catalogo.';
+            return 'Free te deja validar el negocio con micrositio, directorio, contacto y hasta 10 productos.';
         } elseif ($this->percentage < 80) {
-            return 'Estas usando bien tu plan actual. Revisa PRO cuando necesites mas catalogo.';
+            return 'Estas usando bien Free. Revisa PRO cuando necesites mas catalogo, reservas/reportes o IA operativa.';
         } elseif ($this->percentage < 100) {
-            return 'Estas cerca del limite de productos del plan Semilla.';
+            return 'Estas cerca del limite Free de 10 productos.';
         }
 
-        return 'Alcanzaste el limite de productos del plan actual.';
+        return 'Alcanzaste el limite Free de productos. PRO habilita mas catalogo y funciones operativas.';
     }
 }

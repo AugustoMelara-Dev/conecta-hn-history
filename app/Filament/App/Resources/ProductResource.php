@@ -8,6 +8,7 @@ use App\Filament\App\Resources\ProductResource\Pages;
 use App\Filament\App\Resources\ProductResource\RelationManagers\OptionGroupsRelationManager;
 use App\Models\Product;
 use App\Settings\GeneralSettings;
+use App\Support\Product\TenantAccessMatrix;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -58,6 +59,16 @@ class ProductResource extends Resource
         return 'Catalogo';
     }
 
+    public static function canViewAny(): bool
+    {
+        return TenantAccessMatrix::currentTenantCanAccess(TenantAccessMatrix::MODULE_PRODUCTS);
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::canViewAny();
+    }
+
     // ═══════════════════════════════════════════════════════════════════════
     // MURO DE CONTENCIÓN: Límite de productos según plan
     // ═══════════════════════════════════════════════════════════════════════
@@ -73,7 +84,7 @@ class ProductResource extends Resource
             return false;
         }
 
-        // PRO tiene productos ilimitados
+        // PRO usa capacidad de catalogo ampliada.
         if ($tenant->is_pro) {
             return true;
         }

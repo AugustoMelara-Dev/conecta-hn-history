@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Events;
 
-use App\ValueObjects\TenantId;
+use App\Domain\Shared\ValueObjects\TenantId;
 use App\Events\Audit\SalesExportCreated;
 use App\Events\Order\OrderShipped;
 use App\Events\Security\FailedLoginAttempt;

@@ -138,7 +138,7 @@ final class SocialLoginRequest extends FormRequest
 
         return [
             'provider.in' => "El proveedor de autenticación no es soportado. Proveedores válidos: {$supportedList}.",
-            'token.max' => 'El token de autenticacion excede el limit maximo permitido.',
+            'token.max' => 'El token de autenticación excede el límite máximo permitido (limit exceeded).',
             'provider_id.required' => 'El identificador del proveedor es requerido.',
             'email.email' => 'El correo electrónico proporcionado no es válido.',
             'email.required' => 'El correo electrónico es requerido para autenticación social.',

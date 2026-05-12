@@ -74,15 +74,14 @@ class SecurityAuditComplianceTest extends TestCase
      */
     public function user_model_guards_tenant_id_from_mass_assignment(): void
     {
-        $user = User::create([
+        $this->expectException(\Illuminate\Database\Eloquent\MassAssignmentException::class);
+
+        User::create([
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => bcrypt('password'),
             'tenant_id' => 999, // Attacker attempts to set
         ]);
-
-        // tenant_id should NOT be set via mass assignment
-        $this->assertNull($user->tenant_id);
     }
 
     /**

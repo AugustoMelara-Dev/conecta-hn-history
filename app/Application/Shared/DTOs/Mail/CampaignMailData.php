@@ -27,7 +27,7 @@ final readonly class CampaignMailData
             id: $campaign->id,
             subject: $campaign->subject ?? '',
             body: $campaign->body ?? '',
-            tenantName: $campaign->tenant?->name ?? 'Conecta HN',
+            tenantName: $campaign->tenant?->name ?? 'Vito Business OS',
         );
     }
 }

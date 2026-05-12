@@ -726,7 +726,7 @@ class BroadcastPayloadTest extends TestCase
             $this->assertInstanceOf(
                 \App\Contracts\Broadcasting\BroadcastableNotificationInterface::class,
                 $event,
-                get_class($event).' should implement BroadcastableNotification interface'
+                get_class($event).' should implement BroadcastableNotificationInterface interface'
             );
         }
     }

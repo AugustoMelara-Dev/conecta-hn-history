@@ -1,7 +1,7 @@
 /**
  * TenantFooter - Shared Footer Component for Both Tiers
  * 
- * For Semilla: Shows "Powered by Conecta HN" branding
+ * For Semilla: Shows "Powered by Vito Business OS" branding
  * For Pro: Shows clean footer without branding
  */
 
@@ -33,14 +33,14 @@ export default function TenantFooter({
             <div className="max-w-3xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
                 <div>
                     <p className="text-sm font-medium text-white">
-                        ⚡ Powered by <span className="text-indigo-400">Conecta HN</span>
+                        ⚡ Powered by <span className="text-indigo-400">Vito Business OS</span>
                     </p>
                     <p className="text-xs text-slate-500">
                         Crea tu tienda digital gratis
                     </p>
                 </div>
                 <Link
-                    href="/register"
+                    href="/registrar-negocio"
                     className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors"
                 >
                     Crear mi Tienda

@@ -8,7 +8,7 @@ use App\Contracts\Events\DomainEvent;
 // use App\Models\Tenant; // REMOVED
 // use App\Models\User; // REMOVED
 use App\Traits\HasDomainMetadata;
-use App\ValueObjects\TenantId;
+use App\Domain\Shared\ValueObjects\TenantId;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**
@@ -22,8 +22,8 @@ final readonly class TenantRegistered implements DomainEvent, ShouldDispatchAfte
     use HasDomainMetadata;
 
     public function __construct(
-        public int $tenantId,
-        public int $userId,
+        public string $tenantId,
+        public string $userId,
         // Restoration parameters
         ?string $restoredEventId = null,
         ?string $restoredOccurredAt = null,
@@ -38,12 +38,12 @@ final readonly class TenantRegistered implements DomainEvent, ShouldDispatchAfte
 
     public function tenantId(): TenantId
     {
-        return TenantId::fromInt($this->tenantId);
+        return TenantId::fromString($this->tenantId);
     }
 
     public function aggregateId(): int
     {
-        return $this->tenantId;
+        return abs(crc32($this->tenantId));
     }
 
     public function toPrimitives(): array
@@ -63,8 +63,8 @@ final readonly class TenantRegistered implements DomainEvent, ShouldDispatchAfte
         // if used only in-process, but for correctness:
 
         return new self(
-            tenantId: (int) $primitives['tenant_id'],
-            userId: (int) $primitives['user_id'],
+            tenantId: (string) $primitives['tenant_id'],
+            userId: (string) $primitives['user_id'],
             restoredEventId: $primitives['event_id'] ?? null,
             restoredOccurredAt: $primitives['occurred_at'] ?? null
         );

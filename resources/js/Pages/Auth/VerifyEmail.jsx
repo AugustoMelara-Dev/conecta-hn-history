@@ -41,10 +41,17 @@ export default function VerifyEmail({ status, onboardingNextAction = null }) {
 
     return (
         <>
-            <Head title={t("headTitle")} />
+            <Head>
+                <title>{t("headTitle")}</title>
+                <meta
+                    name="description"
+                    content="Verifica tu correo para completar el acceso seguro al panel de negocio en Vito Business OS."
+                />
+                <link rel="canonical" href={route("verification.notice")} />
+            </Head>
 
             <AuthShadcnShell
-                imageAlt="Verificacion de correo para Conecta HN"
+                imageAlt="Verificacion de correo para Vito Business OS"
                 eyebrow="Correo pendiente"
                 title="Un paso mas para proteger tu cuenta"
                 description="La verificacion confirma que los avisos de acceso y seguridad lleguen al correo correcto."

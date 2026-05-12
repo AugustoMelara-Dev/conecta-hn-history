@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bienvenido a Conecta HN</title>
+    <title>Bienvenido a Vito Business OS</title>
     <style>
         body {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
@@ -71,13 +71,13 @@
     <div class="container">
         <div class="header">
             <div class="logo">C</div>
-            <div class="title">Bienvenido a Conecta HN</div>
+            <div class="title">Bienvenido a Vito Business OS</div>
         </div>
         
         <div class="content">
             <p>Hola {{ $user->name }},</p>
             
-            <p>Gracias por unirte a <strong>Conecta HN</strong>, la infraestructura digital que está transformando el comercio en Honduras.</p>
+            <p>Gracias por unirte a <strong>Vito Business OS</strong>, la infraestructura digital que está transformando el comercio en Honduras.</p>
             
             <p>Tu cuenta ha sido creada exitosamente. Ahora eres parte de una comunidad que valora el crecimiento, la transparencia y la conexión directa.</p>
             
@@ -93,7 +93,7 @@
         </div>
         
         <div class="footer">
-            <p>© {{ date('Y') }} Conecta HN. Todos los derechos reservados.</p>
+            <p>© {{ date('Y') }} Vito Business OS. Todos los derechos reservados.</p>
             <p>Tegucigalpa, Honduras</p>
         </div>
     </div>

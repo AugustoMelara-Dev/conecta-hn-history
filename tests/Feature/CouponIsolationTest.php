@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Shared\Services\TenantContext;
 use App\Models\Coupon;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -37,22 +38,30 @@ class CouponIsolationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        app(TenantContext::class)->setAsSystemRoot();
 
         // Create two isolated tenant environments
         $this->tenantA = Tenant::factory()->create([
-            'name' => 'Pizzería Mario',
+            'name' => 'Pizzeria Mario',
             'slug' => 'pizzeria-mario',
         ]);
 
         $this->tenantB = Tenant::factory()->create([
-            'name' => 'Café Delicia',
+            'name' => 'Cafe Delicia',
             'slug' => 'cafe-delicia',
         ]);
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
+    // -----------------------------------------------------------------------
+
+    protected function tearDown(): void
+    {
+        app(TenantContext::class)->reset();
+        parent::tearDown();
+    }
+
     // ATTACK SCENARIO 1: Cross-Tenant Coupon Theft
-    // ═══════════════════════════════════════════════════════════════════════
+    // -----------------------------------------------------------------------
 
     /**
      * @test
@@ -78,7 +87,7 @@ class CouponIsolationTest extends TestCase
         ]);
 
         // ACT: Attacker from Tenant B tries to use Tenant A's coupon
-        $response = $this->postJson('/api/coupons/verify', [
+        $response = $this->postJson('/api/v1/coupons/verify', [
             'tenant_id' => $this->tenantB->id,  // Attacker's context
             'code' => 'SECRET_A',                // Victim's coupon
             'cart_subtotal' => 500.00,
@@ -97,14 +106,14 @@ class CouponIsolationTest extends TestCase
             $response->json('error') ?? ''
         );
         $this->assertStringNotContainsString(
-            'Pizzería',
+            'Pizzeria',
             $response->json('error') ?? ''
         );
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
+    // -----------------------------------------------------------------------
     // ATTACK SCENARIO 2: Namespace Collision Exploitation
-    // ═══════════════════════════════════════════════════════════════════════
+    // -----------------------------------------------------------------------
 
     /**
      * @test
@@ -138,7 +147,7 @@ class CouponIsolationTest extends TestCase
         ]);
 
         // ACT: Request verification in Tenant A's context
-        $responseA = $this->postJson('/api/coupons/verify', [
+        $responseA = $this->postJson('/api/v1/coupons/verify', [
             'tenant_id' => $this->tenantA->id,
             'code' => 'VERANO',
             'cart_subtotal' => 1000.00,
@@ -153,7 +162,7 @@ class CouponIsolationTest extends TestCase
         ]);
 
         // ACT: Request verification in Tenant B's context
-        $responseB = $this->postJson('/api/coupons/verify', [
+        $responseB = $this->postJson('/api/v1/coupons/verify', [
             'tenant_id' => $this->tenantB->id,
             'code' => 'VERANO',
             'cart_subtotal' => 1000.00,
@@ -168,9 +177,9 @@ class CouponIsolationTest extends TestCase
         ]);
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
+    // -----------------------------------------------------------------------
     // ATTACK SCENARIO 3: Index Endpoint Information Leakage
-    // ═══════════════════════════════════════════════════════════════════════
+    // -----------------------------------------------------------------------
 
     /**
      * @test
@@ -213,7 +222,7 @@ class CouponIsolationTest extends TestCase
         ]);
 
         // ACT: Request coupon list for Tenant B
-        $response = $this->getJson('/api/coupons?tenant_id='.$this->tenantB->id);
+        $response = $this->getJson('/api/v1/coupons?tenant_id='.$this->tenantB->id);
 
         // ASSERT: Response is successful
         $response->assertStatus(200);
@@ -234,9 +243,9 @@ class CouponIsolationTest extends TestCase
         $this->assertNotContains('PROMO_A', $codes);
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
+    // -----------------------------------------------------------------------
     // ATTACK SCENARIO 4: Percentage Discount Calculation Integrity
-    // ═══════════════════════════════════════════════════════════════════════
+    // -----------------------------------------------------------------------
 
     /**
      * @test
@@ -256,7 +265,7 @@ class CouponIsolationTest extends TestCase
             'is_active' => true,
         ]);
 
-        $response = $this->postJson('/api/coupons/verify', [
+        $response = $this->postJson('/api/v1/coupons/verify', [
             'tenant_id' => $this->tenantA->id,
             'code' => 'DIEZ',
             'cart_subtotal' => 100.00,
@@ -270,9 +279,9 @@ class CouponIsolationTest extends TestCase
         ]);
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
+    // -----------------------------------------------------------------------
     // ATTACK SCENARIO 5: Minimum Spend Restriction Bypass
-    // ═══════════════════════════════════════════════════════════════════════
+    // -----------------------------------------------------------------------
 
     /**
      * @test
@@ -293,7 +302,7 @@ class CouponIsolationTest extends TestCase
         ]);
 
         // Attempt with cart below minimum
-        $response = $this->postJson('/api/coupons/verify', [
+        $response = $this->postJson('/api/v1/coupons/verify', [
             'tenant_id' => $this->tenantA->id,
             'code' => 'MINIMO500',
             'cart_subtotal' => 200.00,  // Below 500 minimum
@@ -309,9 +318,9 @@ class CouponIsolationTest extends TestCase
         $this->assertStringContainsString('300', $response->json('error'));
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
+    // -----------------------------------------------------------------------
     // ATTACK SCENARIO 6: Error Message Information Sanitization
-    // ═══════════════════════════════════════════════════════════════════════
+    // -----------------------------------------------------------------------
 
     /**
      * @test
@@ -323,7 +332,7 @@ class CouponIsolationTest extends TestCase
     public function it_does_not_leak_internal_ids_in_error_messages(): void
     {
         // Attempt to verify non-existent coupon
-        $response = $this->postJson('/api/coupons/verify', [
+        $response = $this->postJson('/api/v1/coupons/verify', [
             'tenant_id' => $this->tenantA->id,
             'code' => 'NONEXISTENT',
             'cart_subtotal' => 100.00,

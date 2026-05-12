@@ -110,7 +110,7 @@
                         </li>
                         <li class="flex items-center gap-2">
                             <x-heroicon-o-check-circle class="w-5 h-5 text-success-500" />
-                            <span>Productos ilimitados</span>
+                            <span>Catalogo ampliado</span>
                         </li>
                         <li class="flex items-center gap-2">
                             <x-heroicon-o-check-circle class="w-5 h-5 text-success-500" />

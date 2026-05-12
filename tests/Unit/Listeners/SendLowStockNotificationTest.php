@@ -3,39 +3,29 @@
 declare(strict_types=1);
 
 use App\Events\Inventory\LowStockThresholdReached;
+use App\Domain\Shared\Services\TenantContext;
 use App\Listeners\SendLowStockNotification;
 use App\Models\Product;
 use App\Models\Tenant;
-use App\Domain\Shared\Services\TenantContext;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Notification;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
-uses(TestCase::class, RefreshDatabase::class);
+uses(TestCase::class, DatabaseTransactions::class);
 
 beforeEach(function () {
+    app(TenantContext::class)->setAsSystemRoot();
+
     $this->tenantA = Tenant::factory()->create(['name' => 'Tenant A']);
     $this->tenantB = Tenant::factory()->create(['name' => 'Tenant B']);
 
-    app(TenantContext::class)->setTenant($this->tenantA->id);
     $this->productA = Product::factory()->create([
         'tenant_id' => $this->tenantA->id,
         'name' => 'Product A',
         'stock_quantity' => 5,
     ]);
 
-    app(TenantContext::class)->reset();
-    app(TenantContext::class)->setTenant($this->tenantB->id);
-    $this->productB = Product::factory()->create([
-        'tenant_id' => $this->tenantB->id,
-        'name' => 'Product B',
-        'stock_quantity' => 3,
-    ]);
-    app(TenantContext::class)->reset();
-
     $this->listener = new SendLowStockNotification();
-
-    Notification::fake();
 });
 
 test('processes product with correct tenant_id', function () {
@@ -50,40 +40,46 @@ test('processes product with correct tenant_id', function () {
     expect(true)->toBeTrue();
 });
 
-test('processes product from another tenant only under its own tenant context', function () {
+test('blocks product from different tenant and logs security event', function () {
+    $spoofedProduct = clone $this->productA;
+    $spoofedProduct->tenant_id = (string) $this->tenantB->id;
+
     $event = new LowStockThresholdReached(
-        product: $this->productB,
-        currentStock: 3,
+        product: $spoofedProduct,
+        currentStock: 5,
         threshold: 10
     );
 
-    $this->listener->handle($event);
+    Log::shouldReceive('channel')
+        ->with('security')
+        ->once()
+        ->andReturnSelf();
 
-    expect(true)->toBeTrue();
+    Log::shouldReceive('critical')
+        ->once()
+        ->withArgs(function ($message, $context) {
+            return str_contains($message, 'Cross-Tenant Access Attempt BLOCKED')
+                && ($context['severity'] ?? null) === 'CRITICAL';
+        });
+
+    $this->listener->handle($event);
 });
 
 test('gracefully returns for non-existent product', function () {
+    $spoofedProduct = clone $this->productA;
+    $spoofedProduct->id = '99999999-9999-9999-9999-999999999999';
+
     $event = new LowStockThresholdReached(
-        product: $this->productA,
+        product: $spoofedProduct,
         currentStock: 5,
         threshold: 10
     );
 
-    $this->productA->delete();
+    Log::shouldReceive('warning')
+        ->once()
+        ->withArgs(fn ($msg) => str_contains($msg, 'not found'));
 
     $this->listener->handle($event);
 
     expect(true)->toBeTrue();
-});
-
-test('never throws exceptions for a deleted product event', function () {
-    $event = new LowStockThresholdReached(
-        product: $this->productA,
-        currentStock: 5,
-        threshold: 10
-    );
-
-    $this->productA->delete();
-
-    expect(fn () => $this->listener->handle($event))->not->toThrow(Exception::class);
 });

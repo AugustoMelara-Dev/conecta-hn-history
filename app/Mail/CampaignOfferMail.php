@@ -38,7 +38,7 @@ class CampaignOfferMail extends Mailable
             subject: $this->campaign->subject,
             from: new Address(
                 config('mail.from.address'),
-                $this->campaign->tenantName.' via Conecta HN'
+                $this->campaign->tenantName.' via Vito Business OS'
             ),
         );
     }

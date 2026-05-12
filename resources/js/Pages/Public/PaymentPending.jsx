@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     AlertCircle,
@@ -242,11 +242,6 @@ export default function PaymentPending({ payment, tenant, checkUrl }) {
         return () => window.clearTimeout(redirectTimer);
     }, [isComplete, panelUrl]);
 
-    const supportHref = useMemo(() => {
-        const subject = encodeURIComponent('Ayuda con pago en Conecta HN');
-        return `mailto:soporte@conectahn.com?subject=${subject}`;
-    }, []);
-
     const handleRefresh = useCallback(() => {
         router.reload({ only: ['payment'] });
     }, []);
@@ -254,7 +249,7 @@ export default function PaymentPending({ payment, tenant, checkUrl }) {
     return (
         <PublicLayout>
             <Head>
-                <title>Procesando pago | Conecta HN</title>
+                <title>Procesando pago | Vito Business OS</title>
                 <meta name="robots" content="noindex" />
             </Head>
 
@@ -335,11 +330,9 @@ export default function PaymentPending({ payment, tenant, checkUrl }) {
                                 </Button>
                             ) : null}
 
-                            <Button asChild variant="outline" className="w-full sm:w-auto">
-                                <a href={supportHref}>
-                                    <HelpCircle data-icon="inline-start" aria-hidden="true" />
-                                    Contactar soporte
-                                </a>
+                            <Button type="button" variant="outline" className="w-full sm:w-auto" disabled>
+                                <HelpCircle data-icon="inline-start" aria-hidden="true" />
+                                Contacta soporte desde tu panel
                             </Button>
                         </CardFooter>
                     </Card>

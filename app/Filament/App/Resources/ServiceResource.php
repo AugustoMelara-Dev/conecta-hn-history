@@ -4,6 +4,8 @@ namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\ServiceResource\Pages;
 use App\Models\Service;
+use App\Support\Product\TenantAccessMatrix;
+use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -31,6 +33,16 @@ class ServiceResource extends Resource
     public static function getPluralModelLabel(): string
     {
         return 'servicios';
+    }
+
+    public static function canViewAny(): bool
+    {
+        return TenantAccessMatrix::currentTenantCanAccess(TenantAccessMatrix::MODULE_SERVICES);
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::canViewAny();
     }
 
     public static function form(Form $form): Form

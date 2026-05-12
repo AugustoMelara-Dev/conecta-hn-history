@@ -6,7 +6,14 @@ import { ResetPasswordForm } from "@/Components/Auth/ResetPasswordForm"
 export default function ResetPassword({ token, email }) {
     return (
         <>
-            <Head title="Cambiar contrasena | Conecta HN" />
+            <Head>
+                <title>Cambiar contrasena | Vito Business OS</title>
+                <meta
+                    name="description"
+                    content="Actualiza tu contrasena para recuperar acceso seguro a tu cuenta de Vito Business OS."
+                />
+                <link rel="canonical" href={route("password.request")} />
+            </Head>
 
             <AuthShadcnShell
                 imageAlt="Panel para cambiar contrasena"

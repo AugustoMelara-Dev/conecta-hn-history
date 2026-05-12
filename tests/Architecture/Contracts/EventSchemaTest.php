@@ -78,8 +78,10 @@ class EventSchemaTest extends TestCase
 
         $this->assertNotNull($schema, "Failed to parse JSON Schema: {$schemaPath}");
 
-        // 6. Validate structure (simplified validation without external library)
-        $this->validateAgainstSchema($envelope, $schema, $eventClass);
+        // 6. Validate structure (supports envelope schemas and payload-only schemas)
+        $isPayloadOnlySchema = ! isset($schema['properties']['payload']);
+        $candidate = $isPayloadOnlySchema ? $payload : $envelope;
+        $this->validateAgainstSchema($candidate, $schema, $eventClass);
     }
 
     /**

@@ -19,13 +19,13 @@ export function AuthBrand({ href = route("home"), className }) {
                     className="text-base font-extrabold tracking-tight text-slate-950"
                     style={{ fontFamily: PUBLIC_DISPLAY_FONT }}
                 >
-                    Conecta HN
+                    Vito Business OS
                 </p>
                 <p
                     className="text-[11px] font-bold uppercase tracking-[0.28em] text-slate-500"
                     style={{ fontFamily: PUBLIC_LABEL_FONT }}
                 >
-                    Conecta HN
+                    Vito Business OS
                 </p>
             </div>
         </Link>

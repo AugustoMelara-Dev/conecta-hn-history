@@ -5,6 +5,7 @@ use App\Http\Controllers\Public\DirectoryController;
 use App\Http\Controllers\Public\InteractionController;
 use App\Http\Controllers\Public\BookingController;
 use App\Http\Controllers\Public\LocationController;
+use App\Http\Controllers\Public\RedirectController;
 use App\Http\Controllers\Public\TenantMicrositeController;
 use App\Http\Controllers\Public\WelcomeController;
 use App\Http\Controllers\Tenant\AnalyticsController;
@@ -21,6 +22,8 @@ use Illuminate\Support\Facades\Route;
 */
 
 require __DIR__.'/tenant.php';
+
+Route::get('/up', static fn () => response('OK', 200))->name('health.up');
 
 Route::domain('app.'.config('app.domain'))->group(function () {
     Route::redirect('/', '/directorio', 302)->name('app.directory');
@@ -58,11 +61,7 @@ Route::get('/', WelcomeController::class)->name('home');
 // ═══════════════════════════════════════════════════════════════════════
 // 2. EXPLORE: Marketplace Discovery (Luxury Entrance Strategy)
 // ═══════════════════════════════════════════════════════════════════════
-Route::get('/explore', static function () {
-    $query = request()->getQueryString();
-
-    return redirect('/directorio'.($query ? '?'.$query : ''), 302);
-})->name('public.explore');
+Route::get('/explore', [RedirectController::class, 'explore'])->name('public.explore');
 
 // ═══════════════════════════════════════════════════════════════════════
 // 3. DIRECTORIO: React/Inertia (Directory/Index.jsx)

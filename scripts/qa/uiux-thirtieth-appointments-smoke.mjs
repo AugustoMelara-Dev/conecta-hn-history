@@ -178,6 +178,7 @@ if ($mode === 'setup') {
         'plan_type' => 'pro',
         'subscription_status' => 'active',
         'business_type' => 'service',
+        'commercial_mode' => 'appointments',
     ];
 
     if (Schema::hasColumn('tenants', 'is_pro')) {

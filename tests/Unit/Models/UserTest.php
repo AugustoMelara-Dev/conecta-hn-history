@@ -3,10 +3,10 @@
 declare(strict_types=1);
 
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Hash;
 
-uses(Tests\TestCase::class, RefreshDatabase::class);
+uses(Tests\TestCase::class, DatabaseTransactions::class);
 
 test('user can update password via encapsulated domain method', function () {
     $user = User::factory()->create(['password' => Hash::make('old_password')]);

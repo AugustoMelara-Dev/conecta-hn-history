@@ -28,7 +28,7 @@ export default function SmartNavbar() {
                             <span className="text-primary-foreground font-bold text-sm">C</span>
                         </div>
                         <span className="font-bold text-lg tracking-tight hidden sm:inline">
-                            Conecta HN
+                            Vito Business OS
                         </span>
                     </Link>
 
@@ -43,7 +43,7 @@ export default function SmartNavbar() {
                             </SheetTrigger>
                             <SheetContent side="top" className="w-full h-[80vh] rounded-b-2xl">
                                 <SheetHeader className="mb-4">
-                                    <SheetTitle>Explorar Conecta HN</SheetTitle>
+                                    <SheetTitle>Explorar Vito Business OS</SheetTitle>
                                 </SheetHeader>
                                 <div className="space-y-6">
                                     <div className="space-y-2">
@@ -146,8 +146,8 @@ export default function SmartNavbar() {
                                     <Button variant="ghost" size="sm" className="hidden sm:inline-flex">Ingresar</Button>
                                     <Button variant="ghost" size="icon" className="sm:hidden"><Icons.LogIn className="w-5 h-5" /></Button>
                                 </Link>
-                                <Link href={route('register')}>
-                                    <Button size="sm">Registrarse</Button>
+                                <Link href={route('tenant.register')}>
+                                    <Button size="sm">Registrar negocio</Button>
                                 </Link>
                             </div>
                         )}
