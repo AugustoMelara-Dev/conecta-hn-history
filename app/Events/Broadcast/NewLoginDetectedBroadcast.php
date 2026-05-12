@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Events\Broadcast;
 
 use App\Broadcasting\ChannelRegistry;
-use App\Contracts\Broadcasting\BroadcastableNotification;
+use App\Contracts\Broadcasting\BroadcastableNotificationInterface;
 use App\Traits\LogsBroadcasts;
 use App\Traits\ParsesUserAgent;
 use DateTimeImmutable;
@@ -15,7 +15,7 @@ use Illuminate\Foundation\Events\Dispatchable;
 /**
  * NewLoginDetectedBroadcast - Real-Time Security Alert for New Logins
  */
-final class NewLoginDetectedBroadcast implements BroadcastableNotification
+final class NewLoginDetectedBroadcast implements BroadcastableNotificationInterface
 {
     use Dispatchable, InteractsWithSockets, LogsBroadcasts, ParsesUserAgent;
 

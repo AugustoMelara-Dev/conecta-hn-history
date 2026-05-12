@@ -10,7 +10,6 @@ use App\Models\Tenant;
 use App\Models\TenantOnboardingState;
 use App\Models\User;
 use BackedEnum;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 
 final class TenantOnboardingProgressService
@@ -236,7 +235,7 @@ final class TenantOnboardingProgressService
     /** @param array<string, mixed> $snapshot */
     private function recordMilestoneEvents(Tenant $tenant, ?User $user, array $snapshot, ?TenantOnboardingState $existingState): void
     {
-        if (! DB::getSchemaBuilder()->hasTable('tenant_onboarding_milestone_events')) {
+        if (! $this->schema()->hasTable('tenant_onboarding_milestone_events')) {
             return;
         }
 
@@ -274,7 +273,7 @@ final class TenantOnboardingProgressService
             ->values()
             ->all();
 
-        DB::table('tenant_onboarding_milestone_events')->insert($events);
+        $this->db()->table('tenant_onboarding_milestone_events')->insert($events);
     }
 
     private function markFirstRunStarted(TenantOnboardingState $state): void
@@ -461,22 +460,22 @@ final class TenantOnboardingProgressService
             return $hasColumns;
         }
 
-        if (! DB::getSchemaBuilder()->hasTable('tenant_onboarding_states')) {
+        if (! $this->schema()->hasTable('tenant_onboarding_states')) {
             return $hasColumns = false;
         }
 
-        return $hasColumns = DB::getSchemaBuilder()->hasColumn('tenant_onboarding_states', 'first_run_step_key')
-            && DB::getSchemaBuilder()->hasColumn('tenant_onboarding_states', 'first_run_completed_steps')
-            && DB::getSchemaBuilder()->hasColumn('tenant_onboarding_states', 'first_run_abandoned_at');
+        return $hasColumns = $this->schema()->hasColumn('tenant_onboarding_states', 'first_run_step_key')
+            && $this->schema()->hasColumn('tenant_onboarding_states', 'first_run_completed_steps')
+            && $this->schema()->hasColumn('tenant_onboarding_states', 'first_run_abandoned_at');
     }
 
     private function recordFirstRunEvent(TenantOnboardingState $state, string $stepKey, string $eventType): void
     {
-        if (! DB::getSchemaBuilder()->hasTable('tenant_onboarding_milestone_events')) {
+        if (! $this->schema()->hasTable('tenant_onboarding_milestone_events')) {
             return;
         }
 
-        DB::table('tenant_onboarding_milestone_events')->insert([
+        $this->db()->table('tenant_onboarding_milestone_events')->insert([
             'tenant_id' => (string) $state->tenant_id,
             'user_id' => $state->user_id,
             'role' => (string) $state->role,
@@ -793,9 +792,9 @@ final class TenantOnboardingProgressService
         }
 
         return match ($commercialMode) {
-            'products' => 'Starter Products',
-            'appointments' => 'Starter Appointments',
-            'consulting_leads' => 'Starter Consulting',
+            'products' => 'Productos y ventas',
+            'appointments' => 'Servicios y citas',
+            'consulting_leads' => 'Consultoria y prospectos',
             'hybrid' => 'Operacion comercial mixta',
             default => match ($businessType) {
             'food' => 'Restaurante y comida',
@@ -823,9 +822,9 @@ final class TenantOnboardingProgressService
         }
 
         $specific = match ($commercialMode) {
-            'products' => ['title' => 'Starter Products', 'copy' => 'Prioriza oferta accionable, precio y canal de pedido. El objetivo es convertir rapido, no solo exhibir catalogo.'],
-            'appointments' => ['title' => 'Starter Appointments', 'copy' => 'Prioriza servicios, disponibilidad y confianza antes de abrir agenda publica. Reserva confirmada es la metrica principal.'],
-            'consulting_leads' => ['title' => 'Starter Consulting', 'copy' => 'Prioriza autoridad, CTA principal y seguimiento comercial. Un profesional no debe parecer tienda.'],
+            'products' => ['title' => 'Productos y ventas', 'copy' => 'Prioriza oferta accionable, precio y canal de pedido. El objetivo es convertir rapido, no solo exhibir catalogo.'],
+            'appointments' => ['title' => 'Servicios y citas', 'copy' => 'Prioriza servicios, disponibilidad y confianza antes de abrir agenda publica. Reserva confirmada es la metrica principal.'],
+            'consulting_leads' => ['title' => 'Consultoria y prospectos', 'copy' => 'Prioriza autoridad, CTA principal y seguimiento comercial. Un profesional no debe parecer tienda.'],
             'hybrid' => ['title' => 'Para flujo mixto', 'copy' => 'Activa productos y agenda por etapas. Si todo se abre sin operacion real, aumenta el soporte y baja la confianza.'],
             default => match ($businessType) {
             'food' => ['title' => 'Para comida', 'copy' => 'Prioriza menu, horarios y WhatsApp. Es lo que mas evita reclamos de clientes hambrientos.'],
@@ -944,6 +943,16 @@ final class TenantOnboardingProgressService
         } catch (\Throwable) {
             return '#';
         }
+    }
+
+    private function db(): \Illuminate\Database\ConnectionInterface
+    {
+        return app('db')->connection();
+    }
+
+    private function schema(): \Illuminate\Database\Schema\Builder
+    {
+        return $this->db()->getSchemaBuilder();
     }
 
     /** @return array<string, mixed> */

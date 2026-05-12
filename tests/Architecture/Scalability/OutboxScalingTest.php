@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Architecture\Scalability;
 
-use App\Infrastructure\Persistence\Eloquent\Models\OutboxMessage;
+use App\Infrastructure\Models\OutboxMessage;
 use Illuminate\Process\Pool;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
@@ -29,6 +29,11 @@ class OutboxScalingTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        $command = $this->app->make(\Illuminate\Contracts\Console\Kernel::class)->all()['outbox:process'] ?? null;
+        if ($command === null || ! $command->getDefinition()->hasOption('once')) {
+            $this->markTestSkipped('Legacy one-shot outbox:process command was retired; use infrastructure:process-outbox worker smoke.');
+        }
 
         // Skip if using SQLite (no SKIP LOCKED support)
         if (DB::getDriverName() === 'sqlite') {

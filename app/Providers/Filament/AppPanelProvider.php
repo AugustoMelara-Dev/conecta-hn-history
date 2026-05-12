@@ -200,7 +200,7 @@ class AppPanelProvider extends PanelProvider
     {
         $tenant = Filament::getTenant();
         if ($tenant) {
-            return url('/'.$tenant->slug);
+            return route('tenant.microsite.show', ['tenant' => $tenant->slug]);
         }
 
         return url('/');
@@ -213,7 +213,7 @@ class AppPanelProvider extends PanelProvider
     {
         $tenant = Filament::getTenant();
         if ($tenant) {
-            $url = url('/'.$tenant->slug);
+            $url = route('tenant.microsite.show', ['tenant' => $tenant->slug]);
             $text = "¡Mira mi negocio {$tenant->name} en Conecta HN!";
 
             return 'https://wa.me/?text='.urlencode("{$text}\n\n{$url}");

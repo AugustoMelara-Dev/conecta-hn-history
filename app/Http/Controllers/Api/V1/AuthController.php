@@ -7,11 +7,13 @@ namespace App\Http\Controllers\Api\V1;
 use App\Application\Auth\Contracts\AuthTokenServiceInterface;
 use App\Application\Auth\Handlers\LoginViaSocialProviderHandler;
 use App\Application\Identity\Handlers\RegisterUserHandler;
+use App\Domain\Shared\Enums\ProviderName;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Resources\V1\AuthResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 /**
  * AuthController - API Authentication
@@ -54,14 +56,22 @@ final class AuthController extends Controller
         // ═══════════════════════════════════════════════════════════════════════
         $validated = $request->validated();
 
+        if (! config('auth.social_login_enabled', false)) {
+            return response()->json([
+                'message' => 'Social login is disabled.',
+            ], 503);
+        }
+
         $command = new \App\Application\Auth\Commands\LoginViaSocialProviderCommand(
-            providerName: $validated['provider'],
+            tenantId: (string) ($validated['tenant_id'] ?? ''),
+            providerName: ProviderName::from($validated['provider']),
             providerId: $validated['provider_id'],
-            token: $validated['token'],
             email: $validated['email'],
             name: $validated['name'] ?? 'User',
             avatarUrl: $validated['avatar'] ?? null,
-            accessToken: $validated['token']
+            accessToken: $validated['token'],
+            refreshToken: null,
+            idempotencyKey: (string) Str::uuid(),
         );
 
         $result = $handler->handle($command);

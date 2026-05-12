@@ -10,27 +10,26 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Log;
+use Tests\TestCase;
 
-uses(RefreshDatabase::class);
+uses(TestCase::class, RefreshDatabase::class);
 
 beforeEach(function () {
-    // Crear dos tenants separados
-    $this->tenantA = Tenant::factory()->create(['name' => 'Tenant A']);
-    $this->tenantB = Tenant::factory()->create(['name' => 'Tenant B']);
-    
-    // Crear usuario para Tenant A
     $this->userA = User::factory()->create(['name' => 'User A']);
-    $this->userA->tenants()->attach($this->tenantA);
-    
-    // Crear usuario para Tenant B
     $this->userB = User::factory()->create(['name' => 'User B']);
-    $this->userB->tenants()->attach($this->tenantB);
+
+    // Crear dos tenants separados con ownership canonico por user_id.
+    $this->tenantA = Tenant::factory()->create(['name' => 'Tenant A', 'user_id' => $this->userA->id]);
+    $this->tenantB = Tenant::factory()->create(['name' => 'Tenant B', 'user_id' => $this->userB->id]);
+
+    $this->userA->forceFill(['tenant_id' => $this->tenantA->id])->save();
+    $this->userB->forceFill(['tenant_id' => $this->tenantB->id])->save();
 });
 
 /**
  * Helper: Crear TenantContext mock para un tenant específico
  */
-function mockTenantContext(int $tenantId): TenantContextInterface
+function mockTenantContext(int|string|null $tenantId): TenantContextInterface
 {
     $mock = Mockery::mock(TenantContextInterface::class);
     $mock->shouldReceive('getTenantId')->andReturn($tenantId);

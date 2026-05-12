@@ -52,7 +52,7 @@ class TenantQueueMiddleware
     /**
      * Extract tenant ID from job payload.
      */
-    protected function extractTenantId(object $job): ?int
+    protected function extractTenantId(object $job): int|string|null
     {
         // If job has tenantId property directly
         if (property_exists($job, 'tenantId')) {

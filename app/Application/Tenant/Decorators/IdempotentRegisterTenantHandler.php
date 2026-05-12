@@ -32,12 +32,11 @@ final readonly class IdempotentRegisterTenantHandler implements RegisterTenantHa
             return $cachedResult;
         }
 
-        // 2. Lock
-        $lock = $this->service->lock($key);
-
-        if (! $lock->get()) {
+        if ($this->service->getState($key) === 'PROCESSING') {
             throw new ConcurrencyException('Tenant registration in progress.');
         }
+
+        $this->service->registerProcessing($key);
 
         try {
             // 3. Double Check
@@ -55,7 +54,7 @@ final readonly class IdempotentRegisterTenantHandler implements RegisterTenantHa
             return $result;
 
         } finally {
-            $lock->release();
+            //
         }
     }
 }

@@ -29,15 +29,15 @@ class RedirectIfAuthenticated
             if (Auth::guard($guard)->check()) {
                 $user = Auth::user();
 
-                if ($user->role === 'super_admin') {
+                if ($user->isSuperAdmin()) {
                     return redirect('/admin');
                 }
 
-                if ($user->role === 'seller') {
+                if ($user->hasRole('seller')) {
                     return redirect($this->panelUrlResolver->forUser($user));
                 }
 
-                if ($user->role === 'buyer') {
+                if ($user->hasRole('buyer')) {
                     return redirect('/mi-cuenta');
                 }
 

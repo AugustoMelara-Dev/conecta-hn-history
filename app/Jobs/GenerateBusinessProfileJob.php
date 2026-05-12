@@ -58,8 +58,8 @@ class GenerateBusinessProfileJob implements ShouldQueue
     public function __construct(
         public readonly string $businessName,
         public readonly string $description,
-        public readonly int $userId,
-        public readonly int $tenantId,
+        public readonly int|string $userId,
+        public readonly int|string $tenantId,
         public readonly ?string $targetAudience = null,
         public readonly ?string $tone = null,
         public readonly array $keywords = []

@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://conecta-hn.com/schemas/otp.generated.v1.json",
+  "title": "OtpGenerated payload v1",
+  "type": "object",
+  "required": ["otp_id", "tenant_id", "occurred_at", "plain_text_code", "identifier", "expiry_minutes"],
+  "additionalProperties": false,
+  "properties": {
+    "otp_id": {
+      "type": "string"
+    },
+    "user_id": {
+      "type": ["string", "null"]
+    },
+    "tenant_id": {
+      "type": "string"
+    },
+    "occurred_at": {
+      "type": "string"
+    },
+    "plain_text_code": {
+      "type": "string"
+    },
+    "identifier": {
+      "type": "string"
+    },
+    "expiry_minutes": {
+      "type": "integer"
+    }
+  }
+}

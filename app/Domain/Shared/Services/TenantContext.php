@@ -44,6 +44,11 @@ final class TenantContext
         $this->isInitialized = true;
     }
 
+    public function set(int|string $id): void
+    {
+        $this->setTenant($id);
+    }
+
     /**
      * Initialize context as System Root (Super Admin / Console / Jobs).
      *

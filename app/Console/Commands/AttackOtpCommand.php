@@ -9,6 +9,7 @@ use App\Application\Auth\Handlers\VerifyOtpHandlerInterface;
 use App\Domain\Auth\Exceptions\InvalidOtpException;
 use App\Domain\Auth\Exceptions\MaxOtpAttemptsExceededException;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 use Ramsey\Uuid\Uuid;
 
 class AttackOtpCommand extends Command
@@ -17,8 +18,19 @@ class AttackOtpCommand extends Command
 
     protected $description = 'Simulate an OTP attack attempt';
 
-    public function handle(VerifyOtpHandlerInterface $handler): int
+    public function handle(): int
     {
+        $dbPath = env('OTP_ATTACK_DB_PATH');
+
+        if (is_string($dbPath) && $dbPath !== '') {
+            config(['database.connections.sqlite.database' => $dbPath]);
+            DB::purge('sqlite');
+            DB::setDefaultConnection('sqlite');
+        }
+
+        /** @var VerifyOtpHandlerInterface $handler */
+        $handler = app(VerifyOtpHandlerInterface::class);
+
         $identifier = $this->argument('identifier');
         $tenantId = $this->argument('tenantId');
         $code = $this->argument('code');

@@ -16,7 +16,7 @@ Tu reserva en **{{ $tenantName }}** ha sido programada con exito.
 Si necesitas cancelar o reprogramar, usa el boton de abajo o contactanos directamente.
 
 <x-mail::button :url="$managementUrl">
-Gestionar mi cita
+Gestionar mi Cita
 </x-mail::button>
 
 Gracias,<br>

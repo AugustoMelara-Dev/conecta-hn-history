@@ -82,6 +82,8 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         'pickup_enabled',
         'minimum_order',
         'business_type',
+        'commercial_mode',
+        'rubro_key',
         // Premium Profile Fields (unlocked for microsite customization)
         'about',
         'hero_image',

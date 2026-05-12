@@ -188,6 +188,7 @@ class SalesExport implements FromQuery, ShouldQueue, WithChunkReading, WithHeadi
     public function query(): Builder
     {
         $query = Order::query()
+            ->withoutGlobalScopes()
             // CRITICAL: Tenant filter FIRST - non-negotiable
             ->where('tenant_id', $this->tenantId->toString())
             // Eager load for N+1 prevention
@@ -390,7 +391,7 @@ class SalesExport implements FromQuery, ShouldQueue, WithChunkReading, WithHeadi
         try {
             event(SalesExportCreated::create(
                 exportId: $this->exportId,
-                tenantId: $this->tenantId,
+                tenantId: \App\ValueObjects\TenantId::fromString($this->tenantId->toString()),
                 userId: $this->userId,
                 format: 'xlsx',
                 criteriaHash: $this->criteria->toHash(),

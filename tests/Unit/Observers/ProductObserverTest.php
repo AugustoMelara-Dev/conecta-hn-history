@@ -5,6 +5,9 @@ declare(strict_types=1);
 use App\Models\Product;
 use App\Observers\ProductObserver;
 use Illuminate\Support\Facades\Cache;
+use Tests\TestCase;
+
+uses(TestCase::class);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SAVED EVENT: Cache Invalidation
@@ -40,6 +43,8 @@ test('deleted flushes tenant-scoped product cache tags', function () {
 
     $observer = new ProductObserver();
     $observer->deleted($product);
+
+    expect(true)->toBeTrue();
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -58,6 +63,8 @@ test('restored flushes tenant-scoped product cache tags', function () {
 
     $observer = new ProductObserver();
     $observer->restored($product);
+
+    expect(true)->toBeTrue();
 });
 
 // ═══════════════════════════════════════════════════════════════════════════

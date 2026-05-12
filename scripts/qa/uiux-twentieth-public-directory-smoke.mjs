@@ -309,16 +309,20 @@ async function validateDirectoryEmpty(page, label) {
 }
 
 async function validateExplore(page, fixture, label) {
-    const response = await page.goto(`${baseUrl}/explore`, { waitUntil: "domcontentloaded", timeout: 45_000 })
+    const response = await page.goto(`${baseUrl}/explore?search=${encodeURIComponent(fixture.tenantName)}`, {
+        waitUntil: "domcontentloaded",
+        timeout: 45_000,
+    })
 
     pushCheck(`${label}_explore_status_ok`, (response?.status() || 0) < 500, `status=${response?.status()} url=${page.url()}`)
-    await page.getByTestId("explore-page").waitFor({ state: "visible", timeout: 15_000 })
+    pushCheck(`${label}_explore_redirects_to_directory`, new URL(page.url()).pathname === "/directorio", page.url())
+    await page.getByTestId("directory-page").waitFor({ state: "visible", timeout: 15_000 })
     const bodyText = await page.locator("body").innerText().catch(() => "")
 
     pushCheck(`${label}_explore_no_fatal_text`, !hasFatalText(bodyText), bodyText.slice(0, 160))
-    pushCheck(`${label}_explore_page_visible`, await page.getByTestId("explore-page").isVisible().catch(() => false))
-    pushCheck(`${label}_explore_search_visible`, await page.getByTestId("explore-search-control").isVisible().catch(() => false))
-    pushCheck(`${label}_favorite_action_visible`, await page.getByTestId("favorite-action").first().isVisible().catch(() => false))
+    pushCheck(`${label}_explore_page_visible`, await page.getByTestId("directory-page").isVisible().catch(() => false))
+    pushCheck(`${label}_explore_search_visible`, await page.getByTestId("directory-search-control").isVisible().catch(() => false))
+    pushCheck(`${label}_explore_tenant_card_visible`, await page.getByTestId("tenant-card").first().isVisible().catch(() => false))
     pushCheck(`${label}_explore_tenant_copy_present`, bodyText.includes(fixture.tenantName), fixture.tenantName)
 }
 

@@ -34,6 +34,14 @@ final class PaymentWebhookController extends Controller
      */
     public function handle(Request $request): JsonResponse
     {
+        if (! $this->hasWebhookSecret()) {
+            $this->logger->critical('PaymentWebhook: Secret not configured', [
+                'provider' => config('services.payment.provider', 'generic'),
+            ]);
+
+            return response()->json(['message' => 'Webhook verification is not configured'], 503);
+        }
+
         $verifiedPayload = $this->verifiedPayload($request);
 
         if ($verifiedPayload === null) {
@@ -144,6 +152,10 @@ final class PaymentWebhookController extends Controller
 
     private function verifyStripeSignature(string $payload, string $signatureHeader): void
     {
+        if (! $this->hasWebhookSecret()) {
+            throw new UnexpectedValueException('Webhook secret is not configured.');
+        }
+
         $parts = [];
 
         foreach (explode(',', $signatureHeader) as $pair) {
@@ -181,6 +193,10 @@ final class PaymentWebhookController extends Controller
      */
     private function verifyGenericSignature(Request $request): bool
     {
+        if (! $this->hasWebhookSecret()) {
+            return false;
+        }
+
         $signature = $request->header('X-Signature');
 
         if (! $signature) {
@@ -228,5 +244,10 @@ final class PaymentWebhookController extends Controller
             now()->subSeconds($toleranceSeconds),
             now()->addSeconds(30),
         );
+    }
+
+    private function hasWebhookSecret(): bool
+    {
+        return trim($this->webhookSecret) !== '';
     }
 }

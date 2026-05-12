@@ -19,5 +19,6 @@ final readonly class RegisterUserResult
         public string $tenantId,
         public string $email,
         public CarbonImmutable $registeredAt,
+        public bool $requiresVerification = true,
     ) {}
 }

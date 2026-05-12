@@ -2,72 +2,63 @@
 
 declare(strict_types=1);
 
-/**
- * Routing Architecture Tests
- *
- * Verifies the "Luxury Entrance" routing strategy:
- * - / → B2B Landing Page (Welcome.jsx)
- * - /explore → Marketplace Discovery (Public/Home.jsx)
- * - /@{slug} → Tenant Microsite (safe namespace, no collisions)
- * - /{slug} → Legacy redirect to /@{slug}
- */
-
 use App\Models\Tenant;
 use App\Models\User;
 
 uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
 
-describe('Luxury Entrance Routing', function () {
-    it('renders landing page at root', function () {
+beforeEach(function (): void {
+    config(['app.domain' => 'localhost']);
+});
+
+describe('Canonical public routing', function () {
+    it('renders the SaaS landing at root', function () {
         $response = $this->get('/');
 
         $response->assertStatus(200);
         $response->assertInertia(fn ($page) => $page->component('Welcome'));
     });
 
-    it('renders marketplace at /explore', function () {
-        $response = $this->get('/explore');
+    it('renders the canonical buyer directory at /directorio', function () {
+        $response = $this->get('/directorio');
 
         $response->assertStatus(200);
-        $response->assertInertia(fn ($page) => $page->component('Public/Home'));
+        $response->assertInertia(fn ($page) => $page->component('Directory/Index'));
     });
 
-    it('routes tenant via @ symbol', function () {
+    it('keeps legacy discovery paths as redirects only', function () {
+        $this->get('/explore')
+            ->assertRedirect('/directorio');
+
+        $this->get('/directory')
+            ->assertStatus(301)
+            ->assertRedirect('/directorio');
+    });
+
+    it('serves app.localhost as the buyer directory alias', function () {
+        $this->get('http://app.localhost/')
+            ->assertRedirect('/directorio');
+    });
+
+    it('serves tenant microsites on tenant subdomains', function () {
         $user = User::factory()->create();
-        $tenant = Tenant::factory()->create([
+        Tenant::factory()->create([
             'user_id' => $user->id,
             'slug' => 'test-barbershop',
-            'is_visible' => true,
+            'is_active' => true,
         ]);
 
-        $response = $this->get('/@test-barbershop');
-
-        $response->assertStatus(200);
-    });
-
-    it('redirects legacy tenant route to @ version', function () {
-        $user = User::factory()->create();
-        $tenant = Tenant::factory()->create([
-            'user_id' => $user->id,
-            'slug' => 'legacy-business',
-            'is_visible' => true,
-        ]);
-
-        $response = $this->get('/legacy-business');
-
-        // Should 301 redirect to /@legacy-business
-        $response->assertStatus(301);
-        $response->assertRedirect('/@legacy-business');
-    });
-
-    it('returns 404 for non-existent tenant', function () {
-        $response = $this->get('/@non-existent-tenant');
-
-        $response->assertStatus(404);
+        $this->get('http://test-barbershop.localhost/')
+            ->assertStatus(200);
     });
 });
 
-describe('System Routes Protection', function () {
+describe('Compatibility and named routes', function () {
+    it('keeps /register as a business-registration bridge', function () {
+        $this->get('/register')
+            ->assertRedirect('/registrar-negocio');
+    });
+
     it('does not conflict with /login', function () {
         $response = $this->get('/login');
 
@@ -75,42 +66,19 @@ describe('System Routes Protection', function () {
         $response->assertInertia(fn ($page) => $page->component('Auth/Login'));
     });
 
-    it('does not conflict with /register', function () {
-        $response = $this->get('/register');
-
-        $response->assertStatus(200);
+    it('keeps /dashboard protected', function () {
+        $this->get('/dashboard')
+            ->assertRedirect('/login');
     });
 
-    it('does not conflict with /directorio', function () {
-        $response = $this->get('/directorio');
-
-        $response->assertStatus(200);
+    it('generates route names for the canonical surfaces', function () {
+        expect(route('home'))->toBe('http://localhost')
+            ->and(route('directory.index'))->toEndWith('/directorio')
+            ->and(route('public.explore'))->toEndWith('/explore');
     });
 
-    it('does not conflict with /dashboard (requires auth)', function () {
-        $response = $this->get('/dashboard');
-
-        // Should redirect to login since unauthenticated
-        $response->assertRedirect('/login');
-    });
-});
-
-describe('Named Routes', function () {
-    it('generates correct URL for home route', function () {
-        expect(route('home'))->toEndWith('/');
-    });
-
-    it('generates correct URL for explore route', function () {
-        expect(route('public.explore'))->toContain('/explore');
-    });
-
-    it('generates correct URL for tenant microsite route', function () {
-        $user = User::factory()->create();
-        $tenant = Tenant::factory()->create([
-            'user_id' => $user->id,
-            'slug' => 'my-business',
-        ]);
-
-        expect(route('tenant.microsite.show', $tenant->slug))->toContain('/@my-business');
+    it('generates tenant microsite URLs on the subdomain route', function () {
+        expect(route('tenant.microsite.show', ['tenant' => 'my-business']))
+            ->toContain('my-business.localhost');
     });
 });

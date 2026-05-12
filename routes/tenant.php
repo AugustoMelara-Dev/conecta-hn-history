@@ -16,15 +16,7 @@
 |
 */
 
-use App\Http\Controllers\Tenant\BillingController;
-use App\Http\Controllers\Tenant\DashboardController;
-use App\Http\Controllers\Tenant\LandingPageController;
-use App\Http\Controllers\Tenant\MarketingController;
-use App\Http\Controllers\Tenant\OrderController;
-use App\Http\Controllers\Tenant\ProductController;
-use App\Http\Controllers\Tenant\ReportController;
-use App\Http\Controllers\Tenant\SettingsController;
-use App\Http\Controllers\Tenant\UpgradeController;
+use App\Http\Controllers\Tenant\LegacyWorkspaceActionController;
 use App\Http\Controllers\Tenant\WorkspaceRedirectController;
 use App\Infrastructure\Http\Middleware\IdentifyTenantMiddleware;
 use Illuminate\Support\Facades\Route;
@@ -44,64 +36,64 @@ Route::middleware(['auth', 'verified', IdentifyTenantMiddleware::class])->prefix
     // ─────────────────────────────────────────────────────────────────────────
     // PRODUCTS CRUD
     // ─────────────────────────────────────────────────────────────────────────
-    Route::controller(ProductController::class)->prefix('products')->group(function () {
+    Route::prefix('products')->group(function () {
         Route::get('/', [WorkspaceRedirectController::class, 'products'])->name('tenant.products.index');
         Route::get('/create', [WorkspaceRedirectController::class, 'createProduct'])->name('tenant.products.create');
-        Route::post('/', 'store')->name('tenant.products.store');
+        Route::post('/', LegacyWorkspaceActionController::class)->name('tenant.products.store');
         Route::get('/{product}/edit', [WorkspaceRedirectController::class, 'editProduct'])->name('tenant.products.edit');
-        Route::put('/{product}', 'update')->name('tenant.products.update');
-        Route::delete('/{product}', 'destroy')->name('tenant.products.destroy');
-        Route::put('/{product}/toggle-visibility', 'toggleVisibility')
+        Route::put('/{product}', LegacyWorkspaceActionController::class)->name('tenant.products.update');
+        Route::delete('/{product}', LegacyWorkspaceActionController::class)->name('tenant.products.destroy');
+        Route::put('/{product}/toggle-visibility', LegacyWorkspaceActionController::class)
             ->name('tenant.products.toggle-visibility');
     });
 
     // ─────────────────────────────────────────────────────────────────────────
     // ORDERS MANAGEMENT
     // ─────────────────────────────────────────────────────────────────────────
-    Route::controller(OrderController::class)->prefix('orders')->group(function () {
+    Route::prefix('orders')->group(function () {
         Route::get('/', [WorkspaceRedirectController::class, 'orders'])->name('tenant.orders.index');
-        Route::put('/{order}/status', 'updateStatus')->name('tenant.orders.update-status');
-        Route::get('/{order}/print-ticket', 'printTicket')->name('orders.print-ticket');
+        Route::put('/{order}/status', LegacyWorkspaceActionController::class)->name('tenant.orders.update-status');
+        Route::get('/{order}/print-ticket', LegacyWorkspaceActionController::class)->name('orders.print-ticket');
     });
 
     // Receipt download (Order detail PDF)
-    Route::get('/orders/{order}/receipt', [OrderController::class, 'downloadReceipt'])
+    Route::get('/orders/{order}/receipt', LegacyWorkspaceActionController::class)
         ->name('receipt.download');
 
     // ─────────────────────────────────────────────────────────────────────────
     // BILLING & SUBSCRIPTION
     // ─────────────────────────────────────────────────────────────────────────
-    Route::controller(BillingController::class)->prefix('billing')->group(function () {
+    Route::prefix('billing')->group(function () {
         Route::get('/', [WorkspaceRedirectController::class, 'billing'])->name('tenant.billing.index');
-        Route::post('/report-payment', 'reportPayment')->name('tenant.billing.report-payment');
-        Route::post('/upgrade', 'upgrade')->name('tenant.billing.upgrade');
+        Route::post('/report-payment', LegacyWorkspaceActionController::class)->name('tenant.billing.report-payment');
+        Route::post('/upgrade', LegacyWorkspaceActionController::class)->name('tenant.billing.upgrade');
     });
 
     // ─────────────────────────────────────────────────────────────────────────
     // SETTINGS (Unified Hub)
     // ─────────────────────────────────────────────────────────────────────────
-    Route::controller(SettingsController::class)->prefix('settings')->group(function () {
+    Route::prefix('settings')->group(function () {
         Route::get('/', [WorkspaceRedirectController::class, 'settings'])->name('tenant.settings.index');
-        Route::post('/profile', 'updateProfile')->name('tenant.settings.update-profile');
-        Route::put('/schedule', 'updateSchedule')->name('tenant.settings.update-schedule');
+        Route::post('/profile', LegacyWorkspaceActionController::class)->name('tenant.settings.update-profile');
+        Route::put('/schedule', LegacyWorkspaceActionController::class)->name('tenant.settings.update-schedule');
     });
 
     // ─────────────────────────────────────────────────────────────────────────
     // REPORTS & PDF GENERATION
     // ─────────────────────────────────────────────────────────────────────────
-    Route::controller(ReportController::class)->prefix('reports')->group(function () {
-        Route::get('/', 'index')->name('tenant.reports.index');
-        Route::get('/sales-pdf', 'salesPdf')->name('reports.sales-pdf');
-        Route::get('/inventory-pdf', 'inventoryPdf')->name('reports.inventory-pdf');
+    Route::prefix('reports')->group(function () {
+        Route::get('/', [WorkspaceRedirectController::class, 'reports'])->name('tenant.reports.index');
+        Route::get('/sales-pdf', LegacyWorkspaceActionController::class)->name('reports.sales-pdf');
+        Route::get('/inventory-pdf', LegacyWorkspaceActionController::class)->name('reports.inventory-pdf');
     });
 
     // ─────────────────────────────────────────────────────────────────────────
     // MARKETING & PROMOTIONS
     // ─────────────────────────────────────────────────────────────────────────
-    Route::controller(MarketingController::class)->prefix('marketing')->group(function () {
+    Route::prefix('marketing')->group(function () {
         Route::get('/', [WorkspaceRedirectController::class, 'marketing'])->name('tenant.marketing.index');
-        Route::post('/coupons', 'store')->name('tenant.coupons.store');
-        Route::put('/coupons/{coupon}/toggle', 'toggle')->name('tenant.coupons.toggle');
+        Route::post('/coupons', LegacyWorkspaceActionController::class)->name('tenant.coupons.store');
+        Route::put('/coupons/{coupon}/toggle', LegacyWorkspaceActionController::class)->name('tenant.coupons.toggle');
     });
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -113,8 +105,8 @@ Route::middleware(['auth', 'verified', IdentifyTenantMiddleware::class])->prefix
     // ─────────────────────────────────────────────────────────────────────────
     // LANDING PAGE BUILDER (PRO)
     // ─────────────────────────────────────────────────────────────────────────
-    Route::controller(LandingPageController::class)->prefix('landing-page')->group(function () {
-        Route::get('/', 'index')->name('tenant.landing-page.index');
-        Route::put('/', 'update')->name('tenant.landing-page.update');
+    Route::prefix('landing-page')->group(function () {
+        Route::get('/', [WorkspaceRedirectController::class, 'landingPage'])->name('tenant.landing-page.index');
+        Route::put('/', LegacyWorkspaceActionController::class)->name('tenant.landing-page.update');
     });
 });

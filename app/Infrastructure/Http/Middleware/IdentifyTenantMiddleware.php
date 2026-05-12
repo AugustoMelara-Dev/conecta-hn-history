@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Infrastructure\Http\Middleware;
 
 use App\Domain\Shared\Services\TenantContext;
+use App\Models\Tenant;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -37,8 +39,7 @@ final class IdentifyTenantMiddleware
         // 1. Resolve from Authenticated User (Secure B2B)
         if (Auth::check()) {
             $user = Auth::user();
-            // Assuming 'tenant_id' is a direct property on User model.
-            $tenantId = $user->tenant_id ?? null;
+            $tenantId = $user->tenant_id ?? $this->resolveAuthenticatedTenantId($user);
         }
 
         // 2. Fallback: Public Routes (e.g. Microsites via Subdomain/Path)
@@ -62,5 +63,33 @@ final class IdentifyTenantMiddleware
         }
 
         return $next($request);
+    }
+
+    private function resolveAuthenticatedTenantId($user): ?string
+    {
+        $tenant = $user->tenant()->first();
+
+        if ($tenant instanceof Tenant) {
+            return (string) $tenant->id;
+        }
+
+        $ownedTenant = $user->tenants()
+            ->orderBy('name')
+            ->first();
+
+        if ($ownedTenant instanceof Tenant) {
+            return (string) $ownedTenant->id;
+        }
+
+        if (! Schema::hasTable('tenant_memberships')) {
+            return null;
+        }
+
+        $memberTenant = $user->memberTenants()
+            ->wherePivotNotNull('accepted_at')
+            ->orderBy('name')
+            ->first();
+
+        return $memberTenant instanceof Tenant ? (string) $memberTenant->id : null;
     }
 }

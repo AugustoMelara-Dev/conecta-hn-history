@@ -65,11 +65,18 @@ final class RegisterTenantRequest extends FormRequest
 
             // Step 3: Business Profile
             'city_id' => ['required', 'integer', 'exists:cities,id'],
-            'category_id' => ['required', 'integer', 'exists:categories,id'],
+            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
+            'commercial_mode' => ['required', 'string', 'in:products,appointments,consulting_leads'],
+            'business_type' => ['nullable', 'string', 'in:retail,service'],
+            'rubro_key' => ['nullable', 'string', 'max:80'],
             'whatsapp' => ['nullable', 'string', 'max:20'],
 
             // Step 4: Plan Selection
             'selected_plan' => ['required', 'in:free,pro'],
+            'terms_accepted' => ['required', 'accepted'],
+            'privacy_accepted' => ['required', 'accepted'],
+            'terms_version' => ['nullable', 'string', 'max:40'],
+            'privacy_version' => ['nullable', 'string', 'max:40'],
         ];
     }
 
@@ -96,10 +103,13 @@ final class RegisterTenantRequest extends FormRequest
             'password.confirmed' => 'Las contraseñas no coinciden.',
             'city_id.required' => 'Selecciona una ciudad.',
             'city_id.exists' => 'La ciudad seleccionada no es válida.',
-            'category_id.required' => 'Selecciona una categoría.',
             'category_id.exists' => 'La categoría seleccionada no es válida.',
+            'commercial_mode.required' => 'Selecciona como quieres recibir clientes.',
+            'commercial_mode.in' => 'Selecciona una ruta comercial válida.',
             'selected_plan.required' => 'Selecciona un plan.',
             'selected_plan.in' => 'El plan seleccionado no es válido.',
+            'terms_accepted.accepted' => 'Debes aceptar los términos para continuar.',
+            'privacy_accepted.accepted' => 'Debes aceptar la política de privacidad para continuar.',
         ];
     }
 }

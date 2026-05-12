@@ -52,7 +52,7 @@ class RegisterUserController extends Controller
             ],
             status: 201,
             headers: [
-                'Location' => route('api.users.show', ['user' => $result->id]), // Placeholder strict convention
+                'Location' => url('/api/v1/users/'.$result->id),
             ]
         );
     }

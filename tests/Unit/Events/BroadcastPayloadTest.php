@@ -724,7 +724,7 @@ class BroadcastPayloadTest extends TestCase
 
         foreach ($events as $event) {
             $this->assertInstanceOf(
-                \App\Contracts\Broadcasting\BroadcastableNotification::class,
+                \App\Contracts\Broadcasting\BroadcastableNotificationInterface::class,
                 $event,
                 get_class($event).' should implement BroadcastableNotification interface'
             );
@@ -792,7 +792,7 @@ class BroadcastPayloadTest extends TestCase
         {
             use \App\Traits\FormatsCurrency;
 
-            public function test_format(int $cents, string $currency): string
+            public function testFormat(int $cents, string $currency): string
             {
                 return $this->formatMoney($cents, $currency);
             }

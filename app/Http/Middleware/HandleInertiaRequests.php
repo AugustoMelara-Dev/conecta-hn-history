@@ -173,7 +173,7 @@ class HandleInertiaRequests extends Middleware
         }
 
         return [
-            'id' => (int) $tenant->id,
+            'id' => (string) $tenant->id,
             'name' => (string) $tenant->name,
             'slug' => (string) $tenant->slug,
             'logo_url' => $this->sanitizeLogoPath($tenant->logo_path),
@@ -203,7 +203,7 @@ class HandleInertiaRequests extends Middleware
         }
 
         $cacheKey = sprintf(
-            '%s:business:%d:announcements:%s',
+            '%s:business:%s:announcements:%s',
             app()->environment(),
             $tenant->id,
             $this->getCacheVersion()
@@ -285,11 +285,11 @@ class HandleInertiaRequests extends Middleware
     // CACHE INVALIDATION (STATIC HELPER)
     // ═══════════════════════════════════════════════════════════════════════
 
-    public static function invalidateAnnouncementsCache(int $tenantId): void
+    public static function invalidateAnnouncementsCache(int|string $tenantId): void
     {
         $version = config('app.version', date('Y.m.d.H'));
         $cacheKey = sprintf(
-            '%s:business:%d:announcements:%s',
+            '%s:business:%s:announcements:%s',
             app()->environment(),
             $tenantId,
             $version

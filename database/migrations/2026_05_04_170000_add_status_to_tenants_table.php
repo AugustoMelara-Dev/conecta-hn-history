@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -26,10 +27,16 @@ return new class extends Migration
             return;
         }
 
+        if (DB::getDriverName() === 'sqlite') {
+            DB::statement('DROP INDEX IF EXISTS tenants_status_idx');
+        }
+
         Schema::table('tenants', function (Blueprint $table): void {
-            $table->dropIndex('tenants_status_idx');
+            if (DB::getDriverName() !== 'sqlite') {
+                $table->dropIndex('tenants_status_idx');
+            }
+
             $table->dropColumn('status');
         });
     }
 };
-

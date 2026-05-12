@@ -29,7 +29,6 @@ function safeRoute(name, fallback, params) {
 
 const navigationLinks = [
     { label: 'Directorio', href: () => safeRoute('directory.index', '/directorio') },
-    { label: 'Explorar', href: () => safeRoute('public.explore', '/explore') },
 ];
 
 function BrandLink() {
@@ -104,7 +103,7 @@ function DesktopNavigation({ auth }) {
                         <Link href={safeRoute('login', '/login')}>Iniciar sesion</Link>
                     </Button>
                     <Button asChild>
-                        <Link href={safeRoute('register', '/register')}>Registrarse</Link>
+                        <Link href={safeRoute('tenant.register', '/registrar-negocio')}>Registrar negocio</Link>
                     </Button>
                 </>
             )}
@@ -159,7 +158,7 @@ function MobileNavigation({ auth }) {
                                 <Link href={safeRoute('login', '/login')}>Iniciar sesion</Link>
                             </Button>
                             <Button asChild>
-                                <Link href={safeRoute('register', '/register')}>Registrarse</Link>
+                                <Link href={safeRoute('tenant.register', '/registrar-negocio')}>Registrar negocio</Link>
                             </Button>
                         </>
                     )}
@@ -196,16 +195,11 @@ function Footer() {
                 </div>
 
                 <div>
-                    <h2 className="text-sm font-semibold">Explorar</h2>
+                    <h2 className="text-sm font-semibold">Directorio</h2>
                     <ul className="mt-4 flex flex-col gap-3 text-sm text-muted-foreground">
                         <li>
                             <Link className="hover:text-foreground" href={safeRoute('directory.index', '/directorio')}>
                                 Directorio
-                            </Link>
-                        </li>
-                        <li>
-                            <Link className="hover:text-foreground" href={safeRoute('public.explore', '/explore')}>
-                                Negocios destacados
                             </Link>
                         </li>
                     </ul>

@@ -8,7 +8,7 @@ use App\Domain\Access\Enums\Role;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\Panel\CanonicalPanelUrlResolver;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
@@ -17,7 +17,7 @@ use Tests\TestCase;
 
 final class CanonicalPanelUrlTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -73,6 +73,32 @@ final class CanonicalPanelUrlTest extends TestCase
         $this->assertSame('/registrar-negocio', $url);
     }
 
+    public function test_resolves_superadmin_url_to_platform_panel(): void
+    {
+        config(['auth.super_admins' => ['ops@example.test']]);
+
+        $user = User::factory()->superAdmin()->create([
+            'email' => 'ops@example.test',
+        ]);
+
+        $url = app(CanonicalPanelUrlResolver::class)->forUser($user);
+
+        $this->assertSame('/admin', $url);
+    }
+
+    public function test_superadmin_role_without_allowlist_does_not_resolve_to_platform_panel(): void
+    {
+        config(['auth.super_admins' => ['ops@example.test']]);
+
+        $user = User::factory()->superAdmin()->create([
+            'email' => 'rogue@example.test',
+        ]);
+
+        $url = app(CanonicalPanelUrlResolver::class)->forUser($user);
+
+        $this->assertSame('/registrar-negocio', $url);
+    }
+
     public function test_workspace_get_routes_redirect_to_canonical_filament_panel(): void
     {
         $user = User::factory()->create();
@@ -116,16 +142,37 @@ final class CanonicalPanelUrlTest extends TestCase
             ->assertRedirect('/app/tienda-del-sur/upgrade-to-pro');
     }
 
-    public function test_legacy_write_and_download_routes_keep_their_current_methods(): void
+    public function test_legacy_write_and_download_routes_are_deprecated_not_operational_panels(): void
     {
-        $this->assertSame(['POST'], Route::getRoutes()->getByName('tenant.products.store')->methods());
-        $this->assertSame(['PUT'], Route::getRoutes()->getByName('tenant.products.update')->methods());
-        $this->assertSame(['DELETE'], Route::getRoutes()->getByName('tenant.products.destroy')->methods());
-        $this->assertSame(['PUT'], Route::getRoutes()->getByName('tenant.orders.update-status')->methods());
-        $this->assertSame(['POST'], Route::getRoutes()->getByName('tenant.billing.report-payment')->methods());
-        $this->assertSame(['POST'], Route::getRoutes()->getByName('tenant.billing.upgrade')->methods());
-        $this->assertSame(['GET', 'HEAD'], Route::getRoutes()->getByName('orders.print-ticket')->methods());
-        $this->assertSame(['GET', 'HEAD'], Route::getRoutes()->getByName('receipt.download')->methods());
+        $deprecatedRouteNames = [
+            'tenant.products.store',
+            'tenant.products.update',
+            'tenant.products.destroy',
+            'tenant.products.toggle-visibility',
+            'tenant.orders.update-status',
+            'tenant.billing.report-payment',
+            'tenant.billing.upgrade',
+            'tenant.settings.update-profile',
+            'tenant.settings.update-schedule',
+            'tenant.coupons.store',
+            'tenant.coupons.toggle',
+            'tenant.landing-page.update',
+            'orders.print-ticket',
+            'receipt.download',
+            'reports.sales-pdf',
+            'reports.inventory-pdf',
+        ];
+
+        foreach ($deprecatedRouteNames as $routeName) {
+            $route = Route::getRoutes()->getByName($routeName);
+
+            $this->assertNotNull($route, "Expected route [{$routeName}] to remain registered as a compatibility endpoint.");
+            $this->assertSame(
+                \App\Http\Controllers\Tenant\LegacyWorkspaceActionController::class,
+                $route->getAction('controller'),
+                "Expected route [{$routeName}] to be retired behind LegacyWorkspaceActionController."
+            );
+        }
     }
 
     private function createTenantForUser(User $user, string $slug): Tenant

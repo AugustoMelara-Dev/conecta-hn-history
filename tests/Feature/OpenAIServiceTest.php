@@ -11,6 +11,7 @@ use App\Services\AI\OpenAIService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
@@ -34,7 +35,7 @@ final class OpenAIServiceTest extends TestCase
 
     private User $user;
 
-    private int $tenantId;
+    private string $tenantId;
 
     protected function setUp(): void
     {
@@ -46,10 +47,14 @@ final class OpenAIServiceTest extends TestCase
         $this->user = User::factory()->create();
 
         // Manual Tenant scaffolding
-        $tenantId = DB::table('tenants')->insertGetId([
+        $tenantId = (string) Str::uuid();
+        DB::table('tenants')->insert([
+            'id' => $tenantId,
             'user_id' => $this->user->id,
             'slug' => 'test-tenant-'.uniqid(),
             'name' => 'Test Tenant',
+            'ai_balance' => 1.00,
+            'ai_reserved_balance' => 0,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -131,7 +136,7 @@ final class OpenAIServiceTest extends TestCase
         ]);
 
         $this->expectException(AiMalformedResponseException::class);
-        $this->expectExceptionMessage('AI returned invalid schema: The tags field must be an array');
+        $this->expectExceptionMessage('AI returned invalid schema: El campo etiquetas debe ser un conjunto.');
 
         $this->service->generateStructuredProfile('Biz', 'Desc', $this->user->id, $this->tenantId);
     }

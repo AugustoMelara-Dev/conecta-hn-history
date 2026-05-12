@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Events\Broadcast;
 
 use App\Broadcasting\ChannelRegistry;
-use App\Contracts\Broadcasting\BroadcastableNotification;
+use App\Contracts\Broadcasting\BroadcastableNotificationInterface;
 use App\Traits\FormatsCurrency;
 use App\Traits\LogsBroadcasts;
 use DateTimeImmutable;
@@ -15,7 +15,7 @@ use Illuminate\Foundation\Events\Dispatchable;
 /**
  * OrderRefundedBroadcast - Real-Time UI Notification for Refund Updates
  */
-final class OrderRefundedBroadcast implements BroadcastableNotification
+final class OrderRefundedBroadcast implements BroadcastableNotificationInterface
 {
     use Dispatchable, FormatsCurrency, InteractsWithSockets, LogsBroadcasts;
 

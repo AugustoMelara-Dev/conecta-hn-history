@@ -76,8 +76,8 @@ final class TenantMicrositeTransformer
             // Location (flat legacy + structured for Map component)
             'city' => $cityName,
             'city_id' => $this->tenantAttribute($tenant, 'city_id'),
-            'latitude' => $this->tenantAttribute($tenant, 'latitude'),
-            'longitude' => $this->tenantAttribute($tenant, 'longitude'),
+            'latitude' => $this->formatLegacyCoordinate($this->tenantAttribute($tenant, 'latitude')),
+            'longitude' => $this->formatLegacyCoordinate($this->tenantAttribute($tenant, 'longitude')),
             'location' => [ // Premium: Structured for Map components
                 'lat' => $this->tenantAttribute($tenant, 'latitude') !== null ? (float) $this->tenantAttribute($tenant, 'latitude') : null,
                 'lng' => $this->tenantAttribute($tenant, 'longitude') !== null ? (float) $this->tenantAttribute($tenant, 'longitude') : null,
@@ -129,7 +129,13 @@ final class TenantMicrositeTransformer
      */
     public function transformProducts(Tenant $tenant): array
     {
-        $products = $tenant->products;
+        $products = $tenant->relationLoaded('products')
+            ? $tenant->products
+            : $tenant->products()
+                ->withoutGlobalScopes()
+                ->where('is_visible', true)
+                ->orderBy('name')
+                ->get();
 
         if (! $products || $products->isEmpty()) {
             return [];
@@ -315,6 +321,15 @@ final class TenantMicrositeTransformer
     private function tenantAttribute(Tenant $tenant, string $key): mixed
     {
         return $tenant->getAttributes()[$key] ?? null;
+    }
+
+    private function formatLegacyCoordinate(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return number_format((float) $value, 8, '.', '');
     }
 
     private function modelAttribute(object $model, string $key): mixed

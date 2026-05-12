@@ -101,6 +101,11 @@ final class TenantEntity
         return $this->createdAt;
     }
 
+    public function updatedAt(): DateTimeImmutable
+    {
+        return $this->updatedAt;
+    }
+
     // -- DOMAIN BEHAVIOR --
 
     /**

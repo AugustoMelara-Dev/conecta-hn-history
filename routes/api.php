@@ -1,11 +1,14 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CouponController;
 use App\Http\Controllers\Api\V1\Crm\CrmDealController;
 use App\Http\Controllers\Api\V1\Crm\CrmPipelineController;
+use App\Http\Controllers\Api\V1\DirectoryGuideChatController;
 use App\Http\Controllers\Api\V1\InteractionController;
 use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\ProductController;
+use App\Http\Controllers\Api\V1\TenantAgentChatController;
 use App\Http\Controllers\Auth\OtpController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -21,6 +24,10 @@ Route::prefix('v1')->group(function () {
     Route::post('/register', \App\Infrastructure\Identity\Http\Controllers\RegisterUserController::class)
         ->middleware('throttle:api')
         ->name('api.register');
+
+    Route::post('/auth/social', [AuthController::class, 'socialLogin'])
+        ->middleware('throttle:api')
+        ->name('api.auth.social');
 
     // ═══════════════════════════════════════════════════════════════════════════
     // AUTHENTICATED USER PROFILE
@@ -40,6 +47,10 @@ Route::prefix('v1')->group(function () {
             ->middleware('throttle:api.verification');
     });
 
+    Route::post('/auth/otp/generate', [OtpController::class, 'generate'])
+        ->middleware(['throttle:api.otp-generation', 'idempotency'])
+        ->name('api.auth.otp.generate');
+
     // ═══════════════════════════════════════════════════════════════════════════
     // PUBLIC ANALYTICS: Tenant-Aware Protection
     // ═══════════════════════════════════════════════════════════════════════════
@@ -51,6 +62,10 @@ Route::prefix('v1')->group(function () {
 
     Route::post('/analytics/conversion', [\App\Http\Controllers\Api\V1\AnalyticsController::class, 'conversion'])
         ->middleware('throttle:api');
+
+    Route::post('/directory/guide/chat', DirectoryGuideChatController::class)
+        ->middleware('throttle:api')
+        ->name('api.directory.guide.chat');
 
     // ═══════════════════════════════════════════════════════════════════════════
     // PUBLIC CATALOG
@@ -195,11 +210,34 @@ Route::prefix('v1')->group(function () {
         Route::post('/optimize-profile', [\App\Http\Controllers\Api\V1\AiOptimizationController::class, 'optimizeProfile'])
             ->name('api.ai.optimize-profile');
     });
+
+    Route::post('/tenant/agent/chat', TenantAgentChatController::class)
+        ->middleware(['auth:sanctum', 'throttle:api'])
+        ->name('api.tenant.agent.chat');
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
 // WEBHOOKS (Legacy path maintained)
 // ═══════════════════════════════════════════════════════════════════════════
+Route::prefix('checkout')->group(function () {
+    Route::post('/validate-coupon', [\App\Http\Controllers\Public\CheckoutController::class, 'validateCoupon'])
+        ->middleware('throttle:api.verification');
+
+    Route::post('/cart-summary', [\App\Http\Controllers\Public\CheckoutController::class, 'getCartSummary'])
+        ->middleware('throttle:api');
+
+    Route::post('/remove-coupon', [\App\Http\Controllers\Public\CheckoutController::class, 'removeCoupon'])
+        ->middleware('throttle:api');
+});
+
+Route::prefix('coupons')->group(function () {
+    Route::post('/verify', [CouponController::class, 'verify'])
+        ->middleware('throttle:api.verification');
+
+    Route::get('/', [CouponController::class, 'index'])
+        ->middleware('throttle:api');
+});
+
 Route::post('/webhooks/payment', [\App\Http\Controllers\Webhook\PaymentWebhookController::class, 'handle'])
     ->name('webhooks.payment')
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);

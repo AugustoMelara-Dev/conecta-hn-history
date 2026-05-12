@@ -18,10 +18,15 @@ final class EloquentLandingPageRepository implements LandingPageRepository
 {
     public function getCategories(): Collection
     {
+        if (! Schema::hasTable('categories')) {
+            return collect();
+        }
+
         $columns = collect(['id', 'name', 'slug', 'icon', 'color'])
             ->filter(fn (string $column): bool => Schema::hasColumn('categories', $column))
             ->values()
             ->all();
+        $columns = $columns === [] ? ['*'] : $columns;
 
         $query = Category::query()->select($columns);
 
@@ -40,10 +45,15 @@ final class EloquentLandingPageRepository implements LandingPageRepository
 
     public function getPopularCities(): Collection
     {
+        if (! Schema::hasTable('cities')) {
+            return collect();
+        }
+
         $columns = collect(['id', 'name', 'slug', 'hero_image', 'department'])
             ->filter(fn (string $column): bool => Schema::hasColumn('cities', $column))
             ->values()
             ->all();
+        $columns = $columns === [] ? ['*'] : $columns;
 
         $query = City::query()
             ->select($columns);
@@ -52,7 +62,7 @@ final class EloquentLandingPageRepository implements LandingPageRepository
             $query->where('is_available', true);
         }
 
-        if (Schema::hasColumn('tenants', 'city_id')) {
+        if (Schema::hasTable('tenants') && Schema::hasColumn('tenants', 'city_id')) {
             return $query
                 ->withCount(['tenants' => fn ($q) => $q->where('is_active', true)])
                 ->orderByDesc('tenants_count')
@@ -69,21 +79,29 @@ final class EloquentLandingPageRepository implements LandingPageRepository
 
     public function getLatestTenants(): Collection
     {
+        if (! Schema::hasTable('tenants')) {
+            return collect();
+        }
+
         $columns = collect(['id', 'name', 'slug', 'logo_path', 'category_id', 'created_at', 'subscription_status', 'plan_type'])
             ->filter(fn (string $column): bool => Schema::hasColumn('tenants', $column))
             ->values()
             ->all();
+        $columns = $columns === [] ? ['*'] : $columns;
 
         $relations = [];
 
-        if (Schema::hasColumn('tenants', 'category_id')) {
+        if (Schema::hasTable('categories') && Schema::hasColumn('tenants', 'category_id')) {
             $relations[] = 'category:id,name,color';
         }
 
         $query = Tenant::query()
-            ->where('is_active', true)
             ->with($relations)
             ->select($columns);
+
+        if (Schema::hasColumn('tenants', 'is_active')) {
+            $query->where('is_active', true);
+        }
 
         if (Schema::hasColumn('tenants', 'status')) {
             $query->where('status', 'approved');
@@ -100,6 +118,10 @@ final class EloquentLandingPageRepository implements LandingPageRepository
 
     public function getRandomHeroImage(): ?string
     {
+        if (! Schema::hasTable('cities')) {
+            return null;
+        }
+
         if (! Schema::hasColumn('cities', 'hero_image')) {
             return null;
         }
@@ -112,26 +134,26 @@ final class EloquentLandingPageRepository implements LandingPageRepository
 
     public function getStats(): array
     {
-        $tenantQuery = Tenant::query();
-        $cityQuery = City::query();
-        $categoryQuery = Category::query();
+        $tenantQuery = Schema::hasTable('tenants') ? Tenant::query() : null;
+        $cityQuery = Schema::hasTable('cities') ? City::query() : null;
+        $categoryQuery = Schema::hasTable('categories') ? Category::query() : null;
 
-        if (Schema::hasColumn('tenants', 'is_active')) {
+        if ($tenantQuery !== null && Schema::hasColumn('tenants', 'is_active')) {
             $tenantQuery->where('is_active', true);
         }
 
-        if (Schema::hasColumn('cities', 'is_available')) {
+        if ($cityQuery !== null && Schema::hasColumn('cities', 'is_available')) {
             $cityQuery->where('is_available', true);
         }
 
-        if (Schema::hasColumn('categories', 'is_active')) {
+        if ($categoryQuery !== null && Schema::hasColumn('categories', 'is_active')) {
             $categoryQuery->where('is_active', true);
         }
 
         return [
-            'tenants' => $tenantQuery->count(),
-            'cities' => $cityQuery->count(),
-            'categories' => $categoryQuery->count(),
+            'tenants' => $tenantQuery?->count() ?? 0,
+            'cities' => $cityQuery?->count() ?? 0,
+            'categories' => $categoryQuery?->count() ?? 0,
         ];
     }
 }

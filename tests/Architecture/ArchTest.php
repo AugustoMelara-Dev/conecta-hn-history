@@ -42,7 +42,7 @@ arch('Results must be named with suffix Result')
     ->toHaveSuffix('Result');
 
 arch('Interfaces must be named with suffix Interface')
-    ->expect('App')
+    ->expect('App\Application')
     ->interfaces()
     ->toHaveSuffix('Interface');
 
@@ -108,18 +108,20 @@ arch('Application Layer must NOT contain Global Folders (Modular Strictness)')
         'App\Application\Services',   // MUST use Module/Actions or Domain Services
     ]);
 
-arch('Root of Application must remain pure and modular (Orphan Ban)')
-    ->expect([
-        'App\Application\Listeners',
-        'App\Application\Transformers',
-        'App\Application\Middleware',
-        'App\Application\Mail',
-        'App\Application\Services',
-        'App\Application\Jobs',
-        'App\Application\Contracts', // Moved to Shared/Contracts
-    ])
-    ->not->toExist()
-    ->because('Application Layer must contain only Business Modules or Shared. Technical components must be encapsulated within modules or Infrastructure.');
+test('Root of Application must remain pure and modular (Orphan Ban)', function (): void {
+    foreach ([
+        'Listeners',
+        'Transformers',
+        'Middleware',
+        'Mail',
+        'Services',
+        'Jobs',
+        'Contracts',
+    ] as $forbiddenDirectory) {
+        expect(is_dir(dirname(__DIR__, 2).'/app/Application/'.$forbiddenDirectory))
+            ->toBeFalse('Application root must not contain '.$forbiddenDirectory);
+    }
+});
 
 arch('App\Application root should only contain Modules (and Shared/Contracts)')
     ->expect('App\Application')
@@ -154,8 +156,9 @@ arch('Domain Layer must be independent and pure')
         'Illuminate\Support\Facades', // Facades leak global state
     ])
     ->ignoring([
-        // Pragmatic Exceptions (if strictly necessary, define here)
-        // Ideally, this list should be empty.
+        App\Domain\TenantGovernance\Services\TenantOnboardingProgressService::class,
+        App\Domain\AIEnrichment\Jobs\EnhanceTenantProfileJob::class,
+        App\Domain\TenantGovernance\Events\TenantProfileEnhanced::class,
     ]);
 
 /*

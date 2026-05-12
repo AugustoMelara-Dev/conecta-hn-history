@@ -78,6 +78,7 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
             'id' => $tenant->id(),
             'name' => $tenant->name(),
             'slug' => $tenant->domain(), // TenantEntity uses "domain" for what Eloquent calls "slug"
+            'domain' => $tenant->domain(),
             'plan' => 'SEED', // Default plan for new registrations
             'is_active' => $tenant->isActive(),
         ]);

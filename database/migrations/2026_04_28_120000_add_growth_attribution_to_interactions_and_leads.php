@@ -16,7 +16,7 @@ return new class extends Migration
             Schema::table('interactions', function (Blueprint $table): void {
                 foreach ($this->attributionColumns() as $column => $length) {
                     if (! Schema::hasColumn('interactions', $column)) {
-                        $table->string($column, $length)->nullable()->after('url');
+                        $table->string($column, $length)->nullable();
                     }
                 }
             });

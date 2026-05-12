@@ -2,12 +2,15 @@
 
 declare(strict_types=1);
 
-use App\Enums\UserRole;
+use App\Domain\Identity\Enums\UserRole;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Observers\TenantObserver;
 use App\Services\TenantCacheManager;
 use Illuminate\Support\Facades\Log;
+use Tests\TestCase;
+
+uses(TestCase::class);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CREATED EVENT: Role Assignment

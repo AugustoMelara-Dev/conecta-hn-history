@@ -31,7 +31,7 @@ use Illuminate\Support\Facades\Log;
  * ║                                                                          ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final class BudgetEnforcer
+class BudgetEnforcer
 {
     /**
      * Reserva créditos estimados ANTES de ejecutar operación IA.

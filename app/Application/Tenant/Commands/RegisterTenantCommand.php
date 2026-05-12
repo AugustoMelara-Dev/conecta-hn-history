@@ -26,8 +26,11 @@ final readonly class RegisterTenantCommand implements IdempotentCommandInterface
 
         // Profile
         public int $cityId,
-        public int $categoryId,
+        public ?int $categoryId,
         public ?string $whatsapp,
+        public string $commercialMode = 'products',
+        public string $businessType = 'retail',
+        public ?string $rubroKey = null,
         public string $selectedPlan = 'free',
 
         // Metadata

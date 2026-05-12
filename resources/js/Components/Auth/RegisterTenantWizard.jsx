@@ -298,9 +298,9 @@ export function RegisterTenantWizard({
     }, [])
     const legalTermsUrl = useMemo(() => firstValidUrl(routeUrlIfExists("legal.terms"), "/legal/terms"), [])
     const legalPrivacyUrl = useMemo(() => firstValidUrl(routeUrlIfExists("legal.privacy"), "/legal/privacy"), [])
-    const exploreUrl = useMemo(() => firstValidUrl(routeUrlIfExists("directory.index"), "/directorio"), [])
+    const directoryUrl = useMemo(() => firstValidUrl(routeUrlIfExists("directory.index"), "/directorio"), [])
     const businessPreview = data.business_name.trim() || "Tu negocio"
-    const slugPreview = data.slug ? `${slugBaseHost}/t/${slugify(data.slug)}` : `${slugBaseHost}/t/tu-negocio`
+    const slugPreview = data.slug ? `${slugify(data.slug)}.${slugBaseHost}` : `tu-negocio.${slugBaseHost}`
     const progress = ((step + 1) / STEPS.length) * 100
     const freeLimit = Number(settings.freeProductLimit ?? 10)
     const proLimit = Number(settings.proProductLimit ?? 100)
@@ -557,7 +557,7 @@ export function RegisterTenantWizard({
                         <Link href={route("login")}>Iniciar sesión</Link>
                     </Button>
                     <Button variant="outline" asChild>
-                        <Link href={exploreUrl}>Explorar</Link>
+                        <Link href={directoryUrl}>Directorio</Link>
                     </Button>
                 </>
             }

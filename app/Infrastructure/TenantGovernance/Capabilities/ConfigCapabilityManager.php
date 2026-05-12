@@ -42,7 +42,7 @@ final class ConfigCapabilityManager implements CapabilityManagerInterface
             ];
         }
 
-        return [
+        $capabilities = [
             Capability::CATALOG_BASIC,
             Capability::CHECKOUT_BASIC,
             Capability::CUSTOMER_DIRECTORY,
@@ -53,5 +53,30 @@ final class ConfigCapabilityManager implements CapabilityManagerInterface
             Capability::COUPONS_BASIC,
             Capability::STAFF_BASIC,
         ];
+
+        if ($this->privateAiEnabledForTenant($tenant)) {
+            $capabilities[] = Capability::AI_CONTENT;
+        }
+
+        return $capabilities;
+    }
+
+    private function privateAiEnabledForTenant(Tenant $tenant): bool
+    {
+        if ((bool) config('ai.private.enabled', false) !== true) {
+            return false;
+        }
+
+        $allowlist = array_map(
+            static fn (mixed $value): string => strtolower(trim((string) $value)),
+            (array) config('ai.private.tenant_allowlist', []),
+        );
+
+        if ($allowlist === []) {
+            return false;
+        }
+
+        return in_array(strtolower((string) $tenant->getKey()), $allowlist, true)
+            || in_array(strtolower((string) $tenant->slug), $allowlist, true);
     }
 }

@@ -5,14 +5,15 @@ declare(strict_types=1);
 namespace Tests\Integration\Infrastructure\Persistence;
 
 use App\Domain\Identity\Entities\UserEntity;
-use App\Infrastructure\Persistence\EloquentUserRepository;
+use App\Infrastructure\Identity\Persistence\EloquentUserRepository;
+use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class EloquentUserRepositoryTest extends TestCase
 {
-    // use RefreshDatabase; // Disabled due to broken project-wide migrations in SQLite
+    use RefreshDatabase;
 
     private EloquentUserRepository $repository;
 
@@ -20,23 +21,8 @@ class EloquentUserRepositoryTest extends TestCase
     {
         parent::setUp();
 
-        // MANUAL SCHEMA PROVISIONING (Isolation Strategy)
-        // We create only the table needed for this repository, bypassing broken migrations.
-        \Illuminate\Support\Facades\Schema::create('users', function (\Illuminate\Database\Schema\Blueprint $table) {
-            $table->uuid('id')->primary();
-            $table->uuid('tenant_id');
-            $table->string('name');
-            $table->string('email');
-            $table->string('password');
-            $table->string('role');
-            $table->string('avatar')->nullable();
-            $table->string('provider')->nullable(); // Legacy col support
-            $table->string('provider_id')->nullable(); // Legacy col support
-            $table->timestamps();
-        });
-
         // REAL Integration: No Mocks allowed.
-        $this->repository = new EloquentUserRepository;
+        $this->repository = app(EloquentUserRepository::class);
     }
 
     /** @test */
@@ -44,6 +30,7 @@ class EloquentUserRepositoryTest extends TestCase
     {
         // 1. Arrange: Create Valid Domain Entity with UUID v7
         $tenantId = (string) Str::uuid();
+        Tenant::factory()->create(['id' => $tenantId]);
         $user = UserEntity::registerViaSocial(
             tenantId: $tenantId,
             name: 'John Doe',
@@ -75,6 +62,7 @@ class EloquentUserRepositoryTest extends TestCase
     {
         // 1. Arrange: Persist Initial State
         $tenantId = (string) Str::uuid();
+        Tenant::factory()->create(['id' => $tenantId]);
         $user = UserEntity::registerViaSocial(
             tenantId: $tenantId,
             name: 'Original Name',
@@ -116,6 +104,7 @@ class EloquentUserRepositoryTest extends TestCase
     {
         // 1. Arrange: Persist User
         $tenantId = (string) Str::uuid();
+        Tenant::factory()->create(['id' => $tenantId]);
         $original = UserEntity::registerViaSocial(
             tenantId: $tenantId,
             name: 'Hydration Test',

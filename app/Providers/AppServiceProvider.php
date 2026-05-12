@@ -42,6 +42,14 @@ class AppServiceProvider extends ServiceProvider
             \App\Domain\Common\Contracts\EventStoreRepositoryInterface::class,
             \App\Infrastructure\Common\EventStore\DatabaseEventStore::class
         );
+        $this->app->bind(
+            \App\Domain\Common\Contracts\SnapshotRepositoryInterface::class,
+            \App\Infrastructure\Common\Snapshots\DatabaseSnapshotRepository::class
+        );
+        $this->app->singleton(
+            \App\Domain\Common\Contracts\SnapshotStrategyInterface::class,
+            fn () => new \App\Infrastructure\Common\Snapshots\Strategies\EventCountSnapshotStrategy(10)
+        );
 
         // ═══════════════════════════════════════════════════════════════════════
         // OUTBOX PUBLISHER: Transport Adapter (Log, Redis, etc.)
@@ -70,6 +78,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             \App\Application\Shared\Contracts\LoggerInterface::class,
             \App\Infrastructure\Logging\LaravelLoggerAdapter::class
+        );
+        $this->app->bind(
+            \App\Application\Shared\Contracts\ValidationServiceInterface::class,
+            \App\Infrastructure\Shared\Services\LaravelValidationService::class
         );
         $this->app->bind(
             \App\Application\Shared\Contracts\DataScrubberInterface::class,
@@ -230,6 +242,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             \App\Domain\Shared\PasswordHasherInterface::class,
             \App\Infrastructure\Shared\Services\LaravelPasswordHasher::class
+        );
+        $this->app->bind(
+            \App\Domain\Security\Contracts\HasherInterface::class,
+            \App\Infrastructure\Security\LaravelHasher::class
         );
 
         $this->app->bind(
@@ -693,6 +709,13 @@ class AppServiceProvider extends ServiceProvider
             \App\Infrastructure\Shared\Services\AtomicIdempotencyService::class
         );
 
+        $this->app->bind(
+            \App\Application\Common\Contracts\IdempotencyServiceInterface::class,
+            fn ($app) => new \App\Infrastructure\Common\Idempotency\RedisIdempotencyService(
+                $app['redis']->connection()
+            )
+        );
+
         // ═══════════════════════════════════════════════════════════════════════
         // DOMAIN EVENTS: Infrastructure Bridge
         // ═══════════════════════════════════════════════════════════════════════
@@ -863,6 +886,16 @@ class AppServiceProvider extends ServiceProvider
             $key = $request->ip().'|'.$request->userAgent().'|'.$request->input('tenant_id');
 
             return \Illuminate\Cache\RateLimiting\Limit::perMinute(10)->by($key);
+        });
+
+        \Illuminate\Support\Facades\RateLimiter::for('api.verification', function (\Illuminate\Http\Request $request) {
+            return \Illuminate\Cache\RateLimiting\Limit::perMinute(10)
+                ->by($request->user()?->id ?: $request->ip());
+        });
+
+        \Illuminate\Support\Facades\RateLimiter::for('api.otp-generation', function (\Illuminate\Http\Request $request) {
+            return \Illuminate\Cache\RateLimiting\Limit::perMinute(3)
+                ->by($request->user()?->id ?: $request->ip());
         });
 
         // TENANT-AWARE RATE LIMITING (Contextual Throttling)

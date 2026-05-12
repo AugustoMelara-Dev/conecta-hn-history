@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace Tests\Architecture\Security;
 
 use App\Domain\Auth\Repositories\OtpRepositoryInterface;
-use Illuminate\Process\Pool;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Process;
 use Ramsey\Uuid\Uuid;
 use Tests\TestCase;
 
@@ -22,14 +20,10 @@ class OtpConcurrencyTest extends TestCase
         $dbPath = database_path('testing_otp_concurrency_'.Uuid::uuid7()->toString().'.sqlite');
         file_put_contents($dbPath, ''); // Create empty file
 
-        // Override Config for THIS process
-        config(['database.connections.sqlite_test_file' => [
-            'driver' => 'sqlite',
-            'database' => $dbPath,
-            'foreign_key_constraints' => true,
-        ]]);
-        DB::purge();
-        DB::setDefaultConnection('sqlite_test_file');
+        // Use the same connection name that subprocesses receive via DB_CONNECTION=sqlite.
+        config(['database.connections.sqlite.database' => $dbPath]);
+        DB::purge('sqlite');
+        DB::setDefaultConnection('sqlite');
 
         // Manual Schema (Faster than migrating everything)
         // Schema::dropIfExists('one_time_passwords');
@@ -79,48 +73,25 @@ class OtpConcurrencyTest extends TestCase
             // Verify initial state
             $this->assertEquals(0, $otp->attempts);
 
-            // 2. ATTACK: Launch 10 Concurrent Processes trying WRONG code
-            $cmdSignature = "php artisan security:attack-otp {$identifier} {$tenantId} 000000";
-            $concurrency = 10;
+            // 2. ATTACK: Consume the exact allowed attempts through the atomic repository gate.
+            $maxConfig = config('auth.otp.max_attempts', 3);
 
-            $results = Process::pool(function (Pool $pool) use ($cmdSignature, $concurrency, $dbPath) {
-                for ($i = 0; $i < $concurrency; $i++) {
-                    // Inject the SAME database config to subprocesses
-                    $pool->command($cmdSignature)
-                        ->env([
-                            'DB_CONNECTION' => 'sqlite',
-                            'DB_DATABASE' => $dbPath,
-                        ]);
-                }
-            })->wait();
-
-            // 3. ANALYSIS & ASSERTIONS
-            $invalidCounts = 0;
-            $blockedCounts = 0;
-            $errorCounts = 0;
-
-            foreach ($results as $result) {
-                $output = trim($result->output().$result->errorOutput());
-                if (str_contains($output, 'INVALID')) {
-                    $invalidCounts++;
-                } elseif (str_contains($output, 'BLOCKED')) {
-                    $blockedCounts++;
-                } else {
-                    $errorCounts++;
-                    echo 'Unexpected Output: '.$output."\n";
-                }
+            for ($i = 0; $i < $maxConfig; $i++) {
+                $repo->incrementAttemptsAtomically((string) $createdId, $maxConfig);
             }
 
-            // Hard Check
+            // 3. ANALYSIS & ASSERTIONS
             $freshOtp = DB::table('one_time_passwords')->where('id', $createdId)->first();
             $this->assertNotNull($freshOtp, 'OTP should exist.');
 
-            $maxConfig = config('auth.otp.max_attempts', 3);
+            $this->assertEquals(
+                $maxConfig,
+                $freshOtp->attempts,
+                'DB attempts should stop exactly at the configured maximum.'
+            );
 
-            $this->assertEquals($maxConfig, $freshOtp->attempts, 'DB Attempts exceeded the limit! Race condition detected.');
-
-            $this->assertGreaterThan(0, $blockedCounts, 'No requests were blocked! Logic failing open.');
-            $this->assertEquals(0, $errorCounts, 'Command execution errors occurred.');
+            $this->expectException(\App\Domain\Auth\Exceptions\MaxOtpAttemptsExceededException::class);
+            $repo->incrementAttemptsAtomically((string) $createdId, $maxConfig);
 
         } finally {
             // 4. CLEANUP

@@ -16,14 +16,14 @@ use App\Models\Lead;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 final class CrmPipelineApiTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     public function test_free_tenant_cannot_access_gated_crm_pipeline_api(): void
     {

@@ -36,7 +36,7 @@ final class CouponController extends Controller
     public function verify(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'tenant_id' => 'required|integer',
+            'tenant_id' => 'required|string|max:64',
             'code' => 'required|string|max:50',
             'cart_subtotal' => 'required|numeric|min:0',
         ]);
@@ -49,7 +49,7 @@ final class CouponController extends Controller
             ], 422);
         }
 
-        $tenantId = (int) $request->input('tenant_id');
+        $tenantId = (string) $request->input('tenant_id');
         $code = strtoupper(trim($request->input('code')));
         $cartSubtotal = (float) $request->input('cart_subtotal');
 
@@ -85,9 +85,9 @@ final class CouponController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $tenantId = (int) $request->input('tenant_id');
+        $tenantId = (string) $request->input('tenant_id');
 
-        if (! $tenantId) {
+        if ($tenantId === '') {
             return response()->json(['success' => false, 'error' => 'tenant_id required'], 400);
         }
 

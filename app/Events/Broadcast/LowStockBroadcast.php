@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Events\Broadcast;
 
 use App\Broadcasting\ChannelRegistry;
-use App\Contracts\Broadcasting\BroadcastableNotification;
+use App\Contracts\Broadcasting\BroadcastableNotificationInterface;
 use App\Enums\LowStockSeverity;
 use App\Traits\LogsBroadcasts;
 use DateTimeImmutable;
@@ -15,7 +15,7 @@ use Illuminate\Foundation\Events\Dispatchable;
 /**
  * LowStockBroadcast - Real-Time UI Notification for Inventory Alerts
  */
-final class LowStockBroadcast implements BroadcastableNotification
+final class LowStockBroadcast implements BroadcastableNotificationInterface
 {
     use Dispatchable, InteractsWithSockets, LogsBroadcasts;
 

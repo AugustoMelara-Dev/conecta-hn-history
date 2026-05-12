@@ -37,17 +37,17 @@ const highlights = [
     {
         icon: Store,
         title: 'Micrositio publico',
-        description: 'Una vitrina clara para catalogo, horarios, contacto y ubicacion.',
+        description: 'Una presencia clara para catalogo, horarios, contacto y ubicacion.',
     },
     {
         icon: ShoppingBag,
-        title: 'Venta guiada',
-        description: 'Clientes encuentran productos, reservan o consultan sin perderse.',
+        title: 'Ruta comercial',
+        description: 'Clientes encuentran productos, reservan o consultan segun tu modo de operacion.',
     },
     {
         icon: BarChart3,
-        title: 'Panel operativo',
-        description: 'El negocio ve actividad, productos y acciones importantes desde su panel.',
+        title: 'Panel Filament',
+        description: 'El negocio opera productos, reservas, CRM, campanas, billing y reportes desde su panel.',
     },
 ];
 
@@ -60,15 +60,15 @@ const steps = [
 const faqs = [
     {
         question: 'Puedo iniciar gratis?',
-        answer: 'Si. El registro mantiene el flujo actual del proyecto y el backend decide el acceso real segun el plan disponible.',
+        answer: 'Si. Free incluye micrositio, presencia en directorio, contacto, WhatsApp, telefono, mapa y capacidad inicial limitada.',
     },
     {
-        question: 'Esto cambia mi forma de vender?',
-        answer: 'No. La landing solo presenta mejor el producto. Checkout, pagos, reservas y permisos siguen gobernados por las rutas actuales.',
+        question: 'Que cambia al pasar a PRO?',
+        answer: 'PRO amplia capacidad y habilita, segun gates reales, reservas, campanas, reportes, CRM e IA privada.',
     },
     {
-        question: 'Puedo mostrar productos y datos del negocio?',
-        answer: 'Si. La experiencia publica apunta al directorio y a los micrositios existentes para que cada negocio tenga una presencia clara.',
+        question: 'El panel operativo esta en esta pagina?',
+        answer: 'No. Esta pagina vende el SaaS. Las operaciones del negocio viven en el panel Filament de /app/{tenant}.',
     },
 ];
 
@@ -187,7 +187,7 @@ function HeroSection({ auth, canRegister, heroImage, stats }) {
                     </h1>
 
                     <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-                        Conecta HN ordena presencia digital, directorio, micrositio y panel administrativo en una experiencia clara para clientes y negocios.
+                        Vito Business OS ordena presencia digital, directorio, micrositio y panel operativo en una experiencia clara para negocios y clientes.
                     </p>
 
                     <form
@@ -232,7 +232,7 @@ function HeroSection({ auth, canRegister, heroImage, stats }) {
                             <>
                                 {canRegister !== false && (
                                     <Button size="lg" asChild data-testid="landing-primary-cta">
-                                        <Link href={appRoute('register', undefined, '/register')}>
+                                        <Link href={appRoute('tenant.register', undefined, '/registrar-negocio')}>
                                             Registrar mi negocio
                                             <ArrowRight data-icon="inline-end" aria-hidden="true" />
                                         </Link>
@@ -271,7 +271,7 @@ function HeroSection({ auth, canRegister, heroImage, stats }) {
                                     <Sparkles className="size-4" aria-hidden="true" />
                                     <AlertTitle>Presencia clara desde el primer dia</AlertTitle>
                                     <AlertDescription>
-                                        Directorio, catalogo y contacto en una misma experiencia publica.
+                                        Directorio, micrositio y contacto en una misma experiencia publica.
                                     </AlertDescription>
                                 </Alert>
                             </div>
@@ -297,9 +297,9 @@ function ValueSection() {
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div className="max-w-2xl">
                     <Badge variant="outline">Beneficios</Badge>
-                    <h2 className="mt-4 text-3xl font-semibold">Una landing que explica el producto sin ruido</h2>
+                    <h2 className="mt-4 text-3xl font-semibold">Una sola ruta para vender, reservar o captar clientes</h2>
                     <p className="mt-3 text-muted-foreground">
-                        El rediseño prioriza conversion, lectura rapida, confianza y accesibilidad sin mover contratos sensibles.
+                        Cada negocio elige su modo de operacion principal y queda conectado al directorio, micrositio y panel correcto.
                     </p>
                 </div>
 
@@ -384,9 +384,9 @@ function TenantsSection({ tenants }) {
                 <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
                     <div>
                         <Badge variant="outline">Negocios</Badge>
-                        <h2 className="mt-4 text-3xl font-semibold">Comercios que el cliente puede explorar</h2>
+                        <h2 className="mt-4 text-3xl font-semibold">Negocios que el cliente puede explorar</h2>
                         <p className="mt-3 max-w-2xl text-muted-foreground">
-                            La prueba social usa datos reales del backend y enlaza al micrositio canonico de cada negocio.
+                            Cada tarjeta enlaza al micrositio publico del negocio y mantiene el directorio como superficie de usuario final.
                         </p>
                     </div>
                     <Button variant="outline" asChild>
@@ -433,7 +433,7 @@ function TenantsSection({ tenants }) {
                     <Alert className="mt-8">
                         <AlertTitle>Negocios en preparacion</AlertTitle>
                         <AlertDescription>
-                            La landing no se rompe si aun no hay negocios destacados. El CTA principal sigue llevando al registro y al directorio.
+                            Los nuevos negocios apareceran aqui cuando esten visibles. Puedes registrar el tuyo o explorar el directorio.
                         </AlertDescription>
                     </Alert>
                 )}
@@ -450,7 +450,7 @@ function ProcessSection() {
                     <Badge variant="outline">Como funciona</Badge>
                     <h2 className="mt-4 text-3xl font-semibold">Simple para el negocio, claro para el cliente</h2>
                     <p className="mt-3 text-muted-foreground">
-                        La experiencia publica enfoca el valor sin prometer automatizaciones que no pertenecen a la landing.
+                        La experiencia separa claramente clientes finales, alta de negocios y operacion interna.
                     </p>
                 </div>
 
@@ -479,17 +479,17 @@ function PricingSection({ canRegister }) {
             <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
                 <div className="max-w-2xl">
                     <Badge variant="outline">Planes</Badge>
-                    <h2 className="mt-4 text-3xl font-semibold">Empieza simple y sube cuando tengas traccion</h2>
+                    <h2 className="mt-4 text-3xl font-semibold">Empieza simple y sube cuando necesites mas capacidad</h2>
                     <p className="mt-3 text-muted-foreground">
-                        La landing presenta el valor. Billing, aprobaciones y estados de plan siguen en las pantallas canonicas del producto.
+                        Free cubre presencia publica y contacto. PRO suma capacidad y herramientas operativas segun los gates activos del negocio.
                     </p>
                 </div>
 
                 <div className="mt-8 grid gap-4 md:grid-cols-[0.95fr_1.05fr]">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Semilla</CardTitle>
-                            <CardDescription>Para salir publicado y validar demanda.</CardDescription>
+                            <CardTitle>Free</CardTitle>
+                            <CardDescription>Para publicar tu negocio y empezar a recibir contactos.</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <p className="text-4xl font-semibold">Gratis</p>
@@ -498,8 +498,8 @@ function PricingSection({ canRegister }) {
                                 {[
                                     'Micrositio publico',
                                     'Presencia en directorio',
-                                    'Panel administrativo base',
-                                    'Contacto y datos del negocio',
+                                    'WhatsApp, telefono y mapa',
+                                    'Capacidad inicial limitada',
                                 ].map((item) => (
                                     <li key={item} className="flex items-center gap-2">
                                         <Check className="size-4 text-foreground" aria-hidden="true" />
@@ -509,7 +509,7 @@ function PricingSection({ canRegister }) {
                             </ul>
                             {canRegister !== false && (
                                 <Button className="mt-6 w-full" asChild>
-                                    <Link href={appRoute('register', undefined, '/register')}>Crear cuenta</Link>
+                                    <Link href={appRoute('tenant.register', undefined, '/registrar-negocio')}>Registrar negocio</Link>
                                 </Button>
                             )}
                         </CardContent>
@@ -517,9 +517,9 @@ function PricingSection({ canRegister }) {
 
                     <Card>
                         <CardHeader>
-                            <Badge className="w-fit">Para operar mejor</Badge>
+                            <Badge className="w-fit">Para crecer</Badge>
                             <CardTitle>PRO</CardTitle>
-                            <CardDescription>Para negocios con mas catalogo, reportes y gestion continua.</CardDescription>
+                            <CardDescription>Para negocios que necesitan mas capacidad y herramientas de operacion.</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <p className="text-4xl font-semibold">L 399</p>
@@ -527,10 +527,11 @@ function PricingSection({ canRegister }) {
                             <Separator className="my-6" />
                             <div className="grid gap-3 sm:grid-cols-2">
                                 {[
-                                    'Mas productos visibles',
+                                    'Mas catalogo y servicios',
+                                    'Reservas si tu modo lo requiere',
+                                    'CRM y campanas segun gates',
                                     'Reportes operativos',
-                                    'Herramientas de marketing',
-                                    'Mejor presencia publica',
+                                    'IA privada si esta autorizada',
                                 ].map((item) => (
                                     <div key={item} className="flex items-center gap-2 text-sm">
                                         <ShieldCheck className="size-4" aria-hidden="true" />
@@ -555,9 +556,9 @@ function FaqSection() {
             <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
                 <div>
                     <Badge variant="outline">Preguntas</Badge>
-                    <h2 className="mt-4 text-3xl font-semibold">Respuestas sin promesas infladas</h2>
+                    <h2 className="mt-4 text-3xl font-semibold">Preguntas frecuentes</h2>
                     <p className="mt-3 text-muted-foreground">
-                        Copy claro para que la landing venda sin inventar capacidades fuera del producto actual.
+                        Lo importante antes de registrar tu negocio.
                     </p>
                 </div>
 
@@ -588,7 +589,7 @@ function FinalCta({ auth, canRegister }) {
                     </Badge>
                     <h2 className="text-3xl font-semibold">Convierte visitas en clientes con una ruta clara.</h2>
                     <p className="mt-2 max-w-2xl text-sm opacity-80">
-                        Publica tu negocio, manda clientes al micrositio y usa el panel para seguir la operacion.
+                        Publica tu negocio, manda clientes al micrositio y usa el panel Filament para operar.
                     </p>
                 </div>
                 {auth?.user ? (
@@ -597,7 +598,7 @@ function FinalCta({ auth, canRegister }) {
                     </Button>
                 ) : canRegister !== false ? (
                     <Button variant="secondary" size="lg" asChild>
-                        <Link href={appRoute('register', undefined, '/register')}>Registrar negocio</Link>
+                        <Link href={appRoute('tenant.register', undefined, '/registrar-negocio')}>Registrar negocio</Link>
                     </Button>
                 ) : null}
             </div>
@@ -618,7 +619,7 @@ export default function Welcome({
 
     return (
         <PublicLayout>
-            <Head title="Conecta HN - Plataforma para comercio local" />
+            <Head title="Vito Business OS - Plataforma para negocios en Honduras" />
 
             <HeroSection
                 auth={auth}

@@ -4,28 +4,34 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Interactions\Persistence;
 
+use App\Domain\Analytics\Entities\InteractionEntity;
 use App\Domain\Interactions\Repositories\InteractionRepositoryInterface;
 use App\Models\Interaction;
+use Illuminate\Support\Carbon;
 
 final readonly class EloquentInteractionRepository implements InteractionRepositoryInterface
 {
-    public function create(array $data, int $tenantId): Interaction
+    public function create(InteractionEntity $entity): void
     {
-        // Enforce strict tenant isolation
-        return Interaction::query()->create([
-            ...$data,
-            'tenant_id' => $tenantId,
+        Interaction::query()->create([
+            'tenant_id' => $entity->tenantId,
+            'type' => $entity->type,
+            'product_id' => $entity->productId,
+            'ip_address' => $entity->ipAddress,
+            'user_agent' => $entity->userAgent,
+            'referrer' => $entity->referrer,
+            'url' => $entity->url,
+            'metadata' => $entity->metadata,
+            'created_at' => $entity->createdAt,
         ]);
     }
 
-    public function exists(int $tenantId, array $criteria): bool
+    public function exists(string $tenantId, array $criteria): bool
     {
-        // Enforce strict tenant isolation
         $query = Interaction::query()->where('tenant_id', $tenantId);
 
         foreach ($criteria as $key => $value) {
-            if ($key === 'created_at' && $value instanceof \Illuminate\Support\Carbon) {
-                // Handle date comparison specifically for created_at
+            if ($key === 'created_at' && $value instanceof Carbon) {
                 $query->whereDate($key, $value);
             } else {
                 $query->where($key, $value);

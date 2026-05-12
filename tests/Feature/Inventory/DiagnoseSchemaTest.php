@@ -7,8 +7,7 @@
 namespace Tests\Feature\Inventory;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class DiagnoseSchemaTest extends TestCase
@@ -22,30 +21,26 @@ class DiagnoseSchemaTest extends TestCase
 
         // Check users table columns
         echo "\n1. Users columns:\n";
-        $userCols = DB::select("SHOW COLUMNS FROM users");
-        foreach ($userCols as $col) {
-            echo "   - {$col->Field} ({$col->Type}) " . ($col->Null === 'NO' ? 'NOT NULL' : 'NULL') . "\n";
+        foreach (Schema::getColumnListing('users') as $column) {
+            echo "   - {$column}\n";
         }
 
         // Check tenants table columns
         echo "\n2. Tenants columns:\n";
-        $tenantCols = DB::select("SHOW COLUMNS FROM tenants");
-        foreach ($tenantCols as $col) {
-            echo "   - {$col->Field} ({$col->Type}) " . ($col->Null === 'NO' ? 'NOT NULL' : 'NULL') . "\n";
+        foreach (Schema::getColumnListing('tenants') as $column) {
+            echo "   - {$column}\n";
         }
 
         // Check products table columns
         echo "\n3. Products columns:\n";
-        $productCols = DB::select("SHOW COLUMNS FROM products");
-        foreach ($productCols as $col) {
-            echo "   - {$col->Field} ({$col->Type}) " . ($col->Null === 'NO' ? 'NOT NULL' : 'NULL') . "\n";
+        foreach (Schema::getColumnListing('products') as $column) {
+            echo "   - {$column}\n";
         }
 
         // Check orders table columns
         echo "\n4. Orders columns:\n";
-        $orderCols = DB::select("SHOW COLUMNS FROM orders");
-        foreach ($orderCols as $col) {
-            echo "   - {$col->Field} ({$col->Type}) " . ($col->Null === 'NO' ? 'NOT NULL' : 'NULL') . "\n";
+        foreach (Schema::getColumnListing('orders') as $column) {
+            echo "   - {$column}\n";
         }
 
         $this->assertTrue(true);

@@ -44,8 +44,9 @@ final class EloquentUserRepository implements UserRepositoryInterface
         $model->name = $user->name();           // String plano
         $model->email = $user->email();         // String validado en entidad
         $model->password = $user->password();   // Hash ya cocinado
-        $model->tenant_id = $user->tenantId();  // UUID del tenant
+        $model->tenant_id = $user->tenantId() !== '' ? $user->tenantId() : null;  // UUID del tenant
         $model->role = $user->role()->value;    // Enum -> string
+        $model->avatar = $user->avatar();
 
         // Campos opcionales
         if ($user->rememberToken() !== null) {
@@ -67,7 +68,8 @@ final class EloquentUserRepository implements UserRepositoryInterface
     public function findById(string $id, string $tenantId): ?UserEntity
     {
         $model = User::where('id', $id)
-            ->where('tenant_id', $tenantId)
+            ->when($tenantId !== '', fn ($query) => $query->where('tenant_id', $tenantId))
+            ->when($tenantId === '', fn ($query) => $query->whereNull('tenant_id'))
             ->first();
 
         return $model ? $this->toEntity($model) : null;
@@ -76,7 +78,8 @@ final class EloquentUserRepository implements UserRepositoryInterface
     public function findByEmail(string $email, string $tenantId): ?UserEntity
     {
         $model = User::where('email', $email)
-            ->where('tenant_id', $tenantId)
+            ->when($tenantId !== '', fn ($query) => $query->where('tenant_id', $tenantId))
+            ->when($tenantId === '', fn ($query) => $query->whereNull('tenant_id'))
             ->first();
 
         return $model ? $this->toEntity($model) : null;
@@ -126,6 +129,7 @@ final class EloquentUserRepository implements UserRepositoryInterface
             'role' => $model->role instanceof \UnitEnum ? $model->role->value : ($model->role ?? 'user'),
             'tenant_id' => $tenantId,
             'remember_token' => $model->remember_token,
+            'avatar' => $model->avatar,
             'created_at' => $model->created_at?->format(\DateTimeImmutable::ATOM),
             'updated_at' => $model->updated_at?->format(\DateTimeImmutable::ATOM),
         ]);

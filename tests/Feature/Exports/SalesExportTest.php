@@ -125,7 +125,7 @@ class SalesExportTest extends TestCase
         );
 
         Event::assertDispatched(SalesExportCreated::class, function ($event) use ($data) {
-            return $event->tenantId->toInt() === $data['tenantA']->id
+            return $event->tenantId->toString() === (string) $data['tenantA']->id
                 && $event->userId === 42
                 && $event->format === 'xlsx'
                 && ! empty($event->criteriaHash);

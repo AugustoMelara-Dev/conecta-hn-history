@@ -19,10 +19,10 @@ interface CouponReader
      *
      * @return Collection<int, object>
      */
-    public function getValidCoupons(int $tenantId): Collection;
+    public function getValidCoupons(int|string $tenantId): Collection;
 
     /**
      * Find a specific coupon by code for a tenant.
      */
-    public function findByCode(int $tenantId, string $code): ?object;
+    public function findByCode(int|string $tenantId, string $code): ?object;
 }

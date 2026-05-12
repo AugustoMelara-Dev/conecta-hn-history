@@ -60,6 +60,16 @@ final class WorkspaceRedirectController extends Controller
         return $this->redirectToPanel($request, 'upgrade');
     }
 
+    public function reports(Request $request): RedirectResponse
+    {
+        return $this->redirectToPanel($request, 'reports');
+    }
+
+    public function landingPage(Request $request): RedirectResponse
+    {
+        return $this->redirectToPanel($request, 'settings');
+    }
+
     private function redirectToPanel(Request $request, string $section = 'dashboard', array $parameters = []): RedirectResponse
     {
         return redirect()->to($this->panelUrlResolver->forUser($request->user(), $section, $parameters));

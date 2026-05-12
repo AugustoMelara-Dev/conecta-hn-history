@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\Auth\ProfileController;
 use App\Http\Controllers\Public\DirectoryController;
-use App\Http\Controllers\Public\ExploreController;
 use App\Http\Controllers\Public\InteractionController;
 use App\Http\Controllers\Public\BookingController;
 use App\Http\Controllers\Public\LocationController;
@@ -10,7 +9,6 @@ use App\Http\Controllers\Public\TenantMicrositeController;
 use App\Http\Controllers\Public\WelcomeController;
 use App\Http\Controllers\Tenant\AnalyticsController;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
 /*
 |--------------------------------------------------------------------------
@@ -23,6 +21,10 @@ use Inertia\Inertia;
 */
 
 require __DIR__.'/tenant.php';
+
+Route::domain('app.'.config('app.domain'))->group(function () {
+    Route::redirect('/', '/directorio', 302)->name('app.directory');
+});
 
 Route::domain('{tenant}.' . config('app.domain'))->group(function () {
     Route::get('/', [TenantMicrositeController::class, 'show'])
@@ -56,7 +58,11 @@ Route::get('/', WelcomeController::class)->name('home');
 // ═══════════════════════════════════════════════════════════════════════
 // 2. EXPLORE: Marketplace Discovery (Luxury Entrance Strategy)
 // ═══════════════════════════════════════════════════════════════════════
-Route::get('/explore', ExploreController::class)->name('public.explore');
+Route::get('/explore', static function () {
+    $query = request()->getQueryString();
+
+    return redirect('/directorio'.($query ? '?'.$query : ''), 302);
+})->name('public.explore');
 
 // ═══════════════════════════════════════════════════════════════════════
 // 3. DIRECTORIO: React/Inertia (Directory/Index.jsx)
@@ -87,7 +93,7 @@ Route::get('/registro/pago-pendiente/{payment}', [\App\Http\Controllers\Web\Bill
 Route::post('/location/set', [LocationController::class, 'setCity'])->name('location.set');
 Route::post('/location/clear', [LocationController::class, 'clearCity'])->name('location.clear');
 Route::get('/api/cities', [LocationController::class, 'getCities'])->name('cities.all');
-// [REMOVED] Dead code: SearchController was never created. Future search → ExploreController.
+// [REMOVED] Dead code: SearchController was never created. Search is owned by /directorio.
 Route::get('/api/check-slug', [\App\Http\Controllers\Web\RegistrationController::class, 'checkSlug'])->name('api.check-slug');
 
 // ... (Skip lines)
@@ -131,8 +137,8 @@ Route::middleware('auth')->group(function () {
 // ═══════════════════════════════════════════════════════════════════════
 // Auth Routes (Dashboard, Mi Cuenta)
 // ═══════════════════════════════════════════════════════════════════════
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
+Route::get('/dashboard', function (\Illuminate\Http\Request $request, \App\Support\Panel\CanonicalPanelUrlResolver $panelUrlResolver) {
+    return redirect()->to($panelUrlResolver->forUser($request->user()));
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 // ═══════════════════════════════════════════════════════════════════════

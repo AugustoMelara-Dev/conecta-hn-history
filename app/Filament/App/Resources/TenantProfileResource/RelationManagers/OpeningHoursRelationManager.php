@@ -14,9 +14,9 @@ class OpeningHoursRelationManager extends RelationManager
 {
     protected static string $relationship = 'openingHours';
 
-    protected static ?string $title = 'Horario de atencion';
+    protected static ?string $title = 'Horario de Atención';
 
-    protected static ?string $modelLabel = 'horario';
+    protected static ?string $modelLabel = 'Horario';
 
     protected static ?string $pluralModelLabel = 'horarios';
 

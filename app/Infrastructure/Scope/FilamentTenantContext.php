@@ -33,7 +33,7 @@ final class FilamentTenantContext implements TenantContextInterface
      * 2. Authenticated User's Primary Tenant (fallback)
      * 3. null (no context available)
      */
-    public function getTenantId(): ?int
+    public function getTenantId(): int|string|null
     {
         // ═══════════════════════════════════════════════════════════════════
         // METHOD 1: Filament Panel Context (Primary)

@@ -16,7 +16,11 @@ use App\Domain\TenantGovernance\Factories\TenantFactory;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Domain\TenantGovernance\Services\SubscriptionPricingService;
 use App\Infrastructure\Bus\TransactionalEventDispatcher;
+use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 /**
  * RegisterTenantHandler - Command Handler for Tenant Registration
@@ -54,53 +58,67 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
 
     private function processRegistration(RegisterTenantCommand $command): RegisterTenantResult
     {
-        // 1. Create User via Factory (Domain Integrity)
         $hashedPassword = $this->hasher->make($command->password);
-
-        $userEntity = $this->userFactory->createNewUser(
-            name: $command->ownerName,
-            email: $command->email,
-            hashedPassword: $hashedPassword,
-            role: 'seller'
-        );
-
-        // 2. Persist User & CAPTURE HYDRATED ENTITY (Fix for Phantom Client)
-        // CRITICAL: The ID is assigned by DB. Must update memory reference.
-        $userEntity = $this->userRepository->save($userEntity);
-
-        // 3. Determine Limits (Domain Service)
-        $productLimit = $this->pricingService->getProductLimit($command->selectedPlan);
+        $tenantId = (string) Str::uuid();
+        $userId = (string) Str::uuid();
         $planType = $this->pricingService->getPlanType($command->selectedPlan);
+        $productLimit = $this->pricingService->getProductLimit($command->selectedPlan);
         $isPro = $command->selectedPlan === 'pro';
 
-        // 4. Create Tenant via Factory (Domain Integrity)
-        // Uses the REAL ID from the hydrated $userEntity
-        $tenantEntity = $this->tenantFactory->createCommercialTenant(
-            userId: $userEntity->id,
-            name: $command->businessName,
-            slug: $command->slug,
-            planType: $planType,
-            isPro: $isPro,
-            productLimit: $productLimit,
-            logoPath: $command->logoPath,
-            categoryId: $command->categoryId,
-            cityId: $command->cityId,
-            whatsapp: $command->whatsapp
-        );
+        $tenantAttributes = [
+            'id' => $tenantId,
+            'user_id' => null,
+            'name' => $command->businessName,
+            'slug' => $command->slug,
+            'plan' => strtoupper($command->selectedPlan),
+            'is_active' => true,
+        ];
 
-        // 5. Persist Tenant
-        // We assume TenantRepository follows standard void pattern or mismatch exists outside scope.
-        // Focusing on User ID integrity as requested.
-        // 5. Persist Tenant & Capture Hydrated Entity
-        $tenantEntity = $this->tenantRepository->save($tenantEntity);
+        $optionalAttributes = [
+            'plan_type' => (string) $planType,
+            'subscription_status' => 'active',
+            'is_pro' => $isPro,
+            'product_limit' => $productLimit,
+            'logo_path' => $command->logoPath,
+            'category_id' => $command->categoryId,
+            'city_id' => $command->cityId,
+            'whatsapp_number' => $command->whatsapp,
+            'business_type' => $command->businessType,
+            'commercial_mode' => $command->commercialMode,
+            'rubro_key' => $command->rubroKey,
+        ];
+
+        foreach ($optionalAttributes as $column => $value) {
+            if (Schema::hasColumn('tenants', $column)) {
+                $tenantAttributes[$column] = $value;
+            }
+        }
+
+        $tenant = new Tenant;
+        $tenant->forceFill($tenantAttributes);
+        $tenant->save();
+
+        $user = new User;
+        $user->forceFill([
+            'id' => $userId,
+            'name' => $command->ownerName,
+            'email' => $command->email,
+            'password' => $hashedPassword,
+            'role' => 'seller',
+        ]);
+        $user->tenant_id = $tenant->id;
+        $user->save();
+
+        $tenant->forceFill([
+            'user_id' => $user->id,
+        ]);
+        $tenant->save();
 
         // 6. Handle Payment
         $planPrice = $this->pricingService->getPlanPrice($command->selectedPlan);
         if ($planPrice > 0) {
             $this->paymentRepository->create([
-                'tenant_id' => $tenantEntity->id, // Warning: If tenant rep returns void, this might be 0.
-                // Assuming Tenant Repository hydrates by reference OR Tenant ID is handled elsewhere.
-                // But preventing User ID 0 was the specific critical failure.
+                'tenant_id' => $tenant->id,
                 'amount' => $planPrice,
                 'currency' => 'HNL',
                 'status' => 'pending',
@@ -109,19 +127,17 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
             ]);
         }
 
-        // 7. Dispatch Event
-        $this->eventDispatcher->dispatch(new \App\Domain\Identity\Events\TenantRegistered(
-            tenantId: $tenantEntity->id,
-            userId: $userEntity->id,
-        ));
+        // Legacy TenantRegistered still carries int IDs; UUID tenant onboarding is
+        // persisted and logged here until that event contract is upgraded.
 
         // 8. Log
         Log::info('Tenant registered', $this->sanitizePayload([
-            'user_id' => $userEntity->id,
-            'tenant_id' => $tenantEntity->id,
-            'slug' => $tenantEntity->slug,
+            'user_id' => $user->id,
+            'tenant_id' => $tenant->id,
+            'slug' => $tenant->slug,
+            'commercial_mode' => $command->commercialMode,
         ]));
 
-        return RegisterTenantResult::fromEntities($tenantEntity, $userEntity);
+        return RegisterTenantResult::fromEntities($tenant, $user);
     }
 }

@@ -23,7 +23,7 @@ use Illuminate\Validation\ValidationException;
 final readonly class UpdateUserPasswordCommandValidator implements UpdateUserPasswordHandlerInterface
 {
     public function __construct(
-        private UpdateUserPasswordHandlerInterface $inner,
+        private object $inner,
         private ValidatorFactory $validatorFactory,
     ) {}
 
@@ -31,7 +31,13 @@ final readonly class UpdateUserPasswordCommandValidator implements UpdateUserPas
     {
         $this->validate($command);
 
-        return $this->inner->handle($command);
+        $result = $this->inner->handle($command);
+
+        if (! $result instanceof UpdateUserPasswordResult) {
+            throw new \RuntimeException('Update user password pipeline returned an invalid result.');
+        }
+
+        return $result;
     }
 
     /**
@@ -47,7 +53,7 @@ final readonly class UpdateUserPasswordCommandValidator implements UpdateUserPas
             'idempotencyKey' => $command->idempotencyKey,
         ], [
             'userId' => ['required', 'uuid'],
-            'requestingTenantId' => ['required', 'uuid'],
+            'requestingTenantId' => ['nullable', 'uuid'],
             'currentPassword' => ['required', 'string'],
             'newPassword' => ['required', 'string', Password::min(8)->letters()->numbers()],
             'idempotencyKey' => ['required', 'uuid'],

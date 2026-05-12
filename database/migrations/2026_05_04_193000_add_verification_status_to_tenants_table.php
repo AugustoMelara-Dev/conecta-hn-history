@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -50,6 +51,12 @@ return new class extends Migration
     {
         if (! Schema::hasTable('tenants')) {
             return;
+        }
+
+        if (DB::getDriverName() === 'sqlite') {
+            DB::statement('DROP INDEX IF EXISTS tenants_publication_paused_at_idx');
+            DB::statement('DROP INDEX IF EXISTS tenants_verified_at_idx');
+            DB::statement('DROP INDEX IF EXISTS tenants_verification_status_idx');
         }
 
         Schema::table('tenants', function (Blueprint $table): void {

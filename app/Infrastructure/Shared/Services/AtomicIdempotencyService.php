@@ -21,6 +21,8 @@ use Illuminate\Support\Facades\Log;
  */
 final class AtomicIdempotencyService implements AtomicIdempotencyInterface
 {
+    private const PAYLOAD_VERSION = 1;
+
     /**
      * Time-To-Live for a processing lock.
      * If a process takes longer than this without updating, it is considered dead.
@@ -70,23 +72,25 @@ final class AtomicIdempotencyService implements AtomicIdempotencyInterface
                 ->where('idempotency_key', $idempotencyKey)
                 ->update([
                     'status' => 'COMPLETED',
-                    'response_payload' => json_encode($result),
+                    'response_payload' => json_encode([
+                        'v' => self::PAYLOAD_VERSION,
+                        'type' => is_object($result) ? get_class($result) : gettype($result),
+                        'data' => $result,
+                        'meta' => [
+                            'timestamp' => now()->toIso8601String(),
+                        ],
+                    ]),
                     'updated_at' => now(),
                 ]);
 
             return $result;
 
         } catch (\Throwable $e) {
-            // 4. Failure - Mark Failed
-            // We use a separate try-catch to ensure the exception bubbles up
-            // even if the status update fails (though it shouldn't).
+            // 4. Failure - release the processing lock so corrected input can retry.
             try {
                 DB::table('processed_commands')
                     ->where('idempotency_key', $idempotencyKey)
-                    ->update([
-                        'status' => 'FAILED',
-                        'updated_at' => now(),
-                    ]);
+                    ->delete();
             } catch (\Throwable $inner) {
                 // Fail silently to preserve original exception logic
             }
@@ -115,11 +119,24 @@ final class AtomicIdempotencyService implements AtomicIdempotencyInterface
 
         // State Machine
         return match ($record->status) {
-            'COMPLETED' => json_decode($record->response_payload ?? '[]', true),
+            'COMPLETED' => $this->completedPayload($record, $key),
             'PROCESSING' => $this->checkZombieAndRecover($record, $key, $operation),
             'FAILED' => throw new \RuntimeException('Previous attempt failed. Please retry with a new key.'),
             default => throw new \RuntimeException("Unknown state: {$record->status}"),
         };
+    }
+
+    private function completedPayload(object $record, string $key): mixed
+    {
+        $payload = json_decode($record->response_payload ?? '[]', true);
+
+        if (! is_array($payload) || ! isset($payload['v']) || $payload['v'] !== self::PAYLOAD_VERSION) {
+            DB::table('processed_commands')->where('idempotency_key', $key)->delete();
+
+            throw new ConcurrentRequestException('Idempotency schema version mismatch. State flushed. Please retry.');
+        }
+
+        return $payload['data'] ?? null;
     }
 
     /**

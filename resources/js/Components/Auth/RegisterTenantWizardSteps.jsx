@@ -204,7 +204,7 @@ export function BusinessStep({
                 </FieldDescription>
                 {crossSurfaceHost ? (
                     <FieldDescription className="text-muted-foreground">
-                        Tu panel opera en {registrationHost} y tu micrositio publico se publica en {slugBaseHost}/t/...
+                        Tu panel opera en {registrationHost} y tu micrositio publico se publica como subdominio de {slugBaseHost}.
                     </FieldDescription>
                 ) : null}
                 {slugState.suggestions?.length ? (

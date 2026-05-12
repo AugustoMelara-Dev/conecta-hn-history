@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Events\Broadcast;
 
 use App\Broadcasting\ChannelRegistry;
-use App\Contracts\Broadcasting\BroadcastableNotification;
+use App\Contracts\Broadcasting\BroadcastableNotificationInterface;
 use App\Traits\FormatsCurrency;
 use App\Traits\LogsBroadcasts;
 use DateTimeImmutable;
@@ -16,7 +16,7 @@ use Illuminate\Foundation\Events\Dispatchable;
 /**
  * OrderPaidBroadcast - Real-Time UI Notification for Payment Confirmation
  */
-final class OrderPaidBroadcast implements BroadcastableNotification
+final class OrderPaidBroadcast implements BroadcastableNotificationInterface
 {
     use Dispatchable, FormatsCurrency, InteractsWithSockets, LogsBroadcasts;
 

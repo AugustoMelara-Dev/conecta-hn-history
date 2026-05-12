@@ -45,7 +45,10 @@ class IdempotencyLifecycleTest extends TestCase
 
     protected function tearDown(): void
     {
-        Schema::dropIfExists('processed_commands');
+        if (Schema::hasTable('processed_commands')) {
+            DB::table('processed_commands')->delete();
+        }
+
         parent::tearDown();
     }
 

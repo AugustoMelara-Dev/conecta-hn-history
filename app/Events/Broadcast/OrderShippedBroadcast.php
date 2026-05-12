@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Events\Broadcast;
 
 use App\Broadcasting\ChannelRegistry;
-use App\Contracts\Broadcasting\BroadcastableNotification;
+use App\Contracts\Broadcasting\BroadcastableNotificationInterface;
 use App\Traits\LogsBroadcasts;
 use DateTimeImmutable;
 use Illuminate\Broadcasting\InteractsWithSockets;
@@ -14,7 +14,7 @@ use Illuminate\Foundation\Events\Dispatchable;
 /**
  * OrderShippedBroadcast - Real-Time UI Notification for Shipping
  */
-final class OrderShippedBroadcast implements BroadcastableNotification
+final class OrderShippedBroadcast implements BroadcastableNotificationInterface
 {
     use Dispatchable, InteractsWithSockets, LogsBroadcasts;
 

@@ -101,23 +101,22 @@ final class RegistrationController extends Controller
             email: $request->validated('email'),
             password: $request->validated('password'),
             cityId: (int) $request->validated('city_id'),
-            categoryId: (int) $request->validated('category_id'),
+            categoryId: $request->validated('category_id') ? (int) $request->validated('category_id') : null,
             whatsapp: $request->validated('whatsapp'),
+            commercialMode: (string) $request->validated('commercial_mode'),
+            businessType: $request->validated('business_type') ?: match ((string) $request->validated('commercial_mode')) {
+                'appointments', 'consulting_leads' => 'service',
+                default => 'retail',
+            },
+            rubroKey: $request->validated('rubro_key'),
             selectedPlan: $request->validated('selected_plan', 'free'),
         );
 
         // Dispatch via Command Bus (Transaction handled by middleware)
         $result = $this->bus->dispatch($command);
 
-        // Handle post-registration routing
-        if ($result['plan'] === 'pro' && isset($result['payment'])) {
-            return redirect()
-                ->route('payment.pending', ['payment' => $result['payment']->id])
-                ->with('success', '¡Registro exitoso! Completa tu pago para activar tu plan PRO.');
-        }
-
-        // Free plan: Auto-login and redirect to dashboard
-        Auth::login($result['user']);
+        $user = \App\Models\User::where('email', $result->ownerEmail)->firstOrFail();
+        Auth::login($user);
 
         return redirect()
             ->route('dashboard')

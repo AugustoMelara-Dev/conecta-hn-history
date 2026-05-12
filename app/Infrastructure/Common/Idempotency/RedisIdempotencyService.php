@@ -6,6 +6,7 @@ namespace App\Infrastructure\Common\Idempotency;
 
 use App\Application\Common\Contracts\IdempotencyServiceInterface;
 use App\Application\Common\Exceptions\ConcurrentRequestException;
+use Illuminate\Cache\Repository as CacheRepository;
 use Illuminate\Redis\Connections\Connection;
 
 /**
@@ -22,7 +23,7 @@ final class RedisIdempotencyService implements IdempotencyServiceInterface
     private const DEFAULT_TTL = 86400; // 24 hours
 
     public function __construct(
-        private readonly Connection $redis
+        private readonly Connection|CacheRepository $store
     ) {}
 
     /**
@@ -30,7 +31,7 @@ final class RedisIdempotencyService implements IdempotencyServiceInterface
      */
     public function get(string $key): mixed
     {
-        $value = $this->redis->get($this->formatKey($key));
+        $value = $this->getRaw($key);
 
         if ($value === null) {
             return null;
@@ -51,7 +52,7 @@ final class RedisIdempotencyService implements IdempotencyServiceInterface
      */
     public function getState(string $key): ?string
     {
-        $value = $this->redis->get($this->formatKey($key));
+        $value = $this->getRaw($key);
 
         if ($value === null) {
             return null;
@@ -78,17 +79,19 @@ final class RedisIdempotencyService implements IdempotencyServiceInterface
             'timestamp' => time(),
         ]);
 
-        // SETNX: Set if Not Exists
-        // Returns 1 if set, 0 if not set (already exists)
-        $acquired = $this->redis->setnx($this->formatKey($key), $payload);
+        $formattedKey = $this->formatKey($key);
+        $acquired = $this->store instanceof Connection
+            ? (bool) $this->store->setnx($formattedKey, $payload)
+            : $this->store->add($formattedKey, $payload, $ttlSeconds);
 
         if (! $acquired) {
             // Key exists. It might be PROCESSING or COMPLETED.
             throw ConcurrentRequestException::forKey($key);
         }
 
-        // Set expiry for the processing lock
-        $this->redis->expire($this->formatKey($key), $ttlSeconds);
+        if ($this->store instanceof Connection) {
+            $this->store->expire($formattedKey, $ttlSeconds);
+        }
     }
 
     /**
@@ -102,11 +105,18 @@ final class RedisIdempotencyService implements IdempotencyServiceInterface
             'timestamp' => time(),
         ]);
 
-        $this->redis->setex(
-            $this->formatKey($key),
-            $ttlSeconds,
-            $payload
-        );
+        if ($this->store instanceof Connection) {
+            $this->store->setex($this->formatKey($key), $ttlSeconds, $payload);
+
+            return;
+        }
+
+        $this->store->put($this->formatKey($key), $payload, $ttlSeconds);
+    }
+
+    private function getRaw(string $key): mixed
+    {
+        return $this->store->get($this->formatKey($key));
     }
 
     private function formatKey(string $key): string

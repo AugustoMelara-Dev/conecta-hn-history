@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Shared\Services;
 
-use App\Domain\Shared\PasswordHasherInterface;
 use Illuminate\Support\Facades\Hash;
 
 /**
@@ -15,7 +14,9 @@ use Illuminate\Support\Facades\Hash;
  * ║  SINGLE RESPONSIBILITY: Only delegated hashing logic. No business rules.║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final class LaravelPasswordHasher implements PasswordHasherInterface
+final class LaravelPasswordHasher implements
+    \App\Domain\Shared\PasswordHasherInterface,
+    \App\Domain\Shared\Services\PasswordHasherInterface
 {
     /**
      * Compute hash using the framework's configured driver (Bcrypt/Argon).

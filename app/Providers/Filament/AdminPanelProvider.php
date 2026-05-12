@@ -49,16 +49,12 @@ class AdminPanelProvider extends PanelProvider
             ->authGuard('web')
 
             // ═══════════════════════════════════════════════════════════════
-            // MULTI-TENANCY ARCHITECTURE
+            // PLATFORM ADMIN ARCHITECTURE
             // ═══════════════════════════════════════════════════════════════
-            // Registering the Tenant model with slug support.
-            // Registration is DISABLED here because onboarding happens on the
-            // public frontend, not inside the admin panel.
+            // /admin is the platform superadmin console. Tenant-scoped
+            // business operations live in /app/{tenant}.
             // ═══════════════════════════════════════════════════════════════
             // ═══════════════════════════════════════════════════════════════
-            ->tenant(\App\Models\Tenant::class, slugAttribute: 'slug')
-            // ->registration() // Disabled: Onboarding is handled via public frontend
-            ->tenantMenu(false) // 1:1 Architecture: No need to switch tenants
             ->profile()         // User Self-Management enabled
             // BRANDING: Logo y Nombre
             // ═══════════════════════════════════════════════════════════════
@@ -192,20 +188,11 @@ class AdminPanelProvider extends PanelProvider
             }
 
             $user = auth()->user();
-            $superAdmins = config('auth.super_admins', []);
-
-            // Check if user is whitelisted super admin
-            $isWhitelistedAdmin = $user->role === 'super_admin'
-                && in_array($user->email, $superAdmins, true);
-
-            if ($isWhitelistedAdmin) {
+            if ($user->isSuperAdmin()) {
                 return;
             }
 
-            // Other admins must have super_admin role
-            if ($user->role !== 'super_admin') {
-                abort(403, 'Acceso denegado. Se requiere rol de Super Admin.');
-            }
+            abort(403, 'Acceso denegado. Se requiere Super Admin permitido por allowlist.');
         });
     }
 }

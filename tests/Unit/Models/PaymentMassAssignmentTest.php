@@ -8,8 +8,9 @@ use App\Domain\Shared\Services\TenantContext;
 use App\Models\Payment;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
 
-uses(RefreshDatabase::class);
+uses(TestCase::class, RefreshDatabase::class);
 
 /**
  * VC-AUDIT-002 Verification: Payment Mass Assignment Protection
@@ -31,6 +32,7 @@ test('payment model guards tenant_id against mass assignment', function () {
         'status' => 'pending',
         'reference_number' => 'REF-TEST-001',
         'bank' => 'Test Bank',
+        'proof_path' => 'proofs/test.jpg',
     ]);
 
     // Assert: tenant_id should be from context (tenant1), NOT from the malicious input

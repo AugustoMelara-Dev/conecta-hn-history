@@ -258,7 +258,7 @@ class SalesExportUnitTest extends TestCase
         {
             use SanitizesOutput;
 
-            public function test_sanitize(mixed $input): mixed
+            public function testSanitize(mixed $input): mixed
             {
                 return $this->sanitize($input);
             }

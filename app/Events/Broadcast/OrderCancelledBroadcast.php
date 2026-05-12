@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Events\Broadcast;
 
 use App\Broadcasting\ChannelRegistry;
-use App\Contracts\Broadcasting\BroadcastableNotification;
+use App\Contracts\Broadcasting\BroadcastableNotificationInterface;
 use App\Traits\LogsBroadcasts;
 use DateTimeImmutable;
 use Illuminate\Broadcasting\InteractsWithSockets;
@@ -14,7 +14,7 @@ use Illuminate\Foundation\Events\Dispatchable;
 /**
  * OrderCancelledBroadcast - Real-Time UI Notification for Order Cancellation
  */
-final class OrderCancelledBroadcast implements BroadcastableNotification
+final class OrderCancelledBroadcast implements BroadcastableNotificationInterface
 {
     use Dispatchable, InteractsWithSockets, LogsBroadcasts;
 

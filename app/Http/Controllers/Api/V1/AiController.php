@@ -4,25 +4,21 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Domain\AIEnrichment\Jobs\GenerateBusinessProfile;
+use App\Application\Ai\PrivateAiAccessGate;
+use App\Domain\AIEnrichment\Prompts\BusinessProfilePromptBuilder;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 
-/**
- * AiController - The Guardian of Resources
- *
- * Implements Non-Blocking Pipeline Pattern + Token Bucket Rate Limiting.
- */
 final class AiController extends Controller
 {
-    /**
-     * Dispatch AI generation asynchronously.
-     */
+    public function __construct(
+        private readonly PrivateAiAccessGate $privateAiAccess,
+    ) {}
+
     public function generate(Request $request): JsonResponse
     {
-        // 1. Sanitization & Validation (Framework Concern)
         $validated = $request->validate([
             'business_name' => ['required', 'string', 'min:3', 'max:100'],
             'activity' => ['required', 'string', 'max:50'],
@@ -32,51 +28,46 @@ final class AiController extends Controller
 
         $user = $request->user();
 
-        if (! $user->tenant_id) {
+        if (! $user || ! $user->tenant_id) {
             return response()->json(['message' => 'No business associated.'], 403);
         }
 
-        // 2. Rate Limiting (Token Bucket Strategy)
-        $key = 'ai-gen:'.$user->id;
+        $tenantId = (string) $user->tenant_id;
 
-        $executed = RateLimiter::attempt(
-            $key,
-            $maxAttempts = 5,
-            function () {
-                return true;
-            },
-            $decaySeconds = 3600
-        );
+        if (! $this->privateAiAccess->allows($user, $tenantId)) {
+            return response()->json([
+                'message' => 'Private AI is not enabled for this tenant.',
+            ], 403);
+        }
+
+        $key = 'ai-gen:'.$tenantId.':'.$user->id;
+        $maxAttempts = 5;
+
+        $executed = RateLimiter::attempt($key, $maxAttempts, static fn (): bool => true, 3600);
 
         if (! $executed) {
             $seconds = RateLimiter::availableIn($key);
 
             return response()->json([
-                'message' => 'Límite de generación excedido. Intenta de nuevo en '.gmdate('i:s', $seconds).' minutos.',
+                'message' => 'Limite de generacion excedido. Intenta de nuevo en '.gmdate('i:s', $seconds).' minutos.',
             ], 429);
         }
 
-        // 3. Domain Service Delegation (No "Primitive Obsession" here)
-        // Controller looks for a structured DTO, agnostic of text content.
-        $payload = \App\Domain\AIEnrichment\Prompts\BusinessProfilePromptBuilder::build(
+        $payload = BusinessProfilePromptBuilder::build(
             businessName: $validated['business_name'],
             activity: $validated['activity'],
             location: $validated['location'],
             extraDetails: $validated['extra_details'] ?? null
         );
 
-        // 4. Async Dispatch using Clean DTO Content
-        GenerateBusinessProfile::dispatch(
-            $user->tenant_id,
-            $validated['business_name'],
-            $payload->content
-        );
-
-        // 5. Response
         return response()->json([
-            'status' => 'processing',
-            'message' => 'La IA está trabajando en tu perfil. Te notificaremos en breve.',
+            'status' => 'ready',
+            'message' => 'Borrador generado con reglas locales. La generacion con proveedor externo permanece controlada por gates privados.',
+            'draft' => [
+                'business_name' => $validated['business_name'],
+                'summary' => $payload->content,
+            ],
             'remaining_attempts' => RateLimiter::remaining($key, $maxAttempts),
-        ], 202);
+        ]);
     }
 }

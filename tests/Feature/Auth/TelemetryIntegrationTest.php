@@ -57,9 +57,9 @@ class TelemetryIntegrationTest extends TestCase
             'tenant_id' => $tenantId,
         ]);
 
-        $this->assertDatabaseHas('domain_outbox', [
+        $this->assertDatabaseHas('outbox_messages', [
             'type' => 'App\Domain\Auth\Events\OtpGenerated',
-            'metadata->trace_id' => $traceId,
+            'payload->meta->trace_id' => $traceId,
         ]);
 
         // Outbox should be created

@@ -7,6 +7,7 @@ namespace App\Application\Auth\Decorators;
 use App\Application\Auth\Commands\GenerateOtpCommand;
 use App\Application\Auth\Contracts\GenerateOtpHandlerInterface;
 use App\Application\Common\Contracts\AtomicIdempotencyInterface;
+use App\Infrastructure\Shared\Context\IdempotencyContext;
 
 /**
  * AtomicIdempotencyDecorator - Concurrency Control Layer
@@ -21,7 +22,8 @@ final readonly class AtomicIdempotencyDecorator implements GenerateOtpHandlerInt
 {
     public function __construct(
         private GenerateOtpHandlerInterface $inner,
-        private AtomicIdempotencyInterface $atomicService
+        private AtomicIdempotencyInterface $atomicService,
+        private IdempotencyContext $idempotencyContext
     ) {}
 
     public function handle(GenerateOtpCommand $command): void
@@ -36,7 +38,9 @@ final readonly class AtomicIdempotencyDecorator implements GenerateOtpHandlerInt
         ]));
 
         $this->atomicService->execute(
-            idempotencyKey: $command->idempotencyKey,
+            idempotencyKey: $this->idempotencyContext->hasKey()
+                ? $this->idempotencyContext->getKey()
+                : $command->getIdempotencyKey(),
             tenantId: $command->tenantId,
             commandHash: $payloadHash,
             operation: function () use ($command) {

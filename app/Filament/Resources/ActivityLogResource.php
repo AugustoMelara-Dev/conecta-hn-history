@@ -47,7 +47,7 @@ class ActivityLogResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return static::getModel()::whereDate('created_at', today())->count();
+        return (string) static::getModel()::whereDate('created_at', today())->count();
     }
 
     public static function getNavigationBadgeColor(): ?string

@@ -15,10 +15,10 @@ class RegisterTenantValidator
     {
         return [
             'businessName' => ['required', 'string', 'min:3'],
-            'slug' => ['required', 'alpha_dash', 'min:3', 'unique:tenants,id'], // domain_prefix in spec, usually maps to slug
+            'slug' => ['required', 'alpha_dash', 'min:3', 'unique:tenants,slug'],
             'ownerName' => ['required', 'string'],
             'email' => ['required', 'email'],
-            'password' => ['required', 'min:8', 'confirmed'],
+            'password' => ['required', 'min:8'],
         ];
     }
 }

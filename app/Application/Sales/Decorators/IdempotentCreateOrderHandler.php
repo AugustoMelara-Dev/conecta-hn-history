@@ -32,16 +32,11 @@ final readonly class IdempotentCreateOrderHandler implements CreateOrderHandlerI
             return $cachedResult;
         }
 
-        // 2. Acquire Atomic Lock
-        $lock = $this->service->lock($key);
-
-        if (! $lock->get()) {
-            // If we can't get lock, it means another process is working on this key.
-            // We check once more if result appeared (Double-Check Locking variant via Cache)
-            // or we throw ConcurrencyException / 429.
-            // For now, simple concurrency error.
+        if ($this->service->getState($key) === 'PROCESSING') {
             throw new ConcurrencyException('Order processing already in progress for this request.');
         }
+
+        $this->service->registerProcessing($key);
 
         try {
             // 3. Double-Check inside Lock (Critical for high concurrency)
@@ -59,7 +54,7 @@ final readonly class IdempotentCreateOrderHandler implements CreateOrderHandlerI
             return $result;
 
         } finally {
-            $lock->release();
+            //
         }
     }
 }

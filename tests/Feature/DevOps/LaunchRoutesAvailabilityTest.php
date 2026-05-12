@@ -19,6 +19,12 @@ final class LaunchRoutesAvailabilityTest extends TestCase
         $this->assertTrue($routes->contains(fn (array $route): bool => $route['uri'] === '/up'));
         $this->assertTrue($routes->contains(fn (array $route): bool => $route['uri'] === '/login' && $route['name'] === 'login'));
         $this->assertTrue($routes->contains(fn (array $route): bool => $route['uri'] === '/verify-email' && $route['name'] === 'verification.notice'));
+        $this->assertTrue($routes->contains(fn (array $route): bool => $route['uri'] === '/' && $route['name'] === 'home'));
+        $this->assertTrue($routes->contains(fn (array $route): bool => $route['uri'] === '/directorio' && $route['name'] === 'directory.index'));
+        $this->assertTrue($routes->contains(fn (array $route): bool => $route['uri'] === '/registrar-negocio' && $route['name'] === 'tenant.register'));
+        $this->assertTrue($routes->contains(fn (array $route): bool => $route['uri'] === '/dashboard' && $route['name'] === 'dashboard'));
+        $this->assertTrue($routes->contains(fn (array $route): bool => $route['uri'] === '/app/{tenant}' && $route['name'] === 'filament.app.pages.dashboard'));
+        $this->assertTrue($routes->contains(fn (array $route): bool => $route['uri'] === '/admin' && $route['name'] === 'filament.admin.pages.dashboard'));
+        $this->assertFalse($routes->contains(fn (array $route): bool => str_starts_with($route['uri'], '/admin/{tenant}')));
     }
 }
-

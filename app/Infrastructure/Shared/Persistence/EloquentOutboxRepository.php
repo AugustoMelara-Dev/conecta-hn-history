@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Shared\Persistence;
 
+use App\Domain\Shared\Entities\DomainEventMessage;
 use App\Domain\Shared\OutboxRepositoryInterface;
 use App\Infrastructure\Models\OutboxMessage;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -19,7 +21,7 @@ use RuntimeException;
  * ║  ZERO NATIVE SERIALIZATION: Only json_encode is used                     ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final class EloquentOutboxRepository implements OutboxRepositoryInterface
+final class EloquentOutboxRepository implements OutboxRepositoryInterface, \App\Application\Shared\Contracts\OutboxRepositoryInterface
 {
     public function __construct(
         private readonly \App\Infrastructure\Shared\Telemetry\TraceContext $traceContext
@@ -99,6 +101,42 @@ final class EloquentOutboxRepository implements OutboxRepositoryInterface
             'published_at' => null,
             'locked_at' => null,
         ]);
+    }
+
+    public function save(DomainEventMessage $message): void
+    {
+        $payload = json_decode($message->payload, true);
+
+        $row = [
+            'id' => $message->eventId,
+            'type' => $message->type,
+            'aggregate_id' => $message->aggregateId,
+            'partition_key' => abs(crc32($message->aggregateId)) % OutboxMessage::PARTITION_COUNT,
+            'sequence_number' => 0,
+            'payload' => json_encode([
+                'meta' => [
+                    'event_id' => $message->eventId,
+                    'event_type' => $message->type,
+                    'aggregate_id' => $message->aggregateId,
+                    ...$message->metadata,
+                ],
+                'data' => is_array($payload) ? $payload : ['raw' => $message->payload],
+            ]),
+            'occurred_at' => $message->occurredAt,
+            'published_at' => null,
+            'status' => OutboxMessage::STATUS_PENDING,
+            'attempts' => 0,
+            'recovery_count' => 0,
+            'locked_at' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ];
+
+        $columns = collect(array_keys($row))
+            ->filter(fn (string $column): bool => Schema::hasColumn('outbox_messages', $column))
+            ->all();
+
+        DB::table('outbox_messages')->insert(array_intersect_key($row, array_flip($columns)));
     }
 
     /**

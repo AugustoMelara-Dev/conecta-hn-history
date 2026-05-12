@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Infrastructure\Persistence\Eloquent\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -45,6 +46,30 @@ class Payment extends Model
         'version' => 'integer',
         'id' => 'string', // Ensure cast
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $payment): void {
+            if (! $payment->getKey()) {
+                $payment->id = (string) Str::uuid();
+            }
+
+            if (! isset($payment->idempotency_key) || trim((string) $payment->idempotency_key) === '') {
+                $payment->idempotency_key = 'manual-'.$payment->id;
+            }
+
+            if ($payment->version === null) {
+                $payment->version = 1;
+            }
+        });
+    }
+
+    public function fill(array $attributes)
+    {
+        unset($attributes['tenant_id']);
+
+        return parent::fill($attributes);
+    }
 
     public function getActivitylogOptions(): LogOptions
     {

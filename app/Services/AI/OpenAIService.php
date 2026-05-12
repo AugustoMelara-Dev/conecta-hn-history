@@ -47,8 +47,12 @@ final class OpenAIService
     private const SAFETY_MARGIN = 1.2; // 20% buffer
 
     public function __construct(
-        private readonly BudgetEnforcer $budgetEnforcer
-    ) {}
+        ?BudgetEnforcer $budgetEnforcer = null
+    ) {
+        $this->budgetEnforcer = $budgetEnforcer ?? app(BudgetEnforcer::class);
+    }
+
+    private readonly BudgetEnforcer $budgetEnforcer;
 
     /**
      * Calcula costo estimado para reserva previa.
@@ -90,8 +94,8 @@ final class OpenAIService
     public function generateStructuredProfile(
         string $businessName,
         string $description,
-        int $userId,
-        int $tenantId,
+        int|string $userId,
+        int|string $tenantId,
         ?string $targetAudience = null,
         ?string $tone = null,
         ?array $keywords = []
@@ -279,4 +283,3 @@ EOT;
         }
     }
 }
-

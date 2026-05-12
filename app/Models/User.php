@@ -69,6 +69,13 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
         // SECURITY: tenant_id is GUARDED. Must be set explicitly via $user->tenant_id = X
     ];
 
+    public function fill(array $attributes)
+    {
+        unset($attributes['tenant_id']);
+
+        return parent::fill($attributes);
+    }
+
     /**
      * The attributes that should be hidden for serialization.
      *
@@ -128,13 +135,20 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
 
     public function isSuperAdmin(): bool
     {
-        $adminEmail = config('auth.super_admin_email');
+        $role = $this->role instanceof UserRole
+            ? $this->role
+            : UserRole::tryFrom((string) $this->role);
 
-        if ($adminEmail && strcasecmp($this->email, $adminEmail) === 0) {
-            return true;
+        if ($role !== UserRole::SUPER_ADMIN) {
+            return false;
         }
 
-        return $this->role === UserRole::SUPER_ADMIN;
+        $allowedEmails = array_map(
+            static fn (string $email): string => strtolower(trim($email)),
+            config('auth.super_admins', [])
+        );
+
+        return in_array(strtolower((string) $this->email), $allowedEmails, true);
     }
 
     /**
@@ -168,7 +182,7 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
             return false;
         }
 
-        return (int) $tenant->user_id === (int) $this->id;
+        return (string) $tenant->user_id === (string) $this->id;
     }
 
     /**

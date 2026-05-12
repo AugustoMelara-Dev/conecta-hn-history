@@ -16,6 +16,10 @@ final class CanonicalPanelUrlResolver
             return route('tenant.register', absolute: false);
         }
 
+        if ($user->isSuperAdmin()) {
+            return '/admin';
+        }
+
         $tenant = $this->resolveTenantForUser($user);
 
         if (! $tenant) {
@@ -37,6 +41,7 @@ final class CanonicalPanelUrlResolver
             'billing' => $baseUrl.'/manage-billing',
             'settings' => $baseUrl.'/settings',
             'marketing' => $baseUrl.'/manage-marketing',
+            'reports' => $baseUrl,
             'upgrade' => $baseUrl.'/upgrade-to-pro',
             default => $baseUrl,
         };

@@ -57,7 +57,7 @@ class PaymentResource extends Resource
      */
     public static function getNavigationBadge(): ?string
     {
-        $count = Payment::where('status', 'pending')->count();
+        $count = Payment::withoutGlobalScopes()->where('status', 'pending')->count();
 
         return $count > 0 ? (string) $count : null;
     }
@@ -373,6 +373,7 @@ class PaymentResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
+            ->withoutGlobalScopes()
             ->with(['tenant.user']) // Eager load para performance
             ->orderByRaw("CASE status
                 WHEN 'pending' THEN 1

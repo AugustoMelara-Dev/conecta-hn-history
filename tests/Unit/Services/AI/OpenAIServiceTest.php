@@ -8,6 +8,9 @@ use App\Exceptions\InsufficientAiCreditsException;
 use App\Infrastructure\AI\BudgetEnforcer;
 use App\Services\AI\OpenAIService;
 use Illuminate\Support\Facades\Http;
+use Tests\TestCase;
+
+uses(TestCase::class);
 
 beforeEach(function () {
     $this->budgetEnforcer = Mockery::mock(BudgetEnforcer::class);
