@@ -49,7 +49,7 @@ final class RegisterTenantController extends Controller
                 'value' => 'products',
                 'business_type' => BusinessType::RETAIL->value,
                 'label' => 'Vender productos',
-                'description' => 'Starter Products: publica oferta, activa pedidos y convierte rapido sin friccion.',
+                'description' => 'Starter Products: publica oferta, activa pedidos y convierte rápido sin fricción.',
                 'capabilities' => ['Oferta visible y accionable', 'Pedidos y contacto inmediato', 'Inventario y promociones'],
                 'examples' => ['Farmacias', 'Tiendas', 'Restaurantes'],
                 'rubro_key' => 'retail-core',
@@ -59,9 +59,9 @@ final class RegisterTenantController extends Controller
                 'value' => 'consulting_leads',
                 'business_type' => BusinessType::SERVICE->value,
                 'label' => 'Captar consultas',
-                'description' => 'Starter Consulting: autoridad, CTA claro y seguimiento comercial desde el primer dia.',
+                'description' => 'Starter Consulting: autoridad, CTA claro y seguimiento comercial desde el primer día.',
                 'capabilities' => ['Landing consultiva', 'Captura por WhatsApp o formulario', 'CRM y seguimiento'],
-                'examples' => ['Abogados', 'Consultores', 'Servicios tecnicos'],
+                'examples' => ['Abogados', 'Consultores', 'Servicios técnicos'],
                 'rubro_key' => 'consulting-core',
                 'starter_pack' => 'Starter Consulting',
             ],
@@ -69,7 +69,7 @@ final class RegisterTenantController extends Controller
                 'value' => 'hybrid',
                 'business_type' => BusinessType::SERVICE->value,
                 'label' => 'Combinar flujos',
-                'description' => 'Para negocios que venden productos y tambien reservan servicios. Se activa por revision.',
+                'description' => 'Para negocios que venden productos y también reservan servicios. Se activa por revisión.',
                 'capabilities' => ['Productos', 'Servicios', 'Agenda bajo allowlist'],
                 'examples' => ['Clinicas con tienda', 'Academias', 'Talleres'],
                 'rubro_key' => 'hybrid-core',
@@ -98,8 +98,8 @@ final class RegisterTenantController extends Controller
                     'businessType' => BusinessType::RETAIL->value,
                     'categories' => ['restaurantes', 'tiendas'],
                     'teaser' => 'Prioriza oferta visible, precios y canal de pedido.',
-                    'onboardingTitle' => 'Starter Products: vende y cobra mas rapido',
-                    'onboardingCopy' => 'Publica oferta accionable, valida pedidos y despues escala promociones y cobros.',
+                    'onboardingTitle' => 'Starter Products: vende y cobra más rápido',
+                    'onboardingCopy' => 'Publica oferta accionable, valida pedidos y después escala promociones y cobros.',
                     'modules' => ['Productos', 'Pedidos', 'Cupones', 'Marketing'],
                 ],
                 [
@@ -109,7 +109,7 @@ final class RegisterTenantController extends Controller
                     'businessType' => BusinessType::SERVICE->value,
                     'categories' => ['servicios', 'salud'],
                     'teaser' => 'Prioriza agenda y disponibilidad de atencion.',
-                    'onboardingTitle' => 'Starter Appointments: agenda confiable y sin friccion',
+                    'onboardingTitle' => 'Starter Appointments: agenda confiable y sin fricción',
                     'onboardingCopy' => 'Define servicios y disponibilidad real antes de abrir citas y recordatorios.',
                     'modules' => ['Servicios', 'Agenda', 'Personal', 'Recordatorios'],
                 ],
@@ -162,7 +162,7 @@ final class RegisterTenantController extends Controller
             if ($commercialMode === CommercialMode::HYBRID && ! (bool) config('conecta.hybrid_commercial_mode_enabled', false)) {
                 return back()
                     ->withInput($request->except('password', 'password_confirmation'))
-                    ->withErrors(['commercial_mode' => 'El modo mixto esta disponible solo por piloto controlado.']);
+                    ->withErrors(['commercial_mode' => 'El modo mixto está disponible solo por piloto controlado.']);
             }
 
             // DELEGATION: Command Bus
@@ -189,7 +189,7 @@ final class RegisterTenantController extends Controller
             if (! $user instanceof User) {
                 return redirect()
                     ->route('login')
-                    ->with('warning', 'Tu negocio se creo, pero debes iniciar sesion para continuar al panel.');
+                    ->with('warning', 'Tu negocio se creó, pero debes iniciar sesión para continuar al panel.');
             }
 
             Auth::login($user);

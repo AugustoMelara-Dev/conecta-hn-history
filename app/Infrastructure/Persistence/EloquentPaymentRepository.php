@@ -18,6 +18,27 @@ final readonly class EloquentPaymentRepository implements PaymentRepositoryInter
 {
     private const TABLE = 'subscription_payments';
 
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    public function create(array $attributes): PaymentEntity
+    {
+        $model = new PaymentModel;
+        $model->forceFill([
+            'tenant_id' => (string) $attributes['tenant_id'],
+            'amount' => (float) $attributes['amount'],
+            'bank' => (string) ($attributes['bank'] ?? 'pending_activation'),
+            'reference_number' => (string) $attributes['reference_number'],
+            'status' => (string) ($attributes['status'] ?? PaymentStatus::PENDING->value),
+            'proof_path' => (string) ($attributes['proof_path'] ?? 'pending'),
+            'idempotency_key' => (string) ($attributes['idempotency_key'] ?? 'registration-'.$attributes['reference_number']),
+            'version' => (int) ($attributes['version'] ?? 1),
+        ]);
+        $model->save();
+
+        return $this->toEntity($model);
+    }
+
     public function save(PaymentEntity $payment): void
     {
         $model = PaymentModel::query()->findOrNew($payment->id);

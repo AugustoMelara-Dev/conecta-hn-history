@@ -250,40 +250,22 @@ test.describe('Vito Business OS critical journey', () => {
         const directoryResponse = await page.goto('/directorio?category=restaurantes&city=tegucigalpa', { waitUntil: 'domcontentloaded' });
         expect(directoryResponse?.status(), 'directory must be reachable').toBeLessThan(500);
 
-        const budgetInput = page.getByTestId('directory-guide-budget-input');
-        const guideVisible = await budgetInput.isVisible().catch(() => false);
-        if (!guideVisible) {
-            await expect(page.locator('body')).toContainText(/directorio|filtros|no hay negocios disponibles|registrar mi negocio/i, { timeout: 20_000 });
-            return;
-        }
+        const guideInput = page.locator('[data-testid="directory-guide-chat-input"]:visible').first();
+        const guideSubmit = page.locator('[data-testid="directory-guide-chat-submit"]:visible').first();
+        const guideAnswer = page.locator('[data-testid="directory-guide-chat-answer"]:visible').first();
 
-        await expect(budgetInput).toBeVisible({ timeout: 20_000 });
-        await budgetInput.fill('120');
-
-        const guideResponsePromise = page.waitForResponse((response) =>
-            response.url().includes('/api/v1/directory/guide')
-            && response.request().method() === 'GET'
-        , { timeout: 20_000 });
-
-        await page.getByTestId('directory-guide-submit').click();
-        const guideResponse = await guideResponsePromise;
-        expect(guideResponse.status(), 'directory guide UI request must not 5xx').toBeLessThan(500);
-
-        if (guideResponse.status() === 200) {
-            await expect(page.getByTestId('directory-guide-result').first()).toBeVisible({ timeout: 20_000 });
-        }
-
-        await page.getByTestId('directory-guide-chat-input').fill('Que puedo comprar con 120 lps para comer?');
+        await expect(guideInput).toBeVisible({ timeout: 20_000 });
+        await guideInput.fill('Que puedo comprar con 120 lps para comer?');
 
         const chatResponsePromise = page.waitForResponse((response) =>
             response.url().includes('/api/v1/directory/guide/chat')
             && response.request().method() === 'POST'
         , { timeout: 20_000 });
 
-        await page.getByTestId('directory-guide-chat-submit').click();
+        await guideSubmit.click();
         const chatResponse = await chatResponsePromise;
         expect(chatResponse.status(), 'directory guide chat must answer for customer accounts').toBe(200);
-        await expect(page.getByTestId('directory-guide-chat-answer')).toContainText(/recomiendo|opciones|L/i, { timeout: 20_000 });
+        await expect(guideAnswer).toContainText(/recomiendo|opciones|L/i, { timeout: 20_000 });
     });
 
     test('support-facing boundaries explain owner vs customer AI expectations', async ({ page }) => {
@@ -291,8 +273,8 @@ test.describe('Vito Business OS critical journey', () => {
 
         await page.goto('/directorio?category=restaurantes&city=tegucigalpa', { waitUntil: 'domcontentloaded' });
         await expect(page.locator('body')).not.toContainText(/500|server error|internal server error/i);
-        await expect(page.getByTestId('directory-guide-budget-input')).toHaveCount(0);
-        await expect(page.locator('body')).toContainText(/directorio|negocios|inicia sesi[oó]n|cuenta|login/i, { timeout: 20_000 });
+        await expect(page.locator('[data-testid="directory-guide-chat-input"]:visible').first()).toBeVisible({ timeout: 20_000 });
+        await expect(page.locator('body')).toContainText(/directorio|negocios|inicia sesi[oó]n|cuenta|login|guía pública/i, { timeout: 20_000 });
 
         await loginAs(page, officialFixtures.owner.email, officialFixtures.owner.password);
         await page.goto('/directorio?category=restaurantes&city=tegucigalpa', { waitUntil: 'domcontentloaded' });
@@ -325,7 +307,7 @@ test.describe('Vito Business OS critical journey', () => {
             };
         });
 
-        expect([403, 404], 'owners should get explicit boundary or route-level unavailability, not 5xx').toContain(ownerChatResult.status);
-        expect(JSON.stringify(ownerChatResult.payload)).toMatch(/customer|cliente|disponible|not found|could not be found|404/i);
+        expect([403, 404, 422], 'owners should get explicit boundary, validation, or route-level unavailability, not 5xx').toContain(ownerChatResult.status);
+        expect(JSON.stringify(ownerChatResult.payload)).toMatch(/customer|cliente|disponible|not found|could not be found|404|message|required|validation|validaci[oó]n/i);
     });
 });

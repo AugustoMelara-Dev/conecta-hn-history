@@ -6,13 +6,13 @@ import { ConfirmPasswordForm } from "@/Components/Auth/ConfirmPasswordForm"
 export default function ConfirmPassword() {
     return (
         <>
-            <Head title="Confirmar contrasena | Vito Business OS" />
+            <Head title="Confirmar contraseña | Vito Business OS" />
 
             <AuthShadcnShell
-                imageAlt="Panel para confirmar contrasena"
+                imageAlt="Panel para confirmar contraseña"
                 eyebrow="Paso de seguridad"
                 title="Confirma que eres tu"
-                description="Protegemos acciones sensibles pidiendo tu contrasena antes de continuar."
+                description="Protegemos acciones sensibles pidiendo tu contraseña antes de continuar."
             >
                 <ConfirmPasswordForm />
             </AuthShadcnShell>

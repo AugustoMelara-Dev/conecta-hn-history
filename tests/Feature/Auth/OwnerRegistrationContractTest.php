@@ -8,6 +8,7 @@ use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Domain\TenantGovernance\Enums\CommercialMode;
 use App\Models\Category;
 use App\Models\City;
+use App\Models\Payment;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Collection;
@@ -92,6 +93,38 @@ final class OwnerRegistrationContractTest extends TestCase
         $this->assertSame($city->id, $tenant->city_id);
         $this->assertSame('+504 9999-0000', $tenant->whatsapp_number);
         $this->assertSame('retail-core', $tenant->rubro_key);
+    }
+
+    public function test_pro_registration_creates_pending_payment_without_pro_entitlement(): void
+    {
+        [$city, $category] = $this->referenceData();
+
+        $this->postWithCsrf(route('tenant.register.store'), $this->validPayload([
+            'business_name' => 'Plan Pendiente',
+            'slug' => 'plan-pendiente',
+            'email' => 'plan.pendiente@example.com',
+            'city_id' => $city->id,
+            'category_id' => $category->id,
+            'commercial_mode' => CommercialMode::PRODUCTS->value,
+            'selected_plan' => 'pro',
+        ]))->assertRedirect('/app/plan-pendiente');
+
+        $tenant = Tenant::query()->where('slug', 'plan-pendiente')->firstOrFail();
+
+        $this->assertFalse((bool) $tenant->is_pro);
+        $this->assertSame('semilla', $tenant->plan_type?->value ?? $tenant->plan_type);
+        $this->assertSame('active', $tenant->subscription_status);
+        $this->assertSame(10, (int) $tenant->product_limit);
+
+        $payment = Payment::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', $tenant->id)
+            ->firstOrFail();
+
+        $this->assertSame('pending', $payment->status);
+        $this->assertSame('pending_activation', $payment->bank);
+        $this->assertSame('pending', $payment->proof_path);
+        $this->assertSame(500.0, (float) $payment->amount);
     }
 
     public function test_appointments_registration_persists_derived_service_contract(): void

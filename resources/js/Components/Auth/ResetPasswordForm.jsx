@@ -39,9 +39,9 @@ export function ResetPasswordForm({ token, email, className, ...props }) {
     return (
         <Card className={cn("overflow-hidden shadow-sm", className)} {...props}>
             <CardHeader className="gap-2 border-b bg-muted/30 text-center">
-                <CardTitle>Cambia tu contrasena</CardTitle>
+                <CardTitle>Cambia tu contraseña</CardTitle>
                 <CardDescription>
-                    Crea una contrasena nueva para recuperar el acceso a Vito Business OS.
+                    Crea una contraseña nueva para recuperar el acceso a Vito Business OS.
                 </CardDescription>
             </CardHeader>
 
@@ -79,7 +79,7 @@ export function ResetPasswordForm({ token, email, className, ...props }) {
                         </Field>
 
                         <Field data-invalid={Boolean(errors.password)}>
-                            <FieldLabel htmlFor="password">Contrasena</FieldLabel>
+                            <FieldLabel htmlFor="password">Contraseña</FieldLabel>
                             <Input
                                 id="password"
                                 type="password"
@@ -104,7 +104,7 @@ export function ResetPasswordForm({ token, email, className, ...props }) {
                         </Field>
 
                         <Field data-invalid={Boolean(errors.password_confirmation)}>
-                            <FieldLabel htmlFor="password_confirmation">Confirmar contrasena</FieldLabel>
+                            <FieldLabel htmlFor="password_confirmation">Confirmar contraseña</FieldLabel>
                             <Input
                                 id="password_confirmation"
                                 type="password"
@@ -127,7 +127,7 @@ export function ResetPasswordForm({ token, email, className, ...props }) {
                         <Field>
                             <Button type="submit" disabled={processing} data-testid="reset-password-submit" className="w-full">
                                 {processing ? <Spinner data-icon="inline-start" /> : null}
-                                {processing ? "Actualizando..." : "Actualizar contrasena"}
+                                {processing ? "Actualizando..." : "Actualizar contraseña"}
                             </Button>
                         </Field>
 
@@ -135,7 +135,7 @@ export function ResetPasswordForm({ token, email, className, ...props }) {
 
                         <Field>
                             <Button variant="outline" type="button" className="w-full" asChild>
-                                <Link href="/login">Iniciar sesion</Link>
+                                <Link href="/login">Iniciar sesión</Link>
                             </Button>
                         </Field>
                     </FieldGroup>

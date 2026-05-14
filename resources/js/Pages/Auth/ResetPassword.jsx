@@ -7,19 +7,19 @@ export default function ResetPassword({ token, email }) {
     return (
         <>
             <Head>
-                <title>Cambiar contrasena | Vito Business OS</title>
+                <title>Cambiar contraseña | Vito Business OS</title>
                 <meta
                     name="description"
-                    content="Actualiza tu contrasena para recuperar acceso seguro a tu cuenta de Vito Business OS."
+                    content="Actualiza tu contraseña para recuperar acceso seguro a tu cuenta de Vito Business OS."
                 />
                 <link rel="canonical" href={route("password.request")} />
             </Head>
 
             <AuthShadcnShell
-                imageAlt="Panel para cambiar contrasena"
+                imageAlt="Panel para cambiar contraseña"
                 eyebrow="Recuperacion segura"
                 title="Vuelve a entrar sin perder el control"
-                description="Actualiza tu contrasena desde un flujo protegido y regresa a tu cuenta cuando este listo."
+                description="Actualiza tu contraseña desde un flujo protegido y regresa a tu cuenta cuando esté listo."
             >
                 <ResetPasswordForm token={token} email={email} />
             </AuthShadcnShell>

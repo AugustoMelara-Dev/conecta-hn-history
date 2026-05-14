@@ -36,6 +36,7 @@
         "test:e2e:uiux-fifteenth-panel-core": "node scripts/qa/uiux-fifteenth-panel-core-smoke.mjs",
         "test:e2e:uiux-consulting-leads": "node scripts/qa/uiux-consulting-leads-smoke.mjs",
         "test:e2e:uiux-landing-public": "node scripts/qa/uiux-landing-public-smoke.mjs",
+        "test:e2e:uiux-register-business": "node scripts/qa/uiux-register-business-smoke.mjs",
         "test:e2e:uiux-twentieth-dashboard-widgets": "node scripts/qa/uiux-twentieth-dashboard-widgets-smoke.mjs",
         "test:e2e:uiux-twentieth-public-directory": "node scripts/qa/uiux-twentieth-public-directory-smoke.mjs",
         "test:e2e:uiux-twenty-third-business-profile": "node scripts/qa/uiux-twenty-third-business-profile-smoke.mjs",

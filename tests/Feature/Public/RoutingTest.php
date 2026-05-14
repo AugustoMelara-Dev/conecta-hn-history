@@ -38,6 +38,30 @@ describe('Canonical public routing', function () {
             ->assertRedirect('/directorio');
     });
 
+    it('serves legal pages used by registration and footer links', function () {
+        $this->get('/legal/terms')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Legal/Show')
+                ->where('kind', 'terms')
+            );
+
+        $this->get('/legal/privacy')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Legal/Show')
+                ->where('kind', 'privacy')
+            );
+
+        $this->get('/terms')
+            ->assertStatus(301)
+            ->assertRedirect('/legal/terms');
+
+        $this->get('/privacy')
+            ->assertStatus(301)
+            ->assertRedirect('/legal/privacy');
+    });
+
     it('serves app.localhost as the buyer directory alias', function () {
         $this->get('http://app.localhost/')
             ->assertRedirect('/directorio');

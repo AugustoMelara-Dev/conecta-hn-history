@@ -111,7 +111,7 @@ export default function Register() {
                 maxWidthClassName="max-w-xl"
                 eyebrow="Registro de negocio"
                 title="Crea una cuenta lista para operar"
-                description="Define el nombre publico de tu negocio y el acceso propietario sin pasos innecesarios."
+                description="Define el nombre público de tu negocio y el acceso propietario sin pasos innecesarios."
             >
                 <Card className="overflow-hidden shadow-sm" data-testid="register-card">
                     <CardHeader className="gap-4 border-b bg-muted/30">
@@ -244,7 +244,7 @@ export default function Register() {
 
                                     <RegistrationField
                                         id="password"
-                                        label="Contrasena"
+                                        label="Contraseña"
                                         error={errors.password}
                                         description="Debe tener al menos 8 caracteres."
                                     >
@@ -266,9 +266,9 @@ export default function Register() {
 
                                     <RegistrationField
                                         id="password_confirmation"
-                                        label="Confirmar contrasena"
+                                        label="Confirmar contraseña"
                                         error={errors.password_confirmation}
-                                        description="Escribe la misma contrasena para confirmarla."
+                                        description="Escribe la misma contraseña para confirmarla."
                                     >
                                         <Input
                                             id="password_confirmation"
@@ -276,7 +276,7 @@ export default function Register() {
                                             type="password"
                                             value={data.password_confirmation}
                                             autoComplete="new-password"
-                                            placeholder="Repite tu contrasena"
+                                            placeholder="Repite tu contraseña"
                                             onChange={(event) => setData("password_confirmation", event.target.value)}
                                             required
                                             aria-invalid={Boolean(errors.password_confirmation)}
@@ -300,7 +300,7 @@ export default function Register() {
                                     <Button variant="outline" type="button" className="w-full" asChild>
                                         <Link href="/login">
                                             <Globe data-icon="inline-start" aria-hidden="true" />
-                                            Iniciar sesion
+                                            Iniciar sesión
                                         </Link>
                                     </Button>
                                     <FieldDescription className="text-center">

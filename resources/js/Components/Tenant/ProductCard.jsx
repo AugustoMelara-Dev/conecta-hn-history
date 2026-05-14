@@ -19,6 +19,18 @@ import {
 import ProductActionArea from './ProductActionArea';
 import { cn } from '@/lib/utils';
 
+function getPublicMediaUrl(path) {
+    if (!path || typeof path !== 'string') {
+        return null;
+    }
+
+    if (path.startsWith('http') || path.startsWith('/') || path.startsWith('data:')) {
+        return path;
+    }
+
+    return `/storage/${path}`;
+}
+
 export default function ProductCard({
     product,
     tenant,
@@ -27,6 +39,7 @@ export default function ProductCard({
     className,
 }) {
     const hasModifiers = product.has_modifiers || (product.modifier_groups?.length > 0);
+    const productImage = getPublicMediaUrl(product.image);
 
     return (
         <Card className={cn(
@@ -42,9 +55,9 @@ export default function ProductCard({
                     ? "h-full w-32 shrink-0 md:w-40"
                     : "aspect-[4/3]"
             )}>
-                {product.image ? (
+                {productImage ? (
                     <img
-                        src={product.image}
+                        src={productImage}
                         alt={product.name}
                         className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
                         loading="lazy"
@@ -81,7 +94,7 @@ export default function ProductCard({
                         "line-clamp-2 text-sm text-muted-foreground",
                         variant !== 'horizontal' && "min-h-10"
                     )}>
-                        {product.description || 'Delicioso producto disponible.'}
+                        {product.description || 'Producto disponible para consulta.'}
                     </CardDescription>
                 </CardHeader>
 
@@ -90,10 +103,11 @@ export default function ProductCard({
                 <CardFooter className="p-4 pt-0">
                     <ProductActionArea
                         product={product}
+                        tenantId={tenant?.id}
                         tenantPlan={tenantPlan}
-                        tenantWhatsapp={tenant.whatsapp || tenant.whatsapp_number}
-                        tenantName={tenant.name}
-                        tenantSlug={tenant.slug}
+                        tenantWhatsapp={tenant?.whatsapp || tenant?.whatsapp_number}
+                        tenantName={tenant?.name}
+                        tenantSlug={tenant?.slug}
                         variant={variant === 'horizontal' ? 'compact' : 'default'}
                         className="w-full"
                     />

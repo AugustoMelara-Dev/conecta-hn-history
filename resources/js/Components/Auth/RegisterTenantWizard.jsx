@@ -7,7 +7,6 @@ import {
     Building2,
     Check,
     CheckCircle2,
-    LoaderCircle,
     MapPin,
     Sparkles,
     UserRound,
@@ -26,6 +25,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/Components/ui/alert"
 import { Button } from "@/Components/ui/button"
 import { Card } from "@/Components/ui/card"
 import { Progress } from "@/Components/ui/progress"
+import { Spinner } from "@/Components/ui/spinner"
 import {
     PUBLIC_BODY_FONT,
     PUBLIC_DISPLAY_FONT,
@@ -766,26 +766,26 @@ export function RegisterTenantWizard({
 
                         <div className="flex items-center justify-end gap-2">
                             <Button type="button" variant="outline" onClick={() => setStep((current) => Math.max(current - 1, 0))} disabled={step === 0 || processing} className="h-12 rounded-xl border-slate-200 bg-white text-slate-950 hover:bg-slate-50">
-                                <ArrowLeft className="mr-2 h-4 w-4" />
+                                <ArrowLeft data-icon="inline-start" aria-hidden="true" />
                                 Atrás
                             </Button>
 
                             {step < STEPS.length - 1 ? (
                                 <Button type="button" data-testid="register-next-step" onClick={() => validateStep(step, { focus: true }) && setStep((current) => current + 1)} disabled={processing || !canSubmit} className="h-12 rounded-xl bg-slate-950 text-white hover:bg-slate-800">
                                     Continuar
-                                    <ArrowRight className="ml-2 h-4 w-4" />
+                                    <ArrowRight data-icon="inline-end" aria-hidden="true" />
                                 </Button>
                             ) : (
                                 <Button type="button" data-testid="register-submit" onClick={submit} disabled={processing || !canSubmit} className="h-12 rounded-xl bg-slate-950 text-white hover:bg-slate-800">
                                     {processing ? (
                                         <>
-                                            <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                                            <Spinner data-icon="inline-start" />
                                             Creando...
                                         </>
                                     ) : (
                                         <>
                                             Crear negocio
-                                            <BadgeCheck className="ml-2 h-4 w-4" />
+                                            <BadgeCheck data-icon="inline-end" aria-hidden="true" />
                                         </>
                                     )}
                                 </Button>

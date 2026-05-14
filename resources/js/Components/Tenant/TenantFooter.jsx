@@ -1,50 +1,47 @@
 /**
  * TenantFooter - Shared Footer Component for Both Tiers
- * 
- * For Semilla: Shows "Powered by Vito Business OS" branding
- * For Pro: Shows clean footer without branding
+ *
+ * For Semilla: Shows "Powered by Vito Business OS" branding.
+ * For Pro: Shows clean footer without branding.
  */
 
 import { Link } from '@inertiajs/react';
-import { MapPin, Clock, Phone, Globe, MessageCircle } from 'lucide-react';
+import { Zap } from 'lucide-react';
+
+import { Button } from '@/Components/ui/button';
 import { cn } from '@/lib/utils';
 
 export default function TenantFooter({
     tenant,
     tenantPlan,
-    isOpen = true,
     className,
 }) {
     if (!tenant) return null;
 
-    // For Pro tier, show a minimal footer
     if (tenantPlan !== 'semilla') {
-        return null; // Pro doesn't need a branding footer
+        return null;
     }
 
-    // Semilla tier gets the "Powered by" footer
     return (
-        <div className={cn(
-            "fixed bottom-0 left-0 right-0 z-30",
-            "bg-slate-900/95 backdrop-blur-md border-t border-white/10",
-            "py-3 px-4",
-            className
-        )}>
-            <div className="max-w-3xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+        <div
+            className={cn(
+                'fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 px-4 py-3 text-foreground shadow-sm backdrop-blur',
+                className
+            )}
+        >
+            <div className="mx-auto flex max-w-3xl flex-col items-center justify-between gap-3 text-center sm:flex-row sm:text-left">
                 <div>
-                    <p className="text-sm font-medium text-white">
-                        ⚡ Powered by <span className="text-indigo-400">Vito Business OS</span>
+                    <p className="inline-flex items-center gap-2 text-sm font-medium">
+                        <Zap className="size-4 text-primary" aria-hidden="true" />
+                        Powered by <span className="font-semibold">Vito Business OS</span>
                     </p>
-                    <p className="text-xs text-slate-500">
-                        Crea tu tienda digital gratis
+                    <p className="text-xs text-muted-foreground">
+                        Crea tu micrositio gratis en Vito App
                     </p>
                 </div>
-                <Link
-                    href="/registrar-negocio"
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors"
-                >
-                    Crear mi Tienda
-                </Link>
+                <Button size="sm" asChild>
+                    <Link href="/registrar-negocio">Crear mi micrositio</Link>
+                </Button>
             </div>
         </div>
     );

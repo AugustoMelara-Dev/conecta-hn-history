@@ -10,6 +10,7 @@ use App\Http\Controllers\Public\TenantMicrositeController;
 use App\Http\Controllers\Public\WelcomeController;
 use App\Http\Controllers\Tenant\AnalyticsController;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 /*
 |--------------------------------------------------------------------------
@@ -67,6 +68,17 @@ Route::get('/explore', [RedirectController::class, 'explore'])->name('public.exp
 // 3. DIRECTORIO: React/Inertia (Directory/Index.jsx)
 // ═══════════════════════════════════════════════════════════════════════
 Route::get('/directorio', [DirectoryController::class, 'index'])->name('directory.index');
+
+Route::get('/legal/terms', static fn () => Inertia::render('Legal/Show', [
+    'kind' => 'terms',
+]))->name('legal.terms');
+
+Route::get('/legal/privacy', static fn () => Inertia::render('Legal/Show', [
+    'kind' => 'privacy',
+]))->name('legal.privacy');
+
+Route::redirect('/terms', '/legal/terms', 301)->name('legal.terms.legacy');
+Route::redirect('/privacy', '/legal/privacy', 301)->name('legal.privacy.legacy');
 
 Route::get('/t/{tenant}', [TenantMicrositeController::class, 'show'])
     ->name('tenant.public.show');

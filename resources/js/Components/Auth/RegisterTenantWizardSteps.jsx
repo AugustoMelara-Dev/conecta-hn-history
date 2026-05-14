@@ -204,7 +204,7 @@ export function BusinessStep({
                 </FieldDescription>
                 {crossSurfaceHost ? (
                     <FieldDescription className="text-muted-foreground">
-                        Tu panel opera en {registrationHost} y tu micrositio publico se publica como subdominio de {slugBaseHost}.
+                        Tu panel opera en {registrationHost} y tu micrositio público se publica como subdominio de {slugBaseHost}.
                     </FieldDescription>
                 ) : null}
                 {slugState.suggestions?.length ? (
@@ -234,11 +234,11 @@ export function BusinessStep({
                         aria-describedby={describedBy("category_id", errorFor)}
                         className={`h-12 rounded-xl border-border bg-muted px-4 text-foreground focus:ring-4 focus:ring-ring/30 ${errorFor("category_id") ? "border-destructive/50 focus:ring-destructive/20" : ""}`}
                     >
-                        <SelectValue placeholder="Selecciona una categoria base" />
+                        <SelectValue placeholder="Selecciona una categoría base" />
                     </SelectTrigger>
                     <SelectContent>
                         <SelectGroup>
-                            <SelectItem value="none">Selecciona una categoria base</SelectItem>
+                            <SelectItem value="none">Selecciona una categoría base</SelectItem>
                             {categories.map((item) => (
                                 <SelectItem key={item.id} value={String(item.id)}>{item.name}</SelectItem>
                             ))}
@@ -248,7 +248,7 @@ export function BusinessStep({
                 {errorFor("category_id") ? (
                     <FieldDescription id={errorId("category_id")} role="alert" className="text-destructive">{errorFor("category_id")}</FieldDescription>
                 ) : (
-                    <FieldDescription>Se usa para SEO y recomendaciones. Tu operacion la define el modo comercial.</FieldDescription>
+                    <FieldDescription>Se usa para SEO y recomendaciones. Tu operación la define el modo comercial.</FieldDescription>
                 )}
             </Field>
 
@@ -256,7 +256,7 @@ export function BusinessStep({
                 <div className="flex flex-col gap-2">
                     <FieldLabel>Como quieres recibir clientes</FieldLabel>
                     <FieldDescription id={helpId("commercial_mode")}>
-                        Elige la ruta comercial principal. La categoria queda para SEO y recomendaciones, no para limitar tu negocio.
+                        Elige la ruta comercial principal. La categoría queda para SEO y recomendaciones, no para limitar tu negocio.
                     </FieldDescription>
                 </div>
 
@@ -294,7 +294,7 @@ export function BusinessStep({
 
                 {suggestedBusinessType && !businessTypeTouched ? (
                     <FieldDescription>
-                        Te sugerimos <strong>{businessTypes.find((item) => item.value === suggestedBusinessType)?.label || "esta ruta"}</strong> por la categoria que elegiste.
+                        Te sugerimos <strong>{businessTypes.find((item) => item.value === suggestedBusinessType)?.label || "esta ruta"}</strong> por la categoría que elegiste.
                     </FieldDescription>
                 ) : null}
 
@@ -423,19 +423,19 @@ export function AccountStep({ data, updateField, errorFor, inputClass }) {
                 {errorFor("email") ? (
                     <FieldDescription id={errorId("email")} role="alert" className="text-destructive">{errorFor("email")}</FieldDescription>
                 ) : (
-                    <FieldDescription id={helpId("email")}>Usaremos este correo para login, verificacion y recuperacion.</FieldDescription>
+                    <FieldDescription id={helpId("email")}>Usaremos este correo para login, verificación y recuperación.</FieldDescription>
                 )}
             </Field>
 
             <div className="grid gap-4 md:grid-cols-2">
                 <Field data-invalid={errorFor("password") ? "true" : undefined}>
-                    <FieldLabel htmlFor="password">Contrasena</FieldLabel>
+                    <FieldLabel htmlFor="password">Contraseña</FieldLabel>
                     <Input id="password" name="password" type="password" autoComplete="new-password" value={data.password} onChange={(event) => updateField("password", event.target.value)} className={inputClass("password")} aria-invalid={Boolean(errorFor("password"))} aria-describedby={describedBy("password", errorFor, helpId("password"))} />
-                    {errorFor("password") ? <FieldDescription id={errorId("password")} role="alert" className="text-destructive">{errorFor("password")}</FieldDescription> : <FieldDescription id={helpId("password")}>Minimo 8 caracteres.</FieldDescription>}
+                    {errorFor("password") ? <FieldDescription id={errorId("password")} role="alert" className="text-destructive">{errorFor("password")}</FieldDescription> : <FieldDescription id={helpId("password")}>Mínimo 8 caracteres.</FieldDescription>}
                 </Field>
 
                 <Field data-invalid={errorFor("password_confirmation") ? "true" : undefined}>
-                    <FieldLabel htmlFor="password_confirmation">Confirmar contrasena</FieldLabel>
+                    <FieldLabel htmlFor="password_confirmation">Confirmar contraseña</FieldLabel>
                     <Input id="password_confirmation" name="password_confirmation" type="password" autoComplete="new-password" value={data.password_confirmation} onChange={(event) => updateField("password_confirmation", event.target.value)} className={inputClass("password_confirmation")} aria-invalid={Boolean(errorFor("password_confirmation"))} aria-describedby={describedBy("password_confirmation", errorFor)} />
                     {errorFor("password_confirmation") ? <FieldDescription id={errorId("password_confirmation")} role="alert" className="text-destructive">{errorFor("password_confirmation")}</FieldDescription> : null}
                 </Field>
@@ -464,45 +464,45 @@ export function PlanSummaryStep({
     const mode = selectedBusinessType?.value || data.commercial_mode
     const modeBasicBullets = {
         appointments: [
-            "Perfil digital publico",
+            "Perfil digital público",
             "Servicios visibles y contacto para validar demanda",
             `Hasta ${freeLimit} productos/servicios publicados`,
         ],
         consulting_leads: [
-            "Perfil digital publico",
+            "Perfil digital público",
             "Landing consultiva y CTA principal activos",
             `Hasta ${freeLimit} ofertas o servicios publicados`,
         ],
         products: [
-            "Perfil digital publico",
-            `Catalogo de hasta ${freeLimit} productos`,
+            "Perfil digital público",
+            `Catálogo de hasta ${freeLimit} productos`,
             "Directorio, WhatsApp, llamada y mapa para validar",
         ],
         hybrid: [
-            "Perfil digital publico",
-            "Operacion mixta disponible solo por piloto",
-            "Panel base con activacion por allowlist",
+            "Perfil digital público",
+            "Operación mixta disponible solo por piloto",
+            "Panel base con activación por allowlist",
         ],
     }
     const modeProBullets = {
         appointments: [
-            "Reservas avanzadas y agenda con mas control",
-            "Reportes, campanas e IA operativa activable",
+            "Reservas avanzadas y agenda con más control",
+            "Reportes, campañas e IA operativa activable",
             `Capacidad comercial ampliada hasta ${proLimit} productos/servicios`,
         ],
         consulting_leads: [
             "Captura y seguimiento comercial ampliados",
-            "Reportes, campanas e IA operativa activable",
-            "Capacidad comercial ampliada para consultas y conversion",
+            "Reportes, campañas e IA operativa activable",
+            "Capacidad comercial ampliada para consultas y conversión",
         ],
         products: [
             `Capacidad comercial de hasta ${proLimit} productos`,
-            "Reservas/reportes y campanas segun capacidades",
-            "Agente IA privado con activacion segura por tenant",
+            "Reservas/reportes y campañas según capacidades",
+            "Agente IA privado con activación segura por tenant",
         ],
         hybrid: [
-            "Operacion mixta avanzada",
-            "Analiticas avanzadas",
+            "Operación mixta avanzada",
+            "Analíticas avanzadas",
             "Capacidad comercial ampliada por piloto",
         ],
     }
@@ -516,7 +516,7 @@ export function PlanSummaryStep({
                 value={data.selected_plan}
                 onValueChange={(value) => updateField("selected_plan", value)}
                 className="grid gap-4 md:grid-cols-2"
-                aria-label="Plan de activacion"
+                aria-label="Plan de activación"
                 aria-describedby={describedBy("selected_plan", errorFor)}
             >
                 <PlanCard id="plan-free" value="free" active={data.selected_plan === "free"} title="Plan Basic" caption="Lo esencial para iniciar" price={`L. ${freePrice}`} bullets={basicBullets} />
@@ -526,14 +526,14 @@ export function PlanSummaryStep({
 
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr),300px]">
                 <div className="flex flex-col gap-3 rounded-[1.75rem] border border-border bg-background p-5">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Resumen de activacion</p>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Resumen de activación</p>
                     <SummaryRow label="Negocio" value={businessPreview} />
                     <SummaryRow label="URL" value={slugPreview} />
-                    <SummaryRow label="Categoria" value={selectedCategory?.name || "Pendiente"} />
+                    <SummaryRow label="Categoría" value={selectedCategory?.name || "Pendiente"} />
                     <SummaryRow label="Tipo" value={selectedBusinessType?.label || "Pendiente"} />
                     <SummaryRow label="Segmento" value={selectedSegment?.label || "Pendiente"} />
                     <SummaryRow label="Ciudad" value={selectedCity?.name || "Pendiente"} />
-                    <SummaryRow label="Cuenta" value={data.email || "Sin correo aun"} />
+                    <SummaryRow label="Cuenta" value={data.email || "Sin correo aún"} />
                     <SummaryRow label="Plan" value={data.selected_plan === "pro" ? "Business Pro" : "Basic"} />
                 </div>
 

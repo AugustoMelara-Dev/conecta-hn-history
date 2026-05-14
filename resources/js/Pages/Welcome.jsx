@@ -41,32 +41,32 @@ import PublicLayout from '@/Layouts/PublicLayout';
 const highlights = [
     {
         icon: Store,
-        title: 'Presencia publica',
-        description: 'Micrositio, directorio, catalogo o servicios, contacto y ubicacion sin friccion.',
+        title: 'Presencia pública',
+        description: 'Micrositio, directorio, catálogo o servicios, contacto y ubicación sin fricción.',
     },
     {
         icon: ShoppingBag,
         title: 'Ventas y reservas',
-        description: 'El cliente compra, reserva o solicita una cotizacion desde la ruta correcta.',
+        description: 'El cliente compra, reserva o solicita una cotización desde la ruta correcta.',
     },
     {
         icon: LayoutDashboard,
         title: 'Control diario',
-        description: 'Productos, reservas, clientes, campanas, reportes y cobros en un lugar privado para tu equipo.',
+        description: 'Productos, reservas, clientes, campañas, reportes y cobros en un lugar privado para tu equipo.',
     },
 ];
 
 const steps = [
-    'Registra los datos minimos y elige si venderas productos, atenderas citas o recibiras solicitudes.',
-    'Vito publica tu perfil, micrositio, datos de contacto y primer catalogo de forma ordenada.',
-    'Completa catalogo, agenda, clientes y crecimiento desde el panel privado del negocio.',
+    'Registra los datos mínimos y elige si venderás productos, atenderás citas o recibirás solicitudes.',
+    'Vito publica tu perfil, micrositio, datos de contacto y primer catálogo de forma ordenada.',
+    'Completa catálogo, agenda, clientes y crecimiento desde el panel privado del negocio.',
 ];
 
 const platformPillars = [
     {
         icon: ShoppingBag,
-        title: 'Catalogo y pedidos',
-        description: 'Para negocios que venden productos, menus, paquetes o inventario visible.',
+        title: 'Catálogo y pedidos',
+        description: 'Para negocios que venden productos, menús, paquetes o inventario visible.',
     },
     {
         icon: CalendarCheck,
@@ -80,23 +80,23 @@ const platformPillars = [
     },
     {
         icon: Bot,
-        title: 'IA publica y privada',
-        description: 'Guia publica para clientes e IA privada solo para equipos autorizados.',
+        title: 'IA pública y privada',
+        description: 'Guía pública para clientes e IA privada solo para equipos autorizados.',
     },
 ];
 
 const faqs = [
     {
-        question: 'Puedo iniciar gratis?',
-        answer: 'Si. Free incluye micrositio, presencia en directorio, contacto, WhatsApp, telefono, mapa y capacidad inicial limitada.',
+        question: '¿Puedo iniciar gratis?',
+        answer: 'Sí. Free incluye micrositio, presencia en directorio, contacto, WhatsApp, teléfono, mapa y capacidad inicial limitada.',
     },
     {
-        question: 'Que cambia al pasar a PRO?',
-        answer: 'PRO amplia capacidad y puede activar reservas, campanas, reportes, CRM e IA privada cuando tu negocio lo tenga autorizado.',
+        question: '¿Qué cambia al pasar a PRO?',
+        answer: 'PRO amplía capacidad y puede activar reservas, campañas, reportes, CRM e IA privada cuando tu negocio lo tenga autorizado.',
     },
     {
-        question: 'El panel operativo esta en esta pagina?',
-        answer: 'No. Esta pagina muestra lo que puedes vender y operar. El trabajo diario vive en el panel privado de tu negocio.',
+        question: '¿El panel operativo está en esta página?',
+        answer: 'No. Esta página muestra lo que puedes vender y operar. El trabajo diario vive en el panel privado de tu negocio.',
     },
 ];
 
@@ -241,8 +241,10 @@ function HeroSection({ auth, canRegister, heroImage, stats }) {
 
     const handleSearch = (event) => {
         event.preventDefault();
+        const search = data.search.trim();
+        const directoryUrl = appRoute('directory.index', undefined, '/directorio');
 
-        get(appRoute('directory.index', undefined, '/directorio'), {
+        get(search ? `${directoryUrl}?search=${encodeURIComponent(search)}` : directoryUrl, {
             preserveScroll: true,
         });
     };
@@ -266,7 +268,7 @@ function HeroSection({ auth, canRegister, heroImage, stats }) {
                     </h1>
 
                     <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
-                        Publica tu perfil, recibe clientes, agenda reservas, vende productos y mira lo importante sin perder pedidos entre chats, hojas de calculo y notas sueltas.
+                        Publica tu perfil, recibe clientes, agenda reservas, vende productos y mira lo importante sin perder pedidos entre chats, hojas de cálculo y notas sueltas.
                     </p>
 
                     <form
@@ -336,7 +338,7 @@ function HeroSection({ auth, canRegister, heroImage, stats }) {
                         <Card className="overflow-hidden border-white/10 bg-white/5 shadow-[0_34px_120px_rgba(0,0,0,0.45)] backdrop-blur">
                             <CardHeader className="border-b border-white/10">
                                 <CardDescription className="text-slate-400">Panel real del negocio</CardDescription>
-                                <CardTitle className="font-display text-xl text-white">Operacion diaria en una pantalla</CardTitle>
+                                <CardTitle className="font-display text-xl text-white">Operación diaria en una pantalla</CardTitle>
                             </CardHeader>
                             <CardContent className="p-0">
                                 <img src={heroImage} alt="Vista del panel operativo de Vito" className="h-full w-full object-cover" />
@@ -359,7 +361,7 @@ function HeroSection({ auth, canRegister, heroImage, stats }) {
                                     <CreditCard className="size-4" aria-hidden="true" />
                                     PRO interno
                                 </CardTitle>
-                                <CardDescription>Mas catalogo, CRM, campanas, reportes, reservas e IA sin exponer el plan al cliente.</CardDescription>
+                                <CardDescription>Más catálogo, CRM, campañas, reportes, reservas e IA sin exponer el plan al cliente.</CardDescription>
                             </CardHeader>
                         </Card>
                     </div>
@@ -414,7 +416,7 @@ function CategorySection({ categories }) {
                         <Badge variant="outline" className="rounded-full">Directorio</Badge>
                         <h2 className="mt-4 font-display text-4xl font-bold">Exploración útil para clientes finales</h2>
                         <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground">
-                            Cada categoria lleva al directorio actual para mantener la misma experiencia de busqueda.
+                            Cada categoría lleva al directorio actual para mantener la misma experiencia de búsqueda.
                         </p>
                     </div>
                     <Button variant="outline" asChild>
@@ -444,7 +446,7 @@ function CategorySection({ categories }) {
                     <Alert className="mt-8">
                         <AlertTitle>Directorio disponible</AlertTitle>
                         <AlertDescription>
-                            Cuando haya categorias visibles, apareceran aqui. Mientras tanto, el directorio completo sigue disponible.
+                            Cuando haya categorías visibles, aparecerán aquí. Mientras tanto, el directorio completo sigue disponible.
                         </AlertDescription>
                     </Alert>
                 )}
@@ -464,7 +466,7 @@ function TenantsSection({ tenants }) {
                         <Badge variant="outline" className="rounded-full">Micrositios</Badge>
                         <h2 className="mt-4 font-display text-4xl font-bold">Negocios listos para recibir visitas</h2>
                         <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground">
-                            Cada tarjeta enlaza al micrositio publico del negocio y mantiene el directorio como superficie de usuario final.
+                            Cada tarjeta enlaza al micrositio público del negocio y mantiene el directorio como superficie de usuario final.
                         </p>
                     </div>
                     <Button variant="outline" asChild>
@@ -509,9 +511,9 @@ function TenantsSection({ tenants }) {
                     </div>
                 ) : (
                     <Alert className="mt-8">
-                        <AlertTitle>Negocios en preparacion</AlertTitle>
+                        <AlertTitle>Negocios en preparación</AlertTitle>
                         <AlertDescription>
-                            Los nuevos negocios apareceran aqui cuando esten visibles. Puedes registrar el tuyo o explorar el directorio.
+                            Los nuevos negocios aparecerán aquí cuando estén visibles. Puedes registrar el tuyo o explorar el directorio.
                         </AlertDescription>
                     </Alert>
                 )}
@@ -528,7 +530,7 @@ function ProcessSection() {
                     <Badge variant="outline" className="rounded-full">Flujo</Badge>
                     <h2 className="mt-4 font-display text-4xl font-bold">Alta ligera, operación completa</h2>
                     <p className="mt-4 text-base leading-7 text-muted-foreground">
-                        La experiencia separa claramente clientes finales, alta de negocios y operacion interna.
+                        La experiencia separa claramente clientes finales, alta de negocios y operación interna.
                     </p>
                 </div>
 
@@ -557,9 +559,9 @@ function PricingSection({ canRegister }) {
             <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
                 <div className="max-w-2xl">
                     <Badge variant="outline" className="rounded-full">Planes</Badge>
-                    <h2 className="mt-4 font-display text-4xl font-bold">Empieza gratis, crece cuando necesites mas capacidad</h2>
+                    <h2 className="mt-4 font-display text-4xl font-bold">Empieza gratis, crece cuando necesites más capacidad</h2>
                     <p className="mt-4 text-base leading-7 text-muted-foreground">
-                        Free cubre presencia publica y contacto. PRO suma mas catalogo y herramientas operativas cuando tu negocio este listo.
+                        Free cubre presencia pública y contacto. PRO suma más catálogo y herramientas operativas cuando tu negocio esté listo.
                     </p>
                 </div>
 
@@ -574,9 +576,9 @@ function PricingSection({ canRegister }) {
                             <Separator className="my-6" />
                             <ul className="flex flex-col gap-3 text-sm text-muted-foreground">
                                 {[
-                                    'Micrositio publico',
+                                    'Micrositio público',
                                     'Presencia en directorio',
-                                    'WhatsApp, telefono y mapa',
+                                    'WhatsApp, teléfono y mapa',
                                     'Capacidad inicial limitada',
                                 ].map((item) => (
                                     <li key={item} className="flex items-center gap-2">
@@ -600,16 +602,16 @@ function PricingSection({ canRegister }) {
                             <CardDescription className="text-background/70">Para negocios que necesitan más capacidad y herramientas de operación.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <p className="text-4xl font-semibold">L 399</p>
-                            <p className="mt-1 text-sm text-background/70">por mes, según disponibilidad del plan</p>
+                            <p className="text-4xl font-semibold">Disponible por solicitud</p>
+                            <p className="mt-1 text-sm text-background/70">Activación según capacidad, modo comercial y configuración vigente.</p>
                             <Separator className="my-6" />
                             <div className="grid gap-3 sm:grid-cols-2">
                                 {[
-                                    'Mas catalogo y servicios',
+                                    'Más catálogo y servicios',
                                     'Reservas si tu modo lo requiere',
-                                    'CRM y campanas con autorizacion',
+                                    'CRM y campañas con autorización',
                                     'Reportes operativos',
-                                    'IA privada si esta autorizada',
+                                    'IA privada si está autorizada',
                                 ].map((item) => (
                                     <div key={item} className="flex items-center gap-2 text-sm text-background/90">
                                         <ShieldCheck className="size-4" aria-hidden="true" />

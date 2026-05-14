@@ -108,7 +108,7 @@ function DesktopNavigation({ auth }) {
             ) : (
                 <>
                     <Button variant="ghost" asChild>
-                        <Link href={safeRoute('login', '/login')}>Iniciar sesion</Link>
+                        <Link href={safeRoute('login', '/login')}>Iniciar sesión</Link>
                     </Button>
                     <Button asChild>
                         <Link href={safeRoute('tenant.register', '/registrar-negocio')}>Registrar negocio</Link>
@@ -131,22 +131,22 @@ function MobileNavigation({ auth }) {
                     variant="outline"
                     size="icon"
                     className="md:hidden"
-                    aria-label="Abrir menu principal"
+                    aria-label="Abrir menú principal"
                 >
                     <Menu aria-hidden="true" />
                 </Button>
             </SheetTrigger>
             <SheetContent side="right" className="flex flex-col">
                 <SheetHeader>
-                    <SheetTitle>Menu principal</SheetTitle>
+                    <SheetTitle>Menú principal</SheetTitle>
                     <SheetDescription>
-                        Accede a la busqueda publica, enlaces principales y acciones de cuenta.
+                        Accede a la búsqueda pública, enlaces principales y acciones de cuenta.
                     </SheetDescription>
                 </SheetHeader>
 
                 <SearchForm className="mt-6" inputId="public-search-mobile" />
 
-                <nav className="mt-6 flex flex-col gap-2" aria-label="Navegacion movil">
+                <nav className="mt-6 flex flex-col gap-2" aria-label="Navegación móvil">
                     {navigationLinks.map((item) => (
                         <Button key={item.label} variant="ghost" className="justify-start" asChild>
                             <Link href={item.href()}>{item.label}</Link>
@@ -171,7 +171,7 @@ function MobileNavigation({ auth }) {
                     ) : (
                         <>
                             <Button variant="outline" asChild>
-                                <Link href={safeRoute('login', '/login')}>Iniciar sesion</Link>
+                                <Link href={safeRoute('login', '/login')}>Iniciar sesión</Link>
                             </Button>
                             <Button asChild>
                                 <Link href={safeRoute('tenant.register', '/registrar-negocio')}>Registrar negocio</Link>
@@ -225,17 +225,17 @@ function Footer() {
                     <h2 className="text-sm font-semibold">Legal</h2>
                     <ul className="mt-4 flex flex-col gap-3 text-sm text-muted-foreground">
                         <li>
-                            <Link className="hover:text-foreground" href="/privacy">
+                            <Link className="hover:text-foreground" href={safeRoute('legal.privacy', '/legal/privacy')}>
                                 Privacidad
                             </Link>
                         </li>
                         <li>
-                            <Link className="hover:text-foreground" href="/terms">
-                                Terminos
+                            <Link className="hover:text-foreground" href={safeRoute('legal.terms', '/legal/terms')}>
+                                Términos
                             </Link>
                         </li>
                         <li>
-                            <Link className="hover:text-foreground" href="/contact">
+                            <Link className="hover:text-foreground" href={safeRoute('tenant.register', '/registrar-negocio')}>
                                 Contacto
                             </Link>
                         </li>

@@ -9,6 +9,11 @@ use Illuminate\Support\Collection;
 
 interface PaymentRepositoryInterface
 {
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    public function create(array $attributes): PaymentEntity;
+
     public function save(PaymentEntity $payment): void;
 
     /**

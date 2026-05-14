@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import {
+    AlertCircle,
     ArrowRight,
     Bot,
     Building2,
     Filter,
-    LoaderCircle,
     MapPin,
     Send,
     Search,
@@ -27,6 +27,7 @@ import {
 import { Field, FieldGroup, FieldLabel } from '@/Components/ui/field';
 import { Input } from '@/Components/ui/input';
 import { Separator } from '@/Components/ui/separator';
+import { Spinner } from '@/Components/ui/spinner';
 import {
     Select,
     SelectContent,
@@ -184,18 +185,18 @@ function FilterControls({ categories, cities, filters, onFilterChange }) {
 
             <div className="flex flex-col gap-2">
                 <label htmlFor="directory-category-filter" className="text-sm font-medium">
-                    Categoria
+                    Categoría
                 </label>
                 <Select
                     value={filters.category || ALL_VALUE}
                     onValueChange={(value) => onFilterChange('category', value === ALL_VALUE ? '' : value)}
                 >
                     <SelectTrigger id="directory-category-filter" data-testid="directory-filter-control">
-                        <SelectValue placeholder="Todas las categorias" />
+                        <SelectValue placeholder="Todas las categorías" />
                     </SelectTrigger>
                     <SelectContent>
                         <SelectGroup>
-                            <SelectItem value={ALL_VALUE}>Todas las categorias</SelectItem>
+                            <SelectItem value={ALL_VALUE}>Todas las categorías</SelectItem>
                             {categories.map((category) => (
                                 <SelectItem key={category.id ?? category.slug} value={category.slug}>
                                     {category.name}
@@ -209,7 +210,7 @@ function FilterControls({ categories, cities, filters, onFilterChange }) {
             <Separator />
 
             <Button variant="outline" onClick={() => onFilterChange('clear', null)}>
-                <X className="mr-2 size-4" aria-hidden="true" />
+                <X data-icon="inline-start" aria-hidden="true" />
                 Limpiar filtros
             </Button>
         </div>
@@ -220,9 +221,9 @@ function ActiveFilters({ categories, cities, filters, onFilterChange }) {
     const category = categories.find((item) => item.slug === filters.category);
     const city = cities.find((item) => item.slug === filters.city);
     const active = [
-        filters.search ? { key: 'search', label: `Busqueda: ${filters.search}` } : null,
+        filters.search ? { key: 'search', label: `Búsqueda: ${filters.search}` } : null,
         city ? { key: 'city', label: `Ciudad: ${city.name}` } : null,
-        category ? { key: 'category', label: `Categoria: ${category.name}` } : null,
+        category ? { key: 'category', label: `Categoría: ${category.name}` } : null,
     ].filter(Boolean);
 
     if (!active.length) {
@@ -232,8 +233,8 @@ function ActiveFilters({ categories, cities, filters, onFilterChange }) {
     return (
         <div className="flex flex-wrap gap-2">
             {active.map((item) => (
-                <Badge key={item.key} variant="secondary" className="gap-2">
-                    {item.label}
+                <Badge key={item.key} variant="secondary" className="max-w-full gap-2">
+                    <span className="min-w-0 truncate">{item.label}</span>
                     <button
                         type="button"
                         onClick={() => onFilterChange(item.key, '')}
@@ -260,17 +261,17 @@ function EmptyState({ filters, onClear }) {
                         {filters.search ? `No encontramos "${filters.search}"` : 'No hay negocios disponibles'}
                     </h2>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                        Prueba con otra busqueda, cambia ciudad o limpia los filtros para ver mas negocios.
+                        Prueba con otra búsqueda, cambia ciudad o limpia los filtros para ver más negocios.
                     </p>
                 </div>
                 <div className="flex flex-col gap-3 sm:flex-row">
                     <Button variant="outline" onClick={onClear}>
-                        <X className="mr-2 size-4" aria-hidden="true" />
+                        <X data-icon="inline-start" aria-hidden="true" />
                         Limpiar filtros
                     </Button>
                     <Button asChild>
                         <Link href="/registrar-negocio">
-                            <Building2 className="mr-2 size-4" aria-hidden="true" />
+                            <Building2 data-icon="inline-start" aria-hidden="true" />
                             Registrar mi negocio
                         </Link>
                     </Button>
@@ -286,7 +287,7 @@ function Pagination({ links }) {
     }
 
     return (
-        <nav className="mt-10 flex flex-wrap justify-center gap-2" aria-label="Paginacion del directorio">
+        <nav className="mt-10 flex flex-wrap justify-center gap-2" aria-label="Paginación del directorio">
             {links.map((link, index) => {
                 const label = link.label
                     .replace('&laquo;', 'Anterior')
@@ -316,8 +317,9 @@ function Pagination({ links }) {
     );
 }
 
-function DirectoryGuide() {
-    const [message, setMessage] = useState('Que puedo comprar con 150 lempiras?');
+function DirectoryGuide({ instance = 'desktop' }) {
+    const inputId = `directory-guide-input-${instance}`;
+    const [message, setMessage] = useState('¿Qué puedo comprar con 150 lempiras?');
     const [answer, setAnswer] = useState(null);
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -348,16 +350,16 @@ function DirectoryGuide() {
             });
 
             if (!response.ok) {
-                throw new Error('No pudimos consultar la guia.');
+                throw new Error('No pudimos consultar la guía.');
             }
 
             const payload = await response.json();
-            setAnswer(payload.answer || 'No encontre una respuesta publica para esa pregunta.');
+            setAnswer(payload.answer || 'No encontré una respuesta pública para esa pregunta.');
             setItems(Array.isArray(payload.items) ? payload.items : []);
         } catch {
             setAnswer(null);
             setItems([]);
-            setError('La guia no respondio. El directorio sigue disponible para buscar manualmente.');
+            setError('La guía no respondió. El directorio sigue disponible para buscar manualmente.');
         } finally {
             setLoading(false);
         }
@@ -367,30 +369,31 @@ function DirectoryGuide() {
         <Card className="border-border/70 bg-foreground text-background shadow-[0_24px_80px_rgba(15,23,42,0.14)]" data-testid="directory-guide">
             <CardHeader>
                 <Badge variant="secondary" className="w-fit rounded-full">
-                    Guia publica con IA
+                    Guía pública con IA
                 </Badge>
-                <CardTitle className="font-display text-2xl">Pregunta con datos publicos</CardTitle>
+                <CardTitle className="font-display text-2xl">Pregunta con datos públicos</CardTitle>
                 <CardDescription className="text-background/70">
-                    Responde desde negocios, catalogo y servicios visibles. No usa ventas privadas ni datos internos.
+                    Responde desde negocios, catálogo y servicios visibles. No usa ventas privadas ni datos internos.
                 </CardDescription>
             </CardHeader>
             <CardContent>
                 <form onSubmit={ask} className="flex flex-col gap-3">
                     <FieldGroup>
                         <Field>
-                            <FieldLabel htmlFor="directory-guide-input" className="sr-only">
-                                Pregunta para la guia del directorio
+                            <FieldLabel htmlFor={inputId} className="sr-only">
+                                Pregunta para la guía del directorio
                             </FieldLabel>
-                            <div className="flex gap-2 rounded-2xl border border-white/10 bg-white/10 p-2">
+                            <div className="flex min-w-0 gap-2 rounded-2xl border border-white/10 bg-white/10 p-2">
                                 <Input
-                                    id="directory-guide-input"
+                                    id={inputId}
                                     value={message}
                                     onChange={(event) => setMessage(event.target.value)}
-                                    className="h-11 border-0 bg-white text-foreground placeholder:text-muted-foreground focus-visible:ring-1"
-                                    placeholder="Ej. que puedo comprar con 150 lempiras?"
+                                    className="h-11 min-w-0 border-0 bg-white text-foreground placeholder:text-muted-foreground focus-visible:ring-1"
+                                    placeholder="Ej. ¿qué puedo comprar con 150 lempiras?"
+                                    data-testid="directory-guide-chat-input"
                                 />
-                                <Button type="submit" variant="secondary" size="icon" disabled={loading} aria-label="Preguntar" data-testid="directory-guide-submit">
-                                    {loading ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Send aria-hidden="true" />}
+                                <Button type="submit" variant="secondary" size="icon" disabled={loading} aria-label="Preguntar" data-testid="directory-guide-chat-submit">
+                                    {loading ? <Spinner /> : <Send aria-hidden="true" />}
                                 </Button>
                             </div>
                         </Field>
@@ -400,18 +403,23 @@ function DirectoryGuide() {
                 <div className="mt-5 rounded-2xl border border-white/10 bg-white/10 p-4">
                     <div className="flex items-start gap-3">
                         <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white text-foreground">
-                            <Bot aria-hidden="true" />
+                            {error ? <AlertCircle aria-hidden="true" /> : <Bot aria-hidden="true" />}
                         </span>
                         <div className="min-w-0">
-                            <p className="text-sm leading-6 text-background/85" data-testid="directory-guide-answer">
-                                {error || answer || 'Prueba con presupuesto, ciudad o tipo de servicio. La respuesta aparece aqui.'}
+                            <p
+                                className="text-sm leading-6 text-background/85"
+                                data-testid="directory-guide-chat-answer"
+                                role={error ? 'alert' : 'status'}
+                                aria-live="polite"
+                            >
+                                {error || answer || 'Prueba con presupuesto, ciudad o tipo de servicio. La respuesta aparece aquí.'}
                             </p>
                             {items.length ? (
                                 <div className="mt-4 flex flex-col gap-2">
                                     {items.slice(0, 3).map((item) => (
-                                        <Button key={`${item.business_name}-${item.name}`} variant="secondary" className="justify-between" asChild>
+                                        <Button key={`${item.business_name}-${item.name}`} variant="secondary" className="min-w-0 justify-between gap-3" asChild>
                                             <Link href={item.url || '/directorio'}>
-                                                <span className="truncate">{item.name}</span>
+                                                <span className="min-w-0 truncate">{item.name}</span>
                                                 <span className="shrink-0 text-xs">{item.price_label}</span>
                                             </Link>
                                         </Button>
@@ -517,7 +525,7 @@ export default function DirectoryIndex({
                 <div className="grid gap-8 lg:grid-cols-[18rem_1fr]">
                     <aside className="hidden lg:block">
                         <div className="sticky top-24 flex flex-col gap-4">
-                            <DirectoryGuide />
+                            <DirectoryGuide instance="desktop" />
                         <Card className="border-border/70 shadow-none">
                             <CardHeader>
                                 <CardTitle className="text-lg">Filtros</CardTitle>
@@ -538,11 +546,11 @@ export default function DirectoryIndex({
                     <div className="min-w-0">
                         <div className="flex flex-col gap-4">
                             <div className="lg:hidden">
-                                <DirectoryGuide />
+                                <DirectoryGuide instance="mobile" />
                             </div>
 
-                            <div className="flex gap-3 rounded-2xl border bg-background p-2 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
-                                <FieldGroup className="flex-1 gap-0">
+                            <div className="flex min-w-0 gap-3 rounded-2xl border bg-background p-2 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
+                                <FieldGroup className="min-w-0 flex-1 gap-0">
                                     <Field>
                                         <FieldLabel htmlFor="directory-search" className="sr-only">
                                             Buscar negocios
@@ -558,7 +566,7 @@ export default function DirectoryIndex({
                                                 value={searchTerm}
                                                 onChange={(event) => setSearchTerm(event.target.value)}
                                                 placeholder="Buscar negocios, productos o servicios..."
-                                                className="h-12 rounded-xl border-0 bg-muted/70 pl-9 shadow-none focus-visible:ring-1"
+                                                className="h-12 min-w-0 rounded-xl border-0 bg-muted/70 pl-9 shadow-none focus-visible:ring-1"
                                                 data-testid="directory-search-control"
                                             />
                                         </div>
@@ -568,7 +576,7 @@ export default function DirectoryIndex({
                                 <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
                                     <SheetTrigger asChild>
                                         <Button variant="outline" className="h-12 rounded-xl lg:hidden">
-                                            <Filter className="mr-2 size-4" aria-hidden="true" />
+                                            <Filter data-icon="inline-start" aria-hidden="true" />
                                             Filtros
                                         </Button>
                                     </SheetTrigger>
@@ -576,7 +584,7 @@ export default function DirectoryIndex({
                                         <SheetHeader>
                                             <SheetTitle>Filtros del directorio</SheetTitle>
                                             <SheetDescription>
-                                                Ajusta la busqueda, categoria o ciudad para encontrar negocios disponibles.
+                                                Ajusta la búsqueda, categoría o ciudad para encontrar negocios disponibles.
                                             </SheetDescription>
                                         </SheetHeader>
                                         <div className="mt-6">

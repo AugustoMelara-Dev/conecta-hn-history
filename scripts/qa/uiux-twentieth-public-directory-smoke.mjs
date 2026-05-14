@@ -279,6 +279,14 @@ function hasFatalText(bodyText) {
     return /server error|whoops|exception|stack trace|sqlstate|fatal error/i.test(bodyText)
 }
 
+function hasBrokenEncoding(bodyText) {
+    return /Ã|Â|�/.test(bodyText)
+}
+
+async function hasHorizontalOverflow(page) {
+    return page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 2)
+}
+
 async function validateDirectory(page, fixture, label, pathName = "/directorio") {
     const response = await page.goto(`${baseUrl}${pathName}`, { waitUntil: "domcontentloaded", timeout: 45_000 })
 
@@ -287,11 +295,15 @@ async function validateDirectory(page, fixture, label, pathName = "/directorio")
     const bodyText = await page.locator("body").innerText().catch(() => "")
 
     pushCheck(`${label}_directory_no_fatal_text`, !hasFatalText(bodyText), bodyText.slice(0, 160))
+    pushCheck(`${label}_directory_no_broken_encoding`, !hasBrokenEncoding(bodyText), bodyText.slice(0, 240))
     pushCheck(`${label}_directory_page_visible`, await page.getByTestId("directory-page").isVisible().catch(() => false))
     pushCheck(`${label}_directory_search_visible`, await page.getByTestId("directory-search-control").isVisible().catch(() => false))
+    pushCheck(`${label}_directory_guide_input_visible`, await page.locator('[data-testid="directory-guide-chat-input"]:visible').first().isVisible().catch(() => false))
+    pushCheck(`${label}_directory_guide_live_region`, await page.locator('[data-testid="directory-guide-chat-answer"]:visible').first().evaluate((node) => node.getAttribute("aria-live") === "polite" && ["status", "alert"].includes(node.getAttribute("role") || "")).catch(() => false))
     pushCheck(`${label}_tenant_card_visible`, await page.getByTestId("tenant-card").first().isVisible().catch(() => false))
     pushCheck(`${label}_primary_tenant_cta_visible`, await page.getByTestId("primary-tenant-cta").first().isVisible().catch(() => false))
     pushCheck(`${label}_tenant_copy_present`, bodyText.includes(fixture.tenantName), fixture.tenantName)
+    pushCheck(`${label}_directory_no_horizontal_overflow`, !(await hasHorizontalOverflow(page)), `scrollWidth=${await page.evaluate(() => document.documentElement.scrollWidth)} viewport=${await page.evaluate(() => window.innerWidth)}`)
 }
 
 async function validateDirectoryEmpty(page, label) {
@@ -305,7 +317,9 @@ async function validateDirectoryEmpty(page, label) {
     const bodyText = await page.locator("body").innerText().catch(() => "")
 
     pushCheck(`${label}_empty_no_fatal_text`, !hasFatalText(bodyText), bodyText.slice(0, 160))
+    pushCheck(`${label}_empty_no_broken_encoding`, !hasBrokenEncoding(bodyText), bodyText.slice(0, 240))
     pushCheck(`${label}_empty_state_visible`, await page.getByTestId("directory-empty-state").isVisible().catch(() => false))
+    pushCheck(`${label}_empty_no_horizontal_overflow`, !(await hasHorizontalOverflow(page)), `scrollWidth=${await page.evaluate(() => document.documentElement.scrollWidth)} viewport=${await page.evaluate(() => window.innerWidth)}`)
 }
 
 async function validateExplore(page, fixture, label) {
@@ -320,10 +334,12 @@ async function validateExplore(page, fixture, label) {
     const bodyText = await page.locator("body").innerText().catch(() => "")
 
     pushCheck(`${label}_explore_no_fatal_text`, !hasFatalText(bodyText), bodyText.slice(0, 160))
+    pushCheck(`${label}_explore_no_broken_encoding`, !hasBrokenEncoding(bodyText), bodyText.slice(0, 240))
     pushCheck(`${label}_explore_page_visible`, await page.getByTestId("directory-page").isVisible().catch(() => false))
     pushCheck(`${label}_explore_search_visible`, await page.getByTestId("directory-search-control").isVisible().catch(() => false))
     pushCheck(`${label}_explore_tenant_card_visible`, await page.getByTestId("tenant-card").first().isVisible().catch(() => false))
     pushCheck(`${label}_explore_tenant_copy_present`, bodyText.includes(fixture.tenantName), fixture.tenantName)
+    pushCheck(`${label}_explore_no_horizontal_overflow`, !(await hasHorizontalOverflow(page)), `scrollWidth=${await page.evaluate(() => document.documentElement.scrollWidth)} viewport=${await page.evaluate(() => window.innerWidth)}`)
 }
 
 let server

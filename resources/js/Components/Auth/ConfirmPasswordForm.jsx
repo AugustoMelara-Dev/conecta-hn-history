@@ -38,9 +38,9 @@ export function ConfirmPasswordForm({ className, ...props }) {
                 <div className="mx-auto flex size-11 items-center justify-center rounded-lg border bg-background text-muted-foreground">
                     <LockKeyhole aria-hidden="true" />
                 </div>
-                <CardTitle>Confirma tu contrasena</CardTitle>
+                <CardTitle>Confirma tu contraseña</CardTitle>
                 <CardDescription>
-                    Esta zona protege informacion sensible. Confirma tu contrasena para continuar.
+                    Esta zona protege información sensible. Confirma tu contraseña para continuar.
                 </CardDescription>
             </CardHeader>
 
@@ -48,7 +48,7 @@ export function ConfirmPasswordForm({ className, ...props }) {
                 <form onSubmit={submit}>
                     <FieldGroup>
                         <Field data-invalid={Boolean(errors.password)}>
-                            <FieldLabel htmlFor="password">Contrasena</FieldLabel>
+                            <FieldLabel htmlFor="password">Contraseña</FieldLabel>
                             <Input
                                 id="password"
                                 type="password"

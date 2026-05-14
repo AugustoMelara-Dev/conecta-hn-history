@@ -41,6 +41,14 @@ function hasFatalText(bodyText) {
     return /server error|whoops|exception|stack trace|sqlstate|fatal error/i.test(bodyText)
 }
 
+function hasBrokenEncoding(bodyText) {
+    return /Ã|Â|�/.test(bodyText)
+}
+
+async function hasHorizontalOverflow(page) {
+    return page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1)
+}
+
 async function waitForServer() {
     const deadline = Date.now() + 30_000
     let lastError = null
@@ -79,6 +87,8 @@ async function validateLanding(page, label) {
 
     pushCheck(`${label}_home_status_ok`, (response?.status() || 0) < 500, `status=${response?.status()}`)
     pushCheck(`${label}_home_no_fatal_text`, !hasFatalText(bodyText), bodyText.slice(0, 180))
+    pushCheck(`${label}_home_no_broken_encoding`, !hasBrokenEncoding(bodyText), bodyText.slice(0, 220))
+    pushCheck(`${label}_home_no_horizontal_overflow`, !(await hasHorizontalOverflow(page)), await page.evaluate(() => `${document.documentElement.clientWidth}/${document.documentElement.scrollWidth}`))
     pushCheck(`${label}_landing_page_visible`, await page.getByTestId("landing-page").isVisible().catch(() => false))
     pushCheck(`${label}_search_visible`, await page.getByTestId("landing-search").isVisible().catch(() => false))
     pushCheck(`${label}_primary_cta_visible`, await page.getByTestId("landing-primary-cta").isVisible().catch(() => false))
@@ -91,7 +101,7 @@ async function validateLanding(page, label) {
     pushCheck(`${label}_categories_or_empty_state`, categoryCount > 0 || categoryFallback, `cards=${categoryCount}`)
 
     const tenantCount = await page.getByTestId("landing-tenant-card").count().catch(() => 0)
-    const tenantFallback = /Negocios en preparacion/i.test(bodyText)
+    const tenantFallback = /Negocios en preparación/i.test(bodyText)
     pushCheck(`${label}_tenants_or_empty_state`, tenantCount > 0 || tenantFallback, `cards=${tenantCount}`)
 
     const primaryHref = await page.getByTestId("landing-primary-cta").first().getAttribute("href").catch(() => "")

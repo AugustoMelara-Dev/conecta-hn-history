@@ -12,17 +12,17 @@ import { Spinner } from "@/Components/ui/spinner"
 const COPY = {
     headTitle: "Verificar correo",
     title: "Confirma tu correo",
-    descriptionPrefix: "Te enviamos un enlace de verificacion a",
-    descriptionSuffix: "Abre ese correo y vuelve aqui para continuar.",
+    descriptionPrefix: "Te enviamos un enlace de verificación a",
+    descriptionSuffix: "Abre ese correo y vuelve aquí para continuar.",
     resentTitle: "Enlace reenviado",
-    resentDescription: "Te enviamos un nuevo enlace de verificacion.",
+    resentDescription: "Te enviamos un nuevo enlace de verificación.",
     nextActionTitle: "Siguiente paso: {title}",
     progressLabel: "Progreso de onboarding: {progress}%",
-    resendIdle: "Reenviar correo de verificacion",
+    resendIdle: "Reenviar correo de verificación",
     resendProcessing: "Reenviando...",
     alternateAccount: "o usa otra cuenta",
-    logout: "Cerrar sesion",
-    footerDescription: "Si cambiaste de correo, cierra sesion y vuelve a ingresar con la cuenta correcta.",
+    logout: "Cerrar sesión",
+    footerDescription: "Si cambiaste de correo, cierra sesión y vuelve a ingresar con la cuenta correcta.",
 }
 
 function t(key, params = {}) {
@@ -53,8 +53,8 @@ export default function VerifyEmail({ status, onboardingNextAction = null }) {
             <AuthShadcnShell
                 imageAlt="Verificacion de correo para Vito Business OS"
                 eyebrow="Correo pendiente"
-                title="Un paso mas para proteger tu cuenta"
-                description="La verificacion confirma que los avisos de acceso y seguridad lleguen al correo correcto."
+                title="Un paso más para proteger tu cuenta"
+                description="La verificación confirma que los avisos de acceso y seguridad lleguen al correo correcto."
             >
                 <Card className="overflow-hidden shadow-sm">
                     <CardHeader className="gap-3 border-b bg-muted/30">
@@ -62,7 +62,7 @@ export default function VerifyEmail({ status, onboardingNextAction = null }) {
                             <div className="flex size-11 items-center justify-center rounded-lg border bg-background text-muted-foreground">
                                 <MailCheck aria-hidden="true" />
                             </div>
-                            <Badge variant="secondary">Accion requerida</Badge>
+                            <Badge variant="secondary">Acción requerida</Badge>
                         </div>
                         <div className="flex flex-col gap-2">
                             <CardTitle>{t("title")}</CardTitle>

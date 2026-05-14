@@ -69,9 +69,12 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
         $this->userRepository->save($userEntity);
 
         // 3. Determine Limits (Domain Service)
-        $productLimit = $this->pricingService->getProductLimit($command->selectedPlan);
-        $planType = $this->pricingService->getPlanType($command->selectedPlan);
-        $isPro = $command->selectedPlan === 'pro';
+        $planPrice = $this->pricingService->getPlanPrice($command->selectedPlan);
+        $requiresPayment = $planPrice > 0;
+        $entitlementPlan = $requiresPayment ? 'free' : $command->selectedPlan;
+        $productLimit = $this->pricingService->getProductLimit($entitlementPlan);
+        $planType = $this->pricingService->getPlanType($entitlementPlan);
+        $isPro = false;
 
         // 4. Create Tenant via Factory (Domain Integrity)
         // Uses the REAL ID from the hydrated $userEntity
@@ -99,15 +102,13 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
         $tenantEntity = $this->tenantRepository->save($tenantEntity);
 
         // 6. Handle Payment
-        $planPrice = $this->pricingService->getPlanPrice($command->selectedPlan);
-        if ($planPrice > 0) {
+        if ($requiresPayment) {
             $this->paymentRepository->create([
                 'tenant_id' => $tenantEntity->id(),
-                // Assuming Tenant Repository hydrates by reference OR Tenant ID is handled elsewhere.
-                // But preventing User ID 0 was the specific critical failure.
                 'amount' => $planPrice,
-                'currency' => 'HNL',
+                'bank' => 'pending_activation',
                 'status' => 'pending',
+                'proof_path' => 'pending',
                 'reference_number' => 'PRO-'.strtoupper(uniqid()),
                 'description' => 'Suscripción Plan PRO',
             ]);

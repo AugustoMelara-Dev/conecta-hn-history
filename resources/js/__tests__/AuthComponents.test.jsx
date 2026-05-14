@@ -155,7 +155,7 @@ describe("VerifyEmail Page", () => {
         )
 
         expect(screen.getByText("Confirma tu correo")).toBeInTheDocument()
-        expect(screen.getByText(/Enviamos un enlace de verificacion a/i)).toBeInTheDocument()
+        expect(screen.getByText(/Te enviamos un enlace de verificación a/i)).toBeInTheDocument()
         expect(screen.getByText(/Siguiente paso: Publica tu primera oferta/i)).toBeInTheDocument()
     })
 })
@@ -171,19 +171,19 @@ describe("Auth catalog-backed forms", () => {
 
         expect(screen.getByText("Acceso seguro")).toBeInTheDocument()
         expect(screen.getByText("Entra a Vito Business OS")).toBeInTheDocument()
-        expect(screen.getByText(/Usa contrasena para el panel de negocio/i)).toBeInTheDocument()
-        expect(screen.getByLabelText("Contrasena")).toBeInTheDocument()
-        expect(screen.getByRole("button", { name: /Iniciar sesion/i })).toBeInTheDocument()
+        expect(screen.getByText(/Usa contraseña para el panel de negocio/i)).toBeInTheDocument()
+        expect(screen.getByLabelText("Contraseña")).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: /Iniciar sesión/i })).toBeInTheDocument()
     })
 
     it("renders forgot password form copy from the initial auth catalog", () => {
         render(<ForgotPasswordForm />)
 
         expect(screen.getByTestId("forgot-password-heading")).toHaveTextContent("Recupera tu acceso")
-        expect(screen.getByText(/enlace seguro para cambiar la contrasena/i)).toBeInTheDocument()
+        expect(screen.getByText(/enlace seguro para cambiar la contraseña/i)).toBeInTheDocument()
         expect(screen.getByLabelText("Correo")).toBeInTheDocument()
         expect(screen.getByRole("button", { name: /Enviar enlace/i })).toBeInTheDocument()
-        expect(screen.getByRole("button", { name: /Iniciar sesion/i })).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: /Iniciar sesión/i })).toBeInTheDocument()
     })
 })
 

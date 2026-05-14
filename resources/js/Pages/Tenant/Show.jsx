@@ -80,6 +80,36 @@ function getWhatsappUrl(number, tenantName) {
     return `https://wa.me/${phone}?text=${encodeURIComponent(`Hola ${tenantName || 'equipo'}!`)}`;
 }
 
+function getMediaUrl(path) {
+    if (!path || typeof path !== 'string') {
+        return null;
+    }
+
+    if (path.startsWith('http') || path.startsWith('/') || path.startsWith('data:')) {
+        return path;
+    }
+
+    return `/storage/${path}`;
+}
+
+function getAbsoluteMediaUrl(path) {
+    const mediaUrl = getMediaUrl(path);
+
+    if (!mediaUrl || mediaUrl.startsWith('data:')) {
+        return mediaUrl;
+    }
+
+    if (mediaUrl.startsWith('http')) {
+        return mediaUrl;
+    }
+
+    if (typeof window === 'undefined') {
+        return mediaUrl;
+    }
+
+    return new URL(mediaUrl, window.location.origin).toString();
+}
+
 function getCityName(tenant) {
     if (typeof tenant?.city === 'string') {
         return tenant.city;
@@ -151,82 +181,85 @@ function StatusBadge({ isOpen }) {
 }
 
 function TenantHero({ tenant, isOpen, totalProductsCount, productsCount, categoryName, cityName, whatsappUrl }) {
+    const coverImage = getMediaUrl(tenant.cover || tenant.hero_image || tenant.banner_path);
+    const logoImage = getMediaUrl(tenant.logo);
+
     return (
-        <header className="border-b bg-muted/30" data-testid="microsite-hero">
-            <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+        <header className="relative overflow-hidden border-b bg-background" data-testid="microsite-hero">
+            <div className="absolute inset-x-0 top-0 h-80 bg-muted" aria-hidden="true">
+                {coverImage ? (
+                    <img
+                        src={coverImage}
+                        alt=""
+                        className="size-full object-cover"
+                    />
+                ) : (
+                    <div className="grid size-full place-items-center bg-[var(--tenant-primary)] text-[var(--tenant-primary-foreground)]">
+                        <Store className="size-16 opacity-70" aria-hidden="true" />
+                    </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-b from-background/15 via-background/55 to-background" />
+            </div>
+
+            <div className="relative mx-auto flex max-w-7xl flex-col gap-8 px-4 pb-8 pt-5 sm:px-6 lg:px-8 lg:pb-12">
                 <nav className="flex items-center justify-between gap-3" aria-label="Navegacion del micrositio">
-                    <Button variant="outline" size="sm" asChild>
+                    <Button variant="secondary" size="sm" asChild>
                         <Link href={safeRoute('directory.index', '/directorio')}>
                             Directorio
                         </Link>
                     </Button>
-                    <Button variant="ghost" size="sm" asChild>
-                        <Link href={safeRoute('home', '/')}>Vito</Link>
+                    <Button variant="secondary" size="sm" asChild>
+                        <Link href={safeRoute('home', '/')}>Vito App</Link>
                     </Button>
                 </nav>
 
-                <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-stretch">
-                    <Card className="overflow-hidden">
-                        <div className="relative aspect-[16/7] min-h-56 bg-muted">
-                            {tenant.cover ? (
-                                <img
-                                    src={tenant.cover}
-                                    alt={`Portada de ${tenant.name}`}
-                                    className="h-full w-full object-cover"
-                                />
-                            ) : (
-                                <div className="grid h-full place-items-center bg-[var(--tenant-primary)] text-[var(--tenant-primary-foreground)]">
-                                    <Store className="size-16 opacity-80" aria-hidden="true" />
-                                </div>
-                            )}
-                        </div>
-                        <CardContent className="flex flex-col gap-5 p-5 md:flex-row md:items-end md:p-6">
-                            <Avatar className="size-24 rounded-md border bg-background md:size-28">
-                                <AvatarImage src={tenant.logo || undefined} alt={`Logo de ${tenant.name}`} />
-                                <AvatarFallback className="rounded-md text-xl font-semibold">
-                                    {getInitials(tenant.name)}
-                                </AvatarFallback>
-                            </Avatar>
+                <div className="grid gap-5 pt-28 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end">
+                    <section className="flex min-w-0 flex-col gap-5 rounded-lg border bg-background/95 p-5 shadow-sm backdrop-blur md:flex-row md:items-end md:p-6">
+                        <Avatar className="size-24 rounded-md border bg-background md:size-28">
+                            <AvatarImage src={logoImage || undefined} alt={`Logo de ${tenant.name}`} />
+                            <AvatarFallback className="rounded-md text-xl font-semibold">
+                                {getInitials(tenant.name)}
+                            </AvatarFallback>
+                        </Avatar>
 
-                            <div className="flex min-w-0 flex-1 flex-col gap-3">
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <StatusBadge isOpen={isOpen} />
-                                    <Badge variant="outline">{categoryName}</Badge>
-                                </div>
-
-                                <div>
-                                    <h1 className="text-3xl font-semibold tracking-normal text-foreground md:text-5xl">
-                                        {tenant.name}
-                                    </h1>
-                                    <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
-                                        {tenant.slogan || tenant.description || 'Negocio local disponible en Vito.'}
-                                    </p>
-                                </div>
-
-                                <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                                    <span className="inline-flex items-center gap-2">
-                                        <MapPin className="size-4" aria-hidden="true" />
-                                        {cityName}
-                                    </span>
-                                    <span className="inline-flex items-center gap-2">
-                                        <ShoppingBag className="size-4" aria-hidden="true" />
-                                        {productsCount} de {totalProductsCount || productsCount} productos visibles
-                                    </span>
-                                    {tenant.features?.can_show_reviews && (
-                                        <span className="inline-flex items-center gap-2">
-                                            <Star className="size-4" aria-hidden="true" />
-                                            {tenant.rating || '4.8'} ({tenant.reviews_count || 0})
-                                        </span>
-                                    )}
-                                </div>
+                        <div className="flex min-w-0 flex-1 flex-col gap-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <StatusBadge isOpen={isOpen} />
+                                <Badge variant="outline">{categoryName}</Badge>
                             </div>
-                        </CardContent>
-                    </Card>
 
-                    <Card>
+                            <div>
+                                <h1 className="text-3xl font-semibold tracking-normal text-foreground md:text-5xl">
+                                    {tenant.name}
+                                </h1>
+                                <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
+                                    {tenant.slogan || tenant.description || 'Negocio local disponible en Vito App.'}
+                                </p>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                                <span className="inline-flex items-center gap-2">
+                                    <MapPin className="size-4" aria-hidden="true" />
+                                    {cityName}
+                                </span>
+                                <span className="inline-flex items-center gap-2">
+                                    <ShoppingBag className="size-4" aria-hidden="true" />
+                                    {productsCount} de {totalProductsCount || productsCount} productos visibles
+                                </span>
+                                {tenant.features?.can_show_reviews && (
+                                    <span className="inline-flex items-center gap-2">
+                                        <Star className="size-4" aria-hidden="true" />
+                                        {tenant.rating || '4.8'} ({tenant.reviews_count || 0})
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    </section>
+
+                    <Card className="shadow-sm">
                         <CardHeader>
                             <CardTitle>Contacto rapido</CardTitle>
-                            <CardDescription>Canales principales para comprar o consultar.</CardDescription>
+                            <CardDescription>Compra, consulta o revisa la informacion antes de visitar.</CardDescription>
                         </CardHeader>
                         <CardContent className="flex flex-col gap-3">
                             <Button variant="outline" asChild className="justify-start">
@@ -321,50 +354,58 @@ function ProductGridSection({
 
     return (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="microsite-product-grid">
-            {products.map((product) => (
-                <Card key={product.id} className="overflow-hidden" data-testid="microsite-product-card">
-                    <div className="aspect-[4/3] bg-muted">
-                        <img
-                            src={product.image}
-                            alt={product.name}
-                            className="h-full w-full object-cover"
-                            loading="lazy"
-                        />
-                    </div>
-                    <CardHeader>
-                        <div className="flex items-start justify-between gap-3">
-                            <CardTitle className="line-clamp-2 text-lg">{product.name}</CardTitle>
-                            <Badge variant="secondary" className="shrink-0">
-                                {hasModifiers(product) && isPro ? 'Desde ' : ''}
-                                {formatPrice(product)}
-                            </Badge>
+            {products.map((product) => {
+                const productImage = getMediaUrl(product.image);
+
+                return (
+                    <Card key={product.id} className="overflow-hidden" data-testid="microsite-product-card">
+                        <div className="grid aspect-[4/3] place-items-center bg-muted">
+                            {productImage ? (
+                                <img
+                                    src={productImage}
+                                    alt={product.name}
+                                    className="size-full object-cover"
+                                    loading="lazy"
+                                />
+                            ) : (
+                                <ShoppingBag className="size-10 text-muted-foreground" aria-hidden="true" />
+                            )}
                         </div>
-                        <CardDescription className="line-clamp-2 min-h-10">
-                            {product.description || 'Producto disponible.'}
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex flex-wrap gap-2">
-                        {hasModifiers(product) && isPro && (
-                            <Badge variant="outline">
-                                {product.modifier_groups?.length || 0} opciones
-                            </Badge>
-                        )}
-                        {product.is_featured && <Badge variant="outline">Destacado</Badge>}
-                    </CardContent>
-                    <CardFooter>
-                        <ProductActionArea
-                            product={product}
-                            tenantId={tenant.id}
-                            tenantPlan={tenantPlan}
-                            tenantWhatsapp={tenant.whatsapp || tenant.whatsapp_number}
-                            tenantName={tenant.name}
-                            tenantSlug={tenant.slug}
-                            variant="default"
-                            className="w-full"
-                        />
-                    </CardFooter>
-                </Card>
-            ))}
+                        <CardHeader>
+                            <div className="flex items-start justify-between gap-3">
+                                <CardTitle className="line-clamp-2 text-lg">{product.name}</CardTitle>
+                                <Badge variant="secondary" className="shrink-0">
+                                    {hasModifiers(product) && isPro ? 'Desde ' : ''}
+                                    {formatPrice(product)}
+                                </Badge>
+                            </div>
+                            <CardDescription className="line-clamp-2 min-h-10">
+                                {product.description || 'Producto disponible.'}
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="flex flex-wrap gap-2">
+                            {hasModifiers(product) && isPro && (
+                                <Badge variant="outline">
+                                    {product.modifier_groups?.length || 0} opciones
+                                </Badge>
+                            )}
+                            {product.is_featured && <Badge variant="outline">Destacado</Badge>}
+                        </CardContent>
+                        <CardFooter>
+                            <ProductActionArea
+                                product={product}
+                                tenantId={tenant.id}
+                                tenantPlan={tenantPlan}
+                                tenantWhatsapp={tenant.whatsapp || tenant.whatsapp_number}
+                                tenantName={tenant.name}
+                                tenantSlug={tenant.slug}
+                                variant="default"
+                                className="w-full"
+                            />
+                        </CardFooter>
+                    </Card>
+                );
+            })}
 
             {hasHiddenProducts && (
                 <UpsellCard
@@ -685,7 +726,7 @@ export default function TenantShow({
         tenant.slogan ||
         `Descubre ${tenant.name} en Vito. Negocios locales de Honduras.`
     ).substring(0, 160);
-    const pageImage = tenant.hero_image || tenant.cover || tenant.banner_path || 'https://conecta-hn.com/og-default.jpg';
+    const pageImage = getAbsoluteMediaUrl(tenant.hero_image || tenant.cover || tenant.banner_path) || getAbsoluteMediaUrl('/images/og-default.svg');
     const showCrmTab = Boolean(isOwner && crmMicrosite?.enabled);
 
     return (
@@ -721,7 +762,7 @@ export default function TenantShow({
             />
 
             <main id="catalogo" className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
-                <Alert>
+                <Alert className="bg-muted/35">
                     <CalendarClock className="mr-2 inline size-4" aria-hidden="true" />
                     <AlertTitle>{isOpen ? 'Abierto para consultas' : 'Actualmente cerrado'}</AlertTitle>
                     <AlertDescription>
@@ -730,7 +771,7 @@ export default function TenantShow({
                 </Alert>
 
                 <Tabs defaultValue="products" className="w-full" data-testid="microsite-tabs">
-                    <TabsList className={cn('grid w-full lg:w-[36rem]', showCrmTab ? 'grid-cols-4' : 'grid-cols-3')}>
+                    <TabsList className={cn('grid h-auto w-full lg:w-[36rem]', showCrmTab ? 'grid-cols-4' : 'grid-cols-3')}>
                         <TabsTrigger value="products">{catalogLabel}</TabsTrigger>
                         <TabsTrigger value="info">Informacion</TabsTrigger>
                         <TabsTrigger value="reviews">Resenas</TabsTrigger>

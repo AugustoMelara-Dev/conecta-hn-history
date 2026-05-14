@@ -123,7 +123,7 @@ export function QuickAccessForm({ className = "", onAuthenticated }) {
                             data-testid="otp-code-input"
                         />
                         <FieldDescription>
-                            Usalo si abriste el correo en otro dispositivo o si prefieres escribirlo manualmente.
+                            Úsalo si abriste el correo en otro dispositivo o si prefieres escribirlo manualmente.
                         </FieldDescription>
                     </Field>
 
