@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 final class AuthenticatedSessionController extends Controller
 {
@@ -34,7 +35,7 @@ final class AuthenticatedSessionController extends Controller
     /**
      * Handle an incoming authentication request.
      */
-    public function store(LoginRequest $request): RedirectResponse
+    public function store(LoginRequest $request): RedirectResponse|SymfonyResponse
     {
         $request->authenticate();
 
@@ -44,7 +45,13 @@ final class AuthenticatedSessionController extends Controller
             return redirect()->route('verification.notice');
         }
 
-        return redirect()->to($this->panelUrlResolver->forUser($request->user()));
+        $panelUrl = $this->panelUrlResolver->forUser($request->user());
+
+        if ($request->header('X-Inertia') && (str_starts_with($panelUrl, '/app') || str_starts_with($panelUrl, '/admin'))) {
+            return Inertia::location($panelUrl);
+        }
+
+        return redirect()->to($panelUrl);
     }
 
     /**

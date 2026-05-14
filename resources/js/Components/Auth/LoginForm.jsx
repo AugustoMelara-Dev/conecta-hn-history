@@ -1,4 +1,5 @@
-import { Link, useForm } from "@inertiajs/react"
+import { Link, usePage } from "@inertiajs/react"
+import { useMemo, useState } from "react"
 import { Building2, Mail, ShieldCheck } from "lucide-react"
 
 import { QuickAccessForm } from "@/Components/Auth/QuickAccessForm"
@@ -30,29 +31,23 @@ export function LoginForm({
     className,
     ...props
 }) {
-    const { data, setData, post, processing, errors, reset } = useForm({
-        email: "",
-        password: "",
-        remember: false,
-    })
-
-    const submit = (event) => {
-        event.preventDefault()
-
-        post(route("login"), {
-            onFinish: () => reset("password"),
-        })
-    }
+    const { props: pageProps } = usePage()
+    const errors = pageProps.errors ?? {}
+    const [processing, setProcessing] = useState(false)
+    const csrfToken = useMemo(
+        () => document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") ?? "",
+        []
+    )
 
     return (
-        <Card className={cn("overflow-hidden shadow-sm", className)} {...props}>
-            <CardHeader className="gap-3 border-b bg-muted/30">
-                <Badge variant="secondary" className="w-fit gap-2">
+        <Card className={cn("overflow-hidden border-border/70 shadow-[0_24px_80px_rgba(15,23,42,0.08)]", className)} {...props}>
+            <CardHeader className="gap-3 border-b bg-background">
+                <Badge variant="outline" className="w-fit gap-2 rounded-full">
                     <ShieldCheck aria-hidden="true" />
                     {t("auth.login.badge")}
                 </Badge>
                 <div>
-                    <CardTitle className="text-2xl font-semibold">
+                    <CardTitle className="font-display text-3xl font-bold">
                         {t("auth.login.title")}
                     </CardTitle>
                     <CardDescription className="mt-2">
@@ -62,7 +57,7 @@ export function LoginForm({
             </CardHeader>
             <CardContent className="p-5 sm:p-6">
                 <Tabs defaultValue="password" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2">
+                    <TabsList className="grid h-11 w-full grid-cols-2 rounded-xl bg-muted">
                         <TabsTrigger value="password" className="gap-2">
                             <Building2 data-icon="inline-start" aria-hidden="true" />
                             {t("auth.login.passwordTab")}
@@ -74,7 +69,8 @@ export function LoginForm({
                     </TabsList>
 
                     <TabsContent value="password" className="mt-6">
-                        <form onSubmit={submit} data-testid="login-form">
+                        <form method="post" action="/login" onSubmit={() => setProcessing(true)} data-testid="login-form">
+                            <input type="hidden" name="_token" value={csrfToken} />
                             <FieldGroup>
                                 {status ? (
                                     <Alert>
@@ -93,12 +89,10 @@ export function LoginForm({
                                         spellCheck={false}
                                         required
                                         autoFocus
-                                        value={data.email}
-                                        onChange={(event) => setData("email", event.target.value)}
                                         data-testid="login-email-input"
                                         aria-invalid={errors.email ? "true" : "false"}
                                         aria-describedby={errors.email ? "login-email-error" : undefined}
-                                        className={cn(errors.email && "border-destructive/50 focus-visible:ring-destructive/20")}
+                                        className={cn("h-12 rounded-xl bg-muted/60", errors.email && "border-destructive/50 focus-visible:ring-destructive/20")}
                                     />
                                     {errors.email ? (
                                         <FieldDescription id="login-email-error" role="alert" className="text-destructive">
@@ -112,7 +106,7 @@ export function LoginForm({
                                         <FieldLabel htmlFor="password">{t("auth.login.password")}</FieldLabel>
                                         {canResetPassword ? (
                                             <Link
-                                                href={route("password.request")}
+                                                href="/forgot-password"
                                                 className="ml-auto text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
                                             >
                                                 {t("auth.login.forgotPassword")}
@@ -125,12 +119,10 @@ export function LoginForm({
                                         type="password"
                                         autoComplete="current-password"
                                         required
-                                        value={data.password}
-                                        onChange={(event) => setData("password", event.target.value)}
                                         data-testid="login-password-input"
                                         aria-invalid={errors.password ? "true" : "false"}
                                         aria-describedby={errors.password ? "login-password-error" : undefined}
-                                        className={cn(errors.password && "border-destructive/50 focus-visible:ring-destructive/20")}
+                                        className={cn("h-12 rounded-xl bg-muted/60", errors.password && "border-destructive/50 focus-visible:ring-destructive/20")}
                                     />
                                     {errors.password ? (
                                         <FieldDescription id="login-password-error" role="alert" className="text-destructive">
@@ -140,13 +132,13 @@ export function LoginForm({
                                 </Field>
 
                                 <Field>
-                                    <Button type="submit" disabled={processing} data-testid="login-submit" className="w-full">
+                                    <Button type="submit" disabled={processing} data-testid="login-submit" className="h-12 w-full rounded-xl">
                                         {processing ? <Spinner data-icon="inline-start" /> : null}
                                         {processing ? t("auth.login.submitting") : t("auth.login.submit")}
                                     </Button>
                                     <FieldDescription className="text-center">
                                         {t("auth.login.noAccount")}{" "}
-                                        <Link href={route("tenant.register")} className="font-medium underline underline-offset-4">
+                                        <Link href="/registrar-negocio" className="font-medium underline underline-offset-4">
                                             {t("auth.login.registerBusiness")}
                                         </Link>
                                     </FieldDescription>

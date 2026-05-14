@@ -29,7 +29,7 @@ export function ForgotPasswordForm({ status = null, className, ...props }) {
 
     const submit = (event) => {
         event.preventDefault()
-        post(route("password.email"))
+        post(route("password.email", undefined, false))
     }
 
     return (
@@ -98,7 +98,7 @@ export function ForgotPasswordForm({ status = null, className, ...props }) {
                                 className="w-full"
                                 asChild
                             >
-                                <Link href={route("login")}>{t("auth.forgotPassword.login")}</Link>
+                                <Link href="/login">{t("auth.forgotPassword.login")}</Link>
                             </Button>
                         </Field>
                     </FieldGroup>

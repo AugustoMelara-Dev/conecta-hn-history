@@ -101,7 +101,7 @@ export default function SmartNavbar() {
                                                         <Icons.LayoutDashboard className="w-4 h-4" />
                                                         Panel Maestro
                                                     </a>
-                                                    <Link href={route('directory.index')} className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors">
+                                                    <Link href="/directorio" className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors">
                                                         <Icons.Globe className="w-4 h-4 text-muted-foreground" />
                                                         Modo Usuario
                                                     </Link>
@@ -115,7 +115,7 @@ export default function SmartNavbar() {
                                                         <Icons.Store className="w-4 h-4" />
                                                         Mi Negocio
                                                     </a>
-                                                    <Link href={route('mi-cuenta.edit')} className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors">
+                                                    <Link href="/mi-cuenta" className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors">
                                                         <Icons.User className="w-4 h-4 text-muted-foreground" />
                                                         Perfil Comprador
                                                     </Link>
@@ -124,7 +124,7 @@ export default function SmartNavbar() {
 
                                             {/* Buyer / Standard User Links */}
                                             {auth.user.role === 'buyer' && (
-                                                <Link href={route('mi-cuenta.edit')} className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors">
+                                                <Link href="/mi-cuenta" className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors">
                                                     <Icons.User className="w-4 h-4 text-muted-foreground" />
                                                     Mi Cuenta
                                                 </Link>
@@ -142,11 +142,11 @@ export default function SmartNavbar() {
                             </div>
                         ) : (
                             <div className="flex items-center gap-2">
-                                <Link href={route('login')}>
+                                <Link href="/login">
                                     <Button variant="ghost" size="sm" className="hidden sm:inline-flex">Ingresar</Button>
                                     <Button variant="ghost" size="icon" className="sm:hidden"><Icons.LogIn className="w-5 h-5" /></Button>
                                 </Link>
-                                <Link href={route('tenant.register')}>
+                                <Link href="/registrar-negocio">
                                     <Button size="sm">Registrar negocio</Button>
                                 </Link>
                             </div>

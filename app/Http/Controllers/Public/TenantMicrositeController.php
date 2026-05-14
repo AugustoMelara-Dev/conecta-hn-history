@@ -44,8 +44,15 @@ final class TenantMicrositeController extends Controller
             return app(DirectoryController::class)->index($request);
         }
 
-        // 1. Resolve Tenant from Container (set by IdentifyTenantBySubdomain middleware)
-        $tenant = app('current_tenant');
+        // 1. Resolve Tenant from Container (subdomain) or route model (/t/{slug} bridge).
+        $routeTenant = $request->route('tenant');
+        $tenant = $routeTenant instanceof Tenant
+            ? $routeTenant
+            : (app()->bound('current_tenant') ? app('current_tenant') : null);
+
+        if (! $tenant && is_string($routeTenant) && $routeTenant !== '') {
+            $tenant = $this->repository->findBySlug($routeTenant);
+        }
 
         if (! $tenant) {
             abort(404, 'Business not found');
@@ -65,24 +72,26 @@ final class TenantMicrositeController extends Controller
 
         // 4. Transform & Respond
         $totalProductsCount = Schema::hasTable('products')
-            ? $tenant->products()->where('is_visible', true)->count()
+            ? $tenant->products()->withoutGlobalScopes()->where('is_visible', true)->count()
             : 0;
-        $productLimit = $this->planService->getMaxProductLimit($tenant);
-
         $tenantData = $this->transformer->transform($tenant);
         $visibleProductsCount = count($tenantData['products']);
 
         $isOwner = $request->user() && $request->user()->id === $tenant->user_id;
         $crmMicrosite = $this->resolveCrmMicrositeData($tenant, $isOwner);
+        $hiddenProductsCount = max(0, $totalProductsCount - $visibleProductsCount);
 
         return Inertia::render('Tenant/Show', [
-            'tenantPlan' => $this->planService->determinePlan($tenant),
             'tenant' => $tenantData,
             'products' => $tenantData['products'],
-            'hasHiddenProducts' => $totalProductsCount > $visibleProductsCount,
-            'totalProductsCount' => $totalProductsCount,
-            'hiddenProductsCount' => max(0, $totalProductsCount - $visibleProductsCount),
-            'productLimit' => $productLimit,
+            'storefrontCapabilities' => [
+                'checkout' => (bool) ($tenantData['features']['can_use_cart'] ?? false),
+                'modifiers' => (bool) ($tenantData['features']['can_show_modifiers'] ?? false),
+                'reviews' => (bool) ($tenantData['features']['can_show_reviews'] ?? false),
+            ],
+            'hasHiddenProducts' => $isOwner && $hiddenProductsCount > 0,
+            'totalProductsCount' => $isOwner ? $totalProductsCount : $visibleProductsCount,
+            'hiddenProductsCount' => $isOwner ? $hiddenProductsCount : 0,
             'isOwner' => $isOwner,
             'isFollowing' => false,
             'followersCount' => 0,

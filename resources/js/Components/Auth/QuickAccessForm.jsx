@@ -65,11 +65,11 @@ export function QuickAccessForm({ className = "", onAuthenticated }) {
             })
 
             if (response.data.requires_registration) {
-                window.location.href = `${route("tenant.register")}?identifier=${encodeURIComponent(otpIdentifier)}`
+                window.location.href = `/registrar-negocio?identifier=${encodeURIComponent(otpIdentifier)}`
                 return
             }
 
-            const destination = response.data.redirect_to || response.data.redirect || route("directory.index")
+            const destination = response.data.redirect_to || response.data.redirect || "/directorio"
             onAuthenticated?.(destination)
             window.location.href = destination
         } catch (requestError) {

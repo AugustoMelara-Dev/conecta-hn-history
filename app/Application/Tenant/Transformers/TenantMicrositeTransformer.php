@@ -42,7 +42,6 @@ final class TenantMicrositeTransformer
      */
     public function transform(Tenant $tenant): array
     {
-        $plan = $this->planService->determinePlan($tenant);
         $cityName = $this->tenantCityName($tenant);
 
         return [
@@ -88,10 +87,8 @@ final class TenantMicrositeTransformer
             // Category
             'category' => $this->transformCategory($tenant),
 
-            // Status flags
-            'is_pro' => (bool) ($this->tenantAttribute($tenant, 'is_pro') ?? false),
+            // Status flags safe for the public microsite
             'is_active' => (bool) $this->tenantAttribute($tenant, 'is_active'),
-            'plan' => $plan,
             'business_type' => $this->tenantStringAttribute($tenant, 'business_type', 'retail'),
             'commercial_mode' => $this->tenantStringAttribute($tenant, 'commercial_mode', 'products'),
             'conversion_profile' => $this->conversionProfile($tenant),

@@ -48,7 +48,9 @@ final class WelcomeController extends Controller
                 // ═══════════════════════════════════════════════════════════
                 // HERO IMAGE: Random city background
                 // ═══════════════════════════════════════════════════════════
-                'heroImage' => $this->repository->getRandomHeroImage(),
+                'heroImage' => file_exists(public_path('images/vito-business-panel-preview.png'))
+                    ? asset('images/vito-business-panel-preview.png')
+                    : $this->repository->getRandomHeroImage(),
 
                 // ═══════════════════════════════════════════════════════════
                 // STATS: Aggregate counts for trust badges

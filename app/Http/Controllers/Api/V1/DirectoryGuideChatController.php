@@ -79,7 +79,7 @@ final class DirectoryGuideChatController extends Controller
                     'slug' => $product->tenant?->slug,
                 ],
                 'url' => $product->tenant
-                    ? route('tenant.microsite.show', ['tenant' => $product->tenant->slug], false)
+                    ? route('tenant.public.show', ['tenant' => $product->tenant->slug], false)
                     : null,
             ])->values(),
             'source' => 'public_directory',

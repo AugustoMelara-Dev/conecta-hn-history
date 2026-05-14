@@ -27,7 +27,7 @@ export function ConfirmPasswordForm({ className, ...props }) {
     const submit = (event) => {
         event.preventDefault()
 
-        post(route("password.confirm"), {
+        post(route("password.confirm", undefined, false), {
             onFinish: () => reset("password"),
         })
     }

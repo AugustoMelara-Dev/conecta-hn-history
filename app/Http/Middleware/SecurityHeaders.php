@@ -173,6 +173,7 @@ class SecurityHeaders
             "img-src 'self' data: https: blob:".$viteDevSrc,
             "font-src 'self' https://fonts.gstatic.com https://fonts.bunny.net",
             "connect-src 'self' ".implode(' ', self::TRUSTED_CONNECT).' wss:'.$viteDevSrc.$viteDevWs,
+            $isProduction ? "worker-src 'self'" : "worker-src 'self' blob:".$viteDevSrc,
             "frame-src 'self' https://js.stripe.com https://www.facebook.com",
             "frame-ancestors 'none'",
             "form-action 'self'",

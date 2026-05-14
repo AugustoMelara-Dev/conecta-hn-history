@@ -15,14 +15,14 @@ export default function AuthShadcnShell({
     description = "Entra a tu cuenta, confirma tu correo o recupera el acceso sin salir del flujo principal de Vito Business OS.",
 }) {
     return (
-        <div className="grid min-h-svh bg-background text-foreground lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
+        <div className="grid min-h-svh bg-[radial-gradient(circle_at_top_right,hsl(var(--secondary))_0,transparent_34%),linear-gradient(180deg,#fff_0%,#f8fafc_100%)] text-foreground lg:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)]">
             <div className="flex min-h-svh flex-col gap-6 p-5 sm:p-8 md:p-10">
                 <div className="flex justify-center gap-2 md:justify-start">
                     <Link
-                        href={route("home")}
+                        href="/"
                         className="flex items-center gap-2 rounded-md text-sm font-medium text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
-                        <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
+                        <div className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                             <GalleryVerticalEnd aria-hidden="true" />
                         </div>
                         Vito Business OS
@@ -33,13 +33,13 @@ export default function AuthShadcnShell({
                 </div>
             </div>
 
-            <aside className="relative hidden min-h-svh overflow-hidden border-l bg-muted lg:block">
+            <aside className="relative hidden min-h-svh overflow-hidden border-l bg-background lg:block">
                 <img
                     src={imageSrc}
                     alt={imageAlt}
                     className="absolute inset-0 h-full w-full object-cover"
                 />
-                <div className="absolute inset-0 bg-background/80" aria-hidden="true" />
+                <div className="absolute inset-0 bg-background/88" aria-hidden="true" />
                 <div className="relative z-10 flex h-full flex-col justify-between p-10">
                     <div className="flex justify-end">
                         <Badge variant="secondary">{eyebrow}</Badge>
@@ -47,7 +47,7 @@ export default function AuthShadcnShell({
 
                     <div className="flex max-w-md flex-col gap-6">
                         <div className="flex flex-col gap-3">
-                            <h1 className="text-4xl font-semibold leading-tight tracking-normal">
+                            <h1 className="font-display text-5xl font-bold leading-tight tracking-normal">
                                 {title}
                             </h1>
                             <p className="text-base leading-7 text-muted-foreground">

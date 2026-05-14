@@ -18,7 +18,7 @@ import {
 function safeRoute(name, fallback, params) {
     try {
         if (route().has(name)) {
-            return route(name, params);
+            return route(name, params, false);
         }
     } catch {
         return fallback;
@@ -34,11 +34,11 @@ const navigationLinks = [
 function BrandLink() {
     return (
         <Link href={safeRoute('home', '/')} className="flex items-center gap-3">
-            <span className="flex size-10 items-center justify-center rounded-md bg-primary text-primary-foreground">
-                <Store aria-hidden="true" />
+            <span className="flex size-9 items-center justify-center rounded-lg border border-foreground/10 bg-foreground text-background shadow-sm">
+                <Store aria-hidden="true" className="size-4" />
             </span>
-            <span className="text-lg font-semibold tracking-normal text-foreground">
-                Conecta HN
+            <span className="font-display text-base font-bold tracking-normal text-foreground sm:text-lg">
+                Vito
             </span>
         </Link>
     );
@@ -72,8 +72,8 @@ function SearchForm({ className = '', inputId = 'public-search' }) {
                     id={inputId}
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
-                    placeholder="Buscar negocios..."
-                    className="pl-9"
+                    placeholder="Buscar negocios, servicios o productos"
+                    className="h-10 rounded-full border-border bg-background pl-9 shadow-none"
                 />
             </div>
         </form>
@@ -82,6 +82,7 @@ function SearchForm({ className = '', inputId = 'public-search' }) {
 
 function DesktopNavigation({ auth }) {
     const panelUrl = auth?.panel_url || auth?.user?.panel_url || '/registrar-negocio';
+    const hasBusinessPanel = auth?.user && panelUrl !== '/registrar-negocio';
 
     return (
         <div className="hidden items-center gap-3 md:flex">
@@ -94,9 +95,16 @@ function DesktopNavigation({ auth }) {
             <Separator orientation="vertical" className="h-8" />
 
             {auth?.user ? (
-                <Button asChild>
-                    <Link href={panelUrl}>Mi panel</Link>
-                </Button>
+                <>
+                    <Button variant="ghost" asChild>
+                        <Link href={safeRoute('mi-cuenta.edit', '/mi-cuenta')}>Mi cuenta</Link>
+                    </Button>
+                    <Button asChild>
+                        <Link href={hasBusinessPanel ? panelUrl : safeRoute('tenant.register', '/registrar-negocio')}>
+                            {hasBusinessPanel ? 'Panel negocio' : 'Crear negocio'}
+                        </Link>
+                    </Button>
+                </>
             ) : (
                 <>
                     <Button variant="ghost" asChild>
@@ -113,6 +121,7 @@ function DesktopNavigation({ auth }) {
 
 function MobileNavigation({ auth }) {
     const panelUrl = auth?.panel_url || auth?.user?.panel_url || '/registrar-negocio';
+    const hasBusinessPanel = auth?.user && panelUrl !== '/registrar-negocio';
 
     return (
         <Sheet>
@@ -149,9 +158,16 @@ function MobileNavigation({ auth }) {
 
                 <div className="flex flex-col gap-2">
                     {auth?.user ? (
-                        <Button asChild>
-                            <Link href={panelUrl}>Mi panel</Link>
-                        </Button>
+                        <>
+                            <Button variant="outline" asChild>
+                                <Link href={safeRoute('mi-cuenta.edit', '/mi-cuenta')}>Mi cuenta</Link>
+                            </Button>
+                            <Button asChild>
+                                <Link href={hasBusinessPanel ? panelUrl : safeRoute('tenant.register', '/registrar-negocio')}>
+                                    {hasBusinessPanel ? 'Panel negocio' : 'Crear negocio'}
+                                </Link>
+                            </Button>
+                        </>
                     ) : (
                         <>
                             <Button variant="outline" asChild>
@@ -172,7 +188,7 @@ function Navbar() {
     const { auth } = usePage().props;
 
     return (
-        <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75">
             <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
                 <BrandLink />
                 <SearchForm className="hidden w-full max-w-md md:block" inputId="public-search-desktop" />
@@ -185,12 +201,12 @@ function Navbar() {
 
 function Footer() {
     return (
-        <footer className="mt-auto border-t bg-card text-card-foreground">
+        <footer className="mt-auto border-t bg-muted/40 text-card-foreground">
             <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-4 lg:px-8">
                 <div className="md:col-span-2">
                     <BrandLink />
                     <p className="mt-4 max-w-md text-sm leading-6 text-muted-foreground">
-                        Directorio de negocios en Honduras para descubrir servicios locales, comparar opciones y conectar con comercios de confianza.
+                        Plataforma para publicar tu negocio, recibir clientes y ordenar ventas, reservas y seguimiento en un solo lugar.
                     </p>
                 </div>
 
@@ -228,7 +244,7 @@ function Footer() {
             </div>
 
             <div className="border-t px-4 py-5 text-center text-xs text-muted-foreground">
-                &copy; {new Date().getFullYear()} Conecta HN. Todos los derechos reservados.
+                &copy; {new Date().getFullYear()} Vito Business OS. Todos los derechos reservados.
             </div>
         </footer>
     );

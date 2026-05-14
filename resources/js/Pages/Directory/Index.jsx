@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import {
     ArrowRight,
-    BadgeCheck,
+    Bot,
     Building2,
     Filter,
+    LoaderCircle,
     MapPin,
+    Send,
     Search,
     Store,
     X,
@@ -53,18 +55,10 @@ function cleanParams(params) {
 
 function getTenantHref(tenant) {
     if (!tenant?.slug) {
-        return route('directory.index');
+        return '/directorio';
     }
 
-    try {
-        if (route().has('tenant.microsite.show')) {
-            return route('tenant.microsite.show', { tenant: tenant.slug });
-        }
-    } catch {
-        // Fall through to legacy route/fallback below.
-    }
-
-    return route('directory.index', { search: tenant.name || '' });
+    return `/t/${encodeURIComponent(tenant.slug)}`;
 }
 
 function getStorageUrl(path) {
@@ -81,11 +75,11 @@ function getStorageUrl(path) {
 
 function getPaginatorItems(tenants) {
     if (Array.isArray(tenants?.data)) {
-        return tenants.data;
+        return tenants.data.map((item) => item?.data ?? item);
     }
 
     if (Array.isArray(tenants)) {
-        return tenants;
+        return tenants.map((item) => item?.data ?? item);
     }
 
     return [];
@@ -127,12 +121,9 @@ function DirectoryCard({ tenant }) {
                             </CardDescription>
                         </div>
 
-                        {tenant.is_pro && (
-                                <Badge variant="secondary" className="shrink-0">
-                                    <BadgeCheck className="mr-1 size-3" aria-hidden="true" />
-                                    PRO
-                                </Badge>
-                            )}
+                        <Badge variant="outline" className="shrink-0">
+                            Verificado
+                        </Badge>
                     </div>
                 </CardHeader>
 
@@ -259,7 +250,7 @@ function ActiveFilters({ categories, cities, filters, onFilterChange }) {
 
 function EmptyState({ filters, onClear }) {
     return (
-        <Card className="border-dashed" data-testid="directory-empty-state">
+        <Card className="border-dashed bg-muted/35 shadow-none" data-testid="directory-empty-state">
             <CardContent className="flex flex-col items-center gap-5 py-16 text-center">
                 <span className="grid h-16 w-16 place-items-center rounded-md bg-muted text-muted-foreground">
                     <Search className="size-7" aria-hidden="true" />
@@ -278,7 +269,7 @@ function EmptyState({ filters, onClear }) {
                         Limpiar filtros
                     </Button>
                     <Button asChild>
-                        <Link href={route('register')}>
+                        <Link href="/registrar-negocio">
                             <Building2 className="mr-2 size-4" aria-hidden="true" />
                             Registrar mi negocio
                         </Link>
@@ -325,6 +316,116 @@ function Pagination({ links }) {
     );
 }
 
+function DirectoryGuide() {
+    const [message, setMessage] = useState('Que puedo comprar con 150 lempiras?');
+    const [answer, setAnswer] = useState(null);
+    const [items, setItems] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    const ask = async (event) => {
+        event.preventDefault();
+
+        const cleanMessage = message.trim();
+        if (!cleanMessage) {
+            return;
+        }
+
+        setLoading(true);
+        setError(null);
+
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            const response = await fetch('/api/v1/directory/guide/chat', {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ message: cleanMessage }),
+            });
+
+            if (!response.ok) {
+                throw new Error('No pudimos consultar la guia.');
+            }
+
+            const payload = await response.json();
+            setAnswer(payload.answer || 'No encontre una respuesta publica para esa pregunta.');
+            setItems(Array.isArray(payload.items) ? payload.items : []);
+        } catch {
+            setAnswer(null);
+            setItems([]);
+            setError('La guia no respondio. El directorio sigue disponible para buscar manualmente.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <Card className="border-border/70 bg-foreground text-background shadow-[0_24px_80px_rgba(15,23,42,0.14)]" data-testid="directory-guide">
+            <CardHeader>
+                <Badge variant="secondary" className="w-fit rounded-full">
+                    Guia publica con IA
+                </Badge>
+                <CardTitle className="font-display text-2xl">Pregunta con datos publicos</CardTitle>
+                <CardDescription className="text-background/70">
+                    Responde desde negocios, catalogo y servicios visibles. No usa ventas privadas ni datos internos.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <form onSubmit={ask} className="flex flex-col gap-3">
+                    <FieldGroup>
+                        <Field>
+                            <FieldLabel htmlFor="directory-guide-input" className="sr-only">
+                                Pregunta para la guia del directorio
+                            </FieldLabel>
+                            <div className="flex gap-2 rounded-2xl border border-white/10 bg-white/10 p-2">
+                                <Input
+                                    id="directory-guide-input"
+                                    value={message}
+                                    onChange={(event) => setMessage(event.target.value)}
+                                    className="h-11 border-0 bg-white text-foreground placeholder:text-muted-foreground focus-visible:ring-1"
+                                    placeholder="Ej. que puedo comprar con 150 lempiras?"
+                                />
+                                <Button type="submit" variant="secondary" size="icon" disabled={loading} aria-label="Preguntar" data-testid="directory-guide-submit">
+                                    {loading ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Send aria-hidden="true" />}
+                                </Button>
+                            </div>
+                        </Field>
+                    </FieldGroup>
+                </form>
+
+                <div className="mt-5 rounded-2xl border border-white/10 bg-white/10 p-4">
+                    <div className="flex items-start gap-3">
+                        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white text-foreground">
+                            <Bot aria-hidden="true" />
+                        </span>
+                        <div className="min-w-0">
+                            <p className="text-sm leading-6 text-background/85" data-testid="directory-guide-answer">
+                                {error || answer || 'Prueba con presupuesto, ciudad o tipo de servicio. La respuesta aparece aqui.'}
+                            </p>
+                            {items.length ? (
+                                <div className="mt-4 flex flex-col gap-2">
+                                    {items.slice(0, 3).map((item) => (
+                                        <Button key={`${item.business_name}-${item.name}`} variant="secondary" className="justify-between" asChild>
+                                            <Link href={item.url || '/directorio'}>
+                                                <span className="truncate">{item.name}</span>
+                                                <span className="shrink-0 text-xs">{item.price_label}</span>
+                                            </Link>
+                                        </Button>
+                                    ))}
+                                </div>
+                            ) : null}
+                        </div>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
+
 export default function DirectoryIndex({
     tenants = {},
     categories = [],
@@ -339,9 +440,9 @@ export default function DirectoryIndex({
 
     const applyFilters = useCallback((nextFilters) => {
         router.get(
-            route('directory.index'),
+            '/directorio',
             cleanParams(nextFilters),
-            { preserveState: true, preserveScroll: true, replace: true }
+            { preserveState: false, preserveScroll: true, replace: true }
         );
     }, []);
 
@@ -391,34 +492,36 @@ export default function DirectoryIndex({
 
     return (
         <PublicLayout>
-            <Head title={`${pageTitle} - Conecta HN`} />
+            <Head title={`${pageTitle} - Vito Business OS`} />
 
-            <section className="border-b bg-muted/40" data-testid="directory-page">
-                <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+            <section className="border-b bg-[radial-gradient(circle_at_top_right,hsl(var(--secondary))_0,transparent_32%),linear-gradient(180deg,#fff_0%,#f8fafc_100%)]" data-testid="directory-page">
+                <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
                     <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
                         <div>
-                            <Badge variant="outline">Directorio</Badge>
-                            <h1 className="mt-4 text-3xl font-semibold tracking-normal sm:text-4xl">
+                            <Badge variant="outline" className="rounded-full bg-background/80">Directorio para clientes</Badge>
+                            <h1 className="mt-4 font-display text-4xl font-bold tracking-normal sm:text-5xl">
                                 {pageTitle}
                             </h1>
-                            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-                                Explora negocios locales por ciudad, categoria o busqueda directa.
+                            <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground">
+                                Encuentra negocios reales, guarda favoritos y entra a micrositios públicos sin ver información privada del plan del negocio.
                             </p>
                         </div>
-                        <Badge variant="secondary" className="w-fit" role="status" aria-live="polite">
+                        <Badge variant="secondary" className="w-fit rounded-full px-4 py-2" role="status" aria-live="polite">
                             {resultCount} resultados
                         </Badge>
                     </div>
                 </div>
             </section>
 
-            <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+            <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
                 <div className="grid gap-8 lg:grid-cols-[18rem_1fr]">
                     <aside className="hidden lg:block">
-                        <Card className="sticky top-24">
+                        <div className="sticky top-24 flex flex-col gap-4">
+                            <DirectoryGuide />
+                        <Card className="border-border/70 shadow-none">
                             <CardHeader>
                                 <CardTitle className="text-lg">Filtros</CardTitle>
-                                <CardDescription>Ajusta la vista del directorio.</CardDescription>
+                                <CardDescription>Refina por ciudad o categoría.</CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <FilterControls
@@ -429,11 +532,16 @@ export default function DirectoryIndex({
                                 />
                             </CardContent>
                         </Card>
+                        </div>
                     </aside>
 
                     <div className="min-w-0">
                         <div className="flex flex-col gap-4">
-                            <div className="flex gap-3">
+                            <div className="lg:hidden">
+                                <DirectoryGuide />
+                            </div>
+
+                            <div className="flex gap-3 rounded-2xl border bg-background p-2 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
                                 <FieldGroup className="flex-1 gap-0">
                                     <Field>
                                         <FieldLabel htmlFor="directory-search" className="sr-only">
@@ -450,7 +558,7 @@ export default function DirectoryIndex({
                                                 value={searchTerm}
                                                 onChange={(event) => setSearchTerm(event.target.value)}
                                                 placeholder="Buscar negocios, productos o servicios..."
-                                                className="pl-9"
+                                                className="h-12 rounded-xl border-0 bg-muted/70 pl-9 shadow-none focus-visible:ring-1"
                                                 data-testid="directory-search-control"
                                             />
                                         </div>
@@ -459,7 +567,7 @@ export default function DirectoryIndex({
 
                                 <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
                                     <SheetTrigger asChild>
-                                        <Button variant="outline" className="lg:hidden">
+                                        <Button variant="outline" className="h-12 rounded-xl lg:hidden">
                                             <Filter className="mr-2 size-4" aria-hidden="true" />
                                             Filtros
                                         </Button>

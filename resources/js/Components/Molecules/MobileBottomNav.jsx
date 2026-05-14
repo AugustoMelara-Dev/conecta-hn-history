@@ -10,14 +10,14 @@ export default function MobileBottomNav() {
         {
             label: 'Inicio',
             icon: Home,
-            href: route('directory.index'),
+            href: '/directorio',
             active: route().current('directory.index'),
             show: true
         },
         {
             label: 'Explorar',
             icon: Search,
-            href: route('directory.index'), // Could be a search page or category page
+            href: '/directorio',
             active: false,
             show: !user
         },
@@ -46,14 +46,14 @@ export default function MobileBottomNav() {
         {
             label: 'Perfil',
             icon: User,
-            href: route('mi-cuenta.edit'),
+            href: '/mi-cuenta',
             active: route().current('mi-cuenta.edit'),
             show: !!user
         },
         {
             label: 'Ingresar',
             icon: User,
-            href: route('login'),
+            href: '/login',
             active: route().current('login'),
             show: !user
         }

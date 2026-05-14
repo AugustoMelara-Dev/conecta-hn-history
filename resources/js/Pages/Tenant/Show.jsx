@@ -1,7 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
 import { useEffect } from 'react';
 import {
-    BadgeCheck,
     CalendarClock,
     CheckCircle2,
     Clock,
@@ -151,9 +150,7 @@ function StatusBadge({ isOpen }) {
     );
 }
 
-function TenantHero({ tenant, tenantPlan, isOpen, totalProductsCount, productsCount, categoryName, cityName, whatsappUrl }) {
-    const isPro = tenantPlan !== PLAN.SEMILLA;
-
+function TenantHero({ tenant, isOpen, totalProductsCount, productsCount, categoryName, cityName, whatsappUrl }) {
     return (
         <header className="border-b bg-muted/30" data-testid="microsite-hero">
             <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
@@ -164,7 +161,7 @@ function TenantHero({ tenant, tenantPlan, isOpen, totalProductsCount, productsCo
                         </Link>
                     </Button>
                     <Button variant="ghost" size="sm" asChild>
-                        <Link href={safeRoute('home', '/')}>Conecta HN</Link>
+                        <Link href={safeRoute('home', '/')}>Vito</Link>
                     </Button>
                 </nav>
 
@@ -195,12 +192,6 @@ function TenantHero({ tenant, tenantPlan, isOpen, totalProductsCount, productsCo
                                 <div className="flex flex-wrap items-center gap-2">
                                     <StatusBadge isOpen={isOpen} />
                                     <Badge variant="outline">{categoryName}</Badge>
-                                    {isPro && (
-                                        <Badge variant="secondary" className="gap-1">
-                                            <BadgeCheck className="size-3" aria-hidden="true" />
-                                            Plan {tenantPlan}
-                                        </Badge>
-                                    )}
                                 </div>
 
                                 <div>
@@ -208,7 +199,7 @@ function TenantHero({ tenant, tenantPlan, isOpen, totalProductsCount, productsCo
                                         {tenant.name}
                                     </h1>
                                     <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
-                                        {tenant.slogan || tenant.description || 'Negocio local disponible en Conecta HN.'}
+                                        {tenant.slogan || tenant.description || 'Negocio local disponible en Vito.'}
                                     </p>
                                 </div>
 
@@ -221,7 +212,7 @@ function TenantHero({ tenant, tenantPlan, isOpen, totalProductsCount, productsCo
                                         <ShoppingBag className="size-4" aria-hidden="true" />
                                         {productsCount} de {totalProductsCount || productsCount} productos visibles
                                     </span>
-                                    {isPro && (
+                                    {tenant.features?.can_show_reviews && (
                                         <span className="inline-flex items-center gap-2">
                                             <Star className="size-4" aria-hidden="true" />
                                             {tenant.rating || '4.8'} ({tenant.reviews_count || 0})
@@ -297,21 +288,23 @@ function ProductGridSection({
     const isPro = tenantPlan !== PLAN.SEMILLA;
 
     if (!products?.length) {
+        const showPlanLimit = hasHiddenProducts && isOwner;
+
         return (
             <div className="flex flex-col gap-4" data-testid="microsite-product-empty">
                 <Alert>
                     <Info className="mr-2 inline size-4" aria-hidden="true" />
                     <AlertTitle>
-                        {hasHiddenProducts ? 'Productos limitados por plan' : 'Catalogo vacio'}
+                        {showPlanLimit ? 'Productos pendientes por publicar' : 'Catalogo vacio'}
                     </AlertTitle>
                     <AlertDescription>
-                        {hasHiddenProducts
-                            ? `Este negocio tiene ${hiddenProductsCount} productos que no se muestran en el plan actual.`
+                        {showPlanLimit
+                            ? `Tienes ${hiddenProductsCount} productos fuera de la vista publica.`
                             : 'Este negocio aun no ha publicado productos visibles.'}
                     </AlertDescription>
                 </Alert>
 
-                {hasHiddenProducts && (
+                {showPlanLimit && (
                     <UpsellCard
                         hiddenCount={hiddenProductsCount}
                         isOwner={isOwner}
@@ -646,7 +639,7 @@ function MobileActionBar({ tenant, whatsappUrl }) {
 export default function TenantShow({
     tenant,
     products,
-    tenantPlan = PLAN.SEMILLA,
+    storefrontCapabilities = {},
     hasHiddenProducts = false,
     totalProductsCount = 0,
     hiddenProductsCount = 0,
@@ -657,9 +650,10 @@ export default function TenantShow({
     crmMicrosite = null,
 }) {
     const initForTenant = useCartStore((state) => state.initForTenant);
+    const effectiveTenantPlan = storefrontCapabilities.checkout ? PLAN.PRO : PLAN.SEMILLA;
 
     useEffect(() => {
-        if (tenantPlan !== PLAN.SEMILLA && tenant?.slug) {
+        if (effectiveTenantPlan !== PLAN.SEMILLA && tenant?.slug) {
             initForTenant(
                 tenant.slug,
                 tenant.whatsapp || tenant.whatsapp_number,
@@ -667,7 +661,7 @@ export default function TenantShow({
                 tenant.id
             );
         }
-    }, [initForTenant, tenant?.id, tenant?.name, tenant?.slug, tenant?.whatsapp, tenant?.whatsapp_number, tenantPlan]);
+    }, [effectiveTenantPlan, initForTenant, tenant?.id, tenant?.name, tenant?.slug, tenant?.whatsapp, tenant?.whatsapp_number]);
 
     if (!tenant) {
         return <LoadingState />;
@@ -685,13 +679,14 @@ export default function TenantShow({
     const whatsappNumber = tenant.whatsapp || tenant.whatsapp_number || '';
     const whatsappUrl = getWhatsappUrl(whatsappNumber, tenant.name);
     const catalogLabel = isRestaurantCategory(categoryName) ? 'Menu' : 'Catalogo';
-    const pageTitle = `${tenant.name || 'Tienda'} | ${categoryName} en ${cityName} | Conecta HN`;
+    const pageTitle = `${tenant.name || 'Tienda'} | ${categoryName} en ${cityName} | Vito`;
     const pageDescription = String(
         tenant.description ||
         tenant.slogan ||
-        `Descubre ${tenant.name} en Conecta HN. Tu marketplace local de Honduras.`
+        `Descubre ${tenant.name} en Vito. Negocios locales de Honduras.`
     ).substring(0, 160);
     const pageImage = tenant.hero_image || tenant.cover || tenant.banner_path || 'https://conecta-hn.com/og-default.jpg';
+    const showCrmTab = Boolean(isOwner && crmMicrosite?.enabled);
 
     return (
         <div
@@ -717,7 +712,6 @@ export default function TenantShow({
 
             <TenantHero
                 tenant={tenant}
-                tenantPlan={tenantPlan}
                 isOpen={isOpen}
                 totalProductsCount={totalProductsCount}
                 productsCount={safeProducts.length}
@@ -736,21 +730,23 @@ export default function TenantShow({
                 </Alert>
 
                 <Tabs defaultValue="products" className="w-full" data-testid="microsite-tabs">
-                    <TabsList className="grid w-full grid-cols-4 lg:w-[36rem]">
+                    <TabsList className={cn('grid w-full lg:w-[36rem]', showCrmTab ? 'grid-cols-4' : 'grid-cols-3')}>
                         <TabsTrigger value="products">{catalogLabel}</TabsTrigger>
                         <TabsTrigger value="info">Informacion</TabsTrigger>
                         <TabsTrigger value="reviews">Resenas</TabsTrigger>
-                        <TabsTrigger value="crm">
-                            <Columns3 aria-hidden="true" />
-                            CRM
-                        </TabsTrigger>
+                        {showCrmTab && (
+                            <TabsTrigger value="crm">
+                                <Columns3 aria-hidden="true" />
+                                CRM
+                            </TabsTrigger>
+                        )}
                     </TabsList>
 
                     <TabsContent value="products" className="mt-6">
                         <ProductGridSection
                             products={safeProducts}
                             tenant={tenant}
-                            tenantPlan={tenantPlan}
+                            tenantPlan={effectiveTenantPlan}
                             hasHiddenProducts={hasHiddenProducts}
                             hiddenProductsCount={hiddenProductsCount}
                             isOwner={isOwner}
@@ -765,22 +761,24 @@ export default function TenantShow({
                         <ReviewsSection tenant={tenant} />
                     </TabsContent>
 
-                    <TabsContent value="crm" className="mt-6">
-                        <CrmSection crmMicrosite={crmMicrosite} />
-                    </TabsContent>
+                    {showCrmTab && (
+                        <TabsContent value="crm" className="mt-6">
+                            <CrmSection crmMicrosite={crmMicrosite} />
+                        </TabsContent>
+                    )}
                 </Tabs>
             </main>
 
             <Separator />
 
             <footer className="mx-auto hidden max-w-7xl items-center justify-between gap-4 px-4 py-6 text-sm text-muted-foreground sm:px-6 md:flex lg:px-8">
-                <span>Powered by Conecta HN</span>
+                <span>Powered by Vito Business OS</span>
                 <Button variant="link" asChild className="px-0">
                     <Link href={safeRoute('home', '/')}>Crear mi micrositio</Link>
                 </Button>
             </footer>
 
-            {tenantPlan !== PLAN.SEMILLA && <FloatingCart />}
+            {effectiveTenantPlan !== PLAN.SEMILLA && <FloatingCart />}
             <MobileActionBar tenant={tenant} whatsappUrl={whatsappUrl} />
         </div>
     );

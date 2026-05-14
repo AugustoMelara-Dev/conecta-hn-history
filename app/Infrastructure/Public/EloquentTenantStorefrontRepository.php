@@ -36,16 +36,17 @@ final class EloquentTenantStorefrontRepository implements TenantStorefrontReposi
         $relations = [];
 
         if (Schema::hasTable('opening_hours')) {
-            $relations[] = 'openingHours';
+            $relations['openingHours'] = fn ($query) => $query->withoutGlobalScopes();
         }
 
         if (Schema::hasTable('menu_sections')) {
-            $relations['menuSections'] = fn ($q) => $q->where('is_active', true)->orderBy('name');
+            $relations['menuSections'] = fn ($q) => $q->withoutGlobalScopes()->where('is_active', true)->orderBy('name');
         }
 
         if (Schema::hasTable('products')) {
             $relations['products'] = function ($query) use ($productLimit) {
-                $query->where('is_visible', true)
+                $query->withoutGlobalScopes()
+                    ->where('is_visible', true)
                     ->orderBy('name')
                     ->limit($productLimit);
             };
@@ -68,9 +69,11 @@ final class EloquentTenantStorefrontRepository implements TenantStorefrontReposi
             && Schema::hasTable('modifier_options')
         ) {
             $relations['products.modifierGroups'] = fn ($q) => $q
+                ->withoutGlobalScopes()
                 ->where('is_active', true)
                 ->orderBy('sort_order');
             $relations['products.modifierGroups.options'] = fn ($q) => $q
+                ->withoutGlobalScopes()
                 ->where('is_available', true)
                 ->orderBy('sort_order');
         }

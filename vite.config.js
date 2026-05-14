@@ -48,9 +48,9 @@ export default defineConfig({
                 ],
             },
             manifest: {
-                name: "Conecta HN",
-                short_name: "Conecta",
-                description: "Infraestructura Digital para PyMEs de Honduras",
+                name: "Vito Business OS",
+                short_name: "Vito",
+                description: "Publica tu negocio, atiende clientes y opera ventas, reservas y seguimiento en un solo lugar.",
                 theme_color: "#000000",
                 background_color: "#ffffff",
                 display: "standalone",
@@ -59,20 +59,19 @@ export default defineConfig({
                 start_url: "/",
                 icons: [
                     {
+                        src: "/favicon.svg",
+                        sizes: "any",
+                        type: "image/svg+xml",
+                    },
+                    {
+                        src: "/favicon.ico",
+                        sizes: "any",
+                        type: "image/x-icon",
+                    },
+                    {
                         src: "/icon-192x192.png",
                         sizes: "192x192",
                         type: "image/png",
-                    },
-                    {
-                        src: "/icon-512x512.png",
-                        sizes: "512x512",
-                        type: "image/png",
-                    },
-                    {
-                        src: "/icon-512x512.png",
-                        sizes: "512x512",
-                        type: "image/png",
-                        purpose: "maskable",
                     },
                 ],
             },

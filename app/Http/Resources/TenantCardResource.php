@@ -12,8 +12,6 @@ class TenantCardResource extends JsonResource
     public function toArray(Request $request): array
     {
         $attributes = method_exists($this->resource, 'getAttributes') ? $this->resource->getAttributes() : [];
-        $planType = $attributes['plan_type'] ?? 'semilla';
-        $subscriptionStatus = $attributes['subscription_status'] ?? 'active';
         $tags = $this->normalizeTags($attributes['tags'] ?? []);
 
         return [
@@ -25,9 +23,6 @@ class TenantCardResource extends JsonResource
             'banner_path' => $attributes['hero_image'] ?? $attributes['banner_path'] ?? $attributes['cover_path'] ?? null,
             'blur_hash' => $attributes['blur_hash'] ?? null,
             'brand_color' => $attributes['brand_color'] ?? '#2563EB',
-            'is_pro' => in_array($planType, ['pro', 'enterprise'], true)
-                && ! in_array($subscriptionStatus, ['past_due', 'canceled'], true),
-            'plan_type' => $planType,
             'city' => $this->whenLoaded('city', fn () => [
                 'id' => $this->city->id,
                 'name' => $this->city->name,

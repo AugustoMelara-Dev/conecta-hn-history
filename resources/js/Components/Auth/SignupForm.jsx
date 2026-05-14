@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils"
 function safeRoute(name, fallback) {
     try {
         if (route().has(name)) {
-            return route(name)
+            return route(name, undefined, false)
         }
     } catch {
         return fallback
@@ -55,7 +55,7 @@ export function SignupForm({
 
     const submit = (event) => {
         event.preventDefault()
-        post(route("tenant.register.store"))
+        post(route("tenant.register.store", undefined, false))
     }
 
     return (
@@ -277,7 +277,7 @@ export function SignupForm({
                                 </Button>
                                 <FieldDescription className="px-6 text-center">
                                     ¿Ya tienes una cuenta?{" "}
-                                    <Link href={route("login")} className="underline underline-offset-4">
+                                    <Link href="/login" className="underline underline-offset-4">
                                         Iniciar sesión
                                     </Link>
                                 </FieldDescription>

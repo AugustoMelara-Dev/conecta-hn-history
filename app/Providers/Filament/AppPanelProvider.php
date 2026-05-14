@@ -50,7 +50,7 @@ class AppPanelProvider extends PanelProvider
             // ═══════════════════════════════════════════════════════════════
             // BRANDING: Logo Vectorial y Nombre
             // ═══════════════════════════════════════════════════════════════
-            ->brandName('Conecta HN')
+            ->brandName('Vito Business OS')
             ->brandLogo(fn () => view('filament.components.brand'))
             ->brandLogoHeight('2.5rem')
             ->favicon(asset('favicon.ico'))
@@ -165,7 +165,7 @@ class AppPanelProvider extends PanelProvider
             // ═══════════════════════════════════════════════════════════════
             ->maxContentWidth('full')
             ->when(
-                ! filter_var(env('UIUX_DISABLE_FILAMENT_DATABASE_NOTIFICATIONS', false), FILTER_VALIDATE_BOOL),
+                ! filter_var(env('UIUX_DISABLE_FILAMENT_DATABASE_NOTIFICATIONS', true), FILTER_VALIDATE_BOOL),
                 fn (Panel $panel): Panel => $panel
                     ->databaseNotifications()
                     ->databaseNotificationsPolling('60s'),
@@ -214,7 +214,7 @@ class AppPanelProvider extends PanelProvider
         $tenant = Filament::getTenant();
         if ($tenant) {
             $url = route('tenant.microsite.show', ['tenant' => $tenant->slug]);
-            $text = "¡Mira mi negocio {$tenant->name} en Conecta HN!";
+            $text = "Mira mi negocio {$tenant->name} en Vito Business OS.";
 
             return 'https://wa.me/?text='.urlencode("{$text}\n\n{$url}");
         }

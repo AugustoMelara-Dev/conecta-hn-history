@@ -28,6 +28,7 @@ class DatabaseSeeder extends Seeder
         Tenant::withoutEvents(function () {
             User::withoutEvents(function () {
                 $this->seedData();
+                $this->call(BusinessOsDemoSeeder::class);
             });
         });
     }

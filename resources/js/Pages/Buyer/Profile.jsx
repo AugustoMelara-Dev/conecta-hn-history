@@ -128,8 +128,8 @@ export default function Profile({ auth, favorites = [], followedTenants = [] }) 
                                                         </div>
                                                     )}
                                                 </div>
-                                                <Badge variant={tenant.is_pro ? "default" : "secondary"} className={tenant.is_pro ? "bg-amber-500 hover:bg-amber-600 text-slate-900" : ""}>
-                                                    {tenant.is_pro ? "PRO" : "Gratis"}
+                                                <Badge variant="secondary">
+                                                    Guardado
                                                 </Badge>
                                             </div>
                                             <CardContent className="p-4 pt-3">

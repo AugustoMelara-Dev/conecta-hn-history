@@ -131,7 +131,7 @@ function StepPill({ step, index, currentStep, onClick }) {
             disabled={locked}
             aria-current={active ? "step" : undefined}
             aria-disabled={locked ? "true" : undefined}
-            className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-left ${
+            className={`flex min-w-0 items-center gap-2 rounded-full border px-3 py-2 text-left transition-colors ${
                 active
                     ? "border-primary bg-primary text-primary-foreground"
                 : complete
@@ -139,17 +139,11 @@ function StepPill({ step, index, currentStep, onClick }) {
                         : "border-border bg-background text-muted-foreground hover:border-ring hover:text-foreground"
             }`}
         >
-            <span className={`flex size-10 items-center justify-center rounded-xl ${active ? "bg-primary-foreground/10" : complete ? "bg-background" : "bg-muted"}`}>
+            <span className={`flex size-8 shrink-0 items-center justify-center rounded-full ${active ? "bg-primary-foreground/10" : complete ? "bg-background" : "bg-muted"}`}>
                 {complete ? <Check aria-hidden="true" /> : <Icon aria-hidden="true" />}
             </span>
             <span className="min-w-0">
-                <span
-                    className={`block text-[10px] font-bold uppercase tracking-[0.22em] ${active ? "text-primary-foreground/70" : "text-muted-foreground"}`}
-                    style={{ fontFamily: PUBLIC_LABEL_FONT }}
-                >
-                    {step.label}
-                </span>
-                <span className="mt-1 block truncate text-sm font-semibold">{step.title}</span>
+                <span className="block truncate text-sm font-semibold">{step.label}</span>
             </span>
             {locked ? <span className="sr-only">Paso bloqueado hasta completar los anteriores.</span> : null}
         </button>
@@ -582,7 +576,7 @@ export function RegisterTenantWizard({
             topActions={
                 <>
                     <Button variant="ghost" className="hidden md:inline-flex" asChild>
-                        <Link href={route("login")}>Iniciar sesión</Link>
+                        <Link href="/login">Iniciar sesión</Link>
                     </Button>
                     <Button variant="outline" asChild>
                         <Link href={directoryUrl}>Directorio</Link>
@@ -642,7 +636,7 @@ export function RegisterTenantWizard({
                         <AuthAsideCard eyebrow="Vista previa" title={businessPreview} description={slugPreview}>
                             <div className="mt-4 flex flex-col gap-3">
                                 <SummaryRow label="Categoría" value={selectedCategory?.name || "Pendiente"} />
-                                <SummaryRow label="Tipo" value={selectedBusinessType?.label || "Pendiente"} />
+                                <SummaryRow label="Modo" value={selectedBusinessType?.label || "Pendiente"} />
                                 <SummaryRow label="Segmento" value={selectedSegment?.label || "Pendiente"} />
                                 <SummaryRow label="Ciudad" value={selectedCity?.name || "Pendiente"} />
                                 <SummaryRow label="Plan" value={data.selected_plan === "pro" ? "Business Pro" : "Basic"} />
@@ -653,21 +647,21 @@ export function RegisterTenantWizard({
             }
         >
             <section className="w-full max-w-3xl" style={{ fontFamily: PUBLIC_BODY_FONT }}>
-                <Card className="rounded-[2rem] border-slate-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.06)] sm:p-8">
+                <Card className="rounded-3xl border-slate-200 bg-white p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] sm:p-8">
                     <div className="flex flex-col gap-4">
                         <div className="flex flex-col gap-2">
                             <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
-                                Registro de negocio
+                                Alta de negocio
                             </p>
-                            <h1 className="text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                                Crea tu negocio con una experiencia más clara.
+                            <h1 className="text-4xl font-extrabold tracking-tight text-slate-950 sm:text-5xl" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
+                                Datos mínimos ahora. Operación completa después.
                             </h1>
-                            <p className="max-w-2xl text-sm leading-7 text-slate-500">
-                                Cuatro pasos, validaciones en vivo y activación real al finalizar.
+                            <p className="max-w-2xl text-base leading-7 text-slate-500">
+                                Primero creamos la cuenta, el micrositio y el modo comercial. El catálogo, agenda, CRM y campañas se completan desde el panel del negocio.
                             </p>
                         </div>
 
-                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4" aria-label="Progreso de registro por pasos">
+                        <div className="flex flex-wrap gap-2" aria-label="Progreso de registro por pasos">
                             {STEPS.map((item, index) => (
                                 <StepPill key={item.key} step={item} index={index} currentStep={step} onClick={() => index <= step && setStep(index)} />
                             ))}

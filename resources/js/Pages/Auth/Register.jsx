@@ -87,7 +87,7 @@ export default function Register() {
     const submit = (event) => {
         event.preventDefault()
 
-        post(route("register"), {
+        post(route("register", undefined, false), {
             onFinish: () => reset("password", "password_confirmation"),
         })
     }
@@ -134,7 +134,7 @@ export default function Register() {
                                     <Store aria-hidden="true" />
                                     <AlertDescription>
                                         Para elegir modo comercial, ciudad y plan desde el inicio puedes usar{" "}
-                                        <Link href={route("tenant.register")} className="font-medium underline underline-offset-4">
+                                        <Link href="/registrar-negocio" className="font-medium underline underline-offset-4">
                                             registrar negocio
                                         </Link>
                                         .
@@ -298,7 +298,7 @@ export default function Register() {
 
                                 <Field>
                                     <Button variant="outline" type="button" className="w-full" asChild>
-                                        <Link href={route("login")}>
+                                        <Link href="/login">
                                             <Globe data-icon="inline-start" aria-hidden="true" />
                                             Iniciar sesion
                                         </Link>

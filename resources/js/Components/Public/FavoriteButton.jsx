@@ -23,7 +23,7 @@ function useFavoriteToggle(tenantId, initialFavorited, initialCount = 0) {
         event.stopPropagation();
 
         if (!auth?.user) {
-            router.visit(route('login'), {
+            router.visit('/login', {
                 data: { redirect: window.location.pathname },
             });
             return;
@@ -36,7 +36,7 @@ function useFavoriteToggle(tenantId, initialFavorited, initialCount = 0) {
         window.setTimeout(() => setIsAnimating(false), 240);
 
         router.post(
-            route('favorites.toggle'),
+            route('favorites.toggle', undefined, false),
             { tenant_id: tenantId },
             {
                 preserveScroll: true,

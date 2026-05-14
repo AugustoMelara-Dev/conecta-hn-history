@@ -3,6 +3,7 @@
 namespace Tests\Feature\Auth;
 
 use App\Models\User;
+use App\Models\Tenant;
 use App\Support\Panel\CanonicalPanelUrlResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -29,6 +30,33 @@ class AuthenticationTest extends TestCase
 
         $this->assertAuthenticated();
         $response->assertRedirect(app(CanonicalPanelUrlResolver::class)->forUser($user));
+    }
+
+    public function test_inertia_login_uses_full_page_navigation_for_filament_panel(): void
+    {
+        $user = User::factory()->create([
+            'email_verified_at' => now(),
+        ]);
+
+        $tenant = Tenant::factory()->create([
+            'user_id' => $user->id,
+            'slug' => 'owner-panel',
+            'is_active' => true,
+        ]);
+
+        $user->forceFill(['tenant_id' => $tenant->id])->save();
+
+        $response = $this
+            ->withHeader('X-Inertia', 'true')
+            ->post('/login', [
+                'email' => $user->email,
+                'password' => 'password',
+            ]);
+
+        $this->assertAuthenticatedAs($user);
+        $response
+            ->assertStatus(409)
+            ->assertHeader('X-Inertia-Location', '/app/owner-panel');
     }
 
     public function test_users_can_not_authenticate_with_invalid_password(): void

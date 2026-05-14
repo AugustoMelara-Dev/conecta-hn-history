@@ -31,7 +31,7 @@ export function ResetPasswordForm({ token, email, className, ...props }) {
     const submit = (event) => {
         event.preventDefault()
 
-        post(route("password.store"), {
+        post(route("password.store", undefined, false), {
             onFinish: () => reset("password", "password_confirmation"),
         })
     }
@@ -135,7 +135,7 @@ export function ResetPasswordForm({ token, email, className, ...props }) {
 
                         <Field>
                             <Button variant="outline" type="button" className="w-full" asChild>
-                                <Link href={route("login")}>Iniciar sesion</Link>
+                                <Link href="/login">Iniciar sesion</Link>
                             </Button>
                         </Field>
                     </FieldGroup>

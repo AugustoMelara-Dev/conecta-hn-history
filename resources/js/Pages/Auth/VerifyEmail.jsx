@@ -36,7 +36,7 @@ export default function VerifyEmail({ status, onboardingNextAction = null }) {
 
     const submit = (event) => {
         event.preventDefault()
-        post(route("verification.send"))
+        post(route("verification.send", undefined, false))
     }
 
     return (

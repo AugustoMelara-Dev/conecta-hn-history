@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1440" viewBox="0 0 1440 1440" role="img" aria-label="Panel de operaciones de Vito Business OS">
+  <rect width="1440" height="1440" fill="#f8fafc"/>
+  <circle cx="1160" cy="230" r="320" fill="#dbeafe"/>
+  <circle cx="230" cy="1120" r="360" fill="#e0f2fe"/>
+  <g fill="none" stroke="#0f172a" stroke-opacity=".08" stroke-width="1">
+    <path d="M0 180h1440M0 360h1440M0 540h1440M0 720h1440M0 900h1440M0 1080h1440M0 1260h1440"/>
+    <path d="M180 0v1440M360 0v1440M540 0v1440M720 0v1440M900 0v1440M1080 0v1440M1260 0v1440"/>
+  </g>
+  <g transform="translate(270 240)">
+    <rect x="0" y="0" width="900" height="960" rx="42" fill="#ffffff" stroke="#dbe4ef" stroke-width="3"/>
+    <rect x="36" y="34" width="828" height="82" rx="24" fill="#0f172a"/>
+    <circle cx="84" cy="75" r="12" fill="#38bdf8"/>
+    <circle cx="124" cy="75" r="12" fill="#93c5fd"/>
+    <circle cx="164" cy="75" r="12" fill="#ffffff"/>
+    <rect x="690" y="58" width="132" height="34" rx="17" fill="#ffffff" fill-opacity=".16"/>
+    <rect x="58" y="162" width="258" height="164" rx="26" fill="#eff6ff"/>
+    <rect x="346" y="162" width="220" height="164" rx="26" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2"/>
+    <rect x="596" y="162" width="246" height="164" rx="26" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2"/>
+    <rect x="88" y="202" width="122" height="18" rx="9" fill="#0f172a"/>
+    <rect x="88" y="242" width="180" height="44" rx="22" fill="#0284c7"/>
+    <rect x="382" y="202" width="138" height="18" rx="9" fill="#334155"/>
+    <rect x="382" y="244" width="112" height="38" rx="19" fill="#e2e8f0"/>
+    <rect x="636" y="202" width="142" height="18" rx="9" fill="#334155"/>
+    <rect x="636" y="244" width="156" height="38" rx="19" fill="#e2e8f0"/>
+    <rect x="58" y="374" width="784" height="442" rx="30" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+    <rect x="94" y="418" width="176" height="20" rx="10" fill="#0f172a"/>
+    <rect x="94" y="468" width="700" height="2" fill="#e2e8f0"/>
+    <rect x="94" y="520" width="182" height="180" rx="24" fill="#e0f2fe"/>
+    <rect x="314" y="520" width="182" height="180" rx="24" fill="#eff6ff"/>
+    <rect x="534" y="520" width="182" height="180" rx="24" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2"/>
+    <rect x="94" y="734" width="620" height="18" rx="9" fill="#cbd5e1"/>
+    <rect x="94" y="774" width="500" height="18" rx="9" fill="#e2e8f0"/>
+  </g>
+</svg>

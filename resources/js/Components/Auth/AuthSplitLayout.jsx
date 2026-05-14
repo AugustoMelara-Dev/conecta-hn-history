@@ -8,7 +8,7 @@ import {
     PUBLIC_LABEL_FONT,
 } from "@/lib/publicTypography"
 
-export function AuthBrand({ href = route("home"), className }) {
+export function AuthBrand({ href = "/", className }) {
     return (
         <Link href={href} className={cn("inline-flex items-center gap-3", className)}>
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-lg shadow-slate-950/10">
@@ -114,7 +114,7 @@ export default function AuthSplitLayout({
 }) {
     return (
         <div
-            className="grid min-h-[100svh] bg-white text-slate-950 xl:grid-cols-2"
+            className="grid min-h-[100svh] bg-[radial-gradient(circle_at_top_right,hsl(var(--secondary))_0,transparent_34%),linear-gradient(180deg,#fff_0%,#f8fafc_100%)] text-slate-950 xl:grid-cols-[0.9fr_1.1fr]"
             style={{ fontFamily: PUBLIC_BODY_FONT }}
         >
             <div className="flex flex-col gap-6 p-6 md:p-10">
@@ -130,8 +130,8 @@ export default function AuthSplitLayout({
                 </div>
             </div>
 
-            <aside className="relative hidden overflow-hidden bg-primary xl:block">
-                <div className="absolute inset-0 bg-primary" />
+            <aside className="relative hidden overflow-hidden bg-slate-950 xl:block">
+                <div className="absolute inset-0 bg-slate-950" />
                 <div className="absolute inset-0 opacity-10 [background-image:linear-gradient(to_right,currentColor_1px,transparent_1px),linear-gradient(to_bottom,currentColor_1px,transparent_1px)] [background-size:72px_72px]" />
 
                 <div className="relative flex h-full flex-col justify-between p-10 xl:p-14">

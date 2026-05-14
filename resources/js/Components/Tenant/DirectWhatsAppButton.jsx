@@ -25,12 +25,16 @@ function trackConversion(tenantId, productId = null) {
         return;
     }
 
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
     fetch('/api/analytics/track', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             Accept: 'application/json',
+            ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
         },
+        credentials: 'same-origin',
         body: JSON.stringify({
             tenant_id: tenantId,
             type: 'whatsapp_click',

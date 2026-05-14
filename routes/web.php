@@ -68,6 +68,9 @@ Route::get('/explore', [RedirectController::class, 'explore'])->name('public.exp
 // ═══════════════════════════════════════════════════════════════════════
 Route::get('/directorio', [DirectoryController::class, 'index'])->name('directory.index');
 
+Route::get('/t/{tenant}', [TenantMicrositeController::class, 'show'])
+    ->name('tenant.public.show');
+
 // Ruta SEO para Ciudades (ej. /ciudad/tocoa)
 Route::get('/ciudad/{city:slug}', [DirectoryController::class, 'byCity'])->name('city.show');
 
