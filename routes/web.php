@@ -26,7 +26,7 @@ require __DIR__.'/tenant.php';
 
 Route::get('/up', static fn () => response('OK', 200))->name('health.up');
 
-Route::domain('app.'.config('app.domain'))->group(function () {
+Route::domain(config('conecta.directory_app_host', 'app.localhost'))->group(function () {
     Route::redirect('/', '/directorio', 302)->name('app.directory');
 });
 

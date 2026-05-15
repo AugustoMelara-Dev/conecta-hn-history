@@ -25,7 +25,7 @@ function PlanCard({ active, recommended = false, title, caption, price, bullets,
     return (
         <label
             htmlFor={id}
-            className={`relative cursor-pointer rounded-[1.75rem] border p-6 text-left ${
+            className={`relative cursor-pointer rounded-lg border p-4 text-left ${
                 active
                     ? "border-primary bg-primary text-primary-foreground"
                     : "border-border bg-muted text-foreground hover:border-ring/40 hover:bg-background"
@@ -41,7 +41,7 @@ function PlanCard({ active, recommended = false, title, caption, price, bullets,
 
             <div className="flex items-start justify-between gap-4">
                 <div>
-                    <p className="text-2xl font-extrabold tracking-tight">
+                    <p className="text-xl font-extrabold tracking-tight">
                         {title}
                     </p>
                     <p
@@ -51,7 +51,7 @@ function PlanCard({ active, recommended = false, title, caption, price, bullets,
                     </p>
                 </div>
                 <div className="text-right">
-                    <p className="text-3xl font-extrabold tracking-tight">{price}</p>
+                    <p className="text-2xl font-extrabold tracking-tight">{price}</p>
                     <RadioGroupItem
                         id={id}
                         value={value}
@@ -60,7 +60,7 @@ function PlanCard({ active, recommended = false, title, caption, price, bullets,
                 </div>
             </div>
 
-            <div className="mt-6 flex flex-col gap-3">
+            <div className="mt-4 flex flex-col gap-2">
                 {bullets.map((bullet) => (
                     <div key={bullet} className={`flex items-center gap-2 text-sm ${active ? "text-primary-foreground/90" : "text-foreground/80"}`}>
                         <CheckCircle2 aria-hidden="true" />
@@ -77,7 +77,7 @@ function BusinessTypeCard({ active, title, description, capabilities, examples, 
         <label
             htmlFor={id}
             aria-disabled={disabled ? "true" : undefined}
-            className={`cursor-pointer rounded-[1.5rem] border p-5 text-left ${
+            className={`cursor-pointer rounded-lg border p-4 text-left ${
                 disabled
                     ? "border-dashed border-border bg-muted/50 text-muted-foreground"
                     :
@@ -88,7 +88,7 @@ function BusinessTypeCard({ active, title, description, capabilities, examples, 
         >
             <div className="flex items-start justify-between gap-4">
                 <div className="flex flex-col gap-2">
-                    <p className="text-lg font-extrabold tracking-tight">
+                    <p className="text-base font-extrabold tracking-tight">
                         {title}
                     </p>
                     {badge ? (
@@ -114,7 +114,7 @@ function BusinessTypeCard({ active, title, description, capabilities, examples, 
             </div>
 
             <div className="mt-4 flex flex-col gap-2">
-                {capabilities.slice(0, 3).map((capability) => (
+                {capabilities.slice(0, 2).map((capability) => (
                     <div key={capability} className={`flex items-center gap-2 text-sm ${active ? "text-primary-foreground/90" : "text-foreground/80"}`}>
                         <CheckCircle2 aria-hidden="true" />
                         <span>{capability}</span>
@@ -122,7 +122,7 @@ function BusinessTypeCard({ active, title, description, capabilities, examples, 
                 ))}
             </div>
 
-            <p className={`mt-4 text-xs font-semibold uppercase tracking-[0.18em] ${active ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+            <p className={`mt-3 text-xs font-semibold uppercase tracking-[0.18em] ${active ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
                 Ideal para: {examples.join(", ")}
             </p>
         </label>
@@ -131,7 +131,7 @@ function BusinessTypeCard({ active, title, description, capabilities, examples, 
 
 function SummaryRow({ label, value }) {
     return (
-        <div className="flex items-start justify-between gap-4 rounded-xl bg-muted px-4 py-3">
+        <div className="flex items-start justify-between gap-4 rounded-lg bg-muted px-4 py-3">
             <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
                 {label}
             </span>
@@ -178,7 +178,7 @@ export function BusinessStep({
                         {slugState.status === "available" ? "Disponible" : slugState.status === "checking" ? "Revisando" : slugState.status === "unavailable" ? "Ocupada" : "Pendiente"}
                     </span>
                 </div>
-                <div className={`grid h-12 grid-cols-[minmax(90px,auto)_auto_1fr] items-center gap-1 rounded-xl border bg-muted px-3 text-sm focus-within:ring-4 ${
+                <div className={`grid h-12 grid-cols-[minmax(90px,auto)_auto_1fr] items-center gap-1 rounded-lg border bg-muted px-3 text-sm focus-within:ring-4 ${
                     errorFor("slug")
                         ? "border-destructive/50 focus-within:border-destructive/50 focus-within:ring-destructive/20"
                         : "border-border focus-within:border-primary focus-within:ring-ring/30"
@@ -232,7 +232,7 @@ export function BusinessStep({
                         data-testid="register-category-select"
                         aria-invalid={Boolean(errorFor("category_id"))}
                         aria-describedby={describedBy("category_id", errorFor)}
-                        className={`h-12 rounded-xl border-border bg-muted px-4 text-foreground focus:ring-4 focus:ring-ring/30 ${errorFor("category_id") ? "border-destructive/50 focus:ring-destructive/20" : ""}`}
+                        className={`h-12 rounded-lg border-border bg-muted px-4 text-foreground focus:ring-4 focus:ring-ring/30 ${errorFor("category_id") ? "border-destructive/50 focus:ring-destructive/20" : ""}`}
                     >
                         <SelectValue placeholder="Selecciona una categoría base" />
                     </SelectTrigger>
@@ -271,7 +271,7 @@ export function BusinessStep({
                         if (nextType?.business_type) updateField("business_type", nextType.business_type)
                         if (nextType?.rubro_key) updateField("rubro_key", nextType.rubro_key)
                     }}
-                    className="grid gap-4 xl:grid-cols-2"
+                    className="grid gap-3 xl:grid-cols-2"
                     aria-label="Ruta comercial"
                     aria-describedby={describedBy("commercial_mode", errorFor, helpId("commercial_mode"))}
                 >
@@ -299,7 +299,7 @@ export function BusinessStep({
                 ) : null}
 
                 {selectedSegment ? (
-                    <div className="rounded-[1.75rem] border border-primary/20 bg-gradient-to-br from-primary/10 via-white to-accent p-5 shadow-[0_20px_50px_rgba(16,185,129,0.08)]">
+                    <div className="rounded-lg border border-border bg-muted p-4">
                         <div className="flex flex-col gap-3">
                             <div className="flex flex-wrap items-center gap-2">
                                 <span
@@ -379,7 +379,7 @@ export function LocationStep({ data, cities, selectedCityValue, updateField, err
                         data-testid="register-city-select"
                         aria-invalid={Boolean(errorFor("city_id"))}
                         aria-describedby={describedBy("city_id", errorFor)}
-                        className={`h-12 rounded-xl border-border bg-muted px-4 text-foreground focus:ring-4 focus:ring-ring/30 ${errorFor("city_id") ? "border-destructive/50 focus:ring-destructive/20" : ""}`}
+                        className={`h-12 rounded-lg border-border bg-muted px-4 text-foreground focus:ring-4 focus:ring-ring/30 ${errorFor("city_id") ? "border-destructive/50 focus:ring-destructive/20" : ""}`}
                     >
                         <SelectValue placeholder="Selecciona una ciudad" />
                     </SelectTrigger>
@@ -427,7 +427,7 @@ export function AccountStep({ data, updateField, errorFor, inputClass }) {
                 )}
             </Field>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-3 md:grid-cols-2">
                 <Field data-invalid={errorFor("password") ? "true" : undefined}>
                     <FieldLabel htmlFor="password">Contraseña</FieldLabel>
                     <Input id="password" name="password" type="password" autoComplete="new-password" value={data.password} onChange={(event) => updateField("password", event.target.value)} className={inputClass("password")} aria-invalid={Boolean(errorFor("password"))} aria-describedby={describedBy("password", errorFor, helpId("password"))} />
@@ -515,7 +515,7 @@ export function PlanSummaryStep({
                 name="selected_plan"
                 value={data.selected_plan}
                 onValueChange={(value) => updateField("selected_plan", value)}
-                className="grid gap-4 md:grid-cols-2"
+                className="grid gap-3 md:grid-cols-2"
                 aria-label="Plan de activación"
                 aria-describedby={describedBy("selected_plan", errorFor)}
             >
@@ -525,7 +525,7 @@ export function PlanSummaryStep({
             {errorFor("selected_plan") ? <FieldDescription id={errorId("selected_plan")} role="alert" className="text-destructive">{errorFor("selected_plan")}</FieldDescription> : null}
 
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr),300px]">
-                <div className="flex flex-col gap-3 rounded-[1.75rem] border border-border bg-background p-5">
+                <div className="flex flex-col gap-3 rounded-lg border border-border bg-background p-4">
                     <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Resumen de activación</p>
                     <SummaryRow label="Negocio" value={businessPreview} />
                     <SummaryRow label="URL" value={slugPreview} />
@@ -538,7 +538,7 @@ export function PlanSummaryStep({
                 </div>
 
                 <div className="flex flex-col gap-4">
-                    <label className="flex items-start gap-3 rounded-[1.75rem] border border-border bg-muted px-5 py-5">
+                    <label className="flex items-start gap-3 rounded-lg border border-border bg-muted px-4 py-4">
                         <Checkbox
                             id="terms_accepted"
                             name="terms_accepted"
@@ -558,7 +558,7 @@ export function PlanSummaryStep({
                     </label>
                     {errorFor("terms_accepted") ? <FieldDescription id={errorId("terms_accepted")} role="alert" className="text-destructive">{errorFor("terms_accepted")}</FieldDescription> : null}
 
-                    <label className="flex items-start gap-3 rounded-[1.75rem] border border-border bg-muted px-5 py-5">
+                    <label className="flex items-start gap-3 rounded-lg border border-border bg-muted px-4 py-4">
                         <Checkbox
                             id="privacy_accepted"
                             name="privacy_accepted"
@@ -579,7 +579,7 @@ export function PlanSummaryStep({
                     </label>
                     {errorFor("privacy_accepted") ? <FieldDescription id={errorId("privacy_accepted")} role="alert" className="text-destructive">{errorFor("privacy_accepted")}</FieldDescription> : null}
 
-                    <div className="rounded-[1.75rem] bg-primary px-5 py-6 text-primary-foreground">
+                    <div className="rounded-lg bg-primary px-4 py-5 text-primary-foreground">
                         <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary-foreground/70">Lo que sucede al enviar</p>
                         <p className="mt-3 text-sm leading-7 text-primary-foreground/70">
                             Creamos cuenta, negocio y acceso al panel en una sola pasada sobre el backend real.

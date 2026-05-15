@@ -1,21 +1,15 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import {
     ArrowRight,
     BarChart3,
     Bot,
     CalendarCheck,
     Check,
-    ChevronRight,
-    CreditCard,
     LayoutDashboard,
-    MapPin,
     Megaphone,
-    Search,
     ShieldCheck,
     ShoppingBag,
-    Sparkles,
     Store,
-    Users,
 } from 'lucide-react';
 
 import {
@@ -24,7 +18,6 @@ import {
     AccordionItem,
     AccordionTrigger,
 } from '@/Components/ui/accordion';
-import { Alert, AlertDescription, AlertTitle } from '@/Components/ui/alert';
 import { Badge } from '@/Components/ui/badge';
 import { Button } from '@/Components/ui/button';
 import {
@@ -34,83 +27,50 @@ import {
     CardHeader,
     CardTitle,
 } from '@/Components/ui/card';
-import { Input } from '@/Components/ui/input';
 import { Separator } from '@/Components/ui/separator';
 import PublicLayout from '@/Layouts/PublicLayout';
 
-const highlights = [
-    {
-        icon: Store,
-        title: 'Presencia pública',
-        description: 'Micrositio, directorio, catálogo o servicios, contacto y ubicación sin fricción.',
-    },
+const operatingModes = [
     {
         icon: ShoppingBag,
-        title: 'Ventas y reservas',
-        description: 'El cliente compra, reserva o solicita una cotización desde la ruta correcta.',
-    },
-    {
-        icon: LayoutDashboard,
-        title: 'Control diario',
-        description: 'Productos, reservas, clientes, campañas, reportes y cobros en un lugar privado para tu equipo.',
-    },
-];
-
-const steps = [
-    'Registra los datos mínimos y elige si venderás productos, atenderás citas o recibirás solicitudes.',
-    'Vito publica tu perfil, micrositio, datos de contacto y primer catálogo de forma ordenada.',
-    'Completa catálogo, agenda, clientes y crecimiento desde el panel privado del negocio.',
-];
-
-const platformPillars = [
-    {
-        icon: ShoppingBag,
-        title: 'Catálogo y pedidos',
-        description: 'Para negocios que venden productos, menús, paquetes o inventario visible.',
+        title: 'Vender productos',
+        description: 'Catalogo, pedidos, WhatsApp, pagos manuales y visibilidad publica sin armar otra tienda desde cero.',
+        starter: 'Starter Products',
     },
     {
         icon: CalendarCheck,
-        title: 'Agenda y reservas',
-        description: 'Para servicios con disponibilidad, equipo, confirmaciones y seguimiento.',
+        title: 'Atender citas',
+        description: 'Servicios, disponibilidad, reservas y seguimiento para negocios que trabajan por agenda.',
+        starter: 'Starter Appointments',
     },
     {
         icon: Megaphone,
-        title: 'Leads consultivos',
-        description: 'Para negocios que califican oportunidades, cotizan y convierten por CRM.',
+        title: 'Capturar leads',
+        description: 'Landing consultiva, solicitudes, CRM y seguimiento para convertir conversaciones en oportunidades.',
+        starter: 'Starter Consulting',
     },
-    {
-        icon: Bot,
-        title: 'IA pública y privada',
-        description: 'Guía pública para clientes e IA privada solo para equipos autorizados.',
-    },
+];
+
+const proof = [
+    ['Menos caos', 'Pedidos, reservas y leads dejan de vivir solo en chats.'],
+    ['Mas control', 'El dueno entra al panel del negocio, no a mirar competencia.'],
+    ['Mejor salida', 'Free valida presencia; PRO habilita mas operacion con gates.'],
 ];
 
 const faqs = [
     {
-        question: '¿Puedo iniciar gratis?',
-        answer: 'Sí. Free incluye micrositio, presencia en directorio, contacto, WhatsApp, teléfono, mapa y capacidad inicial limitada.',
+        question: 'El directorio sigue existiendo?',
+        answer: 'Si. El directorio queda como superficie para clientes finales en /directorio y en el host configurado para esa app. La landing principal vende el producto al negocio.',
     },
     {
-        question: '¿Qué cambia al pasar a PRO?',
-        answer: 'PRO amplía capacidad y puede activar reservas, campañas, reportes, CRM e IA privada cuando tu negocio lo tenga autorizado.',
+        question: 'Puedo empezar gratis?',
+        answer: 'Si. Free permite publicar presencia, contacto y capacidad inicial. PRO aumenta catalogo, reservas, CRM, campanas, reportes e IA privada cuando aplique.',
     },
     {
-        question: '¿El panel operativo está en esta página?',
-        answer: 'No. Esta página muestra lo que puedes vender y operar. El trabajo diario vive en el panel privado de tu negocio.',
+        question: 'Donde opera el negocio despues del registro?',
+        answer: 'El alta termina en el panel canonico /app/{tenant}, o en verificacion de correo/pago pendiente cuando el contrato lo requiere.',
     },
 ];
-
-function assetUrl(path) {
-    if (!path) {
-        return null;
-    }
-
-    if (path.startsWith('http') || path.startsWith('/')) {
-        return path;
-    }
-
-    return `/storage/${path}`;
-}
 
 function sameOriginHref(href) {
     if (!href) {
@@ -138,91 +98,49 @@ function appRoute(name, params, fallback = '/') {
     }
 }
 
-function tenantHref(tenant) {
-    if (tenant?.url) {
-        return tenant.url;
-    }
-
-    if (tenant?.microsite_url) {
-        return tenant.microsite_url;
-    }
-
-    if (tenant?.slug) {
-        return `/t/${encodeURIComponent(tenant.slug)}`;
-    }
-
-    return appRoute('directory.index', undefined, '/directorio');
-}
-
-function formatCount(value) {
-    const number = Number(value ?? 0);
-
-    if (!Number.isFinite(number)) {
-        return '0';
-    }
-
-    return new Intl.NumberFormat('es-HN').format(number);
-}
-
-function Metric({ icon: Icon, label, value }) {
+function HeroPanel() {
     return (
-        <Card className="border-border/70 shadow-none">
-            <CardContent className="flex items-center gap-4 p-4">
-                <span className="flex size-10 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
-                    <Icon className="size-5" aria-hidden="true" />
-                </span>
-                <div>
-                    <p className="font-display text-2xl font-bold leading-none">{value}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">{label}</p>
-                </div>
-            </CardContent>
-        </Card>
-    );
-}
-
-function ProductPreview() {
-    return (
-        <Card className="overflow-hidden border-border/70 bg-background shadow-[0_24px_80px_rgba(15,23,42,0.10)]">
-            <CardHeader className="border-b bg-muted/45">
+        <Card className="overflow-hidden border-white/10 bg-white/10 text-white shadow-[0_34px_120px_rgba(0,0,0,0.35)] backdrop-blur">
+            <CardHeader className="border-b border-white/10">
                 <div className="flex items-center justify-between gap-4">
                     <div>
-                        <CardDescription>Panel operativo</CardDescription>
-                        <CardTitle className="font-display text-xl">Resumen de negocio</CardTitle>
+                        <CardDescription className="text-slate-300">Panel operativo privado</CardDescription>
+                        <CardTitle className="font-display text-xl text-white">Negocio bajo control</CardTitle>
                     </div>
-                    <Badge variant="outline">Privado</Badge>
+                    <Badge variant="secondary">B2B</Badge>
                 </div>
             </CardHeader>
             <CardContent className="grid gap-4 p-5">
                 <div className="grid gap-3 sm:grid-cols-3">
                     {[
-                        ['Pedidos', '128', '+14%'],
-                        ['Reservas', '36', 'hoy'],
+                        ['Pedidos', '128', 'catalogo'],
+                        ['Reservas', '36', 'agenda'],
                         ['Leads', '47', 'CRM'],
                     ].map(([label, value, meta]) => (
-                        <div key={label} className="rounded-xl border bg-card p-4">
-                            <p className="text-xs font-semibold text-muted-foreground">{label}</p>
-                            <p className="mt-2 font-display text-3xl font-bold">{value}</p>
-                            <p className="mt-1 text-xs text-muted-foreground">{meta}</p>
+                        <div key={label} className="rounded-lg border border-white/10 bg-white/10 p-4">
+                            <p className="text-xs font-semibold text-slate-300">{label}</p>
+                            <p className="mt-2 font-display text-3xl font-bold text-white">{value}</p>
+                            <p className="mt-1 text-xs text-slate-300">{meta}</p>
                         </div>
                     ))}
                 </div>
 
-                <div className="rounded-xl border bg-card p-4">
-                    <div className="flex items-center justify-between">
-                        <p className="font-semibold">Flujo comercial</p>
-                        <Badge className="bg-accent text-accent-foreground hover:bg-accent">Activo</Badge>
+                <div className="rounded-lg border border-white/10 bg-white/[0.08] p-4">
+                    <div className="flex items-center justify-between gap-4">
+                        <p className="font-semibold">Flujo canonico</p>
+                        <Badge className="bg-white text-slate-950 hover:bg-white">Activo</Badge>
                     </div>
                     <div className="mt-4 grid gap-3">
                         {[
-                            ['Directorio', 'clientes encuentran el negocio'],
-                            ['Micrositio', 'catálogo, contacto y rutas públicas'],
-                            ['Panel', 'operación interna y crecimiento'],
+                            ['Landing', 'vende el SaaS al negocio'],
+                            ['Registro', 'crea cuenta, tenant y modo comercial'],
+                            ['Panel', 'opera en /app/{tenant}, no en React legacy'],
                         ].map(([title, body]) => (
-                            <div key={title} className="flex items-center gap-3 rounded-lg bg-muted/50 p-3">
-                                <span className="size-2 rounded-full bg-accent" />
+                            <div key={title} className="flex items-center gap-3 rounded-lg bg-white/10 p-3">
+                                <span className="size-2 rounded-full bg-white" />
                                 <div>
                                     <p className="text-sm font-semibold">{title}</p>
-                                    <p className="text-xs text-muted-foreground">{body}</p>
+                                    <p className="text-xs text-slate-300">{body}</p>
                                 </div>
                             </div>
                         ))}
@@ -233,73 +151,30 @@ function ProductPreview() {
     );
 }
 
-function HeroSection({ auth, canRegister, heroImage, stats }) {
-    const { data, setData, get } = useForm({ search: '' });
+function HeroSection({ auth, canRegister }) {
     const panelUrl = auth?.panel_url || auth?.user?.panel_url || '/registrar-negocio';
-    const tenantCount = formatCount(stats?.tenants ?? stats?.total_tenants);
-    const cityCount = formatCount(stats?.cities ?? stats?.total_cities);
-
-    const handleSearch = (event) => {
-        event.preventDefault();
-        const search = data.search.trim();
-        const directoryUrl = appRoute('directory.index', undefined, '/directorio');
-
-        get(search ? `${directoryUrl}?search=${encodeURIComponent(search)}` : directoryUrl, {
-            preserveScroll: true,
-        });
-    };
 
     return (
-        <section className="relative overflow-hidden border-b bg-[#050607] text-white">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_15%,rgba(82,190,255,0.20),transparent_30%),radial-gradient(circle_at_18%_80%,rgba(255,255,255,0.10),transparent_26%),linear-gradient(180deg,#050607_0%,#0b0f14_68%,#f8fafc_100%)]" aria-hidden="true" />
-            <div className="absolute inset-0 opacity-[0.18] [background-image:linear-gradient(rgba(255,255,255,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.10)_1px,transparent_1px)] [background-size:80px_80px]" aria-hidden="true" />
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent" aria-hidden="true" />
+        <section className="relative overflow-hidden border-b bg-[#06070a] text-white">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_15%,rgba(255,255,255,0.14),transparent_32%),linear-gradient(180deg,#06070a_0%,#111827_72%,#f8fafc_100%)]" aria-hidden="true" />
+            <div className="absolute inset-0 opacity-[0.16] [background-image:linear-gradient(rgba(255,255,255,0.14)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.12)_1px,transparent_1px)] [background-size:84px_84px]" aria-hidden="true" />
+
             <div
-                className="relative mx-auto grid max-w-7xl gap-10 px-4 pb-16 pt-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8 lg:pb-24 lg:pt-24"
+                className="relative mx-auto grid max-w-7xl gap-10 px-4 pb-16 pt-16 sm:px-6 lg:grid-cols-[0.92fr_1.08fr] lg:px-8 lg:pb-24 lg:pt-24"
                 data-testid="landing-page"
             >
                 <div className="flex flex-col justify-center">
                     <Badge variant="secondary" className="mb-6 w-fit rounded-full border-white/10 bg-white/10 px-4 py-1.5 text-white hover:bg-white/10">
-                        Para negocios que quieren vender y atender mejor
+                        SaaS para operar negocios en Honduras
                     </Badge>
 
-                    <h1 className="max-w-4xl font-display text-5xl font-bold leading-[0.92] tracking-normal text-white sm:text-7xl lg:text-8xl">
-                        Tu negocio abierto, ordenado y vendiendo.
+                    <h1 className="max-w-4xl font-display text-5xl font-bold leading-[0.94] tracking-normal text-white sm:text-7xl lg:text-8xl">
+                        Vende, agenda y atiende desde un solo sistema.
                     </h1>
 
                     <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
-                        Publica tu perfil, recibe clientes, agenda reservas, vende productos y mira lo importante sin perder pedidos entre chats, hojas de cálculo y notas sueltas.
+                        Conecta HN convierte la presencia digital de un negocio en una operacion real: micrositio, catalogo, reservas, CRM, reportes y un panel privado para el equipo.
                     </p>
-
-                    <form
-                        onSubmit={handleSearch}
-                        className="mt-8 max-w-2xl"
-                        role="search"
-                        data-testid="landing-search"
-                    >
-                        <label htmlFor="landing-search-input" className="sr-only">
-                            Buscar negocios en el directorio
-                        </label>
-                        <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/10 p-2 shadow-[0_28px_90px_rgba(0,0,0,0.35)] backdrop-blur sm:flex-row">
-                            <div className="relative flex-1">
-                                <Search
-                                    className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500"
-                                    aria-hidden="true"
-                                />
-                                <Input
-                                    id="landing-search-input"
-                                    value={data.search}
-                                    onChange={(event) => setData('search', event.target.value)}
-                                    placeholder="Busca como cliente: café, limpieza, abogado..."
-                                    className="h-12 rounded-xl border-0 bg-white pl-9 text-slate-950 shadow-none focus-visible:ring-1"
-                                />
-                            </div>
-                            <Button type="submit" className="h-12 rounded-xl bg-white text-slate-950 hover:bg-slate-200">
-                                Buscar
-                                <ArrowRight data-icon="inline-end" aria-hidden="true" />
-                            </Button>
-                        </div>
-                    </form>
 
                     <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                         {auth?.user ? (
@@ -319,52 +194,25 @@ function HeroSection({ auth, canRegister, heroImage, stats }) {
                                         </Link>
                                     </Button>
                                 )}
-                                <Button size="lg" variant="outline" className="rounded-xl border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white" asChild data-testid="landing-directory-cta">
-                                    <Link href={appRoute('directory.index', undefined, '/directorio')}>Explorar como cliente</Link>
+                                <Button size="lg" variant="outline" className="rounded-xl border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white" asChild>
+                                    <Link href={appRoute('login', undefined, '/login')}>Entrar al panel</Link>
                                 </Button>
                             </>
                         )}
                     </div>
 
-                    <div className="mt-8 grid gap-3 sm:grid-cols-3 [&_.border-border\\/70]:border-white/10 [&_.bg-secondary]:bg-white/10 [&_.text-secondary-foreground]:text-white [&_.text-foreground]:text-white [&_.text-muted-foreground]:text-slate-400">
-                        <Metric icon={Users} label="Negocios activos" value={tenantCount} />
-                        <Metric icon={MapPin} label="Ciudades cubiertas" value={cityCount} />
-                        <Metric icon={ShieldCheck} label="Datos protegidos" value="Privado" />
+                    <div className="mt-8 grid gap-3 sm:grid-cols-3">
+                        {proof.map(([title, body]) => (
+                            <div key={title} className="rounded-lg border border-white/10 bg-white/10 p-4 backdrop-blur">
+                                <p className="font-semibold text-white">{title}</p>
+                                <p className="mt-2 text-sm leading-6 text-slate-300">{body}</p>
+                            </div>
+                        ))}
                     </div>
                 </div>
 
-                <div className="flex min-h-[440px] flex-col gap-4 lg:pt-8">
-                    {heroImage ? (
-                        <Card className="overflow-hidden border-white/10 bg-white/5 shadow-[0_34px_120px_rgba(0,0,0,0.45)] backdrop-blur">
-                            <CardHeader className="border-b border-white/10">
-                                <CardDescription className="text-slate-400">Panel real del negocio</CardDescription>
-                                <CardTitle className="font-display text-xl text-white">Operación diaria en una pantalla</CardTitle>
-                            </CardHeader>
-                            <CardContent className="p-0">
-                                <img src={heroImage} alt="Vista del panel operativo de Vito" className="h-full w-full object-cover" />
-                            </CardContent>
-                        </Card>
-                    ) : (
-                        <ProductPreview />
-                    )}
-
-                    <div className="grid gap-3 sm:grid-cols-2">
-                        <Card className="border-white/10 bg-white/10 text-white shadow-none backdrop-blur">
-                            <CardHeader className="pb-3">
-                                <CardTitle className="text-base">Free visible</CardTitle>
-                                <CardDescription className="text-slate-300">Micrositio, directorio, contacto y capacidad inicial.</CardDescription>
-                            </CardHeader>
-                        </Card>
-                        <Card className="border-white/10 bg-white/10 text-white shadow-none backdrop-blur">
-                            <CardHeader className="pb-3">
-                                <CardTitle className="flex items-center gap-2 text-base">
-                                    <CreditCard className="size-4" aria-hidden="true" />
-                                    PRO interno
-                                </CardTitle>
-                                <CardDescription>Más catálogo, CRM, campañas, reportes, reservas e IA sin exponer el plan al cliente.</CardDescription>
-                            </CardHeader>
-                        </Card>
-                    </div>
+                <div className="flex min-h-[440px] flex-col justify-center gap-4 lg:pt-8">
+                    <HeroPanel />
                 </div>
             </div>
         </section>
@@ -376,25 +224,28 @@ function ValueSection() {
         <section id="beneficios" className="bg-background py-20">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div className="max-w-2xl">
-                    <Badge variant="outline" className="rounded-full">Como funciona</Badge>
-                    <h2 className="mt-4 font-display text-4xl font-bold">Tres formas de vender, un solo lugar para operar</h2>
+                    <Badge variant="outline" className="rounded-full">Producto</Badge>
+                    <h2 className="mt-4 font-display text-4xl font-bold">No es un catalogo bonito. Es el sistema comercial del negocio.</h2>
                     <p className="mt-4 text-base leading-7 text-muted-foreground">
-                        Elige como trabajas: vender productos, recibir citas o calificar solicitudes. El rubro solo ajusta el contenido inicial.
+                        La landing vende la plataforma; el directorio queda para clientes finales. El dueno entra directo al flujo que crea y opera su negocio.
                     </p>
                 </div>
 
                 <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    {platformPillars.map((item) => (
-                        <Card key={item.title} className="group border-border/70 shadow-none transition-colors hover:border-accent/50">
+                    {[
+                        [Store, 'Presencia publica', 'Micrositio, contacto, mapa y ruta publica sin exponer datos privados.'],
+                        [LayoutDashboard, 'Panel privado', 'Productos, reservas, clientes, campanas, billing y reportes viven en Filament.'],
+                        [BarChart3, 'Conversion real', 'Cada modo comercial orienta el registro hacia lo que el negocio quiere vender.'],
+                        [Bot, 'IA con gates', 'Guia publica y agente privado solo con permisos, allowlist y datos tenant-scoped.'],
+                    ].map(([Icon, title, body]) => (
+                        <Card key={title} className="border-border/70 shadow-none transition-colors hover:border-primary/40">
                             <CardHeader className="gap-4">
-                                <span className="flex size-11 items-center justify-center rounded-xl bg-secondary text-secondary-foreground transition-colors group-hover:bg-accent group-hover:text-accent-foreground">
-                                    <item.icon className="size-5" aria-hidden="true" />
+                                <span className="flex size-11 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
+                                    <Icon aria-hidden="true" />
                                 </span>
                                 <div>
-                                    <CardTitle className="text-lg">{item.title}</CardTitle>
-                                    <CardDescription className="mt-2 leading-6">
-                                        {item.description}
-                                    </CardDescription>
+                                    <CardTitle className="text-lg">{title}</CardTitle>
+                                    <CardDescription className="mt-2 leading-6">{body}</CardDescription>
                                 </div>
                             </CardHeader>
                         </Card>
@@ -405,118 +256,46 @@ function ValueSection() {
     );
 }
 
-function CategorySection({ categories }) {
-    const visibleCategories = categories?.slice(0, 8) ?? [];
-
+function ModesSection({ canRegister }) {
     return (
         <section className="border-y bg-muted/35 py-20">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-                    <div>
-                        <Badge variant="outline" className="rounded-full">Directorio</Badge>
-                        <h2 className="mt-4 font-display text-4xl font-bold">Exploración útil para clientes finales</h2>
-                        <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground">
-                            Cada categoría lleva al directorio actual para mantener la misma experiencia de búsqueda.
+                <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+                    <div className="max-w-2xl">
+                        <Badge variant="outline" className="rounded-full">Modos comerciales</Badge>
+                        <h2 className="mt-4 font-display text-4xl font-bold">El registro empieza por como gana dinero el negocio.</h2>
+                        <p className="mt-4 text-base leading-7 text-muted-foreground">
+                            El rubro ayuda al SEO; el modo comercial define el flujo operativo inicial.
                         </p>
                     </div>
-                    <Button variant="outline" asChild>
-                        <Link href={appRoute('directory.index', undefined, '/directorio')}>
-                            Ver todo
-                            <ArrowRight data-icon="inline-end" aria-hidden="true" />
-                        </Link>
-                    </Button>
+                    {canRegister !== false ? (
+                        <Button asChild>
+                            <Link href={appRoute('tenant.register', undefined, '/registrar-negocio')}>
+                                Empezar alta
+                                <ArrowRight data-icon="inline-end" aria-hidden="true" />
+                            </Link>
+                        </Button>
+                    ) : null}
                 </div>
 
-                {visibleCategories.length ? (
-                    <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                        {visibleCategories.map((category) => (
-                            <Card key={category.id ?? category.slug} className="border-border/70 bg-background shadow-none" data-testid="landing-category-card">
-                                <CardContent className="p-0">
-                                    <Button variant="ghost" className="h-auto w-full justify-between p-4" asChild>
-                                        <Link href={appRoute('directory.index', { category: category.slug }, '/directorio')}>
-                                            <span className="text-left">{category.name}</span>
-                                            <ChevronRight data-icon="inline-end" aria-hidden="true" />
-                                        </Link>
-                                    </Button>
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
-                ) : (
-                    <Alert className="mt-8">
-                        <AlertTitle>Directorio disponible</AlertTitle>
-                        <AlertDescription>
-                            Cuando haya categorías visibles, aparecerán aquí. Mientras tanto, el directorio completo sigue disponible.
-                        </AlertDescription>
-                    </Alert>
-                )}
-            </div>
-        </section>
-    );
-}
-
-function TenantsSection({ tenants }) {
-    const visibleTenants = tenants?.slice(0, 8) ?? [];
-
-    return (
-        <section className="py-20">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-                    <div>
-                        <Badge variant="outline" className="rounded-full">Micrositios</Badge>
-                        <h2 className="mt-4 font-display text-4xl font-bold">Negocios listos para recibir visitas</h2>
-                        <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground">
-                            Cada tarjeta enlaza al micrositio público del negocio y mantiene el directorio como superficie de usuario final.
-                        </p>
-                    </div>
-                    <Button variant="outline" asChild>
-                        <Link href={appRoute('directory.index', undefined, '/directorio')}>
-                            Ver directorio
-                            <ArrowRight data-icon="inline-end" aria-hidden="true" />
-                        </Link>
-                    </Button>
+                <div className="mt-10 grid gap-4 lg:grid-cols-3">
+                    {operatingModes.map((item) => (
+                        <Card key={item.title} className="border-border/70 bg-background shadow-none">
+                            <CardHeader className="gap-4">
+                                <div className="flex items-center justify-between gap-4">
+                                    <span className="flex size-11 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                                        <item.icon aria-hidden="true" />
+                                    </span>
+                                    <Badge variant="secondary">{item.starter}</Badge>
+                                </div>
+                                <div>
+                                    <CardTitle>{item.title}</CardTitle>
+                                    <CardDescription className="mt-2 leading-6">{item.description}</CardDescription>
+                                </div>
+                            </CardHeader>
+                        </Card>
+                    ))}
                 </div>
-
-                {visibleTenants.length ? (
-                    <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                        {visibleTenants.map((tenant) => {
-                            const logoUrl = assetUrl(tenant.logo_url ?? tenant.logo_path);
-                            const categoryName = typeof tenant.category === 'string'
-                                ? tenant.category
-                                : tenant.category?.name;
-
-                            return (
-                                <Card key={tenant.id} className="overflow-hidden border-border/70 shadow-none transition-colors hover:border-accent/50" data-testid="landing-tenant-card">
-                                    <Link href={tenantHref(tenant)} className="block">
-                                        <div className="grid h-36 place-items-center bg-secondary/70">
-                                            {logoUrl ? (
-                                                <img
-                                                    src={logoUrl}
-                                                    alt={`Logo de ${tenant.name}`}
-                                                    className="size-20 rounded-md object-cover"
-                                                    loading="lazy"
-                                                />
-                                            ) : (
-                                                <Store className="size-10 text-muted-foreground" aria-hidden="true" />
-                                            )}
-                                        </div>
-                                        <CardHeader>
-                                            <CardTitle className="truncate text-lg">{tenant.name}</CardTitle>
-                                            <CardDescription>{categoryName ?? 'Comercio local'}</CardDescription>
-                                        </CardHeader>
-                                    </Link>
-                                </Card>
-                            );
-                        })}
-                    </div>
-                ) : (
-                    <Alert className="mt-8">
-                        <AlertTitle>Negocios en preparación</AlertTitle>
-                        <AlertDescription>
-                            Los nuevos negocios aparecerán aquí cuando estén visibles. Puedes registrar el tuyo o explorar el directorio.
-                        </AlertDescription>
-                    </Alert>
-                )}
             </div>
         </section>
     );
@@ -524,25 +303,33 @@ function TenantsSection({ tenants }) {
 
 function ProcessSection() {
     return (
-        <section className="border-y bg-muted/35 py-20">
+        <section className="bg-background py-20">
             <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:px-8">
                 <div>
                     <Badge variant="outline" className="rounded-full">Flujo</Badge>
-                    <h2 className="mt-4 font-display text-4xl font-bold">Alta ligera, operación completa</h2>
+                    <h2 className="mt-4 font-display text-4xl font-bold">Una ruta clara desde landing hasta panel.</h2>
                     <p className="mt-4 text-base leading-7 text-muted-foreground">
-                        La experiencia separa claramente clientes finales, alta de negocios y operación interna.
+                        La experiencia separa ventas B2B, usuarios finales y operacion privada para evitar superficies duplicadas.
                     </p>
                 </div>
 
                 <Card className="border-border/70 bg-background shadow-none">
                     <CardContent className="p-6">
                         <ol className="grid gap-4">
-                            {steps.map((step, index) => (
-                                <li key={step} className="flex gap-4">
+                            {[
+                                ['Landing SaaS', 'El negocio entiende el producto y empieza en /registrar-negocio.'],
+                                ['Alta corta', 'Se captura lo minimo para crear tenant, owner y modo comercial.'],
+                                ['Panel Filament', 'La operacion diaria continua en /app/{tenant}.'],
+                                ['Directorio separado', 'Clientes finales exploran en /directorio o el host configurado.'],
+                            ].map(([title, body], index) => (
+                                <li key={title} className="flex gap-4">
                                     <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-sm font-semibold text-primary-foreground">
                                         {index + 1}
                                     </span>
-                                    <p className="pt-1 text-sm leading-6 text-muted-foreground">{step}</p>
+                                    <div>
+                                        <p className="font-semibold">{title}</p>
+                                        <p className="mt-1 text-sm leading-6 text-muted-foreground">{body}</p>
+                                    </div>
                                 </li>
                             ))}
                         </ol>
@@ -555,34 +342,34 @@ function ProcessSection() {
 
 function PricingSection({ canRegister }) {
     return (
-        <section id="planes" className="bg-background py-20" data-testid="landing-pricing">
+        <section id="planes" className="border-y bg-muted/35 py-20" data-testid="landing-pricing">
             <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
                 <div className="max-w-2xl">
                     <Badge variant="outline" className="rounded-full">Planes</Badge>
-                    <h2 className="mt-4 font-display text-4xl font-bold">Empieza gratis, crece cuando necesites más capacidad</h2>
+                    <h2 className="mt-4 font-display text-4xl font-bold">Empieza gratis, crece con gates reales.</h2>
                     <p className="mt-4 text-base leading-7 text-muted-foreground">
-                        Free cubre presencia pública y contacto. PRO suma más catálogo y herramientas operativas cuando tu negocio esté listo.
+                        Free valida presencia y contacto. PRO suma capacidad y operacion cuando el negocio, el plan y las capacidades lo permiten.
                     </p>
                 </div>
 
                 <div className="mt-8 grid gap-4 md:grid-cols-[0.95fr_1.05fr]">
-                    <Card className="border-border/70 shadow-none">
+                    <Card className="border-border/70 bg-background shadow-none">
                         <CardHeader>
                             <CardTitle>Free</CardTitle>
-                            <CardDescription>Para publicar tu negocio y empezar a recibir contactos.</CardDescription>
+                            <CardDescription>Para publicar el negocio y empezar a recibir contactos.</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <p className="text-4xl font-semibold">Gratis</p>
                             <Separator className="my-6" />
                             <ul className="flex flex-col gap-3 text-sm text-muted-foreground">
                                 {[
-                                    'Micrositio público',
-                                    'Presencia en directorio',
-                                    'WhatsApp, teléfono y mapa',
+                                    'Micrositio publico',
+                                    'Contacto, WhatsApp, telefono y mapa',
                                     'Capacidad inicial limitada',
+                                    'Directorio separado para clientes finales',
                                 ].map((item) => (
                                     <li key={item} className="flex items-center gap-2">
-                                        <Check className="size-4 text-foreground" aria-hidden="true" />
+                                        <Check aria-hidden="true" />
                                         {item}
                                     </li>
                                 ))}
@@ -599,32 +386,48 @@ function PricingSection({ canRegister }) {
                         <CardHeader>
                             <Badge variant="secondary" className="w-fit">Para crecer</Badge>
                             <CardTitle>PRO</CardTitle>
-                            <CardDescription className="text-background/70">Para negocios que necesitan más capacidad y herramientas de operación.</CardDescription>
+                            <CardDescription className="text-background/70">Para negocios que necesitan mas capacidad y herramientas internas.</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <p className="text-4xl font-semibold">Disponible por solicitud</p>
-                            <p className="mt-1 text-sm text-background/70">Activación según capacidad, modo comercial y configuración vigente.</p>
+                            <p className="mt-1 text-sm text-background/70">Activacion segun modo comercial, capacidad real y configuracion vigente.</p>
                             <Separator className="my-6" />
                             <div className="grid gap-3 sm:grid-cols-2">
                                 {[
-                                    'Más catálogo y servicios',
-                                    'Reservas si tu modo lo requiere',
-                                    'CRM y campañas con autorización',
+                                    'Mas catalogo y servicios',
+                                    'Reservas si el modo lo requiere',
+                                    'CRM y campanas con autorizacion',
                                     'Reportes operativos',
-                                    'IA privada si está autorizada',
+                                    'IA privada por allowlist',
                                 ].map((item) => (
                                     <div key={item} className="flex items-center gap-2 text-sm text-background/90">
-                                        <ShieldCheck className="size-4" aria-hidden="true" />
+                                        <ShieldCheck aria-hidden="true" />
                                         {item}
                                     </div>
                                 ))}
                             </div>
-                            <Button className="mt-6 w-full bg-background text-foreground hover:bg-background/90" asChild>
-                                <a href="#beneficios">Ver beneficios</a>
-                            </Button>
                         </CardContent>
                     </Card>
                 </div>
+            </div>
+        </section>
+    );
+}
+
+function DirectoryBoundarySection() {
+    return (
+        <section className="bg-background py-16">
+            <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
+                <div className="max-w-2xl">
+                    <Badge variant="outline" className="rounded-full">App de clientes finales</Badge>
+                    <h2 className="mt-4 font-display text-3xl font-bold">El directorio existe, pero no compite con la venta del SaaS.</h2>
+                    <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                        Los clientes finales pueden explorar negocios en la superficie B2C. El dueno del negocio se queda en el flujo de registro y panel.
+                    </p>
+                </div>
+                <Button variant="outline" asChild data-testid="landing-directory-cta">
+                    <Link href={appRoute('directory.index', undefined, '/directorio')}>Abrir directorio B2C</Link>
+                </Button>
             </div>
         </section>
     );
@@ -637,12 +440,10 @@ function FaqSection() {
                 <div>
                     <Badge variant="outline" className="rounded-full">Preguntas</Badge>
                     <h2 className="mt-4 font-display text-4xl font-bold">Preguntas frecuentes</h2>
-                    <p className="mt-3 text-muted-foreground">
-                        Lo importante antes de registrar tu negocio.
-                    </p>
+                    <p className="mt-3 text-muted-foreground">Lo importante antes de registrar tu negocio.</p>
                 </div>
 
-                <Accordion type="single" collapsible className="rounded-2xl border bg-card px-4 shadow-none">
+                <Accordion type="single" collapsible className="rounded-lg border bg-card px-4 shadow-none">
                     {faqs.map((item, index) => (
                         <AccordionItem key={item.question} value={`faq-${index}`}>
                             <AccordionTrigger>{item.question}</AccordionTrigger>
@@ -666,11 +467,11 @@ function FinalCta({ auth, canRegister }) {
             <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-12 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
                 <div>
                     <Badge variant="secondary" className="mb-4 w-fit">
-                        Listo para ordenar tu presencia digital
+                        Listo para operar mejor
                     </Badge>
-                    <h2 className="font-display text-4xl font-bold">Convierte visitas en clientes con una ruta clara.</h2>
+                    <h2 className="font-display text-4xl font-bold">Registra el negocio y entra al panel correcto.</h2>
                     <p className="mt-3 max-w-2xl text-sm opacity-80">
-                        Publica tu negocio, manda clientes al micrositio y opera desde un panel privado.
+                        Nada de dashboards duplicados ni rutas confusas: landing, alta, panel privado y directorio B2C separados.
                     </p>
                 </div>
                 {auth?.user ? (
@@ -691,30 +492,18 @@ function FinalCta({ auth, canRegister }) {
 
 export default function Welcome({
     auth = { user: null },
-    categories = [],
-    newTenants = [],
-    featuredTenants = [],
-    heroImage = null,
-    stats = {},
     canRegister = true,
 }) {
-    const tenants = newTenants.length ? newTenants : featuredTenants;
-
     return (
         <PublicLayout>
-            <Head title="Vito Business OS - Plataforma para negocios en Honduras" />
+            <Head title="Conecta HN - Plataforma SaaS para negocios en Honduras" />
 
-            <HeroSection
-                auth={auth}
-                canRegister={canRegister}
-                heroImage={heroImage}
-                stats={stats}
-            />
+            <HeroSection auth={auth} canRegister={canRegister} />
             <ValueSection />
-            <CategorySection categories={categories} />
-            <TenantsSection tenants={tenants} />
+            <ModesSection canRegister={canRegister} />
             <ProcessSection />
             <PricingSection canRegister={canRegister} />
+            <DirectoryBoundarySection />
             <FaqSection />
             <FinalCta auth={auth} canRegister={canRegister} />
         </PublicLayout>

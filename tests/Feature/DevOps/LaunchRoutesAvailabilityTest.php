@@ -14,13 +14,16 @@ final class LaunchRoutesAvailabilityTest extends TestCase
         $routes = collect(Route::getRoutes()->getRoutes())->map(fn ($route) => [
             'uri' => '/'.ltrim($route->uri(), '/'),
             'name' => $route->getName(),
+            'domain' => $route->getDomain(),
         ]);
 
         $this->assertTrue($routes->contains(fn (array $route): bool => $route['uri'] === '/up'));
         $this->assertTrue($routes->contains(fn (array $route): bool => $route['uri'] === '/login' && $route['name'] === 'login'));
         $this->assertTrue($routes->contains(fn (array $route): bool => $route['uri'] === '/verify-email' && $route['name'] === 'verification.notice'));
         $this->assertTrue($routes->contains(fn (array $route): bool => $route['uri'] === '/' && $route['name'] === 'home'));
+        $this->assertTrue($routes->contains(fn (array $route): bool => $route['uri'] === '/' && $route['name'] === 'app.directory' && $route['domain'] === config('conecta.directory_app_host')));
         $this->assertTrue($routes->contains(fn (array $route): bool => $route['uri'] === '/directorio' && $route['name'] === 'directory.index'));
+        $this->assertTrue($routes->contains(fn (array $route): bool => $route['uri'] === '/directory' && $route['name'] === 'directory.legacy'));
         $this->assertTrue($routes->contains(fn (array $route): bool => $route['uri'] === '/registrar-negocio' && $route['name'] === 'tenant.register'));
         $this->assertTrue($routes->contains(fn (array $route): bool => $route['uri'] === '/dashboard' && $route['name'] === 'dashboard'));
         $this->assertTrue($routes->contains(fn (array $route): bool => $route['uri'] === '/app/{tenant}' && $route['name'] === 'filament.app.pages.dashboard'));

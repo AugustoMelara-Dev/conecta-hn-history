@@ -90,41 +90,24 @@ async function validateLanding(page, label) {
     pushCheck(`${label}_home_no_broken_encoding`, !hasBrokenEncoding(bodyText), bodyText.slice(0, 220))
     pushCheck(`${label}_home_no_horizontal_overflow`, !(await hasHorizontalOverflow(page)), await page.evaluate(() => `${document.documentElement.clientWidth}/${document.documentElement.scrollWidth}`))
     pushCheck(`${label}_landing_page_visible`, await page.getByTestId("landing-page").isVisible().catch(() => false))
-    pushCheck(`${label}_search_visible`, await page.getByTestId("landing-search").isVisible().catch(() => false))
+    pushCheck(`${label}_product_positioning_visible`, /SaaS|sistema comercial|panel privado/i.test(bodyText), bodyText.slice(0, 260))
+    pushCheck(`${label}_search_demoted_from_landing`, await page.getByTestId("landing-search").count().catch(() => 0) === 0)
     pushCheck(`${label}_primary_cta_visible`, await page.getByTestId("landing-primary-cta").isVisible().catch(() => false))
-    pushCheck(`${label}_directory_cta_visible`, await page.getByTestId("landing-directory-cta").isVisible().catch(() => false))
+    pushCheck(`${label}_directory_cta_demoted_visible`, await page.getByTestId("landing-directory-cta").isVisible().catch(() => false))
     pushCheck(`${label}_pricing_visible`, await page.getByTestId("landing-pricing").isVisible().catch(() => false))
     pushCheck(`${label}_faq_visible`, await page.getByTestId("landing-faq").isVisible().catch(() => false))
-
+    pushCheck(`${label}_directory_is_not_primary`, !/Busca como cliente|Negocios listos para recibir visitas|Exploracion util para clientes finales/i.test(bodyText), bodyText.slice(0, 260))
     const categoryCount = await page.getByTestId("landing-category-card").count().catch(() => 0)
-    const categoryFallback = /Directorio disponible/i.test(bodyText)
-    pushCheck(`${label}_categories_or_empty_state`, categoryCount > 0 || categoryFallback, `cards=${categoryCount}`)
-
+    pushCheck(`${label}_category_cards_removed`, categoryCount === 0, `cards=${categoryCount}`)
     const tenantCount = await page.getByTestId("landing-tenant-card").count().catch(() => 0)
-    const tenantFallback = /Negocios en preparación/i.test(bodyText)
-    pushCheck(`${label}_tenants_or_empty_state`, tenantCount > 0 || tenantFallback, `cards=${tenantCount}`)
+    pushCheck(`${label}_tenant_cards_removed`, tenantCount === 0, `cards=${tenantCount}`)
 
     const primaryHref = await page.getByTestId("landing-primary-cta").first().getAttribute("href").catch(() => "")
     const directoryHref = await page.getByTestId("landing-directory-cta").first().getAttribute("href").catch(() => "")
     pushCheck(`${label}_primary_cta_points_to_registration`, /register|registrar-negocio|app\//.test(primaryHref || ""), primaryHref || "")
-    pushCheck(`${label}_directory_cta_points_to_directory`, /directorio|directory/.test(directoryHref || ""), directoryHref || "")
+    pushCheck(`${label}_secondary_directory_cta_points_to_directory`, /directorio|directory/.test(directoryHref || ""), directoryHref || "")
 
     await screenshot(page, `landing-public-${label}`)
-}
-
-async function validateSearch(page) {
-    await page.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded", timeout: 45_000 })
-    await page.getByTestId("landing-search").waitFor({ state: "visible", timeout: 20_000 })
-    await page.getByTestId("landing-search").locator("input").fill("barberia")
-
-    await Promise.all([
-        page.waitForURL((url) => url.pathname.includes("directorio") && url.search.includes("barberia"), {
-            timeout: 20_000,
-        }),
-        page.getByTestId("landing-search").locator('button[type="submit"]').click(),
-    ])
-
-    pushCheck("search_routes_to_directory_query", page.url().includes("/directorio") && page.url().includes("barberia"), page.url())
 }
 
 let server = null
@@ -176,7 +159,6 @@ try {
         }
     })
     await validateLanding(desktop, "desktop")
-    await validateSearch(desktop)
 
     const mobile = await browser.newPage({ viewport: { width: 390, height: 900 }, isMobile: true })
     mobile.on("console", (message) => {

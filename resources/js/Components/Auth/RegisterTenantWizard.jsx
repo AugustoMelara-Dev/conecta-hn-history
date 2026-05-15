@@ -7,7 +7,6 @@ import {
     Building2,
     Check,
     CheckCircle2,
-    MapPin,
     Sparkles,
     UserRound,
 } from "lucide-react"
@@ -33,17 +32,15 @@ import {
 } from "@/lib/publicTypography"
 
 const STEPS = [
-    { key: "business", label: "Negocio", title: "Información del negocio", icon: Building2 },
-    { key: "location", label: "Zona", title: "Ubicación y contacto", icon: MapPin },
-    { key: "account", label: "Cuenta", title: "Cuenta propietaria", icon: UserRound },
-    { key: "plan", label: "Lanzar", title: "Plan y activación", icon: Sparkles },
+    { key: "business", label: "Negocio", title: "Negocio y ruta comercial", icon: Building2 },
+    { key: "profile", label: "Acceso", title: "Zona, contacto y cuenta", icon: UserRound },
+    { key: "launch", label: "Lanzar", title: "Plan y activación", icon: Sparkles },
 ]
 
 const STEP_FIELDS = {
     0: ["business_name", "slug", "category_id", "commercial_mode"],
-    1: ["city_id", "whatsapp"],
-    2: ["name", "email", "password", "password_confirmation"],
-    3: ["selected_plan", "terms_accepted", "privacy_accepted"],
+    1: ["city_id", "whatsapp", "name", "email", "password", "password_confirmation"],
+    2: ["selected_plan", "terms_accepted", "privacy_accepted"],
 }
 
 const FIELD_TO_STEP = Object.entries(STEP_FIELDS).reduce((carry, [step, fields]) => {
@@ -129,9 +126,10 @@ function StepPill({ step, index, currentStep, onClick }) {
             type="button"
             onClick={onClick}
             disabled={locked}
+            data-testid={`register-step-${step.key}`}
             aria-current={active ? "step" : undefined}
             aria-disabled={locked ? "true" : undefined}
-            className={`flex min-w-0 items-center gap-2 rounded-full border px-3 py-2 text-left transition-colors ${
+            className={`flex min-w-0 items-center gap-2 rounded-lg border px-3 py-2 text-left transition-colors ${
                 active
                     ? "border-primary bg-primary text-primary-foreground"
                 : complete
@@ -152,7 +150,7 @@ function StepPill({ step, index, currentStep, onClick }) {
 
 function SummaryRow({ label, value }) {
     return (
-        <div className="flex items-start justify-between gap-4 rounded-xl bg-muted px-4 py-3">
+        <div className="flex items-start justify-between gap-4 rounded-lg bg-muted px-4 py-3">
             <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
                 {label}
             </span>
@@ -502,7 +500,7 @@ export function RegisterTenantWizard({
     }
 
     const inputClass = (field) =>
-        `h-12 rounded-xl bg-muted px-4 text-foreground placeholder:text-muted-foreground ${
+        `h-12 rounded-lg bg-muted px-4 text-foreground placeholder:text-muted-foreground ${
             errorFor(field) ? "border-destructive/50 focus-visible:ring-destructive/20" : ""
         }`
 
@@ -519,11 +517,8 @@ export function RegisterTenantWizard({
             if (!String(data.commercial_mode).trim()) nextErrors.commercial_mode = "Selecciona como quieres recibir clientes."
         }
 
-        if (targetStep === 1 && !String(data.city_id).trim()) {
-            nextErrors.city_id = "Selecciona una ciudad."
-        }
-
-        if (targetStep === 2) {
+        if (targetStep === 1) {
+            if (!String(data.city_id).trim()) nextErrors.city_id = "Selecciona una ciudad."
             if (!data.name.trim()) nextErrors.name = "Escribe tu nombre completo."
             if (!data.email.trim()) nextErrors.email = "Escribe el correo de acceso."
             else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) nextErrors.email = "Escribe un correo válido."
@@ -533,7 +528,7 @@ export function RegisterTenantWizard({
             else if (data.password_confirmation !== data.password) nextErrors.password_confirmation = "Las contraseñas no coinciden."
         }
 
-        if (targetStep === 3) {
+        if (targetStep === 2) {
             if (!["free", "pro"].includes(data.selected_plan)) nextErrors.selected_plan = "Selecciona un plan válido."
             if (!data.terms_accepted) nextErrors.terms_accepted = "Debes aceptar los términos para continuar."
             if (!data.privacy_accepted) nextErrors.privacy_accepted = "Debes aceptar la política de privacidad para continuar."
@@ -608,7 +603,7 @@ export function RegisterTenantWizard({
                             invert
                             eyebrow={`Paso ${step + 1} de ${STEPS.length}`}
                             title={STEPS[step].title}
-                            description="Cada paso pide solo lo necesario para activar tu panel sin fricción."
+                            description="Tres decisiones claras para crear la cuenta y entrar al panel."
                         >
                             <Progress value={progress} className="mt-6 h-2 bg-white/10 [&>div]:bg-white" />
                         </AuthAsideCard>
@@ -621,9 +616,9 @@ export function RegisterTenantWizard({
                         >
                             <div className="mt-4 flex flex-col gap-3">
                                 {[
+                                    "Micrositio y slug validados",
                                     "Cuenta propietaria con login real",
-                                    "Negocio con slug validado y aislado",
-                                    "Acceso al panel y flujo de verificación",
+                                    "Plan, términos y privacidad confirmados",
                                 ].map((item) => (
                                     <div key={item} className="flex items-start gap-2 text-sm text-slate-200">
                                         <CheckCircle2 className="mt-0.5 h-4 w-4" />
@@ -647,17 +642,17 @@ export function RegisterTenantWizard({
             }
         >
             <section className="w-full max-w-3xl" style={{ fontFamily: PUBLIC_BODY_FONT }}>
-                <Card className="rounded-3xl border-slate-200 bg-white p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] sm:p-8">
+                <Card className="rounded-lg border-border bg-card p-5 shadow-sm sm:p-6">
                     <div className="flex flex-col gap-4">
                         <div className="flex flex-col gap-2">
-                            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
+                            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
                                 Alta de negocio
                             </p>
-                            <h1 className="text-4xl font-extrabold tracking-tight text-slate-950 sm:text-5xl" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
-                                Datos mínimos ahora. Operación completa después.
+                            <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
+                                Crea tu negocio sin llenar un formulario eterno.
                             </h1>
-                            <p className="max-w-2xl text-base leading-7 text-slate-500">
-                                Primero creamos la cuenta, el micrositio y el modo comercial. El catálogo, agenda, CRM y campañas se completan desde el panel del negocio.
+                            <p className="max-w-2xl text-base leading-7 text-muted-foreground">
+                                Dejamos listo lo obligatorio: identidad, ciudad, cuenta propietaria, plan y consentimientos. Lo operativo se configura después desde el panel.
                             </p>
                         </div>
 
@@ -666,8 +661,8 @@ export function RegisterTenantWizard({
                                 <StepPill key={item.key} step={item} index={index} currentStep={step} onClick={() => index <= step && setStep(index)} />
                             ))}
                         </div>
-                        <p className="text-xs text-slate-500">
-                            Completa cada paso para desbloquear el siguiente.
+                        <p className="text-xs text-muted-foreground">
+                            Tres pasos visibles, mismo contrato seguro de registro.
                         </p>
                     </div>
 
@@ -680,12 +675,12 @@ export function RegisterTenantWizard({
                         </Alert>
                     ) : null}
 
-                    <div className="mt-8">
-                        <div className="mb-6 border-b border-slate-200 pb-4">
-                            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
+                    <div className="mt-6">
+                        <div className="mb-5 border-b border-border pb-4">
+                            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
                                 {`Paso ${step + 1} de ${STEPS.length}`}
                             </p>
-                            <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-950" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
+                            <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-foreground" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
                                 {STEPS[step].title}
                             </h2>
                         </div>
@@ -715,26 +710,25 @@ export function RegisterTenantWizard({
                             ) : null}
 
                             {step === 1 ? (
-                                <LocationStep
-                                    data={data}
-                                    cities={cities}
-                                    selectedCityValue={selectedCityValue}
-                                    updateField={updateField}
-                                    errorFor={errorFor}
-                                    inputClass={inputClass}
-                                />
+                                <div className="flex flex-col gap-6">
+                                    <LocationStep
+                                        data={data}
+                                        cities={cities}
+                                        selectedCityValue={selectedCityValue}
+                                        updateField={updateField}
+                                        errorFor={errorFor}
+                                        inputClass={inputClass}
+                                    />
+                                    <AccountStep
+                                        data={data}
+                                        updateField={updateField}
+                                        errorFor={errorFor}
+                                        inputClass={inputClass}
+                                    />
+                                </div>
                             ) : null}
 
                             {step === 2 ? (
-                                <AccountStep
-                                    data={data}
-                                    updateField={updateField}
-                                    errorFor={errorFor}
-                                    inputClass={inputClass}
-                                />
-                            ) : null}
-
-                            {step === 3 ? (
                                 <PlanSummaryStep
                                     data={data}
                                     freeLimit={freeLimit}
@@ -756,7 +750,7 @@ export function RegisterTenantWizard({
                         </form>
                     </div>
 
-                    <div className="mt-8 flex flex-col gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="mt-6 flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-center gap-3">
                             <span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
                                 Progreso
@@ -765,18 +759,18 @@ export function RegisterTenantWizard({
                         </div>
 
                         <div className="flex items-center justify-end gap-2">
-                            <Button type="button" variant="outline" onClick={() => setStep((current) => Math.max(current - 1, 0))} disabled={step === 0 || processing} className="h-12 rounded-xl border-slate-200 bg-white text-slate-950 hover:bg-slate-50">
+                            <Button type="button" variant="outline" onClick={() => setStep((current) => Math.max(current - 1, 0))} disabled={step === 0 || processing} className="h-12 rounded-lg">
                                 <ArrowLeft data-icon="inline-start" aria-hidden="true" />
                                 Atrás
                             </Button>
 
                             {step < STEPS.length - 1 ? (
-                                <Button type="button" data-testid="register-next-step" onClick={() => validateStep(step, { focus: true }) && setStep((current) => current + 1)} disabled={processing || !canSubmit} className="h-12 rounded-xl bg-slate-950 text-white hover:bg-slate-800">
+                                <Button type="button" data-testid="register-next-step" onClick={() => validateStep(step, { focus: true }) && setStep((current) => current + 1)} disabled={processing || !canSubmit} className="h-12 rounded-lg">
                                     Continuar
                                     <ArrowRight data-icon="inline-end" aria-hidden="true" />
                                 </Button>
                             ) : (
-                                <Button type="button" data-testid="register-submit" onClick={submit} disabled={processing || !canSubmit} className="h-12 rounded-xl bg-slate-950 text-white hover:bg-slate-800">
+                                <Button type="button" data-testid="register-submit" onClick={submit} disabled={processing || !canSubmit} className="h-12 rounded-lg">
                                     {processing ? (
                                         <>
                                             <Spinner data-icon="inline-start" />

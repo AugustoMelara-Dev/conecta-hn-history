@@ -43,7 +43,7 @@ export function AuthAsideCard({
     return (
         <div
             className={cn(
-                "rounded-[2rem] p-6",
+                "rounded-lg p-5",
                 invert
                     ? "border border-white/10 bg-white/5 text-white backdrop-blur-md"
                     : "bg-white text-slate-950 shadow-2xl shadow-slate-950/20",
