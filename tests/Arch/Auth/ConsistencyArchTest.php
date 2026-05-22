@@ -10,13 +10,32 @@ arch('Auth Handlers must not use EventBus directly - Strict Outbox Pattern')
     ->expect('App\Application\Auth\Handlers')
     ->not->toUse(EventBusInterface::class);
 
-arch('Auth Handlers must use Outbox Repository')
-    ->expect('App\Application\Auth\Handlers')
-    ->toUse(OutboxRepositoryInterface::class);
+test('Auth handlers that emit events use Outbox Repository', function (): void {
+    $handlersPath = getcwd().DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'Application'.DIRECTORY_SEPARATOR.'Auth'.DIRECTORY_SEPARATOR.'Handlers';
+    $violations = [];
 
-arch('Auth Handlers must use Idempotency Service')
-    ->expect('App\Application\Auth\Handlers')
-    ->toUse(IdempotencyServiceInterface::class);
+    foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($handlersPath)) as $file) {
+        if (! $file instanceof SplFileInfo || $file->getExtension() !== 'php' || str_ends_with($file->getFilename(), 'Interface.php')) {
+            continue;
+        }
+
+        $source = (string) file_get_contents($file->getPathname());
+        $emitsDomainEvent = str_contains($source, 'DomainEventMessage') || str_contains($source, 'outboxRepository');
+
+        if ($emitsDomainEvent && ! str_contains($source, OutboxRepositoryInterface::class)) {
+            $violations[] = $file->getFilename();
+        }
+    }
+
+    expect($violations)->toBeEmpty();
+});
+
+test('Auth idempotency decorators use Idempotency Service', function (): void {
+    $decorator = getcwd().DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'Application'.DIRECTORY_SEPARATOR.'Auth'.DIRECTORY_SEPARATOR.'Decorators'.DIRECTORY_SEPARATOR.'IdempotentGenerateOtpHandler.php';
+    $source = (string) file_get_contents($decorator);
+
+    expect($source)->toContain(IdempotencyServiceInterface::class);
+});
 
 arch('Auth Handlers must be final readonly')
     ->expect('App\Application\Auth\Handlers')

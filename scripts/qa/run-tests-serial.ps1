@@ -36,6 +36,8 @@ function Run-TestBlock {
 
 Assert-MySqlTestingConfig
 
+Run-TestBlock -Label "Testing DB preflight" -Command "powershell -ExecutionPolicy Bypass -File scripts/qa/testing-db-preflight.ps1"
+
 Run-TestBlock -Label "Feature/Auth/PasswordUpdateTest" -Command "php artisan test tests/Feature/Auth/PasswordUpdateTest.php --colors=never"
 Run-TestBlock -Label "Feature/Auth/SocialLoginTest" -Command "php artisan test tests/Feature/Auth/SocialLoginTest.php --colors=never"
 Run-TestBlock -Label "Feature/Auth/TelemetryIntegrationTest" -Command "php artisan test tests/Feature/Auth/TelemetryIntegrationTest.php --colors=never"

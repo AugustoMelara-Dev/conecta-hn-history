@@ -240,6 +240,7 @@ class InventoryManager
             }
 
             $lockedProducts = Product::query()
+                // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
                 ->withoutGlobalScopes() // Bypass visibility scopes for admin operation
                 ->whereIn('id', $productIds)
                 ->where('tenant_id', $order->tenant_id)
@@ -380,6 +381,7 @@ class InventoryManager
             // lockForUpdate() holds exclusive row locks until transaction ends.
             // VC-AUDIT-104: Use Eloquent to ensure Enum casting (not DB::table+hydrate)
             $lockedProducts = Product::query()
+                // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
                 ->withoutGlobalScopes()
                 ->whereIn('id', $productIds)
                 ->where('tenant_id', $order->tenant_id)

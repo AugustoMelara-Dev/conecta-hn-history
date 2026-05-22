@@ -57,6 +57,7 @@ class PaymentResource extends Resource
      */
     public static function getNavigationBadge(): ?string
     {
+        // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
         $count = Payment::withoutGlobalScopes()->where('status', 'pending')->count();
 
         return $count > 0 ? (string) $count : null;
@@ -373,6 +374,7 @@ class PaymentResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
+            // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
             ->withoutGlobalScopes()
             ->with(['tenant.user']) // Eager load para performance
             ->orderByRaw("CASE status

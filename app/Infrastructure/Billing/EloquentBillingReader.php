@@ -20,6 +20,7 @@ final class EloquentBillingReader implements BillingReader
             return collect([]);
         }
 
+        // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
         return Payment::withoutGlobalScopes()
             ->where('tenant_id', $tenantId)
             ->orderByDesc('created_at')

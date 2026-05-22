@@ -125,7 +125,7 @@ describe('ServiceProvider Opening Hours', function () {
 
 describe('Booking Slot Generation', function () {
     it('BookingController has generateAvailableSlots method', function () {
-        $reflection = new ReflectionClass(\App\Http\Controllers\Public\BookingController::class);
+        $reflection = new ReflectionClass(\App\Infrastructure\Booking\HttpPublicBookingResponder::class);
         
         expect($reflection->hasMethod('generateAvailableSlots'))->toBeTrue();
         

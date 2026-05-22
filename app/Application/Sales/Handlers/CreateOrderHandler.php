@@ -16,7 +16,7 @@ use App\Infrastructure\Bus\TransactionalEventDispatcher;
 use App\Services\CouponValidatorService;
 use App\Services\InventoryManager;
 use App\Services\PriceCalculatorService;
-use Illuminate\Support\Facades\Log;
+use App\Application\Shared\Contracts\LoggerInterface;
 
 /**
  * CreateOrderHandler - Pure Business Logic for Order Creation
@@ -43,6 +43,7 @@ final class CreateOrderHandler implements CreateOrderHandlerInterface
         private readonly TransactionalEventDispatcher $eventDispatcher,
         private readonly OrderFactory $orderFactory,
         private readonly TransactionManagerInterface $transactionManager, // Injected for Atomicity
+        private readonly LoggerInterface $logger,
     ) {}
 
     public function handle(CreateOrderCommand $command): CreateOrderResult
@@ -154,7 +155,7 @@ final class CreateOrderHandler implements CreateOrderHandlerInterface
             status: 'pending' // Default status for new orders
         ));
 
-        Log::info('Order created via Command Bus', $this->sanitizePayload([
+        $this->logger->info('Order created via Command Bus', $this->sanitizePayload([
             'order_id' => $orderEntity->id,
             'tenant_id' => $command->tenantId,
             'total' => $total,

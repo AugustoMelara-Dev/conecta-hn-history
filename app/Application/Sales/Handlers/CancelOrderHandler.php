@@ -10,7 +10,7 @@ use App\Domain\Sales\Repositories\OrderRepositoryInterface;
 use App\Events\Order\OrderCancelled;
 use App\Infrastructure\Bus\TransactionalEventDispatcher;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Facades\Log;
+use App\Application\Shared\Contracts\LoggerInterface;
 
 /**
  * CancelOrderHandler - Command Handler for Order Cancellation
@@ -30,6 +30,7 @@ final class CancelOrderHandler
     public function __construct(
         private readonly OrderRepositoryInterface $orderRepository,
         private readonly TransactionalEventDispatcher $eventDispatcher,
+        private readonly LoggerInterface $logger,
     ) {}
 
     /**
@@ -50,7 +51,7 @@ final class CancelOrderHandler
 
         // 3. SECURITY GUARD: Tenant Ownership Verification (IDOR Protection)
         if ($order->tenant_id !== $command->tenantId) {
-            Log::warning('SECURITY: Cross-tenant order cancellation attempt', [
+            $this->logger->warning('SECURITY: Cross-tenant order cancellation attempt', [
                 'requested_order_id' => $command->orderId,
                 'requesting_tenant_id' => $command->tenantId,
                 'actual_tenant_id' => $order->tenant_id,
@@ -76,7 +77,7 @@ final class CancelOrderHandler
         ));
 
         // 7. Audit Log (PII Scrubbed)
-        Log::info('Order cancelled successfully', $this->sanitizePayload([
+        $this->logger->info('Order cancelled successfully', $this->sanitizePayload([
             'order_id' => $order->id,
             'order_number' => $order->order_number,
             'tenant_id' => $command->tenantId,

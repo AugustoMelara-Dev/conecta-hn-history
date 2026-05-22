@@ -117,6 +117,7 @@ final class BusinessOsDemoSeeder extends Seeder
     private function products(Tenant $tenant, array $products): void
     {
         foreach ($products as $item) {
+            // JOB_GLOBAL_POLL: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
             Product::withoutGlobalScopes()->updateOrCreate(
                 ['tenant_id' => $tenant->id, 'slug' => Str::slug($item['name'])],
                 $this->onlyExistingColumns('products', [

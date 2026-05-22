@@ -20,7 +20,7 @@ class AttackOtpCommand extends Command
 
     public function handle(): int
     {
-        $dbPath = env('OTP_ATTACK_DB_PATH');
+        $dbPath = config('services.otp_attack.database_path');
 
         if (is_string($dbPath) && $dbPath !== '') {
             config(['database.connections.sqlite.database' => $dbPath]);

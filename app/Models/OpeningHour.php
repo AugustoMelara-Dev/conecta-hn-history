@@ -55,11 +55,12 @@ class OpeningHour extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'tenant_id',
         'day_of_week',
         'opening_time',
         'closing_time',
     ];
+
+    protected $guarded = ['tenant_id'];
 
     /**
      * The attributes that should be cast.

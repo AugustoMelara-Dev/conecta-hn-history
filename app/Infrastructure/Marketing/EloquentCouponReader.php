@@ -17,6 +17,7 @@ final class EloquentCouponReader implements CouponReader
 {
     public function getValidCoupons(int|string $tenantId): Collection
     {
+        // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
         return Coupon::withoutGlobalScopes()
             ->where('tenant_id', $tenantId)
             ->where('is_active', true)
@@ -27,6 +28,7 @@ final class EloquentCouponReader implements CouponReader
 
     public function findByCode(int|string $tenantId, string $code): ?object
     {
+        // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
         return Coupon::withoutGlobalScopes()
             ->where('tenant_id', $tenantId)
             ->where('code', $code)

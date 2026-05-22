@@ -11,7 +11,7 @@ use App\Domain\Billing\Events\PaymentFailed;
 use App\Domain\Billing\Events\PaymentReceived;
 use App\Domain\Payment\Repositories\WebhookLogRepositoryInterface;
 use App\Infrastructure\Bus\TransactionalEventDispatcher;
-use Illuminate\Support\Facades\Log;
+use App\Application\Shared\Contracts\LoggerInterface;
 use Illuminate\Support\Str;
 
 /**
@@ -33,6 +33,7 @@ final class HandlePaymentWebhookHandler
     public function __construct(
         private readonly WebhookLogRepositoryInterface $logRepository,
         private readonly TransactionalEventDispatcher $eventDispatcher,
+        private readonly LoggerInterface $logger,
     ) {}
 
     /**
@@ -83,7 +84,7 @@ final class HandlePaymentWebhookHandler
     {
         // STEP 1: IDEMPOTENCY GUARD
         if ($this->logRepository->hasBeenProcessed($command->provider, $command->externalEventId)) {
-            Log::info('Webhook already processed (idempotency)', [
+            $this->logger->info('Webhook already processed (idempotency)', [
                 'provider' => $command->provider,
                 'external_event_id' => $command->externalEventId,
             ]);
@@ -103,7 +104,7 @@ final class HandlePaymentWebhookHandler
         $domainEvent = $this->translateToDomainEvent($command);
 
         if ($domainEvent === null) {
-            Log::info('Webhook event type not handled', [
+            $this->logger->info('Webhook event type not handled', [
                 'provider' => $command->provider,
                 'event_type' => $command->eventType,
             ]);
@@ -119,7 +120,7 @@ final class HandlePaymentWebhookHandler
         // STEP 4: DISPATCH TO DOMAIN
         $this->eventDispatcher->dispatch($domainEvent);
 
-        Log::info('Webhook processed successfully', $this->sanitizePayload([
+        $this->logger->info('Webhook processed successfully', $this->sanitizePayload([
             'provider' => $command->provider,
             'event_type' => $command->eventType,
             'domain_event' => get_class($domainEvent),

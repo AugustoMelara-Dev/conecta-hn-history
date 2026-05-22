@@ -22,13 +22,13 @@ final readonly class PaymentMailData
     /**
      * Create from Payment model (snapshot at dispatch time).
      */
-    public static function fromPayment(\App\Models\Payment $payment): self
+    public static function fromPayment(object $payment): self
     {
         return new self(
-            id: $payment->id,
-            amount: number_format($payment->amount, 2),
-            status: $payment->status,
-            reference: $payment->reference ?? '',
+            id: (int) $payment->id,
+            amount: number_format((float) $payment->amount, 2),
+            status: (string) $payment->status,
+            reference: (string) ($payment->reference ?? ''),
             createdAt: $payment->created_at?->toDateTimeString() ?? '',
         );
     }

@@ -14,7 +14,6 @@ class CrmPipeline extends Model
     use BelongsToTenant;
 
     protected $fillable = [
-        'tenant_id',
         'name',
         'key',
         'description',
@@ -22,6 +21,8 @@ class CrmPipeline extends Model
         'is_active',
         'sort_order',
     ];
+
+    protected $guarded = ['tenant_id'];
 
     protected $casts = [
         'is_default' => 'boolean',
@@ -36,11 +37,13 @@ class CrmPipeline extends Model
 
     public function stages(): HasMany
     {
+        // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
         return $this->hasMany(CrmStage::class)->withoutGlobalScopes()->orderBy('sort_order')->orderBy('id');
     }
 
     public function deals(): HasMany
     {
+        // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
         return $this->hasMany(CrmDeal::class)->withoutGlobalScopes();
     }
 }

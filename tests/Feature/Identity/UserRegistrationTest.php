@@ -8,6 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\DB;
+use function Pest\Laravel\assertDatabaseHas;
 
 uses(RefreshDatabase::class);
 
@@ -30,12 +31,12 @@ test('it creates new tenant and owner when no tenant_id provided', function () {
     expect($user)->toBeInstanceOf(User::class);
     
     // Check Database State
-    $this->assertDatabaseHas('users', [
+    assertDatabaseHas('users', [
         'email' => 'owner@example.com',
         'tenant_id' => (string) $user->tenant_id,
     ]);
 
-    $this->assertDatabaseHas('tenants', [
+    assertDatabaseHas('tenants', [
         'id' => (string) $user->tenant_id,
         'name' => 'My New Company',
     ]);
@@ -56,7 +57,7 @@ test('it joins existing tenant as staff when tenant_id provided', function () {
         'password' => 'password',
         'password_confirmation' => 'password',
         'terms' => 'on',
-        'tenant_id' => $tenant->id,
+        'tenant_id' => (string) $tenant->id,
     ];
 
     // Act
@@ -84,8 +85,6 @@ test('it validates tenant existence', function () {
         'tenant_id' => 'invalid-uuid',
     ];
 
-    // Expect Validation Exception provided by Validator::make
-    $this->expectException(\Illuminate\Validation\ValidationException::class);
-    
-    $action->create($input);
+    expect(fn () => $action->create($input))
+        ->toThrow(\Illuminate\Validation\ValidationException::class);
 });

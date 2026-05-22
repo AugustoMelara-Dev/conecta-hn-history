@@ -10,14 +10,14 @@ use App\Models\Category;
 use App\Models\City;
 use App\Models\Payment;
 use App\Models\Tenant;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 final class OwnerRegistrationContractTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {

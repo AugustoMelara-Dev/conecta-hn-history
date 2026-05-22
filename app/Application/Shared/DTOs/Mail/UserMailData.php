@@ -31,13 +31,13 @@ final readonly class UserMailData
     /**
      * Create from User model (snapshot at dispatch time).
      */
-    public static function fromUser(\App\Models\User $user): self
+    public static function fromUser(object $user): self
     {
         return new self(
-            id: $user->id,
-            name: $user->name,
-            email: $user->email,
-            tenantId: $user->tenant_id,
+            id: (int) $user->id,
+            name: (string) $user->name,
+            email: (string) $user->email,
+            tenantId: isset($user->tenant_id) ? (int) $user->tenant_id : null,
         );
     }
 }

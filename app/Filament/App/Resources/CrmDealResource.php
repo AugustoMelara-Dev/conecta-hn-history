@@ -350,6 +350,7 @@ class CrmDealResource extends Resource
         static::defaultPipeline();
 
         return CrmPipeline::query()
+            // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
             ->withoutGlobalScopes()
             ->where('tenant_id', $tenant->getKey())
             ->where('is_active', true)
@@ -377,6 +378,7 @@ class CrmDealResource extends Resource
         }
 
         return CrmStage::query()
+            // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
             ->withoutGlobalScopes()
             ->where('tenant_id', $tenant->getKey())
             ->where('crm_pipeline_id', $pipeline->getKey())
@@ -398,6 +400,7 @@ class CrmDealResource extends Resource
         }
 
         return CustomerProfile::query()
+            // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
             ->withoutGlobalScopes()
             ->where('tenant_id', $tenant->getKey())
             ->orderBy('name')
@@ -418,6 +421,7 @@ class CrmDealResource extends Resource
         }
 
         return Lead::query()
+            // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
             ->withoutGlobalScopes()
             ->where('tenant_id', $tenant->getKey())
             ->orderByDesc('created_at')
@@ -456,6 +460,7 @@ class CrmDealResource extends Resource
         }
 
         return Location::query()
+            // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
             ->withoutGlobalScopes()
             ->where('tenant_id', $tenant->getKey())
             ->orderBy('name')
@@ -510,6 +515,7 @@ class CrmDealResource extends Resource
         }
 
         return $query
+            // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
             ->withoutGlobalScopes()
             ->where('tenant_id', $tenant->getKey())
             ->with(['stage', 'customerProfile', 'owner']);

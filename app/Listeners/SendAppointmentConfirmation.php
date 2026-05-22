@@ -6,6 +6,7 @@ namespace App\Listeners;
 
 use App\Events\Appointment\AppointmentCreated;
 use App\Mail\AppointmentConfirmationMail;
+use App\Models\Appointment;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Mail;
 
@@ -17,11 +18,18 @@ use Illuminate\Support\Facades\Mail;
  * INVARIANT: Only sends if customer_email is present.
  * Walk-ins (no email) are silently skipped.
  */
-class SendAppointmentConfirmation implements ShouldQueue
+final class SendAppointmentConfirmation implements ShouldQueue
 {
     public function handle(AppointmentCreated $event): void
     {
-        $appointment = $event->appointment;
+        $appointment = Appointment::query()
+            ->where('id', $event->appointmentId)
+            ->where('tenant_id', (string) $event->tenantKey)
+            ->first();
+
+        if (! $appointment) {
+            return;
+        }
 
         // Skip if no email (walk-in or guest without email)
         if (empty($appointment->customer_email)) {

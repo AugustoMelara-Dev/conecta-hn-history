@@ -8,6 +8,7 @@ use App\Application\Shared\Contracts\CommandBusInterface;
 use App\Application\Shared\Contracts\ReferenceDataReaderInterface;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Http\Controllers\Controller;
+use App\Infrastructure\Registration\EloquentRegistrationPostProcessor;
 use App\Http\Requests\Auth\RegisterTenantRequest;
 use App\Services\TenantRegistrationService;
 use Illuminate\Http\JsonResponse;
@@ -115,7 +116,8 @@ final class RegistrationController extends Controller
         // Dispatch via Command Bus (Transaction handled by middleware)
         $result = $this->bus->dispatch($command);
 
-        $user = \App\Models\User::where('email', $result->ownerEmail)->firstOrFail();
+        $user = app(EloquentRegistrationPostProcessor::class)->resolveUser($result, $result->ownerEmail);
+        abort_unless($user !== null, 500, 'Registered owner could not be resolved.');
         Auth::login($user);
 
         return redirect()

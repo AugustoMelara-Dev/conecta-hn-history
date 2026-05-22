@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
+use function Pest\Laravel\postJson;
 
 uses(RefreshDatabase::class);
 
@@ -34,7 +35,7 @@ it('answers public directory guide questions with only public catalog data', fun
     $persistedProduct->forceFill($attributes);
     $persistedProduct->save();
 
-    $response = $this->postJson('/api/v1/directory/guide/chat', [
+    $response = postJson('/api/v1/directory/guide/chat', [
         'message' => 'Que puedo comprar de comida con 150 lempiras?',
         'budget' => 150,
     ]);
@@ -51,7 +52,7 @@ it('answers public directory guide questions with only public catalog data', fun
 });
 
 it('returns an honest fallback instead of a server error when no public match exists', function () {
-    $response = $this->postJson('/api/v1/directory/guide/chat', [
+    $response = postJson('/api/v1/directory/guide/chat', [
         'message' => 'Necesito algo que no existe',
         'budget' => 10,
     ]);

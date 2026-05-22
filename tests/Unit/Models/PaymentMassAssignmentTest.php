@@ -7,11 +7,11 @@ namespace Tests\Unit\Models;
 use App\Domain\Shared\Services\TenantContext;
 use App\Models\Payment;
 use App\Models\Tenant;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Database\Eloquent\MassAssignmentException;
 use Tests\TestCase;
 
-uses(TestCase::class, DatabaseTransactions::class);
+uses(TestCase::class, RefreshDatabase::class);
 
 /**
  * VC-AUDIT-002 Verification: Payment Mass Assignment Protection

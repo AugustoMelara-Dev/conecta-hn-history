@@ -46,6 +46,7 @@ class FinancialStatsOverview extends BaseWidget
         $monthlyPlanPrice = $this->monthlyPlanPrice();
         $mrr = $proTenants * $monthlyPlanPrice;
         $approvedPayments = SubscriptionPayment::query()
+            // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
             ->withoutGlobalScopes()
             ->where('status', SubscriptionPayment::STATUS_APPROVED);
 
@@ -67,6 +68,7 @@ class FinancialStatsOverview extends BaseWidget
             : 0;
 
         $pendingPayments = SubscriptionPayment::query()
+            // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
             ->withoutGlobalScopes()
             ->where('status', SubscriptionPayment::STATUS_PENDING)
             ->count();

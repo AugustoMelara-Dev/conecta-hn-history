@@ -73,6 +73,7 @@ final class RequestTenantResolver
             return null;
         }
 
+        // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
         return Tenant::query()->withoutGlobalScopes()->find($tenantId);
     }
 }

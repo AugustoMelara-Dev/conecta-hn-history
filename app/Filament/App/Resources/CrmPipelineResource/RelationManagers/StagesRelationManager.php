@@ -153,6 +153,7 @@ class StagesRelationManager extends RelationManager
     {
         if ((bool) $stage->is_default) {
             CrmStage::query()
+                // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
                 ->withoutGlobalScopes()
                 ->where('tenant_id', (string) $stage->tenant_id)
                 ->where('crm_pipeline_id', $stage->crm_pipeline_id)

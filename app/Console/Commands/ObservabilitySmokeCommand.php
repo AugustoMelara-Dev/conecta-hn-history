@@ -76,7 +76,7 @@ final class ObservabilitySmokeCommand extends Command
      */
     private function emitSentryProbe(string $probeId): array
     {
-        $dsn = config('sentry.dsn') ?: env('SENTRY_LARAVEL_DSN') ?: env('SENTRY_DSN');
+        $dsn = config('sentry.dsn') ?: config('services.sentry.dsn');
 
         if (! filled($dsn)) {
             return ['ok' => false, 'detail' => 'Sentry DSN is not configured.'];

@@ -11,7 +11,7 @@ use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Product\Factories\ProductFactory;
 use App\Domain\Product\Repositories\ProductRepositoryInterface;
 use App\Infrastructure\Bus\TransactionalEventDispatcher;
-use Illuminate\Support\Facades\Log;
+use App\Application\Shared\Contracts\LoggerInterface;
 
 /**
  * CreateProductHandler - Command Handler for Product Creation
@@ -33,6 +33,7 @@ final readonly class CreateProductHandler
         private ProductFactory $productFactory,
         private TransactionManagerInterface $transactionManager,
         private TransactionalEventDispatcher $eventDispatcher,
+        private readonly LoggerInterface $logger,
     ) {}
 
     public function handle(CreateProductCommand $command): CreateProductResult
@@ -88,7 +89,7 @@ final readonly class CreateProductHandler
         ));
 
         // 4. Audit Log
-        Log::info('Product created successfully', $this->sanitizePayload([
+        $this->logger->info('Product created successfully', $this->sanitizePayload([
             'product_id' => $productEntity->id,
             'tenant_id' => $command->tenantId,
             'sku' => $productEntity->sku,

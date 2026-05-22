@@ -15,8 +15,12 @@ use Illuminate\Support\Facades\Schema;
 
 final class StandardTenantPermissionGuard implements TenantPermissionGuardInterface
 {
-    public function allows(User $user, Tenant $tenant, Capability $capability, Permission $permission): bool
+    public function allows(object $user, object $tenant, Capability $capability, Permission $permission): bool
     {
+        if (! $user instanceof User || ! $tenant instanceof Tenant) {
+            return false;
+        }
+
         if (! $tenant->hasCapability($capability)) {
             return false;
         }

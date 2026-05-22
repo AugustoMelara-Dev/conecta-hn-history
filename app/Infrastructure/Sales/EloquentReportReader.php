@@ -28,6 +28,7 @@ final class EloquentReportReader implements ReportReader
         // DEFENSIVE: Explicit cast in case of ValueObject leakage
         $tenantId = (int) $tenantId;
 
+        // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
         return Order::withoutGlobalScopes()
             ->where('tenant_id', $tenantId)
             ->whereBetween('created_at', [$startDate, $endDate])

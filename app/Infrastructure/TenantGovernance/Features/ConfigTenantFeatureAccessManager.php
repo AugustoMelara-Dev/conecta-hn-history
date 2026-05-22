@@ -17,8 +17,12 @@ final readonly class ConfigTenantFeatureAccessManager implements TenantFeatureAc
         private CapabilityManagerInterface $capabilityManager,
     ) {}
 
-    public function has(Tenant $tenant, TenantFeature $feature): bool
+    public function has(object $tenant, TenantFeature $feature): bool
     {
+        if (! $tenant instanceof Tenant) {
+            return false;
+        }
+
         $definition = config("tenant-features.features.{$feature->value}");
 
         if (! is_array($definition)) {

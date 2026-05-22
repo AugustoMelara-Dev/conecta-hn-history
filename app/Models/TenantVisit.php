@@ -59,7 +59,7 @@ class TenantVisit extends Model
 
         // DECOUPLED: Use dedicated analytics salt, not app.key
         // This allows app key rotation without breaking historical analytics
-        $analyticsSalt = config('services.analytics.salt', env('ANALYTICS_SALT', 'conecta-analytics-default-salt'));
+        $analyticsSalt = config('services.analytics.salt', 'conecta-analytics-default-salt');
 
         $dailySalt = $utcDate.$analyticsSalt;
 

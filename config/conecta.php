@@ -56,4 +56,8 @@ return [
      */
     'directory_app_host' => env('DIRECTORY_APP_HOST', 'app.localhost'),
 
+    'uiux' => [
+        'disable_filament_database_notifications' => (bool) env('UIUX_DISABLE_FILAMENT_DATABASE_NOTIFICATIONS', true),
+    ],
+
 ];

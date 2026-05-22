@@ -19,7 +19,6 @@ class Location extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
-        'tenant_id',
         'name',
         'slug',
         'address',
@@ -29,6 +28,8 @@ class Location extends Model
         'is_active',
         'is_primary',
     ];
+
+    protected $guarded = ['tenant_id'];
 
     protected $casts = [
         'is_active' => 'boolean',

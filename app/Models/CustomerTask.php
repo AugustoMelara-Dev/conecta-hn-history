@@ -15,7 +15,6 @@ class CustomerTask extends Model
     use BelongsToTenant, LogsActivity;
 
     protected $fillable = [
-        'tenant_id',
         'customer_profile_id',
         'crm_deal_id',
         'customer_conversation_id',
@@ -36,6 +35,8 @@ class CustomerTask extends Model
         'completed_at',
         'metadata',
     ];
+
+    protected $guarded = ['tenant_id'];
 
     protected $casts = [
         'due_at' => 'datetime',

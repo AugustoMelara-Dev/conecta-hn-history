@@ -21,13 +21,13 @@ final readonly class CampaignMailData
     /**
      * Create from Campaign model (snapshot at dispatch time).
      */
-    public static function fromCampaign(\App\Models\Campaign $campaign): self
+    public static function fromCampaign(object $campaign): self
     {
         return new self(
-            id: $campaign->id,
-            subject: $campaign->subject ?? '',
-            body: $campaign->body ?? '',
-            tenantName: $campaign->tenant?->name ?? 'Vito Business OS',
+            id: (int) $campaign->id,
+            subject: (string) ($campaign->subject ?? ''),
+            body: (string) ($campaign->body ?? ''),
+            tenantName: (string) ($campaign->tenant?->name ?? 'Vito Business OS'),
         );
     }
 }

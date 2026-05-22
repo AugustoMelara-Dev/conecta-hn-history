@@ -1,104 +1,120 @@
 {{--
-    SEO Meta Tags Component
-    
-    Motor de Inyección Dinámica de Metadatos SEO
-    
-    Uso en layouts:
+    SEO meta component for Blade-rendered public pages.
+
+    Usage:
     @include('components.seo-meta', ['model' => $tenant])
-    
-    O con datos manuales:
     @include('components.seo-meta', [
-        'title' => 'Mi Título',
-        'description' => 'Mi descripción',
-        'image' => '/path/to/image.jpg'
+        'title' => 'Conecta HN',
+        'description' => 'Directorio de negocios locales en Honduras',
+        'image' => asset('images/og-default.png'),
     ])
 --}}
 
 @php
-    use App\Settings\GeneralSettings;
-    
-    // Obtener configuración por defecto
-    $settings = app(GeneralSettings::class);
-    $siteName = config('app.name', 'Vito Business OS');
-    $siteUrl = config('app.url', 'https://conecta.hn');
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // LÓGICA DE CASCADA (FALLBACK)
-    // Escenario A: Datos específicos del modelo
-    // Escenario B: Datos automáticos generados
-    // Escenario C: Valores por defecto globales
-    // ═══════════════════════════════════════════════════════════════════════
-    
-    // TÍTULO SEO
+    use Illuminate\Support\Str;
+
+    $siteName = config('app.name', 'Conecta HN');
+    $siteUrl = rtrim((string) config('app.url', 'https://conecta.hn'), '/');
+
+    $cleanText = static fn (mixed $value, int $limit = 160): string => Str::limit(
+        trim(preg_replace('/\s+/', ' ', strip_tags((string) $value)) ?: ''),
+        $limit,
+        ''
+    );
+
     if (isset($model) && method_exists($model, 'getSeoTitle')) {
-        $seoTitle = $model->getSeoTitle();
-    } elseif (isset($title) && $title) {
-        $seoTitle = $title;
-    } elseif (isset($model->name)) {
+        $seoTitle = (string) $model->getSeoTitle();
+    } elseif (! empty($title)) {
+        $seoTitle = (string) $title;
+    } elseif (isset($model) && ! empty($model->name)) {
         $seoTitle = "{$model->name} | {$siteName}";
     } else {
-        $seoTitle = $siteName . ' - El Directorio de Negocios de Honduras';
+        $seoTitle = "{$siteName} - Directorio de negocios en Honduras";
     }
-    
-    // META DESCRIPCIÓN
+
     if (isset($model) && method_exists($model, 'getSeoDescription')) {
-        $seoDescription = $model->getSeoDescription();
-    } elseif (isset($description) && $description) {
-        $seoDescription = $description;
-    } elseif (isset($model->description)) {
-        $seoDescription = Str::limit(strip_tags($model->description), 160);
+        $seoDescription = $cleanText($model->getSeoDescription());
+    } elseif (! empty($description)) {
+        $seoDescription = $cleanText($description);
+    } elseif (isset($model) && ! empty($model->description)) {
+        $seoDescription = $cleanText($model->description);
     } else {
-        $seoDescription = 'Descubre los mejores negocios de Honduras en Vito Business OS. Restaurantes, tiendas, servicios y más.';
+        $seoDescription = 'Descubre negocios locales, restaurantes, tiendas y servicios en Honduras. Conecta HN ayuda a comprar, reservar y contactar comercios cerca de ti.';
     }
-    
-    // PALABRAS CLAVE
+
     if (isset($model) && method_exists($model, 'getSeoKeywords')) {
         $seoKeywords = $model->getSeoKeywords();
-    } elseif (isset($keywords) && $keywords) {
-        $seoKeywords = is_array($keywords) ? implode(', ', $keywords) : $keywords;
+    } elseif (! empty($keywords)) {
+        $seoKeywords = $keywords;
     } else {
-        $seoKeywords = 'negocios honduras, directorio honduras, empresas tegucigalpa, restaurantes san pedro sula';
+        $seoKeywords = [];
     }
-    
-    // IMAGEN OPEN GRAPH
+
+    $seoKeywords = is_array($seoKeywords)
+        ? implode(', ', array_filter(array_map('strval', $seoKeywords)))
+        : (string) $seoKeywords;
+
     if (isset($model) && method_exists($model, 'getOgImage')) {
-        $ogImage = $model->getOgImage();
-    } elseif (isset($image) && $image) {
-        $ogImage = $image;
-    } elseif (isset($model->banner_path)) {
-        $ogImage = asset('storage/' . $model->banner_path);
-    } elseif (isset($model->logo_path)) {
-        $ogImage = asset('storage/' . $model->logo_path);
+        $ogImage = (string) $model->getOgImage();
+    } elseif (! empty($image)) {
+        $ogImage = (string) $image;
+    } elseif (! empty($ogImage)) {
+        $ogImage = (string) $ogImage;
+    } elseif (isset($model) && ! empty($model->banner_path)) {
+        $ogImage = asset('storage/'.$model->banner_path);
+    } elseif (isset($model) && ! empty($model->logo_path)) {
+        $ogImage = asset('storage/'.$model->logo_path);
     } else {
         $ogImage = asset('images/og-default.png');
     }
-    
-    // URL CANÓNICA
+
+    if (! Str::startsWith($ogImage, ['http://', 'https://'])) {
+        $ogImage = url($ogImage);
+    }
+
     if (isset($model) && method_exists($model, 'getCanonicalUrl')) {
-        $canonicalUrl = $model->getCanonicalUrl();
-    } elseif (isset($canonical)) {
-        $canonicalUrl = $canonical;
+        $canonicalUrl = (string) $model->getCanonicalUrl();
+    } elseif (! empty($canonical)) {
+        $canonicalUrl = (string) $canonical;
     } else {
         $canonicalUrl = url()->current();
     }
-    
-    // TIPO OG
+
+    $canonicalUrl = Str::startsWith($canonicalUrl, ['http://', 'https://'])
+        ? $canonicalUrl
+        : $siteUrl.'/'.ltrim($canonicalUrl, '/');
+
     $ogType = $ogType ?? 'website';
+    $robots = $robots ?? 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1';
+
+    $schema = null;
+    if (isset($model) && ! empty($model->name)) {
+        $schema = array_filter([
+            '@context' => 'https://schema.org',
+            '@type' => $schemaType ?? 'LocalBusiness',
+            'name' => (string) $model->name,
+            'description' => $seoDescription,
+            'url' => $canonicalUrl,
+            'image' => $ogImage,
+            'address' => ! empty($model->address) ? array_filter([
+                '@type' => 'PostalAddress',
+                'streetAddress' => (string) $model->address,
+                'addressLocality' => (string) ($model->city->name ?? 'Honduras'),
+                'addressCountry' => 'HN',
+            ]) : null,
+            'telephone' => ! empty($model->whatsapp_number) ? (string) $model->whatsapp_number : null,
+        ]);
+    }
 @endphp
 
-{{-- ═══════════════════════════════════════════════════════════════════════ --}}
-{{-- META TAGS BÁSICOS --}}
-{{-- ═══════════════════════════════════════════════════════════════════════ --}}
 <title>{{ $seoTitle }}</title>
 <meta name="description" content="{{ $seoDescription }}">
-@if($seoKeywords)
-<meta name="keywords" content="{{ $seoKeywords }}">
+<meta name="robots" content="{{ $robots }}">
+@if($seoKeywords !== '')
+    <meta name="keywords" content="{{ $seoKeywords }}">
 @endif
 <link rel="canonical" href="{{ $canonicalUrl }}">
 
-{{-- ═══════════════════════════════════════════════════════════════════════ --}}
-{{-- OPEN GRAPH (Facebook, WhatsApp, LinkedIn) --}}
-{{-- ═══════════════════════════════════════════════════════════════════════ --}}
 <meta property="og:type" content="{{ $ogType }}">
 <meta property="og:title" content="{{ $seoTitle }}">
 <meta property="og:description" content="{{ $seoDescription }}">
@@ -109,37 +125,11 @@
 <meta property="og:site_name" content="{{ $siteName }}">
 <meta property="og:locale" content="es_HN">
 
-{{-- ═══════════════════════════════════════════════════════════════════════ --}}
-{{-- TWITTER CARDS --}}
-{{-- ═══════════════════════════════════════════════════════════════════════ --}}
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="{{ $seoTitle }}">
 <meta name="twitter:description" content="{{ $seoDescription }}">
 <meta name="twitter:image" content="{{ $ogImage }}">
 
-{{-- ═══════════════════════════════════════════════════════════════════════ --}}
-{{-- DATOS ESTRUCTURADOS JSON-LD (Schema.org) --}}
-{{-- ═══════════════════════════════════════════════════════════════════════ --}}
-@if(isset($model) && isset($model->name))
-<script type="application/ld+json">
-{
-    "@context": "https://schema.org",
-    "@type": "{{ $schemaType ?? 'LocalBusiness' }}",
-    "name": "{{ $model->name }}",
-    "description": "{{ $seoDescription }}",
-    "url": "{{ $canonicalUrl }}",
-    "image": "{{ $ogImage }}"
-    @if(isset($model->address))
-    ,"address": {
-        "@type": "PostalAddress",
-        "addressLocality": "{{ $model->city->name ?? 'Honduras' }}",
-        "addressCountry": "HN",
-        "streetAddress": "{{ $model->address }}"
-    }
-    @endif
-    @if(isset($model->whatsapp_number))
-    ,"telephone": "{{ $model->whatsapp_number }}"
-    @endif
-}
-</script>
+@if($schema)
+<script type="application/ld+json">@json($schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)</script>
 @endif

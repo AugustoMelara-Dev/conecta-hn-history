@@ -43,6 +43,7 @@ class SendAppointmentReminders implements ShouldQueue
         // Query appointments within the window that haven't been reminded
         // NOTE: We query WITHOUT tenant scope to process ALL tenants at once.
         $appointments = Appointment::query()
+            // JOB_GLOBAL_POLL: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
             ->withoutGlobalScopes() // Bypass TenantScope for global poll
             ->whereBetween('scheduled_at', [$windowStart, $windowEnd])
             ->whereNull('reminder_sent_at')

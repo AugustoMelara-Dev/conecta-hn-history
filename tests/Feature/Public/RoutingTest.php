@@ -7,6 +7,8 @@ use App\Models\Product;
 use App\Models\User;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Http\Request;
+use function Pest\Laravel\get;
+use function Pest\Laravel\postJson;
 
 uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
 
@@ -16,54 +18,54 @@ beforeEach(function (): void {
 
 describe('Canonical public routing', function () {
     it('renders the SaaS landing at root', function () {
-        $response = $this->get('/');
+        $response = get('/');
 
         $response->assertStatus(200);
         $response->assertInertia(fn ($page) => $page->component('Welcome'));
     });
 
     it('renders the canonical buyer directory at /directorio', function () {
-        $response = $this->get('/directorio');
+        $response = get('/directorio');
 
         $response->assertStatus(200);
         $response->assertInertia(fn ($page) => $page->component('Directory/Index'));
     });
 
     it('keeps legacy discovery paths as redirects only', function () {
-        $this->get('/explore')
+        get('/explore')
             ->assertRedirect('/directorio');
 
-        $this->get('/directory')
+        get('/directory')
             ->assertStatus(301)
             ->assertRedirect('/directorio');
     });
 
     it('serves legal pages used by registration and footer links', function () {
-        $this->get('/legal/terms')
+        get('/legal/terms')
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Legal/Show')
                 ->where('kind', 'terms')
             );
 
-        $this->get('/legal/privacy')
+        get('/legal/privacy')
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Legal/Show')
                 ->where('kind', 'privacy')
             );
 
-        $this->get('/terms')
+        get('/terms')
             ->assertStatus(301)
             ->assertRedirect('/legal/terms');
 
-        $this->get('/privacy')
+        get('/privacy')
             ->assertStatus(301)
             ->assertRedirect('/legal/privacy');
     });
 
     it('serves app.localhost as the buyer directory alias', function () {
-        $this->get('http://app.localhost/')
+        get('http://app.localhost/')
             ->assertRedirect('/directorio');
     });
 
@@ -75,7 +77,7 @@ describe('Canonical public routing', function () {
             'is_active' => true,
         ]);
 
-        $this->get('http://test-barbershop.localhost/')
+        get('http://test-barbershop.localhost/')
             ->assertStatus(200);
     });
 
@@ -87,7 +89,7 @@ describe('Canonical public routing', function () {
             'is_active' => true,
         ]);
 
-        $this->get('/t/test-barbershop')
+        get('/t/test-barbershop')
             ->assertStatus(200);
     });
 });
@@ -101,9 +103,8 @@ describe('Public directory privacy', function () {
 
         $payload = (new \App\Http\Resources\TenantCardResource($tenant))->resolve(Request::create('/directorio'));
 
-        expect($payload)
-            ->not->toHaveKey('is_pro')
-            ->not->toHaveKey('plan_type');
+        expect(array_key_exists('is_pro', $payload))->toBeFalse();
+        expect(array_key_exists('plan_type', $payload))->toBeFalse();
     });
 
     it('does not expose plan metadata in public microsite props', function () {
@@ -116,7 +117,7 @@ describe('Public directory privacy', function () {
             'is_pro' => true,
         ]);
 
-        $this->get('/t/private-plan-shop')
+        get('/t/private-plan-shop')
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Tenant/Show')
@@ -149,7 +150,7 @@ describe('Public directory privacy', function () {
 
         Product::factory()->forTenant($tenant)->create($productPayload);
 
-        $this->postJson('/api/v1/directory/guide/chat', [
+        postJson('/api/v1/directory/guide/chat', [
             'message' => 'que puedo comprar con 150 lempiras',
         ])
             ->assertOk()
@@ -162,19 +163,19 @@ describe('Public directory privacy', function () {
 
 describe('Compatibility and named routes', function () {
     it('keeps /register as a business-registration bridge', function () {
-        $this->get('/register')
+        get('/register')
             ->assertRedirect('/registrar-negocio');
     });
 
     it('does not conflict with /login', function () {
-        $response = $this->get('/login');
+        $response = get('/login');
 
         $response->assertStatus(200);
         $response->assertInertia(fn ($page) => $page->component('Auth/Login'));
     });
 
     it('keeps /dashboard protected', function () {
-        $this->get('/dashboard')
+        get('/dashboard')
             ->assertRedirect('/login');
     });
 

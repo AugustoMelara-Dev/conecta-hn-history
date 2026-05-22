@@ -27,6 +27,7 @@ final class EloquentOrderReader implements OrderReader
         ?string $status = null,
         int $perPage = 20
     ): LengthAwarePaginator {
+        // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
         return Order::withoutGlobalScopes()
             ->where('tenant_id', $tenantId)
             ->when($status, fn ($query, $status) => $query->where('status', $status))
@@ -40,6 +41,7 @@ final class EloquentOrderReader implements OrderReader
      */
     public function find(int|string $tenantId, int $orderId): ?object
     {
+        // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
         return Order::withoutGlobalScopes()
             ->where('tenant_id', $tenantId)  // ✅ IDOR FIX: Tenant Isolation
             ->with(['items', 'tenant'])
@@ -51,6 +53,7 @@ final class EloquentOrderReader implements OrderReader
      */
     public function findByStatus(int|string $tenantId, string $status, int $limit = 50): iterable
     {
+        // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
         return Order::withoutGlobalScopes()
             ->where('tenant_id', $tenantId)
             ->where('status', $status)

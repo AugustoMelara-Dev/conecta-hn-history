@@ -4,21 +4,78 @@ declare(strict_types=1);
 
 namespace App\Events\Appointment;
 
-use App\Models\Appointment;
+use App\Contracts\Events\DomainEvent;
+use App\Domain\Shared\ValueObjects\TenantId;
+use DateTimeImmutable;
+use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
 
-/**
- * Event dispatched when a new appointment is created.
- *
- * Used to trigger notifications (email confirmations, etc.)
- * without blocking the HTTP request.
- */
-class AppointmentCreated
+final readonly class AppointmentCreated implements DomainEvent, ShouldDispatchAfterCommit
 {
-    use Dispatchable, SerializesModels;
+    use Dispatchable;
 
-    public function __construct(public Appointment $appointment)
+    private string $eventId;
+
+    private DateTimeImmutable $occurredAt;
+
+    public function __construct(
+        mixed $appointment,
+        int|string|null $tenantKey = null,
+        ?string $eventId = null,
+        ?DateTimeImmutable $occurredAt = null,
+    ) {
+        $this->appointmentId = $appointment->id ?? $appointment;
+        $this->tenantKey = $tenantKey ?? ($appointment->tenant_id ?? 0);
+        $this->eventId = $eventId ?? (string) \Illuminate\Support\Str::uuid();
+        $this->occurredAt = $occurredAt ?? new DateTimeImmutable();
+    }
+
+    public int|string $appointmentId;
+
+    public int|string $tenantKey;
+
+    public static function fromAppointment(mixed $appointment): self
     {
+        return new self($appointment);
+    }
+
+    public function eventId(): string
+    {
+        return $this->eventId;
+    }
+
+    public function tenantId(): TenantId
+    {
+        return TenantId::fromString((string) $this->tenantKey);
+    }
+
+    public function aggregateId(): int
+    {
+        return (int) $this->appointmentId;
+    }
+
+    public function occurredAt(): DateTimeImmutable
+    {
+        return $this->occurredAt;
+    }
+
+    public function toPrimitives(): array
+    {
+        return [
+            'event_id' => $this->eventId,
+            'appointment_id' => (string) $this->appointmentId,
+            'tenant_id' => (string) $this->tenantKey,
+            'occurred_at' => $this->occurredAt->format(DATE_ATOM),
+        ];
+    }
+
+    public static function fromPrimitives(array $primitives): self
+    {
+        return new self(
+            appointment: (string) $primitives['appointment_id'],
+            tenantKey: (string) $primitives['tenant_id'],
+            eventId: isset($primitives['event_id']) ? (string) $primitives['event_id'] : null,
+            occurredAt: isset($primitives['occurred_at']) ? new DateTimeImmutable((string) $primitives['occurred_at']) : null,
+        );
     }
 }

@@ -72,6 +72,30 @@ class AppServiceProvider extends ServiceProvider
             \App\Infrastructure\Logging\LaravelLoggerAdapter::class
         );
         $this->app->bind(
+            \App\Application\Billing\Contracts\PaymentWebhookSettlementInterface::class,
+            \App\Infrastructure\Billing\EloquentPaymentWebhookSettlement::class
+        );
+        $this->app->bind(
+            \App\Application\Billing\Contracts\SubscriptionIntentStoreInterface::class,
+            \App\Infrastructure\Billing\EloquentSubscriptionIntentStore::class
+        );
+        $this->app->bind(
+            \App\Application\Ai\PrivateAiTenantAccessReaderInterface::class,
+            \App\Infrastructure\AI\EloquentPrivateAiTenantAccessReader::class
+        );
+        $this->app->bind(
+            \App\Application\Interactions\Contracts\LeadFollowUpPlaybookInterface::class,
+            \App\Infrastructure\Interactions\EloquentLeadFollowUpPlaybook::class
+        );
+        $this->app->bind(
+            \App\Application\TenantGovernance\Crm\CrmDefaultPipelineGatewayInterface::class,
+            \App\Infrastructure\Crm\EloquentCrmDefaultPipelineGateway::class
+        );
+        $this->app->bind(
+            \App\Application\TenantGovernance\Crm\CrmPipelineSummaryGatewayInterface::class,
+            \App\Infrastructure\Crm\EloquentCrmPipelineSummaryGateway::class
+        );
+        $this->app->bind(
             \App\Application\Shared\Contracts\DataScrubberInterface::class,
             \App\Infrastructure\Logging\SensitiveDataScrubber::class
         );

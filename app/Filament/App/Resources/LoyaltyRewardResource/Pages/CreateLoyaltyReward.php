@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\App\Resources\LoyaltyRewardResource\Pages;
 
 use App\Filament\App\Resources\LoyaltyRewardResource;

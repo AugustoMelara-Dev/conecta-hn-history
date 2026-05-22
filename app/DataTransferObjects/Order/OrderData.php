@@ -139,6 +139,7 @@ final readonly class OrderData implements \JsonSerializable, Arrayable
             if (! is_array($item)) {
                 throw InvalidBusinessRuleException::custom(
                     "Item at index {$index} is not a valid array",
+                    'items.* must be array',
                     ['index' => $index, 'type' => gettype($item)]
                 );
             }
@@ -158,6 +159,7 @@ final readonly class OrderData implements \JsonSerializable, Arrayable
         if ($taxRate < 0 || $taxRate > 100) {
             throw InvalidBusinessRuleException::custom(
                 "Invalid tax rate: {$taxRate}%. Must be between 0 and 100.",
+                '0 <= tax_rate <= 100',
                 ['tax_rate' => $taxRate]
             );
         }
@@ -172,6 +174,7 @@ final readonly class OrderData implements \JsonSerializable, Arrayable
         if ($discount->cents() > $calculatedSubtotal->cents()) {
             throw InvalidBusinessRuleException::custom(
                 'Discount cannot exceed subtotal.',
+                'discount <= subtotal',
                 ['discount' => $discount->cents(), 'subtotal' => $calculatedSubtotal->cents()]
             );
         }

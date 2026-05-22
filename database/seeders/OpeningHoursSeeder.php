@@ -61,25 +61,25 @@ class OpeningHoursSeeder extends Seeder
 
         foreach ($tenantIds as $tenantId) {
             foreach (self::STANDARD_HOURS as $dayOfWeek => $schedule) {
-                // IDEMPOTENT: firstOrCreate prevents duplicates
-                $result = OpeningHour::firstOrCreate(
-                    // Unique key constraint
-                    [
-                        'tenant_id' => $tenantId,
-                        'day_of_week' => $dayOfWeek,
-                    ],
-                    // Values to set if creating
-                    [
-                        'opening_time' => $schedule['opening_time'],
-                        'closing_time' => $schedule['closing_time'],
-                    ]
-                );
+                $existing = OpeningHour::query()
+                    ->where('tenant_id', $tenantId)
+                    ->where('day_of_week', $dayOfWeek)
+                    ->first();
 
-                if ($result->wasRecentlyCreated) {
-                    $created++;
-                } else {
+                if ($existing instanceof OpeningHour) {
                     $skipped++;
+
+                    continue;
                 }
+
+                OpeningHour::forceCreate([
+                    'tenant_id' => $tenantId,
+                    'day_of_week' => $dayOfWeek,
+                    'opening_time' => $schedule['opening_time'],
+                    'closing_time' => $schedule['closing_time'],
+                ]);
+
+                $created++;
             }
         }
 

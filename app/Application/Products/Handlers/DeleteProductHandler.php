@@ -10,7 +10,7 @@ use App\Domain\Product\Events\ProductDeleted;
 use App\Domain\Product\Repositories\ProductRepositoryInterface;
 use App\Infrastructure\Bus\TransactionalEventDispatcher;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Facades\Log;
+use App\Application\Shared\Contracts\LoggerInterface;
 
 /**
  * DeleteProductHandler - Command Handler for Product Soft Deletion
@@ -27,6 +27,7 @@ final class DeleteProductHandler
     public function __construct(
         private readonly ProductRepositoryInterface $productRepository,
         private readonly TransactionalEventDispatcher $eventDispatcher,
+        private readonly LoggerInterface $logger,
     ) {}
 
     /**
@@ -45,7 +46,7 @@ final class DeleteProductHandler
 
         // 2. SECURITY GUARD: Tenant Ownership Verification
         if ($product->tenant_id !== $command->tenantId) {
-            Log::warning('SECURITY: Cross-tenant product deletion attempt', [
+            $this->logger->warning('SECURITY: Cross-tenant product deletion attempt', [
                 'requested_product_id' => $command->productId,
                 'requesting_tenant_id' => $command->tenantId,
             ]);
@@ -62,7 +63,7 @@ final class DeleteProductHandler
             name: $product->name,
         ));
 
-        Log::info('Product deleted', $this->sanitizePayload([
+        $this->logger->info('Product deleted', $this->sanitizePayload([
             'product_id' => $command->productId,
             'tenant_id' => $command->tenantId,
         ]));

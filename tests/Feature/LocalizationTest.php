@@ -3,11 +3,12 @@
 declare(strict_types=1);
 
 use Carbon\Carbon;
+use function Pest\Laravel\get;
 
 describe('Localization Configuration', function () {
     it('sets carbon locale to spanish during http request', function () {
         // Make an HTTP request to trigger full Laravel bootstrap
-        $this->get('/');
+        get('/');
 
         // Carbon::getLocale() should return the global locale
         expect(Carbon::getLocale())->toBe('es');
@@ -15,7 +16,7 @@ describe('Localization Configuration', function () {
 
     it('renders dates in spanish with diffForHumans', function () {
         // Trigger full bootstrap
-        $this->get('/');
+        get('/');
 
         // Arrange
         $date = Carbon::now()->subMinute();
@@ -29,7 +30,7 @@ describe('Localization Configuration', function () {
 
     it('renders translated month names in spanish', function () {
         // Trigger full bootstrap
-        $this->get('/');
+        get('/');
 
         // Arrange: A date in January
         $date = Carbon::parse('2026-01-15');

@@ -1,0 +1,37 @@
+<?php
+
+namespace Mockery;
+
+interface ExpectationInterface
+{
+    public function andReturn(mixed ...$args): self;
+
+    public function andReturnSelf(): self;
+
+    public function andReturnUsing(callable ...$args): self;
+
+    public function andThrow(\Throwable|string $exception, string $message = '', int $code = 0): self;
+
+    public function never(): self;
+
+    public function once(): self;
+
+    public function with(mixed ...$args): self;
+}
+
+class HigherOrderMessage
+{
+    public function andReturn(mixed ...$args): self {}
+
+    public function andReturnSelf(): self {}
+
+    public function andReturnUsing(callable ...$args): self {}
+
+    public function andThrow(\Throwable|string $exception, string $message = '', int $code = 0): self {}
+
+    public function never(): self {}
+
+    public function once(): self {}
+
+    public function with(mixed ...$args): self {}
+}

@@ -9,8 +9,7 @@ use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Domain\TenantGovernance\Enums\CommercialMode;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\RegisterTenantRequest;
-use App\Models\Tenant;
-use App\Models\User;
+use App\Infrastructure\Registration\EloquentRegistrationPostProcessor;
 use App\Support\Panel\CanonicalPanelUrlResolver;
 use Illuminate\Http\RedirectResponse;
 use Symfony\Component\HttpFoundation\Response as HttpResponse;
@@ -184,9 +183,10 @@ final class RegisterTenantController extends Controller
 
             // EXECUTE
             $result = $bus->dispatch($command);
-            $user = $this->resolveRegisteredUser($result, (string) $request->validated('email'));
+            $postProcessor = app(EloquentRegistrationPostProcessor::class);
+            $user = $postProcessor->resolveUser($result, (string) $request->validated('email'));
 
-            if (! $user instanceof User) {
+            if ($user === null) {
                 return redirect()
                     ->route('login')
                     ->with('warning', 'Tu negocio se creó, pero debes iniciar sesión para continuar al panel.');
@@ -211,11 +211,10 @@ final class RegisterTenantController extends Controller
 
             if ($panelUrl === $registerUrl || str_contains($panelUrl, '/registrar-negocio')) {
                 $tenantSlug = Str::slug((string) $request->validated('slug'));
-                $tenant = Tenant::query()->where('slug', $tenantSlug)->first();
+                $fallbackUrl = $postProcessor->ensureUserTenantForSlug($user, $tenantSlug);
 
-                if ($tenant instanceof Tenant) {
-                    $user->forceFill(['tenant_id' => $tenant->id])->save();
-                    $panelUrl = "/app/{$tenant->slug}";
+                if ($fallbackUrl !== null) {
+                    $panelUrl = $fallbackUrl;
                 }
             }
 
@@ -242,12 +241,4 @@ final class RegisterTenantController extends Controller
         }
     }
 
-    private function resolveRegisteredUser(mixed $result, string $email): ?User
-    {
-        if (is_array($result) && isset($result['user']) && $result['user'] instanceof User) {
-            return $result['user'];
-        }
-
-        return User::query()->where('email', $email)->first();
-    }
 }

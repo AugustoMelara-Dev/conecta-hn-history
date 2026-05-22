@@ -165,7 +165,7 @@ class AppPanelProvider extends PanelProvider
             // ═══════════════════════════════════════════════════════════════
             ->maxContentWidth('full')
             ->when(
-                ! filter_var(env('UIUX_DISABLE_FILAMENT_DATABASE_NOTIFICATIONS', true), FILTER_VALIDATE_BOOL),
+                ! (bool) config('conecta.uiux.disable_filament_database_notifications', true),
                 fn (Panel $panel): Panel => $panel
                     ->databaseNotifications()
                     ->databaseNotificationsPolling('60s'),

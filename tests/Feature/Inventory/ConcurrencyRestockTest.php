@@ -162,6 +162,10 @@ class ConcurrencyRestockTest extends TestCase
 
     public function test_restock_uses_lock_for_update(): void
     {
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            $this->markTestSkipped('SQLite does not emit SELECT ... FOR UPDATE for lockForUpdate().');
+        }
+
         DB::enableQueryLog();
 
         $order = $this->createOrderWithQuantity(5);
@@ -184,6 +188,10 @@ class ConcurrencyRestockTest extends TestCase
 
     public function test_lock_includes_tenant_isolation(): void
     {
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            $this->markTestSkipped('SQLite does not emit SELECT ... FOR UPDATE for lockForUpdate().');
+        }
+
         DB::enableQueryLog();
 
         $order = $this->createOrderWithQuantity(5);

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use function Pest\Laravel\get;
 
 uses(RefreshDatabase::class);
 
@@ -23,7 +24,7 @@ describe('Subdomain Routing Infrastructure', function () {
         ]);
 
         // Act: Simulate request to barberia.vito.test
-        $response = $this->get('http://barberia.vito.test/');
+        get('http://barberia.vito.test/');
 
         // Assert: Should load tenant microsite (or bound to container)
         // Note: In test environment, subdomain may not resolve directly
@@ -33,7 +34,7 @@ describe('Subdomain Routing Infrastructure', function () {
 
     it('returns 404 for unknown subdomain', function () {
         // Act
-        $response = $this->get('http://unknown-business.vito.test/');
+        $response = get('http://unknown-business.vito.test/');
 
         // Assert
         $response->assertStatus(404);

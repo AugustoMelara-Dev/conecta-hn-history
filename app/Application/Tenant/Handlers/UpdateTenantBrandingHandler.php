@@ -9,7 +9,7 @@ use App\Application\Tenant\Commands\UpdateTenantBrandingCommand;
 use App\Domain\Identity\Repositories\TenantRepositoryInterface;
 use App\Domain\Shared\Contracts\MediaStorageServiceInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Facades\Log;
+use App\Application\Shared\Contracts\LoggerInterface;
 
 /**
  * UpdateTenantBrandingHandler - Branding Assets Update Handler
@@ -27,6 +27,7 @@ final class UpdateTenantBrandingHandler
     public function __construct(
         private readonly TenantRepositoryInterface $tenantRepository,
         private readonly MediaStorageServiceInterface $mediaStorage,
+        private readonly LoggerInterface $logger,
     ) {}
 
     /**
@@ -67,7 +68,7 @@ final class UpdateTenantBrandingHandler
         // 5. Persist via Repository
         $this->tenantRepository->save($tenant);
 
-        Log::info('Tenant branding updated', $this->sanitizePayload([
+        $this->logger->info('Tenant branding updated', $this->sanitizePayload([
             'tenant_id' => $command->tenantId,
             'logo_updated' => $command->logo !== null,
             'banner_updated' => $command->banner !== null,

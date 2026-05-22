@@ -28,17 +28,28 @@ trait BelongsToTenant
 
         // 2. Inject Tenant ID on Creation (Write Protection)
         static::creating(function ($model) {
-            // Only inject if not already set (allows override for Admin SEEDERS)
+            $context = app(TenantContext::class);
+
+            // BYPASS: System Mode (Console/Jobs/Admin Seeding)
+            if ($context->isRoot()) {
+                return;
+            }
+
+            if (isset($model->tenant_id) && ! $context->isInitialized()) {
+                return;
+            }
+
+            // This will throw if context is missing, preventing accidental orphan records.
+            $tenantId = $context->id();
+
             if (! isset($model->tenant_id)) {
-                $context = app(TenantContext::class);
+                $model->tenant_id = $tenantId;
 
-                // BYPASS: System Mode (Console/Jobs/Admin Seeding)
-                if ($context->isRoot()) {
-                    return;
-                }
+                return;
+            }
 
-                // This will throw if context missing, preventing accidental orphan records
-                $model->tenant_id = $context->id();
+            if ((string) $model->tenant_id !== (string) $tenantId) {
+                throw new \LogicException('Tenant-owned models cannot be created for a different tenant than the active context.');
             }
         });
     }

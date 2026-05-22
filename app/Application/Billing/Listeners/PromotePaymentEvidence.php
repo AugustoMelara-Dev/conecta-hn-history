@@ -11,7 +11,7 @@ use App\Domain\Billing\Services\DocumentStorageServiceInterface;
 use App\Domain\Shared\Exceptions\StaleObjectException;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Support\Facades\Log;
+use App\Application\Shared\Contracts\LoggerInterface;
 use RuntimeException;
 use Throwable;
 
@@ -40,11 +40,12 @@ class PromotePaymentEvidence implements ShouldQueue
     public function __construct(
         private PaymentRepositoryInterface $paymentRepository,
         private DocumentStorageServiceInterface $documentStorage,
+        private readonly LoggerInterface $logger,
     ) {}
 
     public function handle(PaymentReported $event): void
     {
-        Log::info("PromotePaymentEvidence: Processing Payment {$event->paymentId}");
+        $this->logger->info("PromotePaymentEvidence: Processing Payment {$event->paymentId}");
 
         $attempts = 0;
         $cachedPermanentPath = null;
@@ -79,7 +80,7 @@ class PromotePaymentEvidence implements ShouldQueue
                 }
 
                 if (! str_starts_with($proofUrl, 'temp')) {
-                    Log::info("PromotePaymentEvidence: Payment {$payment->id} evidence already promoted. Skipping.");
+                    $this->logger->info("PromotePaymentEvidence: Payment {$payment->id} evidence already promoted. Skipping.");
 
                     return;
                 }
@@ -108,12 +109,12 @@ class PromotePaymentEvidence implements ShouldQueue
                 // 5. ATOMIC OPTIMISTIC UPDATE
                 $this->paymentRepository->updateOptimistically($updatedPayment);
 
-                Log::info("PromotePaymentEvidence: Successfully promoted to {$permanentPath}");
+                $this->logger->info("PromotePaymentEvidence: Successfully promoted to {$permanentPath}");
                 break; // Success
 
             } catch (StaleObjectException $e) {
                 if ($attempts >= self::MAX_ATTEMPTS) {
-                    Log::error("PromotePaymentEvidence: Failed to update DB after {$attempts} attempts due to contention.", [
+                    $this->logger->error("PromotePaymentEvidence: Failed to update DB after {$attempts} attempts due to contention.", [
                         'payment_id' => $event->paymentId,
                     ]);
                     throw $e;
@@ -121,7 +122,7 @@ class PromotePaymentEvidence implements ShouldQueue
                 usleep($attempts * 100000); // 100ms Backoff
             } catch (Throwable $e) {
                 // Check if we can retry the job (Queue level)
-                Log::error("PromotePaymentEvidence: Failed attempt {$attempts}: ".$e->getMessage());
+                $this->logger->error("PromotePaymentEvidence: Failed attempt {$attempts}: ".$e->getMessage());
                 throw $e;
             }
 
@@ -137,14 +138,14 @@ class PromotePaymentEvidence implements ShouldQueue
      */
     private function executeSafePromotion(string $paymentId, string $tempPath): string
     {
-        Log::info("PromotePaymentEvidence: Promoting artifact for Payment {$paymentId}");
+        $this->logger->info("PromotePaymentEvidence: Promoting artifact for Payment {$paymentId}");
 
         return $this->documentStorage->promote($tempPath);
     }
 
     public function failed(PaymentReported $event, Throwable $exception): void
     {
-        Log::critical("TERMINAL FAILURE: Could not promote evidence for Payment {$event->paymentId}. Artifact is stuck in TEMP storage.", [
+        $this->logger->critical("TERMINAL FAILURE: Could not promote evidence for Payment {$event->paymentId}. Artifact is stuck in TEMP storage.", [
             'payment_id' => $event->paymentId,
             'exception' => $exception->getMessage(),
         ]);

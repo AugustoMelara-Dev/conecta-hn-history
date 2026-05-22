@@ -13,7 +13,7 @@ use App\Domain\Identity\Exceptions\CrossTenantAccessException;
 use App\Domain\Identity\Exceptions\UserNotFoundException;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\User\Events\UserProfileUpdated;
-use Illuminate\Support\Facades\Log;
+use App\Application\Shared\Contracts\LoggerInterface;
 
 /**
  * UpdateUserProfileHandler - Zero-Trust Profile Management
@@ -32,6 +32,7 @@ final readonly class UpdateUserProfileHandler
         private UserRepositoryInterface $userRepository,
         private TransactionManagerInterface $transactionManager,
         private EventBusInterface $eventBus,
+        private readonly LoggerInterface $logger,
     ) {}
 
     /**
@@ -49,7 +50,7 @@ final readonly class UpdateUserProfileHandler
         $user = $this->userRepository->findById($command->userId, $command->requestingTenantId);
 
         if ($user === null) {
-            Log::warning('Profile update attempt for non-existent user', $this->sanitizePayload([
+            $this->logger->warning('Profile update attempt for non-existent user', $this->sanitizePayload([
                 'user_id' => $command->userId,
                 'requesting_tenant_id' => $command->requestingTenantId,
             ]));
@@ -70,7 +71,7 @@ final readonly class UpdateUserProfileHandler
         // ═══════════════════════════════════════════════════════════════════
         // FIX: Use getter method for private property access
         if ($user->tenantId() !== $command->requestingTenantId) {
-            Log::warning('SECURITY: Cross-tenant profile update attempt blocked', $this->sanitizePayload([
+            $this->logger->warning('SECURITY: Cross-tenant profile update attempt blocked', $this->sanitizePayload([
                 'target_user_id' => $command->userId,
                 'target_tenant_id' => $user->tenantId(),
                 'requesting_tenant_id' => $command->requestingTenantId,
@@ -104,7 +105,7 @@ final readonly class UpdateUserProfileHandler
             $this->userRepository->save($user);
 
             // Audit
-            Log::info('User profile updated successfully', $this->sanitizePayload([
+            $this->logger->info('User profile updated successfully', $this->sanitizePayload([
                 'user_id' => $command->userId,
                 'tenant_id' => $command->requestingTenantId,
                 'email_changed' => $emailChanged,

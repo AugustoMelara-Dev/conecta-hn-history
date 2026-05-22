@@ -9,8 +9,6 @@ use App\Domain\Access\Enums\Permission;
 use App\Domain\TenantGovernance\Enums\Capability;
 use App\Http\Controllers\Controller;
 use App\Infrastructure\Tenant\TenantPrivateAgentService;
-use App\Models\Tenant;
-use App\Models\User;
 use App\Support\Tenancy\RequestTenantResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -28,10 +26,10 @@ final class TenantPrivateAgentController extends Controller
         ]);
 
         $user = $request->user();
-        abort_unless($user instanceof User, 401);
+        abort_unless(is_object($user), 401);
 
         $tenant = $tenantResolver->resolveExplicit($request);
-        abort_unless($tenant instanceof Tenant, 403);
+        abort_unless(is_object($tenant), 403);
 
         abort_unless($this->tenantIsAllowlisted($tenant), 403, 'El agente privado todavia no esta habilitado para este negocio.');
 
@@ -51,7 +49,7 @@ final class TenantPrivateAgentController extends Controller
         return response()->json($agent->answer($tenant, (string) $data['message']));
     }
 
-    private function tenantIsAllowlisted(Tenant $tenant): bool
+    private function tenantIsAllowlisted(object $tenant): bool
     {
         $allowed = config('conecta.features.tenant_private_agent_tenants', []);
 

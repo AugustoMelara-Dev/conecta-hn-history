@@ -6,6 +6,7 @@ namespace App\Domain\Shared\ValueObjects;
 
 use Illuminate\Support\Str;
 use InvalidArgumentException;
+use JsonSerializable;
 
 /**
  * TenantId Value Object
@@ -15,7 +16,7 @@ use InvalidArgumentException;
  *
  * @property-read string $value
  */
-final readonly class TenantId
+final readonly class TenantId implements JsonSerializable
 {
     private function __construct(
         public string $value
@@ -31,6 +32,20 @@ final readonly class TenantId
     public static function fromString(string $value): self
     {
         return new self($value);
+    }
+
+    /**
+     * @param array{tenant_id?: int|string, value?: int|string} $data
+     */
+    public static function fromArray(array $data): self
+    {
+        $value = $data['tenant_id'] ?? $data['value'] ?? null;
+
+        if (! is_int($value) && ! is_string($value)) {
+            throw new InvalidArgumentException('TenantId payload must contain tenant_id.');
+        }
+
+        return new self((string) $value);
     }
 
     public static function fromInt(int|string $value): self
@@ -54,6 +69,14 @@ final readonly class TenantId
     public function toString(): string
     {
         return $this->value;
+    }
+
+    /**
+     * @return array{tenant_id: string}
+     */
+    public function jsonSerialize(): array
+    {
+        return ['tenant_id' => $this->value];
     }
 
     public function toInt(): int

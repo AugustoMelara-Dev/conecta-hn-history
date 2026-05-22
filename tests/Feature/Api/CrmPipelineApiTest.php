@@ -135,7 +135,7 @@ final class CrmPipelineApiTest extends TestCase
         $pipeline = $this->pipeline($tenant);
         $stage = $pipeline->stages()->where('key', 'new')->firstOrFail();
 
-        CrmDeal::query()->withoutGlobalScopes()->create([
+        CrmDeal::query()->withoutGlobalScopes()->forceCreate([
             'tenant_id' => (string) $tenant->getKey(),
             'crm_pipeline_id' => $pipeline->getKey(),
             'crm_stage_id' => $stage->getKey(),
@@ -214,7 +214,7 @@ final class CrmPipelineApiTest extends TestCase
         $pipeline = $this->pipeline($tenant);
         $stage = $pipeline->stages()->where('key', 'new')->firstOrFail();
         $proposal = $pipeline->stages()->where('key', 'proposal')->firstOrFail();
-        $customer = CustomerProfile::query()->withoutGlobalScopes()->create([
+        $customer = CustomerProfile::query()->withoutGlobalScopes()->forceCreate([
             'tenant_id' => (string) $tenant->getKey(),
             'name' => 'Cliente CRM',
             'email' => 'cliente@example.com',
@@ -223,7 +223,7 @@ final class CrmPipelineApiTest extends TestCase
             'lifecycle_stage' => CustomerProfile::LIFECYCLE_PROSPECT,
             'customer_segment' => CustomerProfile::SEGMENT_PROSPECT,
         ]);
-        $lead = Lead::query()->withoutGlobalScopes()->create([
+        $lead = Lead::query()->withoutGlobalScopes()->forceCreate([
             'tenant_id' => (string) $tenant->getKey(),
             'name' => 'Lead CRM',
             'email' => 'lead@example.com',
@@ -276,7 +276,7 @@ final class CrmPipelineApiTest extends TestCase
     public function test_tenant_can_convert_lead_to_deal_with_customer_profile_path(): void
     {
         [$owner, $tenant] = $this->tenantOwner();
-        $lead = Lead::query()->withoutGlobalScopes()->create([
+        $lead = Lead::query()->withoutGlobalScopes()->forceCreate([
             'tenant_id' => (string) $tenant->getKey(),
             'name' => 'Lead listo para deal',
             'email' => 'lead.convertido@example.com',
@@ -326,7 +326,7 @@ final class CrmPipelineApiTest extends TestCase
     {
         [$owner, $tenant] = $this->tenantOwner();
         [, $otherTenant] = $this->tenantOwner(email: 'other-lead-owner@example.com');
-        $lead = Lead::query()->withoutGlobalScopes()->create([
+        $lead = Lead::query()->withoutGlobalScopes()->forceCreate([
             'tenant_id' => (string) $otherTenant->getKey(),
             'name' => 'Lead externo',
             'email' => 'externo@example.com',
@@ -350,7 +350,7 @@ final class CrmPipelineApiTest extends TestCase
             'role' => Role::VIEWER,
             'accepted_at' => now(),
         ]);
-        $lead = Lead::query()->withoutGlobalScopes()->create([
+        $lead = Lead::query()->withoutGlobalScopes()->forceCreate([
             'tenant_id' => (string) $tenant->getKey(),
             'name' => 'Lead bloqueado',
             'status' => 'new',
@@ -389,7 +389,7 @@ final class CrmPipelineApiTest extends TestCase
         $wonStage = $pipeline->stages()->where('type', CrmStage::TYPE_WON)->firstOrFail();
         $lostStage = $pipeline->stages()->where('type', CrmStage::TYPE_LOST)->firstOrFail();
 
-        CrmDeal::query()->withoutGlobalScopes()->create([
+        CrmDeal::query()->withoutGlobalScopes()->forceCreate([
             'tenant_id' => (string) $tenant->getKey(),
             'crm_pipeline_id' => $pipeline->getKey(),
             'crm_stage_id' => $stage->getKey(),
@@ -399,7 +399,7 @@ final class CrmPipelineApiTest extends TestCase
             'status' => CrmDeal::STATUS_OPEN,
             'expected_close_at' => now()->subDay()->toDateString(),
         ]);
-        $wonDeal = CrmDeal::query()->withoutGlobalScopes()->create([
+        $wonDeal = CrmDeal::query()->withoutGlobalScopes()->forceCreate([
             'tenant_id' => (string) $tenant->getKey(),
             'crm_pipeline_id' => $pipeline->getKey(),
             'crm_stage_id' => $wonStage->getKey(),
@@ -410,7 +410,7 @@ final class CrmPipelineApiTest extends TestCase
             'closed_at' => now()->subDays(2),
         ]);
         $wonDeal->forceFill(['created_at' => now()->subDays(10)])->save();
-        $lostDeal = CrmDeal::query()->withoutGlobalScopes()->create([
+        $lostDeal = CrmDeal::query()->withoutGlobalScopes()->forceCreate([
             'tenant_id' => (string) $tenant->getKey(),
             'crm_pipeline_id' => $pipeline->getKey(),
             'crm_stage_id' => $lostStage->getKey(),
@@ -516,7 +516,7 @@ final class CrmPipelineApiTest extends TestCase
 
         $pipeline = $this->pipeline($tenant);
         $stage = $pipeline->stages()->where('key', 'new')->firstOrFail();
-        $deal = CrmDeal::query()->withoutGlobalScopes()->create([
+        $deal = CrmDeal::query()->withoutGlobalScopes()->forceCreate([
             'tenant_id' => (string) $tenant->getKey(),
             'crm_pipeline_id' => $pipeline->getKey(),
             'crm_stage_id' => $stage->getKey(),
@@ -577,7 +577,7 @@ final class CrmPipelineApiTest extends TestCase
         [$owner, $tenant] = $this->tenantOwner();
         $pipeline = $this->pipeline($tenant);
         $stage = $pipeline->stages()->where('key', 'new')->firstOrFail();
-        $deal = CrmDeal::query()->withoutGlobalScopes()->create([
+        $deal = CrmDeal::query()->withoutGlobalScopes()->forceCreate([
             'tenant_id' => (string) $tenant->getKey(),
             'crm_pipeline_id' => $pipeline->getKey(),
             'crm_stage_id' => $stage->getKey(),
@@ -597,7 +597,7 @@ final class CrmPipelineApiTest extends TestCase
         [$owner, $tenant] = $this->tenantOwner();
         $pipeline = $this->pipeline($tenant);
         $stage = $pipeline->stages()->where('key', 'new')->firstOrFail();
-        $deal = CrmDeal::query()->withoutGlobalScopes()->create([
+        $deal = CrmDeal::query()->withoutGlobalScopes()->forceCreate([
             'tenant_id' => (string) $tenant->getKey(),
             'crm_pipeline_id' => $pipeline->getKey(),
             'crm_stage_id' => $stage->getKey(),
@@ -628,7 +628,7 @@ final class CrmPipelineApiTest extends TestCase
         [$owner, $tenant] = $this->tenantOwner();
         $pipeline = $this->pipeline($tenant);
         $stage = $pipeline->stages()->where('key', 'new')->firstOrFail();
-        $deal = CrmDeal::query()->withoutGlobalScopes()->create([
+        $deal = CrmDeal::query()->withoutGlobalScopes()->forceCreate([
             'tenant_id' => (string) $tenant->getKey(),
             'crm_pipeline_id' => $pipeline->getKey(),
             'crm_stage_id' => $stage->getKey(),

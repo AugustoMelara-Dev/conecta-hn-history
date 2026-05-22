@@ -55,6 +55,7 @@ class OrderResource extends Resource
 
         try {
             $count = static::getModel()::query()
+                // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
                 ->withoutGlobalScopes()
                 ->where('tenant_id', $tenant->id)
                 ->where('status', 'pending')

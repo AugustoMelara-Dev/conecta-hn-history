@@ -29,33 +29,42 @@ beforeEach(function () {
             $table->timestamps();
         });
     }
-
-    // Crear usuario para Tenant A
-    $this->userA = User::factory()->create(['name' => 'User A']);
-
-    // Crear tenant propiedad de User A (relacion hasMany por user_id)
-    $this->tenantA = Tenant::factory()->create([
-        'name' => 'Tenant A',
-        'user_id' => $this->userA->id,
-    ]);
-
-    // Crear usuario para Tenant B
-    $this->userB = User::factory()->create(['name' => 'User B']);
-
-    // Crear tenant propiedad de User B
-    $this->tenantB = Tenant::factory()->create([
-        'name' => 'Tenant B',
-        'user_id' => $this->userB->id,
-    ]);
 });
+
+/**
+ * @return array{userA: User, tenantA: Tenant, userB: User, tenantB: Tenant}
+ */
+function createSanctumTokenFixture(): array
+{
+    $userA = User::factory()->create(['name' => 'User A']);
+    $tenantA = Tenant::factory()->create([
+        'name' => 'Tenant A',
+        'user_id' => $userA->id,
+    ]);
+
+    $userB = User::factory()->create(['name' => 'User B']);
+    $tenantB = Tenant::factory()->create([
+        'name' => 'Tenant B',
+        'user_id' => $userB->id,
+    ]);
+
+    return [
+        'userA' => $userA,
+        'tenantA' => $tenantA,
+        'userB' => $userB,
+        'tenantB' => $tenantB,
+    ];
+}
 
 /**
  * Helper: Crear TenantContext mock para un tenant específico
  */
 function mockTenantContext(int|string $tenantId): TenantContextInterface
 {
+    /** @var TenantContextInterface&Mockery\MockInterface $mock */
     $mock = Mockery::mock(TenantContextInterface::class);
     $mock->shouldReceive('getTenantId')->andReturn($tenantId);
+
     return $mock;
 }
 
@@ -64,27 +73,30 @@ function mockTenantContext(int|string $tenantId): TenantContextInterface
 // ═══════════════════════════════════════════════════════════════════════════
 
 test('creates token for user belonging to current tenant', function () {
-    $context = mockTenantContext($this->tenantA->id);
+    $fixture = createSanctumTokenFixture();
+    $context = mockTenantContext($fixture['tenantA']->id);
     $service = new SanctumAuthTokenService($context);
 
-    $result = $service->createTokenForUser($this->userA->id);
+    $result = $service->createTokenForUser($fixture['userA']->id);
 
     expect($result)->toHaveKeys(['user', 'token']);
-    expect($result['user']->id)->toBe($this->userA->id);
-    expect($result['token'])->toBeString()->not->toBeEmpty();
+    expect($result['user']->id)->toBe($fixture['userA']->id);
+    expect($result['token'])->toBeString();
+    expect($result['token'])->toBeTruthy();
 });
 
 test('creates token with custom token name', function () {
-    $context = mockTenantContext($this->tenantA->id);
+    $fixture = createSanctumTokenFixture();
+    $context = mockTenantContext($fixture['tenantA']->id);
     $service = new SanctumAuthTokenService($context);
 
-    $result = $service->createTokenForUser($this->userA->id, 'mobile-app-token');
+    $result = $service->createTokenForUser($fixture['userA']->id, 'mobile-app-token');
 
     expect($result['token'])->toBeString();
     
     // Verificar que el token fue creado con el nombre correcto
-    $token = $this->userA->tokens()->where('name', 'mobile-app-token')->first();
-    expect($token)->not->toBeNull();
+    $token = $fixture['userA']->tokens()->where('name', 'mobile-app-token')->first();
+    expect($token)->toBeObject();
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -93,14 +105,17 @@ test('creates token with custom token name', function () {
 
 test('throws TenantMismatchException for user of different tenant', function () {
     // Intentar crear token para UserB estando en contexto de TenantA
-    $context = mockTenantContext($this->tenantA->id);
+    $fixture = createSanctumTokenFixture();
+    $context = mockTenantContext($fixture['tenantA']->id);
     $service = new SanctumAuthTokenService($context);
 
-    expect(fn() => $service->createTokenForUser($this->userB->id))
+    expect(fn() => $service->createTokenForUser($fixture['userB']->id))
         ->toThrow(TenantMismatchException::class);
 });
 
 test('logs security event on cross-tenant attempt', function () {
+    $fixture = createSanctumTokenFixture();
+
     Log::shouldReceive('channel')
         ->with('security')
         ->once()
@@ -113,26 +128,22 @@ test('logs security event on cross-tenant attempt', function () {
                    $context['severity'] === 'CRITICAL';
         });
 
-    $context = mockTenantContext($this->tenantA->id);
+    $context = mockTenantContext($fixture['tenantA']->id);
     $service = new SanctumAuthTokenService($context);
 
-    try {
-        $service->createTokenForUser($this->userB->id);
-    } catch (TenantMismatchException) {
-        // Esperado
-    }
+    expect(fn () => $service->createTokenForUser($fixture['userB']->id))
+        ->toThrow(TenantMismatchException::class);
 });
 
 test('returns HTTP 403 for cross-tenant access', function () {
-    $context = mockTenantContext($this->tenantA->id);
+    $fixture = createSanctumTokenFixture();
+    $context = mockTenantContext($fixture['tenantA']->id);
     $service = new SanctumAuthTokenService($context);
 
-    try {
-        $service->createTokenForUser($this->userB->id);
-        $this->fail('Expected TenantMismatchException');
-    } catch (TenantMismatchException $e) {
-        expect($e->getHttpStatusCode())->toBe(403);
-    }
+    expect(fn () => $service->createTokenForUser($fixture['userB']->id))
+        ->toThrow(TenantMismatchException::class);
+
+    expect((new TenantMismatchException())->getHttpStatusCode())->toBe(403);
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -140,7 +151,8 @@ test('returns HTTP 403 for cross-tenant access', function () {
 // ═══════════════════════════════════════════════════════════════════════════
 
 test('throws ModelNotFoundException for non-existent user', function () {
-    $context = mockTenantContext($this->tenantA->id);
+    $fixture = createSanctumTokenFixture();
+    $context = mockTenantContext($fixture['tenantA']->id);
     $service = new SanctumAuthTokenService($context);
 
     expect(fn() => $service->createTokenForUser(999999))
@@ -152,11 +164,13 @@ test('throws ModelNotFoundException for non-existent user', function () {
 // ═══════════════════════════════════════════════════════════════════════════
 
 test('throws TenantMismatchException when no tenant context', function () {
+    $fixture = createSanctumTokenFixture();
+    /** @var TenantContextInterface&Mockery\MockInterface $mock */
     $mock = Mockery::mock(TenantContextInterface::class);
     $mock->shouldReceive('getTenantId')->andReturn(null);
     
     $service = new SanctumAuthTokenService($mock);
 
-    expect(fn() => $service->createTokenForUser($this->userA->id))
+    expect(fn() => $service->createTokenForUser($fixture['userA']->id))
         ->toThrow(TenantMismatchException::class, 'Cannot issue token without tenant context');
 });

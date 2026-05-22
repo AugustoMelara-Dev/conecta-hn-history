@@ -15,34 +15,48 @@ uses(TestCase::class, DatabaseTransactions::class);
 
 beforeEach(function () {
     app(TenantContext::class)->setAsSystemRoot();
+});
 
-    $this->tenantA = Tenant::factory()->create(['name' => 'Tenant A']);
-    $this->tenantB = Tenant::factory()->create(['name' => 'Tenant B']);
+/**
+ * @return array{tenantA: Tenant, tenantB: Tenant, productA: Product, listener: SendLowStockNotification}
+ */
+function createLowStockNotificationFixture(): array
+{
+    $tenantA = Tenant::factory()->create(['name' => 'Tenant A']);
+    $tenantB = Tenant::factory()->create(['name' => 'Tenant B']);
 
-    $this->productA = Product::factory()->create([
-        'tenant_id' => $this->tenantA->id,
+    $productA = Product::factory()->create([
+        'tenant_id' => $tenantA->id,
         'name' => 'Product A',
         'stock_quantity' => 5,
     ]);
 
-    $this->listener = new SendLowStockNotification();
-});
+    return [
+        'tenantA' => $tenantA,
+        'tenantB' => $tenantB,
+        'productA' => $productA,
+        'listener' => new SendLowStockNotification(),
+    ];
+}
 
 test('processes product with correct tenant_id', function () {
+    $fixture = createLowStockNotificationFixture();
+
     $event = new LowStockThresholdReached(
-        product: $this->productA,
+        product: $fixture['productA'],
         currentStock: 5,
         threshold: 10
     );
 
-    $this->listener->handle($event);
+    $fixture['listener']->handle($event);
 
     expect(true)->toBeTrue();
 });
 
 test('blocks product from different tenant and logs security event', function () {
-    $spoofedProduct = clone $this->productA;
-    $spoofedProduct->tenant_id = (string) $this->tenantB->id;
+    $fixture = createLowStockNotificationFixture();
+    $spoofedProduct = clone $fixture['productA'];
+    $spoofedProduct->tenant_id = (string) $fixture['tenantB']->id;
 
     $event = new LowStockThresholdReached(
         product: $spoofedProduct,
@@ -62,12 +76,13 @@ test('blocks product from different tenant and logs security event', function ()
                 && ($context['severity'] ?? null) === 'CRITICAL';
         });
 
-    $this->listener->handle($event);
+    $fixture['listener']->handle($event);
 });
 
 test('gracefully returns for non-existent product', function () {
-    $spoofedProduct = clone $this->productA;
-    $spoofedProduct->id = '99999999-9999-9999-9999-999999999999';
+    $fixture = createLowStockNotificationFixture();
+    $spoofedProduct = clone $fixture['productA'];
+    $spoofedProduct->id = 99999999;
 
     $event = new LowStockThresholdReached(
         product: $spoofedProduct,
@@ -79,7 +94,7 @@ test('gracefully returns for non-existent product', function () {
         ->once()
         ->withArgs(fn ($msg) => str_contains($msg, 'not found'));
 
-    $this->listener->handle($event);
+    $fixture['listener']->handle($event);
 
     expect(true)->toBeTrue();
 });

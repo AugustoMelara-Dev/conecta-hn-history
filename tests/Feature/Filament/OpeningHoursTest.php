@@ -74,7 +74,8 @@ describe('OpeningHour Model', function () {
         expect($fillable)->toContain('day_of_week');
         expect($fillable)->toContain('opening_time');
         expect($fillable)->toContain('closing_time');
-        expect($fillable)->toContain('tenant_id');
+        expect($fillable)->not->toContain('tenant_id');
+        expect($model->getGuarded())->toContain('tenant_id');
     });
 
     it('uses BelongsToTenant trait for isolation', function () {

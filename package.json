@@ -10,6 +10,8 @@
         "check:ui-guardrails": "node scripts/ci/check-ui-guardrails.mjs",
         "check:encoding-global": "node scripts/ci/check-visible-encoding-global.mjs",
         "preflight:local": "node scripts/qa/local-environment-preflight.mjs",
+        "qa:test-db:preflight": "powershell -ExecutionPolicy Bypass -File scripts/qa/testing-db-preflight.ps1",
+        "qa:test-db:reset": "powershell -ExecutionPolicy Bypass -File scripts/qa/testing-db-preflight.ps1 -Repair",
         "preflight:playwright-runner": "node scripts/qa/playwright-runner-preflight.mjs",
         "qa:testsprite:mcp:preflight": "powershell -ExecutionPolicy Bypass -File scripts/qa/testsprite-mcp-preflight.ps1",
         "qa:cr035:preflight": "powershell -ExecutionPolicy Bypass -File scripts/qa/cr035-preflight.ps1",

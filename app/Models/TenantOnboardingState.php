@@ -13,7 +13,6 @@ class TenantOnboardingState extends Model
     use HasFactory;
 
     protected $fillable = [
-        'tenant_id',
         'user_id',
         'role',
         'progress',
@@ -32,6 +31,8 @@ class TenantOnboardingState extends Model
         'first_run_last_seen_at',
         'first_run_abandoned_at',
     ];
+
+    protected $guarded = ['tenant_id'];
 
     protected function casts(): array
     {

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Common\Decorators;
 
-use Illuminate\Support\Facades\DB;
+use App\Application\Shared\Contracts\TransactionManagerInterface;
 
 /**
  * TransactionDecorator - Standardized ACID Compliance
@@ -18,11 +18,12 @@ use Illuminate\Support\Facades\DB;
 final class TransactionDecorator
 {
     public function __construct(
-        private object $inner
+        private object $inner,
+        private TransactionManagerInterface $transactionManager,
     ) {}
 
     public function handle(object $command): mixed
     {
-        return DB::transaction(fn () => $this->inner->handle($command));
+        return $this->transactionManager->transaction(fn () => $this->inner->handle($command));
     }
 }

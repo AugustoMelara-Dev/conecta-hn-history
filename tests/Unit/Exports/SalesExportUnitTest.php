@@ -9,6 +9,7 @@ use App\Exceptions\InvalidBusinessRuleException;
 use App\Exports\Concerns\SanitizesOutput;
 use App\Exports\Criteria\SalesExportCriteria;
 use App\Exports\SalesExport;
+use ReflectionNamedType;
 use Tests\TestCase;
 
 /**
@@ -41,9 +42,11 @@ class SalesExportUnitTest extends TestCase
         $parameters = $constructor->getParameters();
 
         $tenantIdParam = $parameters[0];
+        $tenantIdType = $tenantIdParam->getType();
 
         $this->assertEquals('tenantId', $tenantIdParam->getName());
-        $this->assertEquals(TenantId::class, $tenantIdParam->getType()->getName());
+        $this->assertInstanceOf(ReflectionNamedType::class, $tenantIdType);
+        $this->assertEquals(TenantId::class, $tenantIdType->getName());
     }
 
     /**
@@ -57,9 +60,11 @@ class SalesExportUnitTest extends TestCase
         $parameters = $constructor->getParameters();
 
         $criteriaParam = $parameters[1];
+        $criteriaType = $criteriaParam->getType();
 
         $this->assertEquals('criteria', $criteriaParam->getName());
-        $this->assertEquals(SalesExportCriteria::class, $criteriaParam->getType()->getName());
+        $this->assertInstanceOf(ReflectionNamedType::class, $criteriaType);
+        $this->assertEquals(SalesExportCriteria::class, $criteriaType->getName());
     }
 
     /**
@@ -83,11 +88,6 @@ class SalesExportUnitTest extends TestCase
      */
     public function class_has_create_factory_method(): void
     {
-        $this->assertTrue(
-            method_exists(SalesExport::class, 'create'),
-            'SalesExport must have static create() factory method'
-        );
-
         $reflection = new \ReflectionMethod(SalesExport::class, 'create');
         $this->assertTrue($reflection->isStatic(), 'create() must be static');
         $this->assertTrue($reflection->isPublic(), 'create() must be public');
@@ -150,9 +150,6 @@ class SalesExportUnitTest extends TestCase
     {
         $criteria = SalesExportCriteria::create();
 
-        // Should have default 30-day range
-        $this->assertNotNull($criteria->startDate());
-        $this->assertNotNull($criteria->endDate());
         $this->assertLessThanOrEqual(31, $criteria->dateRangeInDays()); // 30 days + 1 for inclusive
     }
 

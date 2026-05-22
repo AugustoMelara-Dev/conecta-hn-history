@@ -133,6 +133,7 @@ final class TenantMicrositeTransformer
         $products = $tenant->relationLoaded('products')
             ? $tenant->products
             : $tenant->products()
+                // PUBLIC_READ_WITH_TENANT_FILTER: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
                 ->withoutGlobalScopes()
                 ->where('is_visible', true)
                 ->orderBy('name')

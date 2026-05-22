@@ -11,6 +11,7 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Database\Eloquent\Model;
 use ReflectionClass;
+use ReflectionNamedType;
 use Symfony\Component\Finder\Finder;
 use Tests\TestCase;
 
@@ -65,6 +66,10 @@ class EventsArchitectureTest extends TestCase
                 $type = $prop->getType();
 
                 if ($type === null) {
+                    continue;
+                }
+
+                if (! $type instanceof ReflectionNamedType) {
                     continue;
                 }
 
@@ -171,6 +176,10 @@ class EventsArchitectureTest extends TestCase
                 if ($type === null) {
                     continue;
                 }
+                if (! $type instanceof ReflectionNamedType) {
+                    continue;
+                }
+
                 $typeName = $type->getName();
                 if ($this->isEloquentModel($typeName)) {
                     $violations[] = "{$eventClass}::\${$prop->getName()} is Eloquent ({$typeName})";
@@ -471,13 +480,15 @@ class EventsArchitectureTest extends TestCase
                     continue;
                 }
 
-                $this->assertNotEquals(
-                    'array',
-                    $type->getName(),
-                    "VIOLATION: {$eventClass}::\${$prop->getName()} is an array. ".
-                    'Arrays are mutable even in readonly classes. '.
-                    'Use an immutable Value Object instead (e.g., EventMetadata).'
-                );
+                if ($type instanceof ReflectionNamedType) {
+                    $this->assertNotEquals(
+                        'array',
+                        $type->getName(),
+                        "VIOLATION: {$eventClass}::\${$prop->getName()} is an array. ".
+                        'Arrays are mutable even in readonly classes. '.
+                        'Use an immutable Value Object instead (e.g., EventMetadata).'
+                    );
+                }
             }
         }
 

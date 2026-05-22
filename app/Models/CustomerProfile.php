@@ -17,7 +17,6 @@ class CustomerProfile extends Model
     public const SEGMENT_PROSPECT = 'prospect';
 
     protected $fillable = [
-        'tenant_id',
         'assigned_user_id',
         'location_id',
         'normalized_email',
@@ -62,6 +61,8 @@ class CustomerProfile extends Model
         'last_loyalty_activity_at',
         'reactivation_score',
     ];
+
+    protected $guarded = ['tenant_id'];
 
     protected $casts = [
         'tags' => 'array',

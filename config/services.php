@@ -80,4 +80,16 @@ return [
         'price_pro' => env('STRIPE_PRICE_PRO'),
     ],
 
+    'sentry' => [
+        'dsn' => env('SENTRY_LARAVEL_DSN', env('SENTRY_DSN')),
+    ],
+
+    'analytics' => [
+        'salt' => env('ANALYTICS_SALT', 'conecta-analytics-default-salt'),
+    ],
+
+    'otp_attack' => [
+        'database_path' => env('OTP_ATTACK_DB_PATH'),
+    ],
+
 ];

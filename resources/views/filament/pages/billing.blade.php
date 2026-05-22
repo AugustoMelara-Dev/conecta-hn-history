@@ -81,7 +81,7 @@
                     @else
                         <div class="p-4 rounded-lg bg-success-50 dark:bg-success-950 border border-success-200">
                             <div class="text-center text-success-700">
-                                <x-heroicon-o-infinity class="w-8 h-8 mx-auto mb-1" />
+                                <span class="mx-auto mb-1 block text-4xl font-semibold leading-none" aria-hidden="true">&infin;</span>
                                 <span class="font-medium">Acceso Perpetuo</span>
                             </div>
                         </div>

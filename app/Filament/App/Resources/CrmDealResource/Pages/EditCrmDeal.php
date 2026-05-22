@@ -28,8 +28,13 @@ class EditCrmDeal extends EditRecord
      */
     protected function mutateFormDataBeforeSave(array $data): array
     {
+        $tenant = CrmDealResource::currentTenant();
         $stage = isset($data['crm_stage_id'])
-            ? CrmStage::query()->withoutGlobalScopes()->find($data['crm_stage_id'])
+            // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
+            ? CrmStage::query()
+                ->withoutGlobalScopes()
+                ->when($tenant !== null, fn ($query) => $query->where('tenant_id', (string) $tenant->getKey()))
+                ->find($data['crm_stage_id'])
             : null;
 
         if ($stage instanceof CrmStage) {

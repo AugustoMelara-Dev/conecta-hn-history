@@ -20,6 +20,7 @@ final class EloquentProductReader implements ProductReader
 {
     public function getInventory(int $tenantId): Collection
     {
+        // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
         return Product::withoutGlobalScopes()
             ->where('tenant_id', (int) $tenantId)
             ->orderBy('name')
@@ -28,6 +29,7 @@ final class EloquentProductReader implements ProductReader
 
     public function getLowStockProducts(int $tenantId): Collection
     {
+        // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
         return Product::withoutGlobalScopes()
             ->where('tenant_id', (int) $tenantId)
             ->whereIn('stock_status', ['low_stock', 'out_of_stock'])

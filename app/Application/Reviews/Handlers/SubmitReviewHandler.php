@@ -9,7 +9,7 @@ use App\Application\Reviews\Results\SubmitReviewResult;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Reviews\Repositories\ReviewRepositoryInterface;
 use App\Infrastructure\Bus\TransactionalEventDispatcher;
-use Illuminate\Support\Facades\Log;
+use App\Application\Shared\Contracts\LoggerInterface;
 
 /**
  * SubmitReviewHandler - Minimalist Command Handler for Review Submission
@@ -30,6 +30,7 @@ final class SubmitReviewHandler
     public function __construct(
         private readonly ReviewRepositoryInterface $reviewRepository,
         private readonly TransactionalEventDispatcher $eventDispatcher,
+        private readonly LoggerInterface $logger,
     ) {}
 
     /**
@@ -64,7 +65,7 @@ final class SubmitReviewHandler
         ));
 
         // 3. Audit Log (PII Scrubbed)
-        Log::info('Review submitted successfully', $this->sanitizePayload([
+        $this->logger->info('Review submitted successfully', $this->sanitizePayload([
             'review_id' => $review->id,
             'product_id' => $command->productId,
             'tenant_id' => $command->tenantId,

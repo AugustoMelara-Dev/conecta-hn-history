@@ -7,6 +7,7 @@ namespace App\Filament\App\Resources\CrmDealResource\Pages;
 use App\Filament\App\Resources\CrmDealResource;
 use App\Models\CrmDeal;
 use App\Models\CrmStage;
+use Illuminate\Database\Eloquent\Model;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreateCrmDeal extends CreateRecord
@@ -22,7 +23,11 @@ class CreateCrmDeal extends CreateRecord
         $tenant = CrmDealResource::currentTenant();
         $pipeline = CrmDealResource::defaultPipeline();
         $stage = isset($data['crm_stage_id'])
-            ? CrmStage::query()->withoutGlobalScopes()->find($data['crm_stage_id'])
+            // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
+            ? CrmStage::query()
+                ->withoutGlobalScopes()
+                ->when($tenant !== null, fn ($query) => $query->where('tenant_id', (string) $tenant->getKey()))
+                ->find($data['crm_stage_id'])
             : CrmDealResource::defaultStage();
 
         if ($tenant !== null) {
@@ -46,5 +51,25 @@ class CreateCrmDeal extends CreateRecord
         }
 
         return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    protected function handleRecordCreation(array $data): Model
+    {
+        $tenantId = $data['tenant_id'] ?? null;
+        unset($data['tenant_id']);
+
+        $record = new CrmDeal;
+        $record->fill($data);
+
+        if ($tenantId !== null && $tenantId !== '') {
+            $record->forceFill(['tenant_id' => (string) $tenantId]);
+        }
+
+        $record->save();
+
+        return $record;
     }
 }

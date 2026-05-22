@@ -9,7 +9,7 @@ namespace App\Domain\Shared\Contracts;
  *
  * Events implementing this interface will be:
  * 1. Intercepted by TransactionalEventDispatcher
- * 2. Serialized and stored in domain_outbox_messages table
+ * 2. Serialized and stored in the canonical outbox_messages table
  * 3. Dispatched asynchronously by the Outbox Worker
  *
  * This guarantees at-least-once delivery even if the application

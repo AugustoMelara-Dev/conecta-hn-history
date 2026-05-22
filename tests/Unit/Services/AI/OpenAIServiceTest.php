@@ -11,9 +11,9 @@ use Tests\TestCase;
 
 uses(TestCase::class);
 
-beforeEach(function () {
-    config(['services.openai.api_key' => 'sk-test']);
-    $this->service = new OpenAIService(new class extends BudgetEnforcer {
+function makeOpenAIService(): OpenAIService
+{
+    return new OpenAIService(new class extends BudgetEnforcer {
         public function reserve(int|string $tenantId, float $estimatedCost, string $operation): string
         {
             return 'test-reservation';
@@ -27,6 +27,10 @@ beforeEach(function () {
         {
         }
     });
+}
+
+beforeEach(function () {
+    config(['services.openai.api_key' => 'sk-test']);
 });
 
 test('returns structured profile on valid response', function () {
@@ -47,7 +51,7 @@ test('returns structured profile on valid response', function () {
         ], 200),
     ]);
 
-    $result = $this->service->generateStructuredProfile('Biz', 'Desc', 1, 1);
+    $result = makeOpenAIService()->generateStructuredProfile('Biz', 'Desc', 1, 1);
 
     expect($result['seo_title'])->toBe('Titulo SEO')
         ->and($result['tags'])->toBeArray();
@@ -58,7 +62,7 @@ test('throws provider unavailable after upstream failures', function () {
         'api.openai.com/*' => Http::response(['error' => 'down'], 503),
     ]);
 
-    expect(fn () => $this->service->generateStructuredProfile('Biz', 'Desc', 1, 1))
+    expect(fn () => makeOpenAIService()->generateStructuredProfile('Biz', 'Desc', 1, 1))
         ->toThrow(AiProviderUnavailableException::class);
 });
 
@@ -74,7 +78,7 @@ test('throws malformed response when schema is invalid', function () {
         ], 200),
     ]);
 
-    expect(fn () => $this->service->generateStructuredProfile('Biz', 'Desc', 1, 1))
+    expect(fn () => makeOpenAIService()->generateStructuredProfile('Biz', 'Desc', 1, 1))
         ->toThrow(AiMalformedResponseException::class);
 });
 
@@ -96,7 +100,7 @@ test('sanitizes script tags from description', function () {
         ], 200),
     ]);
 
-    $result = $this->service->generateStructuredProfile('Biz', 'Desc', 1, 1);
+    $result = makeOpenAIService()->generateStructuredProfile('Biz', 'Desc', 1, 1);
 
     expect($result['description'])->not->toContain('<script>')
         ->and($result['description'])->toContain('<p>Safe</p>');

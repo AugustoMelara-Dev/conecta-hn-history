@@ -53,6 +53,7 @@ final class TenantPrivateAgentService
     private function salesToday(Tenant $tenant): array
     {
         $query = Order::query()
+            // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
             ->withoutGlobalScopes()
             ->where('tenant_id', $tenant->getKey())
             ->whereDate('created_at', today());
@@ -91,6 +92,7 @@ final class TenantPrivateAgentService
         }
 
         $query = Appointment::query()
+            // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
             ->withoutGlobalScopes()
             ->where('tenant_id', $tenant->getKey())
             ->whereDate('scheduled_at', today());
@@ -129,6 +131,7 @@ final class TenantPrivateAgentService
     private function catalog(Tenant $tenant): array
     {
         $query = Product::query()
+            // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
             ->withoutGlobalScopes()
             ->where('tenant_id', $tenant->getKey());
 

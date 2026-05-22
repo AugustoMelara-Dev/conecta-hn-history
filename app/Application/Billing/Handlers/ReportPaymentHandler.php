@@ -6,6 +6,7 @@ namespace App\Application\Billing\Handlers;
 
 use App\Application\Billing\Commands\ReportPaymentCommand;
 use App\Application\Billing\Results\ReportPaymentResult;
+use App\Application\Shared\Contracts\TransactionManagerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Billing\Entities\PaymentEntity;
 use App\Domain\Billing\Enums\PaymentStatus;
@@ -17,7 +18,6 @@ use App\Domain\Shared\Contracts\UuidGeneratorInterface;
 use App\Domain\Shared\ValueObjects\Money;
 use DateTimeImmutable;
 use Illuminate\Database\QueryException;
-use Illuminate\Support\Facades\DB;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -46,6 +46,7 @@ final readonly class ReportPaymentHandler implements ReportPaymentHandlerInterfa
         private EventDispatcherInterface $eventDispatcher,
         private UuidGeneratorInterface $uuidGenerator,
         private LoggerInterface $logger,
+        private TransactionManagerInterface $transactionManager,
         private \App\Infrastructure\Security\ResilientRateLimiter $rateLimiter
     ) {}
 
@@ -91,7 +92,7 @@ final readonly class ReportPaymentHandler implements ReportPaymentHandlerInterfa
             try {
                 // 4. ATOMIC TRAP (Insert-or-Recover)
                 // Retries: 3 (Handle Deadlocks automatically)
-                DB::transaction(function () use ($payment, $command) {
+                $this->transactionManager->transaction(function () use ($payment, $command) {
                     $this->paymentRepository->save($payment);
 
                     // Dispatch Event

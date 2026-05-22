@@ -16,6 +16,7 @@ use Illuminate\Queue\InteractsWithQueue;
  * GenerateProductBlurhash - Media Processing Job
  *
  * INFRASTRUCTURE JOB: Requires direct ORM access for media operations.
+ // JOB_GLOBAL_POLL: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
  * Uses withoutGlobalScopes() for cross-tenant product access in queue context.
  * IDEMPOTENCY: Uses ShouldBeUnique with tenant-product composite key.
  */

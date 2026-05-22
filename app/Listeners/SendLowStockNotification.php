@@ -42,8 +42,8 @@ final class SendLowStockNotification implements ShouldQueue
      */
     public function handle(LowStockThresholdReached $event): void
     {
-        $productId = (string) $event->product->getKey();
-        $tenantIdString = (string) $event->product->tenant_id;
+        $productId = (string) $event->productId;
+        $tenantIdString = (string) $event->tenantKey;
 
         // ═══════════════════════════════════════════════════════════════════════
         // SECURITY: EXPLICIT TENANT-SCOPED FETCH (NO GLOBAL SCOPE RELIANCE)

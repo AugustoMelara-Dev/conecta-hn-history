@@ -13,8 +13,12 @@ use App\Models\Tenant;
 
 final class ConfigCapabilityManager implements CapabilityManagerInterface
 {
-    public function has(Tenant $tenant, Capability $capability): bool
+    public function has(object $tenant, Capability $capability): bool
     {
+        if (! $tenant instanceof Tenant) {
+            return false;
+        }
+
         return in_array($capability, $this->allForTenant($tenant), true);
     }
 
@@ -28,8 +32,12 @@ final class ConfigCapabilityManager implements CapabilityManagerInterface
     /**
      * @return array<int, Capability>
      */
-    public function allForTenant(Tenant $tenant): array
+    public function allForTenant(object $tenant): array
     {
+        if (! $tenant instanceof Tenant) {
+            return [];
+        }
+
         try {
             $rawPlanType = $tenant->getRawOriginal('plan_type') ?? $tenant->getAttribute('plan_type');
         } catch (\Throwable) {

@@ -81,6 +81,7 @@ final class RequestTenantContext implements TenantContext
                     : $tenant->getKey()
             );
             $sourceTenant = $needsFullTenant
+                // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
                 ? (\App\Models\Tenant::withoutGlobalScopes()->find((string) $tenantKey) ?? $tenant)
                 : $tenant;
             $attributes = method_exists($sourceTenant, 'getAttributes') ? $sourceTenant->getAttributes() : [];

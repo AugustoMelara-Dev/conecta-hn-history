@@ -22,13 +22,13 @@ final readonly class TenantMailData
     /**
      * Create from Tenant model (snapshot at dispatch time).
      */
-    public static function fromTenant(\App\Models\Tenant $tenant): self
+    public static function fromTenant(object $tenant): self
     {
         return new self(
-            id: $tenant->id,
-            name: $tenant->name,
-            email: $tenant->email ?? '',
-            planType: $tenant->plan_type ?? 'semilla',
+            id: (int) $tenant->id,
+            name: (string) $tenant->name,
+            email: (string) ($tenant->email ?? ''),
+            planType: (string) ($tenant->plan_type ?? 'semilla'),
             subscriptionEndsAt: $tenant->subscription_ends_at?->toDateTimeString(),
         );
     }

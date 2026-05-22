@@ -21,6 +21,7 @@ final class EloquentTenantStorefrontRepository implements TenantStorefrontReposi
 
     public function findBySlug(string $slug): ?object
     {
+        // PUBLIC_READ_WITH_TENANT_FILTER: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
         $tenant = Tenant::withoutGlobalScopes()
             ->where('slug', $slug)
             ->first();
@@ -36,15 +37,18 @@ final class EloquentTenantStorefrontRepository implements TenantStorefrontReposi
         $relations = [];
 
         if (Schema::hasTable('opening_hours')) {
+            // PUBLIC_READ_WITH_TENANT_FILTER: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
             $relations['openingHours'] = fn ($query) => $query->withoutGlobalScopes();
         }
 
         if (Schema::hasTable('menu_sections')) {
+            // PUBLIC_READ_WITH_TENANT_FILTER: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
             $relations['menuSections'] = fn ($q) => $q->withoutGlobalScopes()->where('is_active', true)->orderBy('name');
         }
 
         if (Schema::hasTable('products')) {
             $relations['products'] = function ($query) use ($productLimit) {
+                // PUBLIC_READ_WITH_TENANT_FILTER: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
                 $query->withoutGlobalScopes()
                     ->where('is_visible', true)
                     ->orderBy('name')
@@ -69,10 +73,12 @@ final class EloquentTenantStorefrontRepository implements TenantStorefrontReposi
             && Schema::hasTable('modifier_options')
         ) {
             $relations['products.modifierGroups'] = fn ($q) => $q
+                // PUBLIC_READ_WITH_TENANT_FILTER: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
                 ->withoutGlobalScopes()
                 ->where('is_active', true)
                 ->orderBy('sort_order');
             $relations['products.modifierGroups.options'] = fn ($q) => $q
+                // PUBLIC_READ_WITH_TENANT_FILTER: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
                 ->withoutGlobalScopes()
                 ->where('is_available', true)
                 ->orderBy('sort_order');

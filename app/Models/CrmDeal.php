@@ -20,7 +20,6 @@ class CrmDeal extends Model
     public const STATUS_LOST = 'lost';
 
     protected $fillable = [
-        'tenant_id',
         'crm_pipeline_id',
         'crm_stage_id',
         'customer_profile_id',
@@ -38,6 +37,8 @@ class CrmDeal extends Model
         'notes',
     ];
 
+    protected $guarded = ['tenant_id'];
+
     protected $casts = [
         'value' => 'decimal:2',
         'expected_close_at' => 'date',
@@ -51,21 +52,25 @@ class CrmDeal extends Model
 
     public function pipeline(): BelongsTo
     {
+        // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
         return $this->belongsTo(CrmPipeline::class, 'crm_pipeline_id')->withoutGlobalScopes();
     }
 
     public function stage(): BelongsTo
     {
+        // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
         return $this->belongsTo(CrmStage::class, 'crm_stage_id')->withoutGlobalScopes();
     }
 
     public function customerProfile(): BelongsTo
     {
+        // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
         return $this->belongsTo(CustomerProfile::class)->withoutGlobalScopes();
     }
 
     public function lead(): BelongsTo
     {
+        // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
         return $this->belongsTo(Lead::class)->withoutGlobalScopes();
     }
 
@@ -81,11 +86,13 @@ class CrmDeal extends Model
 
     public function notes(): HasMany
     {
+        // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
         return $this->hasMany(CustomerNote::class)->withoutGlobalScopes()->latest('pinned_at')->latest('created_at');
     }
 
     public function tasks(): HasMany
     {
+        // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
         return $this->hasMany(CustomerTask::class)->withoutGlobalScopes()->latest('sla_due_at')->latest('created_at');
     }
 

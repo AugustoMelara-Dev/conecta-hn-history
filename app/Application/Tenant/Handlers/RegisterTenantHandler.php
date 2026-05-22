@@ -16,7 +16,7 @@ use App\Domain\TenantGovernance\Factories\TenantFactory;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Domain\TenantGovernance\Services\SubscriptionPricingService;
 use App\Infrastructure\Bus\TransactionalEventDispatcher;
-use Illuminate\Support\Facades\Log;
+use App\Application\Shared\Contracts\LoggerInterface;
 
 /**
  * RegisterTenantHandler - Command Handler for Tenant Registration
@@ -43,6 +43,7 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
         private SubscriptionPricingService $pricingService,
         private HasherInterface $hasher,
         private TransactionManagerInterface $transactionManager,
+        private readonly LoggerInterface $logger,
     ) {}
 
     public function handle(RegisterTenantCommand $command): RegisterTenantResult
@@ -121,7 +122,7 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
         ));
 
         // 8. Log
-        Log::info('Tenant registered', $this->sanitizePayload([
+        $this->logger->info('Tenant registered', $this->sanitizePayload([
             'user_id' => $userEntity->id(),
             'tenant_id' => $tenantEntity->id(),
             'slug' => $tenantEntity->domain(),

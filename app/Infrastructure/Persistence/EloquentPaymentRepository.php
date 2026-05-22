@@ -125,6 +125,7 @@ final readonly class EloquentPaymentRepository implements PaymentRepositoryInter
     public function findByIdWithTenant(string $id): ?array
     {
         $model = PaymentModel::query()
+            // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
             ->withoutGlobalScopes()
             ->with('tenant:id,name,user_id')
             ->find($id);

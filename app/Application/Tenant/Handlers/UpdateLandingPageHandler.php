@@ -9,7 +9,7 @@ use App\Application\Tenant\Commands\UpdateLandingPageCommand;
 use App\Domain\Tenant\Exceptions\FeatureRequiresProException;
 use App\Models\Tenant;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Facades\Log;
+use App\Application\Shared\Contracts\LoggerInterface;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -64,7 +64,7 @@ final class UpdateLandingPageHandler
 
         $tenant->save();
 
-        Log::info('Tenant landing page updated', $this->sanitizePayload([
+        $this->logger->info('Tenant landing page updated', $this->sanitizePayload([
             'tenant_id' => $command->tenantId,
         ]));
     }

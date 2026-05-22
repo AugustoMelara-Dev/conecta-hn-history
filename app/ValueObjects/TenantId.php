@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\ValueObjects;
 
 use InvalidArgumentException;
+use JsonSerializable;
 
 /**
  * Legacy event TenantId value object.
@@ -13,7 +14,7 @@ use InvalidArgumentException;
  * tenant id object is UUID-only. Keep this compatibility layer until the
  * event contracts are upgraded in one pass.
  */
-final readonly class TenantId
+final readonly class TenantId implements JsonSerializable
 {
     public function __construct(
         private int|string $value,
@@ -37,6 +38,20 @@ final readonly class TenantId
         return new self($value);
     }
 
+    /**
+     * @param array{tenant_id?: int|string, value?: int|string} $data
+     */
+    public static function fromArray(array $data): self
+    {
+        $value = $data['tenant_id'] ?? $data['value'] ?? null;
+
+        if (! is_int($value) && ! is_string($value)) {
+            throw new InvalidArgumentException('TenantId payload must contain tenant_id.');
+        }
+
+        return new self($value);
+    }
+
     public function toInt(): int
     {
         return (int) $this->value;
@@ -50,5 +65,13 @@ final readonly class TenantId
     public function __toString(): string
     {
         return $this->toString();
+    }
+
+    /**
+     * @return array{tenant_id: string}
+     */
+    public function jsonSerialize(): array
+    {
+        return ['tenant_id' => $this->toString()];
     }
 }

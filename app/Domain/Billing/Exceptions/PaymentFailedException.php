@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Domain\Billing\Exceptions;
 
-use RuntimeException;
+use DomainException;
 
 /**
  * PaymentFailedException - Domain Exception for Payment Gateway Failures
  *
  * Thrown when a payment operation fails at the gateway level.
  */
-final class PaymentFailedException extends RuntimeException
+final class PaymentFailedException extends DomainException
 {
     public function __construct(
         string $message = 'Payment operation failed',

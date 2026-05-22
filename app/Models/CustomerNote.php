@@ -16,7 +16,6 @@ class CustomerNote extends Model
     use BelongsToTenant, LogsActivity;
 
     protected $fillable = [
-        'tenant_id',
         'customer_profile_id',
         'crm_deal_id',
         'customer_conversation_id',
@@ -41,6 +40,8 @@ class CustomerNote extends Model
         'pinned_at',
         'metadata',
     ];
+
+    protected $guarded = ['tenant_id'];
 
     protected $casts = [
         'requires_follow_up' => 'boolean',

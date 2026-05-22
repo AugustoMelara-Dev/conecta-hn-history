@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Interactions\Handlers;
 
 use App\Application\Interactions\Commands\RecordInteractionCommand;
+use App\Application\Interactions\Contracts\LeadFollowUpPlaybookInterface;
 use App\Application\Shared\Contracts\DataScrubberInterface;
 use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Contracts\TransactionManagerInterface;
@@ -12,9 +13,6 @@ use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Analytics\Repositories\InteractionRepositoryInterface;
 use App\Domain\Sales\Repositories\LeadRepositoryInterface;
 use App\Domain\Shared\Contracts\AdminNotifierInterface;
-use App\Domain\TenantGovernance\Services\OperationalPlaybookTaskManager;
-use App\Models\Lead;
-use App\Models\Tenant;
 
 /**
  * RecordInteractionHandler - Pure Interaction Recording Orchestrator
@@ -37,7 +35,7 @@ final readonly class RecordInteractionHandler
         private InteractionRepositoryInterface $interactionRepository,
         private LeadRepositoryInterface $leadRepository,
         private AdminNotifierInterface $adminNotifier,
-        private OperationalPlaybookTaskManager $playbookTaskManager,
+        private LeadFollowUpPlaybookInterface $playbook,
         private TransactionManagerInterface $transactionManager,
         private LoggerInterface $logger,
         private DataScrubberInterface $scrubber,
@@ -110,18 +108,7 @@ final readonly class RecordInteractionHandler
                     'lead_id' => $lead->id,
                 ]);
 
-                $tenant = Tenant::query()->find($command->tenantId);
-                $leadModel = Lead::withoutGlobalScopes()
-                    ->whereKey($lead->id)
-                    ->where('tenant_id', $command->tenantId)
-                    ->first();
-
-                if ($tenant instanceof Tenant && $leadModel instanceof Lead) {
-                    $this->playbookTaskManager->syncForTrigger($tenant, 'lead_follow_up', [
-                        'related' => $leadModel,
-                        'customer_name' => (string) ($leadModel->name ?? 'este cliente'),
-                    ]);
-                }
+                $this->playbook->sync($command->tenantId, $lead->id);
 
                 $this->adminNotifier->notifyNewLead($lead);
             }

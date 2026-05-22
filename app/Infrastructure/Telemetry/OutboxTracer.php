@@ -26,31 +26,15 @@ final class OutboxTracer
 
     private const W3C_TRACEPARENT_VERSION = '00';
 
-    private const VACCINE_IMPACT_THRESHOLD = 0.30;
-
-    private const CONFIDENCE_LEVEL_Z = 1.96;
-
     private const HORIZON_SHORT = 6;
 
     private const HORIZON_MEDIUM = 60;
 
     private const HORIZON_LONG = 600;
 
-    private const HORIZON_HUGE = 1800; // 30 mins
-
-    private const QUORUM_THRESHOLD_PERCENT = 0.75;
-
-    private const FLEET_STATE_KEY = 'outbox:fleet:active_count';
-
-    private const REDIS_TIMEOUT_MS = 200;
-
-    private string $sovereignSeed;
-
     public function __construct(
         private readonly ConsensusHealthGovernor $governor
-    ) {
-        $this->sovereignSeed = hash('sha256', gethostname().hrtime(true));
-    }
+    ) {}
 
     /**
      * Helper to trace Infrastructure Recoveries (DB Gridlock, Zombie Workers).
@@ -185,16 +169,14 @@ final class OutboxTracer
         $statusKey = $success ? 'success' : 'failure';
 
         // Pipeline Redis commands for performance
-        Redis::pipeline(function ($pipe) use ($fingerprint, $now, $statusKey) {
-            foreach ([self::HORIZON_SHORT, self::HORIZON_MEDIUM, self::HORIZON_LONG] as $window) {
-                // Bucketing by window size to prevent key explosion
-                $bucket = floor($now / $window);
-                $key = "outbox:horizon:{$window}:{$bucket}:{$fingerprint}:{$statusKey}";
+        foreach ([self::HORIZON_SHORT, self::HORIZON_MEDIUM, self::HORIZON_LONG] as $window) {
+            // Bucketing by window size to prevent key explosion
+            $bucket = floor($now / $window);
+            $key = "outbox:horizon:{$window}:{$bucket}:{$fingerprint}:{$statusKey}";
 
-                $pipe->incr($key);
-                $pipe->expire($key, $window * 2);
-            }
-        });
+            Redis::connection()->incr($key);
+            Redis::connection()->expire($key, $window * 2);
+        }
     }
 
     private function monitorErrorAcceleration(string $resourceDomain = 'fault:app_logic'): void
@@ -217,7 +199,7 @@ final class OutboxTracer
 
             // Dampening: Only signal if acceleration is real (growth > 0)
             if ($prev > 0) {
-                $acceleration = (\Redis::get($key) - $prev) / $prev;
+                $acceleration = ((int) Redis::connection()->get($key) - $prev) / $prev;
 
                 // Apply Surgical Multiplier
                 $signalStrength = $acceleration * $config['multiplier'];
@@ -227,16 +209,16 @@ final class OutboxTracer
                 }
             }
         }
-        \Redis::expire($key, 120);
+        Redis::connection()->expire($key, 120);
     }
 
     public function emitPredictiveAggregationSpan($message, string $diagnosis): void
     {
         $fingerprint = sha1(($message->last_error ?? '').$diagnosis.$message->type);
-        if (\Redis::incr("outbox:topology:breach:{$fingerprint}") > 3) {
+        if (Redis::connection()->incr("outbox:topology:breach:{$fingerprint}") > 3) {
             Cache::put("vaccine:{$fingerprint}", $diagnosis, 300);
             try {
-                \Redis::setex("vaccine:{$fingerprint}", 300, $diagnosis);
+                Redis::connection()->setex("vaccine:{$fingerprint}", 300, $diagnosis);
             } catch (\Throwable $e) {
             }
         }

@@ -8,24 +8,7 @@
     {{-- Security: CSRF Token --}}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     
-    {{-- SEO Meta Tags Dinámicos --}}
-    <title>{{ $title ?? 'Vito Business OS - Directorio y plataforma para negocios' }}</title>
-    <meta name="description" content="{{ $description ?? 'Descubre negocios locales y registra tu negocio en Vito Business OS para vender, reservar o captar clientes.' }}">
-    
-    {{-- Open Graph --}}
-    <meta property="og:type" content="website">
-    <meta property="og:title" content="{{ $title ?? 'Vito Business OS' }}">
-    <meta property="og:description" content="{{ $description ?? 'Directorio publico y sistema operativo comercial para negocios locales.' }}">
-    <meta property="og:image" content="{{ $ogImage ?? asset('images/og-default.png') }}">
-    <meta property="og:url" content="{{ url()->current() }}">
-    <meta property="og:site_name" content="Vito Business OS">
-    <meta property="og:locale" content="es_HN">
-    
-    {{-- Twitter Cards --}}
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="{{ $title ?? 'Vito Business OS' }}">
-    <meta name="twitter:description" content="{{ $description ?? 'Directorio publico y sistema operativo comercial para negocios locales.' }}">
-    <meta name="twitter:image" content="{{ $ogImage ?? asset('images/og-default.png') }}">
+    @include('components.seo-meta')
     
     {{-- Favicon --}}
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
@@ -84,10 +67,10 @@
     <footer class="bg-gray-900 text-white py-12">
         <div class="max-w-7xl mx-auto px-4">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
-                {{-- Logo y Descripción --}}
+                {{-- Logo y Descripcion --}}
                 <div class="md:col-span-2">
                     <h3 class="text-2xl font-bold mb-4">
-                        Vito <span class="text-blue-400">Business OS</span>
+                        Conecta <span class="text-blue-400">HN</span>
                     </h3>
                     <p class="text-gray-400 max-w-md">
                         Directorio publico y sistema operativo comercial para negocios locales.
@@ -95,14 +78,14 @@
                     </p>
                 </div>
                 
-                {{-- Enlaces Rápidos --}}
+                {{-- Enlaces Rapidos --}}
                 <div>
                     <h4 class="font-semibold mb-4">Enlaces</h4>
                     <ul class="space-y-2 text-gray-400">
                         <li><a href="/" wire:navigate class="hover:text-white transition-colors">Inicio</a></li>
                         <li><a href="{{ route('tenant.register') }}" wire:navigate class="hover:text-white transition-colors">Registrar Negocio</a></li>
                         <li><a href="/directorio" wire:navigate class="hover:text-white transition-colors">Directorio</a></li>
-                        <li><a href="/login" wire:navigate class="hover:text-white transition-colors">Iniciar Sesión</a></li>
+                        <li><a href="/login" wire:navigate class="hover:text-white transition-colors">Iniciar Sesion</a></li>
                     </ul>
                 </div>
                 
@@ -130,7 +113,7 @@
             
             {{-- Copyright --}}
             <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-500 text-sm">
-                <p>&copy; {{ date('Y') }} Vito Business OS. Todos los derechos reservados.</p>
+                <p>&copy; {{ date('Y') }} Conecta HN. Todos los derechos reservados.</p>
             </div>
         </div>
     </footer>

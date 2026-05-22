@@ -188,6 +188,7 @@ class SalesExport implements FromQuery, ShouldQueue, WithChunkReading, WithHeadi
     public function query(): Builder
     {
         $query = Order::query()
+            // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
             ->withoutGlobalScopes()
             // CRITICAL: Tenant filter FIRST - non-negotiable
             ->where('tenant_id', $this->tenantId->toString())

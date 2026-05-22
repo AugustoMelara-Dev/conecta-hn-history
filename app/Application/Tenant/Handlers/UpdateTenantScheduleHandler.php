@@ -9,7 +9,7 @@ use App\Application\Tenant\Commands\UpdateTenantScheduleCommand;
 use App\Domain\Identity\Repositories\TenantRepositoryInterface;
 use DomainException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Facades\Log;
+use App\Application\Shared\Contracts\LoggerInterface;
 
 /**
  * UpdateTenantScheduleHandler - Business Hours Update Handler
@@ -25,6 +25,7 @@ final class UpdateTenantScheduleHandler
 
     public function __construct(
         private readonly TenantRepositoryInterface $tenantRepository,
+        private readonly LoggerInterface $logger,
     ) {}
 
     /**
@@ -51,7 +52,7 @@ final class UpdateTenantScheduleHandler
         // 4. Persist via Repository
         $this->tenantRepository->save($tenant);
 
-        Log::info('Tenant schedule updated', $this->sanitizePayload([
+        $this->logger->info('Tenant schedule updated', $this->sanitizePayload([
             'tenant_id' => $command->tenantId,
         ]));
     }

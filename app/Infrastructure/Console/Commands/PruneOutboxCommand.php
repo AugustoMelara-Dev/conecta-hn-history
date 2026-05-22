@@ -48,7 +48,7 @@ final class PruneOutboxCommand extends Command
         $totalDeleted = 0;
         $batchSize = 1000;
 
-        // Uses explicit table name 'outbox_messages' instead of 'domain_outbox_events'
+        // Uses the canonical outbox table instead of legacy event table names.
         do {
             $rowsAffected = DB::table('outbox_messages')
                 ->where('status', $status)

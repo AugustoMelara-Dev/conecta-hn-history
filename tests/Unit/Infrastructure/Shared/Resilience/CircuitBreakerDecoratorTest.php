@@ -9,6 +9,7 @@ use App\Infrastructure\Shared\Resilience\CircuitBreakerDecorator;
 use Exception;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Mockery;
+use Mockery\Expectation;
 use Mockery\MockInterface;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
@@ -40,6 +41,17 @@ final class CircuitBreakerDecoratorTest extends TestCase
     }
 
     /**
+     * @return Expectation
+     */
+    private function expectMockCall(MockInterface $mock, string $method)
+    {
+        /** @var Expectation $expectation */
+        $expectation = $mock->shouldReceive($method);
+
+        return $expectation;
+    }
+
+    /**
      * @test
      *
      * @group resilience
@@ -65,25 +77,25 @@ final class CircuitBreakerDecoratorTest extends TestCase
             // EXPECTATIONS FOR EACH ITERATION:
 
             // A. Check if open -> returns false (Circuit Closed)
-            $cache->shouldReceive('has')
+            $this->expectMockCall($cache, 'has')
                 ->with(self::CACHE_KEY_OPEN)
                 ->once()
                 ->andReturn(false);
 
             // B. Inner service called -> throws Exception (Simulating Collapse)
-            $innerService->shouldReceive('send')
+            $this->expectMockCall($innerService, 'send')
                 ->once()
                 ->andThrow(new Exception("Provider Timeout Scenario iteration #{$i}"));
 
             // C. Record Failure -> Increment
-            $cache->shouldReceive('increment')
+            $this->expectMockCall($cache, 'increment')
                 ->with(self::CACHE_KEY_FAILURES)
                 ->once()
                 ->andReturn($i); // Return current count (1, 2, 3, 4, 5)
 
             // D. First failure sets expiry for the failure window
             if ($i === 1) {
-                $cache->shouldReceive('put')
+                $this->expectMockCall($cache, 'put')
                     ->with(self::CACHE_KEY_FAILURES, 1, 120)
                     ->once();
             }
@@ -91,12 +103,12 @@ final class CircuitBreakerDecoratorTest extends TestCase
             // E. TRIP LOGIC (Only on Nth iteration)
             if ($i === self::FAILURE_THRESHOLD) {
                 // Should trip circuit
-                $cache->shouldReceive('put')
+                $this->expectMockCall($cache, 'put')
                     ->with(self::CACHE_KEY_OPEN, true, self::OPEN_TTL)
                     ->once();
 
                 // Should reset failure counter
-                $cache->shouldReceive('forget')
+                $this->expectMockCall($cache, 'forget')
                     ->with(self::CACHE_KEY_FAILURES)
                     ->once();
             }
@@ -119,13 +131,13 @@ final class CircuitBreakerDecoratorTest extends TestCase
         // 3. ACT & ASSERT PHASE 2: FAIL FAST (Iteration N+1)
 
         // A. Check if open -> returns TRUE (Circuit Open)
-        $cache->shouldReceive('has')
+        $this->expectMockCall($cache, 'has')
             ->with(self::CACHE_KEY_OPEN)
             ->once()
             ->andReturn(true);
 
         // B. Inner Service MUST NOT be called (The Protecion)
-        $innerService->shouldReceive('send')->never();
+        $this->expectMockCall($innerService, 'send')->never();
 
         // EXECUTE
         try {

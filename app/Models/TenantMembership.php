@@ -22,13 +22,14 @@ class TenantMembership extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
-        'tenant_id',
         'user_id',
         'role',
         'preset_key',
         'granted_permissions',
         'accepted_at',
     ];
+
+    protected $guarded = ['tenant_id'];
 
     protected function casts(): array
     {

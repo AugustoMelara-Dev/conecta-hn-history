@@ -19,7 +19,6 @@ class Lead extends Model
     use BelongsToTenant, HasFactory;
 
     protected $fillable = [
-        'tenant_id',
         'name',
         'email',
         'phone',
@@ -40,7 +39,7 @@ class Lead extends Model
      * SECURITY: Immutable ownership fields.
      * tenant_id is set automatically by BelongsToTenant trait on creation.
      */
-    protected $guarded = ['id', 'created_at', 'updated_at'];
+    protected $guarded = ['tenant_id'];
 
     // ═══════════════════════════════════════════════════════════════════════
     // RELATIONSHIPS

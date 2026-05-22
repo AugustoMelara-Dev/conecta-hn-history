@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Storage;
  * ╔══════════════════════════════════════════════════════════════════════════╗
  * ║  OPERATIONAL VISIBILITY: CONFIG SAFE                                     ║
  * ║  1. Checks Database State (Status, Path, Version).                       ║
- * ║  2. DISK AWARENESS: Uses config('filesystems.default') instead of env(). ║
+ * ║  2. DISK AWARENESS: Uses config('filesystems.default') instead of runtime environment reads. ║
  * ║     - Crucial for proper diagnostics in production.                      ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */

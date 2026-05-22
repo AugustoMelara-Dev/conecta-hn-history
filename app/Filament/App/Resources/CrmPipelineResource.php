@@ -211,6 +211,7 @@ class CrmPipelineResource extends Resource
         }
 
         CrmPipeline::query()
+            // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
             ->withoutGlobalScopes()
             ->where('tenant_id', (string) $pipeline->tenant_id)
             ->whereKeyNot($pipeline->getKey())
@@ -264,6 +265,7 @@ class CrmPipelineResource extends Resource
         }
 
         return $query
+            // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
             ->withoutGlobalScopes()
             ->where('tenant_id', (string) $tenant->getKey())
             ->withCount(['stages', 'deals']);

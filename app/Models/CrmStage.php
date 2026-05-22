@@ -18,7 +18,6 @@ class CrmStage extends Model
     public const TYPE_LOST = 'lost';
 
     protected $fillable = [
-        'tenant_id',
         'crm_pipeline_id',
         'name',
         'key',
@@ -27,6 +26,8 @@ class CrmStage extends Model
         'is_default',
         'sort_order',
     ];
+
+    protected $guarded = ['tenant_id'];
 
     protected $casts = [
         'probability' => 'integer',
@@ -41,11 +42,13 @@ class CrmStage extends Model
 
     public function pipeline(): BelongsTo
     {
+        // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
         return $this->belongsTo(CrmPipeline::class, 'crm_pipeline_id')->withoutGlobalScopes();
     }
 
     public function deals(): HasMany
     {
+        // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
         return $this->hasMany(CrmDeal::class)->withoutGlobalScopes();
     }
 }

@@ -1,5 +1,6 @@
 includes:
     - ./vendor/larastan/larastan/extension.neon
+    - ./vendor/pestphp/pest/extension.neon
 
 parameters:
     paths:
@@ -14,6 +15,8 @@ parameters:
     # Currently empty for strict checking of Domain and Application layers.
     ignoreErrors: []
 
+    stubFiles:
+        - phpstan-stubs/mockery-expectation.stub
+
     # Set to true to force documentation of array types (e.g. array<int, string>).
     # Essential for our DTO -> TS generation pipeline.
-

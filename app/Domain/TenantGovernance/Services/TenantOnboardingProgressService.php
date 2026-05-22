@@ -34,6 +34,7 @@ final class TenantOnboardingProgressService
         $commercialMode = $this->commercialMode($tenant);
         $manifestOnboarding = $this->manifestOnboardingForTenant($tenant);
 
+        // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
         $hasCatalog = $tenant->products()->withoutGlobalScopes()->exists()
             || $tenant->services()->withoutGlobalScopes()->exists();
         $hasSchedule = $tenant->openingHours()->withoutGlobalScopes()->exists()
@@ -91,22 +92,26 @@ final class TenantOnboardingProgressService
         $snapshot['lastCompletedAt'] = $this->resolveLastCompletedAt($snapshot, $existingState);
         $this->recordMilestoneEvents($tenant, $user, $snapshot, $existingState);
 
-        TenantOnboardingState::updateOrCreate(
-            [
+        $statePayload = [
+            'user_id' => $user?->getKey(),
+            'role' => $snapshot['role'],
+            'progress' => $snapshot['progress'],
+            'next_action_key' => $snapshot['nextAction']['key'],
+            'next_action_title' => $snapshot['nextAction']['title'],
+            'next_action_copy' => $snapshot['nextAction']['copy'],
+            'next_action_href' => $snapshot['nextAction']['href'],
+            'milestones' => $snapshot['milestones'],
+            'last_completed_at' => $snapshot['lastCompletedAt'],
+        ];
+
+        if ($existingState instanceof TenantOnboardingState) {
+            $existingState->fill($statePayload);
+            $existingState->save();
+        } else {
+            TenantOnboardingState::forceCreate($statePayload + [
                 'tenant_id' => (string) $tenant->getKey(),
-                'user_id' => $user?->getKey(),
-                'role' => $snapshot['role'],
-            ],
-            [
-                'progress' => $snapshot['progress'],
-                'next_action_key' => $snapshot['nextAction']['key'],
-                'next_action_title' => $snapshot['nextAction']['title'],
-                'next_action_copy' => $snapshot['nextAction']['copy'],
-                'next_action_href' => $snapshot['nextAction']['href'],
-                'milestones' => $snapshot['milestones'],
-                'last_completed_at' => $snapshot['lastCompletedAt'],
-            ]
-        );
+            ]);
+        }
 
         return $snapshot;
     }
@@ -930,6 +935,7 @@ final class TenantOnboardingProgressService
     private function tenantHasOrdersOrAppointments(Tenant $tenant): bool
     {
         return Order::query()
+            // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
             ->withoutGlobalScopes()
             ->where('tenant_id', $tenant->getKey())
             ->exists() || $tenant->appointments()->withoutGlobalScopes()->exists();

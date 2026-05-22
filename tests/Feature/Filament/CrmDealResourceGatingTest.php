@@ -115,7 +115,7 @@ final class CrmDealResourceGatingTest extends TestCase
         self::assertTrue(CrmDealResource::canDelete($deal));
         self::assertTrue(CrmDealResource::canDeleteAny());
 
-        $emptyPipeline = CrmPipeline::query()->withoutGlobalScopes()->create([
+        $emptyPipeline = CrmPipeline::query()->withoutGlobalScopes()->forceCreate([
             'tenant_id' => (string) $tenant->getKey(),
             'name' => 'Pipeline temporal',
             'key' => 'pipeline-temporal',
@@ -132,7 +132,7 @@ final class CrmDealResourceGatingTest extends TestCase
     {
         [$admin, $tenant] = $this->tenantUser(Role::ADMIN);
         $deal = $this->deal($tenant);
-        $newPipeline = CrmPipeline::query()->withoutGlobalScopes()->create([
+        $newPipeline = CrmPipeline::query()->withoutGlobalScopes()->forceCreate([
             'tenant_id' => (string) $tenant->getKey(),
             'name' => 'Nuevo default',
             'key' => 'nuevo-default',
@@ -148,7 +148,7 @@ final class CrmDealResourceGatingTest extends TestCase
         self::assertFalse((bool) $deal->pipeline->refresh()->is_default);
         self::assertTrue((bool) $newPipeline->refresh()->is_default);
 
-        $firstStage = CrmStage::query()->withoutGlobalScopes()->create([
+        $firstStage = CrmStage::query()->withoutGlobalScopes()->forceCreate([
             'tenant_id' => (string) $tenant->getKey(),
             'crm_pipeline_id' => $newPipeline->getKey(),
             'name' => 'Discovery',
@@ -156,7 +156,7 @@ final class CrmDealResourceGatingTest extends TestCase
             'type' => CrmStage::TYPE_OPEN,
             'is_default' => true,
         ]);
-        $secondStage = CrmStage::query()->withoutGlobalScopes()->create([
+        $secondStage = CrmStage::query()->withoutGlobalScopes()->forceCreate([
             'tenant_id' => (string) $tenant->getKey(),
             'crm_pipeline_id' => $newPipeline->getKey(),
             'name' => 'Propuesta',
@@ -183,7 +183,7 @@ final class CrmDealResourceGatingTest extends TestCase
 
         $this->setAppPanelTenantContext($manager, $tenant);
 
-        $note = CustomerNote::query()->create([
+        $note = CustomerNote::query()->forceCreate([
             'tenant_id' => (string) $tenant->getKey(),
             'customer_profile_id' => $deal->customer_profile_id,
             'crm_deal_id' => $deal->getKey(),
@@ -193,7 +193,7 @@ final class CrmDealResourceGatingTest extends TestCase
             'body' => 'Seguimiento desde oportunidad.',
         ]);
 
-        $task = CustomerTask::query()->create([
+        $task = CustomerTask::query()->forceCreate([
             'tenant_id' => (string) $tenant->getKey(),
             'customer_profile_id' => $deal->customer_profile_id,
             'crm_deal_id' => $deal->getKey(),
@@ -226,7 +226,7 @@ final class CrmDealResourceGatingTest extends TestCase
             'status' => CrmDeal::STATUS_OPEN,
         ])->save();
 
-        CustomerNote::query()->create([
+        CustomerNote::query()->forceCreate([
             'tenant_id' => (string) $tenant->getKey(),
             'customer_profile_id' => $deal->customer_profile_id,
             'crm_deal_id' => $deal->getKey(),
@@ -236,7 +236,7 @@ final class CrmDealResourceGatingTest extends TestCase
             'body' => 'Audit note.',
         ]);
 
-        CustomerTask::query()->create([
+        CustomerTask::query()->forceCreate([
             'tenant_id' => (string) $tenant->getKey(),
             'customer_profile_id' => $deal->customer_profile_id,
             'crm_deal_id' => $deal->getKey(),
@@ -297,7 +297,7 @@ final class CrmDealResourceGatingTest extends TestCase
     {
         $pipeline = app(CrmDefaultPipelineService::class)->ensureForTenant($tenant);
         $stage = $pipeline->stages()->where('key', 'new')->firstOrFail();
-        $customer = CustomerProfile::query()->withoutGlobalScopes()->create([
+        $customer = CustomerProfile::query()->withoutGlobalScopes()->forceCreate([
             'tenant_id' => (string) $tenant->getKey(),
             'name' => 'Cliente de prueba',
             'email' => 'cliente-crm@example.com',
@@ -306,7 +306,7 @@ final class CrmDealResourceGatingTest extends TestCase
             'customer_segment' => CustomerProfile::SEGMENT_PROSPECT,
         ]);
 
-        return CrmDeal::query()->withoutGlobalScopes()->create([
+        return CrmDeal::query()->withoutGlobalScopes()->forceCreate([
             'tenant_id' => (string) $tenant->getKey(),
             'crm_pipeline_id' => $pipeline->getKey(),
             'crm_stage_id' => $stage->getKey(),

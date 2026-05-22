@@ -10,7 +10,7 @@ use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Product\Repositories\ProductRepositoryInterface;
 use App\Infrastructure\Bus\TransactionalEventDispatcher;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Facades\Log;
+use App\Application\Shared\Contracts\LoggerInterface;
 
 /**
  * UpdateProductHandler - Command Handler for Product Update
@@ -31,6 +31,7 @@ final class UpdateProductHandler
     public function __construct(
         private readonly ProductRepositoryInterface $productRepository,
         private readonly TransactionalEventDispatcher $eventDispatcher,
+        private readonly LoggerInterface $logger,
     ) {}
 
     /**
@@ -51,7 +52,7 @@ final class UpdateProductHandler
         // 3. SECURITY GUARD: Tenant Ownership Verification (IDOR Protection)
         // We hide the existence of the resource to prevent enumeration attacks
         if ($product->tenant_id !== $command->tenantId) {
-            Log::warning('SECURITY: Cross-tenant product access attempt', [
+            $this->logger->warning('SECURITY: Cross-tenant product access attempt', [
                 'requested_product_id' => $command->productId,
                 'requesting_tenant_id' => $command->tenantId,
                 'actual_tenant_id' => $product->tenant_id,
@@ -89,7 +90,7 @@ final class UpdateProductHandler
         ));
 
         // 8. Audit Log (PII Scrubbed)
-        Log::info('Product updated successfully', $this->sanitizePayload([
+        $this->logger->info('Product updated successfully', $this->sanitizePayload([
             'product_id' => $product->id,
             'tenant_id' => $command->tenantId,
             'changed_fields' => $changedAttributes,
