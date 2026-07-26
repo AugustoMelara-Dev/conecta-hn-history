@@ -120,3 +120,6 @@ playwright-report/
 test-results/
 .tmp-*
 docs/qa/_tmp-*
+
+# Isolated implementation worktrees
+.worktrees/
