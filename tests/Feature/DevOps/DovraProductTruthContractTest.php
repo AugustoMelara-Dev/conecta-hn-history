@@ -33,4 +33,45 @@ final class DovraProductTruthContractTest extends TestCase
         self::assertStringContainsString('DOVRA_NAME_CLEARANCE_CONFIRMED=false', $environmentExample);
         self::assertStringNotContainsString('DOVRA_NAME_CLEARANCE_CONFIRMED=true', $environmentExample);
     }
+
+    public function test_legacy_brand_registry_contains_only_exact_non_public_exceptions(): void
+    {
+        $entries = config('dovra_legacy.allowed_references');
+
+        self::assertIsArray($entries);
+        self::assertNotSame([], $entries);
+
+        $allowedClassifications = [
+            'historical_evidence',
+            'legal_dependency',
+            'operational_compatibility',
+        ];
+        $registeredPaths = [];
+
+        foreach ($entries as $entry) {
+            self::assertIsArray($entry);
+            self::assertSame(
+                ['path', 'classification', 'reason', 'removal_program'],
+                array_keys($entry),
+            );
+            self::assertIsString($entry['path']);
+            self::assertDoesNotMatchRegularExpression('/[*?\[\]]/', $entry['path']);
+            self::assertFileExists(base_path($entry['path']));
+            self::assertContains($entry['classification'], $allowedClassifications);
+            self::assertNotSame('', trim((string) $entry['reason']));
+            self::assertMatchesRegularExpression('/^Program (?:0[1-9]|1[0-4])$/', $entry['removal_program']);
+            self::assertDoesNotMatchRegularExpression(
+                '#^(?:resources/(?:js|views)|app/(?:Mail|Notifications|Http/Controllers|Filament))/#',
+                $entry['path'],
+            );
+
+            $registeredPaths[] = $entry['path'];
+        }
+
+        self::assertSame($registeredPaths, array_values(array_unique($registeredPaths)));
+        self::assertContains('config/conecta.php', $registeredPaths);
+        self::assertContains('.env.example', $registeredPaths);
+        self::assertContains('config/observability.php', $registeredPaths);
+        self::assertContains('app/ValueObjects/AuditContext.php', $registeredPaths);
+    }
 }
