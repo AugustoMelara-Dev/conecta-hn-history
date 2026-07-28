@@ -16,7 +16,8 @@ final class EnvExampleSecurityTest extends TestCase
 
         $contents = file_get_contents($envExamplePath);
         $this->assertIsString($contents);
-        $this->assertStringContainsString('APP_NAME="Conecta HN"', $contents);
+        $this->assertStringContainsString('APP_NAME="Dovra AI"', $contents);
+        $this->assertStringNotContainsString('APP_NAME="Conecta HN"', $contents);
         $this->assertStringNotContainsString('APP_NAME="Vito Business OS"', $contents);
         $this->assertStringContainsString('APP_DEBUG=false', $contents);
         $this->assertStringNotContainsString('APP_DEBUG=true', $contents);
