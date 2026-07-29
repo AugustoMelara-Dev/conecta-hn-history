@@ -112,7 +112,7 @@ final class AiRegistryBackfill
             }
 
             $provider = DB::table('ai_providers')->where('provider_key', $providerKey)->first();
-            if ($provider !== null && ($provider->adapter_key !== $adapterKey || $provider->default_secret_reference !== $secretReference)) {
+            if ($provider !== null && $provider->adapter_key !== $adapterKey) {
                 $this->conflicts++;
 
                 return;
@@ -129,6 +129,11 @@ final class AiRegistryBackfill
                     'status' => 'active',
                     'metadata' => null,
                     'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            } elseif ($provider->default_secret_reference !== $secretReference) {
+                DB::table('ai_providers')->where('id', $providerId)->update([
+                    'default_secret_reference' => $secretReference,
                     'updated_at' => now(),
                 ]);
             }
@@ -233,14 +238,29 @@ final class AiRegistryBackfill
         string $prompt,
     ): void {
         $provider = $definition['provider'] ?? null;
-        $model = is_array($definition['models'] ?? null) ? ($definition['models'][0] ?? null) : null;
-        if (! is_string($provider) || ! is_string($model) || ! isset($this->modelVersionIds[$provider.':'.$model])) {
+        $models = is_array($definition['models'] ?? null)
+            ? array_values($definition['models'])
+            : [];
+        if (! is_string($provider) || $models === []) {
             $this->gaps++;
 
             return;
         }
 
-        DB::transaction(function () use ($tenantId, $capability, $definition, $agentKey, $visibility, $promptKey, $promptName, $prompt, $provider, $model): void {
+        $modelVersionIds = [];
+        foreach ($models as $model) {
+            if (! is_string($model) || ! isset($this->modelVersionIds[$provider.':'.$model])) {
+                $this->gaps++;
+
+                return;
+            }
+
+            $modelVersionIds[] = $this->modelVersionIds[$provider.':'.$model];
+        }
+
+        $model = $models[0];
+
+        DB::transaction(function () use ($tenantId, $capability, $definition, $agentKey, $visibility, $promptKey, $promptName, $prompt, $provider, $model, $models, $modelVersionIds): void {
             $promptVersion = $this->ensurePrompt($tenantId, $promptKey, $promptName, $visibility, $prompt);
             if ($promptVersion === null) {
                 return;
@@ -251,12 +271,14 @@ final class AiRegistryBackfill
                 return;
             }
 
-            $modelVersionId = $this->modelVersionIds[$provider.':'.$model];
+            $modelVersionId = $modelVersionIds[0];
             $configuration = [
                 'capability' => $capability,
                 'provider' => $provider,
                 'model' => $model,
                 'model_version_id' => $modelVersionId,
+                'models' => $models,
+                'model_version_ids' => $modelVersionIds,
                 'prompt_key' => $promptKey,
                 'prompt_version_id' => $promptVersion['id'],
                 'tools' => array_values(array_map('strval', (array) ($definition['tools'] ?? []))),
@@ -297,7 +319,13 @@ final class AiRegistryBackfill
         }
 
         $templateHash = hash('sha256', $template);
-        $checksum = $this->checksum->for(['prompt_key' => $key, 'template_hash' => $templateHash, 'input_schema' => []]);
+        $keyVersion = (string) config('ai.execution_retention.encryption_key_version', 'v1');
+        $checksum = $this->checksum->for([
+            'prompt_key' => $key,
+            'template_hash' => $templateHash,
+            'input_schema' => [],
+            'encryption_key_version' => $keyVersion,
+        ]);
         $version = DB::table('ai_prompt_versions')->where('prompt_definition_id', $definition->id)->where('checksum', $checksum)->first();
         if ($version !== null) {
             return ['id' => $version->id, 'checksum' => $checksum];
@@ -380,13 +408,20 @@ final class AiRegistryBackfill
 
     private function ensureActivation(string $tenantId, string $capability, string $agentVersionId): void
     {
-        $current = DB::table('ai_agent_activations')
+        $openActivations = DB::table('ai_agent_activations')
             ->where('tenant_id', $tenantId)
             ->where('scope_type', 'capability')
             ->where('scope_key', $capability)
             ->whereNull('effective_until')
             ->orderByDesc('effective_from')
-            ->first();
+            ->get();
+        if ($openActivations->count() > 1) {
+            $this->conflicts++;
+
+            return;
+        }
+
+        $current = $openActivations->first();
         if ($current !== null && $current->agent_version_id === $agentVersionId) {
             return;
         }

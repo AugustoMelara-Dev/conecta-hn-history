@@ -10,6 +10,7 @@ use App\Infrastructure\AI\Security\LaravelAiContentCipher;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 final class AiRegistryBackfillTest extends TestCase
@@ -81,6 +82,98 @@ final class AiRegistryBackfillTest extends TestCase
         self::assertSame(2, $report->modelVersions);
         self::assertSame(15, (int) DB::table('ai_model_versions')->orderBy('version')->value('input_cost_minor'));
         self::assertSame(25, (int) DB::table('ai_model_versions')->orderByDesc('version')->value('input_cost_minor'));
+    }
+
+    public function test_it_creates_a_provider_version_when_the_secret_reference_rotates(): void
+    {
+        $platformTenant = Tenant::factory()->create();
+        $this->configureRegistry((string) $platformTenant->getKey(), []);
+
+        app(AiRegistryBackfill::class)->run();
+        config()->set('ai.providers.openai.secret_reference', 'openai.rotated');
+        $report = app(AiRegistryBackfill::class)->run();
+
+        self::assertSame(2, $report->providerVersions);
+        self::assertDatabaseHas('ai_provider_versions', ['secret_reference' => 'openai.primary', 'version' => 1]);
+        self::assertDatabaseHas('ai_provider_versions', ['secret_reference' => 'openai.rotated', 'version' => 2]);
+    }
+
+    public function test_it_records_a_gap_when_any_capability_model_is_unknown(): void
+    {
+        $platformTenant = Tenant::factory()->create();
+        $this->configureRegistry((string) $platformTenant->getKey(), []);
+        config()->set('ai.capabilities.public_discovery.models', ['gpt-4o-mini', 'unconfigured-fallback']);
+
+        $report = app(AiRegistryBackfill::class)->run();
+
+        self::assertGreaterThan(0, $report->gaps);
+        self::assertDatabaseMissing('ai_agent_definitions', ['key' => 'public.discovery']);
+    }
+
+    public function test_it_versions_the_agent_when_a_secondary_capability_model_changes(): void
+    {
+        $platformTenant = Tenant::factory()->create();
+        $this->configureRegistry((string) $platformTenant->getKey(), []);
+        config()->set('ai.providers.openai.models.gpt-4o', [
+            'input_usd_per_million' => 2.50,
+            'output_usd_per_million' => 10.00,
+        ]);
+
+        app(AiRegistryBackfill::class)->run();
+        config()->set('ai.capabilities.public_discovery.models', ['gpt-4o-mini', 'gpt-4o']);
+        $report = app(AiRegistryBackfill::class)->run();
+
+        self::assertSame(2, $report->agentVersions);
+        self::assertSame(['gpt-4o-mini', 'gpt-4o'], json_decode(
+            DB::table('ai_agent_versions')->orderByDesc('version')->value('configuration'),
+            true,
+            512,
+            JSON_THROW_ON_ERROR,
+        )['models']);
+    }
+
+    public function test_it_records_a_conflict_without_mutating_ambiguous_open_activations(): void
+    {
+        $platformTenant = Tenant::factory()->create();
+        $this->configureRegistry((string) $platformTenant->getKey(), []);
+        app(AiRegistryBackfill::class)->run();
+
+        $activation = DB::table('ai_agent_activations')->first();
+        self::assertNotNull($activation);
+        DB::table('ai_agent_activations')->insert([
+            'id' => (string) Str::uuid(),
+            'tenant_id' => $activation->tenant_id,
+            'scope_type' => $activation->scope_type,
+            'scope_key' => $activation->scope_key,
+            'agent_version_id' => $activation->agent_version_id,
+            'rollout_percentage' => $activation->rollout_percentage,
+            'cohort_salt' => $activation->cohort_salt,
+            'release_decision_id' => null,
+            'previous_activation_id' => null,
+            'effective_from' => now()->addSecond(),
+            'effective_until' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $report = app(AiRegistryBackfill::class)->run();
+
+        self::assertGreaterThan(0, $report->conflicts);
+        self::assertSame(2, DB::table('ai_agent_activations')->whereNull('effective_until')->count());
+    }
+
+    public function test_it_creates_an_encrypted_prompt_version_when_the_key_version_changes(): void
+    {
+        $platformTenant = Tenant::factory()->create();
+        $this->configureRegistry((string) $platformTenant->getKey(), []);
+        config()->set('ai.execution_retention.encryption_key_version', 'v1');
+
+        app(AiRegistryBackfill::class)->run();
+        config()->set('ai.execution_retention.encryption_key_version', 'v2');
+        $report = app(AiRegistryBackfill::class)->run();
+
+        self::assertSame(2, $report->promptVersions);
+        self::assertSame('v2', DB::table('ai_prompt_versions')->orderByDesc('version')->value('encryption_key_version'));
     }
 
     public function test_it_records_gaps_for_missing_or_invalid_public_owners_and_unknown_models(): void
