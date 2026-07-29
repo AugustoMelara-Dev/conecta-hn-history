@@ -19,20 +19,20 @@ return new class extends Migration
             $table->uuid('agent_version_id')->nullable();
             $table->uuid('prompt_version_id')->nullable();
 
-            $table->foreign('conversation_id', 'ai_executions_conversation_fk')
-                ->references('id')->on('ai_conversations')->nullOnDelete();
-            $table->foreign('request_message_id', 'ai_executions_request_message_fk')
-                ->references('id')->on('ai_messages')->nullOnDelete();
-            $table->foreign('response_message_id', 'ai_executions_response_message_fk')
-                ->references('id')->on('ai_messages')->nullOnDelete();
+            $table->foreign(['tenant_id', 'conversation_id'], 'ai_executions_conversation_fk')
+                ->references(['tenant_id', 'id'])->on('ai_conversations')->restrictOnDelete();
+            $table->foreign(['tenant_id', 'request_message_id'], 'ai_executions_request_message_fk')
+                ->references(['tenant_id', 'id'])->on('ai_messages')->restrictOnDelete();
+            $table->foreign(['tenant_id', 'response_message_id'], 'ai_executions_response_message_fk')
+                ->references(['tenant_id', 'id'])->on('ai_messages')->restrictOnDelete();
             $table->foreign('provider_version_id', 'ai_executions_provider_version_fk')
                 ->references('id')->on('ai_provider_versions')->nullOnDelete();
             $table->foreign('model_version_id', 'ai_executions_model_version_fk')
                 ->references('id')->on('ai_model_versions')->nullOnDelete();
-            $table->foreign('agent_version_id', 'ai_executions_agent_version_fk')
-                ->references('id')->on('ai_agent_versions')->nullOnDelete();
-            $table->foreign('prompt_version_id', 'ai_executions_prompt_version_fk')
-                ->references('id')->on('ai_prompt_versions')->nullOnDelete();
+            $table->foreign(['tenant_id', 'agent_version_id'], 'ai_executions_agent_version_fk')
+                ->references(['tenant_id', 'id'])->on('ai_agent_versions')->restrictOnDelete();
+            $table->foreign(['tenant_id', 'prompt_version_id'], 'ai_executions_prompt_version_fk')
+                ->references(['tenant_id', 'id'])->on('ai_prompt_versions')->restrictOnDelete();
 
             $table->index(['tenant_id', 'conversation_id'], 'ai_executions_tenant_conversation_idx');
         });

@@ -28,10 +28,11 @@ return new class extends Migration
             $table->unsignedBigInteger('last_message_sequence')->default(0);
             $table->timestamps();
 
-            $table->foreign('agent_version_id', 'ai_conversations_agent_version_fk')
-                ->references('id')->on('ai_agent_versions')->nullOnDelete();
+            $table->foreign(['tenant_id', 'agent_version_id'], 'ai_conversations_agent_version_fk')
+                ->references(['tenant_id', 'id'])->on('ai_agent_versions')->restrictOnDelete();
             $table->index(['tenant_id', 'status', 'updated_at'], 'ai_conversations_tenant_status_idx');
             $table->unique(['tenant_id', 'external_thread_hash'], 'ai_conversations_tenant_thread_unique');
+            $table->unique(['tenant_id', 'id'], 'ai_conversations_tenant_id_unique');
         });
 
         Schema::create('ai_conversation_participants', function (Blueprint $table): void {
@@ -45,8 +46,8 @@ return new class extends Migration
             $table->timestamp('left_at')->nullable();
             $table->timestamps();
 
-            $table->foreign('conversation_id', 'ai_conversation_participants_conversation_fk')
-                ->references('id')->on('ai_conversations')->cascadeOnDelete();
+            $table->foreign(['tenant_id', 'conversation_id'], 'ai_conversation_participants_conversation_fk')
+                ->references(['tenant_id', 'id'])->on('ai_conversations')->cascadeOnDelete();
             $table->unique(
                 ['tenant_id', 'conversation_id', 'participant_type', 'participant_id'],
                 'ai_conversation_participants_scope_unique',
@@ -77,23 +78,24 @@ return new class extends Migration
             $table->timestamp('failed_at')->nullable();
             $table->timestamps();
 
-            $table->foreign('conversation_id', 'ai_messages_conversation_fk')
-                ->references('id')->on('ai_conversations')->cascadeOnDelete();
-            $table->foreign('agent_version_id', 'ai_messages_agent_version_fk')
-                ->references('id')->on('ai_agent_versions')->nullOnDelete();
-            $table->foreign('prompt_version_id', 'ai_messages_prompt_version_fk')
-                ->references('id')->on('ai_prompt_versions')->nullOnDelete();
+            $table->foreign(['tenant_id', 'conversation_id'], 'ai_messages_conversation_fk')
+                ->references(['tenant_id', 'id'])->on('ai_conversations')->cascadeOnDelete();
+            $table->foreign(['tenant_id', 'agent_version_id'], 'ai_messages_agent_version_fk')
+                ->references(['tenant_id', 'id'])->on('ai_agent_versions')->restrictOnDelete();
+            $table->foreign(['tenant_id', 'prompt_version_id'], 'ai_messages_prompt_version_fk')
+                ->references(['tenant_id', 'id'])->on('ai_prompt_versions')->restrictOnDelete();
             $table->foreign('provider_version_id', 'ai_messages_provider_version_fk')
                 ->references('id')->on('ai_provider_versions')->nullOnDelete();
             $table->foreign('model_version_id', 'ai_messages_model_version_fk')
                 ->references('id')->on('ai_model_versions')->nullOnDelete();
-            $table->foreign('execution_id', 'ai_messages_execution_fk')
-                ->references('correlation_id')->on('ai_executions')->nullOnDelete();
+            $table->foreign(['tenant_id', 'execution_id'], 'ai_messages_execution_fk')
+                ->references(['tenant_id', 'correlation_id'])->on('ai_executions')->restrictOnDelete();
             $table->unique(
                 ['tenant_id', 'conversation_id', 'idempotency_key'],
                 'ai_messages_tenant_conversation_idem_unique',
             );
             $table->unique(['conversation_id', 'sequence'], 'ai_messages_conversation_sequence_unique');
+            $table->unique(['tenant_id', 'id'], 'ai_messages_tenant_id_unique');
             $table->index(['tenant_id', 'conversation_id', 'created_at'], 'ai_messages_tenant_conversation_idx');
         });
 
@@ -108,8 +110,8 @@ return new class extends Migration
             $table->json('metadata')->nullable();
             $table->timestamps();
 
-            $table->foreign('message_id', 'ai_message_evidence_message_fk')
-                ->references('id')->on('ai_messages')->cascadeOnDelete();
+            $table->foreign(['tenant_id', 'message_id'], 'ai_message_evidence_message_fk')
+                ->references(['tenant_id', 'id'])->on('ai_messages')->cascadeOnDelete();
             $table->index(['tenant_id', 'message_id'], 'ai_message_evidence_tenant_message_idx');
         });
 
@@ -124,8 +126,8 @@ return new class extends Migration
             $table->timestamp('occurred_at');
             $table->timestamps();
 
-            $table->foreign('message_id', 'ai_message_failures_message_fk')
-                ->references('id')->on('ai_messages')->cascadeOnDelete();
+            $table->foreign(['tenant_id', 'message_id'], 'ai_message_failures_message_fk')
+                ->references(['tenant_id', 'id'])->on('ai_messages')->cascadeOnDelete();
             $table->index(['tenant_id', 'message_id', 'occurred_at'], 'ai_message_failures_message_idx');
         });
     }

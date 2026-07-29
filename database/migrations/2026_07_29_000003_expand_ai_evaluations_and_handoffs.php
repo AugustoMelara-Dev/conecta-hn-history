@@ -26,10 +26,10 @@ return new class extends Migration
             $table->timestamp('completed_at')->nullable();
             $table->timestamps();
 
-            $table->foreign('conversation_id', 'ai_handoffs_conversation_fk')
-                ->references('id')->on('ai_conversations')->cascadeOnDelete();
-            $table->foreign('message_id', 'ai_handoffs_message_fk')
-                ->references('id')->on('ai_messages')->nullOnDelete();
+            $table->foreign(['tenant_id', 'conversation_id'], 'ai_handoffs_conversation_fk')
+                ->references(['tenant_id', 'id'])->on('ai_conversations')->cascadeOnDelete();
+            $table->foreign(['tenant_id', 'message_id'], 'ai_handoffs_message_fk')
+                ->references(['tenant_id', 'id'])->on('ai_messages')->restrictOnDelete();
             $table->index(['tenant_id', 'conversation_id', 'status'], 'ai_handoffs_tenant_conversation_idx');
         });
 
@@ -44,6 +44,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['tenant_id', 'key'], 'ai_evaluation_suites_tenant_key_unique');
+            $table->unique(['tenant_id', 'id'], 'ai_evaluation_suites_tenant_id_unique');
         });
 
         Schema::create('ai_evaluation_versions', function (Blueprint $table): void {
@@ -56,10 +57,11 @@ return new class extends Migration
             $table->timestamp('released_at')->nullable();
             $table->timestamps();
 
-            $table->foreign('evaluation_suite_id', 'ai_evaluation_versions_suite_fk')
-                ->references('id')->on('ai_evaluation_suites')->cascadeOnDelete();
+            $table->foreign(['tenant_id', 'evaluation_suite_id'], 'ai_evaluation_versions_suite_fk')
+                ->references(['tenant_id', 'id'])->on('ai_evaluation_suites')->cascadeOnDelete();
             $table->unique(['evaluation_suite_id', 'version'], 'ai_evaluation_versions_number_unique');
             $table->unique(['evaluation_suite_id', 'checksum'], 'ai_evaluation_versions_checksum_unique');
+            $table->unique(['tenant_id', 'id'], 'ai_evaluation_versions_tenant_id_unique');
             $table->index(['tenant_id', 'evaluation_suite_id'], 'ai_evaluation_versions_tenant_suite_idx');
         });
 
@@ -76,9 +78,10 @@ return new class extends Migration
             $table->json('criteria')->nullable();
             $table->timestamps();
 
-            $table->foreign('evaluation_version_id', 'ai_evaluation_cases_version_fk')
-                ->references('id')->on('ai_evaluation_versions')->cascadeOnDelete();
+            $table->foreign(['tenant_id', 'evaluation_version_id'], 'ai_evaluation_cases_version_fk')
+                ->references(['tenant_id', 'id'])->on('ai_evaluation_versions')->cascadeOnDelete();
             $table->unique(['evaluation_version_id', 'key'], 'ai_evaluation_cases_version_key_unique');
+            $table->unique(['tenant_id', 'id'], 'ai_evaluation_cases_tenant_id_unique');
             $table->index(['tenant_id', 'evaluation_version_id'], 'ai_evaluation_cases_tenant_version_idx');
         });
 
@@ -96,16 +99,17 @@ return new class extends Migration
             $table->timestamp('completed_at')->nullable();
             $table->timestamps();
 
-            $table->foreign('evaluation_version_id', 'ai_evaluation_runs_version_fk')
-                ->references('id')->on('ai_evaluation_versions')->restrictOnDelete();
-            $table->foreign('agent_version_id', 'ai_evaluation_runs_agent_version_fk')
-                ->references('id')->on('ai_agent_versions')->nullOnDelete();
-            $table->foreign('prompt_version_id', 'ai_evaluation_runs_prompt_version_fk')
-                ->references('id')->on('ai_prompt_versions')->nullOnDelete();
+            $table->foreign(['tenant_id', 'evaluation_version_id'], 'ai_evaluation_runs_version_fk')
+                ->references(['tenant_id', 'id'])->on('ai_evaluation_versions')->restrictOnDelete();
+            $table->foreign(['tenant_id', 'agent_version_id'], 'ai_evaluation_runs_agent_version_fk')
+                ->references(['tenant_id', 'id'])->on('ai_agent_versions')->restrictOnDelete();
+            $table->foreign(['tenant_id', 'prompt_version_id'], 'ai_evaluation_runs_prompt_version_fk')
+                ->references(['tenant_id', 'id'])->on('ai_prompt_versions')->restrictOnDelete();
             $table->foreign('provider_version_id', 'ai_evaluation_runs_provider_version_fk')
                 ->references('id')->on('ai_provider_versions')->nullOnDelete();
             $table->foreign('model_version_id', 'ai_evaluation_runs_model_version_fk')
                 ->references('id')->on('ai_model_versions')->nullOnDelete();
+            $table->unique(['tenant_id', 'id'], 'ai_evaluation_runs_tenant_id_unique');
             $table->index(['tenant_id', 'status', 'created_at'], 'ai_evaluation_runs_tenant_status_idx');
         });
 
@@ -124,10 +128,10 @@ return new class extends Migration
             $table->timestamp('completed_at')->nullable();
             $table->timestamps();
 
-            $table->foreign('evaluation_run_id', 'ai_evaluation_results_run_fk')
-                ->references('id')->on('ai_evaluation_runs')->cascadeOnDelete();
-            $table->foreign('evaluation_case_id', 'ai_evaluation_results_case_fk')
-                ->references('id')->on('ai_evaluation_cases')->restrictOnDelete();
+            $table->foreign(['tenant_id', 'evaluation_run_id'], 'ai_evaluation_results_run_fk')
+                ->references(['tenant_id', 'id'])->on('ai_evaluation_runs')->cascadeOnDelete();
+            $table->foreign(['tenant_id', 'evaluation_case_id'], 'ai_evaluation_results_case_fk')
+                ->references(['tenant_id', 'id'])->on('ai_evaluation_cases')->restrictOnDelete();
             $table->unique(['evaluation_run_id', 'evaluation_case_id'], 'ai_evaluation_results_run_case_unique');
             $table->index(['tenant_id', 'evaluation_run_id'], 'ai_evaluation_results_tenant_run_idx');
         });
@@ -145,18 +149,19 @@ return new class extends Migration
             $table->timestamp('decided_at');
             $table->timestamps();
 
-            $table->foreign('release_policy_id', 'ai_release_decisions_policy_fk')
-                ->references('id')->on('ai_release_policies')->nullOnDelete();
-            $table->foreign('evaluation_run_id', 'ai_release_decisions_run_fk')
-                ->references('id')->on('ai_evaluation_runs')->nullOnDelete();
-            $table->foreign('agent_version_id', 'ai_release_decisions_agent_version_fk')
-                ->references('id')->on('ai_agent_versions')->nullOnDelete();
+            $table->foreign(['tenant_id', 'release_policy_id'], 'ai_release_decisions_policy_fk')
+                ->references(['tenant_id', 'id'])->on('ai_release_policies')->restrictOnDelete();
+            $table->foreign(['tenant_id', 'evaluation_run_id'], 'ai_release_decisions_run_fk')
+                ->references(['tenant_id', 'id'])->on('ai_evaluation_runs')->restrictOnDelete();
+            $table->foreign(['tenant_id', 'agent_version_id'], 'ai_release_decisions_agent_version_fk')
+                ->references(['tenant_id', 'id'])->on('ai_agent_versions')->restrictOnDelete();
+            $table->unique(['tenant_id', 'id'], 'ai_release_decisions_tenant_id_unique');
             $table->index(['tenant_id', 'agent_version_id', 'decided_at'], 'ai_release_decisions_agent_idx');
         });
 
         Schema::table('ai_agent_activations', function (Blueprint $table): void {
-            $table->foreign('release_decision_id', 'ai_agent_activations_release_decision_fk')
-                ->references('id')->on('ai_release_decisions')->nullOnDelete();
+            $table->foreign(['tenant_id', 'release_decision_id'], 'ai_agent_activations_release_decision_fk')
+                ->references(['tenant_id', 'id'])->on('ai_release_decisions')->restrictOnDelete();
         });
     }
 

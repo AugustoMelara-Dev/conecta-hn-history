@@ -10,9 +10,15 @@ return new class extends Migration
 {
     public function up(): void
     {
+        Schema::table('ai_executions', function (Blueprint $table): void {
+            $table->unique(['tenant_id', 'correlation_id'], 'ai_executions_tenant_correlation_unique');
+        });
+
         Schema::create('ai_providers', function (Blueprint $table): void {
             $table->uuid('id')->primary();
-            $table->string('key', 64)->unique();
+            $table->string('provider_key', 64)->unique();
+            $table->string('adapter_key', 128);
+            $table->string('default_secret_reference', 512)->nullable();
             $table->string('name', 160);
             $table->string('status', 24)->default('active');
             $table->json('metadata')->nullable();
@@ -24,7 +30,9 @@ return new class extends Migration
             $table->uuid('provider_id');
             $table->unsignedInteger('version');
             $table->char('checksum', 64);
-            $table->json('configuration');
+            $table->string('secret_reference', 512)->nullable();
+            $table->string('status', 24)->default('active');
+            $table->json('configuration')->nullable();
             $table->timestamp('released_at')->nullable();
             $table->timestamps();
 
@@ -81,6 +89,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['tenant_id', 'key'], 'ai_agent_definitions_tenant_key_unique');
+            $table->unique(['tenant_id', 'id'], 'ai_agent_definitions_tenant_id_unique');
         });
 
         Schema::create('ai_agent_versions', function (Blueprint $table): void {
@@ -94,12 +103,13 @@ return new class extends Migration
             $table->timestamp('released_at')->nullable();
             $table->timestamps();
 
-            $table->foreign('agent_definition_id', 'ai_agent_versions_definition_fk')
-                ->references('id')->on('ai_agent_definitions')->cascadeOnDelete();
+            $table->foreign(['tenant_id', 'agent_definition_id'], 'ai_agent_versions_definition_fk')
+                ->references(['tenant_id', 'id'])->on('ai_agent_definitions')->cascadeOnDelete();
             $table->foreign('model_version_id', 'ai_agent_versions_model_version_fk')
                 ->references('id')->on('ai_model_versions')->nullOnDelete();
             $table->unique(['agent_definition_id', 'version'], 'ai_agent_versions_number_unique');
             $table->unique(['agent_definition_id', 'checksum'], 'ai_agent_versions_checksum_unique');
+            $table->unique(['tenant_id', 'id'], 'ai_agent_versions_tenant_id_unique');
             $table->index(['tenant_id', 'agent_definition_id'], 'ai_agent_versions_tenant_definition_idx');
         });
 
@@ -114,6 +124,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['tenant_id', 'key'], 'ai_prompt_definitions_tenant_key_unique');
+            $table->unique(['tenant_id', 'id'], 'ai_prompt_definitions_tenant_id_unique');
         });
 
         Schema::create('ai_prompt_versions', function (Blueprint $table): void {
@@ -129,10 +140,11 @@ return new class extends Migration
             $table->timestamp('released_at')->nullable();
             $table->timestamps();
 
-            $table->foreign('prompt_definition_id', 'ai_prompt_versions_definition_fk')
-                ->references('id')->on('ai_prompt_definitions')->cascadeOnDelete();
+            $table->foreign(['tenant_id', 'prompt_definition_id'], 'ai_prompt_versions_definition_fk')
+                ->references(['tenant_id', 'id'])->on('ai_prompt_definitions')->cascadeOnDelete();
             $table->unique(['prompt_definition_id', 'version'], 'ai_prompt_versions_number_unique');
             $table->unique(['prompt_definition_id', 'checksum'], 'ai_prompt_versions_checksum_unique');
+            $table->unique(['tenant_id', 'id'], 'ai_prompt_versions_tenant_id_unique');
             $table->index(['tenant_id', 'prompt_definition_id'], 'ai_prompt_versions_tenant_definition_idx');
         });
 
@@ -148,6 +160,7 @@ return new class extends Migration
 
             $table->unique(['tenant_id', 'key'], 'ai_release_policies_tenant_key_unique');
             $table->unique(['tenant_id', 'checksum'], 'ai_release_policies_tenant_checksum_unique');
+            $table->unique(['tenant_id', 'id'], 'ai_release_policies_tenant_id_unique');
         });
 
         Schema::create('ai_agent_activations', function (Blueprint $table): void {
@@ -164,10 +177,11 @@ return new class extends Migration
             $table->timestamp('effective_until')->nullable();
             $table->timestamps();
 
-            $table->foreign('agent_version_id', 'ai_agent_activations_agent_version_fk')
-                ->references('id')->on('ai_agent_versions')->restrictOnDelete();
-            $table->foreign('previous_activation_id', 'ai_agent_activations_previous_fk')
-                ->references('id')->on('ai_agent_activations')->nullOnDelete();
+            $table->foreign(['tenant_id', 'agent_version_id'], 'ai_agent_activations_agent_version_fk')
+                ->references(['tenant_id', 'id'])->on('ai_agent_versions')->restrictOnDelete();
+            $table->foreign(['tenant_id', 'previous_activation_id'], 'ai_agent_activations_previous_fk')
+                ->references(['tenant_id', 'id'])->on('ai_agent_activations')->restrictOnDelete();
+            $table->unique(['tenant_id', 'id'], 'ai_agent_activations_tenant_id_unique');
             $table->index(['tenant_id', 'scope_type', 'scope_key'], 'ai_agent_activations_scope_idx');
             $table->index(['tenant_id', 'effective_from'], 'ai_agent_activations_effective_idx');
         });
@@ -185,5 +199,9 @@ return new class extends Migration
         Schema::dropIfExists('ai_models');
         Schema::dropIfExists('ai_provider_versions');
         Schema::dropIfExists('ai_providers');
+
+        Schema::table('ai_executions', function (Blueprint $table): void {
+            $table->dropUnique('ai_executions_tenant_correlation_unique');
+        });
     }
 };
