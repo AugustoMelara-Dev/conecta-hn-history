@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Application\Ai\Contracts\AiProviderPool;
+use App\Infrastructure\AI\ConfiguredAiProviderPool;
+use App\Infrastructure\AI\DisabledAiProvider;
+use App\Infrastructure\AI\OpenAiStructuredTextProvider;
 // Models
 use App\Contracts\Events\DomainEventBus;
 use App\Infrastructure\Events\LaravelEventBus;
@@ -626,6 +630,24 @@ class AppServiceProvider extends ServiceProvider
             \App\Infrastructure\Storage\LaravelMediaStorageService::class
         );
 
+        // Shared AI execution boundary. Adapter keys are registry identifiers;
+        // credential values stay inside deployment configuration.
+        $this->app->bind(
+            AiProviderPool::class,
+            static function ($app): AiProviderPool {
+                $reference = trim((string) config('ai.registry.openai_secret_reference', ''));
+                $credential = trim((string) config('services.openai.api_key', ''));
+                $provider = (bool) config('ai.providers.openai.enabled', false)
+                    && $reference !== ''
+                    && $credential !== ''
+                        ? $app->make(OpenAiStructuredTextProvider::class)
+                        : $app->make(DisabledAiProvider::class);
+
+                return new ConfiguredAiProviderPool([
+                    'openai_structured_text' => $provider,
+                ]);
+            }
+        );
         // ═══════════════════════════════════════════════════════════════════════
         // ORDERS DOMAIN: Receipt PDF Generator
         // ═══════════════════════════════════════════════════════════════════════
