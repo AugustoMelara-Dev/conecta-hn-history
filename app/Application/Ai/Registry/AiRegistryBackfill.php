@@ -138,11 +138,16 @@ final class AiRegistryBackfill
                 ]);
             }
 
+            $providerConfiguration = [
+                'enabled' => true,
+                'adapter_key' => $adapterKey,
+                ...$this->routingConfiguration($definition),
+            ];
             $providerPayload = [
                 'provider_key' => $providerKey,
                 'adapter_key' => $adapterKey,
                 'secret_reference' => $secretReference,
-                'enabled' => true,
+                'configuration' => $providerConfiguration,
             ];
             $providerChecksum = $this->checksum->for($providerPayload);
             $providerVersion = DB::table('ai_provider_versions')
@@ -157,8 +162,8 @@ final class AiRegistryBackfill
                     'version' => $this->nextVersion('ai_provider_versions', 'provider_id', $providerId),
                     'checksum' => $providerChecksum,
                     'secret_reference' => $secretReference,
-                    'status' => 'draft',
-                    'configuration' => $this->json(['enabled' => true, 'adapter_key' => $adapterKey]),
+                    'status' => 'active',
+                    'configuration' => $this->json($providerConfiguration),
                     'released_at' => null,
                     'lifecycle_status' => 'draft',
                     'kill_switch_enabled' => false,
@@ -198,6 +203,7 @@ final class AiRegistryBackfill
             'input_usd_per_million' => (float) ($definition['input_usd_per_million'] ?? 0),
             'output_usd_per_million' => (float) ($definition['output_usd_per_million'] ?? 0),
             'currency' => (string) ($definition['currency'] ?? 'USD'),
+            ...$this->routingConfiguration($definition),
         ];
         $payload = [
             'provider_version_id' => $providerVersionId,
@@ -278,6 +284,11 @@ final class AiRegistryBackfill
             $modelVersionId = $modelVersionIds[0];
             $configuration = [
                 'capability' => $capability,
+                'audience' => $visibility === 'platform_public' ? 'public' : 'private',
+                'channels' => array_values(array_map(
+                    'strval',
+                    (array) ($definition['channels'] ?? ['web']),
+                )),
                 'provider' => $provider,
                 'model' => $model,
                 'model_version_id' => $modelVersionId,
@@ -285,6 +296,15 @@ final class AiRegistryBackfill
                 'model_version_ids' => $modelVersionIds,
                 'prompt_key' => $promptKey,
                 'prompt_version_id' => $promptVersion['id'],
+                'output_schema' => (string) ($definition['output_schema'] ?? match ($capability) {
+                    'public_discovery' => 'public_discovery.answer.v1',
+                    default => 'private_agent.answer.v1',
+                }),
+                'required_capabilities' => array_values(array_map(
+                    'strval',
+                    (array) ($definition['required_capabilities'] ?? ['structured_output']),
+                )),
+                'max_output_tokens' => max(1, (int) ($definition['max_output_tokens'] ?? 640)),
                 'tools' => array_values(array_map('strval', (array) ($definition['tools'] ?? []))),
             ];
             $checksum = $this->checksum->for([
@@ -325,7 +345,10 @@ final class AiRegistryBackfill
         }
 
         $templateHash = hash('sha256', $template);
-        $keyVersion = (string) config('ai.execution_retention.encryption_key_version', 'v1');
+        $keyVersion = strtolower(trim((string) config(
+            'ai.execution_retention.encryption_key_version',
+            'v1',
+        )));
         $checksum = $this->checksum->for([
             'prompt_key' => $key,
             'template_hash' => $templateHash,
@@ -390,7 +413,17 @@ final class AiRegistryBackfill
 
     private function ensureCompatibilityPolicy(string $tenantId): void
     {
-        $rules = ['compatibility' => 'bootstrap_v1', 'requires_evaluation' => false];
+        $rules = [
+            'compatibility' => 'bootstrap_v2',
+            'requires_evaluation' => true,
+            'required_capabilities' => ['structured_output'],
+            'allowed_market_country_codes' => $this->defaultCountryCodes(
+                'ai.registry.default_market_country_codes',
+            ),
+            'residency_country_codes' => $this->defaultCountryCodes(
+                'ai.registry.default_residency_country_codes',
+            ),
+        ];
         $checksum = $this->checksum->for($rules);
         $policy = DB::table('ai_release_policies')->where('tenant_id', $tenantId)->where('key', 'compatibility.default')->first();
         if ($policy !== null) {
@@ -487,6 +520,38 @@ final class AiRegistryBackfill
     private function minor(float $usd): int
     {
         return max(0, (int) round($usd * 100));
+    }
+
+    /** @param array<string, mixed> $definition @return array<string, list<string>> */
+    private function routingConfiguration(array $definition): array
+    {
+        return [
+            'capabilities' => array_values(array_map(
+                'strval',
+                (array) ($definition['capabilities'] ?? ['structured_output']),
+            )),
+            'allowed_market_country_codes' => array_values(array_map(
+                'strval',
+                (array) ($definition['allowed_market_country_codes']
+                    ?? $this->defaultCountryCodes('ai.registry.default_market_country_codes')),
+            )),
+            'residency_country_codes' => array_values(array_map(
+                'strval',
+                (array) ($definition['residency_country_codes']
+                    ?? $this->defaultCountryCodes('ai.registry.default_residency_country_codes')),
+            )),
+        ];
+    }
+
+    /** @return list<string> */
+    private function defaultCountryCodes(string $configurationKey): array
+    {
+        $countries = array_values(array_filter(
+            array_map('strval', (array) config($configurationKey, ['HN'])),
+            static fn (string $country): bool => preg_match('/^[A-Z]{2}$/', $country) === 1,
+        ));
+
+        return $countries === [] ? ['HN'] : array_values(array_unique($countries));
     }
 
     /** @param array<string, mixed> $value */

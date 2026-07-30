@@ -139,7 +139,7 @@ final class AiRegistryResolverTest extends TestCase
 
     public function test_draft_null_expired_and_revoked_release_state_is_unroutable(): void
     {
-        foreach (['draft_provider', 'null_decision', 'inactive_policy', 'revoked_decision'] as $failure) {
+        foreach (['draft_provider', 'operational_provider', 'null_decision', 'inactive_policy', 'revoked_decision'] as $failure) {
             $tenant = Tenant::factory()->create();
             $fixture = $this->registryFixture(
                 $tenant,
@@ -149,6 +149,11 @@ final class AiRegistryResolverTest extends TestCase
                 releaseDecision: $failure === 'null_decision' ? null : 'passed',
                 releasePolicyStatus: $failure === 'inactive_policy' ? 'retired' : 'active',
             );
+            if ($failure === 'operational_provider') {
+                DB::table('ai_provider_versions')
+                    ->where('id', $fixture['provider_version_id'])
+                    ->update(['status' => 'draft']);
+            }
             if ($failure === 'revoked_decision') {
                 DB::table('ai_release_decisions')->insert([
                     'id' => (string) Str::uuid(),

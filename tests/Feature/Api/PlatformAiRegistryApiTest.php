@@ -72,6 +72,11 @@ it('requires password mfa and reason before draft creation or lifecycle transiti
                 'capability' => 'private_agent',
                 'audience' => 'private',
                 'channels' => ['web'],
+                'model_version_ids' => [$fixture['selection']->modelVersionId],
+                'prompt_version_id' => $fixture['selection']->promptVersionId,
+                'output_schema' => 'private_agent.answer.v1',
+                'required_capabilities' => ['structured_output'],
+                'max_output_tokens' => 600,
             ],
         ],
         'current_password' => 'password',
@@ -163,6 +168,75 @@ it('does not require an mfa session when the platform mfa policy is disabled', f
         'lifecycle_status' => 'blocked',
         'kill_switch_enabled' => true,
     ]);
+});
+
+it('fails stably for reads and mutations when the platform registry tenant is not configured', function (): void {
+    $fixture = platformRegistryFixture();
+    Sanctum::actingAs($fixture['admin']);
+    config()->set('ai.public.billing_tenant_id', null);
+
+    $this->getJson('/api/v1/platform/ai/registry/prompts')
+        ->assertStatus(503)
+        ->assertExactJson(['code' => 'ai_configuration_unavailable']);
+    $this->postJson('/api/v1/platform/ai/registry/drafts', [
+        'version_type' => 'prompt',
+        'definition_id' => (string) Str::uuid(),
+        'payload' => [],
+        'current_password' => 'password',
+        'reason' => 'Attempt while platform registry configuration is unavailable.',
+    ])->assertStatus(503)
+        ->assertExactJson(['code' => 'ai_configuration_unavailable']);
+});
+
+it('paginates equal timestamps with a stable id tie breaker and no omissions', function (): void {
+    $fixture = platformRegistryFixture();
+    Sanctum::actingAs($fixture['admin']);
+    $base = DB::table('ai_prompt_versions')
+        ->where('id', $fixture['selection']->promptVersionId)
+        ->first();
+    expect($base)->not->toBeNull();
+    $timestamp = now()->subDay()->startOfSecond();
+    DB::table('ai_prompt_versions')
+        ->where('prompt_definition_id', $base->prompt_definition_id)
+        ->update(['created_at' => $timestamp]);
+    for ($version = 2; $version <= 5; $version++) {
+        DB::table('ai_prompt_versions')->insert([
+            'id' => sprintf('00000000-0000-4000-8000-%012d', $version),
+            'tenant_id' => (string) $fixture['tenant']->id,
+            'prompt_definition_id' => $base->prompt_definition_id,
+            'version' => $version,
+            'checksum' => hash('sha256', "prompt-{$version}"),
+            'template_ciphertext' => $base->template_ciphertext,
+            'template_hash' => $base->template_hash,
+            'encryption_key_version' => $base->encryption_key_version,
+            'input_schema' => $base->input_schema,
+            'released_at' => null,
+            'lifecycle_status' => 'draft',
+            'kill_switch_enabled' => false,
+            'created_at' => $timestamp,
+            'updated_at' => $timestamp,
+        ]);
+    }
+
+    $pageOne = $this->getJson('/api/v1/platform/ai/registry/prompts?per_page=2&page=1')
+        ->assertOk()
+        ->json('data');
+    $pageTwo = $this->getJson('/api/v1/platform/ai/registry/prompts?per_page=2&page=2')
+        ->assertOk()
+        ->json('data');
+    $pageThree = $this->getJson('/api/v1/platform/ai/registry/prompts?per_page=2&page=3')
+        ->assertOk()
+        ->json('data');
+    $ids = collect([...$pageOne, ...$pageTwo, ...$pageThree])->pluck('id')->all();
+    $expected = DB::table('ai_prompt_versions')
+        ->where('tenant_id', $fixture['tenant']->id)
+        ->orderByDesc('created_at')
+        ->orderByDesc('id')
+        ->pluck('id')
+        ->all();
+
+    expect($ids)->toBe($expected)
+        ->and(array_unique($ids))->toHaveCount(count($ids));
 });
 
 /**

@@ -46,7 +46,7 @@ return new class extends Migration
 
         Schema::table('ai_agent_activations', function (Blueprint $table): void {
             $table->string('activated_by', 64)->default('registry_backfill');
-            $table->text('reason')->default('Program 05 lifecycle backfill');
+            $table->string('reason', 500)->default('Program 05 lifecycle backfill');
             $table->unsignedInteger('lock_version')->default(0);
             $table->index(
                 ['tenant_id', 'scope_type', 'scope_key', 'effective_until'],

@@ -251,7 +251,8 @@ final class PlatformAiRegistryController extends Controller
                     'versions.blocked_at',
                     'versions.created_at',
                 ])
-                ->orderByDesc('versions.created_at'),
+                ->orderByDesc('versions.created_at')
+                ->orderByDesc('versions.id'),
             'models' => DB::table('ai_model_versions as versions')
                 ->join('ai_models as models', 'models.id', '=', 'versions.model_id')
                 ->join('ai_providers as providers', 'providers.id', '=', 'models.provider_id')
@@ -273,7 +274,8 @@ final class PlatformAiRegistryController extends Controller
                     'versions.blocked_at',
                     'versions.created_at',
                 ])
-                ->orderByDesc('versions.created_at'),
+                ->orderByDesc('versions.created_at')
+                ->orderByDesc('versions.id'),
             'agents' => DB::table('ai_agent_versions as versions')
                 ->join('ai_agent_definitions as definitions', function ($join): void {
                     $join->on('definitions.tenant_id', '=', 'versions.tenant_id')
@@ -295,7 +297,8 @@ final class PlatformAiRegistryController extends Controller
                     'versions.blocked_at',
                     'versions.created_at',
                 ])
-                ->orderByDesc('versions.created_at'),
+                ->orderByDesc('versions.created_at')
+                ->orderByDesc('versions.id'),
             'prompts' => DB::table('ai_prompt_versions as versions')
                 ->join('ai_prompt_definitions as definitions', function ($join): void {
                     $join->on('definitions.tenant_id', '=', 'versions.tenant_id')
@@ -316,7 +319,8 @@ final class PlatformAiRegistryController extends Controller
                     'versions.blocked_at',
                     'versions.created_at',
                 ])
-                ->orderByDesc('versions.created_at'),
+                ->orderByDesc('versions.created_at')
+                ->orderByDesc('versions.id'),
             'activations' => DB::table('ai_agent_activations')
                 ->where('tenant_id', $tenantId)
                 ->select([
@@ -335,7 +339,8 @@ final class PlatformAiRegistryController extends Controller
                     'lock_version',
                     'created_at',
                 ])
-                ->orderByDesc('created_at'),
+                ->orderByDesc('created_at')
+                ->orderByDesc('id'),
             'decisions' => DB::table('ai_release_decisions')
                 ->where('tenant_id', $tenantId)
                 ->select([
@@ -353,7 +358,8 @@ final class PlatformAiRegistryController extends Controller
                     'revoked_by',
                     'created_at',
                 ])
-                ->orderByDesc('created_at'),
+                ->orderByDesc('created_at')
+                ->orderByDesc('id'),
             default => throw new AuthorizationException('Registry resource is not available.'),
         };
     }

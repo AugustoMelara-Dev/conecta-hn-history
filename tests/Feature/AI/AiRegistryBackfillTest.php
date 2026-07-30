@@ -4,13 +4,22 @@ declare(strict_types=1);
 
 namespace Tests\Feature\AI;
 
+use App\Application\Ai\Contracts\AiProviderPool;
 use App\Application\Ai\Registry\AiRegistryBackfill;
+use App\Application\Ai\Registry\AiRegistryLifecycle;
+use App\Application\Ai\Registry\AiRegistryQuery;
+use App\Application\Ai\Registry\AiRegistryResolver;
+use App\Application\Ai\Registry\Commands\ActivateAgentVersionCommand;
+use App\Application\Ai\Registry\Commands\PromoteAiVersionCommand;
 use App\Application\Ai\Security\EncryptedAiContent;
+use App\Infrastructure\AI\ConfiguredAiProviderPool;
 use App\Infrastructure\AI\Security\LaravelAiContentCipher;
 use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Tests\Fakes\AI\FakeAiProvider;
 use Tests\TestCase;
 
 final class AiRegistryBackfillTest extends TestCase
@@ -33,6 +42,11 @@ final class AiRegistryBackfillTest extends TestCase
             'provider_key' => 'openai',
             'adapter_key' => 'openai_structured_text',
             'default_secret_reference' => 'openai.primary',
+        ]);
+        self::assertDatabaseHas('ai_provider_versions', [
+            'secret_reference' => 'openai.primary',
+            'status' => 'active',
+            'lifecycle_status' => 'draft',
         ]);
         self::assertDatabaseHas('ai_agent_definitions', [
             'key' => 'public.discovery',
@@ -89,6 +103,101 @@ final class AiRegistryBackfillTest extends TestCase
             'prompt_template',
             new EncryptedAiContent($prompt->template_ciphertext, $prompt->template_hash, $prompt->encryption_key_version),
         ));
+    }
+
+    public function test_backfilled_versions_can_follow_the_governed_release_path_and_resolve(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $this->configureRegistry((string) $tenant->id, []);
+        app(AiRegistryBackfill::class)->run();
+        $admin = User::factory()->superAdmin()->create();
+        config()->set('auth.super_admins', [$admin->email]);
+        app()->instance(AiProviderPool::class, new ConfiguredAiProviderPool([
+            'openai_structured_text' => [
+                'openai.primary' => new FakeAiProvider,
+            ],
+        ]));
+
+        $agent = DB::table('ai_agent_versions')
+            ->join(
+                'ai_agent_definitions',
+                'ai_agent_definitions.id',
+                '=',
+                'ai_agent_versions.agent_definition_id',
+            )
+            ->where('ai_agent_definitions.key', 'public.discovery')
+            ->select('ai_agent_versions.*')
+            ->first();
+        self::assertNotNull($agent);
+        $configuration = json_decode(
+            (string) $agent->configuration,
+            true,
+            512,
+            JSON_THROW_ON_ERROR,
+        );
+        $promptVersionId = (string) $configuration['prompt_version_id'];
+        $modelVersionId = (string) $configuration['model_version_ids'][0];
+        $providerVersionId = (string) DB::table('ai_model_versions')
+            ->where('id', $modelVersionId)
+            ->value('provider_version_id');
+        $lifecycle = app(AiRegistryLifecycle::class);
+        foreach ([
+            'provider' => $providerVersionId,
+            'prompt' => $promptVersionId,
+            'model' => $modelVersionId,
+            'agent' => (string) $agent->id,
+        ] as $versionType => $versionId) {
+            $lifecycle->promote(new PromoteAiVersionCommand(
+                actorId: (string) $admin->id,
+                tenantId: (string) $tenant->id,
+                versionType: $versionType,
+                versionId: $versionId,
+                targetStatus: 'candidate',
+                releaseDecisionId: null,
+                reason: "Freeze backfilled {$versionType} candidate",
+            ));
+        }
+        $decisionId = $this->releaseBackfillDecision(
+            (string) $tenant->id,
+            (string) $admin->id,
+            (string) $agent->id,
+            $promptVersionId,
+            $providerVersionId,
+            $modelVersionId,
+        );
+        $lifecycle->promote(new PromoteAiVersionCommand(
+            actorId: (string) $admin->id,
+            tenantId: (string) $tenant->id,
+            versionType: 'agent',
+            versionId: (string) $agent->id,
+            targetStatus: 'eligible',
+            releaseDecisionId: $decisionId,
+            reason: 'Promote the evaluated backfill set atomically',
+        ));
+        $lifecycle->activate(new ActivateAgentVersionCommand(
+            actorId: (string) $admin->id,
+            tenantId: (string) $tenant->id,
+            scopeType: 'tenant',
+            scopeKey: (string) $tenant->id,
+            agentVersionId: (string) $agent->id,
+            releaseDecisionId: $decisionId,
+            rolloutPercentage: 100,
+            reason: 'Activate the governed backfill release',
+            expectedActivationId: null,
+            expectedLockVersion: null,
+        ));
+
+        $selection = app(AiRegistryResolver::class)->resolve(new AiRegistryQuery(
+            tenantId: (string) $tenant->id,
+            audience: 'public',
+            capability: 'public_discovery',
+            channel: 'web',
+            marketCountryCode: 'HN',
+            actorId: null,
+            cohortSubject: 'public-backfill-release',
+        ));
+        self::assertSame((string) $agent->id, $selection->agentVersionId);
+        self::assertSame($providerVersionId, $selection->providerVersionId);
     }
 
     public function test_it_creates_an_immutable_model_version_when_configuration_changes(): void
@@ -259,6 +368,103 @@ final class AiRegistryBackfillTest extends TestCase
         ));
         $this->expectException(\RuntimeException::class);
         $cipher->decrypt('00000000-0000-4000-8000-000000000012', '00000000-0000-4000-8000-000000000011', 'prompt_template', $content);
+    }
+
+    private function releaseBackfillDecision(
+        string $tenantId,
+        string $actorId,
+        string $agentVersionId,
+        string $promptVersionId,
+        string $providerVersionId,
+        string $modelVersionId,
+    ): string {
+        $suiteId = (string) Str::uuid();
+        $versionId = (string) Str::uuid();
+        $caseId = (string) Str::uuid();
+        $runId = (string) Str::uuid();
+        DB::table('ai_evaluation_suites')->insert([
+            'id' => $suiteId,
+            'tenant_id' => $tenantId,
+            'key' => 'backfill.release',
+            'name' => 'Backfill release evaluation',
+            'visibility' => 'public',
+            'status' => 'active',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('ai_evaluation_versions')->insert([
+            'id' => $versionId,
+            'tenant_id' => $tenantId,
+            'evaluation_suite_id' => $suiteId,
+            'version' => 1,
+            'checksum' => hash('sha256', $versionId),
+            'configuration' => json_encode(['fixture' => true], JSON_THROW_ON_ERROR),
+            'released_at' => now()->subSeconds(3),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('ai_evaluation_cases')->insert([
+            'id' => $caseId,
+            'tenant_id' => $tenantId,
+            'evaluation_version_id' => $versionId,
+            'key' => 'backfill.release.case',
+            'input_ciphertext' => 'fixture',
+            'input_hash' => hash('sha256', 'fixture'),
+            'encryption_key_version' => 'v1',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('ai_evaluation_runs')->insert([
+            'id' => $runId,
+            'tenant_id' => $tenantId,
+            'evaluation_version_id' => $versionId,
+            'agent_version_id' => $agentVersionId,
+            'prompt_version_id' => $promptVersionId,
+            'provider_version_id' => $providerVersionId,
+            'model_version_id' => $modelVersionId,
+            'status' => 'completed',
+            'triggered_by' => $actorId,
+            'started_at' => now()->subSeconds(2),
+            'completed_at' => now()->subSecond(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('ai_evaluation_results')->insert([
+            'id' => (string) Str::uuid(),
+            'tenant_id' => $tenantId,
+            'evaluation_run_id' => $runId,
+            'evaluation_case_id' => $caseId,
+            'status' => 'passed',
+            'score_minor' => 100,
+            'completed_at' => now()->subSecond(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $policyId = (string) DB::table('ai_release_policies')
+            ->where('tenant_id', $tenantId)
+            ->value('id');
+        $decisionId = (string) Str::uuid();
+        DB::table('ai_release_decisions')->insert([
+            'id' => $decisionId,
+            'tenant_id' => $tenantId,
+            'release_policy_id' => $policyId,
+            'evaluation_run_id' => $runId,
+            'agent_version_id' => $agentVersionId,
+            'decision' => 'passed',
+            'decided_by' => $actorId,
+            'evidence_hash' => hash('sha256', $decisionId),
+            'rationale' => json_encode(['fixture' => true], JSON_THROW_ON_ERROR),
+            'decided_at' => now(),
+            'candidate_checksum' => (string) DB::table('ai_agent_versions')
+                ->where('id', $agentVersionId)
+                ->value('checksum'),
+            'valid_from' => now()->subSecond(),
+            'valid_until' => now()->addDay(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return $decisionId;
     }
 
     /** @param list<string> $allowlist */

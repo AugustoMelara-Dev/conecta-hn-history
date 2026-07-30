@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\PlatformAiRegistryController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\TenantAgentChatController;
 use App\Http\Controllers\Auth\OtpController;
+use App\Http\Middleware\EnsurePlatformAiRegistryConfigured;
 use Illuminate\Http\Request;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
@@ -42,7 +43,12 @@ Route::prefix('v1')->group(function () {
     // AUTHENTICATION: OTP Routes
     // ═══════════════════════════════════════════════════════════════════════════
     Route::prefix('platform/ai/registry')
-        ->middleware([StartSession::class, 'auth:sanctum', 'throttle:api'])
+        ->middleware([
+            StartSession::class,
+            'auth:sanctum',
+            EnsurePlatformAiRegistryConfigured::class,
+            'throttle:api',
+        ])
         ->group(function (): void {
             Route::get('/{resource}', [PlatformAiRegistryController::class, 'index']);
             Route::post('/drafts', [PlatformAiRegistryController::class, 'createDraft']);

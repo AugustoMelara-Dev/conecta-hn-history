@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Ai\Registry;
 
+use App\Application\Ai\Contracts\AiProviderPool;
 use App\Application\Ai\Registry\Commands\ActivateAgentVersionCommand;
 use App\Application\Ai\Registry\Commands\CreateAiDraftCommand;
 use App\Application\Ai\Registry\Commands\KillSwitchAiVersionCommand;
@@ -43,6 +44,9 @@ final readonly class AiRegistryLifecycle
         private OutboxRepositoryInterface $outbox,
         private AiRegistryChecksum $checksum,
         private LaravelAiContentCipher $cipher,
+        private AiReleaseEligibility $eligibility,
+        private AiProviderPool $providerPool,
+        private AiRegistrySecretPolicy $secretPolicy,
     ) {}
 
     public function createDraft(CreateAiDraftCommand $command): string
@@ -71,7 +75,10 @@ final readonly class AiRegistryLifecycle
             $checksum = $this->checksum->for([
                 'version_type' => $command->versionType,
                 'definition_id' => $command->definitionId,
-                'payload' => $command->payload,
+                'payload' => $this->checksumPayload(
+                    $command->versionType,
+                    $command->payload,
+                ),
             ]);
             $existing = DB::table($table)
                 ->where($ownerColumn, $command->definitionId)
@@ -177,18 +184,33 @@ final readonly class AiRegistryLifecycle
             if ((bool) $version->kill_switch_enabled || $from === 'blocked') {
                 throw new AiExecutionDeniedException('kill_switch');
             }
+            if ($command->targetStatus === 'candidate') {
+                $this->assertCandidateDependencies(
+                    $command->versionType,
+                    $version,
+                    $tenantId,
+                );
+            }
 
             if ($command->targetStatus === 'eligible') {
                 if (! is_string($command->releaseDecisionId)
                     || ! Str::isUuid($command->releaseDecisionId)) {
                     throw new AiExecutionDeniedException('evaluation_gate');
                 }
-                $this->assertExactDecision(
-                    $tenantId,
-                    $command->releaseDecisionId,
-                    $command->versionType,
-                    $command->versionId,
+                $set = $this->eligibility->assertExact(
+                    tenantId: $tenantId,
+                    decisionId: $command->releaseDecisionId,
+                    allowedLifecycleStatuses: ['candidate', 'eligible', 'active'],
+                    denialReason: 'evaluation_gate',
                 );
+                if (! hash_equals(
+                    $command->versionId,
+                    $set->versionId($command->versionType),
+                )) {
+                    throw new AiExecutionDeniedException('evaluation_gate');
+                }
+                $this->lockCandidateSet($tenantId, $set, ['candidate', 'eligible', 'active']);
+                $this->promoteCandidateSet($tenantId, $set);
             } elseif ($command->releaseDecisionId !== null) {
                 $this->invalid(
                     'release_decision_id',
@@ -214,11 +236,13 @@ final readonly class AiRegistryLifecycle
                 $attributes['released_at'] = now();
             }
 
-            $updated = DB::table($type['table'])
-                ->where('id', $command->versionId)
-                ->where('lifecycle_status', $from)
-                ->where('kill_switch_enabled', false)
-                ->update($attributes);
+            $updated = $command->targetStatus === 'eligible'
+                ? 1
+                : DB::table($type['table'])
+                    ->where('id', $command->versionId)
+                    ->where('lifecycle_status', $from)
+                    ->where('kill_switch_enabled', false)
+                    ->update($attributes);
             if ($updated !== 1) {
                 throw new AiExecutionDeniedException('registry_conflict');
             }
@@ -271,22 +295,18 @@ final readonly class AiRegistryLifecycle
             $reason,
         ): string {
             $this->lockTenant($tenantId);
-            $candidate = $this->version(
-                'ai_agent_versions',
-                true,
-                $tenantId,
-                $command->agentVersionId,
-                true,
+            $candidateSet = $this->eligibility->assertExact(
+                tenantId: $tenantId,
+                decisionId: $command->releaseDecisionId,
+                allowedLifecycleStatuses: ['eligible', 'active'],
+                denialReason: 'evaluation_gate',
+                expectedAgentVersionId: $command->agentVersionId,
             );
-            if (! in_array((string) $candidate->lifecycle_status, ['eligible', 'active'], true)
-                || (bool) $candidate->kill_switch_enabled) {
-                throw new AiExecutionDeniedException('evaluation_gate');
-            }
-            $this->assertExactDecision(
-                $tenantId,
-                $command->releaseDecisionId,
-                'agent',
-                $command->agentVersionId,
+            $this->lockCandidateSet($tenantId, $candidateSet, ['eligible', 'active']);
+            $this->assertStaticCompatibility(
+                $candidateSet,
+                $command->scopeType,
+                $command->scopeKey,
             );
 
             $open = DB::table('ai_agent_activations')
@@ -309,6 +329,28 @@ final readonly class AiRegistryLifecycle
                 $this->invalid(
                     'rollout_percentage',
                     'A partial rollout requires an eligible previous activation.',
+                );
+            }
+            if ($command->rolloutPercentage < 100 && $previous !== null) {
+                if (! is_string($previous->release_decision_id)
+                    || ! Str::isUuid($previous->release_decision_id)) {
+                    throw new AiExecutionDeniedException('evaluation_gate');
+                }
+                $previousSet = $this->eligibility->assertExact(
+                    tenantId: $tenantId,
+                    decisionId: $previous->release_decision_id,
+                    allowedLifecycleStatuses: ['eligible', 'active'],
+                    denialReason: 'evaluation_gate',
+                    expectedAgentVersionId: (string) $previous->agent_version_id,
+                );
+                if (! hash_equals('active', (string) $previousSet->agent->lifecycle_status)) {
+                    throw new AiExecutionDeniedException('evaluation_gate');
+                }
+                $this->lockCandidateSet($tenantId, $previousSet, ['eligible', 'active']);
+                $this->assertStaticCompatibility(
+                    $previousSet,
+                    $command->scopeType,
+                    $command->scopeKey,
                 );
             }
 
@@ -351,6 +393,7 @@ final readonly class AiRegistryLifecycle
                     'updated_at' => now(),
                 ]);
             if ($previous !== null
+                && $command->rolloutPercentage === 100
                 && ! hash_equals(
                     (string) $previous->agent_version_id,
                     $command->agentVersionId,
@@ -424,22 +467,18 @@ final readonly class AiRegistryLifecycle
                 || ! Str::isUuid($previous->release_decision_id)) {
                 throw new AiExecutionDeniedException('evaluation_gate');
             }
-            $target = $this->version(
-                'ai_agent_versions',
-                true,
-                $tenantId,
-                (string) $previous->agent_version_id,
-                true,
+            $targetSet = $this->eligibility->assertExact(
+                tenantId: $tenantId,
+                decisionId: (string) $previous->release_decision_id,
+                allowedLifecycleStatuses: ['eligible', 'active'],
+                denialReason: 'evaluation_gate',
+                expectedAgentVersionId: (string) $previous->agent_version_id,
             );
-            if (! in_array((string) $target->lifecycle_status, ['eligible', 'active'], true)
-                || (bool) $target->kill_switch_enabled) {
-                throw new AiExecutionDeniedException('evaluation_gate');
-            }
-            $this->assertExactDecision(
-                $tenantId,
-                (string) $previous->release_decision_id,
-                'agent',
-                (string) $previous->agent_version_id,
+            $this->lockCandidateSet($tenantId, $targetSet, ['eligible', 'active']);
+            $this->assertStaticCompatibility(
+                $targetSet,
+                (string) $current->scope_type,
+                (string) $current->scope_key,
             );
             $this->closeActivation((string) $current->id, (int) $current->lock_version);
 
@@ -604,6 +643,41 @@ final readonly class AiRegistryLifecycle
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
      */
+    private function checksumPayload(string $versionType, array $payload): array
+    {
+        $safePayload = $payload;
+        unset($safePayload['secret_reference']);
+        $this->secretPolicy->assertSafePayload($safePayload);
+
+        if ($versionType === 'provider') {
+            $safePayload['secret_reference'] = $this->secretPolicy->assertExternalReference(
+                $payload['secret_reference'] ?? null,
+            );
+        }
+        if ($versionType !== 'prompt') {
+            return $safePayload;
+        }
+
+        $template = $payload['template'] ?? null;
+        $inputSchema = $payload['input_schema'] ?? [];
+        if (! is_string($template)
+            || trim($template) === ''
+            || mb_strlen($template) > 100_000
+            || ! is_array($inputSchema)) {
+            $this->invalid('payload.template', 'A valid prompt payload is required.');
+        }
+
+        return [
+            'template_hash' => hash('sha256', $template),
+            'input_schema' => $inputSchema,
+            'encryption_key_version' => $this->secretPolicy->encryptionKeyVersion(),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
     private function draftPayload(
         string $versionType,
         array $payload,
@@ -614,7 +688,7 @@ final readonly class AiRegistryLifecycle
         return match ($versionType) {
             'provider' => $this->providerDraftPayload($payload),
             'model' => $this->modelDraftPayload($payload, $owner),
-            'agent' => $this->agentDraftPayload($payload),
+            'agent' => $this->agentDraftPayload($payload, $tenantId),
             'prompt' => $this->promptDraftPayload($payload, $tenantId, $versionId),
             default => throw new AiExecutionDeniedException('registry_selection'),
         };
@@ -627,14 +701,10 @@ final readonly class AiRegistryLifecycle
     private function providerDraftPayload(array $payload): array
     {
         $configuration = $this->objectPayload($payload, 'configuration');
-        $this->assertNoInlineSecrets($configuration);
-        $secretReference = $payload['secret_reference'] ?? null;
-        if ($secretReference !== null
-            && (! is_string($secretReference)
-                || preg_match('/^[A-Za-z0-9][A-Za-z0-9._:\\/-]{2,511}$/', $secretReference) !== 1
-                || preg_match('/^(sk-|eyJ|-----BEGIN)/i', $secretReference) === 1)) {
-            $this->invalid('payload.secret_reference', 'Only an external secret reference is accepted.');
-        }
+        $this->secretPolicy->assertSafePayload($configuration);
+        $secretReference = $this->secretPolicy->assertExternalReference(
+            $payload['secret_reference'] ?? null,
+        );
 
         return [
             'secret_reference' => $secretReference,
@@ -655,7 +725,7 @@ final readonly class AiRegistryLifecycle
         }
         $providerVersion = DB::table('ai_provider_versions')
             ->where('id', $providerVersionId)
-            ->whereIn('lifecycle_status', ['eligible', 'active'])
+            ->whereIn('lifecycle_status', ['draft', 'candidate', 'eligible', 'active'])
             ->where('kill_switch_enabled', false)
             ->first();
         if ($providerVersion === null
@@ -663,7 +733,7 @@ final readonly class AiRegistryLifecycle
             throw new AiExecutionDeniedException('registry_selection');
         }
         $configuration = $this->objectPayload($payload, 'configuration');
-        $this->assertNoInlineSecrets($configuration);
+        $this->secretPolicy->assertSafePayload($configuration);
         $contextWindow = $this->nullableNonNegativeInteger($payload, 'context_window');
         $inputCost = $this->nullableNonNegativeInteger($payload, 'input_cost_minor');
         $outputCost = $this->nullableNonNegativeInteger($payload, 'output_cost_minor');
@@ -687,20 +757,34 @@ final readonly class AiRegistryLifecycle
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
      */
-    private function agentDraftPayload(array $payload): array
+    private function agentDraftPayload(array $payload, string $tenantId): array
     {
         $modelVersionId = $payload['model_version_id'] ?? null;
         if (! is_string($modelVersionId)
-            || ! Str::isUuid($modelVersionId)
-            || ! DB::table('ai_model_versions')
-                ->where('id', $modelVersionId)
-                ->whereIn('lifecycle_status', ['eligible', 'active'])
+                || ! Str::isUuid($modelVersionId)
+                || ! DB::table('ai_model_versions')
+                    ->where('id', $modelVersionId)
+                    ->whereIn('lifecycle_status', ['draft', 'candidate', 'eligible', 'active'])
+                    ->where('kill_switch_enabled', false)
+                    ->exists()) {
+            throw new AiExecutionDeniedException('registry_selection');
+        }
+        $configuration = $this->objectPayload($payload, 'configuration');
+        $this->secretPolicy->assertSafePayload($configuration);
+        $modelVersionIds = $configuration['model_version_ids'] ?? null;
+        $promptVersionId = $configuration['prompt_version_id'] ?? null;
+        if (! is_array($modelVersionIds)
+            || ! in_array($modelVersionId, $modelVersionIds, true)
+            || ! is_string($promptVersionId)
+            || ! Str::isUuid($promptVersionId)
+            || ! DB::table('ai_prompt_versions')
+                ->where('tenant_id', $tenantId)
+                ->where('id', $promptVersionId)
+                ->whereIn('lifecycle_status', ['draft', 'candidate', 'eligible', 'active'])
                 ->where('kill_switch_enabled', false)
                 ->exists()) {
             throw new AiExecutionDeniedException('registry_selection');
         }
-        $configuration = $this->objectPayload($payload, 'configuration');
-        $this->assertNoInlineSecrets($configuration);
 
         return [
             'model_version_id' => $modelVersionId,
@@ -727,7 +811,7 @@ final readonly class AiRegistryLifecycle
         if (! is_array($inputSchema)) {
             $this->invalid('payload.input_schema', 'Prompt input schema must be a JSON structure.');
         }
-        $this->assertNoInlineSecrets($inputSchema);
+        $this->secretPolicy->assertSafePayload($inputSchema);
         $encrypted = $this->cipher->encrypt(
             $tenantId,
             $versionId,
@@ -771,23 +855,6 @@ final readonly class AiRegistryLifecycle
         return $value;
     }
 
-    /** @param array<string|int, mixed> $payload */
-    private function assertNoInlineSecrets(array $payload): void
-    {
-        foreach ($payload as $key => $value) {
-            if (is_string($key)
-                && preg_match('/secret|api[_-]?key|password|credential|bearer/i', $key) === 1) {
-                $this->invalid('payload', 'Inline credentials are forbidden in registry drafts.');
-            }
-            if (is_array($value)) {
-                $this->assertNoInlineSecrets($value);
-            } elseif (is_string($value)
-                && preg_match('/(^|\\s)(sk-[A-Za-z0-9_-]{8,}|-----BEGIN [A-Z ]*PRIVATE KEY)/', $value) === 1) {
-                $this->invalid('payload', 'Inline credentials are forbidden in registry drafts.');
-            }
-        }
-    }
-
     /**
      * @return array{table:string,tenant_scoped:bool}
      */
@@ -829,6 +896,7 @@ final readonly class AiRegistryLifecycle
         if (mb_strlen($normalized) < 10 || mb_strlen($normalized) > 500) {
             $this->invalid('reason', 'An auditable reason between 10 and 500 characters is required.');
         }
+        $this->secretPolicy->assertSafeReason($normalized);
 
         return $normalized;
     }
@@ -925,6 +993,222 @@ final readonly class AiRegistryLifecycle
             ]);
     }
 
+    private function assertCandidateDependencies(
+        string $versionType,
+        object $version,
+        string $tenantId,
+    ): void {
+        if ($versionType === 'model') {
+            $valid = DB::table('ai_provider_versions')
+                ->where('id', $version->provider_version_id)
+                ->whereIn('lifecycle_status', ['candidate', 'eligible', 'active'])
+                ->where('kill_switch_enabled', false)
+                ->exists();
+        } elseif ($versionType === 'agent') {
+            $configuration = $this->jsonObject($version->configuration);
+            $promptVersionId = $configuration['prompt_version_id'] ?? null;
+            $modelVersionIds = $configuration['model_version_ids'] ?? null;
+            $valid = is_string($promptVersionId)
+                && is_array($modelVersionIds)
+                && in_array((string) $version->model_version_id, $modelVersionIds, true)
+                && DB::table('ai_prompt_versions')
+                    ->where('tenant_id', $tenantId)
+                    ->where('id', $promptVersionId)
+                    ->whereIn('lifecycle_status', ['candidate', 'eligible', 'active'])
+                    ->where('kill_switch_enabled', false)
+                    ->exists()
+                && DB::table('ai_model_versions')
+                    ->where('id', $version->model_version_id)
+                    ->whereIn('lifecycle_status', ['candidate', 'eligible', 'active'])
+                    ->where('kill_switch_enabled', false)
+                    ->exists();
+        } else {
+            $valid = true;
+        }
+        if (! $valid) {
+            throw new AiExecutionDeniedException('evaluation_gate');
+        }
+    }
+
+    private function promoteCandidateSet(
+        string $tenantId,
+        AiReleaseCandidateSet $set,
+    ): void {
+        foreach ([
+            ['ai_provider_versions', $set->provider->id, false],
+            ['ai_model_versions', $set->model->id, false],
+            ['ai_prompt_versions', $set->prompt->id, true],
+            ['ai_agent_versions', $set->agent->id, true],
+        ] as [$table, $versionId, $tenantScoped]) {
+            $query = DB::table($table)
+                ->where('id', $versionId)
+                ->where('lifecycle_status', 'candidate')
+                ->where('kill_switch_enabled', false);
+            if ($tenantScoped) {
+                $query->where('tenant_id', $tenantId);
+            }
+            $query->update([
+                'lifecycle_status' => 'eligible',
+                'updated_at' => now(),
+            ]);
+        }
+    }
+
+    /**
+     * @param  list<string>  $allowedStatuses
+     */
+    private function lockCandidateSet(
+        string $tenantId,
+        AiReleaseCandidateSet $set,
+        array $allowedStatuses,
+    ): void {
+        foreach ([
+            ['ai_provider_versions', $set->provider->id, false],
+            ['ai_model_versions', $set->model->id, false],
+            ['ai_prompt_versions', $set->prompt->id, true],
+            ['ai_agent_versions', $set->agent->id, true],
+        ] as [$table, $versionId, $tenantScoped]) {
+            $query = DB::table($table)->where('id', $versionId);
+            if ($tenantScoped) {
+                $query->where('tenant_id', $tenantId);
+            }
+            $version = $query->lockForUpdate()->first();
+            if ($version === null
+                || (bool) $version->kill_switch_enabled
+                || ! in_array((string) $version->lifecycle_status, $allowedStatuses, true)) {
+                throw new AiExecutionDeniedException('evaluation_gate');
+            }
+        }
+    }
+
+    private function assertStaticCompatibility(
+        AiReleaseCandidateSet $set,
+        string $scopeType,
+        string $scopeKey,
+    ): void {
+        $configuration = $set->agentConfiguration;
+        $audience = $configuration['audience'] ?? null;
+        $capability = $configuration['capability'] ?? null;
+        $channels = $this->stringList($configuration['channels'] ?? null);
+        $modelVersionIds = $this->stringList($configuration['model_version_ids'] ?? null);
+        $requiredCapabilities = $this->stringList(
+            $configuration['required_capabilities'] ?? null,
+        );
+        $expectedVisibility = match ($audience) {
+            'public' => 'platform_public',
+            'private' => 'tenant_private',
+            default => null,
+        };
+        if ($expectedVisibility === null
+            || ! is_string($capability)
+            || trim($capability) === ''
+            || $channels === []
+            || $requiredCapabilities === []
+            || ! in_array((string) $set->model->id, $modelVersionIds, true)
+            || ! hash_equals(
+                (string) ($configuration['prompt_version_id'] ?? ''),
+                (string) $set->prompt->id,
+            )
+            || ! hash_equals($expectedVisibility, (string) $set->agentDefinition->visibility)
+            || ! hash_equals($expectedVisibility, (string) $set->promptDefinition->visibility)
+            || ! $this->configurationSupports(
+                $set->providerConfiguration,
+                $requiredCapabilities,
+            )
+            || ! $this->configurationSupports(
+                $set->modelConfiguration,
+                $requiredCapabilities,
+            )
+            || ! $this->configurationSupports($set->policyRules, $requiredCapabilities)) {
+            throw new AiExecutionDeniedException('evaluation_gate');
+        }
+
+        [$market, $channel] = match ($scopeType) {
+            'market' => [$scopeKey, null],
+            'market_channel' => explode('|', $scopeKey, 2),
+            'platform_channel', 'tenant_channel' => [
+                null,
+                str_contains($scopeKey, '|')
+                    ? explode('|', $scopeKey, 2)[1]
+                    : $scopeKey,
+            ],
+            default => [null, null],
+        };
+        if (($channel !== null && ! in_array($channel, $channels, true))
+            || ($market !== null
+                && (! $this->countrySupported($set->providerConfiguration, $market)
+                    || ! $this->countrySupported($set->modelConfiguration, $market)
+                    || ! $this->countrySupported($set->policyRules, $market)))) {
+            throw new AiExecutionDeniedException('evaluation_gate');
+        }
+
+        if (! is_string($set->provider->secret_reference)
+            || trim($set->provider->secret_reference) === '') {
+            throw new AiExecutionDeniedException('evaluation_gate');
+        }
+        try {
+            $this->providerPool->resolve(
+                (string) $set->providerDefinition->adapter_key,
+                (string) $set->provider->secret_reference,
+            );
+        } catch (AiExecutionDeniedException) {
+            throw new AiExecutionDeniedException('evaluation_gate');
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $configuration
+     * @param  list<string>  $requiredCapabilities
+     */
+    private function configurationSupports(
+        array $configuration,
+        array $requiredCapabilities,
+    ): bool {
+        $capabilities = $this->stringList(
+            $configuration['capabilities']
+                ?? $configuration['required_capabilities']
+                ?? null,
+        );
+        $markets = $this->stringList($configuration['allowed_market_country_codes'] ?? null);
+        $residency = $this->stringList($configuration['residency_country_codes'] ?? null);
+
+        return ($configuration['enabled'] ?? true) === true
+            && $capabilities !== []
+            && array_diff($requiredCapabilities, $capabilities) === []
+            && $markets !== []
+            && $residency !== [];
+    }
+
+    /** @param array<string, mixed> $configuration */
+    private function countrySupported(array $configuration, string $market): bool
+    {
+        return in_array(
+            $market,
+            $this->stringList($configuration['allowed_market_country_codes'] ?? null),
+            true,
+        ) && in_array(
+            $market,
+            $this->stringList($configuration['residency_country_codes'] ?? null),
+            true,
+        );
+    }
+
+    /** @return list<string> */
+    private function stringList(mixed $value): array
+    {
+        if (! is_array($value) || ! array_is_list($value)) {
+            return [];
+        }
+        $items = array_values(array_filter(
+            $value,
+            static fn (mixed $item): bool => is_string($item) && trim($item) !== '',
+        ));
+
+        return count($items) === count($value) && count(array_unique($items)) === count($items)
+            ? $items
+            : [];
+    }
+
     private function version(
         string $table,
         bool $tenantScoped,
@@ -945,222 +1229,6 @@ final readonly class AiRegistryLifecycle
         }
 
         return $version;
-    }
-
-    private function assertExactDecision(
-        string $tenantId,
-        string $decisionId,
-        string $targetType,
-        string $targetVersionId,
-    ): void {
-        $latest = DB::table('ai_release_decisions')
-            ->where('tenant_id', $tenantId)
-            ->where('id', $decisionId)
-            ->first();
-        if ($latest === null
-            || ! is_string($latest->agent_version_id)
-            || ! Str::isUuid($latest->agent_version_id)) {
-            throw new AiExecutionDeniedException('evaluation_gate');
-        }
-
-        $ordered = DB::table('ai_release_decisions')
-            ->where('tenant_id', $tenantId)
-            ->where('agent_version_id', $latest->agent_version_id)
-            ->orderByDesc('decided_at')
-            ->limit(2)
-            ->get();
-        $newest = $ordered->first();
-        if ($newest === null
-            || ! hash_equals($decisionId, (string) $newest->id)
-            || ($ordered->count() > 1
-                && hash_equals(
-                    (string) $newest->decided_at,
-                    (string) $ordered->get(1)->decided_at,
-                ))) {
-            throw new AiExecutionDeniedException('evaluation_gate');
-        }
-
-        $decision = DB::table('ai_release_decisions as decisions')
-            ->join('ai_release_policies as policies', function ($join): void {
-                $join->on('policies.tenant_id', '=', 'decisions.tenant_id')
-                    ->on('policies.id', '=', 'decisions.release_policy_id');
-            })
-            ->join('ai_evaluation_runs as runs', function ($join): void {
-                $join->on('runs.tenant_id', '=', 'decisions.tenant_id')
-                    ->on('runs.id', '=', 'decisions.evaluation_run_id');
-            })
-            ->join('ai_evaluation_versions as evaluation_versions', function ($join): void {
-                $join->on('evaluation_versions.tenant_id', '=', 'runs.tenant_id')
-                    ->on('evaluation_versions.id', '=', 'runs.evaluation_version_id');
-            })
-            ->join('ai_evaluation_suites as suites', function ($join): void {
-                $join->on('suites.tenant_id', '=', 'evaluation_versions.tenant_id')
-                    ->on('suites.id', '=', 'evaluation_versions.evaluation_suite_id');
-            })
-            ->where('decisions.tenant_id', $tenantId)
-            ->where('decisions.id', $decisionId)
-            ->where('decisions.decision', 'passed')
-            ->where('policies.status', 'active')
-            ->where('runs.status', 'completed')
-            ->where('suites.status', 'active')
-            ->whereNotNull('evaluation_versions.released_at')
-            ->whereNotNull('decisions.candidate_checksum')
-            ->whereNotNull('decisions.valid_from')
-            ->where('decisions.valid_from', '<=', now())
-            ->whereNull('decisions.revoked_at')
-            ->where(static function ($query): void {
-                $query->whereNull('decisions.valid_until')
-                    ->orWhere('decisions.valid_until', '>', now());
-            })
-            ->whereNotNull('runs.started_at')
-            ->whereNotNull('runs.completed_at')
-            ->whereColumn('runs.started_at', '<=', 'runs.completed_at')
-            ->whereColumn('runs.completed_at', '<=', 'decisions.decided_at')
-            ->where('runs.completed_at', '<=', now())
-            ->select([
-                'decisions.agent_version_id',
-                'decisions.candidate_checksum',
-                'decisions.decided_at',
-                'runs.id as evaluation_run_id',
-                'runs.evaluation_version_id',
-                'runs.agent_version_id as run_agent_version_id',
-                'runs.prompt_version_id',
-                'runs.provider_version_id',
-                'runs.model_version_id',
-            ])
-            ->first();
-        if ($decision === null
-            || ! hash_equals(
-                (string) $decision->agent_version_id,
-                (string) $decision->run_agent_version_id,
-            )) {
-            throw new AiExecutionDeniedException('evaluation_gate');
-        }
-
-        $agent = $this->version(
-            'ai_agent_versions',
-            true,
-            $tenantId,
-            (string) $decision->agent_version_id,
-            false,
-        );
-        if (! hash_equals((string) $agent->checksum, (string) $decision->candidate_checksum)
-            || (bool) $agent->kill_switch_enabled
-            || ! in_array(
-                (string) $agent->lifecycle_status,
-                $targetType === 'agent' && hash_equals($targetVersionId, (string) $agent->id)
-                    ? ['candidate', 'eligible', 'active']
-                    : ['eligible', 'active'],
-                true,
-            )) {
-            throw new AiExecutionDeniedException('evaluation_gate');
-        }
-
-        $configuration = $this->jsonObject($agent->configuration);
-        $promptVersionId = $configuration['prompt_version_id'] ?? null;
-        $modelVersionIds = $configuration['model_version_ids'] ?? null;
-        if (! is_string($promptVersionId)
-            || ! is_array($modelVersionIds)
-            || ! in_array($decision->model_version_id, $modelVersionIds, true)
-            || ! hash_equals($promptVersionId, (string) $decision->prompt_version_id)) {
-            throw new AiExecutionDeniedException('evaluation_gate');
-        }
-
-        $prompt = $this->version(
-            'ai_prompt_versions',
-            true,
-            $tenantId,
-            (string) $decision->prompt_version_id,
-            false,
-        );
-        $provider = $this->version(
-            'ai_provider_versions',
-            false,
-            $tenantId,
-            (string) $decision->provider_version_id,
-            false,
-        );
-        $model = $this->version(
-            'ai_model_versions',
-            false,
-            $tenantId,
-            (string) $decision->model_version_id,
-            false,
-        );
-        foreach ([
-            'prompt' => $prompt,
-            'provider' => $provider,
-            'model' => $model,
-        ] as $versionType => $version) {
-            $allowed = $targetType === $versionType
-                && hash_equals($targetVersionId, (string) $version->id)
-                    ? ['candidate', 'eligible', 'active']
-                    : ['eligible', 'active'];
-            if ((bool) $version->kill_switch_enabled
-                || ! in_array((string) $version->lifecycle_status, $allowed, true)) {
-                throw new AiExecutionDeniedException('evaluation_gate');
-            }
-        }
-
-        $providerId = DB::table('ai_provider_versions')
-            ->where('id', $decision->provider_version_id)
-            ->value('provider_id');
-        $modelProviderId = DB::table('ai_model_versions as versions')
-            ->join('ai_models as models', 'models.id', '=', 'versions.model_id')
-            ->where('versions.id', $decision->model_version_id)
-            ->where('versions.provider_version_id', $decision->provider_version_id)
-            ->where('models.status', 'active')
-            ->value('models.provider_id');
-        if (! is_string($providerId)
-            || ! is_string($modelProviderId)
-            || ! hash_equals($providerId, $modelProviderId)
-            || ! DB::table('ai_providers')
-                ->where('id', $providerId)
-                ->where('status', 'active')
-                ->exists()
-            || ! DB::table('ai_agent_definitions')
-                ->where('tenant_id', $tenantId)
-                ->where('id', $agent->agent_definition_id)
-                ->where('status', 'active')
-                ->exists()
-            || ! DB::table('ai_prompt_definitions')
-                ->where('tenant_id', $tenantId)
-                ->where('id', $prompt->prompt_definition_id)
-                ->where('status', 'active')
-                ->exists()) {
-            throw new AiExecutionDeniedException('evaluation_gate');
-        }
-
-        $caseCount = DB::table('ai_evaluation_cases')
-            ->where('tenant_id', $tenantId)
-            ->where('evaluation_version_id', $decision->evaluation_version_id)
-            ->count();
-        $resultCount = DB::table('ai_evaluation_results')
-            ->where('tenant_id', $tenantId)
-            ->where('evaluation_run_id', $decision->evaluation_run_id)
-            ->count();
-        $passedCount = DB::table('ai_evaluation_results')
-            ->where('tenant_id', $tenantId)
-            ->where('evaluation_run_id', $decision->evaluation_run_id)
-            ->where('status', 'passed')
-            ->whereNotNull('completed_at')
-            ->where('completed_at', '<=', $decision->decided_at)
-            ->where('completed_at', '<=', now())
-            ->count();
-        if ($caseCount < 1 || $resultCount !== $caseCount || $passedCount !== $caseCount) {
-            throw new AiExecutionDeniedException('evaluation_gate');
-        }
-
-        $actualTargetId = match ($targetType) {
-            'agent' => (string) $decision->agent_version_id,
-            'prompt' => (string) $decision->prompt_version_id,
-            'provider' => (string) $decision->provider_version_id,
-            'model' => (string) $decision->model_version_id,
-            default => '',
-        };
-        if (! hash_equals($targetVersionId, $actualTargetId)) {
-            throw new AiExecutionDeniedException('evaluation_gate');
-        }
     }
 
     /** @return array<string, mixed> */

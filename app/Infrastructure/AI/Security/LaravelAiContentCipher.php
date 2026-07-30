@@ -7,14 +7,19 @@ namespace App\Infrastructure\AI\Security;
 use App\Application\Ai\Security\AiContentCipher;
 use App\Application\Ai\Security\EncryptedAiContent;
 use Illuminate\Support\Facades\Crypt;
-use JsonException;
 use RuntimeException;
 
 final class LaravelAiContentCipher implements AiContentCipher
 {
     public function encrypt(string $tenantId, string $recordId, string $contentClass, string $plaintext): EncryptedAiContent
     {
-        $keyVersion = (string) config('ai.execution_retention.encryption_key_version', 'v1');
+        $keyVersion = strtolower(trim((string) config(
+            'ai.execution_retention.encryption_key_version',
+            'v1',
+        )));
+        if (preg_match('/^[a-z][a-z0-9._-]{0,31}$/', $keyVersion) !== 1) {
+            throw new RuntimeException('AI encryption key version is invalid.');
+        }
         $associated = $this->associated($tenantId, $recordId, $contentClass, $keyVersion);
         $payload = json_encode([
             'aad_hash' => hash('sha256', $associated),

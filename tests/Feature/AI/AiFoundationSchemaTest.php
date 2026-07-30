@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature\AI;
 
+use Illuminate\Database\MySqlConnection;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Database\Schema\Grammars\MySqlGrammar;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use PDO;
 use Tests\TestCase;
 
 final class AiFoundationSchemaTest extends TestCase
@@ -80,6 +84,36 @@ final class AiFoundationSchemaTest extends TestCase
             'revoked_by',
             'revocation_reason',
         ]));
+    }
+
+    public function test_activation_reason_generates_portable_mysql_varchar_sql(): void
+    {
+        $migration = file_get_contents(database_path(
+            'migrations/2026_07_29_000006_expand_ai_registry_lifecycle.php',
+        ));
+        self::assertIsString($migration);
+        self::assertStringContainsString(
+            "\$table->string('reason', 500)->default('Program 05 lifecycle backfill')",
+            $migration,
+        );
+        self::assertStringNotContainsString("\$table->text('reason')->default(", $migration);
+
+        $connection = new MySqlConnection(new PDO('sqlite::memory:'));
+        $connection->setSchemaGrammar(new MySqlGrammar($connection));
+        $blueprint = new Blueprint(
+            $connection,
+            'ai_agent_activations',
+            static function (Blueprint $table): void {
+                $table->string('reason', 500)->default('Program 05 lifecycle backfill');
+            },
+        );
+        $sql = implode(' ', $blueprint->toSql());
+
+        self::assertStringContainsString(
+            "varchar(500) not null default 'program 05 lifecycle backfill'",
+            strtolower($sql),
+        );
+        self::assertStringNotContainsString(' text ', strtolower($sql));
     }
 
     public function test_tenant_owned_ai_relations_reference_tenant_scoped_parent_keys(): void
