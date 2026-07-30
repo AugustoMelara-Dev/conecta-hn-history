@@ -50,6 +50,38 @@ final class AiFoundationSchemaTest extends TestCase
         ]));
     }
 
+    public function test_registry_versions_have_explicit_lifecycle_and_release_metadata(): void
+    {
+        foreach ([
+            'ai_provider_versions',
+            'ai_model_versions',
+            'ai_agent_versions',
+            'ai_prompt_versions',
+        ] as $table) {
+            self::assertTrue(Schema::hasColumns($table, [
+                'lifecycle_status',
+                'kill_switch_enabled',
+                'blocked_at',
+                'blocked_by',
+                'blocked_reason',
+            ]), "Expected explicit lifecycle authority on [{$table}].");
+        }
+
+        self::assertTrue(Schema::hasColumns('ai_agent_activations', [
+            'activated_by',
+            'reason',
+            'lock_version',
+        ]));
+        self::assertTrue(Schema::hasColumns('ai_release_decisions', [
+            'candidate_checksum',
+            'valid_from',
+            'valid_until',
+            'revoked_at',
+            'revoked_by',
+            'revocation_reason',
+        ]));
+    }
+
     public function test_tenant_owned_ai_relations_reference_tenant_scoped_parent_keys(): void
     {
         $relations = [

@@ -145,6 +145,14 @@ final class AiEligibleRegistryFixture
             'evidence_hash' => hash('sha256', $decisionId),
             'rationale' => json_encode(['fixture' => true], JSON_THROW_ON_ERROR),
             'decided_at' => now(),
+            'candidate_checksum' => (string) DB::table('ai_agent_versions')
+                ->where('id', $selection->agentVersionId)
+                ->value('checksum'),
+            'valid_from' => now()->subSecond(),
+            'valid_until' => now()->addDays(30),
+            'revoked_at' => null,
+            'revoked_by' => null,
+            'revocation_reason' => null,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -160,6 +168,9 @@ final class AiEligibleRegistryFixture
             'previous_activation_id' => null,
             'effective_from' => now()->subSecond(),
             'effective_until' => null,
+            'activated_by' => 'fixture',
+            'reason' => 'Eligible registry fixture',
+            'lock_version' => 0,
             'created_at' => now(),
             'updated_at' => now(),
         ]);

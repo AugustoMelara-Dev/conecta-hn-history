@@ -93,9 +93,12 @@ final class AiRegistryResolver
             ->where('versions.tenant_id', $query->tenantId)
             ->where('versions.id', $activation->agent_version_id)
             ->where('definitions.status', 'active')
+            ->where('versions.lifecycle_status', 'active')
+            ->where('versions.kill_switch_enabled', false)
             ->whereNotNull('versions.released_at')
             ->select([
                 'versions.id',
+                'versions.checksum',
                 'versions.configuration',
                 'definitions.visibility',
             ])
@@ -107,6 +110,8 @@ final class AiRegistryResolver
         if (
             $expectedVisibility === null
             || ! hash_equals($expectedVisibility, (string) $agent->visibility)
+            || ! is_string($decision->candidate_checksum)
+            || ! hash_equals((string) $agent->checksum, $decision->candidate_checksum)
         ) {
             throw new AiExecutionDeniedException('registry_selection');
         }
@@ -157,6 +162,8 @@ final class AiRegistryResolver
             ->where('versions.tenant_id', $query->tenantId)
             ->where('versions.id', $promptVersionId)
             ->where('definitions.status', 'active')
+            ->whereIn('versions.lifecycle_status', ['eligible', 'active'])
+            ->where('versions.kill_switch_enabled', false)
             ->whereNotNull('versions.released_at')
             ->select([
                 'versions.id',
@@ -247,10 +254,19 @@ final class AiRegistryResolver
             ->where('decisions.decision', 'passed')
             ->where('policies.status', 'active')
             ->whereNotNull('decisions.evaluation_run_id')
+            ->whereNotNull('decisions.candidate_checksum')
+            ->whereNotNull('decisions.valid_from')
+            ->where('decisions.valid_from', '<=', now())
+            ->whereNull('decisions.revoked_at')
+            ->where(static function ($builder): void {
+                $builder->whereNull('decisions.valid_until')
+                    ->orWhere('decisions.valid_until', '>', now());
+            })
             ->where('decisions.decided_at', '<=', now())
             ->select([
                 'decisions.id',
                 'decisions.evaluation_run_id',
+                'decisions.candidate_checksum',
                 'decisions.decided_at',
                 'policies.rules',
             ])
@@ -379,6 +395,10 @@ final class AiRegistryResolver
             ->where('models.status', 'active')
             ->where('providers.status', 'active')
             ->where('provider_versions.status', 'active')
+            ->whereIn('versions.lifecycle_status', ['eligible', 'active'])
+            ->where('versions.kill_switch_enabled', false)
+            ->whereIn('provider_versions.lifecycle_status', ['eligible', 'active'])
+            ->where('provider_versions.kill_switch_enabled', false)
             ->whereNotNull('versions.released_at')
             ->whereNotNull('provider_versions.released_at')
             ->select([

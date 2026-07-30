@@ -7,10 +7,12 @@ use App\Http\Controllers\Api\V1\Crm\CrmPipelineController;
 use App\Http\Controllers\Api\V1\DirectoryGuideChatController;
 use App\Http\Controllers\Api\V1\InteractionController;
 use App\Http\Controllers\Api\V1\OrderController;
+use App\Http\Controllers\Api\V1\PlatformAiRegistryController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\TenantAgentChatController;
 use App\Http\Controllers\Auth\OtpController;
 use Illuminate\Http\Request;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -39,6 +41,26 @@ Route::prefix('v1')->group(function () {
     // ═══════════════════════════════════════════════════════════════════════════
     // AUTHENTICATION: OTP Routes
     // ═══════════════════════════════════════════════════════════════════════════
+    Route::prefix('platform/ai/registry')
+        ->middleware([StartSession::class, 'auth:sanctum', 'throttle:api'])
+        ->group(function (): void {
+            Route::get('/{resource}', [PlatformAiRegistryController::class, 'index']);
+            Route::post('/drafts', [PlatformAiRegistryController::class, 'createDraft']);
+            Route::post(
+                '/{versionType}/{versionId}/promote',
+                [PlatformAiRegistryController::class, 'promote'],
+            );
+            Route::post('/activations', [PlatformAiRegistryController::class, 'activate']);
+            Route::post(
+                '/activations/{activationId}/rollback',
+                [PlatformAiRegistryController::class, 'rollback'],
+            );
+            Route::post(
+                '/{versionType}/{versionId}/kill-switch',
+                [PlatformAiRegistryController::class, 'killSwitch'],
+            );
+        });
+
     Route::prefix('otp')->group(function () {
         Route::post('/generate', [OtpController::class, 'generate'])
             ->middleware(['throttle:api.otp-generation', 'idempotency']);

@@ -47,6 +47,27 @@ final class AiRegistryBackfillTest extends TestCase
         self::assertDatabaseMissing('ai_provider_versions', [
             'secret_reference' => 'resolved-openai-api-key-value',
         ]);
+        foreach ([
+            'ai_provider_versions',
+            'ai_model_versions',
+            'ai_agent_versions',
+            'ai_prompt_versions',
+        ] as $versionTable) {
+            self::assertSame(0, DB::table($versionTable)
+                ->where(static function ($query): void {
+                    $query->where('lifecycle_status', '!=', 'draft')
+                        ->orWhere('kill_switch_enabled', true);
+                })
+                ->count());
+        }
+        self::assertSame(
+            DB::table('ai_agent_activations')->count(),
+            DB::table('ai_agent_activations')
+                ->where('activated_by', 'registry_backfill')
+                ->where('reason', 'Program 05 registry bootstrap')
+                ->where('lock_version', 0)
+                ->count(),
+        );
 
         $stored = collect([
             'ai_providers', 'ai_provider_versions', 'ai_models', 'ai_model_versions',
@@ -152,6 +173,9 @@ final class AiRegistryBackfillTest extends TestCase
             'previous_activation_id' => null,
             'effective_from' => now()->addSecond(),
             'effective_until' => null,
+            'activated_by' => 'regression_fixture',
+            'reason' => 'Ambiguous activation regression fixture',
+            'lock_version' => 0,
             'created_at' => now(),
             'updated_at' => now(),
         ]);

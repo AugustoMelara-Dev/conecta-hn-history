@@ -53,6 +53,8 @@ final class AiRuntimeSelectionFixture
                     'residency_country_codes' => [$marketCountryCode],
                 ], JSON_THROW_ON_ERROR),
                 'released_at' => now(),
+                'lifecycle_status' => 'active',
+                'kill_switch_enabled' => false,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -82,6 +84,8 @@ final class AiRuntimeSelectionFixture
                     'residency_country_codes' => [$marketCountryCode],
                 ], JSON_THROW_ON_ERROR),
                 'released_at' => now(),
+                'lifecycle_status' => 'active',
+                'kill_switch_enabled' => false,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -133,6 +137,8 @@ final class AiRuntimeSelectionFixture
             'encryption_key_version' => $encrypted->keyVersion,
             'input_schema' => json_encode([], JSON_THROW_ON_ERROR),
             'released_at' => now(),
+            'lifecycle_status' => 'active',
+            'kill_switch_enabled' => false,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -156,6 +162,8 @@ final class AiRuntimeSelectionFixture
             'checksum' => hash('sha256', $agentVersionId),
             'configuration' => json_encode(['fixture' => true], JSON_THROW_ON_ERROR),
             'released_at' => now(),
+            'lifecycle_status' => 'active',
+            'kill_switch_enabled' => false,
             'created_at' => now(),
             'updated_at' => now(),
         ]);

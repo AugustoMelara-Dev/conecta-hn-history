@@ -161,6 +161,12 @@ final class AiRegistryResolverTest extends TestCase
                     'evidence_hash' => hash('sha256', 'revoked'),
                     'rationale' => json_encode(['reason' => 'regression'], JSON_THROW_ON_ERROR),
                     'decided_at' => now()->addSecond(),
+                    'candidate_checksum' => hash('sha256', $fixture['agent_version_id']),
+                    'valid_from' => now(),
+                    'valid_until' => now()->addDay(),
+                    'revoked_at' => now(),
+                    'revoked_by' => 'platform-reviewer',
+                    'revocation_reason' => 'Regression fixture revocation',
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
@@ -221,6 +227,8 @@ final class AiRegistryResolverTest extends TestCase
                 'residency_country_codes' => ['CA'],
             ], JSON_THROW_ON_ERROR),
             'released_at' => now(),
+            'lifecycle_status' => 'active',
+            'kill_switch_enabled' => false,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -377,6 +385,12 @@ final class AiRegistryResolverTest extends TestCase
             'evidence_hash' => hash('sha256', 'ambiguous-decision'),
             'rationale' => json_encode(['fixture' => true], JSON_THROW_ON_ERROR),
             'decided_at' => $decidedAt,
+            'candidate_checksum' => hash('sha256', $fixture['agent_version_id']),
+            'valid_from' => now()->subMinute(),
+            'valid_until' => now()->addDay(),
+            'revoked_at' => null,
+            'revoked_by' => null,
+            'revocation_reason' => null,
             'created_at' => now()->subMinute(),
             'updated_at' => now(),
         ]);
@@ -498,6 +512,8 @@ final class AiRegistryResolverTest extends TestCase
                 'residency_country_codes' => ['CA'],
             ], JSON_THROW_ON_ERROR),
             'released_at' => now(),
+            'lifecycle_status' => $providerVersionStatus,
+            'kill_switch_enabled' => $providerVersionStatus === 'blocked',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -539,6 +555,8 @@ final class AiRegistryResolverTest extends TestCase
             'encryption_key_version' => $encrypted->keyVersion,
             'input_schema' => json_encode([], JSON_THROW_ON_ERROR),
             'released_at' => now(),
+            'lifecycle_status' => 'active',
+            'kill_switch_enabled' => false,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -574,6 +592,8 @@ final class AiRegistryResolverTest extends TestCase
                 'max_output_tokens' => 640,
             ], JSON_THROW_ON_ERROR),
             'released_at' => now(),
+            'lifecycle_status' => 'active',
+            'kill_switch_enabled' => false,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -681,6 +701,12 @@ final class AiRegistryResolverTest extends TestCase
                 'evidence_hash' => hash('sha256', $releaseDecisionId),
                 'rationale' => json_encode(['fixture' => true], JSON_THROW_ON_ERROR),
                 'decided_at' => now(),
+                'candidate_checksum' => hash('sha256', $agentVersionId),
+                'valid_from' => now()->subSecond(),
+                'valid_until' => now()->addDay(),
+                'revoked_at' => null,
+                'revoked_by' => null,
+                'revocation_reason' => null,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -699,6 +725,9 @@ final class AiRegistryResolverTest extends TestCase
             'previous_activation_id' => $previousActivationId,
             'effective_from' => $effectiveFrom ?? now()->subSecond(),
             'effective_until' => $effectiveUntil,
+            'activated_by' => 'fixture',
+            'reason' => 'Resolver regression fixture',
+            'lock_version' => 0,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -752,6 +781,8 @@ final class AiRegistryResolverTest extends TestCase
                 'residency_country_codes' => ['CA'],
             ], $configurationOverride), JSON_THROW_ON_ERROR),
             'released_at' => now(),
+            'lifecycle_status' => 'active',
+            'kill_switch_enabled' => false,
             'created_at' => now(),
             'updated_at' => now(),
         ]);

@@ -160,6 +160,8 @@ final class AiRegistryBackfill
                     'status' => 'draft',
                     'configuration' => $this->json(['enabled' => true, 'adapter_key' => $adapterKey]),
                     'released_at' => null,
+                    'lifecycle_status' => 'draft',
+                    'kill_switch_enabled' => false,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
@@ -218,6 +220,8 @@ final class AiRegistryBackfill
                 'currency' => $configuration['currency'],
                 'configuration' => $this->json($configuration),
                 'released_at' => null,
+                'lifecycle_status' => 'draft',
+                'kill_switch_enabled' => false,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -300,6 +304,8 @@ final class AiRegistryBackfill
                     'checksum' => $checksum,
                     'configuration' => $this->json($configuration),
                     'released_at' => null,
+                    'lifecycle_status' => 'draft',
+                    'kill_switch_enabled' => false,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
@@ -344,6 +350,8 @@ final class AiRegistryBackfill
             'encryption_key_version' => $encrypted->keyVersion,
             'input_schema' => $this->json([]),
             'released_at' => null,
+            'lifecycle_status' => 'draft',
+            'kill_switch_enabled' => false,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -442,6 +450,9 @@ final class AiRegistryBackfill
             'previous_activation_id' => $current?->id,
             'effective_from' => now(),
             'effective_until' => null,
+            'activated_by' => 'registry_backfill',
+            'reason' => 'Program 05 registry bootstrap',
+            'lock_version' => 0,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
