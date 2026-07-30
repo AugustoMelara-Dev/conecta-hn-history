@@ -41,7 +41,7 @@ if (($payload['hold_after_tenant_lock'] ?? false) === true) {
         }
         $held = true;
         file_put_contents((string) $payload['locked_path'], 'locked');
-        $deadline = microtime(true) + 10;
+        $deadline = microtime(true) + 30;
         while (! is_file((string) $payload['release_path'])) {
             if (microtime(true) >= $deadline) {
                 throw new RuntimeException('Timed out holding the tenant lock.');
@@ -51,7 +51,7 @@ if (($payload['hold_after_tenant_lock'] ?? false) === true) {
     });
 }
 file_put_contents((string) $payload['ready_path'], 'ready');
-$deadline = microtime(true) + 10;
+$deadline = microtime(true) + 30;
 while (! is_file((string) $payload['go_path'])) {
     if (microtime(true) >= $deadline) {
         fwrite(STDERR, 'Timed out waiting for the race release signal.');
@@ -60,8 +60,10 @@ while (! is_file((string) $payload['go_path'])) {
     usleep(10_000);
 }
 
+$lifecycle = $app->make(AiRegistryLifecycle::class);
+$attemptedAt = microtime(true);
+file_put_contents((string) $payload['attempting_lock_path'], 'attempting_lock');
 try {
-    $lifecycle = $app->make(AiRegistryLifecycle::class);
     if (($payload['operation'] ?? null) === 'activate') {
         $id = $lifecycle->activate(new ActivateAgentVersionCommand(
             actorId: (string) $payload['actor_id'],
@@ -75,7 +77,12 @@ try {
             expectedActivationId: (string) $payload['activation_id'],
             expectedLockVersion: 0,
         ));
-        echo json_encode(['status' => 'committed', 'activation_id' => $id], JSON_THROW_ON_ERROR);
+        echo json_encode([
+            'status' => 'committed',
+            'activation_id' => $id,
+            'attempted_at' => $attemptedAt,
+            'completed_at' => microtime(true),
+        ], JSON_THROW_ON_ERROR);
     } else {
         $lifecycle->revokeReleaseDecision(new RevokeAiReleaseDecisionCommand(
             actorId: (string) $payload['actor_id'],
@@ -83,12 +90,18 @@ try {
             decisionId: (string) $payload['decision_id'],
             reason: 'MySQL activate/revoke serialization proof.',
         ));
-        echo json_encode(['status' => 'committed'], JSON_THROW_ON_ERROR);
+        echo json_encode([
+            'status' => 'committed',
+            'attempted_at' => $attemptedAt,
+            'completed_at' => microtime(true),
+        ], JSON_THROW_ON_ERROR);
     }
 } catch (AiExecutionDeniedException $exception) {
     echo json_encode([
         'status' => 'denied',
         'reason' => $exception->reason,
+        'attempted_at' => $attemptedAt,
+        'completed_at' => microtime(true),
     ], JSON_THROW_ON_ERROR);
 } catch (Throwable $exception) {
     fwrite(STDERR, $exception::class.': '.$exception->getMessage());

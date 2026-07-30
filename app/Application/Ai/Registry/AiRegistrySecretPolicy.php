@@ -103,7 +103,7 @@ final class AiRegistrySecretPolicy
             return false;
         }
         if (preg_match(
-            '/(?:^|[\s"\'\\[\\]{}(),;])(?:authorization|private[\s_-]*key|access[\s_-]*key|access[\s_-]*token|auth[\s_-]*token|client[\s_-]*secret|api[\s_-]*key|password|secret|bearer|token|credential)\s*[:=]\s*\S+/i',
+            '/(?:^|[\s"\'\\[\\]{}(),;?&#])(?:authorization|private[\s_-]*key|access[\s_-]*key|access[\s_-]*token|auth[\s_-]*token|client[\s_-]*secret|api[\s_-]*key|password|secret|bearer|token|credential)\s*[:=]\s*\S+/i',
             $trimmed,
         ) === 1
             || preg_match('/\bbearer\s+\S+/i', $trimmed) === 1
@@ -146,7 +146,9 @@ final class AiRegistrySecretPolicy
 
     private function credentialUri(string $value, int $depth): bool
     {
-        if (preg_match('/^[a-z][a-z0-9+.-]*:\/\//i', $value) !== 1) {
+        if (preg_match('/^[a-z][a-z0-9+.-]*:\/\//i', $value) !== 1
+            && ! str_contains($value, '?')
+            && ! str_contains($value, '#')) {
             return false;
         }
         $parts = parse_url($value);
@@ -156,18 +158,20 @@ final class AiRegistrySecretPolicy
         if (($parts['user'] ?? '') !== '' || ($parts['pass'] ?? '') !== '') {
             return true;
         }
-        if (! isset($parts['query']) || ! is_string($parts['query'])) {
-            return false;
-        }
-        parse_str($parts['query'], $parameters);
-        foreach ($parameters as $key => $parameter) {
-            if ($this->credentialKey((string) $key)) {
-                return true;
+        foreach (['query', 'fragment'] as $component) {
+            if (! isset($parts[$component]) || ! is_string($parts[$component])) {
+                continue;
             }
-            if (is_string($parameter)
-                && $depth < 2
-                && $this->credentialValue($parameter, $depth + 1)) {
-                return true;
+            parse_str($parts[$component], $parameters);
+            foreach ($parameters as $key => $parameter) {
+                if ($this->credentialKey((string) $key)) {
+                    return true;
+                }
+                if (is_string($parameter)
+                    && $depth < 2
+                    && $this->credentialValue($parameter, $depth + 1)) {
+                    return true;
+                }
             }
         }
 
@@ -176,7 +180,9 @@ final class AiRegistrySecretPolicy
 
     private function base64DecodedText(string $value): ?string
     {
-        if (strlen($value) < 16
+        $length = strlen($value);
+        if ($length < 8
+            || $length > 4096
             || preg_match('/^[A-Za-z0-9+\/_-]+={0,2}$/', $value) !== 1) {
             return null;
         }
@@ -188,8 +194,16 @@ final class AiRegistrySecretPolicy
         $decoded = base64_decode($standard, true);
         if (! is_string($decoded)
             || $decoded === ''
+            || strlen($decoded) > 3072
             || preg_match('//u', $decoded) !== 1
             || preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', $decoded) === 1) {
+            return null;
+        }
+        $unpadded = rtrim($value, '=');
+        $canonical = rtrim(base64_encode($decoded), '=');
+        $canonicalUrl = strtr($canonical, '+/', '-_');
+        if (! hash_equals($unpadded, $canonical)
+            && ! hash_equals($unpadded, $canonicalUrl)) {
             return null;
         }
 

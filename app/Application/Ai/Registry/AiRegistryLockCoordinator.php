@@ -82,6 +82,48 @@ final readonly class AiRegistryLockCoordinator
     }
 
     /** @return Collection<int, object> */
+    public function decisionDependentActivations(string $tenantId, string $decisionId): Collection
+    {
+        $history = DB::table('ai_agent_activations')
+            ->where('tenant_id', $tenantId)
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get([
+                'id',
+                'release_decision_id',
+                'previous_activation_id',
+                'effective_until',
+            ]);
+        $byId = $history->keyBy(static fn (object $activation): string => (string) $activation->id);
+
+        return $history
+            ->filter(static function (object $activation) use ($byId, $decisionId): bool {
+                if ($activation->effective_until !== null) {
+                    return false;
+                }
+                $visited = [];
+                $current = $activation;
+                while ($current !== null) {
+                    $currentId = (string) $current->id;
+                    if (isset($visited[$currentId])) {
+                        return false;
+                    }
+                    $visited[$currentId] = true;
+                    if (hash_equals($decisionId, (string) $current->release_decision_id)) {
+                        return true;
+                    }
+                    $previousId = $current->previous_activation_id;
+                    $current = is_string($previousId)
+                        ? $byId->get($previousId)
+                        : null;
+                }
+
+                return false;
+            })
+            ->values();
+    }
+
+    /** @return Collection<int, object> */
     public function agentActivations(string $tenantId, string $agentVersionId): Collection
     {
         return DB::table('ai_agent_activations')

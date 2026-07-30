@@ -39,12 +39,33 @@ final class AiRegistryConcurrencyMySqlTest extends TestCase
             $secondProcess->start();
             $this->awaitReady($secondWorker['ready']);
             file_put_contents($secondWorker['go'], 'go');
-            usleep(300_000);
+            $this->awaitReady($secondWorker['attempting']);
+            $blockedSince = microtime(true);
+            usleep(600_000);
+            self::assertTrue(
+                $secondProcess->isRunning(),
+                "The {$second} worker did not remain blocked behind the {$first} tenant lock.",
+            );
+            self::assertSame(
+                '',
+                trim($secondProcess->getOutput()),
+                "The {$second} worker returned before the first transaction released its lock.",
+            );
+            self::assertGreaterThanOrEqual(
+                0.5,
+                microtime(true) - $blockedSince,
+                "The {$second} worker did not demonstrate the minimum lock wait.",
+            );
             file_put_contents($firstWorker['release'], 'release');
             $firstProcess->wait();
             $secondProcess->wait();
             $firstResult = $this->workerResult($firstProcess);
             $secondResult = $this->workerResult($secondProcess);
+            self::assertGreaterThanOrEqual(
+                0.5,
+                (float) $secondResult['completed_at'] - (float) $secondResult['attempted_at'],
+                "The {$second} worker result did not retain the measured lock wait.",
+            );
 
             if ($order === 'activate-first') {
                 self::assertSame('committed', $firstResult['status'], json_encode($firstResult));
@@ -62,7 +83,7 @@ final class AiRegistryConcurrencyMySqlTest extends TestCase
                 ->whereNull('effective_until')
                 ->count());
             foreach ([$firstWorker, $secondWorker] as $worker) {
-                foreach (['ready', 'go', 'locked', 'release'] as $path) {
+                foreach (['ready', 'go', 'attempting', 'locked', 'release'] as $path) {
                     @unlink($worker[$path]);
                 }
             }
@@ -106,12 +127,13 @@ final class AiRegistryConcurrencyMySqlTest extends TestCase
     }
 
     /** @param array<string, string> $fixture */
-    /** @return array{process:Process,ready:string,go:string,locked:string,release:string} */
+    /** @return array{process:Process,ready:string,go:string,attempting:string,locked:string,release:string} */
     private function worker(string $operation, array $fixture, bool $hold = false): array
     {
         $prefix = sys_get_temp_dir().DIRECTORY_SEPARATOR.'dovra-registry-race-'.Str::uuid();
         $ready = $prefix.'.ready';
         $go = $prefix.'.go';
+        $attempting = $prefix.'.attempting';
         $locked = $prefix.'.locked';
         $release = $prefix.'.release';
         $payload = base64_encode(json_encode([
@@ -119,6 +141,7 @@ final class AiRegistryConcurrencyMySqlTest extends TestCase
             'operation' => $operation,
             'ready_path' => $ready,
             'go_path' => $go,
+            'attempting_lock_path' => $attempting,
             'locked_path' => $locked,
             'release_path' => $release,
             'hold_after_tenant_lock' => $hold,
@@ -129,9 +152,10 @@ final class AiRegistryConcurrencyMySqlTest extends TestCase
                 PHP_BINARY,
                 base_path('tests/Support/AI/run_registry_race_worker.php'),
                 $payload,
-            ], base_path(), null, null, 30),
+            ], base_path(), null, null, 60),
             'ready' => $ready,
             'go' => $go,
+            'attempting' => $attempting,
             'locked' => $locked,
             'release' => $release,
         ];
@@ -139,7 +163,7 @@ final class AiRegistryConcurrencyMySqlTest extends TestCase
 
     private function awaitReady(string $path): void
     {
-        $deadline = microtime(true) + 10;
+        $deadline = microtime(true) + 30;
         while (! is_file($path)) {
             if (microtime(true) >= $deadline) {
                 self::fail("Worker did not become ready: {$path}");
@@ -148,7 +172,7 @@ final class AiRegistryConcurrencyMySqlTest extends TestCase
         }
     }
 
-    /** @return array<string, string> */
+    /** @return array<string, mixed> */
     private function workerResult(Process $process): array
     {
         self::assertTrue(

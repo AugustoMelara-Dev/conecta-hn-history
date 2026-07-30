@@ -678,7 +678,10 @@ final readonly class AiRegistryLifecycle
                 allowedLifecycleStatuses: ['candidate', 'eligible', 'active'],
                 denialReason: 'evaluation_gate',
             );
-            $activations = $this->locks->decisionActivations($tenantId, $command->decisionId);
+            $activations = $this->locks->decisionDependentActivations(
+                $tenantId,
+                $command->decisionId,
+            );
             $revokedAt = now();
             $updated = DB::table('ai_release_decisions')
                 ->where('tenant_id', $tenantId)

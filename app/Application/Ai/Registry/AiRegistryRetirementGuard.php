@@ -15,60 +15,97 @@ final class AiRegistryRetirementGuard
         string $versionType,
         string $versionId,
     ): void {
-        $open = DB::table('ai_agent_activations')
-            ->where('tenant_id', $tenantId)
-            ->whereNull('effective_until')
-            ->get(['agent_version_id', 'previous_activation_id', 'rollout_percentage']);
-        $agentVersionIds = $open->pluck('agent_version_id')
-            ->map(static fn (mixed $id): string => (string) $id)
-            ->all();
-        $fallbackIds = $open
-            ->filter(static fn (object $activation): bool => (int) $activation->rollout_percentage < 100
-                && is_string($activation->previous_activation_id)
-                && Str::isUuid($activation->previous_activation_id))
-            ->pluck('previous_activation_id')
-            ->all();
-        if ($fallbackIds !== []) {
-            $agentVersionIds = [
-                ...$agentVersionIds,
-                ...DB::table('ai_agent_activations')
-                    ->where('tenant_id', $tenantId)
-                    ->whereIn('id', $fallbackIds)
-                    ->pluck('agent_version_id')
-                    ->map(static fn (mixed $id): string => (string) $id)
-                    ->all(),
-            ];
+        $globalVersion = in_array($versionType, ['model', 'provider'], true);
+        $openQuery = DB::table('ai_agent_activations')
+            ->whereNull('effective_until');
+        if (! $globalVersion) {
+            $openQuery->where('tenant_id', $tenantId);
         }
-        $agentVersionIds = array_values(array_unique(array_filter(
-            $agentVersionIds,
-            static fn (string $id): bool => Str::isUuid($id),
-        )));
-        if ($versionType === 'agent' && in_array($versionId, $agentVersionIds, true)) {
+        $open = $openQuery->get([
+            'id',
+            'tenant_id',
+            'agent_version_id',
+            'previous_activation_id',
+            'rollout_percentage',
+        ]);
+        $agentVersionIdsByTenant = [];
+        $fallbackIdsByTenant = [];
+        foreach ($open as $activation) {
+            $activationTenantId = (string) $activation->tenant_id;
+            $agentVersionId = (string) $activation->agent_version_id;
+            if (Str::isUuid($activationTenantId) && Str::isUuid($agentVersionId)) {
+                $agentVersionIdsByTenant[$activationTenantId][] = $agentVersionId;
+            }
+            if ((int) $activation->rollout_percentage < 100
+                && is_string($activation->previous_activation_id)
+                && Str::isUuid($activation->previous_activation_id)) {
+                $fallbackIdsByTenant[$activationTenantId][] = $activation->previous_activation_id;
+            }
+        }
+        foreach ($fallbackIdsByTenant as $activationTenantId => $fallbackIds) {
+            $visitedActivationIds = [];
+            while ($fallbackIds !== []) {
+                $fallbackIds = array_values(array_diff(
+                    array_unique($fallbackIds),
+                    $visitedActivationIds,
+                ));
+                if ($fallbackIds === []) {
+                    break;
+                }
+                $visitedActivationIds = [...$visitedActivationIds, ...$fallbackIds];
+                $fallbackIds = [];
+                foreach (DB::table('ai_agent_activations')
+                    ->where('tenant_id', $activationTenantId)
+                    ->whereIn('id', $visitedActivationIds)
+                    ->get(['id', 'agent_version_id', 'previous_activation_id']) as $activation) {
+                    $agentVersionId = (string) $activation->agent_version_id;
+                    if (Str::isUuid($agentVersionId)) {
+                        $agentVersionIdsByTenant[$activationTenantId][] = $agentVersionId;
+                    }
+                    if (is_string($activation->previous_activation_id)
+                        && Str::isUuid($activation->previous_activation_id)
+                        && ! in_array($activation->previous_activation_id, $visitedActivationIds, true)) {
+                        $fallbackIds[] = $activation->previous_activation_id;
+                    }
+                }
+            }
+        }
+        foreach ($agentVersionIdsByTenant as &$agentVersionIds) {
+            $agentVersionIds = array_values(array_unique($agentVersionIds));
+        }
+        unset($agentVersionIds);
+
+        $tenantAgentVersionIds = $agentVersionIdsByTenant[$tenantId] ?? [];
+        if ($versionType === 'agent' && in_array($versionId, $tenantAgentVersionIds, true)) {
             $this->deny();
         }
-        if ($agentVersionIds === []) {
+        if ($agentVersionIdsByTenant === []) {
             return;
         }
 
         $promptVersionIds = [];
         $modelVersionIds = [];
-        foreach (DB::table('ai_agent_versions')
-            ->where('tenant_id', $tenantId)
-            ->whereIn('id', $agentVersionIds)
-            ->get(['model_version_id', 'configuration']) as $agent) {
-            if (is_string($agent->model_version_id) && Str::isUuid($agent->model_version_id)) {
-                $modelVersionIds[] = $agent->model_version_id;
-            }
-            $configuration = $this->jsonObject($agent->configuration);
-            $promptVersionId = $configuration['prompt_version_id'] ?? null;
-            if (is_string($promptVersionId) && Str::isUuid($promptVersionId)) {
-                $promptVersionIds[] = $promptVersionId;
-            }
-            $configuredModels = $configuration['model_version_ids'] ?? null;
-            if (is_array($configuredModels)) {
-                foreach ($configuredModels as $modelVersionId) {
-                    if (is_string($modelVersionId) && Str::isUuid($modelVersionId)) {
-                        $modelVersionIds[] = $modelVersionId;
+        foreach ($agentVersionIdsByTenant as $activationTenantId => $agentVersionIds) {
+            foreach (DB::table('ai_agent_versions')
+                ->where('tenant_id', $activationTenantId)
+                ->whereIn('id', $agentVersionIds)
+                ->get(['model_version_id', 'configuration']) as $agent) {
+                if (is_string($agent->model_version_id) && Str::isUuid($agent->model_version_id)) {
+                    $modelVersionIds[] = $agent->model_version_id;
+                }
+                $configuration = $this->jsonObject($agent->configuration);
+                if ($activationTenantId === $tenantId) {
+                    $promptVersionId = $configuration['prompt_version_id'] ?? null;
+                    if (is_string($promptVersionId) && Str::isUuid($promptVersionId)) {
+                        $promptVersionIds[] = $promptVersionId;
+                    }
+                }
+                $configuredModels = $configuration['model_version_ids'] ?? null;
+                if (is_array($configuredModels)) {
+                    foreach ($configuredModels as $modelVersionId) {
+                        if (is_string($modelVersionId) && Str::isUuid($modelVersionId)) {
+                            $modelVersionIds[] = $modelVersionId;
+                        }
                     }
                 }
             }

@@ -98,6 +98,45 @@ final class AiRegistryLifecycleTest extends TestCase
         }
     }
 
+    public function test_revoking_a_control_root_closes_the_open_canary_that_depends_on_it(): void
+    {
+        $fixture = $this->fixture('canary-root-revocation');
+        $candidate = $this->eligibleCandidate($fixture);
+        $lifecycle = app(AiRegistryLifecycle::class);
+        $canaryId = $lifecycle->activate(new ActivateAgentVersionCommand(
+            actorId: (string) $fixture['admin']->id,
+            tenantId: (string) $fixture['tenant']->id,
+            scopeType: 'tenant',
+            scopeKey: (string) $fixture['tenant']->id,
+            agentVersionId: $candidate['agent_version_id'],
+            releaseDecisionId: $candidate['release_decision_id'],
+            rolloutPercentage: 25,
+            reason: 'Create a canary whose control root will be revoked.',
+            expectedActivationId: $fixture['activation_id'],
+            expectedLockVersion: 0,
+        ));
+
+        $lifecycle->revokeReleaseDecision(new RevokeAiReleaseDecisionCommand(
+            actorId: (string) $fixture['admin']->id,
+            tenantId: (string) $fixture['tenant']->id,
+            decisionId: $fixture['selection']->releaseDecisionId,
+            reason: 'Revoke the decision used by the canary control root.',
+        ));
+
+        self::assertNotNull(DB::table('ai_release_decisions')
+            ->where('id', $fixture['selection']->releaseDecisionId)
+            ->value('revoked_at'));
+        self::assertNull(DB::table('ai_release_decisions')
+            ->where('id', $candidate['release_decision_id'])
+            ->value('revoked_at'));
+        self::assertNotNull(DB::table('ai_agent_activations')
+            ->where('id', $canaryId)
+            ->value('effective_until'));
+        self::assertSame(1, (int) DB::table('ai_agent_activations')
+            ->where('id', $canaryId)
+            ->value('lock_version'));
+    }
+
     public function test_activation_is_exact_evaluation_gated_audited_and_transactional(): void
     {
         $fixture = $this->fixture();
@@ -690,6 +729,123 @@ final class AiRegistryLifecycleTest extends TestCase
         }
     }
 
+    public function test_all_lifecycle_writers_follow_the_shared_lock_order_contract(): void
+    {
+        $promoteFixture = $this->fixture('lock-contract-promote');
+        $promoteCandidate = $this->eligibleCandidate($promoteFixture, 'candidate');
+        $this->assertRegistryLockOrder(
+            'promote',
+            $this->captureRegistryLocks(fn () => app(AiRegistryLifecycle::class)->promote(
+                new PromoteAiVersionCommand(
+                    actorId: (string) $promoteFixture['admin']->id,
+                    tenantId: (string) $promoteFixture['tenant']->id,
+                    versionType: 'agent',
+                    versionId: $promoteCandidate['agent_version_id'],
+                    targetStatus: 'eligible',
+                    releaseDecisionId: $promoteCandidate['release_decision_id'],
+                    reason: 'Prove promote lock ordering.',
+                ),
+            )),
+            ['tenants', 'ai_release_decisions', 'ai_agent_versions', 'ai_agent_definitions'],
+        );
+
+        $activateFixture = $this->fixture('lock-contract-activate');
+        $activateCandidate = $this->eligibleCandidate($activateFixture);
+        $this->assertRegistryLockOrder(
+            'activate',
+            $this->captureRegistryLocks(fn () => app(AiRegistryLifecycle::class)->activate(
+                new ActivateAgentVersionCommand(
+                    actorId: (string) $activateFixture['admin']->id,
+                    tenantId: (string) $activateFixture['tenant']->id,
+                    scopeType: 'tenant',
+                    scopeKey: (string) $activateFixture['tenant']->id,
+                    agentVersionId: $activateCandidate['agent_version_id'],
+                    releaseDecisionId: $activateCandidate['release_decision_id'],
+                    rolloutPercentage: 100,
+                    reason: 'Prove activate lock ordering.',
+                    expectedActivationId: $activateFixture['activation_id'],
+                    expectedLockVersion: 0,
+                ),
+            )),
+            [
+                'tenants',
+                'ai_release_decisions',
+                'ai_agent_versions',
+                'ai_agent_definitions',
+                'ai_agent_activations',
+            ],
+        );
+
+        $rollbackFixture = $this->fixture('lock-contract-rollback');
+        $rollbackCandidate = $this->eligibleCandidate($rollbackFixture);
+        $canaryId = app(AiRegistryLifecycle::class)->activate(new ActivateAgentVersionCommand(
+            actorId: (string) $rollbackFixture['admin']->id,
+            tenantId: (string) $rollbackFixture['tenant']->id,
+            scopeType: 'tenant',
+            scopeKey: (string) $rollbackFixture['tenant']->id,
+            agentVersionId: $rollbackCandidate['agent_version_id'],
+            releaseDecisionId: $rollbackCandidate['release_decision_id'],
+            rolloutPercentage: 25,
+            reason: 'Prepare rollback lock ordering.',
+            expectedActivationId: $rollbackFixture['activation_id'],
+            expectedLockVersion: 0,
+        ));
+        $this->assertRegistryLockOrder(
+            'rollback',
+            $this->captureRegistryLocks(fn () => app(AiRegistryLifecycle::class)->rollback(
+                new RollbackAgentActivationCommand(
+                    actorId: (string) $rollbackFixture['admin']->id,
+                    tenantId: (string) $rollbackFixture['tenant']->id,
+                    activationId: $canaryId,
+                    expectedLockVersion: 0,
+                    reason: 'Prove rollback lock ordering.',
+                ),
+            )),
+            [
+                'tenants',
+                'ai_release_decisions',
+                'ai_agent_versions',
+                'ai_agent_definitions',
+                'ai_agent_activations',
+            ],
+        );
+
+        $killFixture = $this->fixture('lock-contract-kill');
+        $this->assertRegistryLockOrder(
+            'kill',
+            $this->captureRegistryLocks(fn () => app(AiRegistryLifecycle::class)->killSwitch(
+                new KillSwitchAiVersionCommand(
+                    actorId: (string) $killFixture['admin']->id,
+                    tenantId: (string) $killFixture['tenant']->id,
+                    versionType: 'agent',
+                    versionId: $killFixture['selection']->agentVersionId,
+                    reason: 'Prove kill-switch lock ordering.',
+                ),
+            )),
+            ['tenants', 'ai_agent_versions', 'ai_agent_activations'],
+        );
+
+        $revokeFixture = $this->fixture('lock-contract-revoke');
+        $this->assertRegistryLockOrder(
+            'revoke',
+            $this->captureRegistryLocks(fn () => app(AiRegistryLifecycle::class)->revokeReleaseDecision(
+                new RevokeAiReleaseDecisionCommand(
+                    actorId: (string) $revokeFixture['admin']->id,
+                    tenantId: (string) $revokeFixture['tenant']->id,
+                    decisionId: $revokeFixture['selection']->releaseDecisionId,
+                    reason: 'Prove revocation lock ordering.',
+                ),
+            )),
+            [
+                'tenants',
+                'ai_release_decisions',
+                'ai_agent_versions',
+                'ai_agent_definitions',
+                'ai_agent_activations',
+            ],
+        );
+    }
+
     public function test_activation_rechecks_a_decision_revoked_between_eligibility_and_insert(): void
     {
         $fixture = $this->fixture('decision-revoked-between-phases');
@@ -994,6 +1150,233 @@ final class AiRegistryLifecycleTest extends TestCase
             'id' => $fixture['selection']->agentVersionId,
             'lifecycle_status' => 'retired',
         ]);
+    }
+
+    public function test_global_provider_and_model_retirement_considers_other_tenants_open_assignments(): void
+    {
+        $owner = $this->fixture('global-retirement-owner');
+        $consumer = $this->fixture('global-retirement-consumer');
+        $configuration = json_decode(
+            (string) DB::table('ai_agent_versions')
+                ->where('id', $consumer['selection']->agentVersionId)
+                ->value('configuration'),
+            true,
+            512,
+            JSON_THROW_ON_ERROR,
+        );
+        $configuration['model_version_ids'] = [$owner['selection']->modelVersionId];
+        DB::table('ai_agent_versions')
+            ->where('tenant_id', $consumer['tenant']->id)
+            ->where('id', $consumer['selection']->agentVersionId)
+            ->update([
+                'model_version_id' => $owner['selection']->modelVersionId,
+                'configuration' => json_encode($configuration, JSON_THROW_ON_ERROR),
+            ]);
+        DB::table('ai_agent_activations')
+            ->where('tenant_id', $owner['tenant']->id)
+            ->whereNull('effective_until')
+            ->update(['effective_until' => now()]);
+        config()->set('auth.super_admins', [$owner['admin']->email]);
+        $lifecycle = app(AiRegistryLifecycle::class);
+
+        foreach ([
+            'model' => $owner['selection']->modelVersionId,
+            'provider' => $owner['selection']->providerVersionId,
+        ] as $versionType => $versionId) {
+            try {
+                $lifecycle->promote(new PromoteAiVersionCommand(
+                    actorId: (string) $owner['admin']->id,
+                    tenantId: (string) $owner['tenant']->id,
+                    versionType: $versionType,
+                    versionId: $versionId,
+                    targetStatus: 'retired',
+                    releaseDecisionId: null,
+                    reason: "Reject cross-tenant {$versionType} retirement.",
+                ));
+                self::fail("Expected cross-tenant {$versionType} retirement rejection.");
+            } catch (ValidationException $exception) {
+                self::assertArrayHasKey('target_status', $exception->errors());
+            }
+        }
+
+        DB::table('ai_agent_activations')
+            ->where('tenant_id', $consumer['tenant']->id)
+            ->whereNull('effective_until')
+            ->update(['effective_until' => now()]);
+        foreach ([
+            'model' => $owner['selection']->modelVersionId,
+            'provider' => $owner['selection']->providerVersionId,
+        ] as $versionType => $versionId) {
+            $lifecycle->promote(new PromoteAiVersionCommand(
+                actorId: (string) $owner['admin']->id,
+                tenantId: (string) $owner['tenant']->id,
+                versionType: $versionType,
+                versionId: $versionId,
+                targetStatus: 'retired',
+                releaseDecisionId: null,
+                reason: "Retire unreferenced global {$versionType}.",
+            ));
+            $this->assertDatabaseHas("ai_{$versionType}_versions", [
+                'id' => $versionId,
+                'lifecycle_status' => 'retired',
+            ]);
+        }
+    }
+
+    public function test_global_retirement_follows_another_tenants_open_canary_root(): void
+    {
+        $owner = $this->fixture('global-canary-owner');
+        $consumer = $this->fixture('global-canary-consumer');
+        $foreignProviderVersionId = (string) Str::uuid();
+        $provider = DB::table('ai_provider_versions')
+            ->where('id', $owner['selection']->providerVersionId)
+            ->first();
+        self::assertNotNull($provider);
+        DB::table('ai_provider_versions')->insert([
+            ...((array) $provider),
+            'id' => $foreignProviderVersionId,
+            'version' => (int) DB::table('ai_provider_versions')
+                ->where('provider_id', $provider->provider_id)
+                ->max('version') + 1,
+            'checksum' => hash('sha256', $foreignProviderVersionId),
+        ]);
+        $foreignModelVersionId = (string) Str::uuid();
+        $model = DB::table('ai_model_versions')
+            ->where('id', $owner['selection']->modelVersionId)
+            ->first();
+        self::assertNotNull($model);
+        DB::table('ai_model_versions')->insert([
+            ...((array) $model),
+            'id' => $foreignModelVersionId,
+            'provider_version_id' => $foreignProviderVersionId,
+            'version' => (int) DB::table('ai_model_versions')
+                ->where('model_id', $model->model_id)
+                ->max('version') + 1,
+            'checksum' => hash('sha256', $foreignModelVersionId),
+        ]);
+        $consumerConfiguration = json_decode(
+            (string) DB::table('ai_agent_versions')
+                ->where('id', $consumer['selection']->agentVersionId)
+                ->value('configuration'),
+            true,
+            512,
+            JSON_THROW_ON_ERROR,
+        );
+        $rootConfiguration = $consumerConfiguration;
+        $rootConfiguration['model_version_ids'] = [$foreignModelVersionId];
+        DB::table('ai_agent_versions')
+            ->where('tenant_id', $consumer['tenant']->id)
+            ->where('id', $consumer['selection']->agentVersionId)
+            ->update([
+                'model_version_id' => $foreignModelVersionId,
+                'configuration' => json_encode($rootConfiguration, JSON_THROW_ON_ERROR),
+            ]);
+        $rootRunId = (string) DB::table('ai_release_decisions')
+            ->where('id', $consumer['selection']->releaseDecisionId)
+            ->value('evaluation_run_id');
+        DB::table('ai_evaluation_runs')
+            ->where('tenant_id', $consumer['tenant']->id)
+            ->where('id', $rootRunId)
+            ->update([
+                'provider_version_id' => $foreignProviderVersionId,
+                'model_version_id' => $foreignModelVersionId,
+            ]);
+        $candidate = $this->eligibleCandidate($consumer);
+        DB::table('ai_agent_versions')
+            ->where('tenant_id', $consumer['tenant']->id)
+            ->where('id', $candidate['agent_version_id'])
+            ->update([
+                'model_version_id' => $consumer['selection']->modelVersionId,
+                'configuration' => json_encode($consumerConfiguration, JSON_THROW_ON_ERROR),
+            ]);
+        $lifecycle = app(AiRegistryLifecycle::class);
+        $canaryId = $lifecycle->activate(new ActivateAgentVersionCommand(
+            actorId: (string) $consumer['admin']->id,
+            tenantId: (string) $consumer['tenant']->id,
+            scopeType: 'tenant',
+            scopeKey: (string) $consumer['tenant']->id,
+            agentVersionId: $candidate['agent_version_id'],
+            releaseDecisionId: $candidate['release_decision_id'],
+            rolloutPercentage: 25,
+            reason: 'Create a cross-tenant global dependency through the control root.',
+            expectedActivationId: $consumer['activation_id'],
+            expectedLockVersion: 0,
+        ));
+        DB::table('ai_agent_activations')
+            ->where('tenant_id', $owner['tenant']->id)
+            ->whereNull('effective_until')
+            ->update(['effective_until' => now()]);
+        config()->set('auth.super_admins', [$owner['admin']->email]);
+
+        foreach ([
+            'model' => $foreignModelVersionId,
+            'provider' => $foreignProviderVersionId,
+        ] as $versionType => $versionId) {
+            try {
+                $lifecycle->promote(new PromoteAiVersionCommand(
+                    actorId: (string) $owner['admin']->id,
+                    tenantId: (string) $owner['tenant']->id,
+                    versionType: $versionType,
+                    versionId: $versionId,
+                    targetStatus: 'retired',
+                    releaseDecisionId: null,
+                    reason: "Reject cross-tenant canary-root {$versionType} retirement.",
+                ));
+                self::fail("Expected cross-tenant canary-root {$versionType} retirement rejection.");
+            } catch (ValidationException $exception) {
+                self::assertArrayHasKey('target_status', $exception->errors());
+            }
+        }
+
+        config()->set('auth.super_admins', [$consumer['admin']->email]);
+        $replacementId = $lifecycle->activate(new ActivateAgentVersionCommand(
+            actorId: (string) $consumer['admin']->id,
+            tenantId: (string) $consumer['tenant']->id,
+            scopeType: 'tenant',
+            scopeKey: (string) $consumer['tenant']->id,
+            agentVersionId: $candidate['agent_version_id'],
+            releaseDecisionId: $candidate['release_decision_id'],
+            rolloutPercentage: 100,
+            reason: 'Replace the cross-tenant canary control root.',
+            expectedActivationId: $canaryId,
+            expectedLockVersion: 0,
+        ));
+        self::assertNotSame($canaryId, $replacementId);
+        self::assertNotSame(
+            $foreignModelVersionId,
+            $consumer['selection']->modelVersionId,
+        );
+        self::assertNotSame(
+            $foreignProviderVersionId,
+            $consumer['selection']->providerVersionId,
+        );
+        self::assertSame(
+            [$candidate['agent_version_id']],
+            DB::table('ai_agent_activations')
+                ->where('tenant_id', $consumer['tenant']->id)
+                ->whereNull('effective_until')
+                ->pluck('agent_version_id')
+                ->all(),
+        );
+        config()->set('auth.super_admins', [$owner['admin']->email]);
+        foreach ([
+            'model' => $foreignModelVersionId,
+            'provider' => $foreignProviderVersionId,
+        ] as $versionType => $versionId) {
+            $lifecycle->promote(new PromoteAiVersionCommand(
+                actorId: (string) $owner['admin']->id,
+                tenantId: (string) $owner['tenant']->id,
+                versionType: $versionType,
+                versionId: $versionId,
+                targetStatus: 'retired',
+                releaseDecisionId: null,
+                reason: "Retire replaced cross-tenant canary-root {$versionType}.",
+            ));
+            $this->assertDatabaseHas("ai_{$versionType}_versions", [
+                'id' => $versionId,
+                'lifecycle_status' => 'retired',
+            ]);
+        }
     }
 
     public function test_promotion_only_advances_one_allowed_transition_and_records_candidacy(): void
@@ -1365,10 +1748,17 @@ final class AiRegistryLifecycleTest extends TestCase
             ['value' => 'https://operator:Sup3rSecret@example.test/v1'],
             ['value' => 'https://api.example.test/v1?apiKey=sk-project-1234567890abcdef'],
             ['value' => 'https://api.example.test/v1?token=abc'],
+            ['endpoint' => '/callback?token=abc'],
+            ['endpoint' => '/callback#apiKey=x'],
+            ['value' => '?token=abc'],
+            ['value' => '&apiKey=x'],
+            ['value' => '#clientSecret=y'],
             ['value' => 'operation=rotate;credential=y'],
             ['value' => rawurlencode('clientSecret=encoded-secret-value')],
+            ['value' => rawurlencode('?token=abc')],
             ['value' => base64_encode('apiKey=encoded-secret-value')],
             ['value' => base64_encode('accessToken=abc')],
+            ['value' => 'dG9rZW49eA=='],
         ];
 
         foreach ($credentials as $index => $credential) {
@@ -1526,6 +1916,58 @@ final class AiRegistryLifecycleTest extends TestCase
         self::assertNotNull($control);
 
         return [$canary, $control];
+    }
+
+    /** @return list<string> */
+    private function captureRegistryLocks(callable $operation): array
+    {
+        $connection = DB::connection();
+        $originalGrammar = $connection->getQueryGrammar();
+        $connection->setQueryGrammar(new class($connection) extends SQLiteGrammar
+        {
+            protected function compileLock(Builder $query, $value)
+            {
+                return $value ? ' /* registry-for-update */' : '';
+            }
+        });
+        $queries = [];
+        $capture = true;
+        DB::listen(static function (QueryExecuted $event) use (&$queries, &$capture): void {
+            if ($capture && str_contains($event->sql, 'registry-for-update')) {
+                $queries[] = $event->sql;
+            }
+        });
+
+        try {
+            $operation();
+        } finally {
+            $capture = false;
+            $connection->setQueryGrammar($originalGrammar);
+        }
+
+        return $queries;
+    }
+
+    /** @param list<string> $queries */
+    /** @param list<string> $orderedTables */
+    private function assertRegistryLockOrder(
+        string $operation,
+        array $queries,
+        array $orderedTables,
+    ): void {
+        $previous = -1;
+        foreach ($orderedTables as $table) {
+            $index = collect($queries)->search(
+                static fn (string $sql): bool => str_contains($sql, "\"{$table}\""),
+            );
+            self::assertIsInt($index, "{$operation} did not lock {$table}.");
+            self::assertGreaterThan(
+                $previous,
+                $index,
+                "{$operation} did not preserve the shared lock order at {$table}.",
+            );
+            $previous = $index;
+        }
     }
 
     /**

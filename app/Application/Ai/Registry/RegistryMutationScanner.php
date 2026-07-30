@@ -6,7 +6,9 @@ namespace App\Application\Ai\Registry;
 
 use PhpParser\Node;
 use PhpParser\Node\Expr;
+use PhpParser\Node\InterpolatedStringPart;
 use PhpParser\Node\Name;
+use PhpParser\Node\Scalar\InterpolatedString;
 use PhpParser\Node\Scalar\String_;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeFinder;
@@ -25,7 +27,11 @@ final class RegistryMutationScanner
         'insert',
         'insertGetId',
         'insertOrIgnore',
+        'insertOrIgnoreReturning',
+        'insertUsing',
+        'insertOrIgnoreUsing',
         'update',
+        'updateFrom',
         'updateOrInsert',
         'upsert',
         'delete',
@@ -39,28 +45,50 @@ final class RegistryMutationScanner
     /** @var list<string> */
     private const ELOQUENT_WRITES = [
         'create',
+        'createQuietly',
+        'createOrFirst',
         'forceCreate',
         'forceCreateQuietly',
         'firstOrCreate',
         'updateOrCreate',
+        'incrementOrCreate',
+        'fillAndInsert',
+        'fillAndInsertGetId',
+        'fillAndInsertOrIgnore',
         'save',
+        'saveOrIgnore',
         'saveOrFail',
         'saveQuietly',
         'push',
         'pushQuietly',
         'update',
+        'updateOrFail',
         'updateQuietly',
         'delete',
+        'deleteOrFail',
         'deleteQuietly',
         'forceDelete',
         'forceDeleteQuietly',
+        'forceDestroy',
         'destroy',
+        'restore',
+        'restoreQuietly',
+        'touch',
+        'touchQuietly',
         'upsert',
         'insert',
+        'insertGetId',
         'insertOrIgnore',
+        'insertOrIgnoreReturning',
+        'insertUsing',
+        'insertOrIgnoreUsing',
+        'updateFrom',
+        'updateOrInsert',
         'truncate',
         'increment',
         'decrement',
+        'incrementEach',
+        'decrementEach',
         'incrementQuietly',
         'decrementQuietly',
     ];
@@ -104,6 +132,18 @@ final class RegistryMutationScanner
 
     /** @var array<string, true> */
     private array $methodCallStack = [];
+
+    /**
+     * @return array{query:list<string>,eloquent:list<string>,direct_sql:list<string>}
+     */
+    public static function mutationInventory(): array
+    {
+        return [
+            'query' => self::QUERY_WRITES,
+            'eloquent' => self::ELOQUENT_WRITES,
+            'direct_sql' => self::DIRECT_SQL_WRITES,
+        ];
+    }
 
     /**
      * @param  list<string>  $roots
@@ -318,6 +358,45 @@ final class RegistryMutationScanner
 
             return $origin;
         }
+        if ($expression instanceof Expr\Ternary) {
+            $conditionOrigin = $this->analyzeExpression($expression->cond, $environment);
+            $ifEnvironment = $environment;
+            $elseEnvironment = $environment;
+            $ifOrigin = $expression->if instanceof Expr
+                ? $this->analyzeExpression($expression->if, $ifEnvironment)
+                : $conditionOrigin;
+            $elseOrigin = $this->analyzeExpression($expression->else, $elseEnvironment);
+            $environment = $this->mergeEnvironments([$ifEnvironment, $elseEnvironment]);
+
+            return $this->mergeOrigins([$ifOrigin, $elseOrigin]);
+        }
+        if ($expression instanceof Expr\BinaryOp\Coalesce) {
+            $leftEnvironment = $environment;
+            $rightEnvironment = $environment;
+            $leftOrigin = $this->analyzeExpression($expression->left, $leftEnvironment);
+            $rightOrigin = $this->analyzeExpression($expression->right, $rightEnvironment);
+            $environment = $this->mergeEnvironments([$leftEnvironment, $rightEnvironment]);
+
+            return $this->mergeOrigins([$leftOrigin, $rightOrigin]);
+        }
+        if ($expression instanceof Expr\Match_) {
+            $this->analyzeExpression($expression->cond, $environment);
+            $origins = [];
+            $branches = [];
+            foreach ($expression->arms as $arm) {
+                $branch = $environment;
+                foreach ($arm->conds ?? [] as $condition) {
+                    $this->analyzeExpression($condition, $branch);
+                }
+                $origins[] = $this->analyzeExpression($arm->body, $branch);
+                $branches[] = $branch;
+            }
+            if ($branches !== []) {
+                $environment = $this->mergeEnvironments($branches);
+            }
+
+            return $this->mergeOrigins($origins);
+        }
         if ($expression instanceof Expr\StaticCall) {
             return $this->analyzeStaticCall($expression, $environment);
         }
@@ -345,16 +424,11 @@ final class RegistryMutationScanner
                 }
                 if ($origin['kind'] === 'connection'
                     && in_array($method, self::DIRECT_SQL_WRITES, true)) {
-                    $sql = $this->sqlValue($expression->args[0]->value ?? null);
-                    if ($sql !== null) {
-                        $this->appendSqlWrites(
-                            $sql,
-                            in_array($method, ['statement', 'unprepared', 'raw'], true)
-                                ? 'raw'
-                                : $method,
-                            $expression->getStartLine(),
-                        );
-                    }
+                    $this->appendDirectSqlCall(
+                        $method,
+                        $expression->args[0]->value ?? null,
+                        $expression->getStartLine(),
+                    );
 
                     return null;
                 }
@@ -462,16 +536,11 @@ final class RegistryMutationScanner
                 return ['kind' => 'connection', 'tables' => []];
             }
             if (in_array($method, self::DIRECT_SQL_WRITES, true)) {
-                $sql = $this->sqlValue($call->args[0]->value ?? null);
-                if ($sql !== null) {
-                    $this->appendSqlWrites(
-                        $sql,
-                        in_array($method, ['statement', 'unprepared', 'raw'], true)
-                            ? 'raw'
-                            : $method,
-                        $call->getStartLine(),
-                    );
-                }
+                $this->appendDirectSqlCall(
+                    $method,
+                    $call->args[0]->value ?? null,
+                    $call->getStartLine(),
+                );
             }
 
             return null;
@@ -573,24 +642,56 @@ final class RegistryMutationScanner
                 static fn (array $environment): ?array => $environment[$name] ?? null,
                 $environments,
             )));
-            if (count($origins) !== count($environments)) {
-                continue;
+            $origin = $this->mergeOrigins($origins);
+            if ($origin !== null) {
+                $merged[$name] = $origin;
             }
-            $kinds = array_unique(array_column($origins, 'kind'));
-            if (count($kinds) !== 1) {
-                continue;
-            }
-            $tables = [];
-            foreach ($origins as $origin) {
-                $tables = [...$tables, ...$origin['tables']];
-            }
-            $merged[$name] = [
-                'kind' => $kinds[0],
-                'tables' => array_values(array_unique($tables)),
-            ];
         }
 
         return $merged;
+    }
+
+    /**
+     * @param  list<array{kind:string,tables:list<string>}|null>  $origins
+     * @return array{kind:string,tables:list<string>}|null
+     */
+    private function mergeOrigins(array $origins): ?array
+    {
+        $known = array_values(array_filter($origins));
+        if ($known === []) {
+            return null;
+        }
+        $kinds = array_column($known, 'kind');
+        $kind = in_array('model', $kinds, true)
+            ? 'model'
+            : (in_array('table', $kinds, true)
+                ? 'table'
+                : (in_array('connection', $kinds, true) ? 'connection' : $kinds[0]));
+        $tables = [];
+        foreach ($known as $origin) {
+            $tables = [...$tables, ...$origin['tables']];
+        }
+
+        return [
+            'kind' => $kind,
+            'tables' => array_values(array_unique($tables)),
+        ];
+    }
+
+    private function appendDirectSqlCall(string $method, mixed $sqlNode, int $line): void
+    {
+        $findingMethod = in_array($method, ['statement', 'unprepared', 'raw'], true)
+            ? 'raw'
+            : $method;
+        $sql = $this->sqlValue($sqlNode);
+        if ($sql !== null) {
+            $this->appendSqlWrites($sql, $findingMethod, $line);
+
+            return;
+        }
+        if ($method !== 'raw') {
+            $this->appendForTables(['*dynamic*'], $findingMethod, $line);
+        }
     }
 
     private function appendSqlWrites(string $sql, string $method, int $line): void
@@ -675,6 +776,14 @@ final class RegistryMutationScanner
     {
         if ($node instanceof String_) {
             return $node->value;
+        }
+        if ($node instanceof InterpolatedString) {
+            $sql = '';
+            foreach ($node->parts as $part) {
+                $sql .= $part instanceof InterpolatedStringPart ? $part->value : '?';
+            }
+
+            return $sql;
         }
         if ($node instanceof Expr\BinaryOp\Concat) {
             $left = $this->sqlValue($node->left);
