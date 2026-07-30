@@ -752,27 +752,22 @@ final class RegistryMutationScanner
 
     private function appendSqlWrites(string $sql, string $method, int $line): void
     {
+        [$normalizedSql, $executableSql] = $this->sqlAnalysisViews($sql);
         if (preg_match(
             '/\b(?:insert|update|delete|truncate|replace|alter|drop|create|rename|merge)\b/i',
-            $sql,
+            $normalizedSql,
         ) !== 1) {
             return;
         }
-        $targets = $this->sqlWriteTargets($sql);
+        $targets = $this->sqlWriteTargets($normalizedSql);
         if ($targets === []) {
-            if (str_contains($sql, self::SQL_EXPRESSION_SENTINEL)) {
+            if (str_contains($executableSql, self::SQL_EXPRESSION_SENTINEL)) {
                 $this->append('*dynamic*', $method, $line);
 
                 return;
             }
-            foreach ($this->registryTables as $table) {
-                if (preg_match('/\b'.preg_quote($table, '/').'\b/i', $sql) === 1) {
-                    $this->append($table, $method, $line);
-                }
-            }
-
-            return;
         }
+        $explainedTables = [];
         foreach ($targets as $target) {
             if (str_contains($target, self::SQL_EXPRESSION_SENTINEL)) {
                 $this->append('*dynamic*', $method, $line);
@@ -781,6 +776,14 @@ final class RegistryMutationScanner
             }
             $table = $this->normalizeSqlTarget($target);
             if (in_array($table, $this->registryTables, true)) {
+                $this->append($table, $method, $line);
+                $explainedTables[$table] = true;
+            }
+        }
+        $fallbackTargets = implode(' ', $this->sqlWriteTargetScopes($executableSql));
+        foreach ($this->registryTables as $table) {
+            if (! isset($explainedTables[$table])
+                && preg_match('/\b'.preg_quote($table, '/').'\b/i', $fallbackTargets) === 1) {
                 $this->append($table, $method, $line);
             }
         }
@@ -793,10 +796,10 @@ final class RegistryMutationScanner
         $patterns = [
             '/\binsert\s+(?:(?:or\s+\w+|ignore)\s+)?into\s+'.$target.'/i',
             '/\breplace\s+(?:into\s+)?'.$target.'/i',
-            '/\bupdate\s+'.$target.'/i',
-            '/\bdelete\s+from\s+'.$target.'/i',
-            '/\btruncate\s+(?:table\s+)?'.$target.'/i',
-            '/\balter\s+table\s+'.$target.'/i',
+            '/\bupdate\s+(?:only\s+)?'.$target.'/i',
+            '/\bdelete\s+from\s+(?:only\s+)?'.$target.'/i',
+            '/\btruncate\s+(?:table\s+)?(?:only\s+)?'.$target.'/i',
+            '/\balter\s+table\s+(?:if\s+exists\s+)?(?:only\s+)?'.$target.'/i',
             '/\bdrop\s+table\s+(?:if\s+exists\s+)?'.$target.'/i',
             '/\bcreate\s+table\s+(?:if\s+not\s+exists\s+)?'.$target.'/i',
             '/\brename\s+table\s+'.$target.'/i',
@@ -812,11 +815,132 @@ final class RegistryMutationScanner
         return array_values(array_unique(array_map('strval', $targets)));
     }
 
+    /** @return list<string> */
+    private function sqlWriteTargetScopes(string $sql): array
+    {
+        $patterns = [
+            '/\binsert\b(?<scope>[^;]*?)(?=\s*\(|\bvalues\b|\bselect\b|\bdefault\b|\bset\b|;|$)/is',
+            '/\breplace\b(?<scope>[^;]*?)(?=\s*\(|\bvalues\b|\bselect\b|\bset\b|;|$)/is',
+            '/\bupdate\b(?<scope>[^;]*?)(?=\bset\b|;|$)/is',
+            '/\bdelete\b(?<scope>[^;]*?)(?=\bwhere\b|\busing\b|\breturning\b|\border\b|\blimit\b|;|$)/is',
+            '/\btruncate\b(?<scope>[^;]*?)(?=\brestart\b|\bcontinue\b|\bidentity\b|\bcascade\b|\brestrict\b|;|$)/is',
+            '/\balter\s+table\b(?<scope>[^;]*?)(?=\badd\b|\balter\b|\bdrop\b|\brename\b|\bset\b|\breset\b|\battach\b|\bdetach\b|\benable\b|\bdisable\b|\bvalidate\b|\bowner\b|;|$)/is',
+            '/\bdrop\s+table\b(?<scope>[^;]*?)(?=\bcascade\b|\brestrict\b|;|$)/is',
+            '/\bcreate\s+table\b(?<scope>[^;]*?)(?=\s*\(|\bas\b|;|$)/is',
+            '/\bcreate\b[^;]*?\bindex\b[^;]*?\bon\b(?<scope>[^;]*?)(?=\s*\(|\busing\b|\bwhere\b|;|$)/is',
+            '/\brename\s+table\b(?<scope>[^;]*?)(?=;|$)/is',
+            '/\bmerge\s+into\b(?<scope>[^;]*?)(?=\busing\b|;|$)/is',
+        ];
+        $scopes = [];
+        foreach ($patterns as $pattern) {
+            if (preg_match_all($pattern, $sql, $matches) > 0) {
+                $scopes = [...$scopes, ...$matches['scope']];
+            }
+        }
+
+        return array_values(array_unique(array_map('strval', $scopes)));
+    }
+
+    /**
+     * @return array{0:string,1:string}
+     */
+    private function sqlAnalysisViews(string $sql): array
+    {
+        $normalized = '';
+        $executable = '';
+        $length = strlen($sql);
+        for ($offset = 0; $offset < $length;) {
+            $remaining = substr($sql, $offset);
+            if (str_starts_with($remaining, '/*')) {
+                $end = strpos($sql, '*/', $offset + 2);
+                $end = $end === false ? $length : $end + 2;
+                $masked = $this->maskSqlSegment(substr($sql, $offset, $end - $offset));
+                $normalized .= $masked;
+                $executable .= $masked;
+                $offset = $end;
+
+                continue;
+            }
+            if (str_starts_with($remaining, '--') || $sql[$offset] === '#') {
+                $lineEnd = strcspn($sql, "\r\n", $offset);
+                $end = $offset + $lineEnd;
+                $masked = str_repeat(' ', $end - $offset);
+                $normalized .= $masked;
+                $executable .= $masked;
+                $offset = $end;
+
+                continue;
+            }
+            if ($sql[$offset] === '$'
+                && preg_match('/\A\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$/', $remaining, $match) === 1) {
+                $delimiter = $match[0];
+                $end = strpos($sql, $delimiter, $offset + strlen($delimiter));
+                $end = $end === false ? $length : $end + strlen($delimiter);
+                $segment = substr($sql, $offset, $end - $offset);
+                $normalized .= $segment;
+                $executable .= $this->maskSqlSegment($segment);
+                $offset = $end;
+
+                continue;
+            }
+            $closingQuote = match ($sql[$offset]) {
+                "'", '"', '`' => $sql[$offset],
+                '[' => ']',
+                default => null,
+            };
+            if ($closingQuote !== null) {
+                $end = $this->sqlQuotedSegmentEnd($sql, $offset, $closingQuote);
+                $segment = substr($sql, $offset, $end - $offset);
+                $normalized .= $segment;
+                $executable .= $closingQuote === "'"
+                    ? $this->maskSqlSegment($segment)
+                    : $segment;
+                $offset = $end;
+
+                continue;
+            }
+            $normalized .= $sql[$offset];
+            $executable .= $sql[$offset];
+            $offset++;
+        }
+
+        return [$normalized, $executable];
+    }
+
+    private function sqlQuotedSegmentEnd(string $sql, int $offset, string $closingQuote): int
+    {
+        $length = strlen($sql);
+        for ($cursor = $offset + 1; $cursor < $length; $cursor++) {
+            if ($sql[$cursor] !== $closingQuote) {
+                continue;
+            }
+            if ($cursor + 1 < $length && $sql[$cursor + 1] === $closingQuote) {
+                $cursor++;
+
+                continue;
+            }
+            $backslashes = 0;
+            for ($previous = $cursor - 1; $previous >= $offset && $sql[$previous] === '\\'; $previous--) {
+                $backslashes++;
+            }
+            if ($backslashes % 2 === 0) {
+                return $cursor + 1;
+            }
+        }
+
+        return $length;
+    }
+
+    private function maskSqlSegment(string $segment): string
+    {
+        return preg_replace('/[^\r\n]/', ' ', $segment) ?? str_repeat(' ', strlen($segment));
+    }
+
     private function normalizeSqlTarget(string $target): string
     {
         $segments = explode('.', trim($target, " \t\n\r\0\x0B`\"[]"));
 
-        return trim((string) end($segments), '`"[]');
+        return strtolower(trim((string) end($segments), '`"[]'));
     }
 
     /** @param list<string> $inventory */

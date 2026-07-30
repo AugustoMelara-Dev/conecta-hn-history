@@ -294,6 +294,73 @@ PHP;
         ]);
 });
 
+it('detects sql target modifiers and comments without comment or value false positives', function (): void {
+    $base = dirname(__DIR__, 2);
+    $root = $base.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'framework'
+        .DIRECTORY_SEPARATOR.'testing'.DIRECTORY_SEPARATOR.'registry-ratchet-'.Str::uuid();
+    mkdir($root, 0777, true);
+    $fixture = <<<'PHP'
+<?php
+
+use Illuminate\Support\Facades\DB as Storage;
+
+$table = getenv('REGISTRY_TABLE');
+
+Storage::statement('UPDATE ONLY ai_agent_versions SET checksum = 1');
+Storage::statement('ALTER TABLE ONLY ai_agent_versions ADD COLUMN fixture INT');
+Storage::statement('UPDATE /* governed */ ai_agent_versions SET checksum = 2');
+Storage::statement("UPDATE -- governed\n ai_model_versions SET version = 2");
+Storage::statement('DELETE FROM /* governed */ ONLY ai_prompt_versions WHERE id = 1');
+Storage::statement('TRUNCATE TABLE /* governed */ ONLY ai_provider_versions');
+Storage::statement('ALTER /* governed */ TABLE ONLY ai_release_policies ADD COLUMN fixture INT');
+Storage::statement("UPDATE # governed\n ai_agent_activations SET lock_version = 2");
+Storage::statement('UPDATE LOW_PRIORITY ai_release_decisions SET status = 1');
+
+Storage::statement('UPDATE orders /* ai_agent_versions */ SET status = 1');
+Storage::statement("UPDATE orders -- ai_model_versions\n SET status = 1");
+Storage::statement("UPDATE orders # ai_prompt_versions\n SET status = 1");
+Storage::statement("UPDATE orders SET note = 'ai_provider_versions'");
+Storage::statement("UPDATE orders SET note = '/* ai_release_policies */'");
+Storage::statement("UPDATE orders /* {$table} */ SET status = 1");
+Storage::statement('UPDATE orders SET source_table = ai_release_decisions');
+Storage::statement('UPDATE orders SET status = ai_agent_activations.status FROM ai_agent_activations');
+Storage::statement('INSERT INTO orders (note) SELECT checksum FROM ai_agent_versions');
+PHP;
+    file_put_contents($root.DIRECTORY_SEPARATOR.'SqlTargetModifiers.php', $fixture);
+
+    try {
+        $findings = (new RegistryMutationScanner)->scan(
+            [$root],
+            [
+                'ai_provider_versions',
+                'ai_model_versions',
+                'ai_agent_versions',
+                'ai_prompt_versions',
+                'ai_release_policies',
+                'ai_agent_activations',
+                'ai_release_decisions',
+            ],
+        );
+    } finally {
+        unlink($root.DIRECTORY_SEPARATOR.'SqlTargetModifiers.php');
+        rmdir($root);
+    }
+
+    expect(collect($findings)
+        ->map(static fn (object $finding): string => $finding->table.':'.$finding->method)
+        ->countBy()
+        ->sortKeys()
+        ->all())->toBe([
+            'ai_agent_activations:raw' => 1,
+            'ai_agent_versions:raw' => 3,
+            'ai_model_versions:raw' => 1,
+            'ai_prompt_versions:raw' => 1,
+            'ai_provider_versions:raw' => 1,
+            'ai_release_decisions:raw' => 1,
+            'ai_release_policies:raw' => 1,
+        ]);
+});
+
 it('detects query aliases eloquent and raw registry mutation bypasses without false positives', function (): void {
     $base = dirname(__DIR__, 2);
     $root = $base.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'framework'
