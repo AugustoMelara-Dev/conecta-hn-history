@@ -759,7 +759,10 @@ final class RegistryMutationScanner
         ) !== 1) {
             return;
         }
-        $targets = $this->sqlWriteTargets($normalizedSql);
+        $targets = array_values(array_unique([
+            ...$this->sqlWriteTargets($normalizedSql),
+            ...$this->sqlDeleteWriteTargets($executableSql),
+        ]));
         if ($targets === []) {
             if (str_contains($executableSql, self::SQL_EXPRESSION_SENTINEL)) {
                 $this->append('*dynamic*', $method, $line);
@@ -797,7 +800,6 @@ final class RegistryMutationScanner
             '/\binsert\s+(?:(?:or\s+\w+|ignore)\s+)?into\s+'.$target.'/i',
             '/\breplace\s+(?:into\s+)?'.$target.'/i',
             '/\bupdate\s+(?:only\s+)?'.$target.'/i',
-            '/\bdelete\s+from\s+(?:only\s+)?'.$target.'/i',
             '/\btruncate\s+(?:table\s+)?(?:only\s+)?'.$target.'/i',
             '/\balter\s+table\s+(?:if\s+exists\s+)?(?:only\s+)?'.$target.'/i',
             '/\bdrop\s+table\s+(?:if\s+exists\s+)?'.$target.'/i',
@@ -816,13 +818,121 @@ final class RegistryMutationScanner
     }
 
     /** @return list<string> */
+    private function sqlDeleteWriteTargets(string $sql): array
+    {
+        if (preg_match_all('/\bdelete\b(?<body>[^;]*)/is', $sql, $statements) === 0) {
+            return [];
+        }
+        $targets = [];
+        foreach ($statements['body'] as $body) {
+            $body = preg_replace(
+                '/\A\s*(?:(?:low_priority|quick|ignore)\s+)*/i',
+                '',
+                (string) $body,
+            ) ?? (string) $body;
+            $parts = $this->sqlDeleteStatementParts($body);
+            if ($parts === null) {
+                continue;
+            }
+            $aliases = $this->sqlDeleteSourceAliases($parts['sources']);
+            foreach (explode(',', $parts['targets']) as $target) {
+                $target = preg_replace('/\A\s*only\s+/i', '', trim($target)) ?? trim($target);
+                $name = preg_split('/\s+/', $target, 2)[0] ?? '';
+                $name = preg_replace('/\.\*\z/', '', $name) ?? $name;
+                if ($name === '') {
+                    continue;
+                }
+                if (str_contains($name, self::SQL_EXPRESSION_SENTINEL)) {
+                    $targets[] = self::SQL_EXPRESSION_SENTINEL;
+
+                    continue;
+                }
+                $normalized = $this->normalizeSqlTarget($name);
+                $targets[] = $aliases[$normalized] ?? $normalized;
+            }
+        }
+
+        return array_values(array_unique($targets));
+    }
+
+    /**
+     * @return array{targets:string,sources:string}|null
+     */
+    private function sqlDeleteStatementParts(string $body): ?array
+    {
+        if (preg_match('/\A\s*from\b/i', $body, $from) === 1) {
+            $afterFrom = (string) preg_replace('/\A\s*from\b/i', '', $body, 1);
+            if (preg_match('/\busing\b/i', $afterFrom, $using, PREG_OFFSET_CAPTURE) === 1) {
+                $usingOffset = $using[0][1];
+
+                return [
+                    'targets' => substr($afterFrom, 0, $usingOffset),
+                    'sources' => substr($afterFrom, $usingOffset + strlen($using[0][0])),
+                ];
+            }
+
+            return [
+                'targets' => $this->sqlBeforeDeleteSourceTail($afterFrom),
+                'sources' => $this->sqlBeforeDeleteSourceTail($afterFrom),
+            ];
+        }
+        if (preg_match('/\bfrom\b/i', $body, $from, PREG_OFFSET_CAPTURE) !== 1) {
+            return null;
+        }
+        $fromOffset = $from[0][1];
+
+        return [
+            'targets' => substr($body, 0, $fromOffset),
+            'sources' => substr($body, $fromOffset + strlen($from[0][0])),
+        ];
+    }
+
+    private function sqlBeforeDeleteSourceTail(string $sql): string
+    {
+        if (preg_match(
+            '/\b(?:where|order\s+by|limit|returning)\b/i',
+            $sql,
+            $tail,
+            PREG_OFFSET_CAPTURE,
+        ) !== 1) {
+            return $sql;
+        }
+
+        return substr($sql, 0, $tail[0][1]);
+    }
+
+    /** @return array<string, string> */
+    private function sqlDeleteSourceAliases(string $sources): array
+    {
+        $sources = $this->sqlBeforeDeleteSourceTail($sources);
+        $identifier = '[^\s,()]+';
+        $reserved = 'inner|left|right|full|cross|natural|straight_join|join|on|using|where|order|limit|returning|partition';
+        $pattern = '/(?:\A|,|\bjoin\b)\s*(?:only\s+)?'
+            .'(?<table>'.$identifier.')'
+            .'(?:\s+(?:as\s+)?(?<alias>(?!(?:'.$reserved.')\b)'.$identifier.'))?/i';
+        if (preg_match_all($pattern, $sources, $matches, PREG_SET_ORDER) === 0) {
+            return [];
+        }
+        $aliases = [];
+        foreach ($matches as $match) {
+            $table = $this->normalizeSqlTarget((string) $match['table']);
+            $aliases[$table] = $table;
+            $alias = $this->normalizeSqlTarget((string) ($match['alias'] ?? ''));
+            if ($alias !== '') {
+                $aliases[$alias] = $table;
+            }
+        }
+
+        return $aliases;
+    }
+
+    /** @return list<string> */
     private function sqlWriteTargetScopes(string $sql): array
     {
         $patterns = [
             '/\binsert\b(?<scope>[^;]*?)(?=\s*\(|\bvalues\b|\bselect\b|\bdefault\b|\bset\b|;|$)/is',
             '/\breplace\b(?<scope>[^;]*?)(?=\s*\(|\bvalues\b|\bselect\b|\bset\b|;|$)/is',
             '/\bupdate\b(?<scope>[^;]*?)(?=\bset\b|;|$)/is',
-            '/\bdelete\b(?<scope>[^;]*?)(?=\bwhere\b|\busing\b|\breturning\b|\border\b|\blimit\b|;|$)/is',
             '/\btruncate\b(?<scope>[^;]*?)(?=\brestart\b|\bcontinue\b|\bidentity\b|\bcascade\b|\brestrict\b|;|$)/is',
             '/\balter\s+table\b(?<scope>[^;]*?)(?=\badd\b|\balter\b|\bdrop\b|\brename\b|\bset\b|\breset\b|\battach\b|\bdetach\b|\benable\b|\bdisable\b|\bvalidate\b|\bowner\b|;|$)/is',
             '/\bdrop\s+table\b(?<scope>[^;]*?)(?=\bcascade\b|\brestrict\b|;|$)/is',
