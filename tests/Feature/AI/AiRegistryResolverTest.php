@@ -231,6 +231,159 @@ final class AiRegistryResolverTest extends TestCase
         $this->expectResolutionDenied($this->registryQuery($tenant), 'registry_selection');
     }
 
+    public function test_private_audience_rejects_crossed_agent_and_prompt_visibility(): void
+    {
+        foreach (['agent', 'prompt'] as $crossedDefinition) {
+            $tenant = Tenant::factory()->create();
+            $fixture = $this->registryFixture(
+                $tenant,
+                scopeType: 'tenant',
+                scopeKey: (string) $tenant->id,
+            );
+            if ($crossedDefinition === 'agent') {
+                $definitionId = DB::table('ai_agent_versions')
+                    ->where('id', $fixture['agent_version_id'])
+                    ->value('agent_definition_id');
+                DB::table('ai_agent_definitions')->where('id', $definitionId)->update([
+                    'visibility' => 'platform_public',
+                ]);
+            } else {
+                $definitionId = DB::table('ai_prompt_versions')
+                    ->where('id', $fixture['prompt_version_id'])
+                    ->value('prompt_definition_id');
+                DB::table('ai_prompt_definitions')->where('id', $definitionId)->update([
+                    'visibility' => 'platform_public',
+                ]);
+            }
+
+            $this->expectResolutionDenied($this->registryQuery($tenant), 'registry_selection');
+        }
+    }
+
+    public function test_public_audience_rejects_tenant_private_agent_and_prompt_visibility(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $fixture = $this->registryFixture(
+            $tenant,
+            scopeType: 'tenant',
+            scopeKey: (string) $tenant->id,
+        );
+        $configuration = json_decode(
+            (string) DB::table('ai_agent_versions')
+                ->where('id', $fixture['agent_version_id'])
+                ->value('configuration'),
+            true,
+            512,
+            JSON_THROW_ON_ERROR,
+        );
+        $configuration['audience'] = 'public';
+        DB::table('ai_agent_versions')->where('id', $fixture['agent_version_id'])->update([
+            'configuration' => json_encode($configuration, JSON_THROW_ON_ERROR),
+        ]);
+
+        $this->expectResolutionDenied(new AiRegistryQuery(
+            tenantId: (string) $tenant->id,
+            audience: 'public',
+            capability: 'private_tenant_agent',
+            channel: 'web',
+            marketCountryCode: 'CA',
+            actorId: (string) $tenant->id,
+            cohortSubject: (string) $tenant->id,
+        ), 'registry_selection');
+    }
+
+    public function test_release_decision_requires_an_exact_terminal_passing_evaluation_run(): void
+    {
+        foreach ([
+            'null_run',
+            'pending_run',
+            'failed_result',
+            'future_decision',
+            'incomplete_lineage',
+            'divergent_agent',
+            'divergent_prompt',
+            'divergent_provider',
+            'divergent_model',
+        ] as $failure) {
+            $tenant = Tenant::factory()->create();
+            $fixture = $this->registryFixture(
+                $tenant,
+                scopeType: 'tenant',
+                scopeKey: (string) $tenant->id,
+            );
+            $divergent = str_starts_with($failure, 'divergent_')
+                ? $this->registryFixture(
+                    $tenant,
+                    scopeType: 'platform',
+                    scopeKey: 'not-an-active-platform-scope',
+                )
+                : null;
+
+            match ($failure) {
+                'null_run' => DB::table('ai_release_decisions')
+                    ->where('id', $fixture['release_decision_id'])
+                    ->update(['evaluation_run_id' => null]),
+                'pending_run' => DB::table('ai_evaluation_runs')
+                    ->where('id', $fixture['evaluation_run_id'])
+                    ->update(['status' => 'pending', 'completed_at' => null]),
+                'failed_result' => DB::table('ai_evaluation_results')
+                    ->where('evaluation_run_id', $fixture['evaluation_run_id'])
+                    ->update(['status' => 'failed']),
+                'future_decision' => DB::table('ai_release_decisions')
+                    ->where('id', $fixture['release_decision_id'])
+                    ->update(['decided_at' => now()->addMinute()]),
+                'incomplete_lineage' => DB::table('ai_evaluation_runs')
+                    ->where('id', $fixture['evaluation_run_id'])
+                    ->update(['prompt_version_id' => null]),
+                'divergent_agent' => DB::table('ai_evaluation_runs')
+                    ->where('id', $fixture['evaluation_run_id'])
+                    ->update(['agent_version_id' => $divergent['agent_version_id']]),
+                'divergent_prompt' => DB::table('ai_evaluation_runs')
+                    ->where('id', $fixture['evaluation_run_id'])
+                    ->update(['prompt_version_id' => $divergent['prompt_version_id']]),
+                'divergent_provider' => DB::table('ai_evaluation_runs')
+                    ->where('id', $fixture['evaluation_run_id'])
+                    ->update(['provider_version_id' => $divergent['provider_version_id']]),
+                'divergent_model' => DB::table('ai_evaluation_runs')
+                    ->where('id', $fixture['evaluation_run_id'])
+                    ->update(['model_version_id' => $divergent['model_version_id']]),
+            };
+
+            $this->expectResolutionDenied($this->registryQuery($tenant), 'registry_selection');
+        }
+    }
+
+    public function test_equal_latest_release_decisions_are_ambiguous(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $fixture = $this->registryFixture(
+            $tenant,
+            scopeType: 'tenant',
+            scopeKey: (string) $tenant->id,
+        );
+        $decidedAt = now()->subSecond();
+        DB::table('ai_release_decisions')->where('id', $fixture['release_decision_id'])->update([
+            'decided_at' => $decidedAt,
+            'created_at' => now(),
+        ]);
+        DB::table('ai_release_decisions')->insert([
+            'id' => (string) Str::uuid(),
+            'tenant_id' => (string) $tenant->id,
+            'release_policy_id' => $fixture['release_policy_id'],
+            'evaluation_run_id' => $fixture['evaluation_run_id'],
+            'agent_version_id' => $fixture['agent_version_id'],
+            'decision' => 'passed',
+            'decided_by' => 'second-reviewer',
+            'evidence_hash' => hash('sha256', 'ambiguous-decision'),
+            'rationale' => json_encode(['fixture' => true], JSON_THROW_ON_ERROR),
+            'decided_at' => $decidedAt,
+            'created_at' => now()->subMinute(),
+            'updated_at' => now(),
+        ]);
+
+        $this->expectResolutionDenied($this->registryQuery($tenant), 'registry_selection');
+    }
+
     public function test_capability_market_and_residency_mismatches_are_unroutable(): void
     {
         foreach ([
@@ -442,13 +595,86 @@ final class AiRegistryResolverTest extends TestCase
             'updated_at' => now(),
         ]);
 
+        $evaluationSuiteId = (string) Str::uuid();
+        $evaluationVersionId = (string) Str::uuid();
+        $evaluationCaseId = (string) Str::uuid();
+        $evaluationRunId = (string) Str::uuid();
+        $evaluationResultId = (string) Str::uuid();
+        DB::table('ai_evaluation_suites')->insert([
+            'id' => $evaluationSuiteId,
+            'tenant_id' => $tenantId,
+            'key' => 'evaluation.'.Str::uuid(),
+            'name' => 'Release evaluation',
+            'visibility' => 'private',
+            'status' => 'active',
+            'metadata' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('ai_evaluation_versions')->insert([
+            'id' => $evaluationVersionId,
+            'tenant_id' => $tenantId,
+            'evaluation_suite_id' => $evaluationSuiteId,
+            'version' => 1,
+            'checksum' => hash('sha256', $evaluationVersionId),
+            'configuration' => json_encode(['fixture' => true], JSON_THROW_ON_ERROR),
+            'released_at' => now()->subSecond(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('ai_evaluation_cases')->insert([
+            'id' => $evaluationCaseId,
+            'tenant_id' => $tenantId,
+            'evaluation_version_id' => $evaluationVersionId,
+            'key' => 'release.case',
+            'input_ciphertext' => 'fixture-ciphertext',
+            'input_hash' => hash('sha256', 'fixture-input'),
+            'expected_ciphertext' => null,
+            'expected_hash' => null,
+            'encryption_key_version' => 'fixture-v1',
+            'criteria' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('ai_evaluation_runs')->insert([
+            'id' => $evaluationRunId,
+            'tenant_id' => $tenantId,
+            'evaluation_version_id' => $evaluationVersionId,
+            'agent_version_id' => $agentVersionId,
+            'prompt_version_id' => $promptVersionId,
+            'provider_version_id' => $providerVersionId,
+            'model_version_id' => $model['model_version_id'],
+            'status' => 'completed',
+            'triggered_by' => 'fixture',
+            'started_at' => now()->subSeconds(2),
+            'completed_at' => now()->subSecond(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('ai_evaluation_results')->insert([
+            'id' => $evaluationResultId,
+            'tenant_id' => $tenantId,
+            'evaluation_run_id' => $evaluationRunId,
+            'evaluation_case_id' => $evaluationCaseId,
+            'status' => 'passed',
+            'score_minor' => 100,
+            'output_ciphertext' => null,
+            'output_hash' => null,
+            'encryption_key_version' => null,
+            'metrics' => null,
+            'failure_detail' => null,
+            'completed_at' => now()->subSecond(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
         $releaseDecisionId = $releaseDecision === null ? null : (string) Str::uuid();
         if ($releaseDecisionId !== null) {
             DB::table('ai_release_decisions')->insert([
                 'id' => $releaseDecisionId,
                 'tenant_id' => $tenantId,
                 'release_policy_id' => $releasePolicyId,
-                'evaluation_run_id' => null,
+                'evaluation_run_id' => $evaluationRunId,
                 'agent_version_id' => $agentVersionId,
                 'decision' => $releaseDecision,
                 'decided_by' => 'platform-reviewer',
@@ -485,6 +711,7 @@ final class AiRegistryResolverTest extends TestCase
             'prompt_version_id' => $promptVersionId,
             'release_policy_id' => $releasePolicyId,
             'release_decision_id' => (string) $releaseDecisionId,
+            'evaluation_run_id' => $evaluationRunId,
             'activation_id' => $activationId,
         ];
     }

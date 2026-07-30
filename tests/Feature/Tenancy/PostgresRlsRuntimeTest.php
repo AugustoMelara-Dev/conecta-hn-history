@@ -337,7 +337,7 @@ final class PostgresRlsRuntimeTest extends TestCase
             finishReason: 'stop',
         ));
         $this->app->instance(AiProviderPool::class, new ConfiguredAiProviderPool([
-            'fake_structured_text' => $provider,
+            'fake_structured_text' => ['fake.primary' => $provider],
         ]));
         $this->app->forgetInstance(AiGateway::class);
 

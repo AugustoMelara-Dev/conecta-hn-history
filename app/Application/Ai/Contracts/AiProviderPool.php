@@ -6,5 +6,5 @@ namespace App\Application\Ai\Contracts;
 
 interface AiProviderPool
 {
-    public function resolve(string $adapterKey): AiProvider;
+    public function resolve(string $adapterKey, string $secretReference): AiProvider;
 }

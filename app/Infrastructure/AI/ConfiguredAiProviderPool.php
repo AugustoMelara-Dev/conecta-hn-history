@@ -10,16 +10,21 @@ use App\Exceptions\Ai\AiExecutionDeniedException;
 
 final readonly class ConfiguredAiProviderPool implements AiProviderPool
 {
-    /** @param array<string, AiProvider> $providers */
+    /** @param array<string, array<string, AiProvider>> $deployments */
     public function __construct(
-        private array $providers,
+        private array $deployments,
     ) {}
 
-    public function resolve(string $adapterKey): AiProvider
+    public function resolve(string $adapterKey, string $secretReference): AiProvider
     {
-        $provider = $this->providers[$adapterKey] ?? null;
-        if (! $provider instanceof AiProvider || $provider instanceof DisabledAiProvider) {
+        $references = $this->deployments[$adapterKey] ?? null;
+        if (! is_array($references)) {
             throw new AiExecutionDeniedException('provider_adapter');
+        }
+
+        $provider = $references[$secretReference] ?? null;
+        if (! $provider instanceof AiProvider || $provider instanceof DisabledAiProvider) {
+            throw new AiExecutionDeniedException('provider_secret_reference');
         }
 
         return $provider;

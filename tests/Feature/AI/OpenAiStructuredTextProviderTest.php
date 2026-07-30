@@ -41,7 +41,7 @@ final class OpenAiStructuredTextProviderTest extends TestCase
         ]);
     }
 
-    public function test_success_sends_strict_schema_and_maps_usage_and_exact_cost(): void
+    public function test_success_sends_strict_schema_and_maps_usage_without_assigning_config_cost_authority(): void
     {
         Http::fake([
             'https://api.openai.test/*' => Http::response($this->responsePayload()),
@@ -54,7 +54,7 @@ final class OpenAiStructuredTextProviderTest extends TestCase
         self::assertSame('gpt-4o-mini', $result->model);
         self::assertSame(1000, $result->inputTokens);
         self::assertSame(500, $result->outputTokens);
-        self::assertEqualsWithDelta(0.00045, $result->costUsd, 0.000000001);
+        self::assertSame(0.0, $result->costUsd);
         self::assertSame('stop', $result->finishReason);
 
         $schemas = config('ai.schemas');
@@ -201,16 +201,18 @@ final class OpenAiStructuredTextProviderTest extends TestCase
         (new OpenAiStructuredTextProvider)->generate($this->request());
     }
 
-    public function test_unpriced_returned_model_fails_closed(): void
+    public function test_config_pricing_is_not_required_to_map_provider_usage_evidence(): void
     {
         $payload = $this->responsePayload();
         $payload['model'] = 'gpt-unpriced-snapshot';
         Http::fake(['https://api.openai.test/*' => Http::response($payload)]);
 
-        $this->expectException(AiProviderUnavailableException::class);
-        $this->expectExceptionMessage('OpenAI model pricing is not configured.');
+        config()->set('ai.providers.openai.models', []);
 
-        (new OpenAiStructuredTextProvider)->generate($this->request());
+        $result = (new OpenAiStructuredTextProvider)->generate($this->request());
+
+        self::assertSame('gpt-unpriced-snapshot', $result->model);
+        self::assertSame(0.0, $result->costUsd);
     }
 
     private function request(int $timeoutMilliseconds = 15000): AiProviderRequest

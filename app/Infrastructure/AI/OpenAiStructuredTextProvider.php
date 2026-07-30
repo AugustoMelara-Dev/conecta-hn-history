@@ -109,15 +109,14 @@ final class OpenAiStructuredTextProvider implements AiProvider
                 throw new AiMalformedResponseException('OpenAI response usage metadata is invalid.');
             }
 
-            [$inputRate, $outputRate] = $this->modelRates($responseModel);
-            $cost = (($usage['prompt_tokens'] * $inputRate) + ($usage['completion_tokens'] * $outputRate)) / 1_000_000;
-
             return new AiProviderResult(
                 data: $data,
                 model: $responseModel,
                 inputTokens: $usage['prompt_tokens'],
                 outputTokens: $usage['completion_tokens'],
-                costUsd: $cost,
+                // The adapter reports usage evidence. Canonical settlement is
+                // calculated from the selected ai_model_versions row.
+                costUsd: 0.0,
                 finishReason: $finishReason,
             );
         } catch (AiProviderUnavailableException|AiMalformedResponseException $exception) {
@@ -125,22 +124,6 @@ final class OpenAiStructuredTextProvider implements AiProvider
         } catch (Throwable) {
             throw new AiProviderUnavailableException('OpenAI provider is temporarily unavailable.');
         }
-    }
-
-    /** @return array{float, float} */
-    private function modelRates(string $model): array
-    {
-        $pricing = config("ai.providers.openai.models.{$model}");
-        $inputRate = is_array($pricing) ? ($pricing['input_usd_per_million'] ?? null) : null;
-        $outputRate = is_array($pricing) ? ($pricing['output_usd_per_million'] ?? null) : null;
-
-        if (! is_numeric($inputRate) || ! is_numeric($outputRate)
-            || ! is_finite((float) $inputRate) || ! is_finite((float) $outputRate)
-            || (float) $inputRate <= 0 || (float) $outputRate <= 0) {
-            throw new AiProviderUnavailableException('OpenAI model pricing is not configured.');
-        }
-
-        return [(float) $inputRate, (float) $outputRate];
     }
 
     private function isHttpsUrl(string $endpoint): bool

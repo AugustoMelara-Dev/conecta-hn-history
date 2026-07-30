@@ -30,6 +30,7 @@ final class AiEligibleRegistryFixture
             outputSchema: $outputSchema,
             maxOutputTokens: $maxOutputTokens,
             marketCountryCode: $marketCountryCode,
+            visibility: $audience === 'public' ? 'platform_public' : 'tenant_private',
         );
         DB::table('ai_agent_versions')->where('id', $selection->agentVersionId)->update([
             'configuration' => json_encode([
@@ -42,6 +43,78 @@ final class AiEligibleRegistryFixture
                 'required_capabilities' => ['structured_output'],
                 'max_output_tokens' => $maxOutputTokens,
             ], JSON_THROW_ON_ERROR),
+        ]);
+
+        $evaluationSuiteId = (string) Str::uuid();
+        $evaluationVersionId = (string) Str::uuid();
+        $evaluationCaseId = (string) Str::uuid();
+        $evaluationRunId = (string) Str::uuid();
+        DB::table('ai_evaluation_suites')->insert([
+            'id' => $evaluationSuiteId,
+            'tenant_id' => $tenantId,
+            'key' => 'fixture.evaluation.'.Str::uuid(),
+            'name' => 'Fixture release evaluation',
+            'visibility' => 'private',
+            'status' => 'active',
+            'metadata' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('ai_evaluation_versions')->insert([
+            'id' => $evaluationVersionId,
+            'tenant_id' => $tenantId,
+            'evaluation_suite_id' => $evaluationSuiteId,
+            'version' => 1,
+            'checksum' => hash('sha256', $evaluationVersionId),
+            'configuration' => json_encode(['fixture' => true], JSON_THROW_ON_ERROR),
+            'released_at' => now()->subSecond(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('ai_evaluation_cases')->insert([
+            'id' => $evaluationCaseId,
+            'tenant_id' => $tenantId,
+            'evaluation_version_id' => $evaluationVersionId,
+            'key' => 'fixture.release.case',
+            'input_ciphertext' => 'fixture-ciphertext',
+            'input_hash' => hash('sha256', 'fixture-release-input'),
+            'expected_ciphertext' => null,
+            'expected_hash' => null,
+            'encryption_key_version' => 'fixture-v1',
+            'criteria' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('ai_evaluation_runs')->insert([
+            'id' => $evaluationRunId,
+            'tenant_id' => $tenantId,
+            'evaluation_version_id' => $evaluationVersionId,
+            'agent_version_id' => $selection->agentVersionId,
+            'prompt_version_id' => $selection->promptVersionId,
+            'provider_version_id' => $selection->providerVersionId,
+            'model_version_id' => $selection->modelVersionId,
+            'status' => 'completed',
+            'triggered_by' => 'fixture',
+            'started_at' => now()->subSeconds(2),
+            'completed_at' => now()->subSecond(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('ai_evaluation_results')->insert([
+            'id' => (string) Str::uuid(),
+            'tenant_id' => $tenantId,
+            'evaluation_run_id' => $evaluationRunId,
+            'evaluation_case_id' => $evaluationCaseId,
+            'status' => 'passed',
+            'score_minor' => 100,
+            'output_ciphertext' => null,
+            'output_hash' => null,
+            'encryption_key_version' => null,
+            'metrics' => null,
+            'failure_detail' => null,
+            'completed_at' => now()->subSecond(),
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         $policyId = (string) Str::uuid();
@@ -65,7 +138,7 @@ final class AiEligibleRegistryFixture
             'id' => $decisionId,
             'tenant_id' => $tenantId,
             'release_policy_id' => $policyId,
-            'evaluation_run_id' => null,
+            'evaluation_run_id' => $evaluationRunId,
             'agent_version_id' => $selection->agentVersionId,
             'decision' => 'passed',
             'decided_by' => 'test-reviewer',

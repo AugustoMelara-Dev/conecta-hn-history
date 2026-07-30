@@ -20,6 +20,7 @@ final class AiRuntimeSelectionFixture
         string $outputSchema = 'private_agent.answer.v1',
         int $maxOutputTokens = 800,
         string $marketCountryCode = 'HN',
+        string $visibility = 'tenant_private',
     ): AiRuntimeSelection {
         $provider = DB::table('ai_providers')->where('provider_key', $providerKey)->first();
         if ($provider === null) {
@@ -109,7 +110,7 @@ final class AiRuntimeSelectionFixture
             'tenant_id' => $tenantId,
             'key' => 'fixture.prompt.'.Str::uuid(),
             'name' => 'Fixture prompt',
-            'visibility' => 'tenant_private',
+            'visibility' => $visibility,
             'status' => 'active',
             'metadata' => null,
             'created_at' => now(),
@@ -140,7 +141,7 @@ final class AiRuntimeSelectionFixture
             'tenant_id' => $tenantId,
             'key' => 'fixture.agent.'.Str::uuid(),
             'name' => 'Fixture agent',
-            'visibility' => 'tenant_private',
+            'visibility' => $visibility,
             'status' => 'active',
             'metadata' => null,
             'created_at' => now(),

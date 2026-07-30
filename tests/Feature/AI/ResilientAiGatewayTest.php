@@ -232,7 +232,7 @@ final class ResilientAiGatewayTest extends TestCase
         self::assertSame(1, DB::table('ai_credit_reservations')->count());
         self::assertSame('settled', DB::table('ai_credit_reservations')->value('status'));
         self::assertSame('completed', DB::table('ai_executions')->value('status'));
-        self::assertSame(0.90, (float) $tenant->refresh()->ai_balance);
+        self::assertSame(0.99, (float) $tenant->refresh()->ai_balance);
         self::assertSame('fake-1', $provider->requests[0]->modelKey);
         $this->assertDatabaseHas('ai_executions', [
             'correlation_id' => $request->context->correlationId,
@@ -266,12 +266,44 @@ final class ResilientAiGatewayTest extends TestCase
         self::assertSame('credits-v1', $reservation->pricing_version);
         self::assertSame(1.0, (float) $reservation->credits_per_provider_usd);
         self::assertSame(0.01, (float) $reservation->minimum_charge);
-        self::assertSame(0.10, (float) $reservation->actual_cost);
+        self::assertSame(0.01, (float) $reservation->actual_cost);
         self::assertSame('credits-v1', $execution->credit_pricing_version);
         self::assertSame(1.0, (float) $execution->credits_per_provider_usd);
         self::assertSame(0.01, (float) $execution->credit_minimum_charge);
-        self::assertSame(0.10, (float) $execution->charged_credits);
-        self::assertSame(0.90, (float) $tenant->refresh()->ai_balance);
+        self::assertSame(0.01, (float) $execution->charged_credits);
+        self::assertSame(0.99, (float) $tenant->refresh()->ai_balance);
+    }
+
+    public function test_settlement_uses_exact_database_model_rates_not_provider_cost_evidence(): void
+    {
+        $tenant = $this->tenant();
+        config()->set('ai.commercial_credits.minimum_charge', 0);
+        config()->set('ai.providers.fake.models.fake-1', [
+            'input_usd_per_million' => 999,
+            'output_usd_per_million' => 999,
+        ]);
+        $request = $this->request($tenant);
+        DB::table('ai_model_versions')->where('id', $request->selection->modelVersionId)->update([
+            'input_cost_minor' => 100,
+            'output_cost_minor' => 200,
+        ]);
+        $provider = new FakeAiProvider;
+        $provider->queueResult(new AiProviderResult(
+            data: ['answer' => 'Database-priced usage.'],
+            model: 'fake-1',
+            inputTokens: 100,
+            outputTokens: 10,
+            costUsd: 0.75,
+        ));
+
+        $result = $this->gateway($provider)->execute($request);
+
+        self::assertEqualsWithDelta(0.00012, $result->usage['charged_cost_usd'], 0.000000001);
+        self::assertSame(0.75, $result->usage['provider_cost_usd']);
+        self::assertEqualsWithDelta(0.00012, (float) DB::table('ai_executions')->value('charged_cost'), 0.000000001);
+        self::assertSame(0.75, (float) DB::table('ai_executions')->value('provider_cost'));
+        self::assertEqualsWithDelta(0.00012, (float) DB::table('ai_credit_reservations')->value('actual_cost'), 0.000000001);
+        self::assertEqualsWithDelta(0.99988, (float) $tenant->fresh()->ai_balance, 0.000000001);
     }
 
     public function test_completed_replay_remains_available_while_provider_circuit_is_open(): void
@@ -396,11 +428,17 @@ final class ResilientAiGatewayTest extends TestCase
         $gateway->execute($this->request($tenant));
     }
 
-    public function test_provider_overage_is_accounted_failed_and_opens_safety_circuit(): void
+    public function test_provider_usage_overage_is_accounted_failed_and_opens_safety_circuit(): void
     {
         $tenant = $this->tenant();
         $provider = new FakeAiProvider;
-        $provider->queueResult($this->providerResult(cost: 0.35));
+        $provider->queueResult(new AiProviderResult(
+            data: ['answer' => 'unsafe'],
+            model: 'fake-1',
+            inputTokens: 801,
+            outputTokens: 0,
+            costUsd: 0.35,
+        ));
         $gateway = $this->gateway($provider);
 
         try {
@@ -410,12 +448,12 @@ final class ResilientAiGatewayTest extends TestCase
             self::assertSame('AI provider exceeded authorized resource limits.', $exception->getMessage());
         }
 
-        self::assertSame(0.80, (float) $tenant->refresh()->ai_balance);
+        self::assertSame(1.0, (float) $tenant->refresh()->ai_balance);
         self::assertSame('settled', DB::table('ai_credit_reservations')->value('status'));
         self::assertSame('failed', DB::table('ai_executions')->value('status'));
-        self::assertSame('provider_cost_overrun', DB::table('ai_executions')->value('failure_code'));
+        self::assertSame('provider_input_token_overrun', DB::table('ai_executions')->value('failure_code'));
         self::assertSame(0.35, (float) DB::table('ai_executions')->value('provider_cost'));
-        self::assertSame(0.20, (float) DB::table('ai_executions')->value('charged_cost'));
+        self::assertSame(0.0, (float) DB::table('ai_executions')->value('charged_cost'));
 
         $this->expectException(AiCircuitOpenException::class);
         $gateway->execute($this->request($tenant));
@@ -459,8 +497,8 @@ final class ResilientAiGatewayTest extends TestCase
         $request = $this->request($tenant);
         $gateway = new ResilientAiGateway(
             new ConfiguredAiProviderPool([
-                'fake_structured_text' => $selected,
-                'decoy_structured_text' => $decoy,
+                'fake_structured_text' => ['fake.primary' => $selected],
+                'decoy_structured_text' => ['decoy.primary' => $decoy],
             ]),
             new LaravelStructuredOutputValidator,
             new AiCapabilityPolicy,
@@ -473,6 +511,21 @@ final class ResilientAiGatewayTest extends TestCase
         self::assertSame('Datos verificados.', $result->data['answer']);
         self::assertCount(1, $selected->requests);
         self::assertCount(0, $decoy->requests);
+    }
+
+    public function test_secret_reference_mismatch_is_denied_before_provider_or_durable_writes(): void
+    {
+        $tenant = $this->tenant();
+        $provider = new FakeAiProvider;
+        $provider->queueResult($this->providerResult());
+
+        $this->expectDenied('provider_secret_reference', fn () => $this->gateway($provider)->execute(
+            $this->request($tenant, secretReference: 'secret-looking-mismatched-reference'),
+        ));
+
+        self::assertCount(0, $provider->requests);
+        self::assertSame(0, DB::table('ai_executions')->count());
+        self::assertSame(0, DB::table('ai_credit_reservations')->count());
     }
 
     public function test_output_token_overrun_is_accounted_and_failed(): void
@@ -563,7 +616,9 @@ final class ResilientAiGatewayTest extends TestCase
     private function gateway(FakeAiProvider $provider): ResilientAiGateway
     {
         return new ResilientAiGateway(
-            new ConfiguredAiProviderPool(['fake_structured_text' => $provider]),
+            new ConfiguredAiProviderPool([
+                'fake_structured_text' => ['fake.primary' => $provider],
+            ]),
             new LaravelStructuredOutputValidator,
             new AiCapabilityPolicy,
             new BudgetEnforcer,
@@ -586,6 +641,7 @@ final class ResilientAiGatewayTest extends TestCase
         array $requestedTools = [],
         ?array $allowedTools = null,
         ?string $correlationId = null,
+        string $secretReference = 'fake.primary',
     ): AiExecutionRequest {
         config()->set('ai.private.tenant_allowlist', $allowlisted ? [(string) $tenant->getKey()] : []);
 
@@ -602,15 +658,22 @@ final class ResilientAiGatewayTest extends TestCase
                 rateLimitSubject: hash('sha256', (string) $tenant->getKey().'|actor'),
                 allowedTools: $allowedTools ?? ['tenant_catalog.read', 'tenant_lead.prepare'],
             ),
-            selection: $this->selection($tenant, providerKey: $provider),
+            selection: $this->selection(
+                $tenant,
+                providerKey: $provider,
+                secretReference: $secretReference,
+            ),
             operation: 'private_agent.answer',
             userInput: $userInput,
             requestedTools: $requestedTools,
         );
     }
 
-    private function selection(Tenant $tenant, string $providerKey = 'fake'): AiRuntimeSelection
-    {
+    private function selection(
+        Tenant $tenant,
+        string $providerKey = 'fake',
+        string $secretReference = 'fake.primary',
+    ): AiRuntimeSelection {
         $providerId = (string) Str::uuid();
         $providerVersionId = (string) Str::uuid();
         $modelId = (string) Str::uuid();
@@ -741,7 +804,7 @@ final class ResilientAiGatewayTest extends TestCase
             promptVersionId: $promptVersionId,
             providerKey: $providerKey,
             adapterKey: 'fake_structured_text',
-            secretReference: 'fake.primary',
+            secretReference: $secretReference,
             modelKey: 'fake-1',
             systemPrompt: 'Answer only from authorized evidence.',
             outputSchema: 'private_agent.answer.v1',

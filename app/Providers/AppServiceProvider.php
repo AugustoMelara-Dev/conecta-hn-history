@@ -644,7 +644,9 @@ class AppServiceProvider extends ServiceProvider
                         : $app->make(DisabledAiProvider::class);
 
                 return new ConfiguredAiProviderPool([
-                    'openai_structured_text' => $provider,
+                    'openai_structured_text' => [
+                        $reference => $provider,
+                    ],
                 ]);
             }
         );

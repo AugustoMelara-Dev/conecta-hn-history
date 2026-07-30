@@ -18,7 +18,7 @@ final class AiProviderBindingTest extends TestCase
         $this->app->forgetInstance(AiProviderPool::class);
 
         $this->expectException(AiExecutionDeniedException::class);
-        $this->app->make(AiProviderPool::class)->resolve('openai_structured_text');
+        $this->app->make(AiProviderPool::class)->resolve('openai_structured_text', 'openai.primary');
     }
 
     public function test_explicit_openai_enablement_selects_the_structured_adapter(): void
@@ -28,7 +28,10 @@ final class AiProviderBindingTest extends TestCase
         config()->set('services.openai.api_key', 'deployment-secret-value');
         $this->app->forgetInstance(AiProviderPool::class);
 
-        $provider = $this->app->make(AiProviderPool::class)->resolve('openai_structured_text');
+        $provider = $this->app->make(AiProviderPool::class)->resolve(
+            'openai_structured_text',
+            'openai.primary',
+        );
 
         self::assertInstanceOf(OpenAiStructuredTextProvider::class, $provider);
         self::assertSame('openai', $provider->name());
@@ -42,11 +45,34 @@ final class AiProviderBindingTest extends TestCase
         $this->app->forgetInstance(AiProviderPool::class);
 
         try {
-            $this->app->make(AiProviderPool::class)->resolve('secret-looking-unknown-adapter');
+            $this->app->make(AiProviderPool::class)->resolve(
+                'secret-looking-unknown-adapter',
+                'openai.primary',
+            );
             self::fail('Unknown adapters must fail closed.');
         } catch (AiExecutionDeniedException $exception) {
             self::assertSame('provider_adapter', $exception->reason);
             self::assertStringNotContainsString('secret-looking', $exception->getMessage());
+        }
+    }
+
+    public function test_deployed_adapter_rejects_a_different_selected_secret_reference_without_echoing_it(): void
+    {
+        config()->set('ai.providers.openai.enabled', true);
+        config()->set('ai.registry.openai_secret_reference', 'openai.primary');
+        config()->set('services.openai.api_key', 'deployment-secret-value');
+        $this->app->forgetInstance(AiProviderPool::class);
+
+        try {
+            $this->app->make(AiProviderPool::class)->resolve(
+                'openai_structured_text',
+                'secret-looking-mismatched-reference',
+            );
+            self::fail('A mismatched selected secret reference must fail closed.');
+        } catch (AiExecutionDeniedException $exception) {
+            self::assertSame('provider_secret_reference', $exception->reason);
+            self::assertStringNotContainsString('secret-looking', $exception->getMessage());
+            self::assertStringNotContainsString('openai.primary', $exception->getMessage());
         }
     }
 }

@@ -141,7 +141,7 @@ final class PublicGroundedDiscoveryTest extends TestCase
             outputSchema: 'public_discovery.answer.v1',
         );
         $this->app->instance(AiProviderPool::class, new ConfiguredAiProviderPool([
-            'fake_structured_text' => $provider,
+            'fake_structured_text' => ['fake.primary' => $provider],
         ]));
         $this->app->forgetInstance(AiGateway::class);
 
@@ -163,7 +163,7 @@ final class PublicGroundedDiscoveryTest extends TestCase
         self::assertStringContainsString('L. 180.00', $response->getContent());
 
         self::assertCount(1, $provider->requests);
-        self::assertEqualsWithDelta(0.80, (float) $platform->fresh()->ai_balance, 0.000001);
+        self::assertEqualsWithDelta(0.99, (float) $platform->fresh()->ai_balance, 0.000001);
         self::assertEqualsWithDelta(0.5, (float) $business->fresh()->ai_balance, 0.000001);
         $this->assertDatabaseHas('ai_credit_reservations', [
             'tenant_id' => (string) $platform->getKey(),

@@ -45,14 +45,18 @@ final class ResilientAiGateway implements AiGateway
         $context = $request->context;
         $this->policy->assertExecutionAllowed($context);
         $this->policy->assertRequestAllowed($request);
-        $provider = $this->providers->resolve($request->selection->adapterKey);
+        $provider = $this->providers->resolve(
+            $request->selection->adapterKey,
+            $request->selection->secretReference,
+        );
 
         if (! hash_equals($request->selection->providerKey, $provider->name())) {
             throw new AiExecutionDeniedException('provider_binding');
         }
 
         $this->assertPromptBounds($request);
-        $maxCost = $this->registryPreflightCost($request);
+        $registryPricing = $this->registryPricing($request);
+        $maxCost = $registryPricing['maximum_cost'];
         $maxCredits = $this->creditPricing->fromProviderUsd($maxCost);
 
         // This cheap, serialized gate runs before any durable write so rejected
@@ -123,13 +127,15 @@ final class ResilientAiGateway implements AiGateway
         }
 
         $latency = (int) round((hrtime(true) - $started) / 1_000_000);
+        $settlementCost = $this->registryUsageCost($providerResult, $registryPricing);
 
         try {
-            $this->assertProviderResourcePolicy($request, $providerResult, $maxCost);
+            $this->assertProviderResourcePolicy($request, $providerResult, $registryPricing);
         } catch (AiProviderResourceLimitException $exception) {
             $this->handleProviderResourceOverrun(
                 $request,
                 $providerResult,
+                $settlementCost,
                 $maxCost,
                 $maxCredits,
                 $reservationId,
@@ -157,7 +163,7 @@ final class ResilientAiGateway implements AiGateway
             throw new AiExecutionFailedException('AI execution could not be validated.');
         }
 
-        $chargedCost = $providerResult->costUsd;
+        $chargedCost = $settlementCost;
         $chargedCredits = $this->creditPricing->fromProviderUsdAtSnapshot(
             $chargedCost,
             $pricingSnapshot['credits_per_provider_usd'],
@@ -256,7 +262,15 @@ final class ResilientAiGateway implements AiGateway
         }
     }
 
-    private function registryPreflightCost(AiExecutionRequest $request): float
+    /**
+     * @return array{
+     *     context_window: int,
+     *     input_cost_minor: int,
+     *     output_cost_minor: int,
+     *     maximum_cost: float
+     * }
+     */
+    private function registryPricing(AiExecutionRequest $request): array
     {
         $model = DB::table('ai_model_versions')
             ->where('id', $request->selection->modelVersionId)
@@ -289,13 +303,47 @@ final class ResilientAiGateway implements AiGateway
             throw new AiExecutionDeniedException('registry_pricing');
         }
 
-        return $maximumCost;
+        return [
+            'context_window' => (int) $model->context_window,
+            'input_cost_minor' => (int) $model->input_cost_minor,
+            'output_cost_minor' => (int) $model->output_cost_minor,
+            'maximum_cost' => $maximumCost,
+        ];
     }
 
+    /**
+     * @param array{
+     *     context_window: int,
+     *     input_cost_minor: int,
+     *     output_cost_minor: int,
+     *     maximum_cost: float
+     * } $pricing
+     */
+    private function registryUsageCost(AiProviderResult $result, array $pricing): float
+    {
+        $cost = (
+            ($result->inputTokens * $pricing['input_cost_minor'])
+            + ($result->outputTokens * $pricing['output_cost_minor'])
+        ) / 100 / 1_000_000;
+        if (! is_finite($cost) || $cost < 0) {
+            throw new AiProviderResourceLimitException('usage_pricing_invalid');
+        }
+
+        return $cost;
+    }
+
+    /**
+     * @param array{
+     *     context_window: int,
+     *     input_cost_minor: int,
+     *     output_cost_minor: int,
+     *     maximum_cost: float
+     * } $pricing
+     */
     private function assertProviderResourcePolicy(
         AiExecutionRequest $request,
         AiProviderResult $result,
-        float $maxCost,
+        array $pricing,
     ): void {
         if (! hash_equals($request->selection->modelKey, $result->model)) {
             throw new AiProviderResourceLimitException('model_not_authorized');
@@ -305,8 +353,8 @@ final class ResilientAiGateway implements AiGateway
             throw new AiProviderResourceLimitException('output_token_overrun');
         }
 
-        if ($result->costUsd > $maxCost + 0.000001) {
-            throw new AiProviderResourceLimitException('cost_overrun');
+        if ($result->inputTokens + $result->outputTokens > $pricing['context_window']) {
+            throw new AiProviderResourceLimitException('input_token_overrun');
         }
     }
 
@@ -468,6 +516,7 @@ final class ResilientAiGateway implements AiGateway
     private function handleProviderResourceOverrun(
         AiExecutionRequest $request,
         AiProviderResult $providerResult,
+        float $settlementCost,
         float $maxCost,
         float $maxCredits,
         string $reservationId,
@@ -476,7 +525,7 @@ final class ResilientAiGateway implements AiGateway
         int $latency,
         string $reason,
     ): void {
-        $chargedCost = min($providerResult->costUsd, $maxCost);
+        $chargedCost = min($settlementCost, $maxCost);
         $chargedCredits = $this->creditPricing->fromProviderUsdAtSnapshot(
             $chargedCost,
             $pricingSnapshot['credits_per_provider_usd'],

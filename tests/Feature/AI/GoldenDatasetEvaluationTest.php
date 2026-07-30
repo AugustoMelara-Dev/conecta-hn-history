@@ -107,7 +107,7 @@ final class GoldenDatasetEvaluationTest extends TestCase
 
         $provider = new FakeAiProvider;
         $this->app->instance(AiProviderPool::class, new ConfiguredAiProviderPool([
-            'fake_structured_text' => $provider,
+            'fake_structured_text' => ['fake.primary' => $provider],
         ]));
         $this->app->forgetInstance(AiGateway::class);
 
@@ -188,7 +188,7 @@ final class GoldenDatasetEvaluationTest extends TestCase
                 (string) $case['id']
             );
             if ($execution->status === 'completed') {
-                $completedCosts[] = (float) $execution->provider_cost;
+                $completedCosts[] = (float) $execution->charged_cost;
             }
 
             self::assertCount($evaluated + 1, $provider->requests, (string) $case['id'].' response: '.$response->getContent());
@@ -219,7 +219,7 @@ final class GoldenDatasetEvaluationTest extends TestCase
 
         self::assertTrue(
             collect($completedCosts)->every(
-                static fn (float $cost): bool => $cost <= (float) $dataset['thresholds']['max_provider_cost_usd']
+                static fn (float $cost): bool => $cost <= (float) $dataset['thresholds']['max_charged_cost_usd']
             )
         );
     }

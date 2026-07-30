@@ -103,6 +103,13 @@ final class AiRegistryResolver
         if ($agent === null) {
             throw new AiExecutionDeniedException('registry_selection');
         }
+        $expectedVisibility = $this->definitionVisibility($query->audience);
+        if (
+            $expectedVisibility === null
+            || ! hash_equals($expectedVisibility, (string) $agent->visibility)
+        ) {
+            throw new AiExecutionDeniedException('registry_selection');
+        }
 
         $configuration = $this->jsonObject($agent->configuration);
         $requiredCapabilities = $this->stringList($configuration['required_capabilities'] ?? null);
@@ -156,11 +163,24 @@ final class AiRegistryResolver
                 'versions.template_ciphertext',
                 'versions.template_hash',
                 'versions.encryption_key_version',
+                'definitions.visibility',
             ])
             ->first();
-        if ($prompt === null) {
+        if (
+            $prompt === null
+            || ! hash_equals($expectedVisibility, (string) $prompt->visibility)
+        ) {
             throw new AiExecutionDeniedException('registry_selection');
         }
+
+        $this->assertPassingEvaluation(
+            $query,
+            $decision,
+            (string) $agent->id,
+            (string) $prompt->id,
+            (string) $model->provider_version_id,
+            (string) $model->model_version_id,
+        );
 
         $systemPrompt = $this->cipher->decrypt(
             $query->tenantId,
@@ -196,14 +216,20 @@ final class AiRegistryResolver
             throw new AiExecutionDeniedException('registry_selection');
         }
 
-        $latest = DB::table('ai_release_decisions')
+        $latestDecisions = DB::table('ai_release_decisions')
             ->where('tenant_id', $query->tenantId)
             ->where('agent_version_id', $activation->agent_version_id)
             ->orderByDesc('decided_at')
-            ->orderByDesc('created_at')
-            ->first();
+            ->limit(2)
+            ->get();
+        $latest = $latestDecisions->first();
         if (
             $latest === null
+            || $latestDecisions->count() > 1
+                && hash_equals(
+                    (string) $latest->decided_at,
+                    (string) $latestDecisions->get(1)->decided_at,
+                )
             || ! hash_equals((string) $activation->release_decision_id, (string) $latest->id)
             || ! hash_equals('passed', (string) $latest->decision)
         ) {
@@ -220,13 +246,117 @@ final class AiRegistryResolver
             ->where('decisions.agent_version_id', $activation->agent_version_id)
             ->where('decisions.decision', 'passed')
             ->where('policies.status', 'active')
-            ->select(['decisions.id', 'policies.rules'])
+            ->whereNotNull('decisions.evaluation_run_id')
+            ->where('decisions.decided_at', '<=', now())
+            ->select([
+                'decisions.id',
+                'decisions.evaluation_run_id',
+                'decisions.decided_at',
+                'policies.rules',
+            ])
             ->first();
         if ($decision === null) {
             throw new AiExecutionDeniedException('registry_selection');
         }
 
         return $decision;
+    }
+
+    private function assertPassingEvaluation(
+        AiRegistryQuery $query,
+        object $decision,
+        string $agentVersionId,
+        string $promptVersionId,
+        string $providerVersionId,
+        string $modelVersionId,
+    ): void {
+        if (
+            ! is_string($decision->evaluation_run_id)
+            || ! Str::isUuid($decision->evaluation_run_id)
+        ) {
+            throw new AiExecutionDeniedException('registry_selection');
+        }
+
+        $run = DB::table('ai_evaluation_runs as runs')
+            ->join('ai_evaluation_versions as versions', function ($join): void {
+                $join->on('versions.tenant_id', '=', 'runs.tenant_id')
+                    ->on('versions.id', '=', 'runs.evaluation_version_id');
+            })
+            ->join('ai_evaluation_suites as suites', function ($join): void {
+                $join->on('suites.tenant_id', '=', 'versions.tenant_id')
+                    ->on('suites.id', '=', 'versions.evaluation_suite_id');
+            })
+            ->where('runs.tenant_id', $query->tenantId)
+            ->where('runs.id', $decision->evaluation_run_id)
+            ->where('runs.status', 'completed')
+            ->where('suites.status', 'active')
+            ->whereNotNull('versions.released_at')
+            ->whereNotNull('runs.started_at')
+            ->whereNotNull('runs.completed_at')
+            ->where('versions.released_at', '<=', $decision->decided_at)
+            ->whereColumn('runs.started_at', '<=', 'runs.completed_at')
+            ->where('runs.completed_at', '<=', $decision->decided_at)
+            ->where('runs.completed_at', '<=', now())
+            ->select([
+                'runs.evaluation_version_id',
+                'runs.agent_version_id',
+                'runs.prompt_version_id',
+                'runs.provider_version_id',
+                'runs.model_version_id',
+            ])
+            ->first();
+        if (
+            $run === null
+            || ! is_string($run->agent_version_id)
+            || ! is_string($run->prompt_version_id)
+            || ! is_string($run->provider_version_id)
+            || ! is_string($run->model_version_id)
+            || ! hash_equals($agentVersionId, $run->agent_version_id)
+            || ! hash_equals($promptVersionId, $run->prompt_version_id)
+            || ! hash_equals($providerVersionId, $run->provider_version_id)
+            || ! hash_equals($modelVersionId, $run->model_version_id)
+        ) {
+            throw new AiExecutionDeniedException('registry_selection');
+        }
+
+        $caseCount = DB::table('ai_evaluation_cases')
+            ->where('tenant_id', $query->tenantId)
+            ->where('evaluation_version_id', $run->evaluation_version_id)
+            ->count();
+        $resultCount = DB::table('ai_evaluation_results as results')
+            ->join('ai_evaluation_cases as cases', function ($join): void {
+                $join->on('cases.tenant_id', '=', 'results.tenant_id')
+                    ->on('cases.id', '=', 'results.evaluation_case_id');
+            })
+            ->where('results.tenant_id', $query->tenantId)
+            ->where('results.evaluation_run_id', $decision->evaluation_run_id)
+            ->where('cases.evaluation_version_id', $run->evaluation_version_id)
+            ->count();
+        $passedCount = DB::table('ai_evaluation_results as results')
+            ->join('ai_evaluation_cases as cases', function ($join): void {
+                $join->on('cases.tenant_id', '=', 'results.tenant_id')
+                    ->on('cases.id', '=', 'results.evaluation_case_id');
+            })
+            ->where('results.tenant_id', $query->tenantId)
+            ->where('results.evaluation_run_id', $decision->evaluation_run_id)
+            ->where('cases.evaluation_version_id', $run->evaluation_version_id)
+            ->where('results.status', 'passed')
+            ->whereNotNull('results.completed_at')
+            ->where('results.completed_at', '<=', $decision->decided_at)
+            ->where('results.completed_at', '<=', now())
+            ->count();
+        if ($caseCount < 1 || $resultCount !== $caseCount || $passedCount !== $caseCount) {
+            throw new AiExecutionDeniedException('registry_selection');
+        }
+    }
+
+    private function definitionVisibility(string $audience): ?string
+    {
+        return match ($audience) {
+            'public' => 'platform_public',
+            'private' => 'tenant_private',
+            default => null,
+        };
     }
 
     private function eligibleModel(

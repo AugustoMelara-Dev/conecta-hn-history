@@ -199,7 +199,7 @@ final class TenantAgentChatTest extends TestCase
             finishReason: 'stop',
         ));
         $this->app->instance(AiProviderPool::class, new ConfiguredAiProviderPool([
-            'fake_structured_text' => $provider,
+            'fake_structured_text' => ['fake.primary' => $provider],
         ]));
         $this->app->forgetInstance(AiGateway::class);
         Sanctum::actingAs($owner);
@@ -226,7 +226,7 @@ final class TenantAgentChatTest extends TestCase
             ->assertJsonMissing(['answer']);
         self::assertSame($response->json('meta.correlation_id'), $replay->json('meta.correlation_id'));
         self::assertCount(1, $provider->requests);
-        self::assertEqualsWithDelta(0.80, (float) $tenant->fresh()->ai_balance, 0.000001);
+        self::assertEqualsWithDelta(0.99, (float) $tenant->fresh()->ai_balance, 0.000001);
         $this->assertDatabaseHas('ai_credit_reservations', [
             'tenant_id' => (string) $tenant->id,
             'status' => 'settled',
