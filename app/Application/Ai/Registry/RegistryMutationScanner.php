@@ -820,110 +820,605 @@ final class RegistryMutationScanner
     /** @return list<string> */
     private function sqlDeleteWriteTargets(string $sql): array
     {
-        if (preg_match_all('/\bdelete\b(?<body>[^;]*)/is', $sql, $statements) === 0) {
-            return [];
-        }
+        $tokens = $this->sqlDeleteTokens($sql);
         $targets = [];
-        foreach ($statements['body'] as $body) {
-            $body = preg_replace(
-                '/\A\s*(?:(?:low_priority|quick|ignore)\s+)*/i',
-                '',
-                (string) $body,
-            ) ?? (string) $body;
-            $parts = $this->sqlDeleteStatementParts($body);
-            if ($parts === null) {
+        $depth = 0;
+        $count = count($tokens);
+        for ($cursor = 0; $cursor < $count; $cursor++) {
+            if ($tokens[$cursor]['value'] === '(') {
+                $depth++;
+
                 continue;
             }
-            $aliases = $this->sqlDeleteSourceAliases($parts['sources']);
-            foreach (explode(',', $parts['targets']) as $target) {
-                $target = preg_replace('/\A\s*only\s+/i', '', trim($target)) ?? trim($target);
-                $name = preg_split('/\s+/', $target, 2)[0] ?? '';
-                $name = preg_replace('/\.\*\z/', '', $name) ?? $name;
-                if ($name === '') {
-                    continue;
-                }
-                if (str_contains($name, self::SQL_EXPRESSION_SENTINEL)) {
-                    $targets[] = self::SQL_EXPRESSION_SENTINEL;
+            if ($tokens[$cursor]['value'] === ')') {
+                $depth = max(0, $depth - 1);
 
-                    continue;
-                }
-                $normalized = $this->normalizeSqlTarget($name);
-                $targets[] = $aliases[$normalized] ?? $normalized;
+                continue;
             }
+            if ($depth !== 0 || ! $this->sqlDeleteIsKeyword($tokens[$cursor], 'delete')) {
+                continue;
+            }
+            $end = $this->sqlDeleteStatementEnd($tokens, $cursor + 1);
+            $targets = [
+                ...$targets,
+                ...$this->sqlDeleteStatementTargets(array_slice($tokens, $cursor + 1, $end - $cursor - 1)),
+            ];
+            $cursor = $end;
+            $depth = 0;
         }
 
         return array_values(array_unique($targets));
     }
 
     /**
-     * @return array{targets:string,sources:string}|null
+     * @return list<array{type:string,value:string}>
      */
-    private function sqlDeleteStatementParts(string $body): ?array
+    private function sqlDeleteTokens(string $sql): array
     {
-        if (preg_match('/\A\s*from\b/i', $body, $from) === 1) {
-            $afterFrom = (string) preg_replace('/\A\s*from\b/i', '', $body, 1);
-            if (preg_match('/\busing\b/i', $afterFrom, $using, PREG_OFFSET_CAPTURE) === 1) {
-                $usingOffset = $using[0][1];
+        $tokens = [];
+        $length = strlen($sql);
+        for ($offset = 0; $offset < $length;) {
+            if (ctype_space($sql[$offset])) {
+                $offset++;
 
-                return [
-                    'targets' => substr($afterFrom, 0, $usingOffset),
-                    'sources' => substr($afterFrom, $usingOffset + strlen($using[0][0])),
-                ];
+                continue;
             }
+            if (str_starts_with(substr($sql, $offset), self::SQL_EXPRESSION_SENTINEL)) {
+                $tokens[] = ['type' => 'dynamic', 'value' => self::SQL_EXPRESSION_SENTINEL];
+                $offset += strlen(self::SQL_EXPRESSION_SENTINEL);
 
-            return [
-                'targets' => $this->sqlBeforeDeleteSourceTail($afterFrom),
-                'sources' => $this->sqlBeforeDeleteSourceTail($afterFrom),
-            ];
-        }
-        if (preg_match('/\bfrom\b/i', $body, $from, PREG_OFFSET_CAPTURE) !== 1) {
-            return null;
-        }
-        $fromOffset = $from[0][1];
+                continue;
+            }
+            $closingQuote = match ($sql[$offset]) {
+                '"', '`' => $sql[$offset],
+                '[' => ']',
+                default => null,
+            };
+            if ($closingQuote !== null) {
+                $end = $this->sqlQuotedSegmentEnd($sql, $offset, $closingQuote);
+                $tokens[] = [
+                    'type' => 'identifier',
+                    'value' => substr($sql, $offset, $end - $offset),
+                ];
+                $offset = $end;
 
-        return [
-            'targets' => substr($body, 0, $fromOffset),
-            'sources' => substr($body, $fromOffset + strlen($from[0][0])),
-        ];
+                continue;
+            }
+            if (ctype_alnum($sql[$offset]) || $sql[$offset] === '_' || $sql[$offset] === '$') {
+                $wordLength = strspn(
+                    $sql,
+                    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_$',
+                    $offset,
+                );
+                $tokens[] = [
+                    'type' => 'word',
+                    'value' => substr($sql, $offset, $wordLength),
+                ];
+                $offset += $wordLength;
+
+                continue;
+            }
+            $tokens[] = ['type' => 'symbol', 'value' => $sql[$offset]];
+            $offset++;
+        }
+
+        return $tokens;
     }
 
-    private function sqlBeforeDeleteSourceTail(string $sql): string
+    /**
+     * @param  list<array{type:string,value:string}>  $tokens
+     * @return list<string>
+     */
+    private function sqlDeleteStatementTargets(array $tokens): array
     {
-        if (preg_match(
-            '/\b(?:where|order\s+by|limit|returning)\b/i',
-            $sql,
-            $tail,
-            PREG_OFFSET_CAPTURE,
-        ) !== 1) {
-            return $sql;
+        $cursor = 0;
+        while (isset($tokens[$cursor])
+            && $tokens[$cursor]['type'] === 'word'
+            && in_array(strtolower($tokens[$cursor]['value']), ['low_priority', 'quick', 'ignore'], true)) {
+            $cursor++;
         }
-
-        return substr($sql, 0, $tail[0][1]);
-    }
-
-    /** @return array<string, string> */
-    private function sqlDeleteSourceAliases(string $sources): array
-    {
-        $sources = $this->sqlBeforeDeleteSourceTail($sources);
-        $identifier = '[^\s,()]+';
-        $reserved = 'inner|left|right|full|cross|natural|straight_join|join|on|using|where|order|limit|returning|partition';
-        $pattern = '/(?:\A|,|\bjoin\b)\s*(?:only\s+)?'
-            .'(?<table>'.$identifier.')'
-            .'(?:\s+(?:as\s+)?(?<alias>(?!(?:'.$reserved.')\b)'.$identifier.'))?/i';
-        if (preg_match_all($pattern, $sources, $matches, PREG_SET_ORDER) === 0) {
+        if (! isset($tokens[$cursor])) {
             return [];
         }
-        $aliases = [];
-        foreach ($matches as $match) {
-            $table = $this->normalizeSqlTarget((string) $match['table']);
-            $aliases[$table] = $table;
-            $alias = $this->normalizeSqlTarget((string) ($match['alias'] ?? ''));
-            if ($alias !== '') {
-                $aliases[$alias] = $table;
+
+        if ($this->sqlDeleteIsKeyword($tokens[$cursor], 'from')) {
+            $afterFrom = array_slice($tokens, $cursor + 1);
+            $tail = $this->sqlDeleteClauseOffset($afterFrom);
+            $afterFrom = array_slice($afterFrom, 0, $tail);
+            $using = $this->sqlDeleteTopLevelKeywordOffset($afterFrom, 'using');
+            if ($using === null) {
+                return $this->sqlDeleteResolveTargetList($afterFrom, null, false, true);
+            }
+
+            return $this->sqlDeleteResolveTargetList(
+                array_slice($afterFrom, 0, $using),
+                $this->sqlDeleteSourceSymbols(array_slice($afterFrom, $using + 1)),
+                true,
+                false,
+            );
+        }
+
+        $from = $this->sqlDeleteTopLevelKeywordOffset(array_slice($tokens, $cursor), 'from');
+        if ($from === null) {
+            return [];
+        }
+        $from += $cursor;
+        $sources = array_slice($tokens, $from + 1);
+        $sources = array_slice($sources, 0, $this->sqlDeleteClauseOffset($sources));
+
+        return $this->sqlDeleteResolveTargetList(
+            array_slice($tokens, $cursor, $from - $cursor),
+            $this->sqlDeleteSourceSymbols($sources),
+            true,
+            false,
+        );
+    }
+
+    /**
+     * @param  list<array{type:string,value:string}>  $tokens
+     * @param  array{
+     *     aliases:array<string,array{count:int,values:array<string,true>}>,
+     *     tables:array<string,array{count:int,values:array<string,true>}>
+     * }|null  $symbols
+     * @return list<string>
+     */
+    private function sqlDeleteResolveTargetList(
+        array $tokens,
+        ?array $symbols,
+        bool $resolveSymbols,
+        bool $singleTarget,
+    ): array {
+        $entries = $singleTarget
+            ? [$tokens]
+            : $this->sqlDeleteSplitTopLevel($tokens, ',');
+        $targets = [];
+        foreach ($entries as $entry) {
+            $cursor = 0;
+            if (isset($entry[$cursor]) && $this->sqlDeleteIsKeyword($entry[$cursor], 'only')) {
+                $cursor++;
+            }
+            $name = $this->sqlDeleteQualifiedName($entry, $cursor);
+            if ($name === null) {
+                continue;
+            }
+            if ($name['dynamic']) {
+                $targets[] = self::SQL_EXPRESSION_SENTINEL;
+
+                continue;
+            }
+            $key = $name['segments'][count($name['segments']) - 1];
+            if (! $resolveSymbols || count($name['segments']) > 1 || $symbols === null) {
+                $targets[] = $key;
+
+                continue;
+            }
+            $targets[] = $this->sqlDeleteResolveSymbol($key, $symbols);
+        }
+
+        return $targets;
+    }
+
+    /**
+     * @param  list<array{type:string,value:string}>  $tokens
+     * @return array{segments:list<string>,dynamic:bool}|null
+     */
+    private function sqlDeleteQualifiedName(array $tokens, int &$cursor): ?array
+    {
+        if (! isset($tokens[$cursor]) || ! $this->sqlDeleteIsIdentifier($tokens[$cursor])) {
+            return null;
+        }
+        $segments = [];
+        $dynamic = false;
+        while (isset($tokens[$cursor]) && $this->sqlDeleteIsIdentifier($tokens[$cursor])) {
+            if ($tokens[$cursor]['type'] === 'dynamic') {
+                $dynamic = true;
+                $segments[] = self::SQL_EXPRESSION_SENTINEL;
+            } else {
+                $segments[] = $this->sqlDeleteIdentifierName($tokens[$cursor]);
+            }
+            $cursor++;
+            if (! isset($tokens[$cursor], $tokens[$cursor + 1])
+                || $tokens[$cursor]['value'] !== '.'
+                || ! $this->sqlDeleteIsIdentifier($tokens[$cursor + 1])) {
+                break;
+            }
+            $cursor += 1;
+        }
+        if (isset($tokens[$cursor], $tokens[$cursor + 1])
+            && $tokens[$cursor]['value'] === '.'
+            && $tokens[$cursor + 1]['value'] === '*') {
+            $cursor += 2;
+        } elseif (isset($tokens[$cursor]) && $tokens[$cursor]['value'] === '*') {
+            $cursor++;
+        }
+
+        return ['segments' => $segments, 'dynamic' => $dynamic];
+    }
+
+    /**
+     * @param  list<array{type:string,value:string}>  $tokens
+     * @return array{
+     *     aliases:array<string,array{count:int,values:array<string,true>}>,
+     *     tables:array<string,array{count:int,values:array<string,true>}>
+     * }
+     */
+    private function sqlDeleteSourceSymbols(array $tokens): array
+    {
+        $symbols = ['aliases' => [], 'tables' => []];
+        $cursor = 0;
+        $expectFactor = true;
+        $count = count($tokens);
+        while ($cursor < $count) {
+            if ($expectFactor) {
+                $this->sqlDeleteConsumeTableFactor($tokens, $cursor, $symbols);
+                $expectFactor = false;
+
+                continue;
+            }
+            if ($tokens[$cursor]['value'] === ',') {
+                $cursor++;
+                $expectFactor = true;
+
+                continue;
+            }
+            $afterJoin = $this->sqlDeleteJoinAfter($tokens, $cursor);
+            if ($afterJoin !== null) {
+                $cursor = $afterJoin;
+                $expectFactor = true;
+
+                continue;
+            }
+            if ($this->sqlDeleteIsKeyword($tokens[$cursor], 'on')) {
+                $cursor = $this->sqlDeleteConditionEnd($tokens, $cursor + 1);
+
+                continue;
+            }
+            if ($this->sqlDeleteIsKeyword($tokens[$cursor], 'using')) {
+                $cursor++;
+                if (isset($tokens[$cursor]) && $tokens[$cursor]['value'] === '(') {
+                    $cursor = $this->sqlDeleteBalancedEnd($tokens, $cursor);
+                } else {
+                    $cursor = $this->sqlDeleteConditionEnd($tokens, $cursor);
+                }
+
+                continue;
+            }
+            if ($this->sqlDeleteIsClauseKeyword($tokens[$cursor])) {
+                break;
+            }
+            $cursor++;
+        }
+
+        return $symbols;
+    }
+
+    /**
+     * @param  list<array{type:string,value:string}>  $tokens
+     * @param  array{
+     *     aliases:array<string,array{count:int,values:array<string,true>}>,
+     *     tables:array<string,array{count:int,values:array<string,true>}>
+     * }  $symbols
+     */
+    private function sqlDeleteConsumeTableFactor(array $tokens, int &$cursor, array &$symbols): void
+    {
+        if (isset($tokens[$cursor]) && $this->sqlDeleteIsKeyword($tokens[$cursor], 'only')) {
+            $cursor++;
+        }
+        if (! isset($tokens[$cursor])) {
+            return;
+        }
+        if ($tokens[$cursor]['value'] === '(') {
+            $cursor = $this->sqlDeleteBalancedEnd($tokens, $cursor);
+            $alias = $this->sqlDeleteConsumeAlias($tokens, $cursor);
+            if ($alias !== null) {
+                $this->sqlDeleteAddSymbol($symbols['aliases'], $alias, self::SQL_EXPRESSION_SENTINEL);
+            }
+
+            return;
+        }
+
+        $name = $this->sqlDeleteQualifiedName($tokens, $cursor);
+        if ($name === null) {
+            $cursor++;
+
+            return;
+        }
+        $table = $name['dynamic']
+            ? self::SQL_EXPRESSION_SENTINEL
+            : $name['segments'][count($name['segments']) - 1];
+        if (! $name['dynamic']) {
+            $this->sqlDeleteAddSymbol($symbols['tables'], $table, $table);
+        }
+        if (isset($tokens[$cursor]) && $this->sqlDeleteIsKeyword($tokens[$cursor], 'partition')) {
+            $cursor++;
+            if (isset($tokens[$cursor]) && $tokens[$cursor]['value'] === '(') {
+                $cursor = $this->sqlDeleteBalancedEnd($tokens, $cursor);
+            }
+        }
+        $alias = $this->sqlDeleteConsumeAlias($tokens, $cursor);
+        if ($alias !== null) {
+            $this->sqlDeleteAddSymbol($symbols['aliases'], $alias, $table);
+        }
+    }
+
+    /**
+     * @param  list<array{type:string,value:string}>  $tokens
+     */
+    private function sqlDeleteConsumeAlias(array $tokens, int &$cursor): ?string
+    {
+        if (isset($tokens[$cursor]) && $tokens[$cursor]['value'] === '*') {
+            $cursor++;
+        }
+        if (isset($tokens[$cursor]) && $this->sqlDeleteIsKeyword($tokens[$cursor], 'as')) {
+            $cursor++;
+
+            if (isset($tokens[$cursor]) && $this->sqlDeleteIsIdentifier($tokens[$cursor])) {
+                return $this->sqlDeleteIdentifierName($tokens[$cursor++]);
+            }
+
+            return null;
+        }
+        if (! isset($tokens[$cursor])
+            || ! $this->sqlDeleteIsIdentifier($tokens[$cursor])
+            || $this->sqlDeleteIsSourceReserved($tokens[$cursor])) {
+            return null;
+        }
+
+        return $this->sqlDeleteIdentifierName($tokens[$cursor++]);
+    }
+
+    /**
+     * @param  array<string,array{count:int,values:array<string,true>}>  $symbols
+     */
+    private function sqlDeleteAddSymbol(array &$symbols, string $key, string $value): void
+    {
+        $symbols[$key] ??= ['count' => 0, 'values' => []];
+        $symbols[$key]['count']++;
+        $symbols[$key]['values'][$value] = true;
+    }
+
+    /**
+     * @param  array{
+     *     aliases:array<string,array{count:int,values:array<string,true>}>,
+     *     tables:array<string,array{count:int,values:array<string,true>}>
+     * }  $symbols
+     */
+    private function sqlDeleteResolveSymbol(string $key, array $symbols): string
+    {
+        $binding = $symbols['aliases'][$key] ?? $symbols['tables'][$key] ?? null;
+        if ($binding === null) {
+            return $key;
+        }
+        if ($binding['count'] !== 1 || count($binding['values']) !== 1) {
+            return self::SQL_EXPRESSION_SENTINEL;
+        }
+
+        return (string) array_key_first($binding['values']);
+    }
+
+    /**
+     * @param  list<array{type:string,value:string}>  $tokens
+     */
+    private function sqlDeleteStatementEnd(array $tokens, int $cursor): int
+    {
+        $depth = 0;
+        $count = count($tokens);
+        for (; $cursor < $count; $cursor++) {
+            if ($tokens[$cursor]['value'] === '(') {
+                $depth++;
+            } elseif ($tokens[$cursor]['value'] === ')') {
+                $depth = max(0, $depth - 1);
+            } elseif ($tokens[$cursor]['value'] === ';' && $depth === 0) {
+                break;
             }
         }
 
-        return $aliases;
+        return $cursor;
+    }
+
+    /**
+     * @param  list<array{type:string,value:string}>  $tokens
+     */
+    private function sqlDeleteClauseOffset(array $tokens): int
+    {
+        $depth = 0;
+        foreach ($tokens as $offset => $token) {
+            if ($token['value'] === '(') {
+                $depth++;
+            } elseif ($token['value'] === ')') {
+                $depth = max(0, $depth - 1);
+            } elseif ($depth === 0 && $this->sqlDeleteIsClauseKeyword($token)) {
+                return $offset;
+            }
+        }
+
+        return count($tokens);
+    }
+
+    /**
+     * @param  list<array{type:string,value:string}>  $tokens
+     */
+    private function sqlDeleteTopLevelKeywordOffset(array $tokens, string $keyword): ?int
+    {
+        $depth = 0;
+        foreach ($tokens as $offset => $token) {
+            if ($token['value'] === '(') {
+                $depth++;
+            } elseif ($token['value'] === ')') {
+                $depth = max(0, $depth - 1);
+            } elseif ($depth === 0 && $this->sqlDeleteIsKeyword($token, $keyword)) {
+                return $offset;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  list<array{type:string,value:string}>  $tokens
+     * @return list<list<array{type:string,value:string}>>
+     */
+    private function sqlDeleteSplitTopLevel(array $tokens, string $delimiter): array
+    {
+        $parts = [];
+        $start = 0;
+        $depth = 0;
+        foreach ($tokens as $offset => $token) {
+            if ($token['value'] === '(') {
+                $depth++;
+            } elseif ($token['value'] === ')') {
+                $depth = max(0, $depth - 1);
+            } elseif ($depth === 0 && $token['value'] === $delimiter) {
+                $parts[] = array_slice($tokens, $start, $offset - $start);
+                $start = $offset + 1;
+            }
+        }
+        $parts[] = array_slice($tokens, $start);
+
+        return $parts;
+    }
+
+    /**
+     * @param  list<array{type:string,value:string}>  $tokens
+     */
+    private function sqlDeleteJoinAfter(array $tokens, int $cursor): ?int
+    {
+        if (! isset($tokens[$cursor]) || $tokens[$cursor]['type'] !== 'word') {
+            return null;
+        }
+        if ($this->sqlDeleteIsKeyword($tokens[$cursor], 'join')
+            || $this->sqlDeleteIsKeyword($tokens[$cursor], 'straight_join')) {
+            return $cursor + 1;
+        }
+        $probe = $cursor;
+        if ($this->sqlDeleteIsKeyword($tokens[$probe], 'natural')) {
+            $probe++;
+        }
+        if (isset($tokens[$probe])
+            && $tokens[$probe]['type'] === 'word'
+            && in_array(strtolower($tokens[$probe]['value']), ['inner', 'cross', 'left', 'right', 'full'], true)) {
+            $probe++;
+        }
+        if (isset($tokens[$probe]) && $this->sqlDeleteIsKeyword($tokens[$probe], 'outer')) {
+            $probe++;
+        }
+        if ($probe > $cursor && isset($tokens[$probe]) && $this->sqlDeleteIsKeyword($tokens[$probe], 'join')) {
+            return $probe + 1;
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  list<array{type:string,value:string}>  $tokens
+     */
+    private function sqlDeleteConditionEnd(array $tokens, int $cursor): int
+    {
+        $depth = 0;
+        $count = count($tokens);
+        for (; $cursor < $count; $cursor++) {
+            if ($tokens[$cursor]['value'] === '(') {
+                $depth++;
+
+                continue;
+            }
+            if ($tokens[$cursor]['value'] === ')') {
+                $depth = max(0, $depth - 1);
+
+                continue;
+            }
+            if ($depth === 0
+                && ($tokens[$cursor]['value'] === ','
+                    || $this->sqlDeleteJoinAfter($tokens, $cursor) !== null
+                    || $this->sqlDeleteIsClauseKeyword($tokens[$cursor]))) {
+                break;
+            }
+        }
+
+        return $cursor;
+    }
+
+    /**
+     * @param  list<array{type:string,value:string}>  $tokens
+     */
+    private function sqlDeleteBalancedEnd(array $tokens, int $cursor): int
+    {
+        $depth = 0;
+        $count = count($tokens);
+        for (; $cursor < $count; $cursor++) {
+            if ($tokens[$cursor]['value'] === '(') {
+                $depth++;
+            } elseif ($tokens[$cursor]['value'] === ')') {
+                $depth--;
+                if ($depth === 0) {
+                    return $cursor + 1;
+                }
+            }
+        }
+
+        return $cursor;
+    }
+
+    /** @param array{type:string,value:string} $token */
+    private function sqlDeleteIsIdentifier(array $token): bool
+    {
+        return in_array($token['type'], ['word', 'identifier', 'dynamic'], true);
+    }
+
+    /** @param array{type:string,value:string} $token */
+    private function sqlDeleteIdentifierName(array $token): string
+    {
+        if ($token['type'] !== 'identifier') {
+            return $this->normalizeSqlTarget($token['value']);
+        }
+        $closingQuote = str_starts_with($token['value'], '[') ? ']' : $token['value'][0];
+        $identifier = substr($token['value'], 1, -1);
+        $identifier = str_replace($closingQuote.$closingQuote, $closingQuote, $identifier);
+
+        return strtolower(str_replace('.', '%2e', $identifier));
+    }
+
+    /** @param array{type:string,value:string} $token */
+    private function sqlDeleteIsKeyword(array $token, string $keyword): bool
+    {
+        return $token['type'] === 'word' && strtolower($token['value']) === $keyword;
+    }
+
+    /** @param array{type:string,value:string} $token */
+    private function sqlDeleteIsClauseKeyword(array $token): bool
+    {
+        return $token['type'] === 'word'
+            && in_array(strtolower($token['value']), ['where', 'order', 'limit', 'returning'], true);
+    }
+
+    /** @param array{type:string,value:string} $token */
+    private function sqlDeleteIsSourceReserved(array $token): bool
+    {
+        return $token['type'] === 'word'
+            && in_array(strtolower($token['value']), [
+                'as',
+                'inner',
+                'cross',
+                'left',
+                'right',
+                'full',
+                'outer',
+                'natural',
+                'straight_join',
+                'join',
+                'on',
+                'using',
+                'where',
+                'order',
+                'limit',
+                'returning',
+                'partition',
+                'use',
+                'force',
+                'ignore',
+                'index',
+                'key',
+            ], true);
     }
 
     /** @return list<string> */

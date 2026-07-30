@@ -422,6 +422,88 @@ PHP;
         ]);
 });
 
+it('tokenizes delete grammar without alias shadow or quoted keyword boundaries', function (): void {
+    $base = dirname(__DIR__, 2);
+    $root = $base.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'framework'
+        .DIRECTORY_SEPARATOR.'testing'.DIRECTORY_SEPARATOR.'registry-ratchet-'.Str::uuid();
+    mkdir($root, 0777, true);
+    $fixture = <<<'PHP'
+<?php
+
+use Illuminate\Support\Facades\DB as Storage;
+
+$table = getenv('REGISTRY_TABLE');
+
+Storage::statement('DELETE ai_agent_versions FROM orders AS ai_agent_versions JOIN ai_agent_versions AS registry_source ON 1=1');
+Storage::statement('DELETE governed FROM orders AS source STRAIGHT_JOIN ai_agent_versions AS governed ON 1=1');
+Storage::statement('DELETE governed FROM orders AS source JOIN audits AS audit ON audit."where" = source.id JOIN ai_agent_versions AS governed ON 1=1');
+
+Storage::statement('DELETE LOW_PRIORITY QUICK IGNORE FROM ai_provider_versions PARTITION (p0) AS governed WHERE governed.id = 1');
+Storage::statement('DELETE FROM ONLY "public"."ai_model_versions" * AS governed USING audits WHERE audits.id = governed.id');
+Storage::statement('DELETE governed.*, audit_alias FROM "public"."ai_prompt_versions" AS governed INNER JOIN orders AS audit_alias ON audit_alias.id = governed.id');
+Storage::statement("DELETE governed FROM orders AS source LEFT JOIN audits AS audit ON (audit.note = 'where' AND EXISTS (SELECT 1 FROM logs WHERE logs.id = audit.id)) /* where join */ NATURAL RIGHT JOIN ai_release_policies AS governed");
+Storage::statement('DELETE governed FROM orders AS source RIGHT JOIN ai_release_decisions PARTITION (p0) AS governed ON (governed.id = (SELECT max(id) FROM audits WHERE audits.order_id = source.id))');
+Storage::statement('DELETE governed FROM orders AS source JOIN audits AS audit USING ("where") STRAIGHT_JOIN ai_agent_activations AS governed ON governed.id = source.id');
+Storage::statement('DELETE governed, audit FROM ai_agent_definitions AS governed JOIN audits AS audit ON audit.id = governed.id JOIN ai_models AS registry_source ON registry_source.id = governed.id');
+Storage::statement('DELETE FROM ai_prompt_definitions AS governed WHERE governed.id = 1');
+Storage::statement('DELETE governed FROM ai_agent_activations AS governed JOIN orders AS governed ON governed.id = governed.id');
+Storage::statement("DELETE {$table} FROM orders AS source");
+Storage::statement('DELETE "public"."ai_models" FROM "public"."ai_models" WHERE id = 1');
+Storage::statement('DELETE FROM governed USING ai_providers AS governed JOIN orders ON orders.id = governed.id');
+Storage::statement('DELETE FROM governed.*, audit USING ai_prompt_versions AS governed JOIN orders AS audit ON audit.id = governed.id');
+Storage::statement('DELETE FROM "where" USING ai_agent_versions AS "where" JOIN orders ON orders.id = "where".id');
+
+Storage::statement('DELETE FROM governed USING orders AS governed JOIN ai_provider_versions AS registry_source ON registry_source.id = governed.id');
+Storage::statement('DELETE FROM ONLY orders * AS governed USING ai_release_policies AS registry_source WHERE registry_source.id = governed.id');
+Storage::statement('DELETE orders FROM orders CROSS JOIN ai_agent_versions INNER JOIN ai_model_versions NATURAL LEFT JOIN ai_prompt_versions RIGHT JOIN ai_provider_versions ON 1=1');
+Storage::statement("DELETE orders FROM orders JOIN {$table} AS registry_source ON 1=1");
+Storage::statement("DELETE orders FROM orders JOIN audits ON audits.note = 'WHERE JOIN ai_agent_versions AS governed' /* STRAIGHT_JOIN ai_model_versions */");
+Storage::statement('DELETE FROM "audit.ai_agent_versions" WHERE id = 1');
+PHP;
+    file_put_contents($root.DIRECTORY_SEPARATOR.'DeleteTokenizer.php', $fixture);
+
+    try {
+        $findings = (new RegistryMutationScanner)->scan(
+            [$root],
+            [
+                'ai_providers',
+                'ai_provider_versions',
+                'ai_models',
+                'ai_model_versions',
+                'ai_agent_definitions',
+                'ai_agent_versions',
+                'ai_prompt_definitions',
+                'ai_prompt_versions',
+                'ai_release_policies',
+                'ai_agent_activations',
+                'ai_release_decisions',
+            ],
+        );
+    } finally {
+        unlink($root.DIRECTORY_SEPARATOR.'DeleteTokenizer.php');
+        rmdir($root);
+    }
+
+    expect(collect($findings)
+        ->map(static fn (object $finding): string => $finding->table.':'.$finding->method)
+        ->countBy()
+        ->sortKeys()
+        ->all())->toBe([
+            '*dynamic*:raw' => 2,
+            'ai_agent_activations:raw' => 1,
+            'ai_agent_definitions:raw' => 1,
+            'ai_agent_versions:raw' => 3,
+            'ai_model_versions:raw' => 1,
+            'ai_models:raw' => 1,
+            'ai_prompt_definitions:raw' => 1,
+            'ai_prompt_versions:raw' => 2,
+            'ai_provider_versions:raw' => 1,
+            'ai_providers:raw' => 1,
+            'ai_release_decisions:raw' => 1,
+            'ai_release_policies:raw' => 1,
+        ]);
+});
+
 it('detects query aliases eloquent and raw registry mutation bypasses without false positives', function (): void {
     $base = dirname(__DIR__, 2);
     $root = $base.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'framework'
