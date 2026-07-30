@@ -104,6 +104,8 @@ final class RegistryMutationScanner
         'raw',
     ];
 
+    private const SQL_EXPRESSION_SENTINEL = '__DOVRA_DYNAMIC_SQL_EXPRESSION__';
+
     /** @var array<string, string> */
     private array $modelTables = [];
 
@@ -400,7 +402,8 @@ final class RegistryMutationScanner
         if ($expression instanceof Expr\StaticCall) {
             return $this->analyzeStaticCall($expression, $environment);
         }
-        if ($expression instanceof Expr\MethodCall) {
+        if ($expression instanceof Expr\MethodCall
+            || $expression instanceof Expr\NullsafeMethodCall) {
             $origin = $expression->var instanceof Expr
                 ? $this->analyzeExpression($expression->var, $environment)
                 : null;
@@ -415,17 +418,37 @@ final class RegistryMutationScanner
             $method = $expression->name instanceof Node\Identifier
                 ? $expression->name->toString()
                 : null;
-            if ($origin !== null && $method !== null) {
-                if ($origin['kind'] === 'connection' && $method === 'table') {
+            $methodKey = $method === null ? null : strtolower($method);
+            if ($origin !== null) {
+                if ($methodKey === null) {
+                    if ($origin['kind'] === 'connection') {
+                        $this->appendDynamicDirectMethod(
+                            $expression->args[0]->value ?? null,
+                            $expression->getStartLine(),
+                        );
+                    } else {
+                        $this->appendForTables(
+                            $origin['tables'],
+                            '*dynamic_method*',
+                            $expression->getStartLine(),
+                        );
+                    }
+
+                    return $origin;
+                }
+                if ($origin['kind'] === 'connection' && $methodKey === 'table') {
                     return $this->tableOrigin(
                         $expression->args[0]->value ?? null,
                         $environment,
                     );
                 }
-                if ($origin['kind'] === 'connection'
-                    && in_array($method, self::DIRECT_SQL_WRITES, true)) {
+                $directMethod = $this->canonicalMethod(
+                    $methodKey,
+                    self::DIRECT_SQL_WRITES,
+                );
+                if ($origin['kind'] === 'connection' && $directMethod !== null) {
                     $this->appendDirectSqlCall(
-                        $method,
+                        $directMethod,
                         $expression->args[0]->value ?? null,
                         $expression->getStartLine(),
                     );
@@ -435,21 +458,26 @@ final class RegistryMutationScanner
                 $writes = $origin['kind'] === 'model'
                     ? self::ELOQUENT_WRITES
                     : self::QUERY_WRITES;
-                if (in_array($method, $writes, true)) {
-                    $this->appendForTables($origin['tables'], $method, $expression->getStartLine());
+                $canonicalMethod = $this->canonicalMethod($methodKey, $writes);
+                if ($canonicalMethod !== null) {
+                    $this->appendForTables(
+                        $origin['tables'],
+                        $canonicalMethod,
+                        $expression->getStartLine(),
+                    );
                 }
 
                 return $origin;
             }
-            if ($method !== null
+            if ($methodKey !== null
                 && $expression->var instanceof Expr\Variable
                 && $expression->var->name === 'this') {
-                $this->analyzeLocalMethod($method, $argumentOrigins, $environment);
+                $this->analyzeLocalMethod($methodKey, $argumentOrigins, $environment);
             }
-            if ($method !== null && isset($this->methodTableReturns[$method])) {
+            if ($methodKey !== null && isset($this->methodTableReturns[$methodKey])) {
                 return [
                     'kind' => 'table-record',
-                    'tables' => $this->methodTableReturns[$method],
+                    'tables' => $this->methodTableReturns[$methodKey],
                 ];
             }
 
@@ -524,20 +552,31 @@ final class RegistryMutationScanner
                 $this->analyzeExpression($argument->value, $environment);
             }
         }
-        if (! $call->class instanceof Name || ! $call->name instanceof Node\Identifier) {
+        if (! $call->class instanceof Name) {
             return null;
         }
-        $method = $call->name->toString();
+        $method = $call->name instanceof Node\Identifier
+            ? strtolower($call->name->toString())
+            : null;
         if ($this->isDatabaseFacade($call->class)) {
+            if ($method === null) {
+                $this->appendDynamicDirectMethod(
+                    $call->args[0]->value ?? null,
+                    $call->getStartLine(),
+                );
+
+                return null;
+            }
             if ($method === 'table') {
                 return $this->tableOrigin($call->args[0]->value ?? null, $environment);
             }
             if ($method === 'connection') {
                 return ['kind' => 'connection', 'tables' => []];
             }
-            if (in_array($method, self::DIRECT_SQL_WRITES, true)) {
+            $directMethod = $this->canonicalMethod($method, self::DIRECT_SQL_WRITES);
+            if ($directMethod !== null) {
                 $this->appendDirectSqlCall(
-                    $method,
+                    $directMethod,
                     $call->args[0]->value ?? null,
                     $call->getStartLine(),
                 );
@@ -550,8 +589,14 @@ final class RegistryMutationScanner
         if ($table === null) {
             return null;
         }
-        if (in_array($method, self::ELOQUENT_WRITES, true)) {
-            $this->appendForTables([$table], $method, $call->getStartLine());
+        if ($method === null) {
+            $this->appendForTables([$table], '*dynamic_method*', $call->getStartLine());
+
+            return ['kind' => 'model', 'tables' => [$table]];
+        }
+        $canonicalMethod = $this->canonicalMethod($method, self::ELOQUENT_WRITES);
+        if ($canonicalMethod !== null) {
+            $this->appendForTables([$table], $canonicalMethod, $call->getStartLine());
         }
 
         return ['kind' => 'model', 'tables' => [$table]];
@@ -694,16 +739,97 @@ final class RegistryMutationScanner
         }
     }
 
-    private function appendSqlWrites(string $sql, string $method, int $line): void
+    private function appendDynamicDirectMethod(mixed $sqlNode, int $line): void
     {
-        if (preg_match('/\b(?:insert|update|delete|truncate|replace|alter|drop)\b/i', $sql) !== 1) {
+        $sql = $this->sqlValue($sqlNode);
+        if ($sql === null) {
+            $this->appendForTables(['*dynamic*'], '*dynamic_method*', $line);
+
             return;
         }
-        foreach ($this->registryTables as $table) {
-            if (preg_match('/\b'.preg_quote($table, '/').'\b/i', $sql) === 1) {
+        $this->appendSqlWrites($sql, '*dynamic_method*', $line);
+    }
+
+    private function appendSqlWrites(string $sql, string $method, int $line): void
+    {
+        if (preg_match(
+            '/\b(?:insert|update|delete|truncate|replace|alter|drop|create|rename|merge)\b/i',
+            $sql,
+        ) !== 1) {
+            return;
+        }
+        $targets = $this->sqlWriteTargets($sql);
+        if ($targets === []) {
+            if (str_contains($sql, self::SQL_EXPRESSION_SENTINEL)) {
+                $this->append('*dynamic*', $method, $line);
+
+                return;
+            }
+            foreach ($this->registryTables as $table) {
+                if (preg_match('/\b'.preg_quote($table, '/').'\b/i', $sql) === 1) {
+                    $this->append($table, $method, $line);
+                }
+            }
+
+            return;
+        }
+        foreach ($targets as $target) {
+            if (str_contains($target, self::SQL_EXPRESSION_SENTINEL)) {
+                $this->append('*dynamic*', $method, $line);
+
+                continue;
+            }
+            $table = $this->normalizeSqlTarget($target);
+            if (in_array($table, $this->registryTables, true)) {
                 $this->append($table, $method, $line);
             }
         }
+    }
+
+    /** @return list<string> */
+    private function sqlWriteTargets(string $sql): array
+    {
+        $target = '(?<table>[^\s(;,]+)';
+        $patterns = [
+            '/\binsert\s+(?:(?:or\s+\w+|ignore)\s+)?into\s+'.$target.'/i',
+            '/\breplace\s+(?:into\s+)?'.$target.'/i',
+            '/\bupdate\s+'.$target.'/i',
+            '/\bdelete\s+from\s+'.$target.'/i',
+            '/\btruncate\s+(?:table\s+)?'.$target.'/i',
+            '/\balter\s+table\s+'.$target.'/i',
+            '/\bdrop\s+table\s+(?:if\s+exists\s+)?'.$target.'/i',
+            '/\bcreate\s+table\s+(?:if\s+not\s+exists\s+)?'.$target.'/i',
+            '/\brename\s+table\s+'.$target.'/i',
+            '/\bmerge\s+into\s+'.$target.'/i',
+        ];
+        $targets = [];
+        foreach ($patterns as $pattern) {
+            if (preg_match_all($pattern, $sql, $matches) > 0) {
+                $targets = [...$targets, ...$matches['table']];
+            }
+        }
+
+        return array_values(array_unique(array_map('strval', $targets)));
+    }
+
+    private function normalizeSqlTarget(string $target): string
+    {
+        $segments = explode('.', trim($target, " \t\n\r\0\x0B`\"[]"));
+
+        return trim((string) end($segments), '`"[]');
+    }
+
+    /** @param list<string> $inventory */
+    private function canonicalMethod(string $method, array $inventory): ?string
+    {
+        $method = strtolower($method);
+        foreach ($inventory as $candidate) {
+            if (strtolower($candidate) === $method) {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 
     /** @param list<string> $tables */
@@ -780,7 +906,9 @@ final class RegistryMutationScanner
         if ($node instanceof InterpolatedString) {
             $sql = '';
             foreach ($node->parts as $part) {
-                $sql .= $part instanceof InterpolatedStringPart ? $part->value : '?';
+                $sql .= $part instanceof InterpolatedStringPart
+                    ? $part->value
+                    : self::SQL_EXPRESSION_SENTINEL;
             }
 
             return $sql;
@@ -795,7 +923,7 @@ final class RegistryMutationScanner
             && $node->class instanceof Name
             && $node->name instanceof Node\Identifier
             && $this->isDatabaseFacade($node->class)
-            && $node->name->toString() === 'raw') {
+            && strtolower($node->name->toString()) === 'raw') {
             return $this->sqlValue($node->args[0]->value ?? null);
         }
 
@@ -944,7 +1072,7 @@ final class RegistryMutationScanner
                 $tables = array_values(array_unique($tables));
             }
             if ($tables !== []) {
-                $this->methodTableReturns[$methodName] = $tables;
+                $this->methodTableReturns[strtolower($methodName)] = $tables;
             }
             $tuple = $this->tupleTablesFromMethod($method);
             if ($tuple !== []) {
@@ -952,12 +1080,14 @@ final class RegistryMutationScanner
             }
         }
 
-        /** @var Expr\MethodCall $call */
-        foreach ($finder->findInstanceOf($nodes, Expr\MethodCall::class) as $call) {
-            if ($call->var instanceof Expr\Variable
-                && $call->var->name === 'this'
-                && $call->name instanceof Node\Identifier) {
-                $this->internallyCalledMethods[strtolower($call->name->toString())] = true;
+        foreach ([Expr\MethodCall::class, Expr\NullsafeMethodCall::class] as $callClass) {
+            /** @var Expr\MethodCall|Expr\NullsafeMethodCall $call */
+            foreach ($finder->findInstanceOf($nodes, $callClass) as $call) {
+                if ($call->var instanceof Expr\Variable
+                    && $call->var->name === 'this'
+                    && $call->name instanceof Node\Identifier) {
+                    $this->internallyCalledMethods[strtolower($call->name->toString())] = true;
+                }
             }
         }
     }
@@ -995,9 +1125,10 @@ final class RegistryMutationScanner
 
             return array_values(array_unique($tables));
         }
-        if ($expression instanceof Expr\MethodCall
+        if (($expression instanceof Expr\MethodCall
+                || $expression instanceof Expr\NullsafeMethodCall)
             && $expression->name instanceof Node\Identifier) {
-            return $this->methodTableReturns[$expression->name->toString()] ?? [];
+            return $this->methodTableReturns[strtolower($expression->name->toString())] ?? [];
         }
 
         $literal = $this->literalString($expression);
@@ -1008,7 +1139,8 @@ final class RegistryMutationScanner
     /** @return array<int, list<string>> */
     private function tupleTablesFromExpression(mixed $expression): array
     {
-        if ($expression instanceof Expr\MethodCall
+        if (($expression instanceof Expr\MethodCall
+                || $expression instanceof Expr\NullsafeMethodCall)
             && $expression->name instanceof Node\Identifier) {
             return $this->methodTupleReturns[strtolower($expression->name->toString())] ?? [];
         }

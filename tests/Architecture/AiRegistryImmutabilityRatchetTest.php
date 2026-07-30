@@ -214,6 +214,86 @@ PHP;
         ]);
 });
 
+it('distinguishes interpolated sql targets and detects case insensitive and dynamic methods', function (): void {
+    $base = dirname(__DIR__, 2);
+    $root = $base.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'framework'
+        .DIRECTORY_SEPARATOR.'testing'.DIRECTORY_SEPARATOR.'registry-ratchet-'.Str::uuid();
+    mkdir($root, 0777, true);
+    $modelFixture = <<<'PHP'
+<?php
+
+namespace Fixtures;
+
+use Illuminate\Database\Eloquent\Model;
+
+final class ProviderVersion extends Model
+{
+    protected $table = 'ai_provider_versions';
+}
+PHP;
+    $fixture = <<<'PHP'
+<?php
+
+use Fixtures\ProviderVersion as RegistryProvider;
+use Illuminate\Support\Facades\DB as Storage;
+
+$table = getenv('REGISTRY_TABLE');
+$value = getenv('REGISTRY_VALUE');
+$method = getenv('REGISTRY_METHOD');
+
+Storage::statement("UPDATE {$table} SET checksum = 'fixed'");
+Storage::statement("INSERT INTO {$table} (id) VALUES ('fixture')");
+Storage::statement("DELETE FROM {$table} WHERE id = 'fixture'");
+Storage::statement("TRUNCATE TABLE {$table}");
+Storage::statement("ALTER TABLE {$table} ADD COLUMN fixture INT");
+Storage::statement("DROP TABLE IF EXISTS {$table}");
+
+Storage::StAtEmEnT("UPDATE ai_agent_versions SET checksum = '{$value}'");
+Storage::statement("UPDATE outbox_messages SET payload = '{$value}'");
+
+Storage::TaBlE('ai_agent_versions')->UPDATE([]);
+Storage::table('ai_agent_versions')->InSeRtUsInG(['id'], Storage::table('source'));
+RegistryProvider::DeLeTe();
+
+$provider = new RegistryProvider();
+$provider?->SaVeQuIeTlY();
+
+$registry = Storage::table('ai_agent_versions');
+$registry->{$method}([]);
+$orders = Storage::table('orders');
+$orders->{$method}([]);
+RegistryProvider::$method([]);
+PHP;
+    file_put_contents($root.DIRECTORY_SEPARATOR.'ProviderVersion.php', $modelFixture);
+    file_put_contents($root.DIRECTORY_SEPARATOR.'InterpolationAndCase.php', $fixture);
+
+    try {
+        $findings = (new RegistryMutationScanner)->scan(
+            [$root],
+            ['ai_agent_versions', 'ai_provider_versions'],
+        );
+    } finally {
+        unlink($root.DIRECTORY_SEPARATOR.'InterpolationAndCase.php');
+        unlink($root.DIRECTORY_SEPARATOR.'ProviderVersion.php');
+        rmdir($root);
+    }
+
+    expect(collect($findings)
+        ->map(static fn (object $finding): string => $finding->table.':'.$finding->method)
+        ->countBy()
+        ->sortKeys()
+        ->all())->toBe([
+            '*dynamic*:raw' => 6,
+            'ai_agent_versions:*dynamic_method*' => 1,
+            'ai_agent_versions:insertUsing' => 1,
+            'ai_agent_versions:raw' => 1,
+            'ai_agent_versions:update' => 1,
+            'ai_provider_versions:*dynamic_method*' => 1,
+            'ai_provider_versions:delete' => 1,
+            'ai_provider_versions:saveQuietly' => 1,
+        ]);
+});
+
 it('detects query aliases eloquent and raw registry mutation bypasses without false positives', function (): void {
     $base = dirname(__DIR__, 2);
     $root = $base.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'framework'
