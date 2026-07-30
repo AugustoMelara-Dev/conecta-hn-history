@@ -872,6 +872,19 @@ final class RegistryMutationScanner
         if (! $this->sqlDeleteBalanced($sql)) {
             return [self::SQL_EXPRESSION_SENTINEL];
         }
+        $targetStart = 1;
+        while (isset($head[$targetStart])
+            && in_array($head[$targetStart]->keyword, ['LOW_PRIORITY', 'QUICK', 'IGNORE'], true)) {
+            $targetStart++;
+        }
+        if (! isset($head[$targetStart])
+            || (! $this->sqlDeleteIsKeywordToken($head[$targetStart], 'FROM')
+                && ! $this->sqlDeleteIsIdentifierToken($head[$targetStart]))) {
+            return [self::SQL_EXPRESSION_SENTINEL];
+        }
+        if (! $this->sqlDeletePartitionsAreContextValid($sql)) {
+            return [self::SQL_EXPRESSION_SENTINEL];
+        }
 
         $postgresTarget = $this->sqlDeletePostgresTarget($sql);
         if ($postgresTarget !== null) {
@@ -893,7 +906,7 @@ final class RegistryMutationScanner
             }
         }
         if (! $statement instanceof SqlDeleteStatement) {
-            return [];
+            return [self::SQL_EXPRESSION_SENTINEL];
         }
 
         $targets = $statement->columns ?? [];
@@ -930,13 +943,11 @@ final class RegistryMutationScanner
                 if ($target === null || $target['name'] === self::SQL_EXPRESSION_SENTINEL) {
                     return [self::SQL_EXPRESSION_SENTINEL];
                 }
-                if (in_array($target['name'], $this->registryTables, true)) {
-                    return [$target['name']];
-                }
-                if (! isset($symbols['aliases'][$target['name']])
-                    && ! isset($symbols['tables'][$target['name']])) {
-                    return [$target['name']];
-                }
+
+                return $this->sqlDeleteCompareDialectTargets(
+                    [$target['name']],
+                    $this->sqlDeleteResolveTargets($from, $symbols),
+                );
             }
 
             return $this->sqlDeleteResolveTargets($from, $symbols);
@@ -979,7 +990,7 @@ final class RegistryMutationScanner
         $only = isset($tokens[$cursor]) && $this->sqlDeleteIsKeywordToken($tokens[$cursor], 'ONLY');
         $cursor += (int) $only;
         if (! isset($tokens[$cursor]) || ! $this->sqlDeleteIsIdentifierToken($tokens[$cursor])) {
-            return $only ? self::SQL_EXPRESSION_SENTINEL : null;
+            return self::SQL_EXPRESSION_SENTINEL;
         }
 
         $identifier = $tokens[$cursor++]->token;
@@ -1170,6 +1181,38 @@ final class RegistryMutationScanner
         return $targets;
     }
 
+    /**
+     * @param  list<string>  $postgresTargets
+     * @param  list<string>  $mysqlTargets
+     * @return list<string>
+     */
+    private function sqlDeleteCompareDialectTargets(
+        array $postgresTargets,
+        array $mysqlTargets,
+    ): array {
+        if (in_array(self::SQL_EXPRESSION_SENTINEL, $postgresTargets, true)
+            || in_array(self::SQL_EXPRESSION_SENTINEL, $mysqlTargets, true)) {
+            return [self::SQL_EXPRESSION_SENTINEL];
+        }
+
+        $registryTargets = fn (array $targets): array => array_values(array_unique(array_filter(
+            $targets,
+            fn (string $target): bool => in_array($target, $this->registryTables, true),
+        )));
+        $postgresRegistryTargets = $registryTargets($postgresTargets);
+        $mysqlRegistryTargets = $registryTargets($mysqlTargets);
+        sort($postgresRegistryTargets);
+        sort($mysqlRegistryTargets);
+
+        if ($postgresRegistryTargets === $mysqlRegistryTargets) {
+            return $postgresRegistryTargets;
+        }
+
+        return $postgresRegistryTargets !== [] || $mysqlRegistryTargets !== []
+            ? [self::SQL_EXPRESSION_SENTINEL]
+            : [];
+    }
+
     private function sqlDeleteAddBinding(array &$bindings, string $key, string $value): void
     {
         $bindings[$key][] = $value;
@@ -1243,8 +1286,11 @@ final class RegistryMutationScanner
 
     private function sqlDeleteIsIdentifierToken(SqlToken $token): bool
     {
-        if (in_array($token->type, [SqlTokenType::None, SqlTokenType::Keyword], true)) {
+        if ($token->type === SqlTokenType::None) {
             return true;
+        }
+        if ($token->type === SqlTokenType::Keyword) {
+            return ! (bool) ($token->flags & SqlToken::FLAG_KEYWORD_RESERVED);
         }
         if ($token->type === SqlTokenType::String) {
             return isset($token->token[0]) && $token->token[0] === '"';
@@ -1303,38 +1349,123 @@ final class RegistryMutationScanner
                 continue;
             }
 
-            $probe = $cursor + 1;
-            while (isset($tokens[$probe])
-                && in_array($tokens[$probe]->type, [
-                    SqlTokenType::Whitespace,
-                    SqlTokenType::Comment,
-                ], true)) {
-                $probe++;
-            }
-            if (! isset($tokens[$probe]) || $tokens[$probe]->value !== '(') {
+            $partitionEnd = $this->sqlDeletePartitionEnd($tokens, $cursor);
+            if ($partitionEnd === null) {
                 $normalized .= $token->token;
 
                 continue;
             }
 
-            for ($depth = 0; $probe < $count; $probe++) {
-                $depth += $tokens[$probe]->value === '('
-                    ? 1
-                    : ($tokens[$probe]->value === ')' ? -1 : 0);
-                if ($depth === 0) {
-                    break;
-                }
-            }
-            if ($depth !== 0) {
-                return $sql;
-            }
-            for (; $cursor <= $probe; $cursor++) {
+            for (; $cursor <= $partitionEnd; $cursor++) {
                 $normalized .= $this->maskSqlSegment($tokens[$cursor]->token);
             }
             $cursor--;
         }
 
         return $normalized;
+    }
+
+    private function sqlDeletePartitionsAreContextValid(string $sql): bool
+    {
+        try {
+            $lexer = new SqlLexer($sql);
+        } catch (\Throwable) {
+            return false;
+        }
+
+        foreach ($lexer->list->tokens as $cursor => $token) {
+            if ($this->sqlDeleteIsKeywordToken($token, 'PARTITION')
+                && $this->sqlDeletePartitionEnd($lexer->list->tokens, $cursor) === null) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /** @param list<SqlToken> $tokens */
+    private function sqlDeletePartitionEnd(array $tokens, int $cursor): ?int
+    {
+        $previous = $this->sqlDeletePreviousSignificantToken($tokens, $cursor);
+        if ($previous === null || ! $this->sqlDeleteIsIdentifierToken($tokens[$previous])) {
+            return null;
+        }
+
+        $tableStart = $previous;
+        while (($dot = $this->sqlDeletePreviousSignificantToken($tokens, $tableStart)) !== null
+            && $tokens[$dot]->value === '.') {
+            $segment = $this->sqlDeletePreviousSignificantToken($tokens, $dot);
+            if ($segment === null || ! $this->sqlDeleteIsIdentifierToken($tokens[$segment])) {
+                return null;
+            }
+            $tableStart = $segment;
+        }
+
+        $context = $this->sqlDeletePreviousSignificantToken($tokens, $tableStart);
+        if ($context === null
+            || (! $this->sqlDeleteIsKeywordToken($tokens[$context], 'FROM')
+                && ! $this->sqlDeleteIsKeywordToken($tokens[$context], 'USING')
+                && ! ($tokens[$context]->type === SqlTokenType::Keyword
+                    && str_ends_with((string) $tokens[$context]->keyword, 'JOIN')))) {
+            return null;
+        }
+
+        $probe = $cursor + 1;
+        while (isset($tokens[$probe]) && $this->sqlDeleteIsTriviaToken($tokens[$probe])) {
+            $probe++;
+        }
+        if (! isset($tokens[$probe]) || $tokens[$probe]->value !== '(') {
+            return null;
+        }
+
+        $expectIdentifier = true;
+        $hasIdentifier = false;
+        for ($probe++; isset($tokens[$probe]); $probe++) {
+            if ($this->sqlDeleteIsTriviaToken($tokens[$probe])) {
+                continue;
+            }
+            if ($tokens[$probe]->value === ')') {
+                return $hasIdentifier && ! $expectIdentifier ? $probe : null;
+            }
+            if ($tokens[$probe]->value === '(') {
+                return null;
+            }
+            if ($expectIdentifier) {
+                if (! $this->sqlDeleteIsIdentifierToken($tokens[$probe])) {
+                    return null;
+                }
+                $hasIdentifier = true;
+                $expectIdentifier = false;
+
+                continue;
+            }
+            if ($tokens[$probe]->value !== ',') {
+                return null;
+            }
+            $expectIdentifier = true;
+        }
+
+        return null;
+    }
+
+    /** @param list<SqlToken> $tokens */
+    private function sqlDeletePreviousSignificantToken(array $tokens, int $cursor): ?int
+    {
+        for ($cursor--; $cursor >= 0; $cursor--) {
+            if (! $this->sqlDeleteIsTriviaToken($tokens[$cursor])) {
+                return $cursor;
+            }
+        }
+
+        return null;
+    }
+
+    private function sqlDeleteIsTriviaToken(SqlToken $token): bool
+    {
+        return in_array($token->type, [
+            SqlTokenType::Whitespace,
+            SqlTokenType::Comment,
+        ], true);
     }
 
     /** @return list<string> */

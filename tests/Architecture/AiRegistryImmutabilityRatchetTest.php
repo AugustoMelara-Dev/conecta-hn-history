@@ -411,8 +411,7 @@ PHP;
         ->countBy()
         ->sortKeys()
         ->all())->toBe([
-            '*dynamic*:raw' => 2,
-            'ai_agent_activations:raw' => 1,
+            '*dynamic*:raw' => 3,
             'ai_agent_versions:raw' => 1,
             'ai_model_versions:raw' => 1,
             'ai_prompt_versions:raw' => 1,
@@ -489,16 +488,15 @@ PHP;
         ->countBy()
         ->sortKeys()
         ->all())->toBe([
-            '*dynamic*:raw' => 2,
+            '*dynamic*:raw' => 4,
             'ai_agent_activations:raw' => 1,
             'ai_agent_definitions:raw' => 1,
-            'ai_agent_versions:raw' => 3,
+            'ai_agent_versions:raw' => 2,
             'ai_model_versions:raw' => 1,
             'ai_models:raw' => 1,
             'ai_prompt_definitions:raw' => 1,
             'ai_prompt_versions:raw' => 2,
             'ai_provider_versions:raw' => 1,
-            'ai_providers:raw' => 1,
             'ai_release_decisions:raw' => 1,
             'ai_release_policies:raw' => 1,
         ]);
@@ -558,12 +556,67 @@ PHP;
         ->countBy()
         ->sortKeys()
         ->all())->toBe([
-            '*dynamic*:raw' => 4,
+            '*dynamic*:raw' => 6,
             'ai_agent_versions:raw' => 2,
             'ai_model_versions:raw' => 1,
             'ai_prompt_versions:raw' => 1,
-            'ai_release_decisions:raw' => 1,
+        ]);
+});
+
+it('compares ambiguous delete dialect targets and rejects malformed target contexts', function (): void {
+    $base = dirname(__DIR__, 2);
+    $root = $base.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'framework'
+        .DIRECTORY_SEPARATOR.'testing'.DIRECTORY_SEPARATOR.'registry-ratchet-'.Str::uuid();
+    mkdir($root, 0777, true);
+    $fixture = <<<'PHP'
+<?php
+
+use Illuminate\Support\Facades\DB as Storage;
+
+Storage::statement('DELETE FROM orders USING ai_agent_versions AS orders WHERE orders.id = ai_agent_versions.id');
+Storage::statement('DELETE FROM ai_prompt_versions USING orders AS ai_prompt_versions WHERE orders.id = ai_prompt_versions.id');
+Storage::statement('DELETE FROM ai_agent_versions USING ai_agent_versions WHERE id = 1');
+Storage::statement('DELETE FROM orders USING orders WHERE id = 1');
+Storage::statement('DELETE FROM ai_model_versions AS governed USING orders AS ai_model_versions WHERE governed.id = ai_model_versions.id');
+
+Storage::statement('DELETE FROM ai_release_policies PARTITION (p0) WHERE id = 1');
+Storage::statement('DELETE FROM orders PARTITION (p0) WHERE id = 1');
+Storage::statement('DELETE PARTITION (ai_agent_versions) FROM orders');
+Storage::statement('DELETE FROM orders WHERE (orders PARTITION (ai_agent_versions))');
+Storage::statement('DELETE FROM WHERE ai_agent_versions');
+Storage::statement('DELETE FROM "where" WHERE id = 1');
+
+Storage::statement("DELETE FROM orders AS target USING ai_release_decisions AS registry_source WHERE target.note = 'ai_prompt_versions' /* ai_agent_versions */");
+PHP;
+    file_put_contents($root.DIRECTORY_SEPARATOR.'DeleteDialectTargets.php', $fixture);
+
+    try {
+        $findings = (new RegistryMutationScanner)->scan(
+            [$root],
+            [
+                'where',
+                'ai_agent_versions',
+                'ai_model_versions',
+                'ai_prompt_versions',
+                'ai_release_policies',
+                'ai_release_decisions',
+            ],
+        );
+    } finally {
+        unlink($root.DIRECTORY_SEPARATOR.'DeleteDialectTargets.php');
+        rmdir($root);
+    }
+
+    expect(collect($findings)
+        ->map(static fn (object $finding): string => $finding->table.':'.$finding->method)
+        ->countBy()
+        ->sortKeys()
+        ->all())->toBe([
+            '*dynamic*:raw' => 5,
+            'ai_agent_versions:raw' => 1,
+            'ai_model_versions:raw' => 1,
             'ai_release_policies:raw' => 1,
+            'where:raw' => 1,
         ]);
 });
 
