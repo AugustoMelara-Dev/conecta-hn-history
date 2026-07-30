@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Ai\Registry;
 
 use App\Exceptions\Ai\AiExecutionDeniedException;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -20,6 +21,7 @@ final class AiReleaseEligibility
         array $allowedLifecycleStatuses,
         string $denialReason,
         ?string $expectedAgentVersionId = null,
+        bool $lockForUpdate = false,
     ): AiReleaseCandidateSet {
         if (! Str::isUuid($tenantId)
             || ! Str::isUuid($decisionId)
@@ -27,9 +29,9 @@ final class AiReleaseEligibility
             $this->deny($denialReason);
         }
 
-        $decision = DB::table('ai_release_decisions')
+        $decision = $this->read(DB::table('ai_release_decisions')
             ->where('tenant_id', $tenantId)
-            ->where('id', $decisionId)
+            ->where('id', $decisionId), $lockForUpdate)
             ->first();
         if ($decision === null
             || ! is_string($decision->agent_version_id)
@@ -48,12 +50,12 @@ final class AiReleaseEligibility
             $this->deny($denialReason);
         }
 
-        $latest = DB::table('ai_release_decisions')
+        $latest = $this->read(DB::table('ai_release_decisions')
             ->where('tenant_id', $tenantId)
             ->where('agent_version_id', $decision->agent_version_id)
             ->orderByDesc('decided_at')
             ->orderByDesc('id')
-            ->limit(2)
+            ->limit(2), $lockForUpdate)
             ->get();
         if ($latest->isEmpty()
             || ! hash_equals($decisionId, (string) $latest->first()->id)
@@ -65,15 +67,15 @@ final class AiReleaseEligibility
             $this->deny($denialReason);
         }
 
-        $policy = DB::table('ai_release_policies')
+        $policy = $this->read(DB::table('ai_release_policies')
             ->where('tenant_id', $tenantId)
             ->where('id', $decision->release_policy_id)
-            ->where('status', 'active')
+            ->where('status', 'active'), $lockForUpdate)
             ->first();
-        $run = DB::table('ai_evaluation_runs')
+        $run = $this->read(DB::table('ai_evaluation_runs')
             ->where('tenant_id', $tenantId)
             ->where('id', $decision->evaluation_run_id)
-            ->where('status', 'completed')
+            ->where('status', 'completed'), $lockForUpdate)
             ->first();
         if ($policy === null
             || $run === null
@@ -85,24 +87,27 @@ final class AiReleaseEligibility
             $this->deny($denialReason);
         }
 
-        $evaluationVersion = DB::table('ai_evaluation_versions')
+        $evaluationVersion = $this->read(DB::table('ai_evaluation_versions')
             ->where('tenant_id', $tenantId)
-            ->where('id', $run->evaluation_version_id)
+            ->where('id', $run->evaluation_version_id), $lockForUpdate)
             ->first();
+        $evaluationSuite = $evaluationVersion === null
+            ? null
+            : $this->read(DB::table('ai_evaluation_suites')
+                ->where('tenant_id', $tenantId)
+                ->where('id', $evaluationVersion->evaluation_suite_id)
+                ->where('status', 'active'), $lockForUpdate)
+                ->first();
         if ($evaluationVersion === null
             || $evaluationVersion->released_at === null
             || ! $this->atOrBefore($evaluationVersion->released_at, $decision->decided_at)
-            || ! DB::table('ai_evaluation_suites')
-                ->where('tenant_id', $tenantId)
-                ->where('id', $evaluationVersion->evaluation_suite_id)
-                ->where('status', 'active')
-                ->exists()) {
+            || $evaluationSuite === null) {
             $this->deny($denialReason);
         }
 
-        $agent = DB::table('ai_agent_versions')
+        $agent = $this->read(DB::table('ai_agent_versions')
             ->where('tenant_id', $tenantId)
-            ->where('id', $decision->agent_version_id)
+            ->where('id', $decision->agent_version_id), $lockForUpdate)
             ->first();
         if ($agent === null
             || ! in_array((string) $agent->lifecycle_status, $allowedLifecycleStatuses, true)
@@ -110,10 +115,10 @@ final class AiReleaseEligibility
             || ! hash_equals((string) $agent->checksum, (string) $decision->candidate_checksum)) {
             $this->deny($denialReason);
         }
-        $agentDefinition = DB::table('ai_agent_definitions')
+        $agentDefinition = $this->read(DB::table('ai_agent_definitions')
             ->where('tenant_id', $tenantId)
             ->where('id', $agent->agent_definition_id)
-            ->where('status', 'active')
+            ->where('status', 'active'), $lockForUpdate)
             ->first();
         $agentConfiguration = $this->jsonObject($agent->configuration);
         $promptVersionId = $agentConfiguration['prompt_version_id'] ?? null;
@@ -128,34 +133,34 @@ final class AiReleaseEligibility
             $this->deny($denialReason);
         }
 
-        $prompt = DB::table('ai_prompt_versions')
+        $prompt = $this->read(DB::table('ai_prompt_versions')
             ->where('tenant_id', $tenantId)
-            ->where('id', $run->prompt_version_id)
+            ->where('id', $run->prompt_version_id), $lockForUpdate)
             ->first();
         $promptDefinition = $prompt === null
             ? null
-            : DB::table('ai_prompt_definitions')
+            : $this->read(DB::table('ai_prompt_definitions')
                 ->where('tenant_id', $tenantId)
                 ->where('id', $prompt->prompt_definition_id)
-                ->where('status', 'active')
+                ->where('status', 'active'), $lockForUpdate)
                 ->first();
-        $model = DB::table('ai_model_versions')
-            ->where('id', $run->model_version_id)
+        $model = $this->read(DB::table('ai_model_versions')
+            ->where('id', $run->model_version_id), $lockForUpdate)
             ->first();
         $modelDefinition = $model === null
             ? null
-            : DB::table('ai_models')
+            : $this->read(DB::table('ai_models')
                 ->where('id', $model->model_id)
-                ->where('status', 'active')
+                ->where('status', 'active'), $lockForUpdate)
                 ->first();
-        $provider = DB::table('ai_provider_versions')
-            ->where('id', $run->provider_version_id)
+        $provider = $this->read(DB::table('ai_provider_versions')
+            ->where('id', $run->provider_version_id), $lockForUpdate)
             ->first();
         $providerDefinition = $provider === null
             ? null
-            : DB::table('ai_providers')
+            : $this->read(DB::table('ai_providers')
                 ->where('id', $provider->provider_id)
-                ->where('status', 'active')
+                ->where('status', 'active'), $lockForUpdate)
                 ->first();
         foreach ([$prompt, $model, $provider] as $version) {
             if ($version === null
@@ -174,15 +179,15 @@ final class AiReleaseEligibility
             $this->deny($denialReason);
         }
 
-        $caseIds = DB::table('ai_evaluation_cases')
+        $caseIds = $this->read(DB::table('ai_evaluation_cases')
             ->where('tenant_id', $tenantId)
-            ->where('evaluation_version_id', $evaluationVersion->id)
+            ->where('evaluation_version_id', $evaluationVersion->id), $lockForUpdate)
             ->pluck('id')
             ->map(static fn (mixed $id): string => (string) $id)
             ->all();
-        $results = DB::table('ai_evaluation_results')
+        $results = $this->read(DB::table('ai_evaluation_results')
             ->where('tenant_id', $tenantId)
-            ->where('evaluation_run_id', $run->id)
+            ->where('evaluation_run_id', $run->id), $lockForUpdate)
             ->get();
         if ($caseIds === [] || $results->count() !== count($caseIds)) {
             $this->deny($denialReason);
@@ -193,6 +198,8 @@ final class AiReleaseEligibility
             if (! in_array($caseId, $caseIds, true)
                 || in_array($caseId, $resultCaseIds, true)
                 || ! hash_equals('passed', (string) $result->status)
+                || ! $this->atOrBefore($run->started_at, $result->completed_at)
+                || ! $this->atOrBefore($result->completed_at, $run->completed_at)
                 || ! $this->atOrBefore($result->completed_at, $decision->decided_at)
                 || ! $this->atOrBefore($result->completed_at, now())) {
                 $this->deny($denialReason);
@@ -222,6 +229,38 @@ final class AiReleaseEligibility
         );
     }
 
+    public function assertDecisionStillEligible(
+        string $tenantId,
+        AiReleaseCandidateSet $set,
+        string $denialReason,
+    ): void {
+        $decision = DB::table('ai_release_decisions')
+            ->where('tenant_id', $tenantId)
+            ->where('id', $set->decision->id)
+            ->lockForUpdate()
+            ->first();
+        $policy = DB::table('ai_release_policies')
+            ->where('tenant_id', $tenantId)
+            ->where('id', $set->decision->release_policy_id)
+            ->lockForUpdate()
+            ->first();
+        if ($decision === null
+            || $policy === null
+            || ! hash_equals('passed', (string) $decision->decision)
+            || $decision->revoked_at !== null
+            || ! hash_equals('active', (string) $policy->status)
+            || ! hash_equals(
+                (string) $set->decision->candidate_checksum,
+                (string) $decision->candidate_checksum,
+            )
+            || ! hash_equals(
+                (string) $set->decision->updated_at,
+                (string) $decision->updated_at,
+            )) {
+            $this->deny($denialReason);
+        }
+    }
+
     private function atOrBefore(mixed $left, mixed $right): bool
     {
         if ($left === null || $right === null) {
@@ -246,6 +285,11 @@ final class AiReleaseEligibility
         } catch (\Throwable) {
             return false;
         }
+    }
+
+    private function read(Builder $query, bool $lockForUpdate): Builder
+    {
+        return $lockForUpdate ? $query->lockForUpdate() : $query;
     }
 
     /** @return array<string, mixed> */

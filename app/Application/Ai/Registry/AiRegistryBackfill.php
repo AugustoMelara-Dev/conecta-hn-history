@@ -271,6 +271,10 @@ final class AiRegistryBackfill
         $model = $models[0];
 
         DB::transaction(function () use ($tenantId, $capability, $definition, $agentKey, $visibility, $promptKey, $promptName, $prompt, $provider, $model, $models, $modelVersionIds): void {
+            DB::table('tenants')
+                ->where('id', $tenantId)
+                ->lockForUpdate()
+                ->firstOrFail();
             $promptVersion = $this->ensurePrompt($tenantId, $promptKey, $promptName, $visibility, $prompt);
             if ($promptVersion === null) {
                 return;
@@ -425,7 +429,11 @@ final class AiRegistryBackfill
             ),
         ];
         $checksum = $this->checksum->for($rules);
-        $policy = DB::table('ai_release_policies')->where('tenant_id', $tenantId)->where('key', 'compatibility.default')->first();
+        $policy = DB::table('ai_release_policies')
+            ->where('tenant_id', $tenantId)
+            ->where('key', 'compatibility.default')
+            ->lockForUpdate()
+            ->first();
         if ($policy !== null) {
             if ($policy->checksum !== $checksum) {
                 $this->conflicts++;

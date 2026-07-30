@@ -15,6 +15,7 @@ final readonly class AiRegistryResolver
     public function __construct(
         private LaravelAiContentCipher $cipher,
         private AiReleaseEligibility $eligibility,
+        private AiReleaseCompatibility $compatibility,
     ) {}
 
     public function resolve(AiRegistryQuery $query): AiRuntimeSelection
@@ -97,46 +98,13 @@ final readonly class AiRegistryResolver
             allowedLifecycleStatuses: ['eligible', 'active'],
             denialReason: 'registry_selection',
             expectedAgentVersionId: (string) $activation->agent_version_id,
+            lockForUpdate: false,
         );
         if (! hash_equals('active', (string) $set->agent->lifecycle_status)) {
             throw new AiExecutionDeniedException('registry_selection');
         }
 
-        $expectedVisibility = $this->definitionVisibility($query->audience);
-        $requiredCapabilities = $this->stringList(
-            $set->agentConfiguration['required_capabilities'] ?? null,
-        );
-        $modelVersionIds = $this->stringList($set->agentConfiguration['model_version_ids'] ?? null);
-        $channels = $this->stringList($set->agentConfiguration['channels'] ?? null);
-        $outputSchema = $set->agentConfiguration['output_schema'] ?? null;
-        $maxOutputTokens = $set->agentConfiguration['max_output_tokens'] ?? null;
-        if ($expectedVisibility === null
-            || ! hash_equals($expectedVisibility, (string) $set->agentDefinition->visibility)
-            || ! hash_equals($expectedVisibility, (string) $set->promptDefinition->visibility)
-            || ($set->agentConfiguration['capability'] ?? null) !== $query->capability
-            || ($set->agentConfiguration['audience'] ?? null) !== $query->audience
-            || ! in_array($query->channel, $channels, true)
-            || ! in_array((string) $set->model->id, $modelVersionIds, true)
-            || ! is_string($outputSchema)
-            || trim($outputSchema) === ''
-            || ! is_int($maxOutputTokens)
-            || $maxOutputTokens < 1
-            || $requiredCapabilities === []
-            || ! $this->routingCompatible(
-                $set->providerConfiguration,
-                $query,
-                $requiredCapabilities,
-            )
-            || ! $this->routingCompatible(
-                $set->modelConfiguration,
-                $query,
-                $requiredCapabilities,
-            )
-            || ! $this->policyCompatible($set->policyRules, $query, $requiredCapabilities)
-            || ! is_string($set->provider->secret_reference)
-            || trim($set->provider->secret_reference) === '') {
-            throw new AiExecutionDeniedException('registry_selection');
-        }
+        $match = $this->compatibility->assertForRuntime($set, $query);
 
         $systemPrompt = $this->cipher->decrypt(
             (string) $query->tenantId,
@@ -159,92 +127,10 @@ final readonly class AiRegistryResolver
             secretReference: (string) $set->provider->secret_reference,
             modelKey: (string) $set->modelDefinition->key,
             systemPrompt: $systemPrompt,
-            outputSchema: $outputSchema,
-            requiredCapabilities: $requiredCapabilities,
-            maxOutputTokens: $maxOutputTokens,
+            outputSchema: $match['output_schema'],
+            requiredCapabilities: $match['required_capabilities'],
+            maxOutputTokens: $match['max_output_tokens'],
             releaseDecisionId: (string) $set->decision->id,
         );
-    }
-
-    private function definitionVisibility(string $audience): ?string
-    {
-        return match ($audience) {
-            'public' => 'platform_public',
-            'private' => 'tenant_private',
-            default => null,
-        };
-    }
-
-    /**
-     * @param  array<string, mixed>  $rules
-     * @param  list<string>  $requiredCapabilities
-     */
-    private function policyCompatible(
-        array $rules,
-        AiRegistryQuery $query,
-        array $requiredCapabilities,
-    ): bool {
-        $policyCapabilities = $this->stringList($rules['required_capabilities'] ?? null);
-
-        return $policyCapabilities !== []
-            && $this->containsEvery($requiredCapabilities, $policyCapabilities)
-            && $this->countryAllowed($rules, 'allowed_market_country_codes', $query->marketCountryCode)
-            && $this->countryAllowed($rules, 'residency_country_codes', $query->marketCountryCode);
-    }
-
-    /**
-     * @param  array<string, mixed>  $configuration
-     * @param  list<string>  $requiredCapabilities
-     */
-    private function routingCompatible(
-        array $configuration,
-        AiRegistryQuery $query,
-        array $requiredCapabilities,
-    ): bool {
-        $capabilities = $this->stringList($configuration['capabilities'] ?? null);
-
-        return ($configuration['enabled'] ?? true) === true
-            && $capabilities !== []
-            && $this->containsEvery($capabilities, $requiredCapabilities)
-            && $this->countryAllowed(
-                $configuration,
-                'allowed_market_country_codes',
-                $query->marketCountryCode,
-            )
-            && $this->countryAllowed(
-                $configuration,
-                'residency_country_codes',
-                $query->marketCountryCode,
-            );
-    }
-
-    /** @param array<string, mixed> $configuration */
-    private function countryAllowed(array $configuration, string $key, string $countryCode): bool
-    {
-        $countries = $this->stringList($configuration[$key] ?? null);
-
-        return $countries !== [] && in_array($countryCode, $countries, true);
-    }
-
-    /** @param list<string> $haystack @param list<string> $needles */
-    private function containsEvery(array $haystack, array $needles): bool
-    {
-        return array_diff($needles, $haystack) === [];
-    }
-
-    /** @return list<string> */
-    private function stringList(mixed $value): array
-    {
-        if (! is_array($value) || ! array_is_list($value)) {
-            return [];
-        }
-        $strings = array_values(array_filter(
-            $value,
-            static fn (mixed $item): bool => is_string($item) && trim($item) !== '',
-        ));
-
-        return count($strings) === count($value) && count(array_unique($strings)) === count($strings)
-            ? $strings
-            : [];
     }
 }

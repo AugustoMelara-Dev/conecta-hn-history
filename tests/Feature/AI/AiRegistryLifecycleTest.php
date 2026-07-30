@@ -18,6 +18,9 @@ use App\Infrastructure\AI\ConfiguredAiProviderPool;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Database\Query\Builder;
+use Illuminate\Database\Query\Grammars\SQLiteGrammar;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -121,11 +124,124 @@ final class AiRegistryLifecycleTest extends TestCase
             ->count());
     }
 
+    public function test_canary_progression_keeps_the_root_control_until_full_rollout(): void
+    {
+        $fixture = $this->fixture('canary-progression');
+        $candidate = $this->eligibleCandidate($fixture);
+        $lifecycle = app(AiRegistryLifecycle::class);
+        $rootActivationId = $fixture['activation_id'];
+        $rootAgentVersionId = $fixture['selection']->agentVersionId;
+        $currentActivationId = $rootActivationId;
+
+        $activate = function (int $rolloutPercentage) use (
+            $candidate,
+            $fixture,
+            $lifecycle,
+            &$currentActivationId,
+        ): string {
+            $currentActivationId = $lifecycle->activate(new ActivateAgentVersionCommand(
+                actorId: (string) $fixture['admin']->id,
+                tenantId: (string) $fixture['tenant']->id,
+                scopeType: 'tenant',
+                scopeKey: (string) $fixture['tenant']->id,
+                agentVersionId: $candidate['agent_version_id'],
+                releaseDecisionId: $candidate['release_decision_id'],
+                rolloutPercentage: $rolloutPercentage,
+                reason: "Govern candidate at {$rolloutPercentage} percent",
+                expectedActivationId: $currentActivationId,
+                expectedLockVersion: 0,
+            ));
+
+            return $currentActivationId;
+        };
+
+        $zeroId = $activate(0);
+        $salt = (string) DB::table('ai_agent_activations')
+            ->where('id', $zeroId)
+            ->value('cohort_salt');
+        [$canarySubject, $controlSubject] = $this->cohortSubjects($salt, 25);
+        self::assertSame(
+            $rootAgentVersionId,
+            app(AiRegistryResolver::class)->resolve(
+                $this->registryQuery($fixture, $canarySubject),
+            )->agentVersionId,
+        );
+        self::assertSame($rootActivationId, DB::table('ai_agent_activations')
+            ->where('id', $zeroId)
+            ->value('previous_activation_id'));
+
+        $twentyFiveId = $activate(25);
+        self::assertSame($rootActivationId, DB::table('ai_agent_activations')
+            ->where('id', $twentyFiveId)
+            ->value('previous_activation_id'));
+        self::assertSame(
+            $candidate['agent_version_id'],
+            app(AiRegistryResolver::class)->resolve(
+                $this->registryQuery($fixture, $canarySubject),
+            )->agentVersionId,
+        );
+        self::assertSame(
+            $rootAgentVersionId,
+            app(AiRegistryResolver::class)->resolve(
+                $this->registryQuery($fixture, $controlSubject),
+            )->agentVersionId,
+        );
+        $this->assertDatabaseHas('ai_agent_versions', [
+            'id' => $rootAgentVersionId,
+            'lifecycle_status' => 'active',
+        ]);
+
+        $hundredId = $activate(100);
+        self::assertSame($rootActivationId, DB::table('ai_agent_activations')
+            ->where('id', $hundredId)
+            ->value('previous_activation_id'));
+        foreach ([$canarySubject, $controlSubject] as $subject) {
+            self::assertSame(
+                $candidate['agent_version_id'],
+                app(AiRegistryResolver::class)->resolve(
+                    $this->registryQuery($fixture, $subject),
+                )->agentVersionId,
+            );
+        }
+        $this->assertDatabaseHas('ai_agent_versions', [
+            'id' => $rootAgentVersionId,
+            'lifecycle_status' => 'eligible',
+        ]);
+
+        $rollbackId = $lifecycle->rollback(new RollbackAgentActivationCommand(
+            actorId: (string) $fixture['admin']->id,
+            tenantId: (string) $fixture['tenant']->id,
+            activationId: $hundredId,
+            expectedLockVersion: 0,
+            reason: 'Rollback governed full rollout to root control',
+        ));
+        $this->assertDatabaseHas('ai_agent_activations', [
+            'id' => $rollbackId,
+            'agent_version_id' => $rootAgentVersionId,
+            'previous_activation_id' => $hundredId,
+            'rollout_percentage' => 100,
+        ]);
+    }
+
     public function test_partial_activation_rejects_a_revoked_or_killed_previous_release(): void
     {
         foreach (['revoked', 'killed'] as $case) {
             $fixture = $this->fixture('previous-'.$case);
             $candidate = $this->eligibleCandidate($fixture);
+            $zeroActivationId = app(AiRegistryLifecycle::class)->activate(
+                new ActivateAgentVersionCommand(
+                    actorId: (string) $fixture['admin']->id,
+                    tenantId: (string) $fixture['tenant']->id,
+                    scopeType: 'tenant',
+                    scopeKey: (string) $fixture['tenant']->id,
+                    agentVersionId: $candidate['agent_version_id'],
+                    releaseDecisionId: $candidate['release_decision_id'],
+                    rolloutPercentage: 0,
+                    reason: 'Establish the governed zero-percent canary',
+                    expectedActivationId: $fixture['activation_id'],
+                    expectedLockVersion: 0,
+                ),
+            );
 
             if ($case === 'revoked') {
                 DB::table('ai_release_decisions')
@@ -154,7 +270,7 @@ final class AiRegistryLifecycleTest extends TestCase
                         releaseDecisionId: $candidate['release_decision_id'],
                         rolloutPercentage: 25,
                         reason: 'Reject an unsafe previous canary release',
-                        expectedActivationId: $fixture['activation_id'],
+                        expectedActivationId: $zeroActivationId,
                         expectedLockVersion: 0,
                     ),
                 );
@@ -167,12 +283,26 @@ final class AiRegistryLifecycleTest extends TestCase
                 ->where('tenant_id', $fixture['tenant']->id)
                 ->whereNull('effective_until')
                 ->count());
+            $this->assertDatabaseHas('ai_agent_activations', [
+                'id' => $zeroActivationId,
+                'rollout_percentage' => 0,
+                'effective_until' => null,
+            ]);
         }
     }
 
     public function test_activation_rejects_failed_revoked_expired_wrong_checksum_and_wrong_lineage_decisions(): void
     {
-        foreach (['failed', 'revoked', 'expired', 'checksum', 'lineage', 'future_evaluation'] as $case) {
+        foreach ([
+            'failed',
+            'revoked',
+            'expired',
+            'checksum',
+            'lineage',
+            'future_evaluation',
+            'result_before_run',
+            'result_after_run',
+        ] as $case) {
             $fixture = $this->fixture('decision-'.$case);
             $candidate = $this->eligibleCandidate($fixture);
 
@@ -197,6 +327,12 @@ final class AiRegistryLifecycleTest extends TestCase
                         ->where('id', $candidate['evaluation_run_id'])
                         ->value('evaluation_version_id'))
                     ->update(['released_at' => now()->addMinute()]),
+                'result_before_run' => DB::table('ai_evaluation_results')
+                    ->where('evaluation_run_id', $candidate['evaluation_run_id'])
+                    ->update(['completed_at' => now()->subSeconds(4)]),
+                'result_after_run' => DB::table('ai_evaluation_results')
+                    ->where('evaluation_run_id', $candidate['evaluation_run_id'])
+                    ->update(['completed_at' => now()->subSecond()]),
             };
 
             try {
@@ -226,9 +362,19 @@ final class AiRegistryLifecycleTest extends TestCase
         }
     }
 
-    public function test_activation_rejects_static_visibility_channel_market_capability_and_deployment_mismatches(): void
+    public function test_activation_rejects_every_static_compatibility_mismatch(): void
     {
-        foreach (['visibility', 'channel', 'market', 'capability', 'deployment'] as $case) {
+        foreach ([
+            'visibility',
+            'channel',
+            'market',
+            'capability',
+            'policy_extra_capability',
+            'output_schema',
+            'max_output_tokens',
+            'wildcard_scope',
+            'deployment',
+        ] as $case) {
             $fixture = $this->fixture('static-'.$case);
             $candidate = $this->eligibleCandidate($fixture);
             $scopeType = 'tenant';
@@ -267,6 +413,33 @@ final class AiRegistryLifecycleTest extends TestCase
                         'allowed_market_country_codes' => ['HN'],
                         'residency_country_codes' => ['HN'],
                     ], JSON_THROW_ON_ERROR)]);
+            } elseif ($case === 'policy_extra_capability') {
+                $decision = DB::table('ai_release_decisions')
+                    ->where('id', $candidate['release_decision_id'])
+                    ->first();
+                DB::table('ai_release_policies')
+                    ->where('id', $decision->release_policy_id)
+                    ->update(['rules' => json_encode([
+                        'required_capabilities' => ['structured_output', 'vision'],
+                        'allowed_market_country_codes' => ['HN'],
+                        'residency_country_codes' => ['HN'],
+                    ], JSON_THROW_ON_ERROR)]);
+            } elseif (in_array($case, ['output_schema', 'max_output_tokens'], true)) {
+                $configuration = json_decode(
+                    (string) DB::table('ai_agent_versions')
+                        ->where('id', $candidate['agent_version_id'])
+                        ->value('configuration'),
+                    true,
+                    512,
+                    JSON_THROW_ON_ERROR,
+                );
+                $configuration[$case] = $case === 'output_schema' ? '' : 0;
+                DB::table('ai_agent_versions')
+                    ->where('id', $candidate['agent_version_id'])
+                    ->update(['configuration' => json_encode($configuration, JSON_THROW_ON_ERROR)]);
+            } elseif ($case === 'wildcard_scope') {
+                $scopeType = 'platform';
+                $scopeKey = '*';
             } else {
                 app()->instance(AiProviderPool::class, new ConfiguredAiProviderPool([]));
             }
@@ -293,6 +466,178 @@ final class AiRegistryLifecycleTest extends TestCase
                 self::assertSame('evaluation_gate', $exception->reason);
             }
         }
+    }
+
+    public function test_activation_rejects_an_empty_output_schema_before_persisting(): void
+    {
+        $fixture = $this->fixture('empty-output-schema');
+        $candidate = $this->eligibleCandidate($fixture);
+        $configuration = json_decode(
+            (string) DB::table('ai_agent_versions')
+                ->where('id', $candidate['agent_version_id'])
+                ->value('configuration'),
+            true,
+            512,
+            JSON_THROW_ON_ERROR,
+        );
+        $configuration['output_schema'] = '';
+        DB::table('ai_agent_versions')
+            ->where('id', $candidate['agent_version_id'])
+            ->update(['configuration' => json_encode($configuration, JSON_THROW_ON_ERROR)]);
+
+        try {
+            app(AiRegistryLifecycle::class)->activate(new ActivateAgentVersionCommand(
+                actorId: (string) $fixture['admin']->id,
+                tenantId: (string) $fixture['tenant']->id,
+                scopeType: 'tenant',
+                scopeKey: (string) $fixture['tenant']->id,
+                agentVersionId: $candidate['agent_version_id'],
+                releaseDecisionId: $candidate['release_decision_id'],
+                rolloutPercentage: 100,
+                reason: 'Reject candidate without an output schema',
+                expectedActivationId: $fixture['activation_id'],
+                expectedLockVersion: 0,
+            ));
+            self::fail('Expected empty output schema rejection.');
+        } catch (AiExecutionDeniedException $exception) {
+            self::assertSame('evaluation_gate', $exception->reason);
+        }
+
+        self::assertSame(1, DB::table('ai_agent_activations')
+            ->where('tenant_id', $fixture['tenant']->id)
+            ->whereNull('effective_until')
+            ->count());
+    }
+
+    public function test_activation_locks_the_complete_eligibility_graph_while_runtime_remains_read_only(): void
+    {
+        $fixture = $this->fixture('eligibility-locks');
+        $candidate = $this->eligibleCandidate($fixture);
+        $connection = DB::connection();
+        $originalGrammar = $connection->getQueryGrammar();
+        $connection->setQueryGrammar(new class($connection) extends SQLiteGrammar
+        {
+            protected function compileLock(Builder $query, $value)
+            {
+                return $value ? ' /* registry-for-update */' : '';
+            }
+        });
+        $queries = [];
+        $capture = true;
+        DB::listen(static function (QueryExecuted $event) use (&$queries, &$capture): void {
+            if ($capture && str_contains($event->sql, 'registry-for-update')) {
+                $queries[] = $event->sql;
+            }
+        });
+
+        try {
+            $activationId = app(AiRegistryLifecycle::class)->activate(
+                new ActivateAgentVersionCommand(
+                    actorId: (string) $fixture['admin']->id,
+                    tenantId: (string) $fixture['tenant']->id,
+                    scopeType: 'tenant',
+                    scopeKey: (string) $fixture['tenant']->id,
+                    agentVersionId: $candidate['agent_version_id'],
+                    releaseDecisionId: $candidate['release_decision_id'],
+                    rolloutPercentage: 100,
+                    reason: 'Lock complete eligibility graph before activation',
+                    expectedActivationId: $fixture['activation_id'],
+                    expectedLockVersion: 0,
+                ),
+            );
+            foreach ([
+                'tenants',
+                'ai_release_decisions',
+                'ai_release_policies',
+                'ai_evaluation_runs',
+                'ai_evaluation_versions',
+                'ai_evaluation_suites',
+                'ai_evaluation_cases',
+                'ai_evaluation_results',
+                'ai_agent_versions',
+                'ai_agent_definitions',
+                'ai_prompt_versions',
+                'ai_prompt_definitions',
+                'ai_model_versions',
+                'ai_models',
+                'ai_provider_versions',
+                'ai_providers',
+                'ai_agent_activations',
+            ] as $table) {
+                self::assertTrue(
+                    collect($queries)->contains(
+                        static fn (string $sql): bool => str_contains($sql, "\"{$table}\""),
+                    ),
+                    "Missing lock for {$table}.",
+                );
+            }
+
+            $capture = false;
+            $queries = [];
+            app(AiRegistryResolver::class)->resolve(
+                $this->registryQuery($fixture, 'read-only-runtime'),
+            );
+            self::assertSame([], $queries);
+            self::assertSame($activationId, DB::table('ai_agent_activations')
+                ->whereNull('effective_until')
+                ->value('id'));
+        } finally {
+            $capture = false;
+            $connection->setQueryGrammar($originalGrammar);
+        }
+    }
+
+    public function test_activation_rechecks_a_decision_revoked_between_eligibility_and_insert(): void
+    {
+        $fixture = $this->fixture('decision-revoked-between-phases');
+        $candidate = $this->eligibleCandidate($fixture);
+        $intercept = true;
+        $mutated = false;
+        DB::listen(static function (QueryExecuted $event) use (
+            $candidate,
+            $fixture,
+            &$intercept,
+            &$mutated,
+        ): void {
+            if (! $intercept
+                || $mutated
+                || ! str_contains($event->sql, 'ai_evaluation_results')
+                || ! str_starts_with(strtolower(ltrim($event->sql)), 'select')) {
+                return;
+            }
+            $mutated = true;
+            DB::table('ai_release_decisions')
+                ->where('id', $candidate['release_decision_id'])
+                ->update([
+                    'revoked_at' => now(),
+                    'revoked_by' => (string) $fixture['admin']->id,
+                ]);
+        });
+
+        try {
+            app(AiRegistryLifecycle::class)->activate(new ActivateAgentVersionCommand(
+                actorId: (string) $fixture['admin']->id,
+                tenantId: (string) $fixture['tenant']->id,
+                scopeType: 'tenant',
+                scopeKey: (string) $fixture['tenant']->id,
+                agentVersionId: $candidate['agent_version_id'],
+                releaseDecisionId: $candidate['release_decision_id'],
+                rolloutPercentage: 100,
+                reason: 'Reject revocation injected between transaction phases',
+                expectedActivationId: $fixture['activation_id'],
+                expectedLockVersion: 0,
+            ));
+            self::fail('Expected between-phase decision revocation rejection.');
+        } catch (AiExecutionDeniedException $exception) {
+            self::assertSame('evaluation_gate', $exception->reason);
+        } finally {
+            $intercept = false;
+        }
+
+        self::assertTrue($mutated);
+        self::assertSame($fixture['activation_id'], DB::table('ai_agent_activations')
+            ->whereNull('effective_until')
+            ->value('id'));
     }
 
     public function test_activation_rejects_unauthorized_actor_invalid_scope_bounds_and_stale_optimistic_version(): void
@@ -738,6 +1083,17 @@ final class AiRegistryLifecycleTest extends TestCase
             ['password' => 'opaque'],
             ['secret' => 'opaque'],
             ['bearer' => 'opaque'],
+            ['credential' => 'short'],
+            ['value' => 'password = Hunter2!'],
+            ['value' => 'token: abc'],
+            ['value' => 'credential: x'],
+            ['value' => 'authorization = Basic short'],
+            ['value' => 'private_key: x'],
+            ['value' => 'access_key = x'],
+            ['value' => 'client_secret: x'],
+            ['value' => 'api_key = x'],
+            ['value' => 'secret: x'],
+            ['value' => 'bearer = x'],
             ['value' => 'sk-project-1234567890abcdef'],
             ['value' => 'AKIAIOSFODNN7EXAMPLE'],
             ['value' => "-----BEGIN PRIVATE KEY-----\nfixture\n-----END PRIVATE KEY-----"],
@@ -795,25 +1151,36 @@ final class AiRegistryLifecycleTest extends TestCase
             definitionId: $providerDefinitionId,
             payload: [
                 'secret_reference' => 'fake.rotated',
-                'configuration' => ['enabled' => false],
+                'configuration' => [
+                    'enabled' => false,
+                    'notes' => 'Credential rotation policy reviewed without inline material.',
+                    'max_output_tokens' => 640,
+                ],
             ],
             reason: 'Create safe draft before unsafe reason test',
         ));
         $activityCount = DB::table('activity_log')->count();
         $outboxCount = DB::table('outbox_messages')->count();
-        try {
-            app(AiRegistryLifecycle::class)->promote(new PromoteAiVersionCommand(
-                actorId: (string) $fixture['admin']->id,
-                tenantId: (string) $fixture['tenant']->id,
-                versionType: 'provider',
-                versionId: $draftId,
-                targetStatus: 'candidate',
-                releaseDecisionId: null,
-                reason: 'Rotate with sk-project-1234567890abcdef',
-            ));
-            self::fail('Expected a credential-shaped reason rejection.');
-        } catch (ValidationException $exception) {
-            self::assertStringNotContainsString('sk-project-1234567890abcdef', $exception->getMessage());
+        foreach ([
+            'Rotate with sk-project-1234567890abcdef',
+            'Emergency rollback password = Hunter2!',
+            'Hotfix authorization: Basic short',
+            'Operator credential: x',
+        ] as $unsafeReason) {
+            try {
+                app(AiRegistryLifecycle::class)->promote(new PromoteAiVersionCommand(
+                    actorId: (string) $fixture['admin']->id,
+                    tenantId: (string) $fixture['tenant']->id,
+                    versionType: 'provider',
+                    versionId: $draftId,
+                    targetStatus: 'candidate',
+                    releaseDecisionId: null,
+                    reason: $unsafeReason,
+                ));
+                self::fail('Expected a credential-shaped reason rejection.');
+            } catch (ValidationException $exception) {
+                self::assertStringNotContainsString($unsafeReason, $exception->getMessage());
+            }
         }
         self::assertSame($activityCount, DB::table('activity_log')->count());
         self::assertSame($outboxCount, DB::table('outbox_messages')->count());
@@ -946,7 +1313,7 @@ final class AiRegistryLifecycleTest extends TestCase
                 'evaluation_case_id' => $caseId,
                 'status' => 'passed',
                 'score_minor' => 100,
-                'completed_at' => now()->subSecond(),
+                'completed_at' => now()->subSeconds(2),
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -1025,7 +1392,7 @@ final class AiRegistryLifecycleTest extends TestCase
                 'evaluation_case_id' => $caseId,
                 'status' => 'passed',
                 'score_minor' => 100,
-                'completed_at' => now()->subSecond(),
+                'completed_at' => now()->subSeconds(2),
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);

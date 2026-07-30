@@ -457,12 +457,17 @@ final class TenantAgentChatTest extends TestCase
 
     private function makePrivateRegistryEligible(Tenant $tenant): void
     {
-        AiEligibleRegistryFixture::create(
+        $selection = AiEligibleRegistryFixture::create(
             tenantId: (string) $tenant->getKey(),
             capability: 'private_tenant_agent',
             audience: 'private',
             outputSchema: 'private_agent.evidence_selection.v1',
         );
+        $this->app->instance(AiProviderPool::class, new ConfiguredAiProviderPool([
+            $selection->adapterKey => [
+                $selection->secretReference => new FakeAiProvider,
+            ],
+        ]));
     }
 }
 

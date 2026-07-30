@@ -16,6 +16,9 @@ use App\Infrastructure\AI\ConfiguredAiProviderPool;
 use App\Infrastructure\AI\Security\LaravelAiContentCipher;
 use App\Models\Tenant;
 use App\Models\User;
+use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Database\Query\Builder;
+use Illuminate\Database\Query\Grammars\SQLiteGrammar;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -103,6 +106,46 @@ final class AiRegistryBackfillTest extends TestCase
             'prompt_template',
             new EncryptedAiContent($prompt->template_ciphertext, $prompt->template_hash, $prompt->encryption_key_version),
         ));
+    }
+
+    public function test_policy_writer_locks_tenant_then_policy_in_the_shared_order(): void
+    {
+        $platformTenant = Tenant::factory()->create();
+        $this->configureRegistry((string) $platformTenant->getKey(), []);
+        putenv('OPENAI_API_KEY=resolved-openai-api-key-value');
+        $connection = DB::connection();
+        $originalGrammar = $connection->getQueryGrammar();
+        $connection->setQueryGrammar(new class($connection) extends SQLiteGrammar
+        {
+            protected function compileLock(Builder $query, $value)
+            {
+                return $value ? ' /* registry-for-update */' : '';
+            }
+        });
+        $locked = [];
+        $capture = true;
+        DB::listen(static function (QueryExecuted $event) use (&$locked, &$capture): void {
+            if ($capture && str_contains($event->sql, 'registry-for-update')) {
+                $locked[] = $event->sql;
+            }
+        });
+
+        try {
+            app(AiRegistryBackfill::class)->run();
+        } finally {
+            $capture = false;
+            $connection->setQueryGrammar($originalGrammar);
+        }
+
+        $tenantLock = collect($locked)->search(
+            static fn (string $sql): bool => str_contains($sql, '"tenants"'),
+        );
+        $policyLock = collect($locked)->search(
+            static fn (string $sql): bool => str_contains($sql, '"ai_release_policies"'),
+        );
+        self::assertIsInt($tenantLock);
+        self::assertIsInt($policyLock);
+        self::assertLessThan($policyLock, $tenantLock);
     }
 
     public function test_backfilled_versions_can_follow_the_governed_release_path_and_resolve(): void

@@ -364,12 +364,17 @@ final class PublicGroundedDiscoveryTest extends TestCase
             'ai_balance' => 10,
             'ai_reserved_balance' => 0,
         ]);
-        AiEligibleRegistryFixture::create(
+        $selection = AiEligibleRegistryFixture::create(
             tenantId: (string) $platform->id,
             capability: 'public_discovery',
             audience: 'public',
             outputSchema: 'public_discovery.answer.v1',
         );
+        $this->app->instance(AiProviderPool::class, new ConfiguredAiProviderPool([
+            $selection->adapterKey => [
+                $selection->secretReference => new FakeAiProvider,
+            ],
+        ]));
 
         return $platform->refresh();
     }

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Application\Ai\Registry;
 
-use App\Application\Ai\Contracts\AiProviderPool;
 use App\Application\Ai\Registry\Commands\ActivateAgentVersionCommand;
 use App\Application\Ai\Registry\Commands\CreateAiDraftCommand;
 use App\Application\Ai\Registry\Commands\KillSwitchAiVersionCommand;
@@ -45,7 +44,7 @@ final readonly class AiRegistryLifecycle
         private AiRegistryChecksum $checksum,
         private LaravelAiContentCipher $cipher,
         private AiReleaseEligibility $eligibility,
-        private AiProviderPool $providerPool,
+        private AiReleaseCompatibility $compatibility,
         private AiRegistrySecretPolicy $secretPolicy,
     ) {}
 
@@ -202,6 +201,7 @@ final readonly class AiRegistryLifecycle
                     decisionId: $command->releaseDecisionId,
                     allowedLifecycleStatuses: ['candidate', 'eligible', 'active'],
                     denialReason: 'evaluation_gate',
+                    lockForUpdate: true,
                 );
                 if (! hash_equals(
                     $command->versionId,
@@ -209,7 +209,6 @@ final readonly class AiRegistryLifecycle
                 )) {
                     throw new AiExecutionDeniedException('evaluation_gate');
                 }
-                $this->lockCandidateSet($tenantId, $set, ['candidate', 'eligible', 'active']);
                 $this->promoteCandidateSet($tenantId, $set);
             } elseif ($command->releaseDecisionId !== null) {
                 $this->invalid(
@@ -301,9 +300,9 @@ final readonly class AiRegistryLifecycle
                 allowedLifecycleStatuses: ['eligible', 'active'],
                 denialReason: 'evaluation_gate',
                 expectedAgentVersionId: $command->agentVersionId,
+                lockForUpdate: true,
             );
-            $this->lockCandidateSet($tenantId, $candidateSet, ['eligible', 'active']);
-            $this->assertStaticCompatibility(
+            $this->compatibility->assertForActivation(
                 $candidateSet,
                 $command->scopeType,
                 $command->scopeKey,
@@ -325,32 +324,51 @@ final readonly class AiRegistryLifecycle
                 $command->expectedActivationId,
                 $command->expectedLockVersion,
             );
-            if ($command->rolloutPercentage < 100 && $previous === null) {
+            $control = $this->controlActivation(
+                tenantId: $tenantId,
+                previous: $previous,
+                candidateAgentVersionId: $command->agentVersionId,
+                candidateDecisionId: $command->releaseDecisionId,
+            );
+            if ($command->rolloutPercentage < 100 && $control === null) {
                 $this->invalid(
                     'rollout_percentage',
                     'A partial rollout requires an eligible previous activation.',
                 );
             }
-            if ($command->rolloutPercentage < 100 && $previous !== null) {
-                if (! is_string($previous->release_decision_id)
-                    || ! Str::isUuid($previous->release_decision_id)) {
+            $previousSet = null;
+            if ($command->rolloutPercentage < 100 && $control !== null) {
+                if (! is_string($control->release_decision_id)
+                    || ! Str::isUuid($control->release_decision_id)) {
                     throw new AiExecutionDeniedException('evaluation_gate');
                 }
                 $previousSet = $this->eligibility->assertExact(
                     tenantId: $tenantId,
-                    decisionId: $previous->release_decision_id,
+                    decisionId: $control->release_decision_id,
                     allowedLifecycleStatuses: ['eligible', 'active'],
                     denialReason: 'evaluation_gate',
-                    expectedAgentVersionId: (string) $previous->agent_version_id,
+                    expectedAgentVersionId: (string) $control->agent_version_id,
+                    lockForUpdate: true,
                 );
                 if (! hash_equals('active', (string) $previousSet->agent->lifecycle_status)) {
                     throw new AiExecutionDeniedException('evaluation_gate');
                 }
-                $this->lockCandidateSet($tenantId, $previousSet, ['eligible', 'active']);
-                $this->assertStaticCompatibility(
+                $this->compatibility->assertForActivation(
                     $previousSet,
                     $command->scopeType,
                     $command->scopeKey,
+                );
+            }
+            $this->eligibility->assertDecisionStillEligible(
+                $tenantId,
+                $candidateSet,
+                'evaluation_gate',
+            );
+            if ($previousSet !== null) {
+                $this->eligibility->assertDecisionStillEligible(
+                    $tenantId,
+                    $previousSet,
+                    'evaluation_gate',
                 );
             }
 
@@ -374,7 +392,7 @@ final readonly class AiRegistryLifecycle
                     implode('|', [$tenantId, $command->scopeType, $command->scopeKey]),
                 ),
                 'release_decision_id' => $command->releaseDecisionId,
-                'previous_activation_id' => $previous?->id,
+                'previous_activation_id' => $control?->id,
                 'effective_from' => now(),
                 'effective_until' => null,
                 'activated_by' => (string) $actor->getKey(),
@@ -395,12 +413,12 @@ final readonly class AiRegistryLifecycle
             if ($previous !== null
                 && $command->rolloutPercentage === 100
                 && ! hash_equals(
-                    (string) $previous->agent_version_id,
+                    (string) $control?->agent_version_id,
                     $command->agentVersionId,
                 )) {
                 $this->demoteIfNoLongerActive(
                     $tenantId,
-                    (string) $previous->agent_version_id,
+                    (string) $control?->agent_version_id,
                 );
             }
 
@@ -416,7 +434,7 @@ final readonly class AiRegistryLifecycle
                     'scope_type' => $command->scopeType,
                     'scope_key' => $command->scopeKey,
                     'rollout_percentage' => $command->rolloutPercentage,
-                    'previous_activation_id' => $previous?->id,
+                    'previous_activation_id' => $control?->id,
                 ],
             );
 
@@ -473,9 +491,9 @@ final readonly class AiRegistryLifecycle
                 allowedLifecycleStatuses: ['eligible', 'active'],
                 denialReason: 'evaluation_gate',
                 expectedAgentVersionId: (string) $previous->agent_version_id,
+                lockForUpdate: true,
             );
-            $this->lockCandidateSet($tenantId, $targetSet, ['eligible', 'active']);
-            $this->assertStaticCompatibility(
+            $this->compatibility->assertForActivation(
                 $targetSet,
                 (string) $current->scope_type,
                 (string) $current->scope_key,
@@ -972,13 +990,51 @@ final readonly class AiRegistryLifecycle
         }
     }
 
+    private function controlActivation(
+        string $tenantId,
+        ?object $previous,
+        string $candidateAgentVersionId,
+        string $candidateDecisionId,
+    ): ?object {
+        if ($previous === null
+            || ! hash_equals((string) $previous->agent_version_id, $candidateAgentVersionId)
+            || ! hash_equals((string) $previous->release_decision_id, $candidateDecisionId)
+            || ! is_string($previous->previous_activation_id)
+            || ! Str::isUuid($previous->previous_activation_id)) {
+            return $previous;
+        }
+
+        $control = DB::table('ai_agent_activations')
+            ->where('tenant_id', $tenantId)
+            ->where('id', $previous->previous_activation_id)
+            ->lockForUpdate()
+            ->first();
+        if ($control === null) {
+            throw new AiExecutionDeniedException('registry_conflict');
+        }
+
+        return $control;
+    }
+
     private function demoteIfNoLongerActive(string $tenantId, string $agentVersionId): void
     {
         if (DB::table('ai_agent_activations')
             ->where('tenant_id', $tenantId)
             ->where('agent_version_id', $agentVersionId)
             ->whereNull('effective_until')
-            ->exists()) {
+            ->exists()
+            || DB::table('ai_agent_activations as current')
+                ->join(
+                    'ai_agent_activations as fallback',
+                    'fallback.id',
+                    '=',
+                    'current.previous_activation_id',
+                )
+                ->where('current.tenant_id', $tenantId)
+                ->whereNull('current.effective_until')
+                ->where('current.rollout_percentage', '<', 100)
+                ->where('fallback.agent_version_id', $agentVersionId)
+                ->exists()) {
             return;
         }
 
@@ -1052,145 +1108,6 @@ final readonly class AiRegistryLifecycle
                 'updated_at' => now(),
             ]);
         }
-    }
-
-    /**
-     * @param  list<string>  $allowedStatuses
-     */
-    private function lockCandidateSet(
-        string $tenantId,
-        AiReleaseCandidateSet $set,
-        array $allowedStatuses,
-    ): void {
-        foreach ([
-            ['ai_provider_versions', $set->provider->id, false],
-            ['ai_model_versions', $set->model->id, false],
-            ['ai_prompt_versions', $set->prompt->id, true],
-            ['ai_agent_versions', $set->agent->id, true],
-        ] as [$table, $versionId, $tenantScoped]) {
-            $query = DB::table($table)->where('id', $versionId);
-            if ($tenantScoped) {
-                $query->where('tenant_id', $tenantId);
-            }
-            $version = $query->lockForUpdate()->first();
-            if ($version === null
-                || (bool) $version->kill_switch_enabled
-                || ! in_array((string) $version->lifecycle_status, $allowedStatuses, true)) {
-                throw new AiExecutionDeniedException('evaluation_gate');
-            }
-        }
-    }
-
-    private function assertStaticCompatibility(
-        AiReleaseCandidateSet $set,
-        string $scopeType,
-        string $scopeKey,
-    ): void {
-        $configuration = $set->agentConfiguration;
-        $audience = $configuration['audience'] ?? null;
-        $capability = $configuration['capability'] ?? null;
-        $channels = $this->stringList($configuration['channels'] ?? null);
-        $modelVersionIds = $this->stringList($configuration['model_version_ids'] ?? null);
-        $requiredCapabilities = $this->stringList(
-            $configuration['required_capabilities'] ?? null,
-        );
-        $expectedVisibility = match ($audience) {
-            'public' => 'platform_public',
-            'private' => 'tenant_private',
-            default => null,
-        };
-        if ($expectedVisibility === null
-            || ! is_string($capability)
-            || trim($capability) === ''
-            || $channels === []
-            || $requiredCapabilities === []
-            || ! in_array((string) $set->model->id, $modelVersionIds, true)
-            || ! hash_equals(
-                (string) ($configuration['prompt_version_id'] ?? ''),
-                (string) $set->prompt->id,
-            )
-            || ! hash_equals($expectedVisibility, (string) $set->agentDefinition->visibility)
-            || ! hash_equals($expectedVisibility, (string) $set->promptDefinition->visibility)
-            || ! $this->configurationSupports(
-                $set->providerConfiguration,
-                $requiredCapabilities,
-            )
-            || ! $this->configurationSupports(
-                $set->modelConfiguration,
-                $requiredCapabilities,
-            )
-            || ! $this->configurationSupports($set->policyRules, $requiredCapabilities)) {
-            throw new AiExecutionDeniedException('evaluation_gate');
-        }
-
-        [$market, $channel] = match ($scopeType) {
-            'market' => [$scopeKey, null],
-            'market_channel' => explode('|', $scopeKey, 2),
-            'platform_channel', 'tenant_channel' => [
-                null,
-                str_contains($scopeKey, '|')
-                    ? explode('|', $scopeKey, 2)[1]
-                    : $scopeKey,
-            ],
-            default => [null, null],
-        };
-        if (($channel !== null && ! in_array($channel, $channels, true))
-            || ($market !== null
-                && (! $this->countrySupported($set->providerConfiguration, $market)
-                    || ! $this->countrySupported($set->modelConfiguration, $market)
-                    || ! $this->countrySupported($set->policyRules, $market)))) {
-            throw new AiExecutionDeniedException('evaluation_gate');
-        }
-
-        if (! is_string($set->provider->secret_reference)
-            || trim($set->provider->secret_reference) === '') {
-            throw new AiExecutionDeniedException('evaluation_gate');
-        }
-        try {
-            $this->providerPool->resolve(
-                (string) $set->providerDefinition->adapter_key,
-                (string) $set->provider->secret_reference,
-            );
-        } catch (AiExecutionDeniedException) {
-            throw new AiExecutionDeniedException('evaluation_gate');
-        }
-    }
-
-    /**
-     * @param  array<string, mixed>  $configuration
-     * @param  list<string>  $requiredCapabilities
-     */
-    private function configurationSupports(
-        array $configuration,
-        array $requiredCapabilities,
-    ): bool {
-        $capabilities = $this->stringList(
-            $configuration['capabilities']
-                ?? $configuration['required_capabilities']
-                ?? null,
-        );
-        $markets = $this->stringList($configuration['allowed_market_country_codes'] ?? null);
-        $residency = $this->stringList($configuration['residency_country_codes'] ?? null);
-
-        return ($configuration['enabled'] ?? true) === true
-            && $capabilities !== []
-            && array_diff($requiredCapabilities, $capabilities) === []
-            && $markets !== []
-            && $residency !== [];
-    }
-
-    /** @param array<string, mixed> $configuration */
-    private function countrySupported(array $configuration, string $market): bool
-    {
-        return in_array(
-            $market,
-            $this->stringList($configuration['allowed_market_country_codes'] ?? null),
-            true,
-        ) && in_array(
-            $market,
-            $this->stringList($configuration['residency_country_codes'] ?? null),
-            true,
-        );
     }
 
     /** @return list<string> */

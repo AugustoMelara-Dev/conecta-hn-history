@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace Tests\Feature\AI;
 
+use App\Application\Ai\Contracts\AiProviderPool;
 use App\Application\Ai\Registry\AiRegistryQuery;
 use App\Application\Ai\Registry\AiRegistryResolver;
 use App\Exceptions\Ai\AiExecutionDeniedException;
+use App\Infrastructure\AI\ConfiguredAiProviderPool;
 use App\Infrastructure\AI\Security\LaravelAiContentCipher;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Tests\Fakes\AI\FakeAiProvider;
 use Tests\TestCase;
 
 final class AiRegistryResolverTest extends TestCase
@@ -422,6 +425,19 @@ final class AiRegistryResolverTest extends TestCase
         }
     }
 
+    public function test_runtime_rechecks_the_exact_deployed_adapter_and_secret_reference(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $this->registryFixture(
+            $tenant,
+            scopeType: 'tenant',
+            scopeKey: (string) $tenant->id,
+        );
+        app()->instance(AiProviderPool::class, new ConfiguredAiProviderPool([]));
+
+        $this->expectResolutionDenied($this->registryQuery($tenant), 'registry_selection');
+    }
+
     public function test_it_uses_only_an_explicit_eligible_model_fallback_from_the_agent_version(): void
     {
         $tenant = Tenant::factory()->create();
@@ -488,6 +504,11 @@ final class AiRegistryResolverTest extends TestCase
         string $modelKey = 'model-ca-1',
         array $modelConfigurationOverride = [],
     ): array {
+        app()->instance(AiProviderPool::class, new ConfiguredAiProviderPool([
+            'fake_structured_text' => [
+                'fake.primary' => new FakeAiProvider,
+            ],
+        ]));
         $tenantId = (string) $tenant->id;
         $providerId = (string) Str::uuid();
         $providerVersionId = (string) Str::uuid();

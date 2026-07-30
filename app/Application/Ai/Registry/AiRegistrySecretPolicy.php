@@ -77,6 +77,7 @@ final class AiRegistrySecretPolicy
             'password',
             'secret',
             'bearer',
+            'credential',
         ], true)
             || str_ends_with($normalized, '_token')
             || str_contains($normalized, 'authorization')
@@ -86,7 +87,8 @@ final class AiRegistrySecretPolicy
             || str_contains($normalized, 'api_key')
             || str_contains($normalized, 'password')
             || str_contains($normalized, 'secret')
-            || str_contains($normalized, 'bearer');
+            || str_contains($normalized, 'bearer')
+            || str_contains($normalized, 'credential');
     }
 
     private function credentialValue(string $value): bool
@@ -95,7 +97,12 @@ final class AiRegistrySecretPolicy
         if ($trimmed === '') {
             return false;
         }
-        if (preg_match('/(?:^|\s)sk-[A-Za-z0-9_-]{8,}/i', $trimmed) === 1
+        if (preg_match(
+            '/(?:^|[\s"\'\\[\\]{}(),;])(?:authorization|private[\s_-]*key|access[\s_-]*key|client[\s_-]*secret|api[\s_-]*key|password|secret|bearer|token|credential)\s*[:=]\s*\S+/i',
+            $trimmed,
+        ) === 1
+            || preg_match('/\bbearer\s+\S+/i', $trimmed) === 1
+            || preg_match('/(?:^|\s)sk-[A-Za-z0-9_-]{8,}/i', $trimmed) === 1
             || preg_match('/\bAKIA[A-Z0-9]{12,}\b/', $trimmed) === 1
             || str_contains($trimmed, '-----BEGIN PRIVATE KEY-----')
             || preg_match(

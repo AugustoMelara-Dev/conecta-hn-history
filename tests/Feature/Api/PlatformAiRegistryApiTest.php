@@ -53,6 +53,16 @@ it('exposes only allowlisted tenant-safe registry projections to platform supera
         ->not->toContain('secret_reference')
         ->not->toContain('default_secret_reference')
         ->not->toContain('checksum');
+
+    $activationReason = (string) DB::table('ai_agent_activations')
+        ->where('tenant_id', $fixture['tenant']->id)
+        ->value('reason');
+    $activations = $this->getJson('/api/v1/platform/ai/registry/activations?per_page=10')
+        ->assertOk()
+        ->json();
+    expect(json_encode($activations, JSON_THROW_ON_ERROR))
+        ->not->toContain($activationReason)
+        ->not->toContain('"reason"');
 });
 
 it('requires password mfa and reason before draft creation or lifecycle transitions', function (): void {

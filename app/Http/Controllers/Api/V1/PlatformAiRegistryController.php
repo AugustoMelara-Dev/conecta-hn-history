@@ -335,7 +335,6 @@ final class PlatformAiRegistryController extends Controller
                     'effective_from',
                     'effective_until',
                     'activated_by',
-                    'reason',
                     'lock_version',
                     'created_at',
                 ])
