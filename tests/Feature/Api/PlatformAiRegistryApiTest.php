@@ -180,6 +180,33 @@ it('does not require an mfa session when the platform mfa policy is disabled', f
     ]);
 });
 
+it('governs release decision revocation through the platform mutation boundary', function (): void {
+    $fixture = platformRegistryFixture(requireMfa: false);
+    $decisionId = $fixture['selection']->releaseDecisionId;
+    $owner = User::factory()->tenantOwner()->create([
+        'tenant_id' => $fixture['tenant']->id,
+    ]);
+    Sanctum::actingAs($owner);
+    $this->postJson("/api/v1/platform/ai/registry/release-decisions/{$decisionId}/revoke", [
+        'current_password' => 'password',
+        'reason' => 'Unauthorized release revocation attempt.',
+    ])->assertForbidden();
+
+    Sanctum::actingAs($fixture['admin']);
+    $this->postJson("/api/v1/platform/ai/registry/release-decisions/{$decisionId}/revoke", [
+        'current_password' => 'password',
+        'reason' => 'Revoke the release after a platform governance review.',
+    ])->assertOk()
+        ->assertJsonPath('data.id', $decisionId)
+        ->assertJsonPath('data.revoked', true);
+
+    $this->assertDatabaseHas('ai_release_decisions', [
+        'id' => $decisionId,
+        'revoked_by' => (string) $fixture['admin']->id,
+        'revocation_reason' => 'Revoke the release after a platform governance review.',
+    ]);
+});
+
 it('fails stably for reads and mutations when the platform registry tenant is not configured', function (): void {
     $fixture = platformRegistryFixture();
     Sanctum::actingAs($fixture['admin']);

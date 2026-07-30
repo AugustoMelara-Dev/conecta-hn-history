@@ -23,6 +23,7 @@ final class AiRegistryBackfill
     public function __construct(
         private readonly AiRegistryChecksum $checksum,
         private readonly LaravelAiContentCipher $cipher,
+        private readonly AiRegistryLockCoordinator $locks,
     ) {}
 
     public function run(): AiRegistryBackfillReport
@@ -271,10 +272,7 @@ final class AiRegistryBackfill
         $model = $models[0];
 
         DB::transaction(function () use ($tenantId, $capability, $definition, $agentKey, $visibility, $promptKey, $promptName, $prompt, $provider, $model, $models, $modelVersionIds): void {
-            DB::table('tenants')
-                ->where('id', $tenantId)
-                ->lockForUpdate()
-                ->firstOrFail();
+            $this->locks->tenant($tenantId);
             $promptVersion = $this->ensurePrompt($tenantId, $promptKey, $promptName, $visibility, $prompt);
             if ($promptVersion === null) {
                 return;

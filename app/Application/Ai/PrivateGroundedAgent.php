@@ -65,7 +65,8 @@ final class PrivateGroundedAgent
                 audience: $context->audience,
                 capability: $context->capability,
                 channel: 'web',
-                marketCountryCode: $market->countryCode,
+                marketCode: $market->countryCode,
+                residencyClass: $market->countryCode,
                 actorId: $actorId,
                 cohortSubject: (string) $actorId,
             ));

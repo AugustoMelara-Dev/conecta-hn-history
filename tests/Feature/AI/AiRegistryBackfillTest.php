@@ -220,8 +220,8 @@ final class AiRegistryBackfillTest extends TestCase
         $lifecycle->activate(new ActivateAgentVersionCommand(
             actorId: (string) $admin->id,
             tenantId: (string) $tenant->id,
-            scopeType: 'tenant',
-            scopeKey: (string) $tenant->id,
+            scopeType: 'market_channel',
+            scopeKey: 'HN|web',
             agentVersionId: (string) $agent->id,
             releaseDecisionId: $decisionId,
             rolloutPercentage: 100,
@@ -235,7 +235,8 @@ final class AiRegistryBackfillTest extends TestCase
             audience: 'public',
             capability: 'public_discovery',
             channel: 'web',
-            marketCountryCode: 'HN',
+            marketCode: 'HN',
+            residencyClass: 'HN',
             actorId: null,
             cohortSubject: 'public-backfill-release',
         ));

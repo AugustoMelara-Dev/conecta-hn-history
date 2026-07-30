@@ -8,6 +8,7 @@ use App\Application\Ai\Registry\Commands\ActivateAgentVersionCommand;
 use App\Application\Ai\Registry\Commands\CreateAiDraftCommand;
 use App\Application\Ai\Registry\Commands\KillSwitchAiVersionCommand;
 use App\Application\Ai\Registry\Commands\PromoteAiVersionCommand;
+use App\Application\Ai\Registry\Commands\RevokeAiReleaseDecisionCommand;
 use App\Application\Ai\Registry\Commands\RollbackAgentActivationCommand;
 use App\Domain\Ai\Events\AiRegistryChanged;
 use App\Domain\Shared\OutboxRepositoryInterface;
@@ -33,7 +34,7 @@ final readonly class AiRegistryLifecycle
     private const TRANSITIONS = [
         'draft' => ['candidate'],
         'candidate' => ['eligible'],
-        'eligible' => ['active'],
+        'eligible' => ['active', 'retired'],
         'active' => ['retired'],
         'retired' => [],
         'blocked' => [],
@@ -46,6 +47,8 @@ final readonly class AiRegistryLifecycle
         private AiReleaseEligibility $eligibility,
         private AiReleaseCompatibility $compatibility,
         private AiRegistrySecretPolicy $secretPolicy,
+        private AiRegistryLockCoordinator $locks,
+        private AiRegistryRetirementGuard $retirement,
     ) {}
 
     public function createDraft(CreateAiDraftCommand $command): string
@@ -66,6 +69,7 @@ final readonly class AiRegistryLifecycle
             $tenantId,
             $reason,
         ): string {
+            $this->locks->tenant($tenantId);
             [$table, $ownerColumn, $owner] = $this->draftOwner(
                 $command->versionType,
                 $command->definitionId,
@@ -166,6 +170,26 @@ final readonly class AiRegistryLifecycle
             $reason,
             $type,
         ): void {
+            $this->locks->tenant($tenantId);
+            $set = null;
+            if ($command->targetStatus === 'eligible') {
+                if (! is_string($command->releaseDecisionId)
+                    || ! Str::isUuid($command->releaseDecisionId)) {
+                    throw new AiExecutionDeniedException('evaluation_gate');
+                }
+                $set = $this->locks->releaseGraph(
+                    tenantId: $tenantId,
+                    decisionId: $command->releaseDecisionId,
+                    allowedLifecycleStatuses: ['candidate', 'eligible', 'active'],
+                    denialReason: 'evaluation_gate',
+                );
+                if (! hash_equals(
+                    $command->versionId,
+                    $set->versionId($command->versionType),
+                )) {
+                    throw new AiExecutionDeniedException('evaluation_gate');
+                }
+            }
             $version = $this->version(
                 $type['table'],
                 $type['tenant_scoped'],
@@ -192,23 +216,10 @@ final readonly class AiRegistryLifecycle
             }
 
             if ($command->targetStatus === 'eligible') {
-                if (! is_string($command->releaseDecisionId)
-                    || ! Str::isUuid($command->releaseDecisionId)) {
+                if (! $set instanceof AiReleaseCandidateSet) {
                     throw new AiExecutionDeniedException('evaluation_gate');
                 }
-                $set = $this->eligibility->assertExact(
-                    tenantId: $tenantId,
-                    decisionId: $command->releaseDecisionId,
-                    allowedLifecycleStatuses: ['candidate', 'eligible', 'active'],
-                    denialReason: 'evaluation_gate',
-                    lockForUpdate: true,
-                );
-                if (! hash_equals(
-                    $command->versionId,
-                    $set->versionId($command->versionType),
-                )) {
-                    throw new AiExecutionDeniedException('evaluation_gate');
-                }
+                $this->compatibility->assertIntrinsic($set, 'evaluation_gate');
                 $this->promoteCandidateSet($tenantId, $set);
             } elseif ($command->releaseDecisionId !== null) {
                 $this->invalid(
@@ -217,14 +228,12 @@ final readonly class AiRegistryLifecycle
                 );
             }
 
-            if ($command->targetStatus === 'retired'
-                && $command->versionType === 'agent'
-                && DB::table('ai_agent_activations')
-                    ->where('tenant_id', $tenantId)
-                    ->where('agent_version_id', $command->versionId)
-                    ->whereNull('effective_until')
-                    ->exists()) {
-                $this->invalid('target_status', 'An actively assigned agent version cannot be retired.');
+            if ($command->targetStatus === 'retired') {
+                $this->retirement->assertNotReferenced(
+                    $tenantId,
+                    $command->versionType,
+                    $command->versionId,
+                );
             }
 
             $attributes = [
@@ -293,14 +302,13 @@ final readonly class AiRegistryLifecycle
             $tenantId,
             $reason,
         ): string {
-            $this->lockTenant($tenantId);
-            $candidateSet = $this->eligibility->assertExact(
+            $this->locks->tenant($tenantId);
+            $candidateSet = $this->locks->releaseGraph(
                 tenantId: $tenantId,
                 decisionId: $command->releaseDecisionId,
                 allowedLifecycleStatuses: ['eligible', 'active'],
                 denialReason: 'evaluation_gate',
                 expectedAgentVersionId: $command->agentVersionId,
-                lockForUpdate: true,
             );
             $this->compatibility->assertForActivation(
                 $candidateSet,
@@ -308,13 +316,11 @@ final readonly class AiRegistryLifecycle
                 $command->scopeKey,
             );
 
-            $open = DB::table('ai_agent_activations')
-                ->where('tenant_id', $tenantId)
-                ->where('scope_type', $command->scopeType)
-                ->where('scope_key', $command->scopeKey)
-                ->whereNull('effective_until')
-                ->lockForUpdate()
-                ->get();
+            $open = $this->locks->activationScope(
+                $tenantId,
+                $command->scopeType,
+                $command->scopeKey,
+            );
             if ($open->count() > 1) {
                 throw new AiExecutionDeniedException('registry_conflict');
             }
@@ -342,13 +348,12 @@ final readonly class AiRegistryLifecycle
                     || ! Str::isUuid($control->release_decision_id)) {
                     throw new AiExecutionDeniedException('evaluation_gate');
                 }
-                $previousSet = $this->eligibility->assertExact(
+                $previousSet = $this->locks->releaseGraph(
                     tenantId: $tenantId,
                     decisionId: $control->release_decision_id,
                     allowedLifecycleStatuses: ['eligible', 'active'],
                     denialReason: 'evaluation_gate',
                     expectedAgentVersionId: (string) $control->agent_version_id,
-                    lockForUpdate: true,
                 );
                 if (! hash_equals('active', (string) $previousSet->agent->lifecycle_status)) {
                     throw new AiExecutionDeniedException('evaluation_gate');
@@ -462,37 +467,45 @@ final readonly class AiRegistryLifecycle
             $tenantId,
             $reason,
         ): string {
-            $this->lockTenant($tenantId);
-            $current = DB::table('ai_agent_activations')
+            $this->locks->tenant($tenantId);
+            $snapshot = DB::table('ai_agent_activations')
                 ->where('tenant_id', $tenantId)
                 ->where('id', $command->activationId)
                 ->whereNull('effective_until')
-                ->lockForUpdate()
                 ->first();
-            if ($current === null
-                || (int) $current->lock_version !== $command->expectedLockVersion
-                || ! is_string($current->previous_activation_id)
-                || ! Str::isUuid($current->previous_activation_id)) {
+            if ($snapshot === null
+                || (int) $snapshot->lock_version !== $command->expectedLockVersion
+                || ! is_string($snapshot->previous_activation_id)
+                || ! Str::isUuid($snapshot->previous_activation_id)) {
                 throw new AiExecutionDeniedException('registry_conflict');
             }
 
             $previous = DB::table('ai_agent_activations')
                 ->where('tenant_id', $tenantId)
-                ->where('id', $current->previous_activation_id)
+                ->where('id', $snapshot->previous_activation_id)
                 ->first();
             if ($previous === null
                 || ! is_string($previous->release_decision_id)
                 || ! Str::isUuid($previous->release_decision_id)) {
                 throw new AiExecutionDeniedException('evaluation_gate');
             }
-            $targetSet = $this->eligibility->assertExact(
+            $targetSet = $this->locks->releaseGraph(
                 tenantId: $tenantId,
                 decisionId: (string) $previous->release_decision_id,
                 allowedLifecycleStatuses: ['eligible', 'active'],
                 denialReason: 'evaluation_gate',
                 expectedAgentVersionId: (string) $previous->agent_version_id,
-                lockForUpdate: true,
             );
+            $current = $this->locks->activation($tenantId, $command->activationId);
+            if ($current === null
+                || $current->effective_until !== null
+                || (int) $current->lock_version !== $command->expectedLockVersion
+                || ! hash_equals(
+                    (string) $snapshot->previous_activation_id,
+                    (string) $current->previous_activation_id,
+                )) {
+                throw new AiExecutionDeniedException('registry_conflict');
+            }
             $this->compatibility->assertForActivation(
                 $targetSet,
                 (string) $current->scope_type,
@@ -575,6 +588,7 @@ final readonly class AiRegistryLifecycle
             $reason,
             $type,
         ): void {
+            $this->locks->tenant($tenantId);
             $version = $this->version(
                 $type['table'],
                 $type['tenant_scoped'],
@@ -603,6 +617,7 @@ final readonly class AiRegistryLifecycle
             }
 
             if ($command->versionType === 'agent') {
+                $this->locks->agentActivations($tenantId, $command->versionId);
                 DB::table('ai_agent_activations')
                     ->where('tenant_id', $tenantId)
                     ->where('agent_version_id', $command->versionId)
@@ -623,6 +638,81 @@ final readonly class AiRegistryLifecycle
                 attributes: [
                     'version_type' => $command->versionType,
                     'previous_status' => (string) $version->lifecycle_status,
+                ],
+            );
+        }, 3);
+    }
+
+    public function revokeReleaseDecision(RevokeAiReleaseDecisionCommand $command): void
+    {
+        $this->assertCommandIds(
+            $command->actorId,
+            $command->tenantId,
+            $command->decisionId,
+        );
+        $actor = $this->platformActor($command->actorId);
+        $tenantId = $this->tenantId($command->tenantId);
+        $reason = $this->reason($command->reason);
+
+        DB::transaction(function () use ($actor, $command, $tenantId, $reason): void {
+            $this->locks->tenant($tenantId);
+            $existing = DB::table('ai_release_decisions')
+                ->where('tenant_id', $tenantId)
+                ->where('id', $command->decisionId)
+                ->first();
+            if ($existing === null) {
+                throw new AiExecutionDeniedException('evaluation_gate');
+            }
+            if ($existing->revoked_at !== null) {
+                if (hash_equals((string) $actor->getKey(), (string) $existing->revoked_by)
+                    && hash_equals($reason, (string) $existing->revocation_reason)) {
+                    return;
+                }
+
+                throw new AiExecutionDeniedException('registry_conflict');
+            }
+
+            $set = $this->locks->releaseGraph(
+                tenantId: $tenantId,
+                decisionId: $command->decisionId,
+                allowedLifecycleStatuses: ['candidate', 'eligible', 'active'],
+                denialReason: 'evaluation_gate',
+            );
+            $activations = $this->locks->decisionActivations($tenantId, $command->decisionId);
+            $revokedAt = now();
+            $updated = DB::table('ai_release_decisions')
+                ->where('tenant_id', $tenantId)
+                ->where('id', $command->decisionId)
+                ->whereNull('revoked_at')
+                ->update([
+                    'revoked_at' => $revokedAt,
+                    'revoked_by' => (string) $actor->getKey(),
+                    'revocation_reason' => $reason,
+                    'updated_at' => $revokedAt,
+                ]);
+            if ($updated !== 1) {
+                throw new AiExecutionDeniedException('registry_conflict');
+            }
+            if ($activations->isNotEmpty()) {
+                DB::table('ai_agent_activations')
+                    ->whereIn('id', $activations->pluck('id')->all())
+                    ->whereNull('effective_until')
+                    ->update([
+                        'effective_until' => $revokedAt,
+                        'lock_version' => DB::raw('lock_version + 1'),
+                        'updated_at' => $revokedAt,
+                    ]);
+            }
+
+            $this->record(
+                actor: $actor,
+                tenantId: $tenantId,
+                aggregateId: $command->decisionId,
+                eventName: 'ai_registry.release_decision_revoked',
+                reason: $reason,
+                attributes: [
+                    'agent_version_id' => (string) $set->agent->id,
+                    'closed_activation_count' => $activations->count(),
                 ],
             );
         }, 3);
@@ -944,13 +1034,6 @@ final readonly class AiRegistryLifecycle
         };
         if (! $valid) {
             $this->invalid('scope_key', 'Registry activation scope is invalid or ambiguous.');
-        }
-    }
-
-    private function lockTenant(string $tenantId): void
-    {
-        if (DB::table('tenants')->where('id', $tenantId)->lockForUpdate()->first() === null) {
-            $this->invalid('tenant_id', 'Registry owner tenant does not exist.');
         }
     }
 

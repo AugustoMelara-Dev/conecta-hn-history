@@ -62,7 +62,12 @@ final class AiRegistrySecretPolicy
 
     private function credentialKey(string $key): bool
     {
-        $normalized = strtolower(str_replace('-', '_', trim($key)));
+        $snakeCase = preg_replace('/(?<!^)[A-Z]/', '_$0', trim($key));
+        $normalized = strtolower((string) preg_replace(
+            '/[^a-zA-Z0-9]+/',
+            '_',
+            (string) $snakeCase,
+        ));
         if (hash_equals('max_output_tokens', $normalized)) {
             return false;
         }
@@ -91,14 +96,14 @@ final class AiRegistrySecretPolicy
             || str_contains($normalized, 'credential');
     }
 
-    private function credentialValue(string $value): bool
+    private function credentialValue(string $value, int $depth = 0): bool
     {
         $trimmed = trim($value);
         if ($trimmed === '') {
             return false;
         }
         if (preg_match(
-            '/(?:^|[\s"\'\\[\\]{}(),;])(?:authorization|private[\s_-]*key|access[\s_-]*key|client[\s_-]*secret|api[\s_-]*key|password|secret|bearer|token|credential)\s*[:=]\s*\S+/i',
+            '/(?:^|[\s"\'\\[\\]{}(),;])(?:authorization|private[\s_-]*key|access[\s_-]*key|access[\s_-]*token|auth[\s_-]*token|client[\s_-]*secret|api[\s_-]*key|password|secret|bearer|token|credential)\s*[:=]\s*\S+/i',
             $trimmed,
         ) === 1
             || preg_match('/\bbearer\s+\S+/i', $trimmed) === 1
@@ -112,6 +117,21 @@ final class AiRegistrySecretPolicy
             || preg_match('/\b[a-fA-F0-9]{40,}\b/', $trimmed) === 1) {
             return true;
         }
+        if ($this->credentialUri($trimmed, $depth)) {
+            return true;
+        }
+        if ($depth < 2) {
+            $urlDecoded = rawurldecode($trimmed);
+            if (! hash_equals($trimmed, $urlDecoded)
+                && $this->credentialValue($urlDecoded, $depth + 1)) {
+                return true;
+            }
+            $base64Decoded = $this->base64DecodedText($trimmed);
+            if ($base64Decoded !== null
+                && $this->credentialValue($base64Decoded, $depth + 1)) {
+                return true;
+            }
+        }
         if (strlen($trimmed) < 32
             || preg_match('/\s/', $trimmed) === 1
             || preg_match('/^[a-f0-9-]{36}$/i', $trimmed) === 1
@@ -122,6 +142,58 @@ final class AiRegistrySecretPolicy
         }
 
         return count(array_unique(str_split($trimmed))) >= 16;
+    }
+
+    private function credentialUri(string $value, int $depth): bool
+    {
+        if (preg_match('/^[a-z][a-z0-9+.-]*:\/\//i', $value) !== 1) {
+            return false;
+        }
+        $parts = parse_url($value);
+        if (! is_array($parts)) {
+            return false;
+        }
+        if (($parts['user'] ?? '') !== '' || ($parts['pass'] ?? '') !== '') {
+            return true;
+        }
+        if (! isset($parts['query']) || ! is_string($parts['query'])) {
+            return false;
+        }
+        parse_str($parts['query'], $parameters);
+        foreach ($parameters as $key => $parameter) {
+            if ($this->credentialKey((string) $key)) {
+                return true;
+            }
+            if (is_string($parameter)
+                && $depth < 2
+                && $this->credentialValue($parameter, $depth + 1)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function base64DecodedText(string $value): ?string
+    {
+        if (strlen($value) < 16
+            || preg_match('/^[A-Za-z0-9+\/_-]+={0,2}$/', $value) !== 1) {
+            return null;
+        }
+        $standard = strtr($value, '-_', '+/');
+        $padding = strlen($standard) % 4;
+        if ($padding !== 0) {
+            $standard .= str_repeat('=', 4 - $padding);
+        }
+        $decoded = base64_decode($standard, true);
+        if (! is_string($decoded)
+            || $decoded === ''
+            || preg_match('//u', $decoded) !== 1
+            || preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', $decoded) === 1) {
+            return null;
+        }
+
+        return $decoded;
     }
 
     private function reject(string $key): never

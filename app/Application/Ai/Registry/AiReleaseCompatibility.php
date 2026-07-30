@@ -19,7 +19,7 @@ final readonly class AiReleaseCompatibility
         string $scopeType,
         string $scopeKey,
     ): array {
-        $match = $this->assertSemantic($set, 'evaluation_gate');
+        $match = $this->assertIntrinsic($set, 'evaluation_gate');
         [$market, $channel] = match ($scopeType) {
             'market' => [$scopeKey, null],
             'market_channel' => explode('|', $scopeKey, 2),
@@ -38,16 +38,7 @@ final readonly class AiReleaseCompatibility
         if ($market !== null && ! $this->supportsMarket($set, $market)) {
             $this->deny('evaluation_gate');
         }
-        if (hash_equals('platform', $scopeType)
-            && (! $this->supportsChannel($set, '*') || ! $this->supportsMarket($set, '*'))) {
-            $this->deny('evaluation_gate');
-        }
-        if (hash_equals('platform_channel', $scopeType) && ! $this->supportsMarket($set, '*')) {
-            $this->deny('evaluation_gate');
-        }
-        if (hash_equals('market', $scopeType) && ! $this->supportsChannel($set, '*')) {
-            $this->deny('evaluation_gate');
-        }
+        $this->assertScopeContract($set, $scopeType, 'evaluation_gate');
 
         return $match;
     }
@@ -58,8 +49,9 @@ final readonly class AiReleaseCompatibility
     public function assertForRuntime(
         AiReleaseCandidateSet $set,
         AiRegistryQuery $query,
+        string $scopeType,
     ): array {
-        $match = $this->assertSemantic($set, 'registry_selection');
+        $match = $this->assertIntrinsic($set, 'registry_selection');
         if (! hash_equals(
             (string) $set->agentConfiguration['capability'],
             $query->capability,
@@ -69,9 +61,11 @@ final readonly class AiReleaseCompatibility
                 $query->audience,
             )
             || ! $this->supportsChannel($set, $query->channel)
-            || ! $this->supportsMarket($set, $query->marketCountryCode)) {
+            || ! $this->supportsMarket($set, $query->marketCode)
+            || ! $this->supportsResidency($set, $query->residencyClass)) {
             $this->deny('registry_selection');
         }
+        $this->assertScopeContract($set, $scopeType, 'registry_selection');
 
         return $match;
     }
@@ -79,7 +73,7 @@ final readonly class AiReleaseCompatibility
     /**
      * @return array{output_schema:string,required_capabilities:list<string>,max_output_tokens:int}
      */
-    private function assertSemantic(
+    public function assertIntrinsic(
         AiReleaseCandidateSet $set,
         string $denialReason,
     ): array {
@@ -191,15 +185,57 @@ final readonly class AiReleaseCompatibility
             $set->modelConfiguration,
             $set->policyRules,
         ] as $configuration) {
-            foreach (['allowed_market_country_codes', 'residency_country_codes'] as $key) {
-                $countries = $this->stringList($configuration[$key] ?? null);
-                if (! in_array('*', $countries, true) && ! in_array($market, $countries, true)) {
-                    return false;
-                }
+            $countries = $this->stringList(
+                $configuration['allowed_market_country_codes'] ?? null,
+            );
+            if (! in_array('*', $countries, true) && ! in_array($market, $countries, true)) {
+                return false;
             }
         }
 
         return true;
+    }
+
+    private function supportsResidency(
+        AiReleaseCandidateSet $set,
+        string $residencyClass,
+    ): bool {
+        foreach ([
+            $set->providerConfiguration,
+            $set->modelConfiguration,
+            $set->policyRules,
+        ] as $configuration) {
+            $residencies = $this->stringList(
+                $configuration['residency_country_codes'] ?? null,
+            );
+            if (! in_array('*', $residencies, true)
+                && ! in_array($residencyClass, $residencies, true)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function assertScopeContract(
+        AiReleaseCandidateSet $set,
+        string $scopeType,
+        string $denialReason,
+    ): void {
+        $requiresChannelWildcard = in_array(
+            $scopeType,
+            ['platform', 'market', 'tenant'],
+            true,
+        );
+        $requiresMarketWildcard = in_array(
+            $scopeType,
+            ['platform', 'platform_channel', 'tenant', 'tenant_channel'],
+            true,
+        );
+        if (($requiresChannelWildcard && ! $this->supportsChannel($set, '*'))
+            || ($requiresMarketWildcard && ! $this->supportsMarket($set, '*'))) {
+            $this->deny($denialReason);
+        }
     }
 
     /** @return list<string> */

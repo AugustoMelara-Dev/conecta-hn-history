@@ -59,6 +59,120 @@ final class AiRegistryResolverTest extends TestCase
         $this->expectResolutionDenied($this->registryQuery($tenant), 'registry_conflict');
     }
 
+    public function test_it_skips_an_ineligible_specific_assignment_for_an_eligible_broader_one(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $broader = $this->registryFixture(
+            $tenant,
+            scopeType: 'platform',
+            scopeKey: '*',
+            modelKey: 'broader-valid',
+            agentChannels: ['*'],
+            routingMarkets: ['*'],
+            routingResidencies: ['*'],
+        );
+        $specific = $this->registryFixture(
+            $tenant,
+            scopeType: 'tenant',
+            scopeKey: (string) $tenant->id,
+            modelKey: 'specific-revoked',
+            agentChannels: ['*'],
+            routingMarkets: ['*'],
+            routingResidencies: ['*'],
+        );
+        DB::table('ai_release_decisions')
+            ->where('id', $specific['release_decision_id'])
+            ->update([
+                'revoked_at' => now(),
+                'revoked_by' => 'platform-reviewer',
+                'revocation_reason' => 'Specific assignment revoked',
+            ]);
+
+        $selection = app(AiRegistryResolver::class)->resolve($this->registryQuery($tenant));
+
+        self::assertSame($broader['agent_version_id'], $selection->agentVersionId);
+        self::assertSame('broader-valid', $selection->modelKey);
+    }
+
+    public function test_it_denies_when_every_matching_assignment_is_ineligible(): void
+    {
+        $tenant = Tenant::factory()->create();
+        foreach ([
+            ['platform', '*'],
+            ['tenant', (string) $tenant->id],
+        ] as [$scopeType, $scopeKey]) {
+            $fixture = $this->registryFixture(
+                $tenant,
+                scopeType: $scopeType,
+                scopeKey: $scopeKey,
+                agentChannels: ['*'],
+                routingMarkets: ['*'],
+                routingResidencies: ['*'],
+            );
+            DB::table('ai_release_decisions')
+                ->where('id', $fixture['release_decision_id'])
+                ->update([
+                    'revoked_at' => now(),
+                    'revoked_by' => 'platform-reviewer',
+                    'revocation_reason' => 'All assignments revoked',
+                ]);
+        }
+
+        $this->expectResolutionDenied($this->registryQuery($tenant), 'registry_selection');
+    }
+
+    public function test_same_rank_conflicts_only_when_multiple_assignments_are_eligible(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $invalid = $this->registryFixture(
+            $tenant,
+            scopeType: 'tenant',
+            scopeKey: (string) $tenant->id,
+            modelKey: 'invalid-same-rank',
+            agentChannels: ['*'],
+            routingMarkets: ['*'],
+            routingResidencies: ['*'],
+        );
+        $valid = $this->registryFixture(
+            $tenant,
+            scopeType: 'tenant',
+            scopeKey: (string) $tenant->id,
+            modelKey: 'valid-same-rank',
+            agentChannels: ['*'],
+            routingMarkets: ['*'],
+            routingResidencies: ['*'],
+        );
+        DB::table('ai_release_decisions')
+            ->where('id', $invalid['release_decision_id'])
+            ->update([
+                'revoked_at' => now(),
+                'revoked_by' => 'platform-reviewer',
+                'revocation_reason' => 'One same-rank assignment revoked',
+            ]);
+
+        $selection = app(AiRegistryResolver::class)->resolve($this->registryQuery($tenant));
+
+        self::assertSame($valid['agent_version_id'], $selection->agentVersionId);
+    }
+
+    public function test_tenant_and_tenant_channel_assignments_require_broad_wildcard_contracts(): void
+    {
+        foreach (['tenant', 'tenant_channel'] as $scopeType) {
+            $tenant = Tenant::factory()->create();
+            $this->registryFixture(
+                $tenant,
+                scopeType: $scopeType,
+                scopeKey: $scopeType === 'tenant'
+                    ? (string) $tenant->id
+                    : $tenant->id.'|web',
+                agentChannels: ['web'],
+                routingMarkets: ['CA'],
+            );
+
+            $this->expectResolutionDenied($this->registryQuery($tenant), 'registry_selection');
+        }
+    }
+
     public function test_rollout_zero_selects_the_previous_activation_and_one_hundred_selects_current(): void
     {
         $tenant = Tenant::factory()->create();
@@ -134,7 +248,8 @@ final class AiRegistryResolverTest extends TestCase
             audience: 'private',
             capability: 'private_tenant_agent',
             channel: 'web',
-            marketCountryCode: 'CA',
+            marketCode: 'CA',
+            residencyClass: 'CA',
             actorId: (string) $tenant->id,
             cohortSubject: (string) $tenant->id,
         ), 'tenant_context');
@@ -302,7 +417,8 @@ final class AiRegistryResolverTest extends TestCase
             audience: 'public',
             capability: 'private_tenant_agent',
             channel: 'web',
-            marketCountryCode: 'CA',
+            marketCode: 'CA',
+            residencyClass: 'CA',
             actorId: (string) $tenant->id,
             cohortSubject: (string) $tenant->id,
         ), 'registry_selection');
@@ -425,6 +541,48 @@ final class AiRegistryResolverTest extends TestCase
         }
     }
 
+    public function test_market_and_residency_allowlists_use_independent_query_dimensions(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $fixture = $this->registryFixture(
+            $tenant,
+            scopeType: 'market_channel',
+            scopeKey: 'CA|web',
+            modelKey: 'independent-routing',
+            agentChannels: ['web'],
+            routingMarkets: ['CA'],
+            routingResidencies: ['US'],
+        );
+
+        $selection = app(AiRegistryResolver::class)->resolve(new AiRegistryQuery(
+            tenantId: (string) $tenant->id,
+            audience: 'private',
+            capability: 'private_tenant_agent',
+            channel: 'web',
+            marketCode: 'CA',
+            residencyClass: 'US',
+            actorId: (string) $tenant->id,
+            cohortSubject: (string) $tenant->id,
+        ));
+        self::assertSame($fixture['agent_version_id'], $selection->agentVersionId);
+
+        foreach ([
+            ['marketCode' => 'MX', 'residencyClass' => 'US'],
+            ['marketCode' => 'CA', 'residencyClass' => 'CA'],
+        ] as $query) {
+            $this->expectResolutionDenied(new AiRegistryQuery(
+                tenantId: (string) $tenant->id,
+                audience: 'private',
+                capability: 'private_tenant_agent',
+                channel: 'web',
+                marketCode: $query['marketCode'],
+                residencyClass: $query['residencyClass'],
+                actorId: (string) $tenant->id,
+                cohortSubject: (string) $tenant->id,
+            ), 'registry_selection');
+        }
+    }
+
     public function test_runtime_rechecks_the_exact_deployed_adapter_and_secret_reference(): void
     {
         $tenant = Tenant::factory()->create();
@@ -458,7 +616,7 @@ final class AiRegistryResolverTest extends TestCase
             'configuration' => json_encode([
                 'capability' => 'private_tenant_agent',
                 'audience' => 'private',
-                'channels' => ['web'],
+                'channels' => ['*'],
                 'model_version_ids' => [$blocked['model_version_id'], $fixture['model_version_id']],
                 'prompt_version_id' => $fixture['prompt_version_id'],
                 'output_schema' => 'private_agent.answer.v1',
@@ -503,6 +661,9 @@ final class AiRegistryResolverTest extends TestCase
         string $releasePolicyStatus = 'active',
         string $modelKey = 'model-ca-1',
         array $modelConfigurationOverride = [],
+        array $agentChannels = ['*'],
+        array $routingMarkets = ['*'],
+        array $routingResidencies = ['CA'],
     ): array {
         app()->instance(AiProviderPool::class, new ConfiguredAiProviderPool([
             'fake_structured_text' => [
@@ -534,8 +695,8 @@ final class AiRegistryResolverTest extends TestCase
             'configuration' => json_encode([
                 'enabled' => true,
                 'capabilities' => ['structured_output'],
-                'allowed_market_country_codes' => ['CA'],
-                'residency_country_codes' => ['CA'],
+                'allowed_market_country_codes' => $routingMarkets,
+                'residency_country_codes' => $routingResidencies,
             ], JSON_THROW_ON_ERROR),
             'released_at' => now(),
             'lifecycle_status' => $providerVersionStatus,
@@ -548,7 +709,10 @@ final class AiRegistryResolverTest extends TestCase
             $providerVersionId,
             $modelKey,
             $modelStatus,
-            $modelConfigurationOverride,
+            array_replace([
+                'allowed_market_country_codes' => $routingMarkets,
+                'residency_country_codes' => $routingResidencies,
+            ], $modelConfigurationOverride),
         );
 
         $promptDefinitionId = (string) Str::uuid();
@@ -610,7 +774,7 @@ final class AiRegistryResolverTest extends TestCase
             'configuration' => json_encode([
                 'capability' => 'private_tenant_agent',
                 'audience' => 'private',
-                'channels' => ['web'],
+                'channels' => $agentChannels,
                 'model_version_ids' => [$model['model_version_id']],
                 'prompt_version_id' => $promptVersionId,
                 'output_schema' => 'private_agent.answer.v1',
@@ -632,8 +796,8 @@ final class AiRegistryResolverTest extends TestCase
             'name' => 'Release policy',
             'checksum' => hash('sha256', $releasePolicyId),
             'rules' => json_encode([
-                'allowed_market_country_codes' => ['CA'],
-                'residency_country_codes' => ['CA'],
+                'allowed_market_country_codes' => $routingMarkets,
+                'residency_country_codes' => $routingResidencies,
                 'required_capabilities' => ['structured_output'],
             ], JSON_THROW_ON_ERROR),
             'status' => $releasePolicyStatus,
@@ -823,7 +987,8 @@ final class AiRegistryResolverTest extends TestCase
             audience: 'private',
             capability: 'private_tenant_agent',
             channel: 'web',
-            marketCountryCode: 'CA',
+            marketCode: 'CA',
+            residencyClass: 'CA',
             actorId: (string) $tenant->id,
             cohortSubject: $cohortSubject ?? (string) $tenant->id,
         );

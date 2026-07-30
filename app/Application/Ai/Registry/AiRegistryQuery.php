@@ -14,7 +14,8 @@ final readonly class AiRegistryQuery
         public string $audience,
         public string $capability,
         public string $channel,
-        public string $marketCountryCode,
+        public string $marketCode,
+        public string $residencyClass,
         public int|string|null $actorId,
         public string $cohortSubject,
     ) {
@@ -34,8 +35,12 @@ final readonly class AiRegistryQuery
             throw new InvalidArgumentException('AI registry channel is invalid.');
         }
 
-        if (! preg_match('/^[A-Z]{2}$/', $marketCountryCode)) {
+        if (! preg_match('/^[A-Z]{2}$/', $marketCode)) {
             throw new InvalidArgumentException('AI registry market country code is invalid.');
+        }
+
+        if (! preg_match('/^[A-Z]{2}$/', $residencyClass)) {
+            throw new InvalidArgumentException('AI registry residency class is invalid.');
         }
 
         if (trim($cohortSubject) === '' || mb_strlen($cohortSubject) > 255) {

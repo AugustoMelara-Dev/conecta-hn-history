@@ -65,6 +65,10 @@ Route::prefix('v1')->group(function () {
                 '/{versionType}/{versionId}/kill-switch',
                 [PlatformAiRegistryController::class, 'killSwitch'],
             );
+            Route::post(
+                '/release-decisions/{decisionId}/revoke',
+                [PlatformAiRegistryController::class, 'revokeReleaseDecision'],
+            );
         });
 
     Route::prefix('otp')->group(function () {

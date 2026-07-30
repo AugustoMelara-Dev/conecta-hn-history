@@ -32,25 +32,37 @@ final class RegistryMutationScanner
         'truncate',
         'increment',
         'decrement',
+        'incrementEach',
+        'decrementEach',
     ];
 
     /** @var list<string> */
     private const ELOQUENT_WRITES = [
         'create',
         'forceCreate',
+        'forceCreateQuietly',
         'firstOrCreate',
         'updateOrCreate',
         'save',
         'saveOrFail',
+        'saveQuietly',
         'push',
+        'pushQuietly',
         'update',
+        'updateQuietly',
         'delete',
+        'deleteQuietly',
         'forceDelete',
+        'forceDeleteQuietly',
         'destroy',
         'upsert',
         'insert',
         'insertOrIgnore',
         'truncate',
+        'increment',
+        'decrement',
+        'incrementQuietly',
+        'decrementQuietly',
     ];
 
     /** @var list<string> */
@@ -73,9 +85,25 @@ final class RegistryMutationScanner
     /** @var list<RegistryMutationFinding> */
     private array $findings = [];
 
-    private string $source = '';
-
     private string $file = '';
+
+    /** @var array<string, list<string>> */
+    private array $constantTables = [];
+
+    /** @var array<string, list<string>> */
+    private array $methodTableReturns = [];
+
+    /** @var array<string, array<int, list<string>>> */
+    private array $methodTupleReturns = [];
+
+    /** @var array<string, Stmt\ClassMethod> */
+    private array $methodNodes = [];
+
+    /** @var array<string, true> */
+    private array $internallyCalledMethods = [];
+
+    /** @var array<string, true> */
+    private array $methodCallStack = [];
 
     /**
      * @param  list<string>  $roots
@@ -98,10 +126,11 @@ final class RegistryMutationScanner
             if (! is_string($source)) {
                 throw new RuntimeException("Unable to inspect registry mutation source [{$file}].");
             }
-            $this->source = $source;
             $this->file = $file;
+            $nodes = $this->parse($source, $file);
+            $this->indexSourceTables($nodes);
             $environment = [];
-            $this->analyzeStatements($this->parse($source, $file), $environment);
+            $this->analyzeStatements($nodes, $environment);
         }
 
         $unique = [];
@@ -222,8 +251,15 @@ final class RegistryMutationScanner
                     }
                 }
                 $environment = $this->mergeEnvironments($branches);
-            } elseif ($statement instanceof Stmt\ClassMethod
-                || $statement instanceof Stmt\Function_) {
+            } elseif ($statement instanceof Stmt\ClassMethod) {
+                $method = strtolower($statement->name->toString());
+                if (isset($this->internallyCalledMethods[$method])
+                    && ! $statement->isPublic()) {
+                    continue;
+                }
+                $local = [];
+                $this->analyzeStatements($statement->stmts ?? [], $local);
+            } elseif ($statement instanceof Stmt\Function_) {
                 $local = [];
                 $this->analyzeStatements($statement->stmts ?? [], $local);
             } elseif ($statement instanceof Stmt\Namespace_
@@ -245,13 +281,38 @@ final class RegistryMutationScanner
         array &$environment,
     ): ?array {
         if ($expression instanceof Expr\Assign) {
+            if ($expression->var instanceof Expr\Array_
+                || $expression->var instanceof Expr\List_) {
+                $origin = $this->analyzeExpression($expression->expr, $environment);
+                $tuple = $this->tupleTablesFromExpression($expression->expr);
+                foreach ($expression->var->items as $index => $item) {
+                    if (! $item?->value instanceof Expr\Variable
+                        || ! is_string($item->value->name)
+                        || ! isset($tuple[$index])) {
+                        continue;
+                    }
+                    $environment['var:'.$item->value->name] = [
+                        'kind' => 'table-name',
+                        'tables' => $tuple[$index],
+                    ];
+                }
+
+                return $origin;
+            }
             $origin = $this->analyzeExpression($expression->expr, $environment);
-            if ($expression->var instanceof Expr\Variable
-                && is_string($expression->var->name)) {
+            $key = $this->originKey($expression->var);
+            if ($key !== null) {
                 if ($origin === null) {
-                    unset($environment[$expression->var->name]);
+                    unset($environment[$key]);
+                    if (str_starts_with($key, 'var:')) {
+                        foreach (array_keys($environment) as $environmentKey) {
+                            if (str_starts_with($environmentKey, $key.'->')) {
+                                unset($environment[$environmentKey]);
+                            }
+                        }
+                    }
                 } else {
-                    $environment[$expression->var->name] = $origin;
+                    $environment[$key] = $origin;
                 }
             }
 
@@ -264,15 +325,39 @@ final class RegistryMutationScanner
             $origin = $expression->var instanceof Expr
                 ? $this->analyzeExpression($expression->var, $environment)
                 : null;
+            $argumentOrigins = [];
             foreach ($expression->args as $argument) {
                 if ($argument->value instanceof Expr) {
-                    $this->analyzeExpression($argument->value, $environment);
+                    $argumentOrigins[] = $this->analyzeExpression($argument->value, $environment);
+                } else {
+                    $argumentOrigins[] = null;
                 }
             }
             $method = $expression->name instanceof Node\Identifier
                 ? $expression->name->toString()
                 : null;
             if ($origin !== null && $method !== null) {
+                if ($origin['kind'] === 'connection' && $method === 'table') {
+                    return $this->tableOrigin(
+                        $expression->args[0]->value ?? null,
+                        $environment,
+                    );
+                }
+                if ($origin['kind'] === 'connection'
+                    && in_array($method, self::DIRECT_SQL_WRITES, true)) {
+                    $sql = $this->sqlValue($expression->args[0]->value ?? null);
+                    if ($sql !== null) {
+                        $this->appendSqlWrites(
+                            $sql,
+                            in_array($method, ['statement', 'unprepared', 'raw'], true)
+                                ? 'raw'
+                                : $method,
+                            $expression->getStartLine(),
+                        );
+                    }
+
+                    return null;
+                }
                 $writes = $origin['kind'] === 'model'
                     ? self::ELOQUENT_WRITES
                     : self::QUERY_WRITES;
@@ -282,16 +367,69 @@ final class RegistryMutationScanner
 
                 return $origin;
             }
+            if ($method !== null
+                && $expression->var instanceof Expr\Variable
+                && $expression->var->name === 'this') {
+                $this->analyzeLocalMethod($method, $argumentOrigins, $environment);
+            }
+            if ($method !== null && isset($this->methodTableReturns[$method])) {
+                return [
+                    'kind' => 'table-record',
+                    'tables' => $this->methodTableReturns[$method],
+                ];
+            }
 
             return null;
         }
-        if ($expression instanceof Expr\Variable && is_string($expression->name)) {
-            return $environment[$expression->name] ?? null;
+        if ($expression instanceof Expr\Variable
+            || $expression instanceof Expr\PropertyFetch
+            || $expression instanceof Expr\ArrayDimFetch) {
+            $key = $this->originKey($expression);
+            if ($key !== null && isset($environment[$key])) {
+                return $environment[$key];
+            }
+            if ($expression instanceof Expr\ArrayDimFetch
+                && $this->literalString($expression->dim) === 'table') {
+                $base = $this->analyzeExpression($expression->var, $environment);
+                if ($base !== null && $base['kind'] === 'table-record') {
+                    return ['kind' => 'table-name', 'tables' => $base['tables']];
+                }
+            }
+
+            return null;
         }
         if ($expression instanceof Expr\New_
             && $expression->class instanceof Name
             && ($table = $this->modelTable($expression->class)) !== null) {
             return ['kind' => 'model', 'tables' => [$table]];
+        }
+        if ($expression instanceof String_) {
+            $table = $this->normalizeTable($expression->value);
+
+            return $table === ''
+                ? null
+                : ['kind' => 'table-name', 'tables' => [$table]];
+        }
+        if ($expression instanceof Expr\Closure) {
+            $local = [];
+            foreach ($expression->uses as $use) {
+                if (! is_string($use->var->name)) {
+                    continue;
+                }
+                $key = 'var:'.$use->var->name;
+                if (isset($environment[$key])) {
+                    $local[$key] = $environment[$key];
+                }
+            }
+            $this->analyzeStatements($expression->stmts, $local);
+
+            return null;
+        }
+        if ($expression instanceof Expr\ArrowFunction) {
+            $local = $environment;
+            $this->analyzeExpression($expression->expr, $local);
+
+            return null;
         }
 
         $this->analyzeNestedNodes($expression, $environment);
@@ -318,13 +456,10 @@ final class RegistryMutationScanner
         $method = $call->name->toString();
         if ($this->isDatabaseFacade($call->class)) {
             if ($method === 'table') {
-                $table = $this->literalString($call->args[0]->value ?? null);
-                $tables = $table === null
-                    ? $this->registryTablesReferencedBySource()
-                    : [$this->normalizeTable($table)];
-                $tables = array_values(array_intersect($tables, $this->registryTables));
-
-                return $tables === [] ? null : ['kind' => 'table', 'tables' => $tables];
+                return $this->tableOrigin($call->args[0]->value ?? null, $environment);
+            }
+            if ($method === 'connection') {
+                return ['kind' => 'connection', 'tables' => []];
             }
             if (in_array($method, self::DIRECT_SQL_WRITES, true)) {
                 $sql = $this->sqlValue($call->args[0]->value ?? null);
@@ -381,7 +516,25 @@ final class RegistryMutationScanner
      */
     private function assignForeachOrigin(Stmt\Foreach_ $foreach, array &$environment): void
     {
-        if (! $foreach->valueVar instanceof Expr\Array_
+        $knownTables = $this->tablesFromExpression($foreach->expr);
+        if ($knownTables !== []) {
+            if ($foreach->keyVar instanceof Expr\Variable
+                && is_string($foreach->keyVar->name)) {
+                $environment['var:'.$foreach->keyVar->name] = [
+                    'kind' => 'table-name',
+                    'tables' => $knownTables,
+                ];
+            }
+            if ($foreach->valueVar instanceof Expr\Variable
+                && is_string($foreach->valueVar->name)) {
+                $environment['var:'.$foreach->valueVar->name] = [
+                    'kind' => 'table-record',
+                    'tables' => $knownTables,
+                ];
+            }
+        }
+        if ((! $foreach->valueVar instanceof Expr\Array_
+                && ! $foreach->valueVar instanceof Expr\List_)
             || ! $foreach->expr instanceof Expr\Array_) {
             return;
         }
@@ -391,13 +544,13 @@ final class RegistryMutationScanner
                 continue;
             }
             $table = $this->literalString($item->value->items[0]?->value ?? null);
-            if ($table !== null && in_array($table, $this->registryTables, true)) {
+            if ($table !== null) {
                 $tables[] = $table;
             }
         }
         $first = $foreach->valueVar->items[0]?->value ?? null;
         if ($first instanceof Expr\Variable && is_string($first->name) && $tables !== []) {
-            $environment[$first->name] = [
+            $environment['var:'.$first->name] = [
                 'kind' => 'table-name',
                 'tables' => array_values(array_unique($tables)),
             ];
@@ -456,7 +609,7 @@ final class RegistryMutationScanner
     private function appendForTables(array $tables, string $method, int $line): void
     {
         foreach ($tables as $table) {
-            if (in_array($table, $this->registryTables, true)) {
+            if ($table === '*dynamic*' || in_array($table, $this->registryTables, true)) {
                 $this->append($table, $method, $line);
             }
         }
@@ -542,7 +695,25 @@ final class RegistryMutationScanner
 
     private function literalString(mixed $node): ?string
     {
-        return $node instanceof String_ ? $node->value : null;
+        if ($node instanceof String_) {
+            return $node->value;
+        }
+        if ($node instanceof Expr\Cast\String_) {
+            return $this->literalString($node->expr);
+        }
+        if ($node instanceof Expr\ClassConstFetch
+            && $node->name instanceof Node\Identifier) {
+            $tables = $this->constantTables[$node->name->toString()] ?? [];
+
+            return count($tables) === 1 ? $tables[0] : null;
+        }
+        if ($node instanceof Expr\FuncCall
+            && $node->name instanceof Name
+            && strtolower($node->name->toString()) === 'config') {
+            return $this->literalString($node->args[1]->value ?? null);
+        }
+
+        return null;
     }
 
     private function normalizeTable(string $table): string
@@ -550,14 +721,309 @@ final class RegistryMutationScanner
         return preg_split('/\s+(?:as\s+)?/i', trim($table), 2)[0] ?? $table;
     }
 
-    /** @return list<string> */
-    private function registryTablesReferencedBySource(): array
+    /**
+     * @param  array<string, array{kind:string,tables:list<string>}>  $environment
+     * @return array{kind:string,tables:list<string>}
+     */
+    private function tableOrigin(
+        mixed $node,
+        array $environment,
+    ): array {
+        $table = $this->literalString($node);
+        if ($table !== null) {
+            $normalized = $this->normalizeTable($table);
+
+            return [
+                'kind' => 'table',
+                'tables' => in_array($normalized, $this->registryTables, true)
+                    ? [$normalized]
+                    : [],
+            ];
+        }
+        if ($node instanceof Expr) {
+            $key = $this->originKey($node);
+            $origin = $key === null ? null : ($environment[$key] ?? null);
+            if ($origin === null
+                && $node instanceof Expr\ArrayDimFetch
+                && $this->literalString($node->dim) === 'table') {
+                $baseKey = $this->originKey($node->var);
+                $base = $baseKey === null ? null : ($environment[$baseKey] ?? null);
+                if ($base !== null && $base['kind'] === 'table-record') {
+                    $origin = ['kind' => 'table-name', 'tables' => $base['tables']];
+                }
+            }
+            if ($origin !== null && $origin['kind'] === 'table-name') {
+                return ['kind' => 'table', 'tables' => $origin['tables']];
+            }
+        }
+
+        return ['kind' => 'table', 'tables' => ['*dynamic*']];
+    }
+
+    private function originKey(mixed $expression): ?string
     {
-        return array_values(array_filter(
-            $this->registryTables,
-            fn (string $table): bool => str_contains($this->source, "'{$table}'")
-                || str_contains($this->source, "\"{$table}\""),
-        ));
+        if ($expression instanceof Expr\Variable && is_string($expression->name)) {
+            return 'var:'.$expression->name;
+        }
+        if ($expression instanceof Expr\PropertyFetch
+            && $expression->name instanceof Node\Identifier) {
+            $base = $this->originKey($expression->var);
+
+            return $base === null ? null : $base.'->'.$expression->name->toString();
+        }
+        if ($expression instanceof Expr\ArrayDimFetch) {
+            $base = $this->originKey($expression->var);
+            $dimension = $this->literalString($expression->dim);
+
+            return $base === null || $dimension === null
+                ? null
+                : $base.'['.$dimension.']';
+        }
+
+        return null;
+    }
+
+    /** @param list<Stmt> $nodes */
+    private function indexSourceTables(array $nodes): void
+    {
+        $this->constantTables = [];
+        $this->methodTableReturns = [];
+        $this->methodTupleReturns = [];
+        $this->methodNodes = [];
+        $this->internallyCalledMethods = [];
+        $this->methodCallStack = [];
+        $finder = new NodeFinder;
+
+        /** @var Node\Const_ $constant */
+        foreach ($finder->findInstanceOf($nodes, Node\Const_::class) as $constant) {
+            $tables = $this->tableFieldValues($constant->value);
+            if ($tables === []) {
+                $tables = $this->tablesFromExpression($constant->value);
+            }
+            if ($tables !== []) {
+                $this->constantTables[$constant->name->toString()] = $tables;
+            }
+        }
+
+        /** @var Stmt\ClassMethod $method */
+        foreach ($finder->findInstanceOf($nodes, Stmt\ClassMethod::class) as $method) {
+            $methodName = $method->name->toString();
+            $this->methodNodes[strtolower($methodName)] = $method;
+            $tables = [];
+            /** @var Stmt\Return_ $return */
+            foreach ($finder->findInstanceOf($method->stmts ?? [], Stmt\Return_::class) as $return) {
+                if ($return->expr === null) {
+                    continue;
+                }
+                $tables = [
+                    ...$tables,
+                    ...$this->tableFieldValues($return->expr),
+                    ...$this->tablesFromExpression($return->expr),
+                ];
+            }
+            $tables = array_values(array_unique($tables));
+            if ($tables === []) {
+                /** @var Expr\ClassConstFetch $constantFetch */
+                foreach ($finder->findInstanceOf($method->stmts ?? [], Expr\ClassConstFetch::class) as $constantFetch) {
+                    if ($constantFetch->name instanceof Node\Identifier) {
+                        $tables = [
+                            ...$tables,
+                            ...($this->constantTables[$constantFetch->name->toString()] ?? []),
+                        ];
+                    }
+                }
+                $tables = array_values(array_unique($tables));
+            }
+            if ($tables !== []) {
+                $this->methodTableReturns[$methodName] = $tables;
+            }
+            $tuple = $this->tupleTablesFromMethod($method);
+            if ($tuple !== []) {
+                $this->methodTupleReturns[strtolower($methodName)] = $tuple;
+            }
+        }
+
+        /** @var Expr\MethodCall $call */
+        foreach ($finder->findInstanceOf($nodes, Expr\MethodCall::class) as $call) {
+            if ($call->var instanceof Expr\Variable
+                && $call->var->name === 'this'
+                && $call->name instanceof Node\Identifier) {
+                $this->internallyCalledMethods[strtolower($call->name->toString())] = true;
+            }
+        }
+    }
+
+    /** @return list<string> */
+    private function tablesFromExpression(mixed $expression): array
+    {
+        if ($expression instanceof Expr\ClassConstFetch
+            && $expression->name instanceof Node\Identifier) {
+            return $this->constantTables[$expression->name->toString()] ?? [];
+        }
+        if ($expression instanceof Expr\ArrayDimFetch) {
+            return $this->tablesFromExpression($expression->var);
+        }
+        if ($expression instanceof Expr\Array_) {
+            $tables = $this->tableFieldValues($expression);
+            if ($tables !== []) {
+                return $tables;
+            }
+            foreach ($expression->items as $item) {
+                if ($item === null) {
+                    continue;
+                }
+                $key = $this->literalString($item->key);
+                if ($key !== null) {
+                    $tables[] = $this->normalizeTable($key);
+
+                    continue;
+                }
+                $value = $this->literalString($item->value);
+                if ($value !== null) {
+                    $tables[] = $this->normalizeTable($value);
+                }
+            }
+
+            return array_values(array_unique($tables));
+        }
+        if ($expression instanceof Expr\MethodCall
+            && $expression->name instanceof Node\Identifier) {
+            return $this->methodTableReturns[$expression->name->toString()] ?? [];
+        }
+
+        $literal = $this->literalString($expression);
+
+        return $literal === null ? [] : [$this->normalizeTable($literal)];
+    }
+
+    /** @return array<int, list<string>> */
+    private function tupleTablesFromExpression(mixed $expression): array
+    {
+        if ($expression instanceof Expr\MethodCall
+            && $expression->name instanceof Node\Identifier) {
+            return $this->methodTupleReturns[strtolower($expression->name->toString())] ?? [];
+        }
+        if ($expression instanceof Expr\Match_) {
+            $tuple = [];
+            foreach ($expression->arms as $arm) {
+                if (! $arm->body instanceof Expr\Array_) {
+                    continue;
+                }
+                foreach ($arm->body->items as $index => $item) {
+                    if ($item === null) {
+                        continue;
+                    }
+                    $literal = $this->literalString($item->value);
+                    if ($literal !== null) {
+                        $tuple[$index][] = $this->normalizeTable($literal);
+                    }
+                }
+            }
+            foreach ($tuple as $index => $tables) {
+                $tuple[$index] = array_values(array_unique($tables));
+            }
+
+            return $tuple;
+        }
+
+        return [];
+    }
+
+    /** @return array<int, list<string>> */
+    private function tupleTablesFromMethod(Stmt\ClassMethod $method): array
+    {
+        $finder = new NodeFinder;
+        $variables = [];
+        /** @var Expr\Assign $assignment */
+        foreach ($finder->findInstanceOf($method->stmts ?? [], Expr\Assign::class) as $assignment) {
+            if (! $assignment->var instanceof Expr\Array_
+                && ! $assignment->var instanceof Expr\List_) {
+                continue;
+            }
+            $tuple = $this->tupleTablesFromExpression($assignment->expr);
+            foreach ($assignment->var->items as $index => $item) {
+                if ($item?->value instanceof Expr\Variable
+                    && is_string($item->value->name)
+                    && isset($tuple[$index])) {
+                    $variables[$item->value->name] = $tuple[$index];
+                }
+            }
+        }
+        /** @var Stmt\Return_ $return */
+        foreach ($finder->findInstanceOf($method->stmts ?? [], Stmt\Return_::class) as $return) {
+            if (! $return->expr instanceof Expr\Array_) {
+                continue;
+            }
+            $tuple = [];
+            foreach ($return->expr->items as $index => $item) {
+                if (! $item?->value instanceof Expr\Variable
+                    || ! is_string($item->value->name)
+                    || ! isset($variables[$item->value->name])) {
+                    continue;
+                }
+                $tuple[$index] = $variables[$item->value->name];
+            }
+            if ($tuple !== []) {
+                return $tuple;
+            }
+        }
+
+        return [];
+    }
+
+    /** @return list<string> */
+    private function tableFieldValues(mixed $expression): array
+    {
+        if (! $expression instanceof Expr\Array_) {
+            return [];
+        }
+        $tables = [];
+        foreach ($expression->items as $item) {
+            if ($item === null) {
+                continue;
+            }
+            if ($this->literalString($item->key) === 'table') {
+                $table = $this->literalString($item->value);
+                if ($table !== null) {
+                    $tables[] = $this->normalizeTable($table);
+                }
+            }
+            $tables = [...$tables, ...$this->tableFieldValues($item->value)];
+        }
+
+        return array_values(array_unique($tables));
+    }
+
+    /**
+     * @param  list<array{kind:string,tables:list<string>}|null>  $argumentOrigins
+     * @param  array<string, array{kind:string,tables:list<string>}>  $environment
+     */
+    private function analyzeLocalMethod(
+        string $method,
+        array $argumentOrigins,
+        array &$environment,
+    ): void {
+        $key = strtolower($method);
+        $node = $this->methodNodes[$key] ?? null;
+        if ($node === null || isset($this->methodCallStack[$key])) {
+            return;
+        }
+        $local = $environment;
+        foreach ($node->params as $index => $parameter) {
+            if (! $parameter->var instanceof Expr\Variable
+                || ! is_string($parameter->var->name)
+                || ! isset($argumentOrigins[$index])
+                || $argumentOrigins[$index] === null) {
+                continue;
+            }
+            $local['var:'.$parameter->var->name] = $argumentOrigins[$index];
+        }
+        $this->methodCallStack[$key] = true;
+        try {
+            $this->analyzeStatements($node->stmts ?? [], $local);
+        } finally {
+            unset($this->methodCallStack[$key]);
+        }
     }
 
     /** @param list<string> $roots @return list<string> */

@@ -24,31 +24,6 @@ final readonly class AiRegistryResolver
             throw new AiExecutionDeniedException('tenant_context');
         }
 
-        $activation = $this->activation($query);
-        $bucket = hexdec(substr(
-            hash('sha256', $activation->cohort_salt.'|'.$query->cohortSubject),
-            0,
-            8,
-        )) % 100;
-        if ($bucket >= (int) $activation->rollout_percentage) {
-            if (! is_string($activation->previous_activation_id)
-                || ! Str::isUuid($activation->previous_activation_id)) {
-                throw new AiExecutionDeniedException('registry_selection');
-            }
-            $activation = DB::table('ai_agent_activations')
-                ->where('tenant_id', $query->tenantId)
-                ->where('id', $activation->previous_activation_id)
-                ->first();
-            if ($activation === null) {
-                throw new AiExecutionDeniedException('registry_selection');
-            }
-        }
-
-        return $this->selection($query, $activation);
-    }
-
-    private function activation(AiRegistryQuery $query): object
-    {
         $active = DB::table('ai_agent_activations')
             ->where('tenant_id', $query->tenantId)
             ->where('effective_from', '<=', now())
@@ -62,15 +37,54 @@ final readonly class AiRegistryResolver
                 hash_equals($scopeType, (string) $activation->scope_type)
                 && hash_equals($scopeKey, (string) $activation->scope_key)
             ));
-            if ($matching->count() > 1) {
+            $eligible = [];
+            foreach ($matching as $activation) {
+                try {
+                    $eligible[] = $this->selection(
+                        $query,
+                        $this->cohortActivation($query, $activation),
+                        $scopeType,
+                    );
+                } catch (AiExecutionDeniedException $exception) {
+                    if ($exception->reason !== 'registry_selection') {
+                        throw $exception;
+                    }
+                }
+            }
+            if (count($eligible) > 1) {
                 throw new AiExecutionDeniedException('registry_conflict');
             }
-            if (($activation = $matching->first()) !== null) {
-                return $activation;
+            if ($eligible !== []) {
+                return $eligible[0];
             }
         }
 
         throw new AiExecutionDeniedException('registry_selection');
+    }
+
+    private function cohortActivation(AiRegistryQuery $query, object $activation): object
+    {
+        $bucket = hexdec(substr(
+            hash('sha256', $activation->cohort_salt.'|'.$query->cohortSubject),
+            0,
+            8,
+        )) % 100;
+        if ($bucket < (int) $activation->rollout_percentage) {
+            return $activation;
+        }
+        if (! is_string($activation->previous_activation_id)
+            || ! Str::isUuid($activation->previous_activation_id)) {
+            throw new AiExecutionDeniedException('registry_selection');
+        }
+        $previous = DB::table('ai_agent_activations')
+            ->where('tenant_id', $query->tenantId)
+            ->where('id', $activation->previous_activation_id)
+            ->first();
+        if ($previous === null) {
+            throw new AiExecutionDeniedException('registry_selection');
+        }
+
+        return $previous;
     }
 
     /** @return list<array{string, string}> */
@@ -79,15 +93,18 @@ final readonly class AiRegistryResolver
         return [
             ['tenant_channel', $query->tenantId.'|'.$query->channel],
             ['tenant', $query->tenantId],
-            ['market_channel', $query->marketCountryCode.'|'.$query->channel],
-            ['market', $query->marketCountryCode],
+            ['market_channel', $query->marketCode.'|'.$query->channel],
+            ['market', $query->marketCode],
             ['platform_channel', $query->channel],
             ['platform', '*'],
         ];
     }
 
-    private function selection(AiRegistryQuery $query, object $activation): AiRuntimeSelection
-    {
+    private function selection(
+        AiRegistryQuery $query,
+        object $activation,
+        string $scopeType,
+    ): AiRuntimeSelection {
         if (! is_string($activation->release_decision_id)
             || ! Str::isUuid($activation->release_decision_id)) {
             throw new AiExecutionDeniedException('registry_selection');
@@ -104,7 +121,7 @@ final readonly class AiRegistryResolver
             throw new AiExecutionDeniedException('registry_selection');
         }
 
-        $match = $this->compatibility->assertForRuntime($set, $query);
+        $match = $this->compatibility->assertForRuntime($set, $query, $scopeType);
 
         $systemPrompt = $this->cipher->decrypt(
             (string) $query->tenantId,

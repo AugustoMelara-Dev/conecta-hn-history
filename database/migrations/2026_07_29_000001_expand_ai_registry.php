@@ -177,11 +177,11 @@ return new class extends Migration
             $table->timestamp('effective_until')->nullable();
             $table->timestamps();
 
+            $table->unique(['tenant_id', 'id'], 'ai_agent_activations_tenant_id_unique');
             $table->foreign(['tenant_id', 'agent_version_id'], 'ai_agent_activations_agent_version_fk')
                 ->references(['tenant_id', 'id'])->on('ai_agent_versions')->restrictOnDelete();
             $table->foreign(['tenant_id', 'previous_activation_id'], 'ai_agent_activations_previous_fk')
                 ->references(['tenant_id', 'id'])->on('ai_agent_activations')->restrictOnDelete();
-            $table->unique(['tenant_id', 'id'], 'ai_agent_activations_tenant_id_unique');
             $table->index(['tenant_id', 'scope_type', 'scope_key'], 'ai_agent_activations_scope_idx');
             $table->index(['tenant_id', 'effective_from'], 'ai_agent_activations_effective_idx');
         });

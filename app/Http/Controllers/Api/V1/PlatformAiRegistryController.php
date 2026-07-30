@@ -9,6 +9,7 @@ use App\Application\Ai\Registry\Commands\ActivateAgentVersionCommand;
 use App\Application\Ai\Registry\Commands\CreateAiDraftCommand;
 use App\Application\Ai\Registry\Commands\KillSwitchAiVersionCommand;
 use App\Application\Ai\Registry\Commands\PromoteAiVersionCommand;
+use App\Application\Ai\Registry\Commands\RevokeAiReleaseDecisionCommand;
 use App\Application\Ai\Registry\Commands\RollbackAgentActivationCommand;
 use App\Application\Security\PrivilegedActionGuard;
 use App\Exceptions\Ai\AiExecutionDeniedException;
@@ -228,6 +229,34 @@ final class PlatformAiRegistryController extends Controller
                     'id' => $versionId,
                     'version_type' => $versionType,
                     'lifecycle_status' => 'blocked',
+                ],
+            ]);
+        });
+    }
+
+    public function revokeReleaseDecision(Request $request, string $decisionId): JsonResponse
+    {
+        $actor = $this->platformActor($request);
+        $reason = $this->guardMutation($request, $actor);
+        $tenantId = $this->platformTenantId($request);
+
+        return $this->transition(function () use (
+            $actor,
+            $decisionId,
+            $reason,
+            $tenantId,
+        ): JsonResponse {
+            $this->lifecycle->revokeReleaseDecision(new RevokeAiReleaseDecisionCommand(
+                actorId: (string) $actor->getKey(),
+                tenantId: $tenantId,
+                decisionId: $decisionId,
+                reason: $reason,
+            ));
+
+            return response()->json([
+                'data' => [
+                    'id' => $decisionId,
+                    'revoked' => true,
                 ],
             ]);
         });

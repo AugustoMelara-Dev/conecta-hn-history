@@ -102,6 +102,99 @@ PHP;
     ]);
 });
 
+it('detects connection properties scopes quiet model writes and unresolved dynamic tables', function (): void {
+    $base = dirname(__DIR__, 2);
+    $root = $base.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'framework'
+        .DIRECTORY_SEPARATOR.'testing'.DIRECTORY_SEPARATOR.'registry-ratchet-'.Str::uuid();
+    mkdir($root, 0777, true);
+    $modelFixture = <<<'PHP'
+<?php
+
+namespace Fixtures;
+
+use Illuminate\Database\Eloquent\Model;
+
+final class ProviderVersion extends Model
+{
+    protected $table = 'ai_provider_versions';
+}
+PHP;
+    $fixture = <<<'PHP'
+<?php
+
+use Fixtures\ProviderVersion as RegistryProvider;
+use Illuminate\Support\Facades\DB as Storage;
+
+Storage::connection('registry')->table('ai_prompt_definitions')->delete();
+
+$holder = new stdClass();
+$holder->versions = Storage::table('ai_agent_versions');
+$holder->versions->increment('version');
+$holder->versions->decrement('version');
+
+$captured = Storage::table('ai_model_versions');
+(function () use ($captured): void {
+    $captured->increment('version');
+})();
+
+$dynamic = getenv('REGISTRY_TABLE');
+Storage::table($dynamic)->update(['updated_at' => now()]);
+
+$provider = new RegistryProvider();
+$provider->saveQuietly();
+$provider->deleteQuietly();
+$provider->forceDeleteQuietly();
+$provider->incrementQuietly('version');
+$provider->decrementQuietly('version');
+
+$reassigned = Storage::table('ai_release_policies');
+$reassigned = Storage::table('orders');
+$reassigned->update(['status' => 'paid']);
+
+function local_scope_isolated(): void
+{
+    $captured = Storage::table('orders');
+    $captured->update(['status' => 'paid']);
+}
+PHP;
+    file_put_contents($root.DIRECTORY_SEPARATOR.'ProviderVersion.php', $modelFixture);
+    file_put_contents($root.DIRECTORY_SEPARATOR.'Origins.php', $fixture);
+
+    try {
+        $findings = (new RegistryMutationScanner)->scan(
+            [$root],
+            [
+                'ai_provider_versions',
+                'ai_model_versions',
+                'ai_agent_versions',
+                'ai_prompt_definitions',
+                'ai_release_policies',
+            ],
+        );
+    } finally {
+        unlink($root.DIRECTORY_SEPARATOR.'Origins.php');
+        unlink($root.DIRECTORY_SEPARATOR.'ProviderVersion.php');
+        rmdir($root);
+    }
+
+    expect(collect($findings)
+        ->map(static fn (object $finding): string => $finding->table.':'.$finding->method)
+        ->sort()
+        ->values()
+        ->all())->toBe([
+            '*dynamic*:update',
+            'ai_agent_versions:decrement',
+            'ai_agent_versions:increment',
+            'ai_model_versions:increment',
+            'ai_prompt_definitions:delete',
+            'ai_provider_versions:decrementQuietly',
+            'ai_provider_versions:deleteQuietly',
+            'ai_provider_versions:forceDeleteQuietly',
+            'ai_provider_versions:incrementQuietly',
+            'ai_provider_versions:saveQuietly',
+        ]);
+});
+
 it('keeps every canonical registry table and mutation method behind its exact owner', function (): void {
     $registryTables = [
         'ai_providers',
@@ -117,45 +210,31 @@ it('keeps every canonical registry table and mutation method behind its exact ow
         'ai_release_decisions',
     ];
     $base = dirname(__DIR__, 2);
-    $roots = [
-        $base.'/app/Application',
-        $base.'/app/Domain',
-        $base.'/app/Http',
-        $base.'/app/Infrastructure',
-        $base.'/app/Jobs',
-        $base.'/resources',
-    ];
+    $roots = [$base.'/app', $base.'/routes', $base.'/resources'];
     $expectedOwnership = [
-        'app/Application/Ai/Registry/AiRegistryBackfill.php|ai_agent_activations|insert' => 2,
+        'app/Application/Ai/Registry/AiRegistryBackfill.php|ai_agent_activations|insert' => 1,
         'app/Application/Ai/Registry/AiRegistryBackfill.php|ai_agent_activations|update' => 1,
         'app/Application/Ai/Registry/AiRegistryBackfill.php|ai_agent_definitions|insert' => 1,
-        'app/Application/Ai/Registry/AiRegistryBackfill.php|ai_agent_versions|insert' => 2,
-        'app/Application/Ai/Registry/AiRegistryBackfill.php|ai_model_versions|insert' => 2,
-        'app/Application/Ai/Registry/AiRegistryBackfill.php|ai_models|insert' => 2,
+        'app/Application/Ai/Registry/AiRegistryBackfill.php|ai_agent_versions|insert' => 1,
+        'app/Application/Ai/Registry/AiRegistryBackfill.php|ai_model_versions|insert' => 1,
+        'app/Application/Ai/Registry/AiRegistryBackfill.php|ai_models|insert' => 1,
         'app/Application/Ai/Registry/AiRegistryBackfill.php|ai_prompt_definitions|insert' => 1,
-        'app/Application/Ai/Registry/AiRegistryBackfill.php|ai_prompt_versions|insert' => 2,
-        'app/Application/Ai/Registry/AiRegistryBackfill.php|ai_provider_versions|insert' => 2,
-        'app/Application/Ai/Registry/AiRegistryBackfill.php|ai_providers|insert' => 2,
+        'app/Application/Ai/Registry/AiRegistryBackfill.php|ai_prompt_versions|insert' => 1,
+        'app/Application/Ai/Registry/AiRegistryBackfill.php|ai_provider_versions|insert' => 1,
+        'app/Application/Ai/Registry/AiRegistryBackfill.php|ai_providers|insert' => 1,
         'app/Application/Ai/Registry/AiRegistryBackfill.php|ai_providers|update' => 1,
-        'app/Application/Ai/Registry/AiRegistryBackfill.php|ai_release_policies|insert' => 2,
-        'app/Application/Ai/Registry/AiRegistryLifecycle.php|ai_agent_activations|insert' => 3,
-        'app/Application/Ai/Registry/AiRegistryLifecycle.php|ai_agent_activations|update' => 5,
-        'app/Application/Ai/Registry/AiRegistryLifecycle.php|ai_agent_definitions|insert' => 1,
-        'app/Application/Ai/Registry/AiRegistryLifecycle.php|ai_agent_definitions|update' => 3,
+        'app/Application/Ai/Registry/AiRegistryBackfill.php|ai_release_policies|insert' => 1,
+        'app/Application/Ai/Registry/AiRegistryLifecycle.php|ai_agent_activations|insert' => 2,
+        'app/Application/Ai/Registry/AiRegistryLifecycle.php|ai_agent_activations|update' => 3,
         'app/Application/Ai/Registry/AiRegistryLifecycle.php|ai_agent_versions|insert' => 1,
         'app/Application/Ai/Registry/AiRegistryLifecycle.php|ai_agent_versions|update' => 6,
         'app/Application/Ai/Registry/AiRegistryLifecycle.php|ai_model_versions|insert' => 1,
         'app/Application/Ai/Registry/AiRegistryLifecycle.php|ai_model_versions|update' => 3,
-        'app/Application/Ai/Registry/AiRegistryLifecycle.php|ai_models|insert' => 1,
-        'app/Application/Ai/Registry/AiRegistryLifecycle.php|ai_models|update' => 3,
-        'app/Application/Ai/Registry/AiRegistryLifecycle.php|ai_prompt_definitions|insert' => 1,
-        'app/Application/Ai/Registry/AiRegistryLifecycle.php|ai_prompt_definitions|update' => 3,
         'app/Application/Ai/Registry/AiRegistryLifecycle.php|ai_prompt_versions|insert' => 1,
         'app/Application/Ai/Registry/AiRegistryLifecycle.php|ai_prompt_versions|update' => 3,
         'app/Application/Ai/Registry/AiRegistryLifecycle.php|ai_provider_versions|insert' => 1,
         'app/Application/Ai/Registry/AiRegistryLifecycle.php|ai_provider_versions|update' => 3,
-        'app/Application/Ai/Registry/AiRegistryLifecycle.php|ai_providers|insert' => 1,
-        'app/Application/Ai/Registry/AiRegistryLifecycle.php|ai_providers|update' => 3,
+        'app/Application/Ai/Registry/AiRegistryLifecycle.php|ai_release_decisions|update' => 1,
     ];
 
     $actualOwnership = collect((new RegistryMutationScanner)->scan($roots, $registryTables))

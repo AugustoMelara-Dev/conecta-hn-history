@@ -32,11 +32,27 @@ final class AiEligibleRegistryFixture
             marketCountryCode: $marketCountryCode,
             visibility: $audience === 'public' ? 'platform_public' : 'tenant_private',
         );
+        foreach ([
+            'ai_provider_versions' => $selection->providerVersionId,
+            'ai_model_versions' => $selection->modelVersionId,
+        ] as $table => $versionId) {
+            $configuration = json_decode(
+                (string) DB::table($table)->where('id', $versionId)->value('configuration'),
+                true,
+                512,
+                JSON_THROW_ON_ERROR,
+            );
+            $configuration['allowed_market_country_codes'] = ['*'];
+            $configuration['residency_country_codes'] = [$marketCountryCode];
+            DB::table($table)->where('id', $versionId)->update([
+                'configuration' => json_encode($configuration, JSON_THROW_ON_ERROR),
+            ]);
+        }
         DB::table('ai_agent_versions')->where('id', $selection->agentVersionId)->update([
             'configuration' => json_encode([
                 'capability' => $capability,
                 'audience' => $audience,
-                'channels' => ['web'],
+                'channels' => ['*'],
                 'model_version_ids' => [$selection->modelVersionId],
                 'prompt_version_id' => $selection->promptVersionId,
                 'output_schema' => $outputSchema,
@@ -126,7 +142,7 @@ final class AiEligibleRegistryFixture
             'name' => 'Fixture release policy',
             'checksum' => hash('sha256', $policyId),
             'rules' => json_encode([
-                'allowed_market_country_codes' => [$marketCountryCode],
+                'allowed_market_country_codes' => ['*'],
                 'residency_country_codes' => [$marketCountryCode],
                 'required_capabilities' => ['structured_output'],
             ], JSON_THROW_ON_ERROR),
