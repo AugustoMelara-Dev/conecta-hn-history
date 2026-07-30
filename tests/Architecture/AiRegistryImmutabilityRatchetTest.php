@@ -504,6 +504,69 @@ PHP;
         ]);
 });
 
+it('resolves parser backed delete targets across dialect and interpolation boundaries', function (): void {
+    $base = dirname(__DIR__, 2);
+    $root = $base.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'framework'
+        .DIRECTORY_SEPARATOR.'testing'.DIRECTORY_SEPARATOR.'registry-ratchet-'.Str::uuid();
+    mkdir($root, 0777, true);
+    $fixture = <<<'PHP'
+<?php
+
+use Illuminate\Support\Facades\DB as Storage;
+
+$suffix = getenv('REGISTRY_SUFFIX');
+
+Storage::statement('DELETE FROM ai_agent_versions AS governed USING orders AS ai_agent_versions WHERE governed.id = ai_agent_versions.id');
+Storage::statement('DELETE FROM ai_release_decisions USING orders AS ai_release_decisions WHERE orders.id = ai_release_decisions.id');
+Storage::statement('DELETE governed FROM (ai_agent_versions AS governed JOIN orders AS source ON source.id = governed.id)');
+Storage::statement("DELETE ai_{$suffix} FROM ai_agent_versions AS ai_agent_versions");
+
+Storage::statement('DELETE FROM ONLY "public"."ai_model_versions" * AS governed USING orders AS ai_agent_versions WHERE governed.id = ai_agent_versions.id');
+Storage::statement('DELETE governed.* FROM ("public"."ai_prompt_versions" AS governed STRAIGHT_JOIN orders AS source ON source.id = governed.id)');
+Storage::statement('DELETE FROM governed USING (ai_release_policies AS governed JOIN orders AS source ON source.id = governed.id)');
+Storage::statement("DELETE {$suffix}_versions FROM ai_agent_versions AS governed");
+Storage::statement('DELETE governed FROM ai_agent_activations AS governed JOIN orders AS governed ON governed.id = governed.id');
+Storage::statement('DELETE governed USING ai_agent_versions');
+
+Storage::statement('DELETE FROM orders AS governed USING audits AS ai_agent_versions WHERE governed.id = ai_agent_versions.id');
+Storage::statement('DELETE orders FROM (orders JOIN ai_agent_versions AS registry_source ON registry_source.id = orders.id)');
+Storage::statement("DELETE orders FROM orders JOIN ai_{$suffix} AS registry_source ON registry_source.id = orders.id");
+Storage::statement("DELETE orders FROM orders JOIN audits AS source ON source.note = 'ai_agent_versions {$suffix}' /* ai_release_decisions */");
+Storage::statement('DELETE FROM orders USING (orders JOIN ai_release_decisions AS registry_source ON registry_source.id = orders.id)');
+PHP;
+    file_put_contents($root.DIRECTORY_SEPARATOR.'ParserBackedDeleteTargets.php', $fixture);
+
+    try {
+        $findings = (new RegistryMutationScanner)->scan(
+            [$root],
+            [
+                'ai_agent_versions',
+                'ai_model_versions',
+                'ai_prompt_versions',
+                'ai_release_policies',
+                'ai_agent_activations',
+                'ai_release_decisions',
+            ],
+        );
+    } finally {
+        unlink($root.DIRECTORY_SEPARATOR.'ParserBackedDeleteTargets.php');
+        rmdir($root);
+    }
+
+    expect(collect($findings)
+        ->map(static fn (object $finding): string => $finding->table.':'.$finding->method)
+        ->countBy()
+        ->sortKeys()
+        ->all())->toBe([
+            '*dynamic*:raw' => 4,
+            'ai_agent_versions:raw' => 2,
+            'ai_model_versions:raw' => 1,
+            'ai_prompt_versions:raw' => 1,
+            'ai_release_decisions:raw' => 1,
+            'ai_release_policies:raw' => 1,
+        ]);
+});
+
 it('detects query aliases eloquent and raw registry mutation bypasses without false positives', function (): void {
     $base = dirname(__DIR__, 2);
     $root = $base.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'framework'
