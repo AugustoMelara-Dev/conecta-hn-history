@@ -7,6 +7,8 @@ namespace Tests\Feature\AI;
 use App\Models\Product;
 use App\Models\Service;
 use App\Models\Tenant;
+use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Contracts\Encryption\Encrypter;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -317,9 +319,118 @@ final class DirectoryGuideChatTest extends TestCase
         );
     }
 
+    public function test_stateless_subject_cookie_is_reused_by_a_stateful_sanctum_request(): void
+    {
+        config()->set('sanctum.stateful', ['localhost']);
+
+        $stateless = $this->withCredentials()
+            ->withHeader('Origin', 'https://third-party.example')
+            ->withHeader('Idempotency-Key', 'public-stateless-to-stateful')
+            ->postJson('/api/v1/directory/guide/chat', [
+                'message' => 'show published products',
+                'budget' => 50,
+            ])
+            ->assertOk();
+        $cookie = $stateless->getCookie(self::PUBLIC_SUBJECT_COOKIE, false);
+        self::assertNotNull($cookie);
+        $stateless->assertCookieMissing((string) config('session.cookie'));
+
+        $stateful = $this->withCredentials()
+            ->withHeader('Origin', 'http://localhost')
+            ->withUnencryptedCookie(self::PUBLIC_SUBJECT_COOKIE, $cookie->getValue())
+            ->withHeader('Idempotency-Key', 'public-stateless-to-stateful')
+            ->postJson('/api/v1/directory/guide/chat', [
+                'message' => 'show published products',
+                'budget' => 50,
+            ])
+            ->assertOk();
+
+        $stateful
+            ->assertJsonPath('conversation_id', $stateless->json('conversation_id'))
+            ->assertJsonPath('request_message_id', $stateless->json('request_message_id'));
+        self::assertNotNull($stateful->getCookie((string) config('session.cookie'), false));
+        self::assertNotNull($stateful->getCookie('XSRF-TOKEN', false));
+    }
+
+    public function test_stateful_subject_cookie_is_reused_by_a_stateless_request(): void
+    {
+        config()->set('sanctum.stateful', ['localhost']);
+
+        $stateful = $this->withCredentials()
+            ->withHeader('Origin', 'http://localhost')
+            ->withHeader('Idempotency-Key', 'public-stateful-to-stateless')
+            ->postJson('/api/v1/directory/guide/chat', [
+                'message' => 'show published products',
+                'budget' => 50,
+            ])
+            ->assertOk();
+        $cookie = $stateful->getCookie(self::PUBLIC_SUBJECT_COOKIE, false);
+        self::assertNotNull($cookie);
+        self::assertNotNull($stateful->getCookie((string) config('session.cookie'), false));
+
+        $stateless = $this->withCredentials()
+            ->withHeader('Origin', 'https://third-party.example')
+            ->withUnencryptedCookie(self::PUBLIC_SUBJECT_COOKIE, $cookie->getValue())
+            ->withHeader('Idempotency-Key', 'public-stateful-to-stateless')
+            ->postJson('/api/v1/directory/guide/chat', [
+                'message' => 'show published products',
+                'budget' => 50,
+            ])
+            ->assertOk();
+
+        $stateless
+            ->assertJsonPath('conversation_id', $stateful->json('conversation_id'))
+            ->assertJsonPath('request_message_id', $stateful->json('request_message_id'));
+        $stateless->assertCookieMissing((string) config('session.cookie'));
+    }
+
+    public function test_stateful_subject_cookie_has_one_protected_envelope_and_keeps_cookie_policy(): void
+    {
+        config()->set('sanctum.stateful', ['localhost']);
+        config()->set('session.secure', true);
+
+        $response = $this->withCredentials()
+            ->withHeader('Origin', 'http://localhost')
+            ->withHeader('Idempotency-Key', 'public-stateful-envelope')
+            ->postJson('/api/v1/directory/guide/chat', [
+                'message' => 'show published products',
+                'budget' => 50,
+            ])
+            ->assertOk();
+
+        $subject = $response->getCookie(self::PUBLIC_SUBJECT_COOKIE, false);
+        self::assertNotNull($subject);
+        self::assertTrue($subject->isHttpOnly());
+        self::assertTrue($subject->isSecure());
+        self::assertSame('lax', strtolower((string) $subject->getSameSite()));
+
+        /** @var Encrypter $encrypter */
+        $encrypter = app(Encrypter::class);
+        $token = $encrypter->decryptString($subject->getValue());
+        self::assertMatchesRegularExpression('/^[A-Za-z0-9_-]{43}$/', $token);
+
+        try {
+            $encrypter->decryptString($token);
+            self::fail('The public subject cookie must contain exactly one authenticated-encryption envelope.');
+        } catch (DecryptException) {
+            self::assertTrue(true);
+        }
+
+        $sessionName = (string) config('session.cookie');
+        $rawSession = $response->getCookie($sessionName, false);
+        $rawXsrf = $response->getCookie('XSRF-TOKEN', false);
+        self::assertNotNull($rawSession);
+        self::assertNotNull($rawXsrf);
+        self::assertNotSame($rawSession->getValue(), $response->getCookie($sessionName)?->getValue());
+        self::assertNotSame($rawXsrf->getValue(), $response->getCookie('XSRF-TOKEN')?->getValue());
+    }
+
     public function test_invalid_subject_cookie_is_rotated_and_cannot_claim_a_stable_identity(): void
     {
+        config()->set('sanctum.stateful', ['localhost']);
+
         $first = $this->withCredentials()
+            ->withHeader('Origin', 'http://localhost')
             ->withUnencryptedCookie(self::PUBLIC_SUBJECT_COOKIE, 'invalid-client-value')
             ->withHeader('Idempotency-Key', 'public-invalid-cookie')
             ->postJson('/api/v1/directory/guide/chat', [
@@ -329,6 +440,7 @@ final class DirectoryGuideChatTest extends TestCase
             ])
             ->assertOk();
         $second = $this->withCredentials()
+            ->withHeader('Origin', 'http://localhost')
             ->withUnencryptedCookie(self::PUBLIC_SUBJECT_COOKIE, 'invalid-client-value')
             ->withHeader('Idempotency-Key', 'public-invalid-cookie')
             ->postJson('/api/v1/directory/guide/chat', [

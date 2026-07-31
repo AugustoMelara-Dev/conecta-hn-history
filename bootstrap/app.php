@@ -56,6 +56,8 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\MeasureHttpPerformance::class,
         ]);
 
+        $middleware->encryptCookies(except: ['dovra_ai_subject']);
+
         // Allow first-party Inertia/browser sessions to authenticate same-origin API calls.
         $middleware->statefulApi();
 
