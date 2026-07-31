@@ -88,6 +88,14 @@ class AppServiceProvider extends ServiceProvider
             \App\Infrastructure\AI\EloquentPrivateAiTenantAccessReader::class
         );
         $this->app->bind(
+            \App\Application\Ai\Security\AiContentCipher::class,
+            \App\Infrastructure\AI\Security\LaravelAiContentCipher::class,
+        );
+        $this->app->bind(
+            \App\Application\Ai\Conversation\ConversationStore::class,
+            \App\Infrastructure\AI\Conversation\EloquentConversationStore::class,
+        );
+        $this->app->bind(
             \App\Application\Interactions\Contracts\LeadFollowUpPlaybookInterface::class,
             \App\Infrastructure\Interactions\EloquentLeadFollowUpPlaybook::class
         );
