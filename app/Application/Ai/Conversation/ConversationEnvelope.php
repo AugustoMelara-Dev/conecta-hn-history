@@ -20,6 +20,7 @@ final readonly class ConversationEnvelope
         public string $contentType,
         public string $idempotencyKey,
         public ?string $conversationId,
+        public ?string $responseInputsHash,
     ) {}
 
     public static function fromCommand(AcceptConversationMessage $command): self
@@ -28,9 +29,10 @@ final readonly class ConversationEnvelope
             tenantId: strtolower($command->tenantId),
             visibility: $command->visibility,
             originType: $command->originType,
-            externalThreadHash: $command->externalThreadReference === null
-                ? null
-                : hash('sha256', $command->externalThreadReference),
+            externalThreadHash: $command->conversationSubjectHash
+                ?? ($command->externalThreadReference === null
+                    ? null
+                    : hash('sha256', $command->externalThreadReference)),
             actorId: $command->actorId,
             locale: $command->locale,
             marketCountryCode: $command->marketCountryCode,
@@ -42,13 +44,14 @@ final readonly class ConversationEnvelope
             conversationId: $command->conversationId === null
                 ? null
                 : strtolower($command->conversationId),
+            responseInputsHash: $command->responseInputsHash,
         );
     }
 
     /** @return array<string, string|null> */
     public function canonicalPayload(string $conversationId): array
     {
-        return [
+        $payload = [
             'tenant_id' => $this->tenantId,
             'conversation_id' => $conversationId,
             'visibility' => $this->visibility,
@@ -63,5 +66,11 @@ final readonly class ConversationEnvelope
             'content_type' => $this->contentType,
             'idempotency_key' => $this->idempotencyKey,
         ];
+
+        if ($this->responseInputsHash !== null) {
+            $payload['response_inputs_hash'] = $this->responseInputsHash;
+        }
+
+        return $payload;
     }
 }

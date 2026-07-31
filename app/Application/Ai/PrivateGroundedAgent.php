@@ -77,6 +77,7 @@ final class PrivateGroundedAgent
                 evidence: [],
                 execution: $result,
                 fallback: true,
+                failureCode: 'ai_evidence_insufficient',
             );
         }
 

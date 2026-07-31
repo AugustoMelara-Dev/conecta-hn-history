@@ -10,13 +10,19 @@ use App\Application\Ai\Registry\AiRegistryResolver;
 use App\Application\Ai\Registry\AiRuntimeSelection;
 use App\Application\Markets\TenantMarketResolver;
 use App\Domain\Shared\Services\TenantContext;
+use App\Exceptions\Ai\AiCircuitOpenException;
 use App\Exceptions\Ai\AiConversationConflictException;
 use App\Exceptions\Ai\AiExecutionDeniedException;
+use App\Exceptions\Ai\AiExecutionFailedException;
+use App\Exceptions\Ai\AiMalformedResponseException;
+use App\Exceptions\Ai\AiProviderResourceLimitException;
+use App\Exceptions\Ai\AiProviderUnavailableException;
+use App\Exceptions\InsufficientAiCreditsException;
 use App\Infrastructure\Tenancy\PostgresTenantScope;
 use App\Models\Tenant;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Throwable;
+use JsonException;
 
 final readonly class ConversationRuntime
 {
@@ -55,7 +61,10 @@ final readonly class ConversationRuntime
 
     private function runPublic(PublicConversationInput $input, string $tenantId): ConversationResponse
     {
-        $tenant = Tenant::query()->findOrFail($tenantId);
+        $tenant = Tenant::query()->find($tenantId);
+        if ($tenant === null) {
+            throw new AiExecutionDeniedException('billing_tenant');
+        }
         $market = $this->markets->resolve($tenant);
         $command = $input->toAcceptedMessage($tenantId, $market);
         $claim = $this->store->claim($command);
@@ -76,7 +85,16 @@ final readonly class ConversationRuntime
             );
         } catch (AiConversationConflictException $exception) {
             throw $exception;
-        } catch (Throwable $exception) {
+        } catch (
+            AiCircuitOpenException
+            |AiExecutionDeniedException
+            |AiExecutionFailedException
+            |AiMalformedResponseException
+            |AiProviderResourceLimitException
+            |AiProviderUnavailableException
+            |InsufficientAiCreditsException
+            |JsonException $exception
+        ) {
             return $this->failed(
                 tenantId: $tenantId,
                 command: $command,
@@ -110,7 +128,16 @@ final readonly class ConversationRuntime
             );
         } catch (AiConversationConflictException $exception) {
             throw $exception;
-        } catch (Throwable $exception) {
+        } catch (
+            AiCircuitOpenException
+            |AiExecutionDeniedException
+            |AiExecutionFailedException
+            |AiMalformedResponseException
+            |AiProviderResourceLimitException
+            |AiProviderUnavailableException
+            |InsufficientAiCreditsException
+            |JsonException $exception
+        ) {
             return $this->failed(
                 tenantId: $input->tenantId,
                 command: $command,
@@ -128,15 +155,16 @@ final readonly class ConversationRuntime
         AiRuntimeSelection $selection,
         ConversationEngineResult $answer,
     ): ConversationResponse {
-        if ($answer->execution === null) {
+        if ($answer->fallback || $answer->execution === null) {
             return $this->failed(
                 tenantId: $tenantId,
                 command: $command,
                 claim: $claim,
                 failure: [
-                    'code' => $answer->handoffTrigger === null
-                        ? 'ai_evidence_insufficient'
-                        : 'ai_handoff_required',
+                    'code' => $answer->failureCode
+                        ?? ($answer->handoffTrigger === null
+                            ? 'ai_evidence_insufficient'
+                            : 'ai_handoff_required'),
                     'retryable' => false,
                 ],
                 fallback: $answer->payload,

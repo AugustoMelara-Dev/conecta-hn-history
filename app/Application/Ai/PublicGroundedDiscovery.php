@@ -82,6 +82,7 @@ final class PublicGroundedDiscovery
                 evidence: [],
                 execution: $result,
                 fallback: true,
+                failureCode: 'ai_evidence_insufficient',
             );
         }
 

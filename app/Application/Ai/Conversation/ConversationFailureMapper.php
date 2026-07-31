@@ -12,6 +12,7 @@ use App\Exceptions\Ai\AiMalformedResponseException;
 use App\Exceptions\Ai\AiProviderResourceLimitException;
 use App\Exceptions\Ai\AiProviderUnavailableException;
 use App\Exceptions\InsufficientAiCreditsException;
+use InvalidArgumentException;
 use JsonException;
 use Throwable;
 
@@ -46,7 +47,7 @@ final class ConversationFailureMapper
             return ['code' => 'ai_temporarily_unavailable', 'retryable' => true];
         }
 
-        return ['code' => 'ai_temporarily_unavailable', 'retryable' => true];
+        throw new InvalidArgumentException('Unsupported AI conversation failure type.');
     }
 
     /** @return array{code:string,retryable:bool} */

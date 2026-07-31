@@ -23,9 +23,14 @@ final readonly class AcceptConversationMessage
         public string $contentType,
         public string $idempotencyKey,
         public ?string $conversationId = null,
+        public ?string $conversationSubjectHash = null,
+        public ?string $responseInputsHash = null,
     ) {
         if (! Str::isUuid($tenantId)
             || ($conversationId !== null && ! Str::isUuid($conversationId))
+            || ($conversationSubjectHash !== null && preg_match('/^[a-f0-9]{64}$/', $conversationSubjectHash) !== 1)
+            || ($responseInputsHash !== null && preg_match('/^[a-f0-9]{64}$/', $responseInputsHash) !== 1)
+            || ($conversationSubjectHash !== null && $externalThreadReference !== null)
             || trim($originType) === ''
             || mb_strlen($originType) > 32
             || ($externalThreadReference !== null

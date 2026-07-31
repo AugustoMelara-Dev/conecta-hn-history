@@ -10,6 +10,7 @@ use App\Application\Ai\DTOs\AiExecutionRequest;
 use App\Application\Ai\DTOs\AiExecutionResult;
 use App\Application\Ai\DTOs\AiProviderResult;
 use App\Domain\Analytics\Enums\CommercialOutcome;
+use App\Exceptions\Ai\AiProviderUnavailableException;
 use App\Infrastructure\AI\ConfiguredAiProviderPool;
 use App\Models\Appointment;
 use App\Models\Order;
@@ -500,7 +501,7 @@ final class FailingPrivateGateway implements AiGateway
         $this->calls++;
         $this->request = $request;
 
-        throw new \RuntimeException('SECRET PROVIDER DETAIL');
+        throw new AiProviderUnavailableException('SECRET PROVIDER DETAIL');
     }
 }
 

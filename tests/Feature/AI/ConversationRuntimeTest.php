@@ -16,6 +16,7 @@ use App\Application\Markets\TenantMarketResolver;
 use App\Domain\Shared\Services\TenantContext;
 use App\Exceptions\Ai\AiConversationConflictException;
 use App\Exceptions\Ai\AiExecutionDeniedException;
+use App\Exceptions\Ai\AiProviderUnavailableException;
 use App\Infrastructure\AI\ConfiguredAiProviderPool;
 use App\Models\Product;
 use App\Models\Tenant;
@@ -261,6 +262,223 @@ final class ConversationRuntimeTest extends TestCase
         self::assertSame(1, $gateway->calls);
     }
 
+    public function test_public_idempotency_conflicts_when_any_response_filter_changes(): void
+    {
+        $this->publicCatalogFixture();
+        $runtime = app(ConversationRuntime::class);
+        $original = new PublicConversationInput(
+            message: 'que puedo comprar con 50 lempiras',
+            idempotencyKey: 'public-filter-conflict',
+            budget: 50,
+            rateLimitIdentity: 'anonymous-filter-subject',
+        );
+
+        $runtime->public($original);
+
+        foreach ([
+            ['budget' => 51.25],
+            ['city' => 'tegucigalpa'],
+            ['category' => 'cafes'],
+        ] as $changedFilter) {
+            try {
+                $runtime->public(new PublicConversationInput(
+                    message: $original->message,
+                    idempotencyKey: $original->idempotencyKey,
+                    budget: $changedFilter['budget'] ?? $original->budget,
+                    city: $changedFilter['city'] ?? $original->city,
+                    category: $changedFilter['category'] ?? $original->category,
+                    rateLimitIdentity: $original->rateLimitIdentity,
+                ));
+                self::fail('Changing a response-affecting public filter must conflict.');
+            } catch (AiConversationConflictException $exception) {
+                self::assertSame('ai_request_conflict', $exception->publicCode);
+            }
+        }
+    }
+
+    public function test_public_anonymous_subject_separates_conversations_and_replays_without_raw_identity(): void
+    {
+        [, , $gateway] = $this->publicCatalogFixture();
+        $runtime = app(ConversationRuntime::class);
+        $firstInput = new PublicConversationInput(
+            message: 'que puedo comprar con 50 lempiras',
+            idempotencyKey: 'public-subject-key',
+            budget: 50,
+            rateLimitIdentity: '198.51.100.10',
+        );
+
+        $first = $runtime->public($firstInput);
+        $replay = $runtime->public($firstInput);
+        $secondSubject = $runtime->public(new PublicConversationInput(
+            message: $firstInput->message,
+            idempotencyKey: $firstInput->idempotencyKey,
+            rateLimitIdentity: '203.0.113.20',
+        ));
+
+        self::assertSame($first->toArray(), $replay->toArray());
+        self::assertNotSame($first->conversationId, $secondSubject->conversationId);
+        self::assertNotSame($first->requestMessageId, $secondSubject->requestMessageId);
+        self::assertSame(2, $gateway->calls);
+        $storedConversations = json_encode(
+            DB::table('ai_conversations')->orderBy('id')->get()->toArray(),
+            JSON_THROW_ON_ERROR,
+        );
+        self::assertStringNotContainsString('198.51.100.10', $storedConversations);
+        self::assertStringNotContainsString('203.0.113.20', $storedConversations);
+    }
+
+    public function test_public_continuation_rejects_a_different_anonymous_subject(): void
+    {
+        $this->publicCatalogFixture();
+        $runtime = app(ConversationRuntime::class);
+        $first = $runtime->public(new PublicConversationInput(
+            message: 'que puedo comprar con 50 lempiras',
+            idempotencyKey: 'public-subject-first',
+            budget: 50,
+            rateLimitIdentity: '198.51.100.10',
+        ));
+
+        $continued = $runtime->public(new PublicConversationInput(
+            message: 'mostrame mas opciones con 50 lempiras',
+            idempotencyKey: 'public-subject-continuation',
+            conversationId: $first->conversationId,
+            budget: 50,
+            rateLimitIdentity: '198.51.100.10',
+        ));
+
+        self::assertSame($first->conversationId, $continued->conversationId);
+
+        $this->expectException(AiConversationConflictException::class);
+        $runtime->public(new PublicConversationInput(
+            message: 'intento de continuar con 50 lempiras',
+            idempotencyKey: 'public-subject-attacker',
+            conversationId: $first->conversationId,
+            budget: 50,
+            rateLimitIdentity: '203.0.113.20',
+        ));
+    }
+
+    public function test_unknown_runtime_bug_rethrows_without_persisting_fallback_and_clears_public_context(): void
+    {
+        $this->publicCatalogFixture();
+        $this->app->instance(AiGateway::class, new BuggingConversationGateway);
+        $runtime = app(ConversationRuntime::class);
+        self::assertFalse(app(TenantContext::class)->isInitialized());
+
+        $caught = null;
+        try {
+            $runtime->public(new PublicConversationInput(
+                message: 'que puedo comprar con 50 lempiras',
+                idempotencyKey: 'public-runtime-bug',
+                budget: 50,
+                rateLimitIdentity: '198.51.100.10',
+            ));
+        } catch (\RuntimeException $exception) {
+            $caught = $exception;
+        }
+
+        self::assertInstanceOf(\RuntimeException::class, $caught);
+        self::assertSame('SECRET PROGRAMMING BUG', $caught->getMessage());
+        self::assertFalse(app(TenantContext::class)->isInitialized());
+        self::assertSame(0, DB::table('ai_message_failures')->count());
+        self::assertSame(0, DB::table('ai_messages')->where('direction', 'outbound')->count());
+    }
+
+    public function test_public_runtime_clears_context_after_success(): void
+    {
+        $this->publicCatalogFixture();
+        self::assertFalse(app(TenantContext::class)->isInitialized());
+
+        $response = app(ConversationRuntime::class)->public(new PublicConversationInput(
+            message: 'que puedo comprar con 50 lempiras',
+            idempotencyKey: 'public-context-success',
+            budget: 50,
+            rateLimitIdentity: '198.51.100.10',
+        ));
+
+        self::assertSame('completed', $response->status);
+        self::assertFalse(app(TenantContext::class)->isInitialized());
+    }
+
+    public function test_grounding_rejection_persists_failed_fallback_and_replays_without_second_engine(): void
+    {
+        [$tenant] = $this->privateCatalogFixture();
+        $gateway = new PersistingConversationGateway([
+            'evidence' => [[
+                'type' => 'product',
+                'id' => 'product:'.Str::uuid(),
+            ]],
+        ]);
+        $this->app->instance(AiGateway::class, $gateway);
+        $input = new PrivateConversationInput(
+            tenantId: (string) $tenant->id,
+            actorId: 'owner-runtime-1',
+            message: 'Show my catalog',
+            idempotencyKey: 'private-runtime-grounding-rejected',
+        );
+
+        $first = app(ConversationRuntime::class)->private($input);
+        $replay = app(ConversationRuntime::class)->private($input);
+
+        self::assertSame('failed', $first->status);
+        self::assertSame('ai_evidence_insufficient', $first->code);
+        self::assertSame($first->toArray(), $replay->toArray());
+        self::assertSame(1, $gateway->calls);
+        $this->assertDatabaseHas('ai_messages', [
+            'id' => $first->responseMessageId,
+            'status' => 'failed',
+        ]);
+        $this->assertDatabaseHas('ai_message_failures', [
+            'message_id' => $first->responseMessageId,
+            'failure_code' => 'ai_evidence_insufficient',
+        ]);
+        self::assertNull(DB::table('ai_executions')
+            ->where('correlation_id', $first->requestMessageId)
+            ->value('response_message_id'));
+    }
+
+    /** @return array{Tenant, Product, PersistingConversationGateway} */
+    private function publicCatalogFixture(): array
+    {
+        $platform = Tenant::factory()->create();
+        GlobalMarketFixture::assignCanada($platform);
+        $merchant = Tenant::factory()->create([
+            'is_active' => true,
+            'subscription_status' => 'active',
+        ]);
+        $product = Product::factory()->forTenant($merchant)->create([
+            'name' => 'Public runtime fixture product',
+            'price' => 25,
+            'is_active' => true,
+            'is_visible' => true,
+        ]);
+        config()->set('ai.public.billing_tenant_id', (string) $platform->id);
+        $selection = AiEligibleRegistryFixture::create(
+            tenantId: (string) $platform->id,
+            capability: 'public_discovery',
+            audience: 'public',
+            outputSchema: 'public_discovery.answer.v1',
+            marketCountryCode: 'CA',
+        );
+        $this->app->instance(AiProviderPool::class, new ConfiguredAiProviderPool([
+            $selection->adapterKey => [
+                $selection->secretReference => new FakeAiProvider,
+            ],
+        ]));
+        $gateway = new PersistingConversationGateway([
+            'answer' => 'Use exact evidence.',
+            'evidence' => [[
+                'type' => 'product',
+                'id' => 'product:'.$product->id,
+                'reason' => 'Published product.',
+            ]],
+        ]);
+        $this->app->instance(AiGateway::class, $gateway);
+        app(TenantContext::class)->reset();
+
+        return [$platform, $product, $gateway];
+    }
+
     /** @return array{Tenant, Product, PrivateConversationInput, PersistingConversationGateway} */
     private function privateCatalogFixture(): array
     {
@@ -363,6 +581,14 @@ final class ThrowingConversationGateway implements AiGateway
 {
     public function execute(AiExecutionRequest $request): AiExecutionResult
     {
-        throw new \RuntimeException('SECRET PROVIDER DETAIL');
+        throw new AiProviderUnavailableException('SECRET PROVIDER DETAIL');
+    }
+}
+
+final class BuggingConversationGateway implements AiGateway
+{
+    public function execute(AiExecutionRequest $request): AiExecutionResult
+    {
+        throw new \RuntimeException('SECRET PROGRAMMING BUG');
     }
 }

@@ -9,7 +9,9 @@ use App\Models\Service;
 use App\Models\Tenant;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Tests\Support\GlobalMarketFixture;
 use Tests\TestCase;
 
@@ -242,5 +244,40 @@ final class DirectoryGuideChatTest extends TestCase
             ->assertJsonMissing(['name' => 'Pan oculto'])
             ->assertJsonMissing(['name' => 'Pan pausado'])
             ->assertJsonMissing(['name' => 'Pan privado']);
+    }
+
+    public function test_public_subject_cannot_be_overridden_by_request_body(): void
+    {
+        $first = $this->withHeader('Idempotency-Key', 'public-body-subject')
+            ->postJson('/api/v1/directory/guide/chat', [
+                'message' => 'show published products',
+                'rate_limit_identity' => 'attacker-controlled-a',
+            ])
+            ->assertOk();
+        $replay = $this->withHeader('Idempotency-Key', 'public-body-subject')
+            ->postJson('/api/v1/directory/guide/chat', [
+                'message' => 'show published products',
+                'rate_limit_identity' => 'attacker-controlled-b',
+            ])
+            ->assertOk();
+
+        $replay
+            ->assertJsonPath('conversation_id', $first->json('conversation_id'))
+            ->assertJsonPath('request_message_id', $first->json('request_message_id'));
+        self::assertStringNotContainsString(
+            'attacker-controlled',
+            json_encode(DB::table('ai_conversations')->get()->toArray(), JSON_THROW_ON_ERROR),
+        );
+    }
+
+    public function test_missing_configured_platform_tenant_returns_safe_service_unavailable(): void
+    {
+        config()->set('ai.public.billing_tenant_id', (string) Str::uuid());
+
+        $this->postJson('/api/v1/directory/guide/chat', [
+            'message' => 'show published products',
+        ])
+            ->assertStatus(503)
+            ->assertJsonPath('code', 'ai_configuration_unavailable');
     }
 }
