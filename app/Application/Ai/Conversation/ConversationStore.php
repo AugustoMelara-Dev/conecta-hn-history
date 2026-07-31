@@ -31,5 +31,6 @@ interface ConversationStore
         string $requestMessageId,
         string $publicCode,
         bool $retryable,
+        array $fallback = [],
     ): void;
 }

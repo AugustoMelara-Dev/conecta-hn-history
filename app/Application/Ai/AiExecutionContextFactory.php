@@ -22,6 +22,8 @@ final class AiExecutionContextFactory
         bool $entitled = false,
         array $allowedTools = [],
         ?string $correlationId = null,
+        ?string $conversationId = null,
+        ?string $requestMessageId = null,
     ): AiExecutionContext {
         if (trim($rateLimitIdentity) === '') {
             throw new AiExecutionDeniedException('rate_limit_identity');
@@ -66,6 +68,8 @@ final class AiExecutionContextFactory
             entitled: $entitled,
             rateLimitSubject: hash('sha256', $rateLimitIdentity),
             allowedTools: $allowedTools,
+            conversationId: $conversationId,
+            requestMessageId: $requestMessageId,
         );
     }
 }

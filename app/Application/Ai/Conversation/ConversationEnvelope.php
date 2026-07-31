@@ -19,6 +19,7 @@ final readonly class ConversationEnvelope
         public string $content,
         public string $contentType,
         public string $idempotencyKey,
+        public ?string $conversationId,
     ) {}
 
     public static function fromCommand(AcceptConversationMessage $command): self
@@ -38,6 +39,9 @@ final readonly class ConversationEnvelope
             content: str_replace(["\r\n", "\r"], "\n", $command->content),
             contentType: $command->contentType,
             idempotencyKey: $command->idempotencyKey,
+            conversationId: $command->conversationId === null
+                ? null
+                : strtolower($command->conversationId),
         );
     }
 

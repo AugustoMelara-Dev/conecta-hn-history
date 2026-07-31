@@ -21,6 +21,8 @@ final readonly class AiExecutionContext
         public bool $entitled,
         public string $rateLimitSubject,
         public array $allowedTools = [],
+        public ?string $conversationId = null,
+        public ?string $requestMessageId = null,
     ) {
         if (! Str::isUuid($correlationId)) {
             throw new InvalidArgumentException('AI correlation ID must be a UUID.');
@@ -44,6 +46,12 @@ final readonly class AiExecutionContext
 
         if (! preg_match('/^[a-f0-9]{64}$/', $rateLimitSubject)) {
             throw new InvalidArgumentException('AI rate-limit subject must be a server-side SHA-256 digest.');
+        }
+
+        if (($conversationId === null) !== ($requestMessageId === null)
+            || ($conversationId !== null && ! Str::isUuid($conversationId))
+            || ($requestMessageId !== null && ! Str::isUuid($requestMessageId))) {
+            throw new InvalidArgumentException('AI conversation execution lineage is invalid.');
         }
     }
 }

@@ -15,14 +15,25 @@ use App\Infrastructure\AI\ConfiguredAiProviderPool;
 use App\Models\Product;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\Fakes\AI\FakeAiProvider;
 use Tests\Support\AI\AiEligibleRegistryFixture;
+use Tests\Support\GlobalMarketFixture;
 use Tests\TestCase;
 
 final class PublicGroundedDiscoveryTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Tenant::created(static function (Tenant $tenant): void {
+            GlobalMarketFixture::assignCanada($tenant);
+        });
+    }
 
     public function test_enabled_generation_uses_only_canonical_evidence_and_server_context(): void
     {
@@ -139,6 +150,7 @@ final class PublicGroundedDiscoveryTest extends TestCase
             capability: 'public_discovery',
             audience: 'public',
             outputSchema: 'public_discovery.answer.v1',
+            marketCountryCode: 'CA',
         );
         $this->app->instance(AiProviderPool::class, new ConfiguredAiProviderPool([
             'fake_structured_text' => ['fake.primary' => $provider],
@@ -342,7 +354,7 @@ final class PublicGroundedDiscoveryTest extends TestCase
 
     public function test_no_candidates_never_calls_the_ai_gateway(): void
     {
-        config()->set('ai.public.billing_tenant_id', (string) Str::uuid());
+        config()->set('ai.public.billing_tenant_id', (string) Tenant::factory()->create()->id);
         $gateway = new RecordingPublicGateway([
             'answer' => 'Must not run',
             'evidence' => [],
@@ -369,6 +381,7 @@ final class PublicGroundedDiscoveryTest extends TestCase
             capability: 'public_discovery',
             audience: 'public',
             outputSchema: 'public_discovery.answer.v1',
+            marketCountryCode: 'CA',
         );
         $this->app->instance(AiProviderPool::class, new ConfiguredAiProviderPool([
             $selection->adapterKey => [
@@ -393,11 +406,39 @@ final class RecordingPublicGateway implements AiGateway
     {
         $this->calls++;
         $this->request = $request;
+        DB::table('ai_executions')->insert([
+            'correlation_id' => $request->context->correlationId,
+            'tenant_id' => $request->context->tenantId,
+            'billing_tenant_id' => $request->context->billingTenantId,
+            'actor_id' => $request->context->actorId,
+            'audience' => $request->context->audience,
+            'capability' => $request->context->capability,
+            'operation' => $request->operation,
+            'provider' => $request->selection->providerKey,
+            'model' => $request->selection->modelKey,
+            'request_hash' => hash('sha256', $request->userInput),
+            'claim_token' => hash('sha256', 'recording-public-gateway'),
+            'claim_version' => 1,
+            'status' => 'completed',
+            'encryption_key_version' => 'v1',
+            'retention_expires_at' => now()->addDay(),
+            'processing_expires_at' => now()->addMinute(),
+            'provider_completed_at' => now(),
+            'completed_at' => now(),
+            'conversation_id' => $request->context->conversationId,
+            'request_message_id' => $request->context->requestMessageId,
+            'provider_version_id' => $request->selection->providerVersionId,
+            'model_version_id' => $request->selection->modelVersionId,
+            'agent_version_id' => $request->selection->agentVersionId,
+            'prompt_version_id' => $request->selection->promptVersionId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
 
         return new AiExecutionResult(
             correlationId: $request->context->correlationId,
-            provider: 'fake',
-            model: 'fake-public-1',
+            provider: $request->selection->providerKey,
+            model: $request->selection->modelKey,
             data: $this->data,
             usage: [
                 'input_tokens' => 10,

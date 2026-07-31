@@ -22,8 +22,10 @@ final readonly class AcceptConversationMessage
         public string $content,
         public string $contentType,
         public string $idempotencyKey,
+        public ?string $conversationId = null,
     ) {
         if (! Str::isUuid($tenantId)
+            || ($conversationId !== null && ! Str::isUuid($conversationId))
             || trim($originType) === ''
             || mb_strlen($originType) > 32
             || ($externalThreadReference !== null

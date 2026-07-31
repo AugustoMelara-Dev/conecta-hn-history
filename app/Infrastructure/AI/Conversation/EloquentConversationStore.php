@@ -60,9 +60,11 @@ final class EloquentConversationStore implements ConversationStore
         $this->assertTenantAccess($envelope->tenantId, $envelope->visibility);
         $this->assertEnvelope($envelope);
 
-        $conversationId = $this->stableId($envelope->externalThreadHash === null
-            ? "conversation-new|{$envelope->tenantId}|{$envelope->idempotencyKey}"
-            : "conversation-thread|{$envelope->tenantId}|{$envelope->externalThreadHash}");
+        $conversationId = $envelope->conversationId ?? $this->stableId(
+            $envelope->externalThreadHash === null
+                ? "conversation-new|{$envelope->tenantId}|{$envelope->idempotencyKey}"
+                : "conversation-thread|{$envelope->tenantId}|{$envelope->externalThreadHash}",
+        );
         $messageId = $this->stableId(
             "conversation-request|{$envelope->tenantId}|{$conversationId}|{$envelope->idempotencyKey}",
         );
@@ -85,26 +87,28 @@ final class EloquentConversationStore implements ConversationStore
                     return $this->replayedClaim($envelope->tenantId, $existingMessage, $payloadHash);
                 }
 
-                DB::table('ai_conversations')->insertOrIgnore([
-                    'id' => $conversationId,
-                    'tenant_id' => $envelope->tenantId,
-                    'visibility' => $envelope->visibility,
-                    'origin_type' => $envelope->originType,
-                    'external_thread_hash' => $envelope->externalThreadHash,
-                    'actor_id' => $envelope->actorId,
-                    'locale' => $envelope->locale,
-                    'market_country_code' => $envelope->marketCountryCode,
-                    'currency' => $envelope->currency,
-                    'timezone' => $envelope->timezone,
-                    'status' => 'active',
-                    'retention_category' => 'conversation_standard',
-                    'retention_expires_at' => now()->addDays(
-                        max(1, (int) config('ai.execution_retention.days', 30)),
-                    ),
-                    'last_message_sequence' => 0,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                if ($envelope->conversationId === null) {
+                    DB::table('ai_conversations')->insertOrIgnore([
+                        'id' => $conversationId,
+                        'tenant_id' => $envelope->tenantId,
+                        'visibility' => $envelope->visibility,
+                        'origin_type' => $envelope->originType,
+                        'external_thread_hash' => $envelope->externalThreadHash,
+                        'actor_id' => $envelope->actorId,
+                        'locale' => $envelope->locale,
+                        'market_country_code' => $envelope->marketCountryCode,
+                        'currency' => $envelope->currency,
+                        'timezone' => $envelope->timezone,
+                        'status' => 'active',
+                        'retention_category' => 'conversation_standard',
+                        'retention_expires_at' => now()->addDays(
+                            max(1, (int) config('ai.execution_retention.days', 30)),
+                        ),
+                        'last_message_sequence' => 0,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
 
                 $conversation = DB::table('ai_conversations')
                     ->where('id', $conversationId)
@@ -357,6 +361,7 @@ final class EloquentConversationStore implements ConversationStore
         string $requestMessageId,
         string $publicCode,
         bool $retryable,
+        array $fallback = [],
     ): void {
         if (! in_array($publicCode, self::FAILURE_CODES, true)) {
             throw new InvalidArgumentException('AI conversation failure code is invalid.');
@@ -364,6 +369,8 @@ final class EloquentConversationStore implements ConversationStore
         $tenantId = strtolower($tenantId);
         $this->assertTenantAccess($tenantId);
         $this->assertIdentifiers($tenantId, $conversationId, $requestMessageId);
+        $normalizedFallback = $fallback === [] ? [] : $this->normalizeAnswer($fallback);
+        $fallbackJson = $normalizedFallback === [] ? null : $this->json($normalizedFallback);
         $responseId = $this->responseId($tenantId, $requestMessageId);
         $failureHash = $this->hash([
             'tenant_id' => $tenantId,
@@ -371,6 +378,7 @@ final class EloquentConversationStore implements ConversationStore
             'request_message_id' => $requestMessageId,
             'failure_code' => $publicCode,
             'retryable' => $retryable,
+            'fallback' => $normalizedFallback,
         ]);
 
         try {
@@ -382,6 +390,7 @@ final class EloquentConversationStore implements ConversationStore
                 $retryable,
                 $responseId,
                 $failureHash,
+                $fallbackJson,
             ): void {
                 $conversation = $this->lockedConversation($tenantId, $conversationId);
                 $request = $this->lockedRequest($tenantId, $conversationId, $requestMessageId);
@@ -406,6 +415,12 @@ final class EloquentConversationStore implements ConversationStore
                 }
 
                 $sequence = ((int) $conversation->last_message_sequence) + 1;
+                $encrypted = $fallbackJson === null ? null : $this->cipher->encrypt(
+                    tenantId: $tenantId,
+                    recordId: $responseId,
+                    contentClass: 'conversation_message',
+                    plaintext: $fallbackJson,
+                );
                 DB::table('ai_messages')->insert([
                     'id' => $responseId,
                     'tenant_id' => $tenantId,
@@ -413,9 +428,9 @@ final class EloquentConversationStore implements ConversationStore
                     'sequence' => $sequence,
                     'direction' => 'outbound',
                     'role' => 'assistant',
-                    'content_ciphertext' => null,
-                    'content_hash' => null,
-                    'encryption_key_version' => null,
+                    'content_ciphertext' => $encrypted?->ciphertext,
+                    'content_hash' => $encrypted?->contentHash,
+                    'encryption_key_version' => $encrypted?->keyVersion,
                     'content_type' => 'application/json',
                     'idempotency_key' => "response:{$requestMessageId}",
                     'idempotency_hash' => $failureHash,
