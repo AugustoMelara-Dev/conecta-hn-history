@@ -245,6 +245,7 @@ final class ConversationRuntimeTest extends TestCase
         $response = app(ConversationRuntime::class)->public(new PublicConversationInput(
             message: 'que puedo comprar con 50 lempiras',
             idempotencyKey: 'public-runtime-1',
+            actorId: str_repeat('a', 64),
             budget: 50,
             rateLimitIdentity: '127.0.0.1',
         ));
@@ -269,6 +270,7 @@ final class ConversationRuntimeTest extends TestCase
         $original = new PublicConversationInput(
             message: 'que puedo comprar con 50 lempiras',
             idempotencyKey: 'public-filter-conflict',
+            actorId: str_repeat('a', 64),
             budget: 50,
             rateLimitIdentity: 'anonymous-filter-subject',
         );
@@ -284,6 +286,7 @@ final class ConversationRuntimeTest extends TestCase
                 $runtime->public(new PublicConversationInput(
                     message: $original->message,
                     idempotencyKey: $original->idempotencyKey,
+                    actorId: $original->actorId,
                     budget: $changedFilter['budget'] ?? $original->budget,
                     city: $changedFilter['city'] ?? $original->city,
                     category: $changedFilter['category'] ?? $original->category,
@@ -296,13 +299,14 @@ final class ConversationRuntimeTest extends TestCase
         }
     }
 
-    public function test_public_anonymous_subject_separates_conversations_and_replays_without_raw_identity(): void
+    public function test_public_pseudonymous_subject_separates_conversations_with_identical_payload_and_rate_identity(): void
     {
         [, , $gateway] = $this->publicCatalogFixture();
         $runtime = app(ConversationRuntime::class);
         $firstInput = new PublicConversationInput(
             message: 'que puedo comprar con 50 lempiras',
             idempotencyKey: 'public-subject-key',
+            actorId: str_repeat('a', 64),
             budget: 50,
             rateLimitIdentity: '198.51.100.10',
         );
@@ -312,7 +316,11 @@ final class ConversationRuntimeTest extends TestCase
         $secondSubject = $runtime->public(new PublicConversationInput(
             message: $firstInput->message,
             idempotencyKey: $firstInput->idempotencyKey,
-            rateLimitIdentity: '203.0.113.20',
+            actorId: str_repeat('b', 64),
+            budget: $firstInput->budget,
+            city: $firstInput->city,
+            category: $firstInput->category,
+            rateLimitIdentity: $firstInput->rateLimitIdentity,
         ));
 
         self::assertSame($first->toArray(), $replay->toArray());
@@ -334,6 +342,7 @@ final class ConversationRuntimeTest extends TestCase
         $first = $runtime->public(new PublicConversationInput(
             message: 'que puedo comprar con 50 lempiras',
             idempotencyKey: 'public-subject-first',
+            actorId: str_repeat('a', 64),
             budget: 50,
             rateLimitIdentity: '198.51.100.10',
         ));
@@ -341,6 +350,7 @@ final class ConversationRuntimeTest extends TestCase
         $continued = $runtime->public(new PublicConversationInput(
             message: 'mostrame mas opciones con 50 lempiras',
             idempotencyKey: 'public-subject-continuation',
+            actorId: str_repeat('a', 64),
             conversationId: $first->conversationId,
             budget: 50,
             rateLimitIdentity: '198.51.100.10',
@@ -352,10 +362,34 @@ final class ConversationRuntimeTest extends TestCase
         $runtime->public(new PublicConversationInput(
             message: 'intento de continuar con 50 lempiras',
             idempotencyKey: 'public-subject-attacker',
+            actorId: str_repeat('b', 64),
             conversationId: $first->conversationId,
             budget: 50,
             rateLimitIdentity: '203.0.113.20',
         ));
+    }
+
+    public function test_public_pseudonymous_subject_does_not_merge_distinct_idempotency_keys(): void
+    {
+        $this->publicCatalogFixture();
+        $runtime = app(ConversationRuntime::class);
+        $first = $runtime->public(new PublicConversationInput(
+            message: 'que puedo comprar con 50 lempiras',
+            idempotencyKey: 'public-subject-key-one',
+            actorId: str_repeat('a', 64),
+            budget: 50,
+            rateLimitIdentity: '198.51.100.10',
+        ));
+        $second = $runtime->public(new PublicConversationInput(
+            message: 'que puedo comprar con 50 lempiras',
+            idempotencyKey: 'public-subject-key-two',
+            actorId: str_repeat('a', 64),
+            budget: 50,
+            rateLimitIdentity: '198.51.100.10',
+        ));
+
+        self::assertNotSame($first->conversationId, $second->conversationId);
+        self::assertNotSame($first->requestMessageId, $second->requestMessageId);
     }
 
     public function test_unknown_runtime_bug_rethrows_without_persisting_fallback_and_clears_public_context(): void
@@ -370,6 +404,7 @@ final class ConversationRuntimeTest extends TestCase
             $runtime->public(new PublicConversationInput(
                 message: 'que puedo comprar con 50 lempiras',
                 idempotencyKey: 'public-runtime-bug',
+                actorId: str_repeat('a', 64),
                 budget: 50,
                 rateLimitIdentity: '198.51.100.10',
             ));
@@ -392,6 +427,7 @@ final class ConversationRuntimeTest extends TestCase
         $response = app(ConversationRuntime::class)->public(new PublicConversationInput(
             message: 'que puedo comprar con 50 lempiras',
             idempotencyKey: 'public-context-success',
+            actorId: str_repeat('a', 64),
             budget: 50,
             rateLimitIdentity: '198.51.100.10',
         ));

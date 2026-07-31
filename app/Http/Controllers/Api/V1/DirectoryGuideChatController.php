@@ -9,6 +9,7 @@ use App\Application\Ai\Conversation\PublicConversationInput;
 use App\Exceptions\Ai\AiConversationConflictException;
 use App\Exceptions\Ai\AiExecutionDeniedException;
 use App\Http\Controllers\Controller;
+use App\Infrastructure\AI\Conversation\EncryptedPublicConversationSubjectResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -19,6 +20,7 @@ final class DirectoryGuideChatController extends Controller
 {
     public function __construct(
         private readonly ConversationRuntime $runtime,
+        private readonly EncryptedPublicConversationSubjectResolver $subjects,
     ) {}
 
     public function __invoke(Request $request): JsonResponse
@@ -41,7 +43,16 @@ final class DirectoryGuideChatController extends Controller
         $budget = isset($validated['budget'])
             ? (float) $validated['budget']
             : $this->extractBudget($message);
+        $actorId = $request->user()?->getAuthIdentifier();
+        $subject = null;
+        if ($actorId === null) {
+            $subject = $this->subjects->resolve(
+                $request->cookie(EncryptedPublicConversationSubjectResolver::COOKIE_NAME),
+            );
+            $actorId = $subject->actorId;
+        }
 
+        $json = null;
         try {
             $response = $this->runtime->public(new PublicConversationInput(
                 message: $message,
@@ -54,21 +65,27 @@ final class DirectoryGuideChatController extends Controller
                 city: isset($validated['city']) ? (string) $validated['city'] : null,
                 category: isset($validated['category']) ? (string) $validated['category'] : null,
                 rateLimitIdentity: $request->ip() ?? 'unknown',
-                actorId: $request->user()?->getAuthIdentifier(),
+                actorId: $actorId,
             ));
         } catch (AiConversationConflictException) {
-            return response()->json([
+            $json = response()->json([
                 'message' => 'Idempotency key was already used for a different request.',
                 'code' => 'ai_request_conflict',
             ], 409);
         } catch (AiExecutionDeniedException) {
-            return response()->json([
+            $json = response()->json([
                 'message' => 'AI conversation is not available.',
                 'code' => 'ai_configuration_unavailable',
             ], 503);
         }
 
-        return response()->json($response->toArray());
+        $json ??= response()->json($response->toArray());
+
+        if ($subject?->replacementCookie !== null) {
+            $json->withCookie($this->subjects->responseCookie($subject->replacementCookie));
+        }
+
+        return $json;
     }
 
     private function extractBudget(string $message): ?float

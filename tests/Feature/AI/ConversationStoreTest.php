@@ -111,6 +111,38 @@ final class ConversationStoreTest extends TestCase
         self::assertSame(1, DB::table('ai_conversations')->count());
     }
 
+    public function test_public_pseudonymous_actor_and_real_external_thread_keep_separate_semantics(): void
+    {
+        $platform = Tenant::factory()->create();
+        $this->supportMarket();
+        config()->set('ai.public.billing_tenant_id', (string) $platform->id);
+        $this->scope((string) $platform->id);
+        $store = app(ConversationStore::class);
+        $subject = str_repeat('a', 64);
+
+        $first = $store->claim($this->command(
+            (string) $platform->id,
+            visibility: 'platform_public',
+            externalThreadReference: 'real-channel-thread',
+            actorId: $subject,
+            idempotencyKey: 'public-thread-one',
+        ));
+        $continued = $store->claim($this->command(
+            (string) $platform->id,
+            visibility: 'platform_public',
+            externalThreadReference: 'real-channel-thread',
+            actorId: $subject,
+            content: 'Continue the real external thread.',
+            idempotencyKey: 'public-thread-two',
+        ));
+
+        self::assertSame($first->conversationId, $continued->conversationId);
+        $conversation = DB::table('ai_conversations')->where('id', $first->conversationId)->first();
+        self::assertNotNull($conversation);
+        self::assertSame(hash('sha256', 'real-channel-thread'), $conversation->external_thread_hash);
+        self::assertSame($subject, $conversation->actor_id);
+    }
+
     public function test_same_normalized_claim_replays_and_changed_envelope_conflicts_within_the_conversation(): void
     {
         $tenant = Tenant::factory()->create();

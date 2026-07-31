@@ -30,6 +30,9 @@ final readonly class PublicConversationInput
             || preg_match('/^[A-Za-z0-9._:-]+$/', $idempotencyKey) !== 1
             || ! in_array($channel, ['web', 'api', 'mobile', 'whatsapp'], true)
             || ($conversationId !== null && ! Str::isUuid($conversationId))
+            || $actorId === null
+            || trim((string) $actorId) === ''
+            || mb_strlen((string) $actorId) > 64
             || ($budget !== null && (! is_finite($budget) || $budget < 0 || $budget > 10_000_000))
             || ($city !== null && preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $city) !== 1)
             || ($category !== null && preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $category) !== 1)
@@ -45,7 +48,7 @@ final readonly class PublicConversationInput
             visibility: 'platform_public',
             originType: $this->channel,
             externalThreadReference: null,
-            actorId: $this->actorId === null ? null : (string) $this->actorId,
+            actorId: (string) $this->actorId,
             locale: $market->localeCode,
             marketCountryCode: $market->countryCode,
             currency: $market->currencyCode,
@@ -54,9 +57,6 @@ final readonly class PublicConversationInput
             contentType: 'text',
             idempotencyKey: $this->idempotencyKey,
             conversationId: $this->conversationId,
-            conversationSubjectHash: $this->actorId === null
-                ? hash('sha256', 'public-anonymous-subject|'.$this->rateLimitIdentity)
-                : null,
             responseInputsHash: $this->responseInputsHash(),
         );
     }
@@ -71,9 +71,7 @@ final readonly class PublicConversationInput
             marketCode: $market->countryCode,
             residencyClass: $market->countryCode,
             actorId: $this->actorId,
-            cohortSubject: $this->actorId === null
-                ? hash('sha256', $this->rateLimitIdentity)
-                : (string) $this->actorId,
+            cohortSubject: (string) $this->actorId,
         );
     }
 

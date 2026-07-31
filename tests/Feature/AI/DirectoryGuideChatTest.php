@@ -19,6 +19,8 @@ final class DirectoryGuideChatTest extends TestCase
 {
     use RefreshDatabase;
 
+    private const PUBLIC_SUBJECT_COOKIE = 'dovra_ai_subject';
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -246,18 +248,59 @@ final class DirectoryGuideChatTest extends TestCase
             ->assertJsonMissing(['name' => 'Pan privado']);
     }
 
-    public function test_public_subject_cannot_be_overridden_by_request_body(): void
+    public function test_anonymous_clients_behind_the_same_ip_receive_distinct_server_issued_subjects(): void
     {
+        config()->set('session.secure', true);
+        $this->withServerVariables(['REMOTE_ADDR' => '198.51.100.42']);
+
         $first = $this->withHeader('Idempotency-Key', 'public-body-subject')
             ->postJson('/api/v1/directory/guide/chat', [
                 'message' => 'show published products',
-                'rate_limit_identity' => 'attacker-controlled-a',
+                'budget' => 50,
             ])
             ->assertOk();
-        $replay = $this->withHeader('Idempotency-Key', 'public-body-subject')
+        $second = $this->withHeader('Idempotency-Key', 'public-body-subject')
             ->postJson('/api/v1/directory/guide/chat', [
                 'message' => 'show published products',
-                'rate_limit_identity' => 'attacker-controlled-b',
+                'budget' => 50,
+            ])
+            ->assertOk();
+
+        self::assertNotSame($first->json('conversation_id'), $second->json('conversation_id'));
+        self::assertNotSame($first->json('request_message_id'), $second->json('request_message_id'));
+        $firstCookie = $first->getCookie(self::PUBLIC_SUBJECT_COOKIE);
+        $secondCookie = $second->getCookie(self::PUBLIC_SUBJECT_COOKIE);
+        self::assertNotNull($firstCookie);
+        self::assertNotNull($secondCookie);
+        self::assertNotSame($firstCookie->getValue(), $secondCookie->getValue());
+        self::assertTrue($firstCookie->isHttpOnly());
+        self::assertTrue($firstCookie->isSecure());
+        self::assertSame('lax', strtolower((string) $firstCookie->getSameSite()));
+        self::assertSame(2, DB::table('ai_conversations')->count());
+        $actors = DB::table('ai_conversations')->pluck('actor_id')->all();
+        self::assertCount(2, array_unique($actors));
+        self::assertNotContains('198.51.100.42', $actors);
+    }
+
+    public function test_valid_subject_cookie_replays_and_request_body_cannot_override_it(): void
+    {
+        $first = $this->withHeader('Idempotency-Key', 'public-cookie-replay')
+            ->postJson('/api/v1/directory/guide/chat', [
+                'message' => 'show published products',
+                'budget' => 50,
+                'conversation_subject' => 'attacker-controlled-a',
+            ])
+            ->assertOk();
+        $cookie = $first->getCookie(self::PUBLIC_SUBJECT_COOKIE, false);
+        self::assertNotNull($cookie);
+
+        $replay = $this->withCredentials()
+            ->withUnencryptedCookie(self::PUBLIC_SUBJECT_COOKIE, $cookie->getValue())
+            ->withHeader('Idempotency-Key', 'public-cookie-replay')
+            ->postJson('/api/v1/directory/guide/chat', [
+                'message' => 'show published products',
+                'budget' => 50,
+                'conversation_subject' => 'attacker-controlled-b',
             ])
             ->assertOk();
 
@@ -268,6 +311,41 @@ final class DirectoryGuideChatTest extends TestCase
             'attacker-controlled',
             json_encode(DB::table('ai_conversations')->get()->toArray(), JSON_THROW_ON_ERROR),
         );
+        self::assertStringNotContainsString(
+            $cookie->getValue(),
+            json_encode(DB::table('ai_conversations')->get()->toArray(), JSON_THROW_ON_ERROR),
+        );
+    }
+
+    public function test_invalid_subject_cookie_is_rotated_and_cannot_claim_a_stable_identity(): void
+    {
+        $first = $this->withCredentials()
+            ->withUnencryptedCookie(self::PUBLIC_SUBJECT_COOKIE, 'invalid-client-value')
+            ->withHeader('Idempotency-Key', 'public-invalid-cookie')
+            ->postJson('/api/v1/directory/guide/chat', [
+                'message' => 'show published products',
+                'budget' => 50,
+                'conversation_subject' => 'attacker-controlled',
+            ])
+            ->assertOk();
+        $second = $this->withCredentials()
+            ->withUnencryptedCookie(self::PUBLIC_SUBJECT_COOKIE, 'invalid-client-value')
+            ->withHeader('Idempotency-Key', 'public-invalid-cookie')
+            ->postJson('/api/v1/directory/guide/chat', [
+                'message' => 'show published products',
+                'budget' => 50,
+                'conversation_subject' => 'attacker-controlled',
+            ])
+            ->assertOk();
+
+        self::assertNotSame($first->json('conversation_id'), $second->json('conversation_id'));
+        self::assertNotSame($first->json('request_message_id'), $second->json('request_message_id'));
+        $firstCookie = $first->getCookie(self::PUBLIC_SUBJECT_COOKIE);
+        $secondCookie = $second->getCookie(self::PUBLIC_SUBJECT_COOKIE);
+        self::assertNotNull($firstCookie);
+        self::assertNotNull($secondCookie);
+        self::assertNotSame('invalid-client-value', $firstCookie->getValue());
+        self::assertNotSame($firstCookie->getValue(), $secondCookie->getValue());
     }
 
     public function test_missing_configured_platform_tenant_returns_safe_service_unavailable(): void

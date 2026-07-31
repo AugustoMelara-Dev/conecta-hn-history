@@ -60,11 +60,11 @@ final class EloquentConversationStore implements ConversationStore
         $this->assertTenantAccess($envelope->tenantId, $envelope->visibility);
         $this->assertEnvelope($envelope);
 
-        $conversationId = $envelope->conversationId ?? $this->stableId(
-            $envelope->externalThreadHash === null
-                ? "conversation-new|{$envelope->tenantId}|{$envelope->idempotencyKey}"
-                : "conversation-thread|{$envelope->tenantId}|{$envelope->externalThreadHash}",
-        );
+        $conversationId = $envelope->conversationId ?? $this->stableId(match (true) {
+            $envelope->externalThreadHash !== null => "conversation-thread|{$envelope->tenantId}|{$envelope->externalThreadHash}",
+            $envelope->visibility === 'platform_public' && $envelope->actorId !== null => "conversation-public|{$envelope->tenantId}|{$envelope->actorId}|{$envelope->idempotencyKey}",
+            default => "conversation-new|{$envelope->tenantId}|{$envelope->idempotencyKey}",
+        });
         $messageId = $this->stableId(
             "conversation-request|{$envelope->tenantId}|{$conversationId}|{$envelope->idempotencyKey}",
         );

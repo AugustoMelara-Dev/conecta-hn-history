@@ -29,10 +29,9 @@ final readonly class ConversationEnvelope
             tenantId: strtolower($command->tenantId),
             visibility: $command->visibility,
             originType: $command->originType,
-            externalThreadHash: $command->conversationSubjectHash
-                ?? ($command->externalThreadReference === null
-                    ? null
-                    : hash('sha256', $command->externalThreadReference)),
+            externalThreadHash: $command->externalThreadReference === null
+                ? null
+                : hash('sha256', $command->externalThreadReference),
             actorId: $command->actorId,
             locale: $command->locale,
             marketCountryCode: $command->marketCountryCode,
