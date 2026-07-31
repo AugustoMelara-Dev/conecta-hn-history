@@ -60,10 +60,12 @@ final class EloquentConversationStore implements ConversationStore
         $this->assertTenantAccess($envelope->tenantId, $envelope->visibility);
         $this->assertEnvelope($envelope);
 
-        $messageId = $this->stableId("conversation-request|{$envelope->tenantId}|{$envelope->idempotencyKey}");
         $conversationId = $this->stableId($envelope->externalThreadHash === null
-            ? "conversation-new|{$envelope->tenantId}|{$messageId}"
+            ? "conversation-new|{$envelope->tenantId}|{$envelope->idempotencyKey}"
             : "conversation-thread|{$envelope->tenantId}|{$envelope->externalThreadHash}");
+        $messageId = $this->stableId(
+            "conversation-request|{$envelope->tenantId}|{$conversationId}|{$envelope->idempotencyKey}",
+        );
         $payloadHash = $this->hash($envelope->canonicalPayload($conversationId));
 
         try {
@@ -74,6 +76,8 @@ final class EloquentConversationStore implements ConversationStore
                 $payloadHash,
             ): ConversationMessageClaim {
                 $existingMessage = DB::table('ai_messages')
+                    ->where('tenant_id', $envelope->tenantId)
+                    ->where('conversation_id', $conversationId)
                     ->where('id', $messageId)
                     ->lockForUpdate()
                     ->first();
@@ -114,6 +118,8 @@ final class EloquentConversationStore implements ConversationStore
                 $this->assertConversationEnvelope($conversation, $envelope);
 
                 $existingMessage = DB::table('ai_messages')
+                    ->where('tenant_id', $envelope->tenantId)
+                    ->where('conversation_id', $conversationId)
                     ->where('id', $messageId)
                     ->lockForUpdate()
                     ->first();
@@ -168,7 +174,12 @@ final class EloquentConversationStore implements ConversationStore
                 throw $exception;
             }
 
-            return $this->claimAfterRace($envelope->tenantId, $messageId, $payloadHash);
+            return $this->claimAfterRace(
+                $envelope->tenantId,
+                $conversationId,
+                $messageId,
+                $payloadHash,
+            );
         }
     }
 
@@ -185,14 +196,7 @@ final class EloquentConversationStore implements ConversationStore
         $this->assertTenantAccess($tenantId);
         $this->assertIdentifiers($tenantId, $conversationId, $requestMessageId);
         $normalizedAnswer = $this->normalizeAnswer($answer);
-        $validatedEvidence = $this->validateEvidence($tenantId, $evidence);
-        $execution = $this->assertExecutionLineage(
-            $tenantId,
-            $conversationId,
-            $requestMessageId,
-            $selection,
-            $result,
-        );
+        $validatedEvidence = $this->normalizeEvidence($tenantId, $evidence);
         $responseId = $this->responseId($tenantId, $requestMessageId);
         $answerJson = $this->json($normalizedAnswer);
         $completionHash = $this->hash([
@@ -220,10 +224,18 @@ final class EloquentConversationStore implements ConversationStore
                 $responseId,
                 $answerJson,
                 $completionHash,
-                $execution,
             ): ConversationMessage {
                 $conversation = $this->lockedConversation($tenantId, $conversationId);
                 $request = $this->lockedRequest($tenantId, $conversationId, $requestMessageId);
+                $execution = $this->lockedExecutionLineage(
+                    $tenantId,
+                    $conversationId,
+                    $requestMessageId,
+                    $responseId,
+                    $selection,
+                    $result,
+                );
+                $this->lockEvidenceResources($tenantId, $validatedEvidence);
                 $existing = DB::table('ai_messages')
                     ->where('id', $responseId)
                     ->lockForUpdate()
@@ -447,11 +459,13 @@ final class EloquentConversationStore implements ConversationStore
 
     private function claimAfterRace(
         string $tenantId,
+        string $conversationId,
         string $messageId,
         string $payloadHash,
     ): ConversationMessageClaim {
         $existing = DB::table('ai_messages')
             ->where('tenant_id', $tenantId)
+            ->where('conversation_id', $conversationId)
             ->where('id', $messageId)
             ->first();
         if ($existing === null) {
@@ -694,7 +708,7 @@ final class EloquentConversationStore implements ConversationStore
      * @param  list<array<string, mixed>>  $evidence
      * @return list<array{evidence_type:string,resource_type:string,resource_id:string,source_tenant_id:string,content_hash:?string}>
      */
-    private function validateEvidence(string $tenantId, array $evidence): array
+    private function normalizeEvidence(string $tenantId, array $evidence): array
     {
         if (! array_is_list($evidence) || count($evidence) > 20) {
             throw new InvalidArgumentException('AI conversation evidence is invalid.');
@@ -721,16 +735,6 @@ final class EloquentConversationStore implements ConversationStore
                         || preg_match('/^[a-f0-9]{64}$/', $item['content_hash']) !== 1))) {
                 throw new InvalidArgumentException('AI conversation evidence is invalid.');
             }
-            $resource = self::EVIDENCE_RESOURCES[$item['resource_type']];
-            $query = DB::table($resource['table'])->where('id', $item['resource_id']);
-            if ($resource['tenant_column'] === null) {
-                $query->where('id', $tenantId);
-            } else {
-                $query->where($resource['tenant_column'], $tenantId);
-            }
-            if (! $query->exists()) {
-                throw new InvalidArgumentException('AI conversation evidence is invalid.');
-            }
             $validated[] = [
                 'evidence_type' => 'resource',
                 'resource_type' => $item['resource_type'],
@@ -743,10 +747,37 @@ final class EloquentConversationStore implements ConversationStore
         return $validated;
     }
 
-    private function assertExecutionLineage(
+    /**
+     * @param  list<array{evidence_type:string,resource_type:string,resource_id:string,source_tenant_id:string,content_hash:?string}>  $evidence
+     */
+    private function lockEvidenceResources(string $tenantId, array $evidence): void
+    {
+        $resources = [];
+        foreach ($evidence as $item) {
+            $key = $item['resource_type'].'|'.$item['resource_id'];
+            $resources[$key] = $item;
+        }
+        ksort($resources, SORT_STRING);
+
+        foreach ($resources as $item) {
+            $resource = self::EVIDENCE_RESOURCES[$item['resource_type']];
+            $query = DB::table($resource['table'])->where('id', $item['resource_id']);
+            if ($resource['tenant_column'] === null) {
+                $query->where('id', $tenantId);
+            } else {
+                $query->where($resource['tenant_column'], $tenantId);
+            }
+            if ($query->lockForUpdate()->first(['id']) === null) {
+                throw new InvalidArgumentException('AI conversation evidence is invalid.');
+            }
+        }
+    }
+
+    private function lockedExecutionLineage(
         string $tenantId,
         string $conversationId,
         string $requestMessageId,
+        string $responseMessageId,
         AiRuntimeSelection $selection,
         ?AiExecutionResult $result,
     ): object {
@@ -758,17 +789,24 @@ final class EloquentConversationStore implements ConversationStore
         }
         $execution = DB::table('ai_executions')
             ->where('correlation_id', $result->correlationId)
-            ->where('tenant_id', $tenantId)
-            ->where('conversation_id', $conversationId)
-            ->where('request_message_id', $requestMessageId)
+            ->lockForUpdate()
             ->first();
         if ($execution === null
+            || (string) $execution->tenant_id !== $tenantId
+            || (string) $execution->conversation_id !== $conversationId
+            || (string) $execution->request_message_id !== $requestMessageId
             || (string) $execution->status !== 'completed'
             || $execution->completed_at === null
+            || (string) $execution->provider !== $selection->providerKey
+            || (string) $execution->provider !== $result->provider
+            || (string) $execution->model !== $selection->modelKey
+            || (string) $execution->model !== $result->model
             || (string) $execution->provider_version_id !== $selection->providerVersionId
             || (string) $execution->model_version_id !== $selection->modelVersionId
             || (string) $execution->agent_version_id !== $selection->agentVersionId
-            || (string) $execution->prompt_version_id !== $selection->promptVersionId) {
+            || (string) $execution->prompt_version_id !== $selection->promptVersionId
+            || ($execution->response_message_id !== null
+                && (string) $execution->response_message_id !== $responseMessageId)) {
             $this->deny();
         }
 
@@ -815,9 +853,24 @@ final class EloquentConversationStore implements ConversationStore
     {
         $sqlState = (string) ($exception->errorInfo[0] ?? $exception->getCode());
         $driverCode = (int) ($exception->errorInfo[1] ?? 0);
+        $driver = DB::connection($exception->getConnectionName())->getDriverName();
 
-        return in_array($sqlState, ['23000', '23505'], true)
-            || in_array($driverCode, [19, 1062], true);
+        if ($driver === 'pgsql') {
+            return $sqlState === '23505';
+        }
+
+        if ($driver === 'mysql') {
+            return $sqlState === '23000' && $driverCode === 1062;
+        }
+
+        if ($driver !== 'sqlite' || $sqlState !== '23000') {
+            return false;
+        }
+
+        $detail = (string) ($exception->errorInfo[2] ?? $exception->getMessage());
+
+        return in_array($driverCode, [19, 1555, 2067], true)
+            && preg_match('/(?:UNIQUE constraint failed|PRIMARY KEY must be unique|is not unique)/i', $detail) === 1;
     }
 
     private function deny(): never

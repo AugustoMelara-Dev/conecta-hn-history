@@ -12,6 +12,7 @@ use App\Domain\Shared\Services\TenantContext;
 use App\Exceptions\Ai\AiConversationConflictException;
 use App\Exceptions\Ai\AiExecutionDeniedException;
 use App\Models\Tenant;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -110,7 +111,7 @@ final class ConversationStoreTest extends TestCase
         self::assertSame(1, DB::table('ai_conversations')->count());
     }
 
-    public function test_same_normalized_claim_replays_and_changed_envelope_conflicts_globally(): void
+    public function test_same_normalized_claim_replays_and_changed_envelope_conflicts_within_the_conversation(): void
     {
         $tenant = Tenant::factory()->create();
         $this->supportMarket();
@@ -138,7 +139,6 @@ final class ConversationStoreTest extends TestCase
         foreach ([
             ['content' => 'Different meaning.'],
             ['originType' => 'api'],
-            ['externalThreadReference' => 'different-thread'],
             ['currency' => 'HNL'],
         ] as $change) {
             try {
@@ -157,7 +157,56 @@ final class ConversationStoreTest extends TestCase
             }
         }
 
-        self::assertSame(1, DB::table('ai_messages')->count());
+        $differentConversation = $store->claim($this->command(
+            (string) $tenant->id,
+            idempotencyKey: 'global-idempotency-001',
+            content: "Line one.\nLine two.",
+            externalThreadReference: 'different-thread',
+        ));
+        self::assertNotSame($first->conversationId, $differentConversation->conversationId);
+        self::assertSame(2, DB::table('ai_messages')->count());
+    }
+
+    public function test_same_idempotency_key_is_scoped_to_conversation_and_actor_conflicts_within_one_conversation(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $this->supportMarket();
+        $this->scope((string) $tenant->id);
+        $store = app(ConversationStore::class);
+
+        $first = $store->claim($this->command(
+            (string) $tenant->id,
+            externalThreadReference: 'conversation-scope-a',
+            actorId: 'actor-a',
+            idempotencyKey: 'conversation-scoped-key',
+        ));
+        $otherConversation = $store->claim($this->command(
+            (string) $tenant->id,
+            externalThreadReference: 'conversation-scope-b',
+            actorId: 'actor-b',
+            idempotencyKey: 'conversation-scoped-key',
+        ));
+
+        self::assertNotSame($first->conversationId, $otherConversation->conversationId);
+        self::assertNotSame($first->requestMessage->id, $otherConversation->requestMessage->id);
+        self::assertSame(2, DB::table('ai_messages')
+            ->where('tenant_id', $tenant->id)
+            ->where('idempotency_key', 'conversation-scoped-key')
+            ->count());
+
+        try {
+            $store->claim($this->command(
+                (string) $tenant->id,
+                externalThreadReference: 'conversation-scope-a',
+                actorId: 'actor-b',
+                idempotencyKey: 'conversation-scoped-key',
+            ));
+            self::fail('A changed actor in the same conversation must conflict.');
+        } catch (AiConversationConflictException $exception) {
+            self::assertSame('ai_request_conflict', $exception->publicCode);
+        }
+
+        self::assertSame(2, DB::table('ai_messages')->count());
     }
 
     public function test_closed_conversation_and_missing_or_mismatched_tenant_context_fail_closed(): void
@@ -403,6 +452,46 @@ final class ConversationStoreTest extends TestCase
         self::assertSame(1, DB::table('ai_conversations')->value('last_message_sequence'));
     }
 
+    public function test_completion_rejects_database_provider_and_model_mismatches(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $this->supportMarket();
+        $this->scope((string) $tenant->id);
+        $store = app(ConversationStore::class);
+
+        foreach ([
+            'provider' => ['provider' => 'unexpected-provider'],
+            'model' => ['model' => 'unexpected-model'],
+        ] as $suffix => $mutation) {
+            $claim = $store->claim($this->command(
+                (string) $tenant->id,
+                idempotencyKey: "lineage-mismatch-{$suffix}",
+            ));
+            $selection = AiRuntimeSelectionFixture::create((string) $tenant->id);
+            $result = $this->executionResult(
+                (string) $tenant->id,
+                $claim->conversationId,
+                $claim->requestMessage->id,
+                $selection,
+            );
+            DB::table('ai_executions')
+                ->where('correlation_id', $result->correlationId)
+                ->update($mutation);
+
+            $this->assertAccessDenied(fn () => $store->completeAssistantMessage(
+                (string) $tenant->id,
+                $claim->conversationId,
+                $claim->requestMessage->id,
+                $selection,
+                $result,
+                ['answer' => 'Must not persist mismatched lineage.'],
+                [],
+            ));
+        }
+
+        self::assertSame(0, DB::table('ai_messages')->where('role', 'assistant')->count());
+    }
+
     public function test_failure_is_idempotent_keeps_the_request_and_stores_one_allowlisted_safe_record(): void
     {
         $tenant = Tenant::factory()->create();
@@ -456,6 +545,182 @@ final class ConversationStoreTest extends TestCase
         } catch (InvalidArgumentException $exception) {
             self::assertSame('AI conversation failure code is invalid.', $exception->getMessage());
         }
+    }
+
+    public function test_changed_failure_code_or_retryability_conflicts_without_a_second_terminal_record(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $this->supportMarket();
+        $this->scope((string) $tenant->id);
+        $store = app(ConversationStore::class);
+        $claim = $store->claim($this->command(
+            (string) $tenant->id,
+            idempotencyKey: 'failure-conflict-001',
+        ));
+        $store->failAssistantMessage(
+            (string) $tenant->id,
+            $claim->conversationId,
+            $claim->requestMessage->id,
+            'ai_temporarily_unavailable',
+            true,
+        );
+
+        foreach ([
+            ['ai_rate_limited', true],
+            ['ai_temporarily_unavailable', false],
+        ] as [$code, $retryable]) {
+            try {
+                $store->failAssistantMessage(
+                    (string) $tenant->id,
+                    $claim->conversationId,
+                    $claim->requestMessage->id,
+                    $code,
+                    $retryable,
+                );
+                self::fail('A changed terminal failure payload must conflict.');
+            } catch (AiConversationConflictException $exception) {
+                self::assertSame('ai_request_conflict', $exception->publicCode);
+            }
+        }
+
+        self::assertSame(1, DB::table('ai_message_failures')->count());
+        self::assertSame(1, DB::table('ai_messages')->where('role', 'assistant')->count());
+    }
+
+    public function test_platform_public_completion_failure_and_evidence_use_the_platform_owner(): void
+    {
+        $platform = Tenant::factory()->create();
+        $merchant = Tenant::factory()->create();
+        $this->supportMarket();
+        config()->set('ai.public.billing_tenant_id', (string) $platform->id);
+        $this->scope((string) $platform->id);
+        $store = app(ConversationStore::class);
+        $completedClaim = $store->claim($this->command(
+            (string) $platform->id,
+            visibility: 'platform_public',
+            externalThreadReference: 'platform-public-thread',
+            actorId: null,
+            idempotencyKey: 'platform-public-complete',
+        ));
+        $selection = AiRuntimeSelectionFixture::create(
+            (string) $platform->id,
+            visibility: 'platform_public',
+        );
+        $result = $this->executionResult(
+            (string) $platform->id,
+            $completedClaim->conversationId,
+            $completedClaim->requestMessage->id,
+            $selection,
+            audience: 'public',
+            actorId: null,
+        );
+        $response = $store->completeAssistantMessage(
+            (string) $platform->id,
+            $completedClaim->conversationId,
+            $completedClaim->requestMessage->id,
+            $selection,
+            $result,
+            ['answer' => 'Platform-owned discovery answer.'],
+            [[
+                'evidence_type' => 'resource',
+                'resource_type' => 'business',
+                'resource_id' => (string) $platform->id,
+                'source_tenant_id' => (string) $platform->id,
+            ]],
+        );
+        self::assertSame((string) $platform->id, $response->tenantId);
+        self::assertSame((string) $platform->id, DB::table('ai_message_evidence')->value('tenant_id'));
+
+        $failedClaim = $store->claim($this->command(
+            (string) $platform->id,
+            visibility: 'platform_public',
+            externalThreadReference: 'platform-public-thread',
+            actorId: null,
+            content: 'A second public request.',
+            idempotencyKey: 'platform-public-fail',
+        ));
+        $store->failAssistantMessage(
+            (string) $platform->id,
+            $failedClaim->conversationId,
+            $failedClaim->requestMessage->id,
+            'ai_evidence_insufficient',
+            false,
+        );
+        self::assertSame(1, DB::table('ai_message_failures')
+            ->where('tenant_id', $platform->id)
+            ->count());
+
+        $otherClaim = $store->claim($this->command(
+            (string) $platform->id,
+            visibility: 'platform_public',
+            externalThreadReference: 'platform-public-other-thread',
+            actorId: null,
+            idempotencyKey: 'platform-public-cross-evidence',
+        ));
+        $otherSelection = AiRuntimeSelectionFixture::create(
+            (string) $platform->id,
+            visibility: 'platform_public',
+        );
+        $otherResult = $this->executionResult(
+            (string) $platform->id,
+            $otherClaim->conversationId,
+            $otherClaim->requestMessage->id,
+            $otherSelection,
+            audience: 'public',
+            actorId: null,
+        );
+        try {
+            $store->completeAssistantMessage(
+                (string) $platform->id,
+                $otherClaim->conversationId,
+                $otherClaim->requestMessage->id,
+                $otherSelection,
+                $otherResult,
+                ['answer' => 'Must reject merchant-owned evidence.'],
+                [[
+                    'evidence_type' => 'resource',
+                    'resource_type' => 'business',
+                    'resource_id' => (string) $merchant->id,
+                    'source_tenant_id' => (string) $platform->id,
+                ]],
+            );
+            self::fail('Public evidence must still be owned by the platform conversation tenant.');
+        } catch (InvalidArgumentException $exception) {
+            self::assertSame('AI conversation evidence is invalid.', $exception->getMessage());
+        }
+    }
+
+    public function test_non_unique_sqlite_integrity_errors_are_rethrown_without_duplicate_reconciliation(): void
+    {
+        if (DB::getDriverName() !== 'sqlite') {
+            self::markTestSkipped('This focused classifier regression uses SQLite RAISE(ABORT).');
+        }
+
+        $tenant = Tenant::factory()->create();
+        $this->supportMarket();
+        $this->scope((string) $tenant->id);
+        DB::unprepared(<<<'SQL'
+            CREATE TRIGGER ai_messages_forced_integrity_failure
+            BEFORE INSERT ON ai_messages
+            BEGIN
+                SELECT RAISE(ABORT, 'forced non-unique integrity failure');
+            END
+            SQL);
+
+        try {
+            app(ConversationStore::class)->claim($this->command(
+                (string) $tenant->id,
+                idempotencyKey: 'non-unique-integrity-001',
+            ));
+            self::fail('A non-unique integrity error must be rethrown.');
+        } catch (QueryException $exception) {
+            self::assertStringContainsString(
+                'forced non-unique integrity failure',
+                $exception->getMessage(),
+            );
+        }
+
+        self::assertSame(0, DB::table('ai_messages')->count());
     }
 
     public function test_completion_and_failure_are_tenant_conversation_and_request_bound(): void
@@ -573,17 +838,20 @@ final class ConversationStoreTest extends TestCase
         string $conversationId,
         string $requestMessageId,
         object $selection,
+        string $audience = 'private',
+        ?string $actorId = 'owner-001',
     ): AiExecutionResult {
         $correlationId = (string) Str::uuid();
         DB::table('ai_executions')->insert([
             'correlation_id' => $correlationId,
             'tenant_id' => $tenantId,
             'billing_tenant_id' => $tenantId,
-            'actor_id' => 'owner-001',
-            'audience' => 'private',
-            'capability' => 'private_tenant_agent',
-            'operation' => 'private_agent.answer',
+            'actor_id' => $actorId,
+            'audience' => $audience,
+            'capability' => $audience === 'public' ? 'public_discovery' : 'private_tenant_agent',
+            'operation' => $audience === 'public' ? 'public_discovery.answer' : 'private_agent.answer',
             'provider' => $selection->providerKey,
+            'model' => $selection->modelKey,
             'request_hash' => hash('sha256', 'request'),
             'claim_token' => hash('sha256', 'claim'),
             'claim_version' => 1,

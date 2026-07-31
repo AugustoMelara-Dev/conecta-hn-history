@@ -6,6 +6,7 @@ namespace Tests\Feature\AI;
 
 use App\Application\Ai\Conversation\AcceptConversationMessage;
 use App\Application\Ai\Conversation\ConversationStore;
+use App\Application\Ai\DTOs\AiExecutionResult;
 use App\Application\Ai\Security\AiContentCipher;
 use App\Application\Ai\Security\EncryptedAiContent;
 use App\Domain\Shared\Services\TenantContext;
@@ -16,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 use RuntimeException;
+use Tests\Support\AI\AiRuntimeSelectionFixture;
 use Tests\TestCase;
 
 final class ConversationEncryptionTest extends TestCase
@@ -124,6 +126,54 @@ final class ConversationEncryptionTest extends TestCase
         self::assertNull(DB::table('ai_message_failures')->value('failure_detail'));
     }
 
+    public function test_assistant_answer_rejects_wrong_associated_data(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $this->supportMarket();
+        app(TenantContext::class)->setTenant((string) $tenant->id);
+        $store = app(ConversationStore::class);
+        $claim = $store->claim($this->command(
+            (string) $tenant->id,
+            'Generate an encrypted assistant answer.',
+            'assistant-aad-001',
+        ));
+        $selection = AiRuntimeSelectionFixture::create((string) $tenant->id);
+        $result = $this->executionResult(
+            (string) $tenant->id,
+            $claim->conversationId,
+            $claim->requestMessage->id,
+            $selection,
+        );
+        $response = $store->completeAssistantMessage(
+            (string) $tenant->id,
+            $claim->conversationId,
+            $claim->requestMessage->id,
+            $selection,
+            $result,
+            ['answer' => 'Encrypted assistant answer.'],
+            [],
+        );
+        $stored = DB::table('ai_messages')->where('id', $response->id)->first();
+        self::assertNotNull($stored);
+        $encrypted = new EncryptedAiContent(
+            ciphertext: (string) $stored->content_ciphertext,
+            contentHash: (string) $stored->content_hash,
+            keyVersion: (string) $stored->encryption_key_version,
+        );
+
+        try {
+            app(AiContentCipher::class)->decrypt(
+                (string) $tenant->id,
+                $claim->requestMessage->id,
+                'conversation_message',
+                $encrypted,
+            );
+            self::fail('Assistant ciphertext must reject the request message record ID.');
+        } catch (RuntimeException $exception) {
+            self::assertSame('AI content associated data validation failed.', $exception->getMessage());
+        }
+    }
+
     private function command(string $tenantId, string $content, string $idempotencyKey): AcceptConversationMessage
     {
         return new AcceptConversationMessage(
@@ -161,5 +211,57 @@ final class ConversationEncryptionTest extends TestCase
             'name' => 'America/Toronto', 'label' => 'Toronto', 'utc_offset' => '-05:00',
             'is_active' => true, 'created_at' => $now, 'updated_at' => $now,
         ]);
+    }
+
+    private function executionResult(
+        string $tenantId,
+        string $conversationId,
+        string $requestMessageId,
+        object $selection,
+    ): AiExecutionResult {
+        $correlationId = (string) Str::uuid();
+        DB::table('ai_executions')->insert([
+            'correlation_id' => $correlationId,
+            'tenant_id' => $tenantId,
+            'billing_tenant_id' => $tenantId,
+            'actor_id' => 'owner-001',
+            'audience' => 'private',
+            'capability' => 'private_tenant_agent',
+            'operation' => 'private_agent.answer',
+            'provider' => $selection->providerKey,
+            'model' => $selection->modelKey,
+            'request_hash' => hash('sha256', 'assistant-aad-request'),
+            'claim_token' => hash('sha256', 'assistant-aad-claim'),
+            'claim_version' => 1,
+            'status' => 'completed',
+            'encryption_key_version' => 'v1',
+            'retention_expires_at' => now()->addDay(),
+            'processing_expires_at' => now()->addMinute(),
+            'provider_completed_at' => now(),
+            'completed_at' => now(),
+            'conversation_id' => $conversationId,
+            'request_message_id' => $requestMessageId,
+            'provider_version_id' => $selection->providerVersionId,
+            'model_version_id' => $selection->modelVersionId,
+            'agent_version_id' => $selection->agentVersionId,
+            'prompt_version_id' => $selection->promptVersionId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return new AiExecutionResult(
+            correlationId: $correlationId,
+            provider: $selection->providerKey,
+            model: $selection->modelKey,
+            data: ['answer' => 'Encrypted assistant answer.'],
+            usage: [
+                'input_tokens' => 4,
+                'output_tokens' => 4,
+                'cost_usd' => 0.01,
+                'charged_cost_usd' => 0.01,
+                'provider_cost_usd' => 0.01,
+            ],
+            latencyMilliseconds: 20,
+        );
     }
 }

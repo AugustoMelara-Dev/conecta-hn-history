@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Application\Ai\Conversation\AcceptConversationMessage;
 use App\Application\Ai\Conversation\ConversationStore;
 use App\Domain\Shared\Services\TenantContext;
+use App\Exceptions\Ai\AiConversationConflictException;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
@@ -58,13 +59,15 @@ try {
         tenantId: (string) $payload['tenant_id'],
         visibility: 'tenant_private',
         originType: 'web',
-        externalThreadReference: (string) $payload['external_thread_reference'],
-        actorId: 'owner-001',
+        externalThreadReference: $payload['external_thread_reference'] === null
+            ? null
+            : (string) $payload['external_thread_reference'],
+        actorId: (string) ($payload['actor_id'] ?? 'owner-001'),
         locale: 'en-CA',
         marketCountryCode: 'CA',
         currency: 'CAD',
         timezone: 'America/Toronto',
-        content: 'Concurrent claim '.$payload['idempotency_key'],
+        content: (string) ($payload['content'] ?? 'Concurrent claim '.$payload['idempotency_key']),
         contentType: 'text',
         idempotencyKey: (string) $payload['idempotency_key'],
     ));
@@ -72,6 +75,15 @@ try {
         'conversation_id' => $claim->conversationId,
         'message_id' => $claim->requestMessage->id,
         'sequence' => $claim->requestMessage->sequence,
+        'replayed' => $claim->replayed,
+        'status' => 'accepted',
+        'started_at' => $startedAt,
+        'completed_at' => microtime(true),
+    ], JSON_THROW_ON_ERROR);
+} catch (AiConversationConflictException $exception) {
+    echo json_encode([
+        'status' => 'conflict',
+        'public_code' => $exception->publicCode,
         'started_at' => $startedAt,
         'completed_at' => microtime(true),
     ], JSON_THROW_ON_ERROR);
