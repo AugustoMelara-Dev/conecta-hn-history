@@ -620,6 +620,62 @@ PHP;
         ]);
 });
 
+it('rejects postgres target boundaries without invalidating valid delete tails', function (): void {
+    $base = dirname(__DIR__, 2);
+    $root = $base.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'framework'
+        .DIRECTORY_SEPARATOR.'testing'.DIRECTORY_SEPARATOR.'registry-ratchet-'.Str::uuid();
+    mkdir($root, 0777, true);
+    $fixture = <<<'PHP'
+<?php
+
+use Illuminate\Support\Facades\DB as Storage;
+
+Storage::statement('DELETE FROM RETURNING ai_agent_versions');
+Storage::statement('DELETE FROM Returning ai_agent_versions');
+Storage::statement('DELETE FROM returning ai_agent_versions');
+
+Storage::statement('DELETE FROM "returning" WHERE id = 1');
+Storage::statement('DELETE FROM `returning` WHERE id = 1');
+Storage::statement('DELETE FROM [returning] WHERE id = 1');
+
+Storage::statement('DELETE FROM ai_agent_versions RETURNING id');
+Storage::statement('DELETE FROM ai_agent_versions AS governed ReTuRnInG governed.id');
+Storage::statement('DELETE FROM ai_agent_versions AS ReTuRnInG WHERE id = 1');
+Storage::statement('DELETE FROM ai_prompt_versions WHERE CURRENT OF prompt_cursor');
+
+Storage::statement('DELETE FROM orders /* RETURNING ai_agent_versions */ WHERE id = 1');
+Storage::statement("DELETE FROM orders WHERE note = 'RETURNING ai_agent_versions'");
+Storage::statement('DELETE FROM orders WHERE note = $tag$RETURNING ai_agent_versions$tag$');
+Storage::statement('DELETE FROM orders RETURNING ai_agent_versions');
+PHP;
+    file_put_contents($root.DIRECTORY_SEPARATOR.'DeleteTargetBoundaries.php', $fixture);
+
+    try {
+        $findings = (new RegistryMutationScanner)->scan(
+            [$root],
+            [
+                'returning',
+                'ai_agent_versions',
+                'ai_prompt_versions',
+            ],
+        );
+    } finally {
+        unlink($root.DIRECTORY_SEPARATOR.'DeleteTargetBoundaries.php');
+        rmdir($root);
+    }
+
+    expect(collect($findings)
+        ->map(static fn (object $finding): string => $finding->table.':'.$finding->method)
+        ->countBy()
+        ->sortKeys()
+        ->all())->toBe([
+            '*dynamic*:raw' => 5,
+            'ai_agent_versions:raw' => 2,
+            'ai_prompt_versions:raw' => 1,
+            'returning:raw' => 2,
+        ]);
+});
+
 it('detects query aliases eloquent and raw registry mutation bypasses without false positives', function (): void {
     $base = dirname(__DIR__, 2);
     $root = $base.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'framework'

@@ -879,7 +879,7 @@ final class RegistryMutationScanner
         }
         if (! isset($head[$targetStart])
             || (! $this->sqlDeleteIsKeywordToken($head[$targetStart], 'FROM')
-                && ! $this->sqlDeleteIsIdentifierToken($head[$targetStart]))) {
+                && ! $this->sqlDeleteIsSelectedTargetIdentifierToken($head[$targetStart]))) {
             return [self::SQL_EXPRESSION_SENTINEL];
         }
         if (! $this->sqlDeletePartitionsAreContextValid($sql)) {
@@ -989,7 +989,8 @@ final class RegistryMutationScanner
 
         $only = isset($tokens[$cursor]) && $this->sqlDeleteIsKeywordToken($tokens[$cursor], 'ONLY');
         $cursor += (int) $only;
-        if (! isset($tokens[$cursor]) || ! $this->sqlDeleteIsIdentifierToken($tokens[$cursor])) {
+        if (! isset($tokens[$cursor])
+            || ! $this->sqlDeleteIsSelectedTargetIdentifierToken($tokens[$cursor])) {
             return self::SQL_EXPRESSION_SENTINEL;
         }
 
@@ -1016,7 +1017,8 @@ final class RegistryMutationScanner
         $alias = false;
         if (isset($tokens[$cursor]) && $this->sqlDeleteIsKeywordToken($tokens[$cursor], 'AS')) {
             $cursor++;
-            if (! isset($tokens[$cursor]) || ! $this->sqlDeleteIsIdentifierToken($tokens[$cursor])) {
+            if (! isset($tokens[$cursor])
+                || ! $this->sqlDeleteIsSelectedTargetIdentifierToken($tokens[$cursor])) {
                 return self::SQL_EXPRESSION_SENTINEL;
             }
             $cursor++;
@@ -1025,13 +1027,15 @@ final class RegistryMutationScanner
             && ! $this->sqlDeleteIsClauseToken($tokens[$cursor])
             && ! $this->sqlDeleteIsKeywordToken($tokens[$cursor], 'PARTITION')
             && $tokens[$cursor]->value !== ','
-            && $this->sqlDeleteIsIdentifierToken($tokens[$cursor])) {
+            && $this->sqlDeleteIsSelectedTargetIdentifierToken($tokens[$cursor])) {
             $cursor++;
             $alias = true;
         }
 
         $using = isset($tokens[$cursor]) && $this->sqlDeleteIsKeywordToken($tokens[$cursor], 'USING');
-        if ((! $only && ! $inheritanceStar && ! $alias)
+        $returning = isset($tokens[$cursor])
+            && $this->sqlDeleteIsPostgresTargetBoundaryToken($tokens[$cursor]);
+        if ((! $only && ! $inheritanceStar && ! $alias && ! $returning)
             || ($alias && ! $using && isset($tokens[$cursor]) && ! $this->sqlDeleteIsClauseToken($tokens[$cursor]))) {
             return null;
         }
@@ -1302,6 +1306,24 @@ final class RegistryMutationScanner
                 || $token->token[0] === '[');
     }
 
+    private function sqlDeleteIsSelectedTargetIdentifierToken(SqlToken $token): bool
+    {
+        return $this->sqlDeleteIsIdentifierToken($token)
+            && ! $this->sqlDeleteIsPostgresTargetBoundaryToken($token)
+            && ! ($token->type === SqlTokenType::Symbol
+                && isset($token->token[0])
+                && $token->token[0] === '[');
+    }
+
+    private function sqlDeleteIsPostgresTargetBoundaryToken(SqlToken $token): bool
+    {
+        if ($token->type !== SqlTokenType::None) {
+            return false;
+        }
+
+        return strtoupper($token->token) === 'RETURNING';
+    }
+
     private function sqlDeleteIsKeywordToken(SqlToken $token, string $keyword): bool
     {
         return $token->type === SqlTokenType::Keyword && $token->keyword === $keyword;
@@ -1309,8 +1331,9 @@ final class RegistryMutationScanner
 
     private function sqlDeleteIsClauseToken(SqlToken $token): bool
     {
-        return $token->type === SqlTokenType::Keyword
-            && in_array($token->keyword, ['USING', 'WHERE', 'ORDER BY', 'LIMIT', 'RETURNING'], true);
+        return ($token->type === SqlTokenType::Keyword
+                && in_array($token->keyword, ['USING', 'WHERE', 'ORDER BY', 'LIMIT', 'RETURNING'], true))
+            || $this->sqlDeleteIsPostgresTargetBoundaryToken($token);
     }
 
     private function sqlDeleteBalanced(string $sql): bool
