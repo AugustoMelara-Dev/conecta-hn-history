@@ -939,7 +939,7 @@ final class RegistryMutationScanner
                 return [self::SQL_EXPRESSION_SENTINEL];
             }
             if (count($from) === 1) {
-                $target = $this->sqlDeleteIdentifier((string) $from[0]->expr);
+                $target = $this->sqlDeleteIdentifier((string) $from[0]->expr, true);
                 if ($target === null || $target['name'] === self::SQL_EXPRESSION_SENTINEL) {
                     return [self::SQL_EXPRESSION_SENTINEL];
                 }
@@ -963,6 +963,7 @@ final class RegistryMutationScanner
         return array_map(
             fn (SqlExpression $target): string => $this->sqlDeleteIdentifier(
                 (string) $target->expr,
+                true,
             )['name'] ?? self::SQL_EXPRESSION_SENTINEL,
             $from,
         );
@@ -1002,7 +1003,7 @@ final class RegistryMutationScanner
                 $cursor += 2;
                 break;
             }
-            if (! $this->sqlDeleteIsIdentifierToken($tokens[$cursor + 1])) {
+            if (! $this->sqlDeleteIsSelectedTargetIdentifierToken($tokens[$cursor + 1])) {
                 return $only ? self::SQL_EXPRESSION_SENTINEL : null;
             }
             $identifier .= '.'.$tokens[$cursor + 1]->token;
@@ -1040,7 +1041,7 @@ final class RegistryMutationScanner
             return null;
         }
 
-        return $this->sqlDeleteIdentifier($identifier)['name']
+        return $this->sqlDeleteIdentifier($identifier, true)['name']
             ?? self::SQL_EXPRESSION_SENTINEL;
     }
 
@@ -1162,7 +1163,7 @@ final class RegistryMutationScanner
     {
         $targets = [];
         foreach ($expressions as $expression) {
-            $target = $this->sqlDeleteIdentifier((string) $expression->expr);
+            $target = $this->sqlDeleteIdentifier((string) $expression->expr, true);
             if ($target === null || $target['name'] === self::SQL_EXPRESSION_SENTINEL) {
                 $targets[] = self::SQL_EXPRESSION_SENTINEL;
 
@@ -1223,7 +1224,7 @@ final class RegistryMutationScanner
     }
 
     /** @return array{name:string,qualified:bool}|null */
-    private function sqlDeleteIdentifier(string $expression): ?array
+    private function sqlDeleteIdentifier(string $expression, bool $selectedTarget = false): ?array
     {
         if (str_contains($expression, self::SQL_EXPRESSION_SENTINEL)) {
             return ['name' => self::SQL_EXPRESSION_SENTINEL, 'qualified' => false];
@@ -1249,7 +1250,9 @@ final class RegistryMutationScanner
 
                 continue;
             }
-            if (! $this->sqlDeleteIsIdentifierToken($token)) {
+            if ($selectedTarget
+                ? ! $this->sqlDeleteIsSelectedTargetIdentifierToken($token)
+                : ! $this->sqlDeleteIsIdentifierToken($token)) {
                 return null;
             }
             $quoted = isset($token->token[0])

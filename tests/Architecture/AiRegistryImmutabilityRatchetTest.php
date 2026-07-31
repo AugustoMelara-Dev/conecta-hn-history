@@ -676,6 +676,76 @@ PHP;
         ]);
 });
 
+it('validates every qualified delete target component before normalization', function (): void {
+    $base = dirname(__DIR__, 2);
+    $root = $base.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'framework'
+        .DIRECTORY_SEPARATOR.'testing'.DIRECTORY_SEPARATOR.'registry-ratchet-'.Str::uuid();
+    mkdir($root, 0777, true);
+    $fixture = <<<'PHP'
+<?php
+
+use Illuminate\Support\Facades\DB as Storage;
+
+$suffix = getenv('REGISTRY_SUFFIX');
+
+Storage::statement('DELETE FROM public.RETURNING ai_agent_versions');
+Storage::statement('DELETE FROM public.Returning ai_agent_versions');
+Storage::statement('DELETE FROM public.returning ai_agent_versions');
+Storage::statement('DELETE FROM RETURNING.ai_agent_versions WHERE id = 1');
+Storage::statement('DELETE FROM Returning.ai_agent_versions WHERE id = 1');
+Storage::statement('DELETE FROM returning.ai_agent_versions WHERE id = 1');
+
+Storage::statement('DELETE FROM public."returning" WHERE id = 1');
+Storage::statement('DELETE FROM "returning".ai_agent_versions WHERE id = 1');
+Storage::statement('DELETE FROM public.`returning` WHERE id = 1');
+Storage::statement('DELETE FROM `returning`.ai_agent_versions WHERE id = 1');
+Storage::statement('DELETE FROM public.[returning] WHERE id = 1');
+Storage::statement('DELETE FROM [returning].ai_agent_versions WHERE id = 1');
+Storage::statement('DELETE public.RETURNING FROM public.RETURNING JOIN orders ON orders.id = public.id');
+Storage::statement('DELETE public."returning" FROM public."returning" JOIN orders ON orders.id = public.id');
+
+Storage::statement('DELETE FROM public.ai_agent_versions RETURNING id');
+Storage::statement('DELETE FROM public.ai_prompt_versions WHERE id = 1');
+Storage::statement('DELETE FROM public.orders WHERE id = 1');
+
+Storage::statement('DELETE FROM public.orders AS target USING ai_release_policies AS registry_source WHERE target.id = registry_source.id');
+Storage::statement('DELETE orders FROM orders JOIN public.RETURNING AS registry_source ON registry_source.id = orders.id');
+Storage::statement('DELETE FROM public.orders /* RETURNING ai_agent_versions */ WHERE id = 1');
+Storage::statement("DELETE FROM public.orders WHERE note = 'RETURNING ai_prompt_versions'");
+Storage::statement('DELETE FROM public.orders RETURNING ai_agent_versions');
+
+Storage::statement("DELETE FROM public.ai_{$suffix} RETURNING id");
+Storage::statement("DELETE FROM ai_{$suffix}.ai_agent_versions RETURNING id");
+PHP;
+    file_put_contents($root.DIRECTORY_SEPARATOR.'QualifiedDeleteTargets.php', $fixture);
+
+    try {
+        $findings = (new RegistryMutationScanner)->scan(
+            [$root],
+            [
+                'returning',
+                'ai_agent_versions',
+                'ai_prompt_versions',
+                'ai_release_policies',
+            ],
+        );
+    } finally {
+        unlink($root.DIRECTORY_SEPARATOR.'QualifiedDeleteTargets.php');
+        rmdir($root);
+    }
+
+    expect(collect($findings)
+        ->map(static fn (object $finding): string => $finding->table.':'.$finding->method)
+        ->countBy()
+        ->sortKeys()
+        ->all())->toBe([
+            '*dynamic*:raw' => 11,
+            'ai_agent_versions:raw' => 3,
+            'ai_prompt_versions:raw' => 1,
+            'returning:raw' => 3,
+        ]);
+});
+
 it('detects query aliases eloquent and raw registry mutation bypasses without false positives', function (): void {
     $base = dirname(__DIR__, 2);
     $root = $base.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'framework'
