@@ -206,6 +206,30 @@ final class WorkforceAgentRoleResolverTest extends TestCase
         $context->systemContext(new BusinessGraphSnapshot($tenantId, [], [$foreignEdge]));
     }
 
+    public function test_sensitive_edge_provenance_is_redacted(): void
+    {
+        $tenantId = (string) Str::uuid();
+        $context = new WorkforceAgentContext(
+            tenantId: $tenantId,
+            agentVersionId: (string) Str::uuid(),
+            role: AgentRole::MANAGER,
+            configuration: AgentRoleCatalog::configuration(AgentRole::MANAGER),
+        );
+        $edge = BusinessGraphEdge::fromSource(
+            tenantId: $tenantId,
+            fromType: 'tenant',
+            fromId: $tenantId,
+            relation: 'uses',
+            toType: 'credential',
+            toId: 'credential-1',
+            sourceType: 'secret_store',
+            sourceId: 'secret:edge-key-secret',
+        );
+
+        $serialized = $context->systemContext(new BusinessGraphSnapshot($tenantId, [], [$edge]));
+        self::assertStringNotContainsString('edge-key-secret', json_encode($serialized, JSON_THROW_ON_ERROR));
+    }
+
     private function insertRegistryVersion(string $tenantId, string $versionId, string $role, string $definitionKey, string $lifecycleStatus): void
     {
         $definitionId = (string) Str::uuid();

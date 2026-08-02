@@ -64,8 +64,8 @@ final readonly class WorkforceAgentContext
             'relation' => $edge->relation,
             'toType' => $edge->toType,
             'toId' => $edge->toId,
-            'sourceType' => $edge->sourceType,
-            'sourceId' => $edge->sourceId,
+            'sourceType' => $this->isSensitiveKey($edge->sourceType) ? '[redacted]' : $edge->sourceType,
+            'sourceId' => $this->isSensitiveKey($edge->sourceId) ? '[redacted]' : $edge->sourceId,
         ], $snapshot->edges);
 
         $businessContext = ['facts' => $facts, 'edges' => $edges];
