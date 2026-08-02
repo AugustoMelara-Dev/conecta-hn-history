@@ -286,7 +286,7 @@ final class AiHandoffTest extends TestCase
 
     public function test_migration_preserves_historical_statuses_and_nonterminal_duplicate_ownership_across_rollback(): void
     {
-        [$tenant, , $conversationId, $messageId, $agentVersionId] = $this->fixture();
+        [$tenant, $owner, $conversationId, $messageId, $agentVersionId] = $this->fixture();
         $migration = require database_path('migrations/2026_07_29_000008_expand_ai_handoff_lifecycle.php');
         $migration->down();
         $first = (string) Str::uuid();
@@ -327,7 +327,8 @@ final class AiHandoffTest extends TestCase
             self::assertSame('resolved', DB::table('ai_handoffs')->where('id', $completed)->value('status'));
             self::assertSame('completed', DB::table('ai_handoffs')->where('id', $completed)->value('legacy_status'));
 
-            self::assertSame($first, app(AiHandoffService::class)->request(new RequestAiHandoff(
+            $service = app(AiHandoffService::class);
+            self::assertSame($first, $service->request(new RequestAiHandoff(
                 (string) $tenant->id,
                 $conversationId,
                 $messageId,
@@ -338,31 +339,52 @@ final class AiHandoffTest extends TestCase
                 'Legacy ownership remains active.',
             )));
 
-            $newQueued = (string) Str::uuid();
-            $newResolved = (string) Str::uuid();
-            foreach ([[$newQueued, 'queued'], [$newResolved, 'resolved']] as [$id, $status]) {
-                DB::table('ai_handoffs')->insert([
-                    'id' => $id,
-                    'tenant_id' => $tenant->id,
-                    'conversation_id' => $conversationId,
-                    'message_id' => $messageId,
-                    'from_type' => 'ai_agent',
-                    'to_type' => 'human',
-                    'status' => $status,
-                    'requested_at' => now(),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            }
+            $service->cancel(new CancelAiHandoff((string) $tenant->id, $second, (string) $owner->id, 1));
+            self::assertNull(DB::table('ai_handoffs')->where('id', $second)->value('legacy_status'));
+            $service->assign(new AssignAiHandoff(
+                (string) $tenant->id,
+                $first,
+                (string) $owner->id,
+                (string) $owner->id,
+                1,
+            ));
+            self::assertSame('assigned', DB::table('ai_handoffs')->where('id', $first)->value('status'));
+            self::assertNull(DB::table('ai_handoffs')->where('id', $first)->value('legacy_status'));
+            $service->accept(new AcceptAiHandoff((string) $tenant->id, $first, (string) $owner->id, 2));
+            $service->resolve(new ResolveAiHandoff(
+                (string) $tenant->id,
+                $first,
+                (string) $owner->id,
+                3,
+                'The human returned ownership safely.',
+                true,
+            ));
+            self::assertNull($service->continuationBlock((string) $tenant->id, $conversationId));
+
+            $newCommand = new RequestAiHandoff(
+                (string) $tenant->id,
+                $conversationId,
+                $messageId,
+                $agentVersionId,
+                'merchant_rule',
+                'high',
+                'legacy-support',
+                'A new canonical owner is required.',
+            );
+            $newOwner = $service->request($newCommand);
+            self::assertNotSame($third, $newOwner);
+            self::assertSame($newOwner, $service->request($newCommand));
+            self::assertNotNull(DB::table('ai_handoffs')->where('id', $newOwner)->value('active_deduplication_key'));
+            self::assertSame('requested', DB::table('ai_handoffs')->where('id', $third)->value('status'));
+            self::assertNull(DB::table('ai_handoffs')->where('id', $third)->value('active_deduplication_key'));
 
             $migration->down();
             self::assertFalse(Schema::hasColumn('ai_handoffs', 'legacy_status'));
-            foreach ([$first, $second, $third] as $historicalPending) {
-                self::assertSame('pending', DB::table('ai_handoffs')->where('id', $historicalPending)->value('status'));
-            }
+            self::assertSame('completed', DB::table('ai_handoffs')->where('id', $first)->value('status'));
+            self::assertSame('completed', DB::table('ai_handoffs')->where('id', $second)->value('status'));
+            self::assertSame('pending', DB::table('ai_handoffs')->where('id', $third)->value('status'));
             self::assertSame('completed', DB::table('ai_handoffs')->where('id', $completed)->value('status'));
-            self::assertSame('pending', DB::table('ai_handoffs')->where('id', $newQueued)->value('status'));
-            self::assertSame('completed', DB::table('ai_handoffs')->where('id', $newResolved)->value('status'));
+            self::assertSame('pending', DB::table('ai_handoffs')->where('id', $newOwner)->value('status'));
 
             $migration->up();
             self::assertTrue(Schema::hasColumn('ai_handoffs', 'legacy_status'));

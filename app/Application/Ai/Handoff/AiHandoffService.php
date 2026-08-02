@@ -75,6 +75,7 @@ final readonly class AiHandoffService
                     ->where('tenant_id', $tenantId)
                     ->where('conversation_id', $command->conversationId)
                     ->whereIn('status', self::ACTIVE_STATUSES)
+                    ->whereNotNull('active_deduplication_key')
                     ->orderByRaw('CASE WHEN active_deduplication_key IS NULL THEN 1 ELSE 0 END')
                     ->orderBy('requested_at')
                     ->orderBy('id')
@@ -159,6 +160,7 @@ final readonly class AiHandoffService
             $now = now();
             DB::table('ai_handoffs')->where('tenant_id', $command->tenantId)->where('id', $command->handoffId)->update([
                 'status' => 'assigned',
+                'legacy_status' => null,
                 'assigned_to_user_id' => $command->assigneeId,
                 'assigned_by_user_id' => $command->actorId,
                 'assigned_at' => $now,
@@ -183,6 +185,7 @@ final readonly class AiHandoffService
             $now = now();
             DB::table('ai_handoffs')->where('tenant_id', $command->tenantId)->where('id', $command->handoffId)->update([
                 'status' => 'accepted',
+                'legacy_status' => null,
                 'accepted_by_user_id' => $command->actorId,
                 'accepted_at' => $now,
                 'version' => $command->expectedVersion + 1,
@@ -216,6 +219,7 @@ final readonly class AiHandoffService
             $now = now();
             DB::table('ai_handoffs')->where('tenant_id', $command->tenantId)->where('id', $command->handoffId)->update([
                 'status' => 'resolved',
+                'legacy_status' => null,
                 'resolved_by_user_id' => $command->actorId,
                 'resolution_ciphertext' => $encrypted->ciphertext,
                 'resolution_hash' => $encrypted->contentHash,
@@ -241,6 +245,7 @@ final readonly class AiHandoffService
             $now = now();
             DB::table('ai_handoffs')->where('tenant_id', $command->tenantId)->where('id', $command->handoffId)->update([
                 'status' => 'cancelled',
+                'legacy_status' => null,
                 'active_deduplication_key' => null,
                 'cancelled_at' => $now,
                 'version' => $command->expectedVersion + 1,
@@ -265,6 +270,7 @@ final readonly class AiHandoffService
             $now = now();
             DB::table('ai_handoffs')->where('tenant_id', $command->tenantId)->where('id', $command->handoffId)->update([
                 'status' => 'expired',
+                'legacy_status' => null,
                 'active_deduplication_key' => null,
                 'expired_at' => $now,
                 'version' => $command->expectedVersion + 1,
@@ -317,6 +323,7 @@ final readonly class AiHandoffService
             ->where('tenant_id', $tenantId)
             ->where('conversation_id', strtolower($conversationId))
             ->whereIn('status', self::ACTIVE_STATUSES)
+            ->whereNotNull('active_deduplication_key')
             ->orderByRaw('CASE WHEN active_deduplication_key IS NULL THEN 1 ELSE 0 END')
             ->orderBy('requested_at')
             ->orderBy('id')
