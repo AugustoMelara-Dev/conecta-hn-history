@@ -10,8 +10,17 @@ use Illuminate\Support\Str;
 
 final class ChannelConnectionService
 {
+    private readonly ChannelAuthorizationService $authorization;
+
+    public function __construct(?ChannelAuthorizationService $authorization = null)
+    {
+        $this->authorization = $authorization ?? new ChannelAuthorizationService;
+    }
+
     public function connect(ChannelContext $context): ChannelConnection
     {
+        $this->authorization->assertAuthorized($context, 'connect');
+
         $existing = DB::table('channel_connections')
             ->where('tenant_id', $context->tenantId)
             ->where('channel', $context->channel)
@@ -98,6 +107,8 @@ final class ChannelConnectionService
 
     public function claimWebhook(ChannelContext $context, NormalizedInboundMessage $message): bool
     {
+        $this->authorization->assertAuthorized($context, 'claim webhook');
+        $context->assertNormalizedInboundLineage($message);
         $this->connect($context);
         $providerEventId = $message->providerEventId ?? $message->externalMessageId;
         $payloadHash = (string) ($message->metadata['webhook_payload_hash'] ?? hash('sha256', $providerEventId));

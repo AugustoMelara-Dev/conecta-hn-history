@@ -9,12 +9,23 @@ use Illuminate\Support\Str;
 
 final class ChannelConsentService
 {
+    private readonly ChannelAuthorizationService $authorization;
+
+    public function __construct(?ChannelAuthorizationService $authorization = null)
+    {
+        $this->authorization = $authorization ?? new ChannelAuthorizationService;
+    }
+
     public function record(
         ChannelContext $context,
         ResolvedChannelIdentity $identity,
         NormalizedInboundMessage $message,
         string $purpose,
     ): ChannelConsentRecord {
+        $this->authorization->assertAuthorized($context, 'record consent');
+        $context->assertNormalizedInboundLineage($message);
+        $context->assertIdentityLineage($identity);
+
         $existing = DB::table('channel_consents')
             ->where('tenant_id', $context->tenantId)
             ->where('channel', $context->channel)

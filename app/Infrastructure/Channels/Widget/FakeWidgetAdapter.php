@@ -12,7 +12,7 @@ use App\Application\Channels\Contracts\ChannelAdapterInterface;
 use App\Application\Channels\DeliveryReceipt;
 use App\Application\Channels\NormalizedInboundMessage;
 use App\Infrastructure\Channels\Support\AttachmentClassifier;
-use App\Infrastructure\Channels\Support\IdentityNormalizer;
+use App\Infrastructure\Channels\Support\ChannelInboundNormalizer;
 
 final class FakeWidgetAdapter implements ChannelAdapterInterface
 {
@@ -21,33 +21,20 @@ final class FakeWidgetAdapter implements ChannelAdapterInterface
         return ChannelCapabilityDecision::allow('widget.fake', $context->providerKey('widget.fake'));
     }
 
-    public function receive(ChannelInboundMessage $message): NormalizedInboundMessage
+    public function receive(ChannelContext $context, ChannelInboundMessage $message): NormalizedInboundMessage
     {
-        return new NormalizedInboundMessage(
+        return ChannelInboundNormalizer::normalize(
             adapterKey: 'widget.fake',
-            tenantId: $message->tenantId,
-            channel: $message->channel,
-            externalMessageId: $message->externalMessageId,
-            externalThreadReference: $message->externalThreadReference,
-            normalizedIdentity: IdentityNormalizer::normalize($message->identityType, $message->identityValue),
-            identityType: $message->identityType,
-            content: $message->content,
+            context: $context,
+            message: $message,
             attachments: AttachmentClassifier::classify($message->attachments),
-            consentStatus: $message->consentStatus,
-            deliveryState: 'delivered',
-            providerEventId: $message->externalMessageId,
-            costAmount: '0.00',
-            costCurrency: 'USD',
-            marketCountryCode: 'ZZ',
-            locale: 'und',
-            timezone: 'UTC',
-            metadata: [],
         );
     }
 
     public function send(ChannelOutboundMessage $message): DeliveryReceipt
     {
-        $hash = substr(hash('sha256', $message->idempotencyKey), 0, 16);
+        $providerKey = $message->providerIdempotencyKey ?? $message->idempotencyKey;
+        $hash = substr(hash('sha256', $providerKey), 0, 16);
 
         return new DeliveryReceipt(
             tenantId: $message->tenantId,
@@ -59,6 +46,7 @@ final class FakeWidgetAdapter implements ChannelAdapterInterface
             deliveryState: 'delivered',
             costAmount: '0.00',
             costCurrency: 'USD',
+            providerIdempotencyKey: $providerKey,
             metadata: ['widget' => true],
         );
     }

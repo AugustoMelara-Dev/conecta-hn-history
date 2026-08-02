@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace Tests\Feature\Channels;
 
 use App\Application\Channels\ChannelConnectionService;
+use App\Application\Channels\ChannelAuthorizationEnvelope;
 use App\Application\Channels\ChannelConsentService;
 use App\Application\Channels\ChannelContext;
 use App\Application\Channels\ChannelIdentityResolver;
 use App\Application\Channels\ChannelInboundMessage;
 use App\Infrastructure\Channels\Sms\FailClosedSmsAdapter;
 use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\GlobalMarketFixture;
@@ -22,19 +24,22 @@ final class ChannelIdentityConsentTest extends TestCase
 
     public function test_email_and_phone_identities_are_normalized_per_tenant_and_do_not_leak(): void
     {
-        $tenantA = Tenant::factory()->create();
-        $tenantB = Tenant::factory()->create();
+        $actorA = User::factory()->create();
+        $actorB = User::factory()->create();
+        $tenantA = Tenant::factory()->forUser($actorA)->create();
+        $tenantB = Tenant::factory()->forUser($actorB)->create();
         GlobalMarketFixture::assignCanada($tenantA);
         GlobalMarketFixture::assignJapan($tenantB);
 
         $resolver = new ChannelIdentityResolver;
 
         $identityA = $resolver->resolve(
-            $this->context($tenantA, 'email', 'email-a', 'CA', 'en-CA', 'CAD', 'America/Toronto'),
+            $this->context($tenantA, $actorA, 'email', 'email-a', 'CA', 'en-CA', 'CAD', 'America/Toronto'),
             new \App\Application\Channels\NormalizedInboundMessage(
                 adapterKey: 'email.fake',
                 tenantId: (string) $tenantA->id,
                 channel: 'email',
+                connectionKey: 'email-a',
                 externalMessageId: 'identity-a',
                 externalThreadReference: 'thread-a',
                 normalizedIdentity: 'buyer@example.test',
@@ -53,11 +58,12 @@ final class ChannelIdentityConsentTest extends TestCase
             ),
         );
         $identityB = $resolver->resolve(
-            $this->context($tenantB, 'sms', 'sms-b', 'JP', 'ja-JP', 'JPY', 'Asia/Tokyo'),
+            $this->context($tenantB, $actorB, 'sms', 'sms-b', 'JP', 'ja-JP', 'JPY', 'Asia/Tokyo'),
             new \App\Application\Channels\NormalizedInboundMessage(
                 adapterKey: 'sms.fail_closed',
                 tenantId: (string) $tenantB->id,
                 channel: 'sms',
+                connectionKey: 'sms-b',
                 externalMessageId: 'identity-b',
                 externalThreadReference: 'thread-b',
                 normalizedIdentity: '+819012345678',
@@ -84,7 +90,8 @@ final class ChannelIdentityConsentTest extends TestCase
 
     public function test_sms_consent_is_persisted_with_market_and_connection_lineage(): void
     {
-        $tenant = Tenant::factory()->create();
+        $actor = User::factory()->create();
+        $tenant = Tenant::factory()->forUser($actor)->create();
         GlobalMarketFixture::assignJapan($tenant);
         $this->setMarketCapabilities($tenant, [
             'channels' => [
@@ -94,6 +101,7 @@ final class ChannelIdentityConsentTest extends TestCase
 
         $context = $this->context(
             $tenant,
+            $actor,
             'sms',
             'sms-primary',
             'JP',
@@ -112,9 +120,10 @@ final class ChannelIdentityConsentTest extends TestCase
         );
         $connectionService = new ChannelConnectionService;
         $connectionId = $connectionService->connect($context)->id;
-        $adapter = new FailClosedSmsAdapter(credentialsConfigured: true);
+        $adapter = new FailClosedSmsAdapter(credentialsConfigured: true, webhookSecret: 'sms-webhook-secret');
+        $payload = json_encode(['event' => 'message.received', 'id' => 'sms-in-001'], JSON_THROW_ON_ERROR);
 
-        $normalized = $adapter->receive(new ChannelInboundMessage(
+        $normalized = $adapter->receive($context, new ChannelInboundMessage(
             tenantId: (string) $tenant->id,
             channel: 'sms',
             connectionKey: 'sms-primary',
@@ -124,6 +133,9 @@ final class ChannelIdentityConsentTest extends TestCase
             identityValue: ' 090-1234-5678 ',
             content: 'YES',
             consentStatus: 'granted',
+            webhookEventId: 'sms-in-001',
+            webhookPayload: $payload,
+            webhookSignature: hash_hmac('sha256', $payload, 'sms-webhook-secret'),
         ));
 
         $identity = (new ChannelIdentityResolver)->resolve($context, $normalized);
@@ -151,6 +163,7 @@ final class ChannelIdentityConsentTest extends TestCase
 
     private function context(
         Tenant $tenant,
+        User $actor,
         string $channel,
         string $connectionKey,
         string $country,
@@ -170,6 +183,10 @@ final class ChannelIdentityConsentTest extends TestCase
             timezone: $timezone,
             marketCapabilities: $capabilities,
             connection: $connection,
+            authorization: new ChannelAuthorizationEnvelope(
+                tenantId: (string) $tenant->id,
+                actorId: (string) $actor->id,
+            ),
         );
     }
 

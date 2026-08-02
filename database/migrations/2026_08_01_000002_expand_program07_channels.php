@@ -16,6 +16,7 @@ return new class extends Migration
         'channel_provider_health',
         'channel_identities',
         'channel_consents',
+        'channel_delivery_outbox',
         'channel_delivery_attempts',
         'channel_webhook_claims',
     ];
@@ -115,6 +116,8 @@ return new class extends Migration
             $table->string('channel', 32);
             $table->string('connection_key', 64);
             $table->string('idempotency_key', 160);
+            $table->string('provider_idempotency_key', 160);
+            $table->unsignedInteger('attempt_count')->default(0);
             $table->string('external_thread_reference', 500)->nullable();
             $table->string('recipient');
             $table->string('provider_message_id')->nullable();
@@ -124,11 +127,40 @@ return new class extends Migration
             $table->decimal('cost_amount', 10, 2)->default(0);
             $table->string('cost_currency', 3)->default('USD');
             $table->json('metadata')->nullable();
+            $table->text('last_error')->nullable();
             $table->timestamp('attempted_at')->nullable();
             $table->timestamp('completed_at')->nullable();
             $table->timestamps();
 
             $table->unique(['tenant_id', 'channel', 'connection_key', 'idempotency_key'], 'channel_delivery_attempts_idempotency_unique');
+            $table->foreign('tenant_id')->references('id')->on('tenants')->cascadeOnDelete();
+        });
+
+        Schema::create('channel_delivery_outbox', function (Blueprint $table): void {
+            $table->uuid('id')->primary();
+            $table->uuid('tenant_id');
+            $table->string('channel', 32);
+            $table->string('connection_key', 64);
+            $table->string('idempotency_key', 160);
+            $table->string('provider_idempotency_key', 160);
+            $table->string('external_thread_reference', 500)->nullable();
+            $table->string('recipient');
+            $table->text('payload');
+            $table->char('payload_hash', 64);
+            $table->string('delivery_state', 32)->default('pending');
+            $table->unsignedInteger('attempt_count')->default(0);
+            $table->string('provider_message_id')->nullable();
+            $table->string('provider_event_id')->nullable();
+            $table->decimal('cost_amount', 10, 2)->default(0);
+            $table->string('cost_currency', 3);
+            $table->json('metadata')->nullable();
+            $table->text('last_error')->nullable();
+            $table->timestamp('attempted_at')->nullable();
+            $table->timestamp('completed_at')->nullable();
+            $table->timestamp('next_attempt_at')->nullable();
+            $table->timestamps();
+
+            $table->unique(['tenant_id', 'channel', 'connection_key', 'idempotency_key'], 'channel_delivery_outbox_idempotency_unique');
             $table->foreign('tenant_id')->references('id')->on('tenants')->cascadeOnDelete();
         });
 
@@ -162,6 +194,7 @@ return new class extends Migration
         }
 
         Schema::dropIfExists('channel_webhook_claims');
+        Schema::dropIfExists('channel_delivery_outbox');
         Schema::dropIfExists('channel_delivery_attempts');
         Schema::dropIfExists('channel_consents');
         Schema::dropIfExists('channel_identities');

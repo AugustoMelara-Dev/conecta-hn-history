@@ -13,13 +13,15 @@ use App\Application\Channels\Contracts\ChannelAdapterInterface;
 use App\Application\Channels\DeliveryReceipt;
 use App\Application\Channels\NormalizedInboundMessage;
 use App\Infrastructure\Channels\Support\AttachmentClassifier;
-use App\Infrastructure\Channels\Support\IdentityNormalizer;
+use App\Infrastructure\Channels\Support\ChannelInboundNormalizer;
+use App\Infrastructure\Channels\Support\WebhookAuthenticator;
 
 final class FailClosedSmsAdapter implements ChannelAdapterInterface
 {
     public function __construct(
         private readonly bool $credentialsConfigured = false,
         private readonly ?SmsProviderInterface $provider = null,
+        private readonly ?string $webhookSecret = null,
     ) {}
 
     public function capability(ChannelContext $context): ChannelCapabilityDecision
@@ -35,26 +37,15 @@ final class FailClosedSmsAdapter implements ChannelAdapterInterface
         return ChannelCapabilityDecision::allow('sms.fail_closed', $providerKey);
     }
 
-    public function receive(ChannelInboundMessage $message): NormalizedInboundMessage
+    public function receive(ChannelContext $context, ChannelInboundMessage $message): NormalizedInboundMessage
     {
-        return new NormalizedInboundMessage(
+        WebhookAuthenticator::assertSigned($message, $this->webhookSecret);
+
+        return ChannelInboundNormalizer::normalize(
             adapterKey: 'sms.fail_closed',
-            tenantId: $message->tenantId,
-            channel: $message->channel,
-            externalMessageId: $message->externalMessageId,
-            externalThreadReference: $message->externalThreadReference,
-            normalizedIdentity: IdentityNormalizer::normalize($message->identityType, $message->identityValue),
-            identityType: $message->identityType,
-            content: $message->content,
+            context: $context,
+            message: $message,
             attachments: AttachmentClassifier::classify($message->attachments),
-            consentStatus: $message->consentStatus,
-            deliveryState: 'delivered',
-            providerEventId: $message->externalMessageId,
-            costAmount: '0.00',
-            costCurrency: 'USD',
-            marketCountryCode: 'ZZ',
-            locale: 'und',
-            timezone: 'UTC',
         );
     }
 
@@ -67,7 +58,10 @@ final class FailClosedSmsAdapter implements ChannelAdapterInterface
         $response = $this->provider->send([
             'recipient' => $message->recipient,
             'content' => $message->content,
+            'provider_idempotency_key' => $message->providerIdempotencyKey ?? $message->idempotencyKey,
         ]);
+
+        $providerKey = $message->providerIdempotencyKey ?? $message->idempotencyKey;
 
         return new DeliveryReceipt(
             tenantId: $message->tenantId,
@@ -79,6 +73,7 @@ final class FailClosedSmsAdapter implements ChannelAdapterInterface
             deliveryState: (string) ($response['delivery_state'] ?? 'delivered'),
             costAmount: number_format((float) ($response['cost_amount'] ?? 0), 2, '.', ''),
             costCurrency: (string) ($response['cost_currency'] ?? 'USD'),
+            providerIdempotencyKey: $providerKey,
             metadata: is_array($response['metadata'] ?? null) ? $response['metadata'] : [],
         );
     }

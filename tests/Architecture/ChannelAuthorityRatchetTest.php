@@ -52,6 +52,7 @@ final class ChannelAuthorityRatchetTest extends TestCase
             'channel_provider_health',
             'channel_consents',
             'channel_identities',
+            'channel_delivery_outbox',
             'channel_delivery_attempts',
             'channel_webhook_claims',
         ] as $table) {

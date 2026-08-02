@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Channels;
 
 use App\Application\Channels\ChannelConnectionService;
+use App\Application\Channels\ChannelAuthorizationEnvelope;
 use App\Application\Channels\ChannelContext;
 use App\Application\Channels\ChannelDeliveryService;
 use App\Application\Channels\ChannelIdentityResolver;
@@ -14,6 +15,7 @@ use App\Infrastructure\Channels\Email\FakeEmailAdapter;
 use App\Infrastructure\Channels\WebChat\FakeWebChatAdapter;
 use App\Infrastructure\Channels\Widget\FakeWidgetAdapter;
 use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\GlobalMarketFixture;
@@ -25,15 +27,16 @@ final class ChannelContractTest extends TestCase
 
     public function test_web_chat_fake_normalizes_anonymous_identity_and_classifies_attachments(): void
     {
-        $tenant = Tenant::factory()->create();
+        $actor = User::factory()->create();
+        $tenant = Tenant::factory()->forUser($actor)->create();
         GlobalMarketFixture::assignCanada($tenant);
 
-        $context = $this->context($tenant, 'web_chat', 'web-chat-local');
+        $context = $this->context($tenant, $actor, 'web_chat', 'web-chat-local');
         $connectionService = new ChannelConnectionService;
         $connectionService->connect($context);
         $adapter = new FakeWebChatAdapter;
 
-        $normalized = $adapter->receive(new ChannelInboundMessage(
+        $normalized = $adapter->receive($context, new ChannelInboundMessage(
             tenantId: (string) $tenant->id,
             channel: 'web_chat',
             connectionKey: 'web-chat-local',
@@ -68,10 +71,11 @@ final class ChannelContractTest extends TestCase
 
     public function test_widget_fake_delivery_is_idempotent_and_cost_free(): void
     {
-        $tenant = Tenant::factory()->create();
+        $actor = User::factory()->create();
+        $tenant = Tenant::factory()->forUser($actor)->create();
         GlobalMarketFixture::assignCanada($tenant);
 
-        $context = $this->context($tenant, 'widget', 'widget-local');
+        $context = $this->context($tenant, $actor, 'widget', 'widget-local');
         $connectionService = new ChannelConnectionService;
         $connectionService->connect($context);
         $adapter = new FakeWidgetAdapter;
@@ -105,17 +109,18 @@ final class ChannelContractTest extends TestCase
 
     public function test_email_fake_verifies_signature_normalizes_address_and_tracks_cost(): void
     {
-        $tenant = Tenant::factory()->create();
+        $actor = User::factory()->create();
+        $tenant = Tenant::factory()->forUser($actor)->create();
         GlobalMarketFixture::assignCanada($tenant);
 
-        $context = $this->context($tenant, 'email', 'email-local', ['secret_reference_key' => 'email.fake']);
+        $context = $this->context($tenant, $actor, 'email', 'email-local', ['secret_reference_key' => 'email.fake']);
         $connectionService = new ChannelConnectionService;
         $connectionService->connect($context);
         $adapter = new FakeEmailAdapter('email-webhook-secret');
         $payload = json_encode(['message' => 'Reply by email', 'event' => 'mail-evt-001'], JSON_THROW_ON_ERROR);
         $signature = hash_hmac('sha256', $payload, 'email-webhook-secret');
 
-        $normalized = $adapter->receive(new ChannelInboundMessage(
+        $normalized = $adapter->receive($context, new ChannelInboundMessage(
             tenantId: (string) $tenant->id,
             channel: 'email',
             connectionKey: 'email-local',
@@ -162,7 +167,7 @@ final class ChannelContractTest extends TestCase
         ]);
     }
 
-    private function context(Tenant $tenant, string $channel, string $connectionKey, array $connection = []): ChannelContext
+    private function context(Tenant $tenant, User $actor, string $channel, string $connectionKey, array $connection = []): ChannelContext
     {
         return new ChannelContext(
             tenantId: (string) $tenant->id,
@@ -174,6 +179,10 @@ final class ChannelContractTest extends TestCase
             timezone: 'America/Toronto',
             marketCapabilities: [],
             connection: $connection,
+            authorization: new ChannelAuthorizationEnvelope(
+                tenantId: (string) $tenant->id,
+                actorId: (string) $actor->id,
+            ),
         );
     }
 }

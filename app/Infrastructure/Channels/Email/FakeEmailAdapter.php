@@ -12,8 +12,8 @@ use App\Application\Channels\Contracts\ChannelAdapterInterface;
 use App\Application\Channels\DeliveryReceipt;
 use App\Application\Channels\NormalizedInboundMessage;
 use App\Infrastructure\Channels\Support\AttachmentClassifier;
-use App\Infrastructure\Channels\Support\IdentityNormalizer;
-use InvalidArgumentException;
+use App\Infrastructure\Channels\Support\ChannelInboundNormalizer;
+use App\Infrastructure\Channels\Support\WebhookAuthenticator;
 
 final class FakeEmailAdapter implements ChannelAdapterInterface
 {
@@ -24,44 +24,26 @@ final class FakeEmailAdapter implements ChannelAdapterInterface
         return ChannelCapabilityDecision::allow('email.fake', $context->providerKey('email.fake'));
     }
 
-    public function receive(ChannelInboundMessage $message): NormalizedInboundMessage
+    public function receive(ChannelContext $context, ChannelInboundMessage $message): NormalizedInboundMessage
     {
-        if ($message->webhookPayload !== null || $message->webhookSignature !== null) {
-            $expected = hash_hmac('sha256', (string) $message->webhookPayload, $this->webhookSecret);
-            if (! hash_equals($expected, (string) $message->webhookSignature)) {
-                throw new InvalidArgumentException('Channel webhook signature is invalid.');
-            }
+        if ($message->webhookEventId !== null
+            || $message->webhookPayload !== null
+            || $message->webhookSignature !== null) {
+            WebhookAuthenticator::assertSigned($message, $this->webhookSecret);
         }
 
-        return new NormalizedInboundMessage(
+        return ChannelInboundNormalizer::normalize(
             adapterKey: 'email.fake',
-            tenantId: $message->tenantId,
-            channel: $message->channel,
-            externalMessageId: $message->externalMessageId,
-            externalThreadReference: $message->externalThreadReference,
-            normalizedIdentity: IdentityNormalizer::normalize($message->identityType, $message->identityValue),
-            identityType: $message->identityType,
-            content: $message->content,
+            context: $context,
+            message: $message,
             attachments: AttachmentClassifier::classify($message->attachments),
-            consentStatus: $message->consentStatus,
-            deliveryState: 'delivered',
-            providerEventId: $message->webhookEventId ?? $message->externalMessageId,
-            costAmount: '0.00',
-            costCurrency: 'USD',
-            marketCountryCode: 'ZZ',
-            locale: 'und',
-            timezone: 'UTC',
-            metadata: [
-                'webhook_payload_hash' => $message->webhookPayload === null
-                    ? hash('sha256', $message->externalMessageId)
-                    : hash('sha256', $message->webhookPayload),
-            ],
         );
     }
 
     public function send(ChannelOutboundMessage $message): DeliveryReceipt
     {
-        $hash = substr(hash('sha256', $message->idempotencyKey), 0, 16);
+        $providerKey = $message->providerIdempotencyKey ?? $message->idempotencyKey;
+        $hash = substr(hash('sha256', $providerKey), 0, 16);
 
         return new DeliveryReceipt(
             tenantId: $message->tenantId,
@@ -73,6 +55,7 @@ final class FakeEmailAdapter implements ChannelAdapterInterface
             deliveryState: 'delivered',
             costAmount: '0.01',
             costCurrency: 'USD',
+            providerIdempotencyKey: $providerKey,
         );
     }
 }

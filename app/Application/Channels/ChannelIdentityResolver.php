@@ -9,8 +9,18 @@ use Illuminate\Support\Str;
 
 final class ChannelIdentityResolver
 {
+    private readonly ChannelAuthorizationService $authorization;
+
+    public function __construct(?ChannelAuthorizationService $authorization = null)
+    {
+        $this->authorization = $authorization ?? new ChannelAuthorizationService;
+    }
+
     public function resolve(ChannelContext $context, NormalizedInboundMessage $message): ResolvedChannelIdentity
     {
+        $this->authorization->assertAuthorized($context, 'resolve identity');
+        $context->assertNormalizedInboundLineage($message);
+
         $existing = DB::table('channel_identities')
             ->where('tenant_id', $context->tenantId)
             ->where('channel', $context->channel)

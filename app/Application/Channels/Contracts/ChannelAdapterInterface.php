@@ -15,7 +15,7 @@ interface ChannelAdapterInterface
 {
     public function capability(ChannelContext $context): ChannelCapabilityDecision;
 
-    public function receive(ChannelInboundMessage $message): NormalizedInboundMessage;
+    public function receive(ChannelContext $context, ChannelInboundMessage $message): NormalizedInboundMessage;
 
     public function send(ChannelOutboundMessage $message): DeliveryReceipt;
 }
