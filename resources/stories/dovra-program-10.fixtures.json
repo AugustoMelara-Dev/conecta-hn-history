@@ -1,0 +1,293 @@
+{
+  "brand": {
+    "name": "Dovra AI",
+    "shortName": "Dovra",
+    "category": "Global Conversational Business OS",
+    "promise": "Dovra deploys AI employees that know a business, work through its channels, and turn conversations into measurable results."
+  },
+  "scenarios": [
+    {
+      "key": "products",
+      "label": "Productos",
+      "title": "Tienda con salida rápida",
+      "summary": "La activación prioriza catálogo visible, compras preparadas y un mercado reversible.",
+      "commercialMode": "products",
+      "defaultMarketCode": "GT",
+      "marketOptions": [
+        {
+          "code": "HN",
+          "countryName": "Honduras",
+          "label": "Honduras",
+          "isHonduras": true,
+          "note": "Mercado base con operaciones locales."
+        },
+        {
+          "code": "GT",
+          "countryName": "Guatemala",
+          "label": "Guatemala",
+          "isHonduras": false,
+          "note": "Mercado fuera de Honduras para expansión temprana."
+        },
+        {
+          "code": "MX",
+          "countryName": "México",
+          "label": "México",
+          "isHonduras": false,
+          "note": "Mercado alterno para comparar lanzamiento."
+        }
+      ],
+      "onboarding": {
+        "progress": 72,
+        "authoritativeNote": "El progreso se lee desde el estado autoritativo del tenant, no desde una confirmación del cliente.",
+        "nextAction": {
+          "title": "Publicar catálogo visible",
+          "copy": "Completa el catálogo publicado para que el comprador vea una acción concreta.",
+          "href": "#catalog",
+          "reversible": false
+        },
+        "milestones": [
+          {
+            "key": "owner_profile",
+            "title": "Perfil confiable",
+            "copy": "Agrega descripción y datos de contacto para que el cliente entienda qué vendes.",
+            "completed": true,
+            "status": "ready"
+          },
+          {
+            "key": "owner_catalog",
+            "title": "Catálogo visible",
+            "copy": "Publica una oferta que pueda comprarse o reservarse sin ambigüedad.",
+            "completed": false,
+            "status": "pending"
+          },
+          {
+            "key": "owner_schedule",
+            "title": "Horario claro",
+            "copy": "Expón disponibilidad real antes de prometer tiempos o ventanas de entrega.",
+            "completed": true,
+            "status": "ready"
+          },
+          {
+            "key": "owner_contact",
+            "title": "Canal principal",
+            "copy": "Activa WhatsApp o teléfono para que el cliente contacte sin fricción.",
+            "completed": true,
+            "status": "ready"
+          },
+          {
+            "key": "owner_publish",
+            "title": "Micrositio publicado",
+            "copy": "Verifica que la página pública muestre el estado correcto del negocio.",
+            "completed": false,
+            "status": "pending"
+          }
+        ]
+      },
+      "buyer": {
+        "title": "Preparar compra",
+        "status": "Compra preparada",
+        "copy": "El comprador ve pasos concretos y el estado autoritativo del negocio.",
+        "reversibleCopy": "La preparación se puede revisar antes de ejecutar una acción sensible.",
+        "ctaLabel": "Revisar catálogo",
+        "ctaHref": "#catalog",
+        "secondaryLabel": "Guardar para después",
+        "secondaryHint": "No cambia el estado autoritativo del tenant.",
+        "liveMessage": "Compra preparada en un mercado fuera de Honduras; la acción sigue siendo reversible."
+      },
+      "chat": [
+        {
+          "speaker": "Sistema",
+          "message": "El progreso del onboarding se calculó desde el estado autoritativo del tenant."
+        },
+        {
+          "speaker": "Comprador",
+          "message": "El mercado seleccionado puede cambiar la vista previa sin borrar el progreso real."
+        }
+      ]
+    },
+    {
+      "key": "services",
+      "label": "Servicios",
+      "title": "Agenda confiable y reversible",
+      "summary": "La activación prioriza horarios, confianza y una cita que se puede revisar.",
+      "commercialMode": "appointments",
+      "defaultMarketCode": "HN",
+      "marketOptions": [
+        {
+          "code": "HN",
+          "countryName": "Honduras",
+          "label": "Honduras",
+          "isHonduras": true,
+          "note": "Mercado local para servicios presenciales y remotos."
+        },
+        {
+          "code": "SV",
+          "countryName": "El Salvador",
+          "label": "El Salvador",
+          "isHonduras": false,
+          "note": "Mercado regional para comparar reglas de agenda."
+        }
+      ],
+      "onboarding": {
+        "progress": 64,
+        "authoritativeNote": "La agenda no avanza por sí sola: sólo refleja datos reales del tenant.",
+        "nextAction": {
+          "title": "Abrir primera cita reservable",
+          "copy": "Publica disponibilidad real antes de pedir confirmaciones del cliente.",
+          "href": "#agenda",
+          "reversible": true
+        },
+        "milestones": [
+          {
+            "key": "owner_profile",
+            "title": "Perfil verificable",
+            "copy": "Explica quién atiende y qué resuelve el servicio.",
+            "completed": true,
+            "status": "ready"
+          },
+          {
+            "key": "owner_catalog",
+            "title": "Servicio reservable",
+            "copy": "Describe la oferta y su alcance sin dejar huecos de operación.",
+            "completed": false,
+            "status": "pending"
+          },
+          {
+            "key": "owner_schedule",
+            "title": "Agenda publicada",
+            "copy": "Muestra días y horas reales para que el cliente reserve con certeza.",
+            "completed": false,
+            "status": "pending"
+          },
+          {
+            "key": "owner_contact",
+            "title": "Canal principal",
+            "copy": "Asegura un canal de seguimiento para el caso en que el cliente necesite ayuda.",
+            "completed": true,
+            "status": "ready"
+          },
+          {
+            "key": "owner_publish",
+            "title": "Experiencia publicada",
+            "copy": "Comprueba que el sitio público muestre una ruta clara hacia la cita.",
+            "completed": false,
+            "status": "pending"
+          }
+        ]
+      },
+      "buyer": {
+        "title": "Agendar revisión",
+        "status": "Cita lista",
+        "copy": "El comprador entiende el siguiente paso y el contexto antes de confirmar.",
+        "reversibleCopy": "La reserva se puede revisar o cancelar desde el panel antes de cobrar.",
+        "ctaLabel": "Reservar cita",
+        "ctaHref": "#agenda",
+        "secondaryLabel": "Revisar después",
+        "secondaryHint": "No altera la agenda ni el progreso del negocio.",
+        "liveMessage": "La agenda está lista para revisarse y la acción sigue siendo reversible."
+      },
+      "chat": [
+        {
+          "speaker": "Sistema",
+          "message": "El modo servicios ocultó la ruta de catálogo para no prometer una tienda."
+        },
+        {
+          "speaker": "Agenda",
+          "message": "La cita mostrada aquí depende de horario real y no de una confirmación simulada."
+        }
+      ]
+    },
+    {
+      "key": "hybrid",
+      "label": "Mixto",
+      "title": "Una sola operación para productos y servicios",
+      "summary": "La activación combina catálogo, agenda y reversibilidad sin esconder capacidad futura.",
+      "commercialMode": "hybrid",
+      "defaultMarketCode": "HN",
+      "marketOptions": [
+        {
+          "code": "HN",
+          "countryName": "Honduras",
+          "label": "Honduras",
+          "isHonduras": true,
+          "note": "Mercado doméstico para operaciones mixtas."
+        },
+        {
+          "code": "PA",
+          "countryName": "Panamá",
+          "label": "Panamá",
+          "isHonduras": false,
+          "note": "Mercado alterno para comprobar un lanzamiento regional."
+        }
+      ],
+      "onboarding": {
+        "progress": 58,
+        "authoritativeNote": "El flujo híbrido prioriza una oferta principal sin ocultar la capacidad futura.",
+        "nextAction": {
+          "title": "Publicar oferta principal",
+          "copy": "Abre primero la pieza más fuerte y deja el resto reversible.",
+          "href": "#mix",
+          "reversible": true
+        },
+        "milestones": [
+          {
+            "key": "owner_profile",
+            "title": "Perfil claro",
+            "copy": "Explica la operación sin usar jerga de plataforma.",
+            "completed": true,
+            "status": "ready"
+          },
+          {
+            "key": "owner_catalog",
+            "title": "Catálogo inicial",
+            "copy": "Prepara la oferta principal y conserva la capacidad futura.",
+            "completed": false,
+            "status": "pending"
+          },
+          {
+            "key": "owner_schedule",
+            "title": "Agenda o entrega",
+            "copy": "No escondas el horario cuando el negocio también venda productos.",
+            "completed": false,
+            "status": "pending"
+          },
+          {
+            "key": "owner_contact",
+            "title": "Canal primario",
+            "copy": "Define el canal que centraliza preguntas y seguimiento.",
+            "completed": true,
+            "status": "ready"
+          },
+          {
+            "key": "owner_publish",
+            "title": "Publicación mixta",
+            "copy": "Muestra la mezcla de catálogo y agenda sin forzar un único formato.",
+            "completed": false,
+            "status": "pending"
+          }
+        ]
+      },
+      "buyer": {
+        "title": "Preparar compra mixta",
+        "status": "Operación mixta lista",
+        "copy": "El comprador puede comprar o reservar sin perder contexto.",
+        "reversibleCopy": "La preparación es reversible hasta la confirmación final.",
+        "ctaLabel": "Abrir oferta principal",
+        "ctaHref": "#mix",
+        "secondaryLabel": "Guardar combinaciones",
+        "secondaryHint": "Permite revisar productos y servicios sin cerrar la decisión.",
+        "liveMessage": "La operación mixta está lista y la selección puede revisarse sin pérdida de estado."
+      },
+      "chat": [
+        {
+          "speaker": "Sistema",
+          "message": "El modo mixto conserva capacidad futura aunque hoy se muestre una sola oferta principal."
+        },
+        {
+          "speaker": "Comprador",
+          "message": "La selección del mercado no borra el contexto de compra ni la ruta de reserva."
+        }
+      ]
+    }
+  ]
+}
