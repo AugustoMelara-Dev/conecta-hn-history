@@ -142,6 +142,47 @@ final class TenantWorkforceApiTest extends TestCase
             ->assertJsonPath('data.channels.0.evidence_state', 'pending_external_verification');
     }
 
+    public function test_future_channel_health_never_becomes_live_evidence(): void
+    {
+        [$owner, $tenant] = $this->tenantOwner();
+        $now = now();
+        DB::table('channel_connections')->insert([
+            'id' => (string) Str::uuid(),
+            'tenant_id' => $tenant->id,
+            'channel' => 'whatsapp',
+            'connection_key' => 'primary',
+            'provider_key' => 'whatsapp.fake',
+            'status' => 'active',
+            'connected_at' => $now,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        DB::table('channel_provider_health')->insert([
+            'id' => (string) Str::uuid(),
+            'tenant_id' => $tenant->id,
+            'channel' => 'whatsapp',
+            'connection_key' => 'primary',
+            'provider_key' => 'whatsapp.fake',
+            'status' => 'available',
+            'checked_at' => $now->copy()->addMinutes(10),
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        Sanctum::actingAs($owner);
+
+        $this->withHeader('X-Tenant-ID', (string) $tenant->id)
+            ->withHeader('Idempotency-Key', 'workforce-future-channel-001')
+            ->postJson('/api/v1/tenant/workforce/activate', [
+                'role_key' => 'support',
+                'channel_keys' => ['whatsapp:primary'],
+                'approval_mode' => 'human_review',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.live_evidence.verified', false)
+            ->assertJsonPath('data.channels.0.evidence_state', 'pending_external_verification');
+    }
+
     /** @return array{User, Tenant} */
     private function tenantOwner(): array
     {

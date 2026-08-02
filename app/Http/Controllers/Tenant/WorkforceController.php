@@ -95,6 +95,9 @@ final class WorkforceController extends Controller
                     ->on('ai_agent_definitions.tenant_id', '=', 'ai_agent_versions.tenant_id');
             })
             ->where('ai_agent_versions.tenant_id', $tenantId)
+            ->where('ai_agent_versions.lifecycle_status', 'draft')
+            ->orderByDesc('ai_agent_versions.created_at')
+            ->orderBy('ai_agent_versions.id')
             ->select([
                 'ai_agent_versions.id', 'ai_agent_versions.configuration', 'ai_agent_versions.lifecycle_status',
                 'ai_agent_versions.created_at', 'ai_agent_definitions.key as definition_key',
@@ -196,8 +199,13 @@ final class WorkforceController extends Controller
         }
 
         try {
-            return CarbonImmutable::parse((string) $channel->checked_at)
-                ->greaterThanOrEqualTo(now()->subSeconds((int) config('dovra_channels.contract.health.stale_after_seconds', 300)));
+            $checkedAt = CarbonImmutable::parse((string) $channel->checked_at);
+            $now = CarbonImmutable::now();
+            $staleAfter = (int) config('dovra_channels.contract.health.stale_after_seconds', 300);
+            $futureTolerance = (int) config('dovra_channels.contract.health.future_tolerance_seconds', 30);
+
+            return $checkedAt->greaterThanOrEqualTo($now->subSeconds($staleAfter))
+                && $checkedAt->lessThanOrEqualTo($now->addSeconds($futureTolerance));
         } catch (\Throwable) {
             return false;
         }

@@ -338,8 +338,13 @@ final class TenantWorkforceController extends Controller
         }
 
         try {
-            return CarbonImmutable::parse((string) $channel->checked_at)
-                ->greaterThanOrEqualTo(now()->subSeconds((int) config('dovra_channels.contract.health.stale_after_seconds', 300)));
+            $checkedAt = CarbonImmutable::parse((string) $channel->checked_at);
+            $now = CarbonImmutable::now();
+            $staleAfter = (int) config('dovra_channels.contract.health.stale_after_seconds', 300);
+            $futureTolerance = (int) config('dovra_channels.contract.health.future_tolerance_seconds', 30);
+
+            return $checkedAt->greaterThanOrEqualTo($now->subSeconds($staleAfter))
+                && $checkedAt->lessThanOrEqualTo($now->addSeconds($futureTolerance));
         } catch (\Throwable) {
             return false;
         }

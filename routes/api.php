@@ -367,7 +367,7 @@ Route::prefix('v1')->group(function () {
         });
 
     Route::post('/tenant/workforce/activate', [TenantWorkforceController::class, 'activate'])
-        ->middleware(['auth:sanctum', 'tenant.ownership', 'tenant.context', 'throttle:api'])
+        ->middleware(['auth:sanctum', 'tenant.ownership', \App\Http\Middleware\InitializeAuthenticatedTenantContext::class, 'throttle:api'])
         ->name('api.tenant.workforce.activate');
 
     Route::prefix('tenant/agent/tools')
