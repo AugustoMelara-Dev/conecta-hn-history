@@ -26,11 +26,7 @@ final class FakeEmailAdapter implements ChannelAdapterInterface
 
     public function receive(ChannelContext $context, ChannelInboundMessage $message): NormalizedInboundMessage
     {
-        if ($message->webhookEventId !== null
-            || $message->webhookPayload !== null
-            || $message->webhookSignature !== null) {
-            WebhookAuthenticator::assertSigned($message, $this->webhookSecret);
-        }
+        WebhookAuthenticator::assertSigned($message, $this->webhookSecret);
 
         return ChannelInboundNormalizer::normalize(
             adapterKey: 'email.fake',

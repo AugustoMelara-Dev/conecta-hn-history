@@ -13,9 +13,11 @@ final class WebhookAuthenticator
     {
         if (! is_string($secret)
             || trim($secret) === ''
-            || $message->webhookEventId === null
-            || $message->webhookPayload === null
-            || $message->webhookSignature === null) {
+            || ! self::present($message->webhookEventId)
+            || ! self::present($message->webhookPayload)
+            || ! self::present($message->webhookSignature)
+            || ! self::present($message->webhookTimestamp)
+            || ! self::present($message->webhookReplayKey)) {
             throw new InvalidArgumentException('Channel webhook authenticity is required.');
         }
 
@@ -23,5 +25,10 @@ final class WebhookAuthenticator
         if (! hash_equals($expected, $message->webhookSignature)) {
             throw new InvalidArgumentException('Channel webhook authenticity is invalid.');
         }
+    }
+
+    private static function present(?string $value): bool
+    {
+        return $value !== null && trim($value) !== '';
     }
 }

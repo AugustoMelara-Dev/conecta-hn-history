@@ -136,6 +136,8 @@ final class ChannelIdentityConsentTest extends TestCase
             webhookEventId: 'sms-in-001',
             webhookPayload: $payload,
             webhookSignature: hash_hmac('sha256', $payload, 'sms-webhook-secret'),
+            webhookTimestamp: '2026-08-02T15:03:00Z',
+            webhookReplayKey: 'sms-replay-001',
         ));
 
         $identity = (new ChannelIdentityResolver)->resolve($context, $normalized);

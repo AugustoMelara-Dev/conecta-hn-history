@@ -26,6 +26,8 @@ final readonly class ChannelInboundMessage
         public ?string $webhookEventId = null,
         public ?string $webhookPayload = null,
         public ?string $webhookSignature = null,
+        public ?string $webhookTimestamp = null,
+        public ?string $webhookReplayKey = null,
     ) {
         if (! Str::isUuid($tenantId)
             || trim($channel) === ''

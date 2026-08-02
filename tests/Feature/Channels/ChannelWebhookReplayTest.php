@@ -60,6 +60,8 @@ final class ChannelWebhookReplayTest extends TestCase
             webhookEventId: 'mail-evt-100',
             webhookPayload: $payload,
             webhookSignature: $signature,
+            webhookTimestamp: '2026-08-02T15:00:00Z',
+            webhookReplayKey: 'mail-replay-100',
         ));
 
         self::assertTrue($connectionService->claimWebhook($context, $normalized));
@@ -108,6 +110,8 @@ final class ChannelWebhookReplayTest extends TestCase
             webhookEventId: 'mail-evt-101',
             webhookPayload: '{"event":"message.received","id":"mail-evt-101"}',
             webhookSignature: 'bad-signature',
+            webhookTimestamp: '2026-08-02T15:01:00Z',
+            webhookReplayKey: 'mail-replay-101',
         ));
 
         self::assertSame(0, DB::table('channel_webhook_claims')->count());
@@ -146,5 +150,62 @@ final class ChannelWebhookReplayTest extends TestCase
             content: 'received',
             webhookEventId: 'mail-evt-102',
         ));
+    }
+
+    public function test_email_webhook_rejects_missing_signature_event_timestamp_and_replay_fields_before_identity_normalization(): void
+    {
+        $actor = User::factory()->create();
+        $tenant = Tenant::factory()->forUser($actor)->create();
+        GlobalMarketFixture::assignCanada($tenant);
+        $adapter = new FakeEmailAdapter('email-webhook-secret');
+        $context = new ChannelContext(
+            tenantId: (string) $tenant->id,
+            channel: 'email',
+            connectionKey: 'email-local',
+            marketCountryCode: 'CA',
+            locale: 'en-CA',
+            currency: 'CAD',
+            timezone: 'America/Toronto',
+            authorization: new ChannelAuthorizationEnvelope(
+                tenantId: (string) $tenant->id,
+                actorId: (string) $actor->id,
+            ),
+        );
+        $payload = '{"event":"message.received","id":"mail-evt-103"}';
+        $valid = [
+            'webhookEventId' => 'mail-evt-103',
+            'webhookPayload' => $payload,
+            'webhookSignature' => hash_hmac('sha256', $payload, 'email-webhook-secret'),
+            'webhookTimestamp' => '2026-08-02T15:00:00Z',
+            'webhookReplayKey' => 'mail-replay-103',
+        ];
+
+        foreach (['webhookSignature', 'webhookEventId', 'webhookTimestamp', 'webhookReplayKey'] as $missingField) {
+            $fields = $valid;
+            $fields[$missingField] = null;
+
+            try {
+                $adapter->receive($context, new ChannelInboundMessage(
+                    tenantId: (string) $tenant->id,
+                    channel: 'email',
+                    connectionKey: 'email-local',
+                    externalMessageId: 'mail-in-103-'.$missingField,
+                    externalThreadReference: 'reply-thread@example.test',
+                    identityType: 'email',
+                    identityValue: 'reply@example.test',
+                    content: 'received',
+                    webhookEventId: $fields['webhookEventId'],
+                    webhookPayload: $fields['webhookPayload'],
+                    webhookSignature: $fields['webhookSignature'],
+                    webhookTimestamp: $fields['webhookTimestamp'],
+                    webhookReplayKey: $fields['webhookReplayKey'],
+                ));
+                self::fail('Expected missing webhook field to be rejected: '.$missingField);
+            } catch (InvalidArgumentException $exception) {
+                self::assertSame('Channel webhook authenticity is required.', $exception->getMessage());
+            }
+        }
+
+        self::assertSame(0, DB::table('channel_webhook_claims')->count());
     }
 }

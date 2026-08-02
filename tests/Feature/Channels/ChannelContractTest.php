@@ -132,6 +132,8 @@ final class ChannelContractTest extends TestCase
             webhookEventId: 'mail-evt-001',
             webhookPayload: $payload,
             webhookSignature: $signature,
+            webhookTimestamp: '2026-08-02T15:02:00Z',
+            webhookReplayKey: 'mail-replay-001',
             consentStatus: 'granted',
         ));
 
