@@ -110,12 +110,11 @@ final readonly class ConversationChannelBridge
             if ($existingConversation->external_thread_hash === null) {
                 $conversationThreadReference = null;
             } else {
-                $canonicalThreadReference = DB::table('dovra_conversation_channel_links')
-                    ->where('tenant_id', $tenantId)
-                    ->where('conversation_id', $conversationId)
-                    ->whereNotNull('external_thread_reference')
-                    ->orderBy('last_inbound_at')
-                    ->value('external_thread_reference');
+                $canonicalThreadReference = $this->canonicalThreadReference(
+                    tenantId: $tenantId,
+                    conversationId: $conversationId,
+                    externalThreadHash: (string) $existingConversation->external_thread_hash,
+                );
                 if (! is_string($canonicalThreadReference) || trim($canonicalThreadReference) === '') {
                     throw new ChannelConflictException('Conversation thread lineage is incomplete.');
                 }
@@ -296,6 +295,31 @@ final readonly class ConversationChannelBridge
             ->first();
 
         return $crossChannel === null ? null : (string) $crossChannel->conversation_id;
+    }
+
+    private function canonicalThreadReference(
+        string $tenantId,
+        string $conversationId,
+        string $externalThreadHash,
+    ): ?string {
+        $references = DB::table('dovra_conversation_channel_links')
+            ->where('tenant_id', $tenantId)
+            ->where('conversation_id', $conversationId)
+            ->whereNotNull('external_thread_reference')
+            ->orderByDesc('last_inbound_at')
+            ->orderByDesc('last_outbound_at')
+            ->get(['external_thread_reference']);
+
+        foreach ($references as $reference) {
+            $value = is_string($reference->external_thread_reference)
+                ? trim($reference->external_thread_reference)
+                : '';
+            if ($value !== '' && hash_equals($externalThreadHash, hash('sha256', $value))) {
+                return $value;
+            }
+        }
+
+        return null;
     }
 
     private function existingByProviderEvent(
