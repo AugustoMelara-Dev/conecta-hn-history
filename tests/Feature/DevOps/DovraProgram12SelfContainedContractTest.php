@@ -66,10 +66,13 @@ it('runs the operational harness using only owned artifacts and no shared config
     $payload = json_decode($process->getOutput(), true, 512, JSON_THROW_ON_ERROR);
     $ownedSources = [
         $root.'/scripts/dovra/verify-program12-slo-contracts.ps1',
+        $root.'/scripts/dovra/program12-operational-contract-harness.php',
         $root.'/tests/Feature/DevOps/DovraProgram12ObservabilityContractTest.php',
         $root.'/tests/Feature/DevOps/DovraProgram12QueueResilienceContractTest.php',
+        $root.'/tests/Feature/DevOps/DovraProgram12OperationalContractHarnessTest.php',
         $root.'/tests/Feature/DevOps/DovraProgram12ProductionConfigGuardTest.php',
         $root.'/tests/Architecture/ObservabilityRatchetTest.php',
+        __FILE__,
     ];
     $forbiddenReferences = [];
     foreach ([$observability['shared_runtime_seams'], $queue['shared_runtime_seams']] as $seamGroup) {
