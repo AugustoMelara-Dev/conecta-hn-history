@@ -4,141 +4,132 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Discovery;
 
+use App\Application\Ai\Registry\AiRuntimeSelection;
 use App\Application\Discovery\AgentCapabilityProjection;
+use App\Application\Markets\HondurasMarketBackfill;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+use Tests\Support\AI\AiEligibleRegistryFixture;
 use Tests\TestCase;
 
 final class AgentCapabilityProjectionTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_it_requires_an_explicit_market_and_governed_active_agent_version(): void
+    public function test_it_requires_an_explicit_market_and_canonical_active_registry_release(): void
     {
         $tenant = Tenant::factory()->create();
-        $this->assertSame([], app(AgentCapabilityProjection::class)->forTenant((string) $tenant->id));
+        $projection = app(AgentCapabilityProjection::class);
 
-        $this->seedGovernedAgent($tenant->id, 'front_desk', true);
+        self::assertSame([], $projection->forTenant((string) $tenant->id));
 
-        $capabilities = app(AgentCapabilityProjection::class)->forTenant((string) $tenant->id);
+        $this->assignHondurasMarket($tenant->id);
+        $selection = $this->createEligibleAgent($tenant->id);
+
+        $capabilities = $projection->forTenant((string) $tenant->id);
 
         self::assertCount(1, $capabilities);
         self::assertSame('private_tenant_agent', $capabilities[0]['capability']);
+        self::assertSame($selection->agentVersionId, $capabilities[0]['agentVersionId']);
         self::assertTrue($capabilities[0]['marketContextRequired']);
     }
 
-    public function test_inactive_versions_and_unpublished_policies_are_not_projected(): void
+    public function test_it_rejects_noncanonical_decisions_lineage_and_nonactive_agent_versions(): void
     {
-        $tenant = Tenant::factory()->create();
-        $this->seedGovernedAgent($tenant->id, 'front_desk', false);
+        $projection = app(AgentCapabilityProjection::class);
 
-        self::assertSame([], app(AgentCapabilityProjection::class)->forTenant((string) $tenant->id));
+        $approvedTenant = Tenant::factory()->create();
+        $this->assignHondurasMarket($approvedTenant->id);
+        $approved = $this->createEligibleAgent($approvedTenant->id);
+        DB::table('ai_release_decisions')->where('id', $approved->releaseDecisionId)->update([
+            'decision' => 'approved',
+        ]);
+        self::assertSame([], $projection->forTenant((string) $approvedTenant->id));
+
+        $checksumTenant = Tenant::factory()->create();
+        $this->assignHondurasMarket($checksumTenant->id);
+        $checksum = $this->createEligibleAgent($checksumTenant->id);
+        DB::table('ai_release_decisions')->where('id', $checksum->releaseDecisionId)->update([
+            'candidate_checksum' => hash('sha256', 'different-agent'),
+        ]);
+        self::assertSame([], $projection->forTenant((string) $checksumTenant->id));
+
+        $lineageTenant = Tenant::factory()->create();
+        $this->assignHondurasMarket($lineageTenant->id);
+        $lineage = $this->createEligibleAgent($lineageTenant->id);
+        DB::table('ai_evaluation_runs')->where('id', $this->decisionRunId($lineage->releaseDecisionId))->update([
+            'status' => 'pending',
+            'completed_at' => null,
+        ]);
+        self::assertSame([], $projection->forTenant((string) $lineageTenant->id));
+
+        $eligibleTenant = Tenant::factory()->create();
+        $this->assignHondurasMarket($eligibleTenant->id);
+        $eligible = $this->createEligibleAgent($eligibleTenant->id);
+        DB::table('ai_agent_versions')->where('id', $eligible->agentVersionId)->update([
+            'lifecycle_status' => 'eligible',
+        ]);
+        self::assertSame([], $projection->forTenant((string) $eligibleTenant->id));
     }
 
-    private function seedGovernedAgent(string $tenantId, string $role, bool $active): void
+    public function test_tenant_scoping_does_not_project_another_tenants_release(): void
     {
-        $packVersionId = DB::table('market_pack_versions')->value('id');
-        if ($packVersionId === null) {
-            $this->markTestSkipped('Global market fixtures are not available in this database.');
+        $owner = Tenant::factory()->create();
+        $other = Tenant::factory()->create();
+        $this->assignHondurasMarket($owner->id);
+        $this->assignHondurasMarket($other->id);
+        $this->createEligibleAgent($owner->id);
+
+        self::assertSame([], app(AgentCapabilityProjection::class)->forTenant((string) $other->id));
+    }
+
+    private function createEligibleAgent(string $tenantId): AiRuntimeSelection
+    {
+        return AiEligibleRegistryFixture::create(
+            tenantId: $tenantId,
+            capability: 'private_tenant_agent',
+            audience: 'private',
+            outputSchema: 'private_agent.answer.v1',
+            marketCountryCode: 'HN',
+        );
+    }
+
+    private function assignHondurasMarket(string $tenantId): void
+    {
+        app(HondurasMarketBackfill::class)->run();
+        $versionId = DB::table('market_pack_versions as versions')
+            ->join('market_packs as packs', 'packs.id', '=', 'versions.market_pack_id')
+            ->where('packs.key', 'hn')
+            ->where('versions.status', 'published')
+            ->value('versions.id');
+
+        if ($versionId === null) {
+            $this->markTestSkipped('The Honduras Market Pack is not available.');
         }
 
+        $now = now();
         DB::table('tenant_markets')->updateOrInsert(
             ['tenant_id' => $tenantId],
             [
                 'id' => (string) (DB::table('tenant_markets')->where('tenant_id', $tenantId)->value('id') ?: Str::uuid()),
-                'market_pack_version_id' => $packVersionId,
+                'market_pack_version_id' => $versionId,
                 'country_code' => 'HN',
                 'locale_code' => 'es-HN',
                 'currency_code' => 'HNL',
                 'timezone_name' => 'America/Tegucigalpa',
                 'is_primary' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at' => $now,
+                'updated_at' => $now,
             ],
         );
+    }
 
-        $definitionId = (string) Str::uuid();
-        $versionId = (string) Str::uuid();
-        $policyId = (string) Str::uuid();
-        $decisionId = (string) Str::uuid();
-        $now = now();
-
-        DB::table('ai_agent_definitions')->insert([
-            'id' => $definitionId,
-            'tenant_id' => $tenantId,
-            'key' => 'workforce.'.$role,
-            'name' => 'Workforce '.$role,
-            'visibility' => 'tenant_private',
-            'status' => 'active',
-            'metadata' => json_encode([], JSON_THROW_ON_ERROR),
-            'created_at' => $now,
-            'updated_at' => $now,
-        ]);
-        DB::table('ai_agent_versions')->insert([
-            'id' => $versionId,
-            'tenant_id' => $tenantId,
-            'agent_definition_id' => $definitionId,
-            'model_version_id' => null,
-            'version' => 1,
-            'checksum' => hash('sha256', $versionId),
-            'configuration' => json_encode([
-                'capability' => 'private_tenant_agent',
-                'workforce_role' => $role,
-                'required_capabilities' => ['structured_output'],
-            ], JSON_THROW_ON_ERROR),
-            'released_at' => $active ? $now : null,
-            'lifecycle_status' => $active ? 'active' : 'draft',
-            'kill_switch_enabled' => false,
-            'created_at' => $now,
-            'updated_at' => $now,
-        ]);
-        DB::table('ai_release_policies')->insert([
-            'id' => $policyId,
-            'tenant_id' => $tenantId,
-            'key' => 'workforce.default',
-            'name' => 'Workforce policy',
-            'checksum' => hash('sha256', $policyId),
-            'rules' => json_encode(['required_capabilities' => ['structured_output']], JSON_THROW_ON_ERROR),
-            'status' => $active ? 'active' : 'draft',
-            'created_at' => $now,
-            'updated_at' => $now,
-        ]);
-        DB::table('ai_release_decisions')->insert([
-            'id' => $decisionId,
-            'tenant_id' => $tenantId,
-            'release_policy_id' => $policyId,
-            'evaluation_run_id' => null,
-            'agent_version_id' => $versionId,
-            'decision' => 'approved',
-            'decided_by' => 'test',
-            'evidence_hash' => hash('sha256', $decisionId),
-            'rationale' => json_encode([], JSON_THROW_ON_ERROR),
-            'decided_at' => $now,
-            'valid_from' => $now,
-            'valid_until' => null,
-            'revoked_at' => null,
-            'created_at' => $now,
-            'updated_at' => $now,
-        ]);
-        DB::table('ai_agent_activations')->insert([
-            'id' => (string) Str::uuid(),
-            'tenant_id' => $tenantId,
-            'scope_type' => 'tenant',
-            'scope_key' => $tenantId,
-            'agent_version_id' => $versionId,
-            'rollout_percentage' => 100,
-            'cohort_salt' => hash('sha256', $tenantId),
-            'release_decision_id' => $decisionId,
-            'previous_activation_id' => null,
-            'effective_from' => $now,
-            'effective_until' => null,
-            'activated_by' => 'test',
-            'reason' => 'test',
-            'lock_version' => 0,
-            'created_at' => $now,
-            'updated_at' => $now,
-        ]);
+    private function decisionRunId(string $decisionId): string
+    {
+        return (string) DB::table('ai_release_decisions')
+            ->where('id', $decisionId)
+            ->value('evaluation_run_id');
     }
 }

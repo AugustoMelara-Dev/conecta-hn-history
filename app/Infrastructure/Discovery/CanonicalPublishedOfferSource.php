@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Discovery;
 
+use App\Application\Discovery\AgentCapabilityProjection;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -11,8 +12,12 @@ use Illuminate\Support\Facades\Schema;
 
 final class CanonicalPublishedOfferSource
 {
+    /** @var array<string, list<array<string, mixed>>> */
+    private array $agentCapabilityCache = [];
+
     public function __construct(
         private readonly CanonicalAvailabilityInspector $availability,
+        private readonly AgentCapabilityProjection $agentCapabilities,
     ) {}
 
     /** @return list<array<string, mixed>> */
@@ -151,6 +156,10 @@ final class CanonicalPublishedOfferSource
                     ? (int) $row->price_minor
                     : (int) round(((float) $row->price) * 100);
                 $availabilityStatus = $this->productAvailabilityStatus($row);
+                $agentEvidence = $this->agentCapabilityEvidence(
+                    (string) $row->source_tenant_id,
+                    $row->source_updated_at,
+                );
 
                 return [
                     'projection_key' => 'product:'.$row->source_record_id,
@@ -214,6 +223,7 @@ final class CanonicalPublishedOfferSource
                             'summary' => 'Primary public location',
                             'facts' => ['location_name' => $row->location_name, 'country_code' => $countryCode],
                         ] : null,
+                        ...$agentEvidence,
                     ])),
                 ];
             })
@@ -302,6 +312,10 @@ final class CanonicalPublishedOfferSource
                     $row->location_id !== null ? (string) $row->location_id : null,
                     (int) $row->source_record_id,
                 );
+                $agentEvidence = $this->agentCapabilityEvidence(
+                    (string) $row->source_tenant_id,
+                    $row->source_updated_at,
+                );
 
                 return [
                     'projection_key' => 'service:'.$row->source_record_id,
@@ -375,6 +389,7 @@ final class CanonicalPublishedOfferSource
                             'summary' => 'Active availability rule exists',
                             'facts' => ['availability_status' => $availabilityStatus, 'timezone_name' => $timezoneName],
                         ] : null,
+                        ...$agentEvidence,
                     ])),
                 ];
             })
@@ -409,5 +424,39 @@ final class CanonicalPublishedOfferSource
         }
 
         return '/directorio/'.$slug;
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function agentCapabilityEvidence(string $tenantId, mixed $freshnessAt): array
+    {
+        if (! array_key_exists($tenantId, $this->agentCapabilityCache)) {
+            $this->agentCapabilityCache[$tenantId] = $this->agentCapabilities->forTenant($tenantId);
+        }
+
+        return array_map(
+            static fn (array $capability): array => [
+                'evidence_type' => 'agent_capability',
+                'evidence_key' => 'agent-capability:'.$tenantId.':'.$capability['agentVersionId'],
+                'source_tenant_id' => $tenantId,
+                'source_table' => 'ai_agent_activations',
+                'source_identifier' => (string) $capability['agentVersionId'],
+                'freshness_at' => $freshnessAt,
+                'summary' => 'Governed active agent capability',
+                'facts' => [
+                    'capability' => $capability['capability'],
+                    'agent_key' => $capability['agentKey'],
+                    'agent_version' => $capability['agentVersion'],
+                    'required_capabilities' => $capability['requiredCapabilities'],
+                    'policy_key' => $capability['policyKey'],
+                ],
+                'metadata' => [
+                    'capability' => $capability['capability'],
+                    'agent_version_id' => $capability['agentVersionId'],
+                    'policy_checksum' => $capability['policyChecksum'],
+                    'market_context_required' => $capability['marketContextRequired'],
+                ],
+            ],
+            $this->agentCapabilityCache[$tenantId],
+        );
     }
 }

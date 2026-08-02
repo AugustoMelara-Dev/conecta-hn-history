@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Application\Discovery;
 
+use App\Application\Ai\Registry\AiReleaseEligibility;
+use App\Exceptions\Ai\AiExecutionDeniedException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -14,6 +16,10 @@ use Illuminate\Support\Facades\Schema;
  */
 final class AgentCapabilityProjection
 {
+    public function __construct(
+        private readonly AiReleaseEligibility $eligibility,
+    ) {}
+
     /**
      * @return list<array{
      *     capability:string,
@@ -37,10 +43,7 @@ final class AgentCapabilityProjection
         // A capability is not public merely because an agent version exists.
         // It needs an explicit tenant market, an open activation, a governed
         // active version, and a currently published release policy/decision.
-        if (! DB::table('tenant_markets')
-            ->where('tenant_id', $tenantId)
-            ->where('is_primary', true)
-            ->exists()) {
+        if (! $this->hasPublishedTenantMarket($tenantId)) {
             return [];
         }
 
@@ -62,40 +65,41 @@ final class AgentCapabilityProjection
                     ->where('policies.tenant_id', '=', $tenantId);
             })
             ->where('activations.tenant_id', $tenantId)
+            ->where('activations.scope_type', 'tenant')
+            ->where('activations.scope_key', $tenantId)
             ->whereNotNull('activations.release_decision_id')
             ->where('activations.effective_from', '<=', now())
             ->where(static function ($query): void {
                 $query->whereNull('activations.effective_until')
                     ->orWhere('activations.effective_until', '>', now());
             })
-            ->whereIn('decisions.decision', ['passed', 'approved', 'eligible', 'released', 'published'])
-            ->whereNull('decisions.revoked_at')
-            ->where(static function ($query): void {
-                $query->whereNull('decisions.valid_from')->orWhere('decisions.valid_from', '<=', now());
-            })
-            ->where(static function ($query): void {
-                $query->whereNull('decisions.valid_until')->orWhere('decisions.valid_until', '>', now());
-            })
-            ->whereIn('policies.status', ['active', 'published'])
-            ->whereIn('definitions.status', ['active', 'published'])
-            ->whereIn('versions.lifecycle_status', ['active', 'eligible'])
-            ->where('versions.kill_switch_enabled', false)
             ->orderBy('definitions.key')
             ->orderByDesc('versions.version')
             ->get([
                 'definitions.key as agent_key',
                 'versions.id as agent_version_id',
                 'versions.version as agent_version',
-                'versions.configuration as agent_configuration',
                 'policies.key as policy_key',
                 'policies.checksum as policy_checksum',
-                'policies.rules as policy_rules',
+                'activations.release_decision_id',
             ]);
 
         $result = [];
         foreach ($rows as $row) {
-            $agentConfiguration = $this->jsonObject($row->agent_configuration);
-            $policyRules = $this->jsonObject($row->policy_rules);
+            try {
+                $candidate = $this->eligibility->assertExact(
+                    tenantId: $tenantId,
+                    decisionId: (string) $row->release_decision_id,
+                    allowedLifecycleStatuses: ['active'],
+                    denialReason: 'discovery_agent_capability',
+                    expectedAgentVersionId: (string) $row->agent_version_id,
+                );
+            } catch (AiExecutionDeniedException) {
+                continue;
+            }
+
+            $agentConfiguration = $candidate->agentConfiguration;
+            $policyRules = $candidate->policyRules;
             $capability = trim((string) ($agentConfiguration['capability'] ?? ''));
             if ($capability === '') {
                 continue;
@@ -128,6 +132,26 @@ final class AgentCapabilityProjection
         return array_values($result);
     }
 
+    private function hasPublishedTenantMarket(string $tenantId): bool
+    {
+        return DB::table('tenant_markets as markets')
+            ->join('market_pack_versions as versions', 'versions.id', '=', 'markets.market_pack_version_id')
+            ->join('market_packs as packs', 'packs.id', '=', 'versions.market_pack_id')
+            ->join('countries', 'countries.code', '=', 'packs.country_code')
+            ->where('markets.tenant_id', $tenantId)
+            ->where('markets.is_primary', true)
+            ->where('packs.is_active', true)
+            ->where('countries.is_active', true)
+            ->where('versions.status', 'published')
+            ->whereNotNull('versions.published_at')
+            ->where('versions.published_at', '<=', now())
+            ->where(static function ($query): void {
+                $query->whereNull('versions.effective_from')
+                    ->orWhere('versions.effective_from', '<=', now());
+            })
+            ->exists();
+    }
+
     private function registryTablesExist(): bool
     {
         foreach ([
@@ -137,6 +161,20 @@ final class AgentCapabilityProjection
             'ai_agent_definitions',
             'ai_release_decisions',
             'ai_release_policies',
+            'ai_evaluation_runs',
+            'ai_evaluation_versions',
+            'ai_evaluation_suites',
+            'ai_evaluation_cases',
+            'ai_evaluation_results',
+            'ai_prompt_versions',
+            'ai_prompt_definitions',
+            'ai_model_versions',
+            'ai_models',
+            'ai_provider_versions',
+            'ai_providers',
+            'market_packs',
+            'market_pack_versions',
+            'countries',
         ] as $table) {
             if (! Schema::hasTable($table)) {
                 return false;
@@ -144,21 +182,6 @@ final class AgentCapabilityProjection
         }
 
         return true;
-    }
-
-    /** @return array<string, mixed> */
-    private function jsonObject(mixed $value): array
-    {
-        if (is_array($value)) {
-            return $value;
-        }
-        if (! is_string($value) || trim($value) === '') {
-            return [];
-        }
-
-        $decoded = json_decode($value, true);
-
-        return is_array($decoded) ? $decoded : [];
     }
 
     /** @return list<string> */
