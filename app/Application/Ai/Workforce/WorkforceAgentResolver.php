@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Application\Ai\Workforce;
 
 use App\Application\Ai\Registry\AiRegistryQuery;
-use App\Application\Ai\Registry\AiRegistryResolver;
 use App\Exceptions\Ai\AiExecutionDeniedException;
+use App\Application\Ai\Workforce\Contracts\WorkforceRegistryAuthority;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -14,7 +14,7 @@ use InvalidArgumentException;
 final readonly class WorkforceAgentResolver
 {
     public function __construct(
-        private AiRegistryResolver $registry,
+        private WorkforceRegistryAuthority $registry,
     ) {}
 
     public function resolve(string $tenantId, ?string $agentVersionId, ?string $requestedRole = null): WorkforceAgentContext
