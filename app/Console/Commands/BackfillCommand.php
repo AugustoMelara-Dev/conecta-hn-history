@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Schema;
 abstract class BackfillCommand extends Command
 {
     /**
-     * @param  callable(bool, int): array<string, mixed>  $runner
+     * @param  callable(bool, int, int): array<string, mixed>  $runner
      * @param  callable(array<string, mixed>): int  $blockingIssueCounter
      * @param  list<string>  $expandTables
      */
@@ -37,6 +37,49 @@ abstract class BackfillCommand extends Command
             ]);
         }
 
+        $offset = $this->integerOption('offset', 0, minimum: 0);
+        if ($offset === null) {
+            return $this->failWithPayload([
+                'status' => 'failed',
+                'code' => 'invalid_offset',
+                'message' => 'offset must be a non-negative bounded integer.',
+            ]);
+        }
+
+        if ((bool) $this->option('resume')) {
+            $checkpointPath = $this->option('checkpoint');
+            if (! is_string($checkpointPath) || trim($checkpointPath) === '') {
+                return $this->failWithPayload([
+                    'status' => 'failed',
+                    'code' => 'resume_requires_checkpoint',
+                    'message' => '--resume requires --checkpoint.',
+                ]);
+            }
+
+            $checkpoint = $this->readJson($checkpointPath);
+            if ($checkpoint === null || ! isset($checkpoint['next_source_offset'])) {
+                return $this->failWithPayload([
+                    'status' => 'failed',
+                    'code' => 'checkpoint_not_resumable',
+                    'message' => 'The checkpoint does not contain a resumable source offset.',
+                ]);
+            }
+
+            $checkpointOffset = filter_var(
+                $checkpoint['next_source_offset'],
+                FILTER_VALIDATE_INT,
+                ['options' => ['min_range' => 0]],
+            );
+            if ($checkpointOffset === false) {
+                return $this->failWithPayload([
+                    'status' => 'failed',
+                    'code' => 'checkpoint_offset_invalid',
+                    'message' => 'The checkpoint source offset is invalid.',
+                ]);
+            }
+            $offset = (int) $checkpointOffset;
+        }
+
         $maxBlockingGaps = $this->integerOption('max-blocking-gaps', 0, minimum: 0);
         if ($maxBlockingGaps === null) {
             return $this->failWithPayload([
@@ -58,6 +101,7 @@ abstract class BackfillCommand extends Command
                 phase: $phase,
                 dryRun: true,
                 limit: $limit,
+                sourceOffset: $offset,
                 maxBlockingGaps: $maxBlockingGaps,
                 status: 'blocked',
                 blockingIssueCount: 1,
@@ -79,6 +123,7 @@ abstract class BackfillCommand extends Command
                 phase: $phase,
                 dryRun: true,
                 limit: $limit,
+                sourceOffset: $offset,
                 maxBlockingGaps: $maxBlockingGaps,
                 status: $missing === [] ? 'proved' : 'failed',
                 blockingIssueCount: count($missing),
@@ -93,7 +138,7 @@ abstract class BackfillCommand extends Command
         }
 
         try {
-            $data = $runner($dryRun, $limit);
+            $data = $runner($dryRun, $limit, $offset);
         } catch (\Throwable $exception) {
             return $this->failWithPayload([
                 'status' => 'failed',
@@ -108,6 +153,7 @@ abstract class BackfillCommand extends Command
             phase: $phase,
             dryRun: $dryRun,
             limit: $limit,
+            sourceOffset: $offset,
             maxBlockingGaps: $maxBlockingGaps,
             status: $status,
             blockingIssueCount: $blockingIssueCount,
@@ -130,6 +176,7 @@ abstract class BackfillCommand extends Command
         string $phase,
         bool $dryRun,
         int $limit,
+        int $sourceOffset,
         int $maxBlockingGaps,
         string $status,
         int $blockingIssueCount,
@@ -142,6 +189,8 @@ abstract class BackfillCommand extends Command
             'phase' => $phase,
             'dry_run' => $dryRun,
             'limit' => $limit,
+            'source_offset' => $sourceOffset,
+            'next_source_offset' => $sourceOffset + $limit,
             'max_blocking_gaps' => $maxBlockingGaps,
             'status' => $status,
             'blocking_issue_count' => $blockingIssueCount,
@@ -159,6 +208,8 @@ abstract class BackfillCommand extends Command
             'command' => $this->getName(),
             'phase' => $phase,
             'limit' => $limit,
+            'source_offset' => $sourceOffset,
+            'next_source_offset' => $sourceOffset + $limit,
             'blocking_issue_count' => $blockingIssueCount,
             'report_sha256' => hash('sha256', $canonical),
         ];
@@ -232,6 +283,24 @@ abstract class BackfillCommand extends Command
         if (file_put_contents($resolved, $encoded, LOCK_EX) === false) {
             throw new \RuntimeException('Unable to write report: '.$resolved);
         }
+    }
+
+    /** @return array<string, mixed>|null */
+    private function readJson(string $path): ?array
+    {
+        $resolved = $this->resolvePath($path);
+        if (! is_file($resolved)) {
+            return null;
+        }
+
+        $contents = file_get_contents($resolved);
+        if (! is_string($contents)) {
+            return null;
+        }
+
+        $decoded = json_decode($contents, true);
+
+        return is_array($decoded) ? $decoded : null;
     }
 
     private function resolvePath(string $path): string

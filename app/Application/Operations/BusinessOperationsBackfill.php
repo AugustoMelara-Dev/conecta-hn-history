@@ -15,20 +15,22 @@ final class BusinessOperationsBackfill
     /** @var list<array{code: string, tenant_id: string, resource_type: string, resource_id: string|null, detail: string}> */
     private array $conflicts = [];
 
-    public function run(bool $dryRun = false, int $limit = 0): BusinessOperationsBackfillReport
+    public function run(bool $dryRun = false, int $limit = 0, int $offset = 0): BusinessOperationsBackfillReport
     {
-        if ($limit < 0) {
-            throw new \InvalidArgumentException('The backfill limit must be zero or greater.');
+        if ($limit < 0 || $offset < 0) {
+            throw new \InvalidArgumentException('The backfill limit and offset must be zero or greater.');
         }
 
         $this->gaps = [];
         $this->conflicts = [];
 
-        $operation = function () use ($limit): void {
+        $operation = function () use ($limit, $offset): void {
             $tenants = DB::table('tenants')->orderBy('id');
 
             if ($limit > 0) {
-                $tenants->limit($limit);
+                $tenants->offset($offset)->limit($limit);
+            } elseif ($offset > 0) {
+                $tenants->offset($offset);
             }
 
             $tenants->each(function (object $tenant): void {

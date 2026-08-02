@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Application\Ai\Conversation\AiFoundationBackfill;
 use App\Application\Ai\Registry\AiRegistryQuery;
 use App\Application\Ai\Registry\AiRegistryResolver;
 use App\Application\Markets\TenantMarketResolver;
@@ -23,6 +24,7 @@ final class TenantAiConfigurationController extends Controller
         private readonly TenantMarketResolver $markets,
         private readonly TenantContext $tenantContext,
         private readonly AiRegistryResolver $registry,
+        private readonly AiFoundationBackfill $conversationAuthority,
     ) {}
 
     public function __invoke(Request $request): JsonResponse
@@ -75,6 +77,31 @@ final class TenantAiConfigurationController extends Controller
             }
         }
 
+        $persistedPath = false;
+        if ($selection !== null && $persistedConversation !== null) {
+            $persistedConversation = $this->conversationAuthority->persistCanaryPath(
+                tenantId: $tenantId,
+                conversationId: (string) $conversationId,
+                agentVersionId: $selection->agentVersionId,
+            );
+        }
+
+        if ($selection !== null
+            && $persistedConversation !== null
+            && is_string($persistedConversation->agent_version_id)
+            && ! hash_equals((string) $persistedConversation->agent_version_id, $selection->agentVersionId)) {
+            // A conversation's first canonical path is immutable. If the
+            // registry now resolves elsewhere, fail closed rather than
+            // silently switching a retry to a different agent.
+            $selectionDenied = 'canary_persisted_path';
+            $selection = null;
+        }
+
+        $persistedPath = $persistedConversation !== null
+            && is_string($persistedConversation->agent_version_id)
+            && $selection !== null
+            && hash_equals((string) $persistedConversation->agent_version_id, $selection->agentVersionId);
+
         $activeAgent = $selection === null
             ? null
             : DB::table('ai_agent_versions')
@@ -91,10 +118,6 @@ final class TenantAiConfigurationController extends Controller
                 ])
                 ->first();
         $webEligible = $selection !== null && $activeAgent !== null;
-        $persistedPath = $persistedConversation !== null
-            && is_string($persistedConversation->agent_version_id)
-            && $selection !== null
-            && hash_equals((string) $persistedConversation->agent_version_id, $selection->agentVersionId);
 
         $balance = round((float) ($tenant->getAttribute('ai_balance') ?? 0), 2);
         $reserved = round((float) ($tenant->getAttribute('ai_reserved_balance') ?? 0), 2);

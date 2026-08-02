@@ -77,6 +77,40 @@ final class DovraBackfillCommandTest extends TestCase
         }
     }
 
+    public function test_resume_consumes_checkpoint_and_advances_the_bounded_source_offset(): void
+    {
+        foreach ([
+            'dovra:backfill-honduras-market',
+            'dovra:backfill-identity-governance',
+            'dovra:backfill-business-operations',
+        ] as $command) {
+            $checkpointPath = tempnam(sys_get_temp_dir(), 'dovra-resume-checkpoint-');
+            self::assertNotFalse($checkpointPath);
+            @unlink($checkpointPath);
+
+            try {
+                $base = [
+                    '--phase' => 'backfill',
+                    '--json' => true,
+                    '--limit' => 1,
+                    '--max-blocking-gaps' => 10,
+                    '--checkpoint' => $checkpointPath,
+                ];
+                $this->artisan($command, $base)->assertExitCode(0);
+                $first = json_decode((string) file_get_contents($checkpointPath), true, 512, JSON_THROW_ON_ERROR);
+                self::assertSame(0, $first['source_offset']);
+                self::assertSame(1, $first['next_source_offset']);
+
+                $this->artisan($command, $base + ['--resume' => true])->assertExitCode(0);
+                $second = json_decode((string) file_get_contents($checkpointPath), true, 512, JSON_THROW_ON_ERROR);
+                self::assertSame(1, $second['source_offset']);
+                self::assertSame(2, $second['next_source_offset']);
+            } finally {
+                @unlink($checkpointPath);
+            }
+        }
+    }
+
     public function test_validate_dry_run_rolls_back_new_structures_and_preserves_legacy_rows(): void
     {
         $tenant = Tenant::factory()->create(['city_id' => null]);

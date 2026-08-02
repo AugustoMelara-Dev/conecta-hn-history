@@ -12,6 +12,8 @@ use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\Support\AI\AiEligibleRegistryFixture;
 use Tests\Support\GlobalMarketFixture;
 use Tests\Fakes\AI\FakeAiProvider;
@@ -59,10 +61,31 @@ final class TenantAiConfigurationApiTest extends TestCase
             marketCountryCode: 'CA',
         );
 
+        $conversationId = (string) Str::uuid();
+        DB::table('ai_conversations')->insert([
+            'id' => $conversationId,
+            'tenant_id' => (string) $tenant->id,
+            'visibility' => 'tenant_private',
+            'origin_type' => 'web',
+            'external_thread_hash' => null,
+            'actor_id' => (string) $owner->id,
+            'agent_version_id' => null,
+            'locale' => 'en-CA',
+            'market_country_code' => 'CA',
+            'currency' => 'CAD',
+            'timezone' => 'America/Toronto',
+            'status' => 'active',
+            'retention_category' => 'conversation_standard',
+            'retention_expires_at' => now()->addDays(30),
+            'last_message_sequence' => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
         Sanctum::actingAs($owner);
 
         $response = $this->withHeader('X-Tenant-ID', (string) $tenant->id)
-            ->getJson('/api/v1/tenant/ai/configuration')
+            ->getJson('/api/v1/tenant/ai/configuration?conversation_id='.$conversationId)
             ->assertOk()
             ->assertJsonPath('data.tenant_id', (string) $tenant->id)
             ->assertJsonPath('data.active_agent.id', $selection->agentVersionId)
@@ -74,12 +97,17 @@ final class TenantAiConfigurationApiTest extends TestCase
             ->assertJsonPath('data.credit_summary.available', 3.25)
             ->assertJsonPath('data.kill_switch.enabled', false)
             ->assertJsonPath('data.canary.private.assignment', 'canonical')
+            ->assertJsonPath('data.canary.private.persisted_path', true)
             ->assertJsonMissingPath('data.active_agent.system_prompt')
             ->assertJsonMissingPath('data.active_agent.secret_reference')
             ->assertJsonMissingPath('data.credit_summary.public_platform_balance');
 
         self::assertStringNotContainsString('Registry-authorized test prompt.', $response->getContent());
         self::assertStringNotContainsString('openai.primary', $response->getContent());
+        $this->assertDatabaseHas('ai_conversations', [
+            'id' => $conversationId,
+            'agent_version_id' => $selection->agentVersionId,
+        ]);
     }
 
     public function test_same_tenant_viewers_are_forbidden_and_other_tenants_only_see_their_own_projection(): void

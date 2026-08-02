@@ -232,6 +232,11 @@ final class AiFoundationBackfillTest extends TestCase
 
     public function test_phase_contract_is_explicit_and_non_destructive(): void
     {
+        $tenant = Tenant::factory()->create();
+        for ($index = 0; $index < 11; $index++) {
+            $this->conversation((string) $tenant->id, 'phase-owner-'.$index, 'conversation_standard');
+        }
+
         $expand = app(AiFoundationBackfill::class)->run(10, phase: 'expand');
         self::assertSame('expand', $expand->phase);
         self::assertSame('expand_ready', $expand->contractStatus);
@@ -239,8 +244,18 @@ final class AiFoundationBackfillTest extends TestCase
 
         $validate = app(AiFoundationBackfill::class)->run(10, phase: 'validate');
         self::assertSame('validate', $validate->phase);
-        self::assertTrue($validate->validated);
+        self::assertFalse($validate->validated);
+        self::assertTrue($validate->hasMore);
+        self::assertNotNull($validate->conversationNextCursor);
         self::assertSame('no_contract_requested', $validate->contractStatus);
+
+        $validatedRemainder = app(AiFoundationBackfill::class)->run(
+            10,
+            conversationCursor: $validate->conversationNextCursor,
+            phase: 'validate',
+        );
+        self::assertTrue($validatedRemainder->validated);
+        self::assertFalse($validatedRemainder->hasMore);
 
         $contract = app(AiFoundationBackfill::class)->run(10, phase: 'contract');
         self::assertSame('contract', $contract->phase);

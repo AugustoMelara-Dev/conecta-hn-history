@@ -9,15 +9,15 @@ use Illuminate\Support\Str;
 
 final class IdentityGovernanceBackfill
 {
-    public function run(bool $dryRun = false, int $limit = 0): IdentityGovernanceBackfillReport
+    public function run(bool $dryRun = false, int $limit = 0, int $offset = 0): IdentityGovernanceBackfillReport
     {
-        if ($limit < 0) {
-            throw new \InvalidArgumentException('The backfill limit must be zero or greater.');
+        if ($limit < 0 || $offset < 0) {
+            throw new \InvalidArgumentException('The backfill limit and offset must be zero or greater.');
         }
 
         $roleConflicts = 0;
 
-        $operation = function () use (&$roleConflicts, $limit): void {
+        $operation = function () use (&$roleConflicts, $limit, $offset): void {
             $now = now();
 
             $owners = DB::table('tenants')
@@ -28,8 +28,11 @@ final class IdentityGovernanceBackfill
                 ->orderBy('id');
 
             if ($limit > 0) {
-                $owners->limit($limit);
-                $acceptedMembers->limit($limit);
+                $owners->offset($offset)->limit($limit);
+                $acceptedMembers->offset($offset)->limit($limit);
+            } elseif ($offset > 0) {
+                $owners->offset($offset);
+                $acceptedMembers->offset($offset);
             }
 
             $owners->each(function (object $tenant) use ($now): void {

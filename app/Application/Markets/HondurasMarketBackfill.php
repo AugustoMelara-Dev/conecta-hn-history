@@ -9,13 +9,13 @@ use Illuminate\Support\Str;
 
 final class HondurasMarketBackfill
 {
-    public function run(bool $dryRun = false, int $limit = 0): HondurasMarketBackfillReport
+    public function run(bool $dryRun = false, int $limit = 0, int $offset = 0): HondurasMarketBackfillReport
     {
-        if ($limit < 0) {
-            throw new \InvalidArgumentException('The backfill limit must be zero or greater.');
+        if ($limit < 0 || $offset < 0) {
+            throw new \InvalidArgumentException('The backfill limit and offset must be zero or greater.');
         }
 
-        $operation = function () use ($limit): void {
+        $operation = function () use ($limit, $offset): void {
             $now = now();
 
             DB::table('countries')->updateOrInsert(
@@ -109,9 +109,9 @@ final class HondurasMarketBackfill
                 ]);
             }
 
-            $this->mapAdministrativeAreas($now, $limit);
-            $this->mapLocalities($now, $limit);
-            $this->backfillTenants($marketPackVersionId, $now, $limit);
+            $this->mapAdministrativeAreas($now, $limit, $offset);
+            $this->mapLocalities($now, $limit, $offset);
+            $this->backfillTenants($marketPackVersionId, $now, $limit, $offset);
         };
 
         if ($dryRun) {
@@ -137,14 +137,17 @@ final class HondurasMarketBackfill
         return $this->report();
     }
 
-    private function mapAdministrativeAreas(mixed $now, int $limit): void
+    private function mapAdministrativeAreas(mixed $now, int $limit, int $offset): void
     {
         $departments = DB::table('departments')->orderBy('id');
         $municipalities = DB::table('municipalities')->orderBy('id');
 
-        if ($limit > 0) {
-            $departments->limit($limit);
-            $municipalities->limit($limit);
+            if ($limit > 0) {
+                $departments->offset($offset)->limit($limit);
+                $municipalities->offset($offset)->limit($limit);
+            } elseif ($offset > 0) {
+                $departments->offset($offset);
+                $municipalities->offset($offset);
         }
 
         $departments->each(function (object $department) use ($now): void {
@@ -188,12 +191,14 @@ final class HondurasMarketBackfill
         });
     }
 
-    private function mapLocalities(mixed $now, int $limit): void
+    private function mapLocalities(mixed $now, int $limit, int $offset): void
     {
         $cities = DB::table('cities')->orderBy('id');
 
         if ($limit > 0) {
-            $cities->limit($limit);
+            $cities->offset($offset)->limit($limit);
+        } elseif ($offset > 0) {
+            $cities->offset($offset);
         }
 
         $cities->each(function (object $city) use ($now): void {
@@ -222,12 +227,14 @@ final class HondurasMarketBackfill
         });
     }
 
-    private function backfillTenants(string $marketPackVersionId, mixed $now, int $limit): void
+    private function backfillTenants(string $marketPackVersionId, mixed $now, int $limit, int $offset): void
     {
         $tenants = DB::table('tenants')->orderBy('id');
 
         if ($limit > 0) {
-            $tenants->limit($limit);
+            $tenants->offset($offset)->limit($limit);
+        } elseif ($offset > 0) {
+            $tenants->offset($offset);
         }
 
         $tenants->each(function (object $tenant) use ($marketPackVersionId, $now): void {
