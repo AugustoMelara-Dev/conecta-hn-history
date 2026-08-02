@@ -251,6 +251,17 @@ final readonly class DatabaseWorkflowRepository implements WorkflowRepositoryInt
         );
     }
 
+    public function loadWorkflowVersionForTenant(string $workflowVersionId, string $tenantId): ?array
+    {
+        return $this->normalize(
+            $this->connection->table('automation_workflow_versions')
+                ->where('id', $workflowVersionId)
+                ->where('tenant_id', $tenantId)
+                ->first(),
+            ['definition'],
+        );
+    }
+
     public function findWorkflowRunByIdempotency(
         string $tenantId,
         string $workflowKey,
@@ -268,6 +279,62 @@ final readonly class DatabaseWorkflowRepository implements WorkflowRepositoryInt
         );
     }
 
+    public function findOrCreateWorkflowRun(
+        string $tenantId,
+        string $workflowKey,
+        string $workflowVersionId,
+        string $workflowVersion,
+        string $actorId,
+        string $plan,
+        string $channel,
+        string $trigger,
+        string $idempotencyKey,
+        array $payload,
+        CarbonImmutable $occurredAt,
+    ): array {
+        return $this->connection->transaction(function () use (
+            $tenantId,
+            $workflowKey,
+            $workflowVersionId,
+            $workflowVersion,
+            $actorId,
+            $plan,
+            $channel,
+            $trigger,
+            $idempotencyKey,
+            $payload,
+            $occurredAt,
+        ): array {
+            $inserted = $this->connection->table('automation_workflow_runs')->insertOrIgnore([
+                'id' => (string) Str::uuid(),
+                'tenant_id' => $tenantId,
+                'workflow_key' => $workflowKey,
+                'workflow_version_id' => $workflowVersionId,
+                'workflow_version' => $workflowVersion,
+                'actor_id' => $actorId,
+                'plan' => $plan,
+                'channel' => $channel,
+                'trigger_source' => $trigger,
+                'idempotency_key' => $idempotencyKey,
+                'status' => 'running',
+                'payload' => json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                'started_at' => $occurredAt->toIso8601String(),
+                'created_at' => $occurredAt->toIso8601String(),
+                'updated_at' => $occurredAt->toIso8601String(),
+            ]);
+
+            $run = $this->findWorkflowRunByIdempotency($tenantId, $workflowKey, $workflowVersion, $idempotencyKey);
+            if ($run === null) {
+                throw new RuntimeException('Workflow run could not be durably created.');
+            }
+
+            return [
+                'run' => $run,
+                'replayed' => $inserted === 0,
+            ];
+        }, 3);
+    }
+
     public function createWorkflowRun(
         string $tenantId,
         string $workflowKey,
@@ -281,28 +348,20 @@ final readonly class DatabaseWorkflowRepository implements WorkflowRepositoryInt
         array $payload,
         CarbonImmutable $occurredAt,
     ): array {
-        $id = (string) Str::uuid();
-
-        $this->connection->table('automation_workflow_runs')->insert([
-            'id' => $id,
-            'tenant_id' => $tenantId,
-            'workflow_key' => $workflowKey,
-            'workflow_version_id' => $workflowVersionId,
-            'workflow_version' => $workflowVersion,
-            'actor_id' => $actorId,
-            'plan' => $plan,
-            'channel' => $channel,
-            'trigger_source' => $trigger,
-            'idempotency_key' => $idempotencyKey,
-            'status' => 'running',
-            'payload' => json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-            'started_at' => $occurredAt->toIso8601String(),
-            'created_at' => $occurredAt->toIso8601String(),
-            'updated_at' => $occurredAt->toIso8601String(),
-        ]);
-
         /** @var array<string, mixed> $run */
-        $run = $this->loadWorkflowRun($id);
+        $run = $this->findOrCreateWorkflowRun(
+            tenantId: $tenantId,
+            workflowKey: $workflowKey,
+            workflowVersionId: $workflowVersionId,
+            workflowVersion: $workflowVersion,
+            actorId: $actorId,
+            plan: $plan,
+            channel: $channel,
+            trigger: $trigger,
+            idempotencyKey: $idempotencyKey,
+            payload: $payload,
+            occurredAt: $occurredAt,
+        )['run'];
 
         return $run;
     }
@@ -312,6 +371,17 @@ final readonly class DatabaseWorkflowRepository implements WorkflowRepositoryInt
         return $this->normalize(
             $this->connection->table('automation_workflow_runs')
                 ->where('id', $runId)
+                ->first(),
+            ['payload', 'output'],
+        );
+    }
+
+    public function loadWorkflowRunForTenant(string $runId, string $tenantId): ?array
+    {
+        return $this->normalize(
+            $this->connection->table('automation_workflow_runs')
+                ->where('id', $runId)
+                ->where('tenant_id', $tenantId)
                 ->first(),
             ['payload', 'output'],
         );
@@ -389,6 +459,61 @@ final readonly class DatabaseWorkflowRepository implements WorkflowRepositoryInt
         return $step;
     }
 
+    public function createWorkflowStepAttempt(
+        string $runId,
+        string $tenantId,
+        string $stepKey,
+        int $attemptNumber,
+        string $attemptKind,
+        string $providerToolKey,
+        string $idempotencyKey,
+        CarbonImmutable $startedAt,
+    ): array {
+        $this->connection->table('automation_workflow_step_attempts')->insertOrIgnore([
+            'id' => (string) Str::uuid(),
+            'run_id' => $runId,
+            'tenant_id' => $tenantId,
+            'step_key' => $stepKey,
+            'attempt_kind' => $attemptKind,
+            'attempt_number' => $attemptNumber,
+            'provider_tool_key' => $providerToolKey,
+            'idempotency_key' => $idempotencyKey,
+            'status' => 'running',
+            'started_at' => $startedAt->toIso8601String(),
+            'created_at' => $startedAt->toIso8601String(),
+            'updated_at' => $startedAt->toIso8601String(),
+        ]);
+
+        $attempt = $this->connection->table('automation_workflow_step_attempts')
+            ->where('run_id', $runId)
+            ->where('step_key', $stepKey)
+            ->where('attempt_kind', $attemptKind)
+            ->where('attempt_number', $attemptNumber)
+            ->first();
+
+        if ($attempt === null) {
+            throw new RuntimeException('Workflow step attempt could not be durably created.');
+        }
+
+        /** @var array<string, mixed> $normalized */
+        $normalized = $this->normalize($attempt, ['output']);
+
+        return $normalized;
+    }
+
+    public function finishWorkflowStepAttempt(string $attemptId, array $attributes): void
+    {
+        if (isset($attributes['output']) && is_array($attributes['output'])) {
+            $attributes['output'] = json_encode($attributes['output'], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
+
+        $attributes['updated_at'] = CarbonImmutable::now()->toIso8601String();
+
+        $this->connection->table('automation_workflow_step_attempts')
+            ->where('id', $attemptId)
+            ->update($attributes);
+    }
+
     public function listCompensableCompletedSteps(string $runId): array
     {
         $records = $this->connection->table('automation_workflow_steps')
@@ -404,8 +529,18 @@ final readonly class DatabaseWorkflowRepository implements WorkflowRepositoryInt
         )));
     }
 
+    public function hasWebhookDelivery(string $tenantId, string $provider, string $externalId): bool
+    {
+        return $this->connection->table('automation_webhook_deliveries')
+            ->where('tenant_id', $tenantId)
+            ->where('provider', $provider)
+            ->where('external_id', $externalId)
+            ->exists();
+    }
+
     public function recordWebhookDelivery(
         string $tenantId,
+        string $actorId,
         string $provider,
         string $market,
         string $version,
@@ -418,6 +553,7 @@ final readonly class DatabaseWorkflowRepository implements WorkflowRepositoryInt
             $this->connection->table('automation_webhook_deliveries')->insert([
                 'id' => (string) Str::uuid(),
                 'tenant_id' => $tenantId,
+                'actor_id' => $actorId,
                 'provider' => $provider,
                 'market' => $market,
                 'version' => $version,

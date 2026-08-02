@@ -63,13 +63,15 @@ final class WorkflowRunService
         $stepIndex = $this->resolveStartingIndex($steps, is_string($currentStepKey) ? $currentStepKey : null);
 
         if (($run['status'] ?? null) === 'waiting' && $currentStepKey !== null) {
+            $waitingUntil = isset($run['waiting_until']) && $run['waiting_until'] !== null
+                ? CarbonImmutable::parse((string) $run['waiting_until'])
+                : null;
+            if ($waitingUntil !== null && $occurredAt->lt($waitingUntil)) {
+                return $this->result(array_merge($run, ['waiting_until' => $waitingUntil->toIso8601String()]));
+            }
+
             $currentStep = $steps[$stepIndex] ?? null;
             if (is_array($currentStep) && ($currentStep['type'] ?? null) === 'wait') {
-                $waitingUntil = CarbonImmutable::parse((string) $run['waiting_until']);
-                if ($occurredAt->lt($waitingUntil)) {
-                    return $this->result(array_merge($run, ['waiting_until' => $waitingUntil->toIso8601String()]));
-                }
-
                 $this->repository->saveWorkflowStep((string) $run['id'], (string) $run['tenant_id'], (string) $currentStep['id'], [
                     'status' => 'completed',
                     'finished_at' => $occurredAt->toIso8601String(),
@@ -108,6 +110,15 @@ final class WorkflowRunService
             $existingStep = $this->repository->loadWorkflowStep((string) $run['id'], $stepKey);
             $attempts = (int) ($existingStep['attempts'] ?? 0) + 1;
             $action = (string) ($step['action'] ?? $stepKey);
+            [$provider, $tool] = $this->toolIdentity($step);
+            $providerToolKey = $provider.':'.$tool;
+            $attemptIdempotencyKey = sprintf(
+                'workflow:%s:step:%s:attempt:%d:%s',
+                (string) $run['id'],
+                $stepKey,
+                $attempts,
+                $providerToolKey,
+            );
 
             $this->repository->saveWorkflowStep((string) $run['id'], (string) $run['tenant_id'], $stepKey, [
                 'step_type' => 'tool',
@@ -124,8 +135,35 @@ final class WorkflowRunService
                 'waiting_until' => null,
             ]);
 
-            $decision = $this->authorizeStepIfRequired($run, $step, $actorId, $actorRoles, $plan, $channel, $confirmations);
+            $attempt = $this->repository->createWorkflowStepAttempt(
+                runId: (string) $run['id'],
+                tenantId: (string) $run['tenant_id'],
+                stepKey: $stepKey,
+                attemptNumber: $attempts,
+                attemptKind: 'tool',
+                providerToolKey: $providerToolKey,
+                idempotencyKey: $attemptIdempotencyKey,
+                startedAt: $occurredAt,
+            );
+
+            $decision = $this->authorizeStepIfRequired(
+                run: $run,
+                step: $step,
+                actorId: $actorId,
+                actorRoles: $actorRoles,
+                plan: $plan,
+                channel: $channel,
+                confirmations: $confirmations,
+                provider: $provider,
+                idempotencyKey: $attemptIdempotencyKey,
+            );
             if ($decision !== null && ! $decision->allowed) {
+                $this->repository->finishWorkflowStepAttempt((string) $attempt['id'], [
+                    'action' => $action,
+                    'status' => 'failed',
+                    'error_code' => $decision->code,
+                    'finished_at' => $occurredAt->toIso8601String(),
+                ]);
                 $this->repository->saveWorkflowStep((string) $run['id'], (string) $run['tenant_id'], $stepKey, [
                     'status' => 'failed',
                     'attempts' => $attempts,
@@ -163,6 +201,12 @@ final class WorkflowRunService
                     throw new RuntimeException('tool_timeout');
                 }
 
+                $this->repository->finishWorkflowStepAttempt((string) $attempt['id'], [
+                    'action' => $action,
+                    'status' => 'completed',
+                    'finished_at' => $occurredAt->toIso8601String(),
+                    'output' => $response['output'] ?? [],
+                ]);
                 $this->repository->saveWorkflowStep((string) $run['id'], (string) $run['tenant_id'], $stepKey, [
                     'status' => 'completed',
                     'attempts' => $attempts,
@@ -178,6 +222,12 @@ final class WorkflowRunService
 
                 if ($retryable && $attempts <= $retryLimit) {
                     $waitingUntil = $occurredAt->addSeconds($retryDelaySeconds);
+                    $this->repository->finishWorkflowStepAttempt((string) $attempt['id'], [
+                        'action' => $action,
+                        'status' => 'waiting',
+                        'error_code' => $code,
+                        'finished_at' => $occurredAt->toIso8601String(),
+                    ]);
                     $this->repository->saveWorkflowStep((string) $run['id'], (string) $run['tenant_id'], $stepKey, [
                         'status' => 'waiting',
                         'attempts' => $attempts,
@@ -200,6 +250,12 @@ final class WorkflowRunService
                     ]);
                 }
 
+                $this->repository->finishWorkflowStepAttempt((string) $attempt['id'], [
+                    'action' => $action,
+                    'status' => 'failed',
+                    'error_code' => $code,
+                    'finished_at' => $occurredAt->toIso8601String(),
+                ]);
                 $this->repository->saveWorkflowStep((string) $run['id'], (string) $run['tenant_id'], $stepKey, [
                     'status' => 'failed',
                     'attempts' => $attempts,
@@ -274,6 +330,8 @@ final class WorkflowRunService
         string $plan,
         string $channel,
         array $confirmations,
+        string $provider,
+        string $idempotencyKey,
     ): ?\App\Domain\Automation\ToolAuthorizationDecision {
         $authorization = is_array($step['authorization'] ?? null) ? $step['authorization'] : null;
         if ($authorization === null) {
@@ -293,10 +351,24 @@ final class WorkflowRunService
             toolVersion: (string) ($authorization['tool_version'] ?? '2026-08-01'),
             risk: (string) ($authorization['risk'] ?? 'read'),
             payloadHash: hash('sha256', json_encode($authorization['payload'] ?? [], JSON_THROW_ON_ERROR)),
-            idempotencyKey: (string) $run['id'].':'.$tool,
+            idempotencyKey: $idempotencyKey,
             confirmationId: $confirmation['confirmation_id'] ?? null,
             confirmationToken: $confirmation['confirmation_token'] ?? null,
+            provider: $provider,
         ));
+    }
+
+    /**
+     * @param  array<string, mixed>  $step
+     * @return array{0: string, 1: string}
+     */
+    private function toolIdentity(array $step): array
+    {
+        $authorization = is_array($step['authorization'] ?? null) ? $step['authorization'] : [];
+        $tool = (string) ($authorization['tool'] ?? ($step['action'] ?? $step['id'] ?? 'tool'));
+        $provider = (string) ($authorization['provider'] ?? ($step['provider'] ?? 'local'));
+
+        return [$provider !== '' ? $provider : 'local', $tool !== '' ? $tool : 'tool'];
     }
 
     private function compensate(string $runId, string $tenantId, CarbonImmutable $occurredAt): void
@@ -307,23 +379,66 @@ final class WorkflowRunService
                 continue;
             }
 
+            $compensationStepKey = (string) $step['step_key'].':compensation';
+            $existingCompensation = $this->repository->loadWorkflowStep($runId, $compensationStepKey);
+            $attemptNumber = (int) ($existingCompensation['attempts'] ?? 0) + 1;
+            $providerToolKey = 'local:'.$action;
+            $idempotencyKey = sprintf(
+                'workflow:%s:step:%s:compensation:%d:%s',
+                $runId,
+                (string) $step['step_key'],
+                $attemptNumber,
+                $providerToolKey,
+            );
+            $attempt = $this->repository->createWorkflowStepAttempt(
+                runId: $runId,
+                tenantId: $tenantId,
+                stepKey: (string) $step['step_key'],
+                attemptNumber: $attemptNumber,
+                attemptKind: 'compensation',
+                providerToolKey: $providerToolKey,
+                idempotencyKey: $idempotencyKey,
+                startedAt: $occurredAt,
+            );
             $handler = $this->toolHandlers[$action] ?? null;
             if (! is_callable($handler)) {
+                $this->repository->finishWorkflowStepAttempt((string) $attempt['id'], [
+                    'action' => $action,
+                    'status' => 'failed',
+                    'error_code' => 'compensation_handler_missing',
+                    'finished_at' => $occurredAt->toIso8601String(),
+                ]);
                 continue;
             }
 
-            /** @var array{output?: array<string, mixed>} $response */
-            $response = $handler();
+            try {
+                /** @var array{output?: array<string, mixed>} $response */
+                $response = $handler();
 
-            $this->repository->saveWorkflowStep($runId, $tenantId, (string) $step['step_key'].':compensation', [
-                'step_type' => 'compensation',
-                'action' => $action,
-                'status' => 'completed',
-                'attempts' => 1,
-                'started_at' => $occurredAt->toIso8601String(),
-                'finished_at' => $occurredAt->toIso8601String(),
-                'output' => $response['output'] ?? [],
-            ]);
+                $this->repository->finishWorkflowStepAttempt((string) $attempt['id'], [
+                    'action' => $action,
+                    'status' => 'completed',
+                    'finished_at' => $occurredAt->toIso8601String(),
+                    'output' => $response['output'] ?? [],
+                ]);
+
+                $this->repository->saveWorkflowStep($runId, $tenantId, $compensationStepKey, [
+                    'step_type' => 'compensation',
+                    'action' => $action,
+                    'status' => 'completed',
+                    'attempts' => $attemptNumber,
+                    'started_at' => $occurredAt->toIso8601String(),
+                    'finished_at' => $occurredAt->toIso8601String(),
+                    'output' => $response['output'] ?? [],
+                ]);
+            } catch (RuntimeException $exception) {
+                $this->repository->finishWorkflowStepAttempt((string) $attempt['id'], [
+                    'action' => $action,
+                    'status' => 'failed',
+                    'error_code' => $this->errorCode($exception),
+                    'finished_at' => $occurredAt->toIso8601String(),
+                ]);
+            }
         }
     }
 

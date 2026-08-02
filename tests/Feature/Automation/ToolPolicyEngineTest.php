@@ -244,7 +244,7 @@ final class ToolPolicyEngineTest extends TestCase
         ]);
         $this->assertDatabaseHas('automation_integration_idempotency', [
             'tenant_id' => $tenant->getKey(),
-            'scope' => 'tool:orders.capture',
+            'scope' => 'tool:local:orders.capture',
             'idempotency_key' => 'orders-capture-replay',
         ]);
 

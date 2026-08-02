@@ -42,7 +42,7 @@ final readonly class ToolPolicyEngine implements ToolPolicyEngineInterface
         $occurredAt = CarbonImmutable::now();
 
         return $this->repository->connection()->transaction(function () use ($request, $policy, $occurredAt): ToolAuthorizationDecision {
-            $scope = 'tool:'.$request->tool;
+            $scope = 'tool:'.$request->provider.':'.$request->tool;
 
             if ($this->repository->hasIdempotencyClaim($request->tenantId, $scope, $request->idempotencyKey)) {
                 return ToolAuthorizationDecision::deny('idempotency_replay');

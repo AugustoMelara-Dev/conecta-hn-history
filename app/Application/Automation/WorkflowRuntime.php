@@ -31,32 +31,12 @@ final readonly class WorkflowRuntime implements WorkflowRuntimeInterface
 
     public function start(WorkflowStartRequest $request): WorkflowRunResult
     {
-        $existing = $this->runs->findWorkflowRunByIdempotency(
-            $request->tenantId,
-            $request->workflowKey,
-            $request->workflowVersion,
-            $request->idempotencyKey,
-        );
-
-        if ($existing !== null) {
-            return new WorkflowRunResult(
-                runId: (string) $existing['id'],
-                status: (string) $existing['status'],
-                currentStepId: isset($existing['current_step_key']) ? (string) $existing['current_step_key'] : null,
-                replayed: true,
-                waitingUntil: isset($existing['waiting_until']) && $existing['waiting_until'] !== null
-                    ? CarbonImmutable::parse((string) $existing['waiting_until'])
-                    : null,
-                output: is_array($existing['output'] ?? null) ? $existing['output'] : [],
-            );
-        }
-
         $version = $this->definitions->publishedVersion($request->tenantId, $request->workflowKey, $request->workflowVersion);
         if ($version === null) {
             throw new RuntimeException('Published workflow version not found.');
         }
 
-        $run = $this->runs->createWorkflowRun(
+        $creation = $this->runs->findOrCreateWorkflowRun(
             $request->tenantId,
             $request->workflowKey,
             (string) $version['id'],
@@ -69,35 +49,75 @@ final readonly class WorkflowRuntime implements WorkflowRuntimeInterface
             $request->payload,
             $request->occurredAt(),
         );
+        $run = $creation['run'];
+
+        if ($creation['replayed']) {
+            if ((string) ($run['actor_id'] ?? '') !== $request->actorId
+                || (string) ($run['plan'] ?? '') !== $request->plan
+                || (string) ($run['channel'] ?? '') !== $request->channel
+                || (array) ($run['payload'] ?? []) !== $request->payload) {
+                throw new RuntimeException('Workflow start idempotency context conflict.');
+            }
+
+            return $this->resultFromRun($run, true);
+        }
 
         return $this->runService->advanceStart($run, $version, $request);
     }
 
     public function resume(string $runId, WorkflowResumeRequest $request): WorkflowRunResult
     {
-        $run = $this->runs->loadWorkflowRun($runId);
+        if ($request->tenantId === '') {
+            throw new RuntimeException('Workflow run tenant authorization failed.');
+        }
+
+        $run = $this->runs->loadWorkflowRunForTenant($runId, $request->tenantId);
         if ($run === null) {
-            throw new RuntimeException('Workflow run not found.');
+            throw new RuntimeException('Workflow run tenant authorization failed.');
+        }
+
+        if ((string) ($run['tenant_id'] ?? '') !== $request->tenantId) {
+            throw new RuntimeException('Workflow run tenant authorization failed.');
+        }
+
+        if ($request->actorId === '' || (string) ($run['actor_id'] ?? '') !== $request->actorId) {
+            throw new RuntimeException('Workflow run actor authorization failed.');
+        }
+
+        if ((string) ($run['plan'] ?? '') !== $request->plan
+            || (string) ($run['channel'] ?? '') !== $request->channel) {
+            throw new RuntimeException('Workflow run execution context mismatch.');
         }
 
         if (in_array((string) $run['status'], ['completed', 'failed'], true)) {
-            return new WorkflowRunResult(
-                runId: (string) $run['id'],
-                status: (string) $run['status'],
-                currentStepId: isset($run['current_step_key']) ? (string) $run['current_step_key'] : null,
-                replayed: true,
-                waitingUntil: isset($run['waiting_until']) && $run['waiting_until'] !== null
-                    ? CarbonImmutable::parse((string) $run['waiting_until'])
-                    : null,
-                output: is_array($run['output'] ?? null) ? $run['output'] : [],
-            );
+            return $this->resultFromRun($run, true);
         }
 
-        $version = $this->runs->loadWorkflowVersion((string) $run['workflow_version_id']);
+        $version = $this->runs->loadWorkflowVersionForTenant(
+            (string) $run['workflow_version_id'],
+            $request->tenantId,
+        );
         if ($version === null) {
             throw new RuntimeException('Workflow version not found for run.');
         }
 
         return $this->runService->advanceResume($run, $version, $request);
+    }
+
+    /**
+     * @param  array<string, mixed>  $run
+     */
+    private function resultFromRun(array $run, bool $replayed): WorkflowRunResult
+    {
+        return new WorkflowRunResult(
+            runId: (string) $run['id'],
+            status: (string) $run['status'],
+            currentStepId: isset($run['current_step_key']) ? (string) $run['current_step_key'] : null,
+            replayed: $replayed,
+            waitingUntil: isset($run['waiting_until']) && $run['waiting_until'] !== null
+                ? CarbonImmutable::parse((string) $run['waiting_until'])
+                : null,
+            output: is_array($run['output'] ?? null) ? $run['output'] : [],
+        );
     }
 }

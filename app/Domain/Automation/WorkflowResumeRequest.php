@@ -13,6 +13,7 @@ final readonly class WorkflowResumeRequest
      * @param  array<string, array{confirmation_id?: string, confirmation_token?: string}>  $confirmations
      */
     public function __construct(
+        public string $tenantId,
         public string $actorId,
         public array $actorRoles,
         public string $plan,

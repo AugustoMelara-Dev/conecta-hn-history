@@ -7,6 +7,7 @@ namespace App\Application\Automation;
 use App\Application\Automation\Contracts\WorkflowRepositoryInterface;
 use App\Domain\Automation\ToolAuthorizationDecision;
 use Carbon\CarbonImmutable;
+use RuntimeException;
 
 final readonly class AutomationContractService
 {
@@ -16,72 +17,200 @@ final readonly class AutomationContractService
 
     public function authorizeApi(
         string $tenantId,
+        string $actorId,
         string $market,
         string $provider,
         string $capability,
         string $version,
+        string $idempotencyKey,
+        string $payload,
+        string $signature,
     ): ToolAuthorizationDecision {
-        return $this->capabilityDecision($tenantId, $market, $provider, $capability, $version);
+        return $this->authorizeInbound(
+            channel: 'api',
+            tenantId: $tenantId,
+            actorId: $actorId,
+            market: $market,
+            provider: $provider,
+            capability: $capability,
+            version: $version,
+            idempotencyKey: $idempotencyKey,
+            payload: $payload,
+            signature: $signature,
+        );
     }
 
     public function authorizeMcp(
         string $tenantId,
+        string $actorId,
         string $market,
         string $provider,
         string $capability,
         string $version,
+        string $idempotencyKey,
+        string $payload,
+        string $signature,
     ): ToolAuthorizationDecision {
-        return $this->capabilityDecision($tenantId, $market, $provider, $capability, $version);
+        return $this->authorizeInbound(
+            channel: 'mcp',
+            tenantId: $tenantId,
+            actorId: $actorId,
+            market: $market,
+            provider: $provider,
+            capability: $capability,
+            version: $version,
+            idempotencyKey: $idempotencyKey,
+            payload: $payload,
+            signature: $signature,
+        );
     }
 
     public function verifyWebhook(
         string $tenantId,
+        string $actorId,
         string $market,
         string $provider,
         string $capability,
         string $version,
         string $externalId,
+        string $idempotencyKey,
         string $payload,
         string $signature,
     ): ToolAuthorizationDecision {
+        if ($tenantId === '' || $actorId === '' || $externalId === '' || $idempotencyKey === '') {
+            return ToolAuthorizationDecision::deny('inbound_context_required');
+        }
+
         $contract = $this->providerContract($market, $provider, $capability, $version);
-        if ($contract === null) {
+        $secret = is_array($contract) ? (string) ($contract['webhook_secret'] ?? '') : '';
+        if ($contract === null || $secret === '') {
             return ToolAuthorizationDecision::deny('provider_capability_unavailable');
         }
 
-        $expected = hash_hmac('sha256', $payload, (string) $contract['webhook_secret']);
+        $expected = hash_hmac('sha256', $this->canonicalPayload($tenantId, $actorId, $externalId, $idempotencyKey, $payload), $secret);
         if (! hash_equals($expected, $signature)) {
             return ToolAuthorizationDecision::deny('invalid_signature');
         }
 
-        $accepted = $this->repository->recordWebhookDelivery(
+        $occurredAt = CarbonImmutable::now();
+        $scope = sprintf('webhook:%s:%s:%s', $provider, $capability, $version);
+
+        try {
+            return $this->repository->connection()->transaction(function () use (
+                $tenantId,
+                $actorId,
+                $provider,
+                $market,
+                $version,
+                $capability,
+                $externalId,
+                $idempotencyKey,
+                $payload,
+                $occurredAt,
+                $scope,
+            ): ToolAuthorizationDecision {
+                if ($this->repository->hasWebhookDelivery($tenantId, $provider, $externalId)) {
+                    return ToolAuthorizationDecision::deny('webhook_replay');
+                }
+
+                if (! $this->repository->claimIdempotency(
+                    $tenantId,
+                    $scope,
+                    $idempotencyKey,
+                    hash('sha256', $payload),
+                    $occurredAt,
+                )) {
+                    return ToolAuthorizationDecision::deny('idempotency_replay');
+                }
+
+                if (! $this->repository->recordWebhookDelivery(
+                    $tenantId,
+                    $actorId,
+                    $provider,
+                    $market,
+                    $version,
+                    $capability,
+                    $externalId,
+                    hash('sha256', $payload),
+                    $occurredAt,
+                )) {
+                    throw new RuntimeException('webhook_replay');
+                }
+
+                return ToolAuthorizationDecision::allow('accepted');
+            }, 3);
+        } catch (RuntimeException $exception) {
+            if ($exception->getMessage() === 'webhook_replay') {
+                return ToolAuthorizationDecision::deny('webhook_replay');
+            }
+
+            throw $exception;
+        }
+    }
+
+    private function authorizeInbound(
+        string $channel,
+        string $tenantId,
+        string $actorId,
+        string $market,
+        string $provider,
+        string $capability,
+        string $version,
+        string $idempotencyKey,
+        string $payload,
+        string $signature,
+    ): ToolAuthorizationDecision {
+        if ($tenantId === '' || $actorId === '' || $idempotencyKey === '') {
+            return ToolAuthorizationDecision::deny('inbound_context_required');
+        }
+
+        $contract = $this->providerContract($market, $provider, $capability, $version);
+        if ($contract === null) {
+            return ToolAuthorizationDecision::deny('provider_capability_unavailable', ['tenant_id' => $tenantId]);
+        }
+
+        if (! (bool) config('automation.contracts.'.$channel.'_route_bound', false)) {
+            return ToolAuthorizationDecision::deny('route_not_bound', ['tenant_id' => $tenantId, 'actor_id' => $actorId]);
+        }
+
+        $secret = (string) ($contract[$channel.'_secret'] ?? '');
+        if ($secret === '' || $signature === '') {
+            return ToolAuthorizationDecision::deny('authenticity_unavailable');
+        }
+
+        $expected = hash_hmac('sha256', $this->canonicalPayload($tenantId, $actorId, null, $idempotencyKey, $payload), $secret);
+        if (! hash_equals($expected, $signature)) {
+            return ToolAuthorizationDecision::deny('invalid_signature');
+        }
+
+        $scope = sprintf('inbound:%s:%s:%s:%s', $channel, $provider, $capability, $version);
+        $accepted = $this->repository->claimIdempotency(
             $tenantId,
-            $provider,
-            $market,
-            $version,
-            $capability,
-            $externalId,
+            $scope,
+            $idempotencyKey,
             hash('sha256', $payload),
             CarbonImmutable::now(),
         );
 
         return $accepted
-            ? ToolAuthorizationDecision::allow('accepted')
-            : ToolAuthorizationDecision::deny('webhook_replay');
+            ? ToolAuthorizationDecision::allow('accepted', ['tenant_id' => $tenantId, 'actor_id' => $actorId])
+            : ToolAuthorizationDecision::deny('idempotency_replay');
     }
 
-    private function capabilityDecision(
+    private function canonicalPayload(
         string $tenantId,
-        string $market,
-        string $provider,
-        string $capability,
-        string $version,
-    ): ToolAuthorizationDecision {
-        $contract = $this->providerContract($market, $provider, $capability, $version);
-
-        return $contract === null
-            ? ToolAuthorizationDecision::deny('provider_capability_unavailable', ['tenant_id' => $tenantId])
-            : ToolAuthorizationDecision::allow('capability_available', ['tenant_id' => $tenantId]);
+        string $actorId,
+        ?string $externalId,
+        string $idempotencyKey,
+        string $payload,
+    ): string {
+        return implode('|', array_filter([
+            $tenantId,
+            $actorId,
+            $externalId,
+            $idempotencyKey,
+            $payload,
+        ], static fn (?string $value): bool => $value !== null));
     }
 
     /**

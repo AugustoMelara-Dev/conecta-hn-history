@@ -22,5 +22,6 @@ final readonly class ToolAuthorizationRequest
         public string $idempotencyKey,
         public ?string $confirmationId,
         public ?string $confirmationToken,
+        public string $provider = 'local',
     ) {}
 }

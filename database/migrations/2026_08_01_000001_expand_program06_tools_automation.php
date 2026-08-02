@@ -15,6 +15,7 @@ return new class extends Migration
         'automation_workflow_versions',
         'automation_workflow_runs',
         'automation_workflow_steps',
+        'automation_workflow_step_attempts',
         'automation_workflow_approvals',
         'automation_tool_policies',
         'automation_confirmation_attempts',
@@ -94,6 +95,26 @@ return new class extends Migration
             $table->unique(['run_id', 'step_key']);
         });
 
+        Schema::create('automation_workflow_step_attempts', function (Blueprint $table): void {
+            $table->uuid('id')->primary();
+            $table->uuid('run_id')->index();
+            $table->uuid('tenant_id')->index();
+            $table->string('step_key');
+            $table->string('attempt_kind');
+            $table->unsignedInteger('attempt_number');
+            $table->string('provider_tool_key');
+            $table->string('idempotency_key');
+            $table->string('action')->nullable();
+            $table->string('status');
+            $table->string('error_code')->nullable();
+            $table->json('output')->nullable();
+            $table->timestamp('started_at');
+            $table->timestamp('finished_at')->nullable();
+            $table->timestamps();
+            $table->unique(['run_id', 'step_key', 'attempt_kind', 'attempt_number'], 'automation_step_attempt_unique');
+            $table->unique(['tenant_id', 'idempotency_key'], 'automation_step_attempt_idempotency_unique');
+        });
+
         Schema::create('automation_workflow_approvals', function (Blueprint $table): void {
             $table->uuid('id')->primary();
             $table->uuid('run_id')->index();
@@ -138,6 +159,7 @@ return new class extends Migration
         Schema::create('automation_webhook_deliveries', function (Blueprint $table): void {
             $table->uuid('id')->primary();
             $table->uuid('tenant_id')->index();
+            $table->uuid('actor_id')->index();
             $table->string('provider');
             $table->string('market');
             $table->string('version');

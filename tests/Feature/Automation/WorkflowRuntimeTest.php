@@ -107,6 +107,7 @@ final class WorkflowRuntimeTest extends TestCase
         ]);
 
         $beforeDue = $runtime->resume($started->runId, new WorkflowResumeRequest(
+            tenantId: (string) $tenant->getKey(),
             actorId: (string) $actor->getKey(),
             actorRoles: ['owner'],
             plan: 'pro',
@@ -119,6 +120,7 @@ final class WorkflowRuntimeTest extends TestCase
         self::assertSame('wait-before-followup', $beforeDue->currentStepId);
 
         $afterDue = $runtime->resume($started->runId, new WorkflowResumeRequest(
+            tenantId: (string) $tenant->getKey(),
             actorId: (string) $actor->getKey(),
             actorRoles: ['owner'],
             plan: 'pro',
@@ -210,6 +212,7 @@ final class WorkflowRuntimeTest extends TestCase
         self::assertSame(1, $chargeAttempts);
 
         $failed = $runtime->resume($started->runId, new WorkflowResumeRequest(
+            tenantId: (string) $tenant->getKey(),
             actorId: (string) $actor->getKey(),
             actorRoles: ['owner'],
             plan: 'pro',
@@ -221,6 +224,27 @@ final class WorkflowRuntimeTest extends TestCase
         self::assertSame('failed', $failed->status);
         self::assertSame(2, $chargeAttempts);
         self::assertSame(1, $compensations);
+        $this->assertDatabaseHas('automation_workflow_step_attempts', [
+            'run_id' => $started->runId,
+            'step_key' => 'charge',
+            'attempt_number' => 1,
+            'attempt_kind' => 'tool',
+            'status' => 'waiting',
+        ]);
+        $this->assertDatabaseHas('automation_workflow_step_attempts', [
+            'run_id' => $started->runId,
+            'step_key' => 'charge',
+            'attempt_number' => 2,
+            'attempt_kind' => 'tool',
+            'status' => 'failed',
+        ]);
+        $this->assertDatabaseHas('automation_workflow_step_attempts', [
+            'run_id' => $started->runId,
+            'step_key' => 'reserve',
+            'attempt_number' => 1,
+            'attempt_kind' => 'compensation',
+            'status' => 'completed',
+        ]);
         $this->assertDatabaseHas('automation_workflow_steps', [
             'run_id' => $started->runId,
             'step_key' => 'reserve',
@@ -237,6 +261,217 @@ final class WorkflowRuntimeTest extends TestCase
             'step_key' => 'reserve:compensation',
             'status' => 'completed',
         ]);
+    }
+
+    public function test_resume_fails_closed_for_a_run_from_another_tenant(): void
+    {
+        [$tenant, $actor] = $this->tenantActor();
+        [$foreignTenant, $foreignActor] = $this->tenantActor();
+        $definitions = $this->definitions();
+        $draft = $definitions->createDraft(
+            tenantId: (string) $tenant->getKey(),
+            workflowKey: 'tenant.boundary',
+            definition: [
+                'steps' => [['id' => 'pause', 'type' => 'wait', 'delay_seconds' => 300]],
+            ],
+            actorId: (string) $actor->getKey(),
+        );
+        $definitions->publishDraft(
+            tenantId: (string) $tenant->getKey(),
+            workflowKey: 'tenant.boundary',
+            draftVersionId: $draft['version_id'],
+            publishedVersion: 'v1',
+            actorId: (string) $actor->getKey(),
+        );
+
+        $runtime = $this->runtime([]);
+        $started = $runtime->start(new WorkflowStartRequest(
+            tenantId: (string) $tenant->getKey(),
+            workflowKey: 'tenant.boundary',
+            workflowVersion: 'v1',
+            actorId: (string) $actor->getKey(),
+            actorRoles: ['owner'],
+            plan: 'pro',
+            channel: 'api',
+            idempotencyKey: 'tenant-boundary-001',
+            trigger: 'conversation',
+            payload: [],
+            confirmations: [],
+            requestedAt: CarbonImmutable::parse('2026-08-02T16:00:00+00:00'),
+        ));
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Workflow run tenant authorization failed.');
+
+        $runtime->resume($started->runId, new WorkflowResumeRequest(
+            tenantId: (string) $foreignTenant->getKey(),
+            actorId: (string) $foreignActor->getKey(),
+            actorRoles: ['owner'],
+            plan: 'pro',
+            channel: 'api',
+            confirmations: [],
+            requestedAt: CarbonImmutable::parse('2026-08-02T16:01:00+00:00'),
+        ));
+    }
+
+    public function test_resume_fails_closed_for_an_actor_that_does_not_own_the_run(): void
+    {
+        [$tenant, $actor] = $this->tenantActor();
+        [, $foreignActor] = $this->tenantActor();
+        $definitions = $this->definitions();
+        $draft = $definitions->createDraft(
+            tenantId: (string) $tenant->getKey(),
+            workflowKey: 'actor.boundary',
+            definition: [
+                'steps' => [['id' => 'pause', 'type' => 'wait', 'delay_seconds' => 300]],
+            ],
+            actorId: (string) $actor->getKey(),
+        );
+        $definitions->publishDraft(
+            tenantId: (string) $tenant->getKey(),
+            workflowKey: 'actor.boundary',
+            draftVersionId: $draft['version_id'],
+            publishedVersion: 'v1',
+            actorId: (string) $actor->getKey(),
+        );
+
+        $runtime = $this->runtime([]);
+        $started = $runtime->start(new WorkflowStartRequest(
+            tenantId: (string) $tenant->getKey(),
+            workflowKey: 'actor.boundary',
+            workflowVersion: 'v1',
+            actorId: (string) $actor->getKey(),
+            actorRoles: ['owner'],
+            plan: 'pro',
+            channel: 'api',
+            idempotencyKey: 'actor-boundary-001',
+            trigger: 'conversation',
+            payload: [],
+            confirmations: [],
+            requestedAt: CarbonImmutable::parse('2026-08-02T17:00:00+00:00'),
+        ));
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Workflow run actor authorization failed.');
+
+        $runtime->resume($started->runId, new WorkflowResumeRequest(
+            tenantId: (string) $tenant->getKey(),
+            actorId: (string) $foreignActor->getKey(),
+            actorRoles: ['owner'],
+            plan: 'pro',
+            channel: 'api',
+            confirmations: [],
+            requestedAt: CarbonImmutable::parse('2026-08-02T17:01:00+00:00'),
+        ));
+    }
+
+    public function test_waiting_tool_retry_creates_a_new_authorized_attempt_with_a_stable_provider_tool_key(): void
+    {
+        [$tenant, $actor] = $this->tenantActor();
+        $definitions = $this->definitions();
+        $draft = $definitions->createDraft(
+            tenantId: (string) $tenant->getKey(),
+            workflowKey: 'provider.retry',
+            definition: [
+                'steps' => [[
+                    'id' => 'capture',
+                    'type' => 'tool',
+                    'action' => 'capture',
+                    'retry_limit' => 1,
+                    'retry_delay_seconds' => 30,
+                    'authorization' => [
+                        'provider' => 'acme-payments',
+                        'tool' => 'payments.capture',
+                        'tool_version' => '2026-08-01',
+                        'risk' => 'prepare',
+                        'payload' => ['payment_id' => 'pay-2'],
+                    ],
+                ]],
+            ],
+            actorId: (string) $actor->getKey(),
+        );
+        $definitions->publishDraft(
+            tenantId: (string) $tenant->getKey(),
+            workflowKey: 'provider.retry',
+            draftVersionId: $draft['version_id'],
+            publishedVersion: 'v1',
+            actorId: (string) $actor->getKey(),
+        );
+
+        DB::table('automation_tool_policies')->insert([
+            'id' => (string) Str::uuid(),
+            'tenant_id' => $tenant->getKey(),
+            'tool' => 'payments.capture',
+            'tool_version' => '2026-08-01',
+            'allowed_roles' => json_encode(['owner'], JSON_THROW_ON_ERROR),
+            'allowed_plans' => json_encode(['pro'], JSON_THROW_ON_ERROR),
+            'allowed_channels' => json_encode(['api'], JSON_THROW_ON_ERROR),
+            'max_risk' => 'prepare',
+            'confirmation_required' => false,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $handlerCalls = 0;
+        $runtime = $this->runtime([
+            'capture' => static function () use (&$handlerCalls): array {
+                $handlerCalls++;
+                if ($handlerCalls === 1) {
+                    throw new RuntimeException('retryable:provider_unavailable');
+                }
+
+                return ['output' => ['captured' => true], 'duration_seconds' => 1];
+            },
+        ]);
+
+        $startedAt = CarbonImmutable::parse('2026-08-02T19:00:00+00:00');
+        $started = $runtime->start(new WorkflowStartRequest(
+            tenantId: (string) $tenant->getKey(),
+            workflowKey: 'provider.retry',
+            workflowVersion: 'v1',
+            actorId: (string) $actor->getKey(),
+            actorRoles: ['owner'],
+            plan: 'pro',
+            channel: 'api',
+            idempotencyKey: 'provider-retry-001',
+            trigger: 'schedule',
+            payload: ['payment_id' => 'pay-2'],
+            confirmations: [],
+            requestedAt: $startedAt,
+        ));
+
+        self::assertSame('waiting', $started->status);
+
+        $resumed = $runtime->resume($started->runId, new WorkflowResumeRequest(
+            tenantId: (string) $tenant->getKey(),
+            actorId: (string) $actor->getKey(),
+            actorRoles: ['owner'],
+            plan: 'pro',
+            channel: 'api',
+            confirmations: [],
+            requestedAt: $startedAt->addSeconds(31),
+        ));
+
+        self::assertSame('completed', $resumed->status);
+        self::assertSame(2, $handlerCalls);
+        self::assertSame(2, DB::table('automation_workflow_step_attempts')
+            ->where('run_id', $started->runId)
+            ->where('step_key', 'capture')
+            ->where('attempt_kind', 'tool')
+            ->count());
+        $attempts = DB::table('automation_workflow_step_attempts')
+            ->where('run_id', $started->runId)
+            ->where('step_key', 'capture')
+            ->where('attempt_kind', 'tool')
+            ->orderBy('attempt_number')
+            ->get();
+        self::assertSame('acme-payments:payments.capture', $attempts[0]->provider_tool_key);
+        self::assertSame('acme-payments:payments.capture', $attempts[1]->provider_tool_key);
+        self::assertNotSame($attempts[0]->idempotency_key, $attempts[1]->idempotency_key);
+        self::assertSame(2, DB::table('automation_integration_idempotency')
+            ->where('tenant_id', $tenant->getKey())
+            ->where('scope', 'tool:acme-payments:payments.capture')
+            ->count());
     }
 
     public function test_runtime_treats_tool_timeouts_as_terminal_when_retry_budget_is_zero(): void

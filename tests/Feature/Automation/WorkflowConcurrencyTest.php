@@ -21,7 +21,7 @@ final class WorkflowConcurrencyTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_start_is_idempotent_and_returns_the_existing_run_for_the_same_tenant_version_and_key(): void
+    public function test_start_uses_the_unique_constraint_to_make_duplicate_arrivals_idempotent(): void
     {
         [$tenant, $actor] = $this->tenantActor();
         $repository = new DatabaseWorkflowRepository(DB::connection());
@@ -64,7 +64,13 @@ final class WorkflowConcurrencyTest extends TestCase
         );
 
         $first = $runtime->start($request);
-        $second = $runtime->start($request);
+        $secondRuntime = new WorkflowRuntime(
+            definitions: $definitions,
+            runs: new DatabaseWorkflowRepository(DB::connection()),
+            policyEngine: new ToolPolicyEngine(new DatabaseWorkflowRepository(DB::connection())),
+            toolHandlers: ['noop' => static fn (): array => ['output' => ['ok' => true], 'duration_seconds' => 1]],
+        );
+        $second = $secondRuntime->start($request);
 
         self::assertSame($first->runId, $second->runId);
         self::assertFalse($first->replayed);
