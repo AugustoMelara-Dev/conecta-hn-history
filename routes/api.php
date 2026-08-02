@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AiHandoffController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CouponController;
 use App\Http\Controllers\Api\V1\Crm\CrmDealController;
@@ -246,6 +247,16 @@ Route::prefix('v1')->group(function () {
     Route::post('/tenant/agent/chat', TenantAgentChatController::class)
         ->middleware(['auth:sanctum', 'throttle:api'])
         ->name('api.tenant.agent.chat');
+
+    Route::prefix('tenant/ai/handoffs')
+        ->middleware(['auth:sanctum', 'tenant.ownership', 'tenant.context', 'throttle:api'])
+        ->group(function (): void {
+            Route::get('/', [AiHandoffController::class, 'index'])->name('api.tenant.ai.handoffs.index');
+            Route::get('/{handoff}', [AiHandoffController::class, 'show'])->whereUuid('handoff')->name('api.tenant.ai.handoffs.show');
+            Route::post('/{handoff}/assign', [AiHandoffController::class, 'assign'])->whereUuid('handoff')->name('api.tenant.ai.handoffs.assign');
+            Route::post('/{handoff}/accept', [AiHandoffController::class, 'accept'])->whereUuid('handoff')->name('api.tenant.ai.handoffs.accept');
+            Route::post('/{handoff}/resolve', [AiHandoffController::class, 'resolve'])->whereUuid('handoff')->name('api.tenant.ai.handoffs.resolve');
+        });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════

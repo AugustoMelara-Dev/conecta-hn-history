@@ -84,6 +84,32 @@ final class AiFoundationSchemaTest extends TestCase
         }
     }
 
+    public function test_handoffs_have_expand_only_governed_lifecycle_columns_and_indexes(): void
+    {
+        self::assertTrue(Schema::hasColumns('ai_handoffs', [
+            'trigger_type', 'priority', 'queue_key', 'active_deduplication_key',
+            'assigned_to_user_id', 'assigned_by_user_id', 'accepted_by_user_id',
+            'resolved_by_user_id', 'agent_version_id', 'version', 'queued_at',
+            'assigned_at', 'resolved_at', 'cancelled_at', 'expired_at',
+            'resolution_ciphertext', 'resolution_hash', 'resolution_key_version',
+            'return_to_agent',
+        ]));
+        self::assertSame(
+            ['tenant_id', 'active_deduplication_key'],
+            DatabaseSchemaInspector::indexColumns(
+                'ai_handoffs',
+                'ai_handoffs_tenant_active_dedup_unique',
+            ),
+        );
+        self::assertSame(
+            ['tenant_id', 'status', 'queue_key', 'queued_at'],
+            DatabaseSchemaInspector::indexColumns(
+                'ai_handoffs',
+                'ai_handoffs_tenant_queue_status_queued_idx',
+            ),
+        );
+    }
+
     public function test_registry_versions_have_explicit_lifecycle_and_release_metadata(): void
     {
         foreach ([

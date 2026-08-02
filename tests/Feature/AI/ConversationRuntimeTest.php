@@ -18,9 +18,11 @@ use App\Exceptions\Ai\AiConversationConflictException;
 use App\Exceptions\Ai\AiExecutionDeniedException;
 use App\Exceptions\Ai\AiProviderUnavailableException;
 use App\Infrastructure\AI\ConfiguredAiProviderPool;
+use App\Models\City;
 use App\Models\Product;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\Fakes\AI\FakeAiProvider;
@@ -205,6 +207,67 @@ final class ConversationRuntimeTest extends TestCase
             'failure_code' => 'ai_temporarily_unavailable',
             'failure_detail' => null,
         ]);
+        self::assertSame('queued', $response->handoff['status'] ?? null);
+        self::assertSame('A human follow-up has been requested.', $response->handoff['message'] ?? null);
+        self::assertSame($response->handoff, app(ConversationRuntime::class)->private($input)->handoff);
+        self::assertSame(1, DB::table('ai_handoffs')->count());
+    }
+
+    public function test_explicit_human_request_is_bounded_persisted_and_replayed_without_calling_provider(): void
+    {
+        [$tenant, , , $gateway] = $this->privateCatalogFixture();
+        $input = new PrivateConversationInput(
+            tenantId: (string) $tenant->id,
+            actorId: 'owner-runtime-1',
+            message: 'Necesito hablar con una persona, por favor.',
+            idempotencyKey: 'private-runtime-explicit-handoff',
+        );
+
+        $first = app(ConversationRuntime::class)->private($input);
+        $replay = app(ConversationRuntime::class)->private($input);
+
+        self::assertSame('failed', $first->status);
+        self::assertSame('ai_handoff_required', $first->code);
+        self::assertSame('queued', $first->handoff['status'] ?? null);
+        self::assertSame('A human follow-up has been requested.', $first->handoff['message'] ?? null);
+        self::assertSame($first->toArray(), $replay->toArray());
+        self::assertSame(0, $gateway->calls);
+        self::assertSame(1, DB::table('ai_handoffs')->count());
+    }
+
+    public function test_policy_denial_maps_honestly_to_one_queued_handoff(): void
+    {
+        [$tenant] = $this->privateCatalogFixture();
+        $this->app->instance(AiGateway::class, new PolicyDeniedConversationGateway);
+        $input = new PrivateConversationInput(
+            tenantId: (string) $tenant->id,
+            actorId: 'owner-runtime-1',
+            message: 'Show my catalog',
+            idempotencyKey: 'private-runtime-policy-handoff',
+        );
+
+        $response = app(ConversationRuntime::class)->private($input);
+
+        self::assertSame('failed', $response->status);
+        self::assertSame('queued', $response->handoff['status'] ?? null);
+        self::assertSame('policy', DB::table('ai_handoffs')->value('trigger_type'));
+        self::assertSame('urgent', DB::table('ai_handoffs')->value('priority'));
+    }
+
+    public function test_human_word_without_request_intent_does_not_false_positive(): void
+    {
+        [$tenant, , , $gateway] = $this->privateCatalogFixture();
+        $response = app(ConversationRuntime::class)->private(new PrivateConversationInput(
+            tenantId: (string) $tenant->id,
+            actorId: 'owner-runtime-1',
+            message: 'Show my human resources catalog.',
+            idempotencyKey: 'private-runtime-no-explicit-handoff',
+        ));
+
+        self::assertSame('completed', $response->status);
+        self::assertNull($response->handoff);
+        self::assertSame(1, $gateway->calls);
+        self::assertSame(0, DB::table('ai_handoffs')->count());
     }
 
     public function test_public_runtime_uses_only_the_configured_platform_owner(): void
@@ -212,6 +275,7 @@ final class ConversationRuntimeTest extends TestCase
         $platform = Tenant::factory()->create();
         GlobalMarketFixture::assignCanada($platform);
         $merchant = Tenant::factory()->create(['is_active' => true]);
+        GlobalMarketFixture::assignCanada($merchant);
         $product = Product::factory()->forTenant($merchant)->create([
             'name' => 'Public runtime product',
             'price' => 25,
@@ -473,6 +537,49 @@ final class ConversationRuntimeTest extends TestCase
             ->value('response_message_id'));
     }
 
+    public function test_public_and_private_runtimes_resolve_exact_tenants_despite_a_different_selected_public_city(): void
+    {
+        [$privateTenant, , $privateInput] = $this->privateCatalogFixture();
+        $privateTenantCity = City::factory()->create();
+        $selectedCity = City::factory()->create();
+        DB::table('tenants')->where('id', $privateTenant->id)->update(['city_id' => $privateTenantCity->id]);
+        $originalRequest = $this->app->make('request');
+        $consoleProperty = new \ReflectionProperty($this->app, 'isRunningInConsole');
+        $originalConsoleState = $consoleProperty->getValue($this->app);
+        $session = $this->app->make('session')->driver();
+        $session->start();
+        $session->put('user_selected_city_id', $selectedCity->id);
+        $request = Request::create('/api/v1/tenant/agent/chat', 'POST');
+        $request->setLaravelSession($session);
+        $this->app->instance('request', $request);
+        $consoleProperty->setValue($this->app, false);
+
+        try {
+            $privateResponse = app(ConversationRuntime::class)->private($privateInput);
+            self::assertSame((string) $privateTenant->id, DB::table('ai_conversations')
+                ->where('id', $privateResponse->conversationId)
+                ->value('tenant_id'));
+
+            app(TenantContext::class)->reset();
+            [$platform] = $this->publicCatalogFixture();
+            $platformCity = City::factory()->create();
+            DB::table('tenants')->where('id', $platform->id)->update(['city_id' => $platformCity->id]);
+            $publicResponse = app(ConversationRuntime::class)->public(new PublicConversationInput(
+                message: 'show published products',
+                idempotencyKey: 'public-runtime-location-scope',
+                actorId: str_repeat('a', 64),
+                rateLimitIdentity: '198.51.100.20',
+            ));
+
+            self::assertSame((string) $platform->id, DB::table('ai_conversations')
+                ->where('id', $publicResponse->conversationId)
+                ->value('tenant_id'));
+        } finally {
+            $consoleProperty->setValue($this->app, $originalConsoleState);
+            $this->app->instance('request', $originalRequest);
+        }
+    }
+
     /** @return array{Tenant, Product, PersistingConversationGateway} */
     private function publicCatalogFixture(): array
     {
@@ -482,6 +589,7 @@ final class ConversationRuntimeTest extends TestCase
             'is_active' => true,
             'subscription_status' => 'active',
         ]);
+        GlobalMarketFixture::assignCanada($merchant);
         $product = Product::factory()->forTenant($merchant)->create([
             'name' => 'Public runtime fixture product',
             'price' => 25,
@@ -618,6 +726,14 @@ final class ThrowingConversationGateway implements AiGateway
     public function execute(AiExecutionRequest $request): AiExecutionResult
     {
         throw new AiProviderUnavailableException('SECRET PROVIDER DETAIL');
+    }
+}
+
+final class PolicyDeniedConversationGateway implements AiGateway
+{
+    public function execute(AiExecutionRequest $request): AiExecutionResult
+    {
+        throw new AiExecutionDeniedException('authorization');
     }
 }
 

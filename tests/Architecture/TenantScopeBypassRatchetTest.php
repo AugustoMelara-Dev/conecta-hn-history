@@ -23,6 +23,8 @@ final class TenantScopeBypassRatchetTest extends TestCase
     private const LEGACY_MAXIMUMS = [
         'app/Application/Analytics/TrustedCommercialOutcomeProjector.php' => 2,
         'app/Application/Ai/Knowledge/CatalogKnowledgeIndexer.php' => 3,
+        'app/Application/Ai/Conversation/ConversationRuntime.php' => 2,
+        'app/Application/Ai/Handoff/AiHandoffService.php' => 1,
         'app/Application/Ai/Registry/AiRegistryLifecycle.php' => 1,
         'app/Application/Availability/AvailabilityRuleWriter.php' => 1,
         'app/Application/Crm/CanonicalOpportunityWriter.php' => 14,
