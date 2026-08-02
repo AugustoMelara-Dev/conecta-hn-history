@@ -1,0 +1,176 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Feature\Billing\Global;
+
+use App\Application\Billing\Global\GlobalEntitlementService;
+use App\Application\Markets\MarketContext;
+use App\Domain\Billing\Global\BillingCapability;
+use App\Domain\Billing\Global\GlobalTenantContext;
+use App\Infrastructure\Billing\Global\ConfigPriceBookReader;
+use App\Infrastructure\Billing\Global\DeterministicBillingProviderFake;
+use App\Models\Tenant;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Tests\TestCase;
+
+final class WebhookLifecycleTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_signed_webhooks_drive_dunning_grace_and_suspension_without_accepting_replays(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $market = new MarketContext('CA', 'en-CA', 'CAD', 'America/Toronto', 'tenant_market');
+
+        config()->set('dovra_billing.price_books.ca', [
+            'version' => 'research-v1',
+            'currency' => 'CAD',
+            'plans' => [
+                'launch' => [
+                    'monthly_minor' => 4900,
+                    'annual_minor' => 48804,
+                    'sandbox_only' => false,
+                    'live_entitled' => true,
+                    'included_credits' => 25.0,
+                    'capabilities' => ['ai.live_agent', 'billing.portal'],
+                ],
+            ],
+        ]);
+        config()->set('dovra_billing.market_providers.ca', [
+            'provider' => 'deterministic-fake',
+            'checkout_mode' => 'external',
+            'signing_secret' => 'ca-secret',
+        ]);
+
+        self::assertTrue(class_exists(DeterministicBillingProviderFake::class));
+
+        $service = new GlobalEntitlementService(new ConfigPriceBookReader);
+        $provider = new DeterministicBillingProviderFake($service);
+
+        $tenantContext = GlobalTenantContext::fromArray([
+            'tenant_id' => (string) $tenant->getKey(),
+            'market' => $market,
+            'plan' => 'launch',
+            'status' => 'active',
+        ]);
+
+        $active = $provider->signedWebhook('ca', [
+            'event_id' => 'evt-activate-1',
+            'event_type' => 'subscription.activated',
+            'tenant_id' => (string) $tenant->getKey(),
+            'plan' => 'launch',
+            'status' => 'active',
+        ]);
+        $provider->handleWebhook('ca', $active['payload'], $active['signature']);
+        self::assertTrue($service->allows($tenantContext, BillingCapability::liveAgent())->allowed());
+
+        $grace = $provider->signedWebhook('ca', [
+            'event_id' => 'evt-failed-1',
+            'event_type' => 'invoice.payment_failed',
+            'tenant_id' => (string) $tenant->getKey(),
+            'plan' => 'launch',
+            'status' => 'grace',
+            'grace_ends_at' => now()->addDays(7)->toIso8601String(),
+        ]);
+        $provider->handleWebhook('ca', $grace['payload'], $grace['signature']);
+        self::assertTrue($service->allows($tenantContext, BillingCapability::liveAgent())->allowed());
+        self::assertSame('grace', $service->allows($tenantContext, BillingCapability::liveAgent())->status());
+
+        $provider->handleWebhook('ca', $grace['payload'], $grace['signature']);
+        self::assertSame(1, DB::table('global_billing_lifecycle_events')->where('provider_event_id', 'evt-failed-1')->count());
+
+        $suspend = $provider->signedWebhook('ca', [
+            'event_id' => 'evt-suspend-1',
+            'event_type' => 'subscription.suspended',
+            'tenant_id' => (string) $tenant->getKey(),
+            'plan' => 'launch',
+            'status' => 'suspended',
+        ]);
+        $provider->handleWebhook('ca', $suspend['payload'], $suspend['signature']);
+        self::assertFalse($service->allows($tenantContext, BillingCapability::liveAgent())->allowed());
+        self::assertSame('suspended', $service->allows($tenantContext, BillingCapability::liveAgent())->status());
+    }
+
+    public function test_invalid_signatures_are_rejected(): void
+    {
+        $tenant = Tenant::factory()->create();
+
+        config()->set('dovra_billing.price_books.ca', [
+            'version' => 'research-v1',
+            'currency' => 'CAD',
+            'plans' => [
+                'launch' => [
+                    'monthly_minor' => 4900,
+                    'annual_minor' => 48804,
+                    'sandbox_only' => false,
+                    'live_entitled' => true,
+                    'included_credits' => 25.0,
+                    'capabilities' => ['ai.live_agent', 'billing.portal'],
+                ],
+            ],
+        ]);
+        config()->set('dovra_billing.market_providers.ca', [
+            'provider' => 'deterministic-fake',
+            'checkout_mode' => 'external',
+            'signing_secret' => 'ca-secret',
+        ]);
+
+        self::assertTrue(class_exists(DeterministicBillingProviderFake::class));
+
+        $service = new GlobalEntitlementService(new ConfigPriceBookReader);
+        $provider = new DeterministicBillingProviderFake($service);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('signature');
+
+        $provider->handleWebhook('ca', json_encode([
+            'event_id' => 'evt-invalid-1',
+            'event_type' => 'subscription.activated',
+            'tenant_id' => (string) $tenant->getKey(),
+            'plan' => 'launch',
+            'status' => 'active',
+        ], JSON_THROW_ON_ERROR), 'bad-signature');
+    }
+
+    public function test_live_checkout_contract_remains_external(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $market = new MarketContext('CA', 'en-CA', 'CAD', 'America/Toronto', 'tenant_market');
+
+        config()->set('dovra_billing.price_books.ca', [
+            'version' => 'research-v1',
+            'currency' => 'CAD',
+            'plans' => [
+                'launch' => [
+                    'monthly_minor' => 4900,
+                    'annual_minor' => 48804,
+                    'sandbox_only' => false,
+                    'live_entitled' => true,
+                    'included_credits' => 25.0,
+                    'capabilities' => ['ai.live_agent', 'billing.portal'],
+                ],
+            ],
+        ]);
+        config()->set('dovra_billing.market_providers.ca', [
+            'provider' => 'deterministic-fake',
+            'checkout_mode' => 'external',
+            'signing_secret' => 'ca-secret',
+        ]);
+
+        self::assertTrue(class_exists(DeterministicBillingProviderFake::class));
+
+        $service = new GlobalEntitlementService(new ConfigPriceBookReader);
+        $provider = new DeterministicBillingProviderFake($service);
+
+        $checkout = $provider->checkoutContract(GlobalTenantContext::fromArray([
+            'tenant_id' => (string) $tenant->getKey(),
+            'market' => $market,
+            'plan' => 'launch',
+            'status' => 'active',
+        ]));
+
+        self::assertSame('external', $checkout->mode());
+    }
+}
