@@ -105,6 +105,7 @@ final class ImmutableCreditLedger implements CreditLedgerInterface
 
     public function settle(string $tenantId, string $reservationId, float $actualCredits, string $providerRunId, array $metadata = []): CreditSettlement
     {
+        $this->assertReservationUuid($reservationId);
         $this->assertFinite($actualCredits, positive: false);
 
         return DB::transaction(function () use ($tenantId, $reservationId, $actualCredits, $providerRunId, $metadata): CreditSettlement {
@@ -205,6 +206,8 @@ final class ImmutableCreditLedger implements CreditLedgerInterface
 
     public function refund(string $tenantId, string $reservationId, string $reason, string $idempotencyKey): CreditRefund
     {
+        $this->assertReservationUuid($reservationId);
+
         return DB::transaction(function () use ($tenantId, $reservationId, $reason, $idempotencyKey): CreditRefund {
             $reservation = DB::table('global_billing_credit_reservations')
                 ->where('id', $reservationId)
@@ -414,6 +417,13 @@ final class ImmutableCreditLedger implements CreditLedgerInterface
 
         if (! $positive && $credits < 0) {
             throw new \InvalidArgumentException('credits must be non-negative');
+        }
+    }
+
+    private function assertReservationUuid(string $reservationId): void
+    {
+        if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $reservationId) !== 1) {
+            throw new \InvalidArgumentException('reservation id must be a UUID');
         }
     }
 }

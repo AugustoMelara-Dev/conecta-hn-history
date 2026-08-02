@@ -140,4 +140,51 @@ final class CreditConcurrencyTest extends TestCase
         self::assertFalse($ledgerIndexes->contains(static fn (array $index): bool =>
             $index['name'] === 'global_billing_credit_ledger_entries_idempotency_key_unique'));
     }
+
+    public function test_reservation_ids_are_uuid_format_and_malformed_uuid_access_fails_closed(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $ledger = new ImmutableCreditLedger;
+        $ledger->adjust((string) $tenant->getKey(), 2.0, 'monthly_allocation', 'uuid-grant');
+
+        $reservation = $ledger->reserve((string) $tenant->getKey(), 1.0, 'private_agent', 'uuid-reservation');
+
+        self::assertMatchesRegularExpression(
+            '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i',
+            $reservation->reservationId(),
+        );
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('reservation id must be a UUID');
+
+        $ledger->settle((string) $tenant->getKey(), 'not-a-uuid', 1.0, 'provider-run-invalid-uuid');
+    }
+
+    public function test_wrong_tenant_cannot_settle_another_tenants_reservation_uuid(): void
+    {
+        $owner = Tenant::factory()->create();
+        $otherTenant = Tenant::factory()->create();
+        $ledger = new ImmutableCreditLedger;
+        $ledger->adjust((string) $owner->getKey(), 2.0, 'monthly_allocation', 'settle-tenant-grant');
+        $reservation = $ledger->reserve((string) $owner->getKey(), 1.0, 'private_agent', 'settle-tenant-reservation');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('reservation not found');
+
+        $ledger->settle((string) $otherTenant->getKey(), $reservation->reservationId(), 1.0, 'provider-run-wrong-tenant');
+    }
+
+    public function test_wrong_tenant_cannot_refund_another_tenants_reservation_uuid(): void
+    {
+        $owner = Tenant::factory()->create();
+        $otherTenant = Tenant::factory()->create();
+        $ledger = new ImmutableCreditLedger;
+        $ledger->adjust((string) $owner->getKey(), 2.0, 'monthly_allocation', 'refund-tenant-grant');
+        $reservation = $ledger->reserve((string) $owner->getKey(), 1.0, 'private_agent', 'refund-tenant-reservation');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('reservation not found');
+
+        $ledger->refund((string) $otherTenant->getKey(), $reservation->reservationId(), 'wrong-tenant', 'refund-wrong-tenant');
+    }
 }
