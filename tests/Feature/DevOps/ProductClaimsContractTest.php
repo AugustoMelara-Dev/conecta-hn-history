@@ -33,6 +33,28 @@ final class ProductClaimsContractTest extends TestCase
 
     public function test_task7_public_truth_documents_reject_unsupported_claim_patterns(): void
     {
+        /** @var array{manifest: array{unsupported_claim_patterns: list<string>}} $launchManifest */
+        $launchManifest = require base_path('config/dovra/launch.php');
+        $patterns = $launchManifest['manifest']['unsupported_claim_patterns'];
+
+        foreach ([
+            'Dovra AI is publicly live and operational.',
+            'Dovra AI is investment-ready and has generated real revenue.',
+            'Dovra AI is fully compliant and certified.',
+            'Dovra AI has active providers, DNS, and payments.',
+            'Dovra AI tiene ingresos y proveedores certificados.',
+        ] as $unsupportedClaim) {
+            $matched = false;
+            foreach ($patterns as $pattern) {
+                if (preg_match($pattern, $unsupportedClaim) === 1) {
+                    $matched = true;
+                    break;
+                }
+            }
+
+            self::assertTrue($matched, $unsupportedClaim);
+        }
+
         foreach ([
             'README.md',
             'docs/dovra/product/dovra-global-ai-workforce-os-truth.md',
@@ -40,11 +62,9 @@ final class ProductClaimsContractTest extends TestCase
         ] as $path) {
             $contents = (string) file_get_contents(base_path($path));
 
-            self::assertDoesNotMatchRegularExpression(
-                '/\b(?:production-ready|investment ready|traction proven|independently certified|SOC ?2 compliant|HIPAA compliant|PCI compliant|guaranteed uptime)\b/i',
-                $contents,
-                $path,
-            );
+            foreach ($patterns as $pattern) {
+                self::assertDoesNotMatchRegularExpression($pattern, $contents, $path);
+            }
         }
     }
 
