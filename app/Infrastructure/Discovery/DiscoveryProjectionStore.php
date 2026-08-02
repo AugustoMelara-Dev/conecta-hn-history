@@ -83,8 +83,8 @@ final class DiscoveryProjectionStore
                         'source_table' => $record['source_table'] ?? null,
                         'source_identifier' => $record['source_identifier'] ?? null,
                         'freshness_at' => $record['freshness_at'] ?? null,
-                        'is_current' => true,
-                        'visibility' => 'public',
+                        'is_current' => (bool) $projection['is_current'],
+                        'visibility' => (bool) $projection['is_published'] ? 'public' : 'revoked',
                         'summary' => $record['summary'] ?? null,
                         'facts' => isset($record['facts']) ? json_encode($record['facts'], JSON_THROW_ON_ERROR) : null,
                         'metadata' => isset($record['metadata']) ? json_encode($record['metadata'], JSON_THROW_ON_ERROR) : null,
@@ -127,6 +127,79 @@ final class DiscoveryProjectionStore
     public function findProjection(string $projectionId): ?object
     {
         return DB::table('discovery_published_offers')->where('id', $projectionId)->first();
+    }
+
+    /** @param list<string> $sourceProjectionKeys */
+    public function reconcileMissingProjections(array $sourceProjectionKeys): void
+    {
+        DB::transaction(function () use ($sourceProjectionKeys): void {
+            $query = DB::table('discovery_published_offers')
+                ->where(function ($query): void {
+                    $query->where('is_published', true)
+                        ->orWhere('is_current', true)
+                        ->orWhere('is_eligible', true);
+                });
+
+            if ($sourceProjectionKeys !== []) {
+                $query->whereNotIn('projection_key', $sourceProjectionKeys);
+            }
+
+            $revoked = $query->get(['id']);
+            if ($revoked->isEmpty()) {
+                return;
+            }
+
+            $now = now();
+            $projectionIds = $revoked->pluck('id')->all();
+
+            DB::table('discovery_published_offers')
+                ->whereIn('id', $projectionIds)
+                ->update([
+                    'is_published' => false,
+                    'is_current' => false,
+                    'is_eligible' => false,
+                    'moderation_status' => 'revoked',
+                    'moderation_score' => 0,
+                    'prohibited_offer' => false,
+                    'updated_at' => $now,
+                ]);
+
+            DB::table('discovery_offer_evidence')
+                ->whereIn('projection_id', $projectionIds)
+                ->update([
+                    'is_current' => false,
+                    'visibility' => 'revoked',
+                    'updated_at' => $now,
+                ]);
+
+            DB::table('discovery_marketplace_integrity_records')->insert(
+                $revoked->map(static fn (object $row): array => [
+                    'id' => (string) Str::uuid(),
+                    'projection_id' => $row->id,
+                    'record_type' => 'projection',
+                    'status' => 'revoked',
+                    'score' => 0,
+                    'reason' => 'missing_canonical_source',
+                    'actor_scope' => 'system',
+                    'actor_reference' => 'projection_reconciler',
+                    'details' => null,
+                    'happened_at' => $now,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ])->all(),
+            );
+        });
+    }
+
+    /** @return list<array<string, mixed>> */
+    public function evidenceForProjection(string $projectionId): array
+    {
+        return DB::table('discovery_offer_evidence')
+            ->where('projection_id', $projectionId)
+            ->orderBy('evidence_key')
+            ->get()
+            ->map(static fn (object $row): array => (array) $row)
+            ->all();
     }
 
     /** @return list<array<string, mixed>> */

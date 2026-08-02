@@ -6,8 +6,10 @@ namespace App\Application\Discovery;
 
 use App\Domain\Discovery\DiscoveryQuery;
 use App\Domain\Discovery\DiscoveryResultSet;
+use App\Domain\Discovery\SemanticRetrievalAdapter;
 use App\Infrastructure\Discovery\CanonicalAvailabilityInspector;
 use App\Infrastructure\Discovery\DiscoveryProjectionStore;
+use App\Infrastructure\Discovery\NullSemanticRetrievalAdapter;
 use Illuminate\Support\Str;
 
 final class DiscoveryQueryService
@@ -16,7 +18,12 @@ final class DiscoveryQueryService
         private readonly DiscoveryProjectionStore $store,
         private readonly CanonicalAvailabilityInspector $availability,
         private readonly ComparableOfferService $comparables,
-    ) {}
+        ?SemanticRetrievalAdapter $semanticRetrieval = null,
+    ) {
+        $this->semanticRetrieval = $semanticRetrieval ?? new NullSemanticRetrievalAdapter();
+    }
+
+    private readonly SemanticRetrievalAdapter $semanticRetrieval;
 
     public function search(DiscoveryQuery $query): DiscoveryResultSet
     {
@@ -27,6 +34,7 @@ final class DiscoveryQueryService
             budgetMinor: $query->budgetMinor,
             offerType: $query->offerType,
         );
+        $semanticScores = $this->semanticRetrieval->score($query->searchText, $rows);
 
         $scored = [];
         foreach ($rows as $row) {
@@ -45,12 +53,14 @@ final class DiscoveryQueryService
                 $row['availability_status'] = $status;
             }
 
-            $score = $this->score($row, $tokens, $query->budgetMinor);
+            $semanticScore = max(0, min(100, (int) ($semanticScores[(string) $row['id']] ?? 0)));
+            $score = $this->score($row, $tokens, $query->budgetMinor, $semanticScore);
             if ($score <= 0) {
                 continue;
             }
 
             $row['ranking_score'] = $score;
+            $row['semantic_score'] = $semanticScore;
             $row['projection_id'] = (string) $row['id'];
             $row['reasons'] = $this->reasons($row, $tokens, $query->budgetMinor);
             $scored[] = $row;
@@ -84,6 +94,7 @@ final class DiscoveryQueryService
                 'price_minor' => (int) $row['price_minor'],
                 'price_display' => $row['price_display'],
                 'freshness_score' => (int) $row['freshness_score'],
+                'semantic_score' => (int) ($row['semantic_score'] ?? 0),
                 'reasons' => $row['reasons'],
                 'evidence_keys' => $evidenceKeys[$row['projection_id']] ?? [],
             ];
@@ -98,12 +109,13 @@ final class DiscoveryQueryService
                 'market_country_code' => $query->marketCountryCode,
                 'normalized_terms' => $tokens,
                 'total_results' => count($results),
+                'semantic_retrieval' => 'adapter_contract',
             ],
         );
     }
 
     /** @param list<string> $tokens @param array<string, mixed> $row */
-    private function score(array $row, array $tokens, ?int $budgetMinor): int
+    private function score(array $row, array $tokens, ?int $budgetMinor, int $semanticScore): int
     {
         $haystack = Str::lower((string) ($row['search_document'] ?? ''));
         $matches = 0;
@@ -116,7 +128,8 @@ final class DiscoveryQueryService
         $score = ($matches * 30)
             + (int) ($row['freshness_score'] ?? 0)
             + (int) ($row['completeness_score'] ?? 0)
-            + (int) ($row['verification_score'] ?? 0);
+            + (int) ($row['verification_score'] ?? 0)
+            + $semanticScore;
 
         if ($budgetMinor !== null && (int) ($row['price_minor'] ?? PHP_INT_MAX) <= $budgetMinor) {
             $score += 10;
@@ -144,6 +157,9 @@ final class DiscoveryQueryService
         }
         if (($row['verification_level'] ?? 'unknown') === 'verified') {
             $reasons[] = 'Verified business profile.';
+        }
+        if ((int) ($row['semantic_score'] ?? 0) > 0) {
+            $reasons[] = 'Deterministic semantic adapter score.';
         }
 
         return $reasons;

@@ -21,6 +21,43 @@ final class CanonicalPublishedOfferSource
         return array_merge($this->productCandidates(), $this->serviceCandidates());
     }
 
+    /** @return array<string, mixed>|null */
+    public function candidateForProjectionKey(string $projectionKey): ?array
+    {
+        foreach ($this->currentOfferCandidates() as $candidate) {
+            if ((string) $candidate['projection_key'] === $projectionKey) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    public function tenantCanPublish(string $tenantId): bool
+    {
+        $query = DB::table('tenants')->where('id', $tenantId);
+
+        if (Schema::hasColumn('tenants', 'deleted_at')) {
+            $query->whereNull('deleted_at');
+        }
+
+        $columns = ['is_active', 'subscription_status'];
+        if (Schema::hasColumn('tenants', 'status')) {
+            $columns[] = 'status';
+        }
+
+        $tenant = $query->first($columns);
+
+        if ($tenant === null) {
+            return false;
+        }
+
+        return (bool) $tenant->is_active
+            && in_array((string) $tenant->subscription_status, ['active', 'trial'], true)
+            && (! isset($tenant->status)
+                || ! in_array((string) $tenant->status, ['draft', 'suspended', 'disabled', 'archived', 'rejected'], true));
+    }
+
     /** @return list<array<string, mixed>> */
     private function productCandidates(): array
     {
@@ -32,7 +69,8 @@ final class CanonicalPublishedOfferSource
             })
             ->leftJoin('locations as l', function ($join): void {
                 $join->on('l.tenant_id', '=', 't.id')
-                    ->where('l.is_primary', '=', 1);
+                    ->where('l.is_primary', '=', 1)
+                    ->where('l.is_active', '=', 1);
             })
             ->select([
                 'p.id as source_record_id',
@@ -79,6 +117,10 @@ final class CanonicalPublishedOfferSource
             $query->where('p.is_visible', true);
         }
 
+        if (Schema::hasColumn('products', 'is_locked')) {
+            $query->where('p.is_locked', false);
+        }
+
         if (Schema::hasColumn('products', 'status')) {
             $query->whereIn('p.status', ['active', 'approved', 'published']);
         }
@@ -89,6 +131,10 @@ final class CanonicalPublishedOfferSource
 
         if (Schema::hasColumn('tenants', 'subscription_status')) {
             $query->whereIn('t.subscription_status', ['active', 'trial']);
+        }
+
+        if (Schema::hasColumn('tenants', 'status')) {
+            $query->whereNotIn('t.status', ['draft', 'suspended', 'disabled', 'archived', 'rejected']);
         }
 
         return collect($query->get())
@@ -212,12 +258,24 @@ final class CanonicalPublishedOfferSource
             $query->where('s.is_active', true);
         }
 
+        if (Schema::hasColumn('services', 'deleted_at')) {
+            $query->whereNull('s.deleted_at');
+        }
+
         if (Schema::hasColumn('tenants', 'is_active')) {
             $query->where('t.is_active', true);
         }
 
         if (Schema::hasColumn('tenants', 'subscription_status')) {
             $query->whereIn('t.subscription_status', ['active', 'trial']);
+        }
+
+        if (Schema::hasColumn('tenants', 'status')) {
+            $query->whereNotIn('t.status', ['draft', 'suspended', 'disabled', 'archived', 'rejected']);
+        }
+
+        if (Schema::hasColumn('services', 'status')) {
+            $query->whereNotIn('s.status', ['draft', 'suspended', 'disabled', 'archived', 'rejected']);
         }
 
         return collect($query->get())

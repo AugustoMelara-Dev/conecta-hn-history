@@ -20,8 +20,10 @@ final class PublishedCommercialProjectionService
         $freshnessCutoff = CarbonImmutable::now()->subDays((int) config('dovra_discovery.freshness_days', 30));
         $verificationScores = config('dovra_discovery.integrity.verification_scores', []);
         $prohibitedTerms = config('dovra_discovery.integrity.prohibited_terms', []);
+        $sourceProjectionKeys = [];
 
         foreach ($this->source->currentOfferCandidates() as $candidate) {
+            $sourceProjectionKeys[] = (string) $candidate['projection_key'];
             $isCurrent = $candidate['source_updated_at'] >= $freshnessCutoff;
             $freshnessScore = $isCurrent ? 100 : 0;
             $completenessScore = $this->completenessScore($candidate);
@@ -84,6 +86,8 @@ final class PublishedCommercialProjectionService
 
             $this->store->upsertProjection($projection, $candidate['evidence'], $integrity);
         }
+
+        $this->store->reconcileMissingProjections($sourceProjectionKeys);
     }
 
     /** @param array<string, mixed> $candidate */

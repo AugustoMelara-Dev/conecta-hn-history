@@ -8,10 +8,12 @@ use App\Application\Discovery\ComparableOfferService;
 use App\Application\Discovery\DiscoveryQueryService;
 use App\Application\Discovery\PublishedCommercialProjectionService;
 use App\Domain\Discovery\DiscoveryQuery;
+use App\Domain\Discovery\SemanticRetrievalAdapter;
 use App\Models\Product;
 use App\Models\Service;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 final class ConstrainedSearchTest extends TestCase
@@ -225,5 +227,84 @@ final class ConstrainedSearchTest extends TestCase
         self::assertSame('CAD', $resultSet->results[0]['currency_code']);
         self::assertSame('available', $resultSet->results[0]['availability_status']);
         self::assertNotEmpty(app(ComparableOfferService::class)->for($resultSet->results[0], $resultSet->results));
+    }
+
+    public function test_hybrid_adapter_scores_only_the_server_filtered_candidate_set(): void
+    {
+        $hondurasTenant = Tenant::factory()->create([
+            'name' => 'Hybrid Honduras',
+            'slug' => 'hybrid-honduras',
+            'subscription_status' => 'active',
+            'verification_status' => 'verified',
+        ]);
+        $this->assignHonduras($hondurasTenant);
+        $hondurasProduct = Product::factory()->forTenant($hondurasTenant)->create([
+            'name' => 'Hybrid beans HN',
+            'description' => 'Filtered Honduras candidate.',
+            'price' => 60.00,
+            'price_minor' => 6000,
+            'currency' => 'HNL',
+            'is_active' => true,
+            'is_visible' => true,
+        ]);
+
+        $canadaTenant = Tenant::factory()->create([
+            'name' => 'Hybrid Canada',
+            'slug' => 'hybrid-canada',
+            'subscription_status' => 'active',
+            'verification_status' => 'verified',
+        ]);
+        $this->assignCanada($canadaTenant);
+        $canadaProduct = Product::factory()->forTenant($canadaTenant)->create([
+            'name' => 'Hybrid beans CA',
+            'description' => 'Must not enter the Honduras candidate set.',
+            'price' => 60.00,
+            'price_minor' => 6000,
+            'currency' => 'CAD',
+            'is_active' => true,
+            'is_visible' => true,
+        ]);
+
+        $adapter = new class((string) $canadaProduct->id) implements SemanticRetrievalAdapter
+        {
+            /** @var list<string> */
+            public array $seenProjectionIds = [];
+
+            public function __construct(private readonly string $foreignProjectionId) {}
+
+            public function score(string $queryText, array $candidates): array
+            {
+                $this->seenProjectionIds = array_map(
+                    static fn (array $candidate): string => (string) $candidate['id'],
+                    $candidates,
+                );
+
+                return [
+                    'product:'.$this->foreignProjectionId => 100,
+                    'product:'.$this->seenProjectionIds[0] => 10,
+                ];
+            }
+        };
+        app()->instance(SemanticRetrievalAdapter::class, $adapter);
+
+        app(PublishedCommercialProjectionService::class)->projectCurrent();
+
+        $resultSet = app(DiscoveryQueryService::class)->search(new DiscoveryQuery(
+            searchText: 'hybrid beans',
+            marketCountryCode: 'HN',
+            budgetMinor: 10000,
+            currencyCode: 'HNL',
+            offerType: 'product',
+            limit: 5,
+        ));
+
+        self::assertSame(['Hybrid beans HN'], array_column($resultSet->results, 'offer_name'));
+        self::assertSame(['HN'], array_column($resultSet->results, 'country_code'));
+        self::assertSame([
+            (string) DB::table('discovery_published_offers')
+                ->where('projection_key', 'product:'.$hondurasProduct->id)
+                ->value('id'),
+        ], $adapter->seenProjectionIds);
+        self::assertSame('adapter_contract', $resultSet->meta['semantic_retrieval']);
     }
 }

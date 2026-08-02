@@ -177,4 +177,128 @@ final class PublishedProjectionTest extends TestCase
             'Upsert should keep one projection row per canonical offer across repeated runs.',
         );
     }
+
+    public function test_it_reconciles_an_existing_projection_when_the_canonical_offer_becomes_hidden(): void
+    {
+        $tenant = Tenant::factory()->create([
+            'name' => 'Cafe Reconciled',
+            'slug' => 'cafe-reconciled',
+            'subscription_status' => 'active',
+            'verification_status' => 'verified',
+        ]);
+        $this->assignHonduras($tenant);
+
+        $product = Product::factory()->forTenant($tenant)->create([
+            'name' => 'Published beans',
+            'description' => 'Visible before the canonical change.',
+            'price' => 70.00,
+            'price_minor' => 7000,
+            'currency' => 'HNL',
+            'is_active' => true,
+            'is_visible' => true,
+        ]);
+
+        app(PublishedCommercialProjectionService::class)->projectCurrent();
+
+        $before = DB::table('discovery_published_offers')
+            ->where('projection_key', 'product:'.$product->id)
+            ->sole();
+
+        DB::table('products')->where('id', $product->id)->update([
+            'is_visible' => false,
+            'updated_at' => now(),
+        ]);
+
+        app(PublishedCommercialProjectionService::class)->projectCurrent();
+
+        $after = DB::table('discovery_published_offers')
+            ->where('projection_key', 'product:'.$product->id)
+            ->sole();
+
+        self::assertSame($before->id, $after->id);
+        self::assertFalse((bool) $after->is_published);
+        self::assertFalse((bool) $after->is_current);
+        self::assertFalse((bool) $after->is_eligible);
+        self::assertSame('revoked', $after->moderation_status);
+        self::assertSame(0, DB::table('discovery_offer_evidence')
+            ->where('projection_id', $after->id)
+            ->where('is_current', true)
+            ->count());
+    }
+
+    public function test_it_reconciles_a_projection_when_the_canonical_offer_is_removed(): void
+    {
+        $tenant = Tenant::factory()->create([
+            'name' => 'Cafe Removed',
+            'slug' => 'cafe-removed',
+            'subscription_status' => 'active',
+            'verification_status' => 'verified',
+        ]);
+        $this->assignHonduras($tenant);
+
+        $product = Product::factory()->forTenant($tenant)->create([
+            'name' => 'Removed beans',
+            'description' => 'Offer removed from the canonical catalog.',
+            'price' => 70.00,
+            'price_minor' => 7000,
+            'currency' => 'HNL',
+            'is_active' => true,
+            'is_visible' => true,
+        ]);
+
+        app(PublishedCommercialProjectionService::class)->projectCurrent();
+
+        DB::table('products')->where('id', $product->id)->update([
+            'deleted_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        app(PublishedCommercialProjectionService::class)->projectCurrent();
+
+        $projection = DB::table('discovery_published_offers')
+            ->where('projection_key', 'product:'.$product->id)
+            ->sole();
+
+        self::assertFalse((bool) $projection->is_published);
+        self::assertFalse((bool) $projection->is_current);
+        self::assertFalse((bool) $projection->is_eligible);
+        self::assertSame('revoked', $projection->moderation_status);
+    }
+
+    public function test_it_reconciles_a_projection_when_the_canonical_tenant_is_suspended(): void
+    {
+        $tenant = Tenant::factory()->create([
+            'name' => 'Suspended Seller',
+            'slug' => 'suspended-seller',
+            'subscription_status' => 'active',
+            'verification_status' => 'verified',
+        ]);
+        $this->assignHonduras($tenant);
+        $product = Product::factory()->forTenant($tenant)->create([
+            'name' => 'Suspended beans',
+            'price' => 70.00,
+            'price_minor' => 7000,
+            'currency' => 'HNL',
+            'is_active' => true,
+            'is_visible' => true,
+        ]);
+
+        app(PublishedCommercialProjectionService::class)->projectCurrent();
+
+        DB::table('tenants')->where('id', $tenant->id)->update([
+            'status' => 'suspended',
+            'updated_at' => now(),
+        ]);
+
+        app(PublishedCommercialProjectionService::class)->projectCurrent();
+
+        $projection = DB::table('discovery_published_offers')
+            ->where('projection_key', 'product:'.$product->id)
+            ->sole();
+
+        self::assertFalse((bool) $projection->is_published);
+        self::assertFalse((bool) $projection->is_current);
+        self::assertFalse((bool) $projection->is_eligible);
+        self::assertSame('revoked', $projection->moderation_status);
+    }
 }

@@ -166,4 +166,135 @@ final class BuyerActionPreparationTest extends TestCase
         $this->assertDatabaseCount('orders', 0);
         $this->assertDatabaseCount('appointments', 0);
     }
+
+    public function test_it_requires_a_published_current_and_eligible_projection_before_preparing(): void
+    {
+        $tenant = Tenant::factory()->create([
+            'name' => 'Flags Seller',
+            'slug' => 'flags-seller',
+            'subscription_status' => 'active',
+            'verification_status' => 'verified',
+        ]);
+        $this->assignHonduras($tenant);
+        $product = Product::factory()->forTenant($tenant)->create([
+            'name' => 'Flags beans',
+            'price' => 50.00,
+            'price_minor' => 5000,
+            'currency' => 'HNL',
+            'is_active' => true,
+            'is_visible' => true,
+        ]);
+
+        app(PublishedCommercialProjectionService::class)->projectCurrent();
+
+        $projectionId = (string) DB::table('discovery_published_offers')
+            ->where('projection_key', 'product:'.$product->id)
+            ->value('id');
+
+        DB::table('discovery_published_offers')
+            ->where('id', $projectionId)
+            ->update(['is_published' => false]);
+
+        $action = app(BuyerActionPreparationService::class)->prepare(new BuyerActionRequest(
+            projectionId: $projectionId,
+            actionType: 'order_preparation',
+        ));
+
+        self::assertSame('rejected', $action->status);
+        self::assertSame('not_eligible', $action->reasonCode);
+        self::assertFalse($action->executionAllowed);
+        self::assertSame(0, DB::table('discovery_buyer_action_preparations')
+            ->where('status', 'requires_confirmation')
+            ->count());
+    }
+
+    public function test_it_revalidates_canonical_tenant_market_and_evidence_before_preparing(): void
+    {
+        $tenant = Tenant::factory()->create([
+            'name' => 'Revalidated Seller',
+            'slug' => 'revalidated-seller',
+            'subscription_status' => 'active',
+            'verification_status' => 'verified',
+        ]);
+        $this->assignHonduras($tenant);
+        $product = Product::factory()->forTenant($tenant)->create([
+            'name' => 'Revalidated beans',
+            'price' => 55.00,
+            'price_minor' => 5500,
+            'currency' => 'HNL',
+            'is_active' => true,
+            'is_visible' => true,
+        ]);
+
+        app(PublishedCommercialProjectionService::class)->projectCurrent();
+
+        $projection = DB::table('discovery_published_offers')
+            ->where('projection_key', 'product:'.$product->id)
+            ->first();
+
+        DB::table('tenants')->where('id', $tenant->id)->update([
+            'subscription_status' => 'canceled',
+        ]);
+
+        $tenantAction = app(BuyerActionPreparationService::class)->prepare(new BuyerActionRequest(
+            projectionId: (string) $projection->id,
+            actionType: 'order_preparation',
+        ));
+
+        self::assertSame('rejected', $tenantAction->status);
+        self::assertSame('tenant_changed', $tenantAction->reasonCode);
+
+        DB::table('tenants')->where('id', $tenant->id)->update([
+            'subscription_status' => 'active',
+        ]);
+
+        $canada = Tenant::factory()->create([
+            'name' => 'Market Reference',
+            'slug' => 'market-reference',
+            'subscription_status' => 'active',
+            'verification_status' => 'verified',
+        ]);
+        $this->assignCanada($canada);
+
+        DB::table('tenant_markets')
+            ->where('tenant_id', $tenant->id)
+            ->update([
+                'country_code' => 'CA',
+                'locale_code' => 'en-CA',
+                'currency_code' => 'CAD',
+                'timezone_name' => 'America/Toronto',
+            ]);
+
+        $marketAction = app(BuyerActionPreparationService::class)->prepare(new BuyerActionRequest(
+            projectionId: (string) $projection->id,
+            actionType: 'order_preparation',
+        ));
+
+        self::assertSame('rejected', $marketAction->status);
+        self::assertSame('market_changed', $marketAction->reasonCode);
+
+        DB::table('tenant_markets')
+            ->where('tenant_id', $tenant->id)
+            ->update([
+                'country_code' => 'HN',
+                'locale_code' => 'es-HN',
+                'currency_code' => 'HNL',
+                'timezone_name' => 'America/Tegucigalpa',
+            ]);
+        DB::table('discovery_offer_evidence')
+            ->where('projection_id', $projection->id)
+            ->limit(1)
+            ->delete();
+
+        $evidenceAction = app(BuyerActionPreparationService::class)->prepare(new BuyerActionRequest(
+            projectionId: (string) $projection->id,
+            actionType: 'order_preparation',
+        ));
+
+        self::assertSame('rejected', $evidenceAction->status);
+        self::assertSame('evidence_changed', $evidenceAction->reasonCode);
+        self::assertSame(0, DB::table('discovery_buyer_action_preparations')
+            ->where('status', 'requires_confirmation')
+            ->count());
+    }
 }
