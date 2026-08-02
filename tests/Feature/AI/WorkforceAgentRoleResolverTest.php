@@ -9,6 +9,7 @@ use App\Application\Ai\Workforce\AgentRole;
 use App\Application\Ai\Workforce\AgentRoleCatalog;
 use App\Application\Ai\Workforce\WorkforceAgentContext;
 use App\Application\Ai\Workforce\WorkforceAgentResolver;
+use App\Application\BusinessGraph\BusinessGraphEdge;
 use App\Application\BusinessGraph\BusinessGraphFact;
 use App\Application\BusinessGraph\BusinessGraphSnapshot;
 use App\Exceptions\Ai\AiExecutionDeniedException;
@@ -118,5 +119,30 @@ final class WorkforceAgentRoleResolverTest extends TestCase
 
         $this->expectException(InvalidArgumentException::class);
         $context->systemContext(new BusinessGraphSnapshot($tenantId, [$foreignFact], []));
+    }
+
+    public function test_mixed_tenant_edges_are_rejected(): void
+    {
+        $tenantId = (string) Str::uuid();
+        $context = new WorkforceAgentContext(
+            tenantId: $tenantId,
+            agentVersionId: (string) Str::uuid(),
+            role: AgentRole::MANAGER,
+            configuration: AgentRoleCatalog::configuration(AgentRole::MANAGER),
+        );
+        $foreignTenantId = (string) Str::uuid();
+        $foreignEdge = BusinessGraphEdge::fromSource(
+            tenantId: $foreignTenantId,
+            fromType: 'tenant',
+            fromId: $foreignTenantId,
+            relation: 'owns',
+            toType: 'product',
+            toId: 'product-1',
+            sourceType: 'product',
+            sourceId: 'product:1',
+        );
+
+        $this->expectException(InvalidArgumentException::class);
+        $context->systemContext(new BusinessGraphSnapshot($tenantId, [], [$foreignEdge]));
     }
 }

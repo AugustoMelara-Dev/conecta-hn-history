@@ -49,10 +49,14 @@ final readonly class WorkforceAgentContext
         $facts = array_map(fn (BusinessGraphFact $fact): array => [
             'subjectType' => $fact->subjectType,
             'subjectId' => $fact->subjectId,
-            'factKey' => $fact->factKey,
-            'value' => $this->sanitize($fact->value),
-            'sourceType' => $fact->sourceType,
-            'sourceId' => $fact->sourceId,
+            'factKey' => $this->isSensitiveKey($fact->factKey) ? '[redacted]' : $fact->factKey,
+            'value' => $this->isSensitiveKey($fact->factKey)
+                || $this->isSensitiveKey($fact->sourceType)
+                || $this->isSensitiveKey($fact->sourceId)
+                ? '[redacted]'
+                : $this->sanitize($fact->value),
+            'sourceType' => $this->isSensitiveKey($fact->sourceType) ? '[redacted]' : $fact->sourceType,
+            'sourceId' => $this->isSensitiveKey($fact->sourceId) ? '[redacted]' : $fact->sourceId,
         ], $snapshot->facts);
         $edges = array_map(fn (BusinessGraphEdge $edge): array => [
             'fromType' => $edge->fromType,
@@ -64,13 +68,14 @@ final readonly class WorkforceAgentContext
             'sourceId' => $edge->sourceId,
         ], $snapshot->edges);
 
-        $businessContext = [
+        $businessContext = ['facts' => $facts, 'edges' => $edges];
+        $canonicalContext = [
             'facts' => $this->canonicalList($facts),
             'edges' => $this->canonicalList($edges),
         ];
         $version = 'business-graph:v1:'.hash(
             'sha256',
-            json_encode($businessContext, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
+            json_encode($canonicalContext, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
         );
 
         return [
@@ -127,10 +132,6 @@ final readonly class WorkforceAgentContext
     {
         if (array_is_list($value)) {
             $items = array_map(fn (mixed $item): mixed => is_array($item) ? $this->canonicalArray($item) : $item, $value);
-            usort($items, static fn (mixed $left, mixed $right): int => strcmp(
-                json_encode($left, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
-                json_encode($right, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
-            ));
 
             return $items;
         }
