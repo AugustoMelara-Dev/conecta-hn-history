@@ -28,6 +28,7 @@ $results = [System.Collections.Generic.List[object]]::new()
 $observabilityContractPath = Join-Path $repoRoot 'deployment/dovra/program12-observability-contract.json'
 $queueContractPath = Join-Path $repoRoot 'deployment/dovra/program12-queue-resilience-contract.json'
 $recoveryContractPath = Join-Path $repoRoot 'deployment/dovra/program12-recovery-boundaries.json'
+$harnessPath = Join-Path $repoRoot 'scripts/dovra/program12-operational-contract-harness.php'
 $loggingPath = Join-Path $repoRoot 'config/logging.php'
 $queuePath = Join-Path $repoRoot 'config/queue.php'
 $horizonPath = Join-Path $repoRoot 'config/horizon.php'
@@ -44,6 +45,37 @@ $horizonConfig = Get-Content -Raw $horizonPath
 $sentryConfig = Get-Content -Raw $sentryPath
 $observabilityConfig = Get-Content -Raw $observabilityPath
 $scrubber = Get-Content -Raw $scrubberPath
+
+$phpCommand = Get-Command php -ErrorAction SilentlyContinue
+if ($null -eq $phpCommand) {
+    $results.Add((New-Result 'operational-contract-harness' 'failed' 'PHP executable is unavailable; executable trace and queue proof cannot run.'))
+} else {
+    $harnessLines = @(& $phpCommand.Source $harnessPath '--json' 2>&1 | ForEach-Object { $_.ToString() })
+    $harnessExitCode = $LASTEXITCODE
+    $harnessOutput = $harnessLines -join [Environment]::NewLine
+    $harnessPayload = $null
+
+    if ($harnessOutput -ne '') {
+        try {
+            $harnessPayload = $harnessOutput | ConvertFrom-Json
+        } catch {
+            $harnessPayload = $null
+        }
+    }
+
+    if (
+        $harnessExitCode -eq 0 -and
+        $null -ne $harnessPayload -and
+        $harnessPayload.status -eq 'proved' -and
+        $harnessPayload.trace.status -eq 'proved' -and
+        $harnessPayload.queue.status -eq 'proved'
+    ) {
+        $harnessDetails = 'Executable trace redaction and queue state-machine simulations proved: {0} events, {1} queues.' -f $harnessPayload.trace.event_count, $harnessPayload.queue.queue_count
+        $results.Add((New-Result 'operational-contract-harness' 'proved' $harnessDetails))
+    } else {
+        $results.Add((New-Result 'operational-contract-harness' 'failed' 'Executable Program 12 harness did not return proved trace and queue simulations.'))
+    }
+}
 
 if (
     $sentryConfig.Contains('send_default_pii') -and
@@ -104,13 +136,15 @@ $summary = [pscustomobject]@{
         'deployment/dovra/program12-observability-contract.json',
         'deployment/dovra/program12-queue-resilience-contract.json',
         'deployment/dovra/program12-recovery-boundaries.json',
+        'deployment/dovra/program12-operational-contract-fixture.json',
+        'scripts/dovra/program12-operational-contract-harness.php',
         'config/observability.php',
         'config/sentry.php',
         'config/logging.php',
         'config/queue.php',
         'config/horizon.php'
     )
-    note = 'Shared config seam and managed AWS/PITR/RPO/RTO evidence remain explicit. No local script may upgrade them silently.'
+    note = 'Executable trace/queue proof is required; shared config seam and managed AWS/PITR/RPO/RTO evidence remain explicit. No local script may upgrade them silently.'
     results = $results
 }
 

@@ -31,7 +31,21 @@
       "secret",
       "token",
       "api_key",
-      "password"
+      "password",
+      "email",
+      "phone"
+    ]
+  },
+  "operational_harness": {
+    "script": "scripts/dovra/program12-operational-contract-harness.php",
+    "fixture": "deployment/dovra/program12-operational-contract-fixture.json",
+    "deterministic": true,
+    "machine_executable": true,
+    "proves": [
+      "trace context propagation",
+      "non-sensitive tenant and actor identifiers",
+      "request/conversation/job/event/database/cache/provider/tool/integration/outcome correlation",
+      "sensitive value redaction"
     ]
   },
   "initial_objectives": {

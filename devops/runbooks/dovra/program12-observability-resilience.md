@@ -13,6 +13,14 @@ This repository-controlled slice defines the operational contract for Dovra Prog
   - `config/logging.php`
   - `app/Infrastructure/Observability/SentryEventScrubber.php`
 
+The executable local proof is:
+
+```text
+php scripts/dovra/program12-operational-contract-harness.php --json
+```
+
+It consumes `deployment/dovra/program12-operational-contract-fixture.json`, propagates one deterministic correlation ID through eight request/conversation/job/event/database/cache/provider-tool/integration/outcome events, exposes only safe request/conversation/tenant/actor IDs, and fails if any fixture-sensitive value survives redaction. The output is machine-readable and contains no raw fixture secret.
+
 ## Queue isolation and compensation contract
 
 Required queue classes:
@@ -35,6 +43,14 @@ Current shared baseline observed from the tree:
 - `config/horizon.php` still runs `['default']` with one shared supervisor definition.
 
 That baseline is not upgraded here; instead this slice records the target topology, retry limits, and compensation contract so later shared-config work cannot silently drift.
+
+The executable queue proof runs the same `always_fail` scenario for every required queue. Each scenario must produce this state sequence shape, with the retry pair repeated until the declared attempt limit:
+
+```text
+queued -> running -> retry_scheduled -> running -> compensation_requested -> compensation_applied -> dead_letter|failed
+```
+
+The harness compares the attempt sequence, timeout, backoff list, terminal state, and fixture expectations; it also replays the same idempotency key twice for one tenant and once for a second tenant. The first replay is `accepted`, the duplicate is `deduplicated`, and the second tenant is independently `accepted`.
 
 ## Initial objectives
 

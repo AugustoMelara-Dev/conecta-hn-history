@@ -137,6 +137,38 @@
       "compensation_contract": "Abort maintenance wave on unsafe partial completion and require operator review."
     }
   },
+  "operational_state_machine": {
+    "fixture": "deployment/dovra/program12-operational-contract-fixture.json",
+    "deterministic": true,
+    "failure_plan": "always_fail",
+    "states": [
+      "queued",
+      "running",
+      "retry_scheduled",
+      "compensation_requested",
+      "compensation_applied",
+      "dead_letter",
+      "failed"
+    ],
+    "idempotency_scope": [
+      "tenant_id",
+      "job",
+      "version",
+      "idempotency_key"
+    ],
+    "terminal_failure_states": [
+      "dead_letter",
+      "failed"
+    ],
+    "transition_contract": [
+      "queued -> running",
+      "running -> retry_scheduled when attempts remain",
+      "retry_scheduled -> running",
+      "running -> compensation_requested on terminal failure",
+      "compensation_requested -> compensation_applied",
+      "compensation_applied -> dead_letter or failed"
+    ]
+  },
   "shared_runtime_seams": {
     "queue_config": {
       "path": "config/queue.php",

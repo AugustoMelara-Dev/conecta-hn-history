@@ -1,0 +1,267 @@
+{
+  "name": "program12-operational-contract-fixture",
+  "schema_version": 1,
+  "sensitive_values": [
+    "Bearer deterministic-secret",
+    "session-cookie-value",
+    "secret-prompt-body",
+    "sensitive-message-body",
+    "api-token-value",
+    "api-secret-value",
+    "api-key-value",
+    "person@example.test"
+  ],
+  "trace": {
+    "safe_context": {
+      "request_id": "request-01",
+      "conversation_id": "conversation-01",
+      "correlation_id": "correlation-01",
+      "tenant_id": "tenant-01",
+      "actor_id": "actor-01",
+      "job": "conversation-provider-call",
+      "event": "conversation-requested",
+      "database": "conversation-events",
+      "cache": "conversation-context",
+      "provider": "provider-a",
+      "tool": "catalog-search",
+      "integration": "webhook-replay",
+      "commercial_outcome": "qualified-lead",
+      "idempotency_key": "conversation-replay-01",
+      "version": "v1"
+    },
+    "events": [
+      {
+        "component": "request",
+        "overrides": {
+          "job": "http-request",
+          "event": "request-received"
+        },
+        "sensitive": {
+          "headers": {
+            "authorization": "Bearer deterministic-secret",
+            "cookie": "session-cookie-value"
+          }
+        }
+      },
+      {
+        "component": "conversation",
+        "overrides": {
+          "job": "conversation-ingest",
+          "event": "conversation-accepted"
+        },
+        "sensitive": {
+          "request": {
+            "prompt": "secret-prompt-body",
+            "message": "sensitive-message-body",
+            "email": "person@example.test"
+          }
+        }
+      },
+      {
+        "component": "job",
+        "overrides": {
+          "job": "conversation-provider-call",
+          "event": "job-attempted"
+        },
+        "sensitive": {
+          "provider_request": {
+            "token": "api-token-value",
+            "secret": "api-secret-value",
+            "api_key": "api-key-value"
+          }
+        }
+      },
+      {
+        "component": "database",
+        "overrides": {
+          "event": "conversation-stored",
+          "database": "conversation-events"
+        },
+        "sensitive": {
+          "record": {
+            "content": "sensitive-message-body"
+          }
+        }
+      },
+      {
+        "component": "cache",
+        "overrides": {
+          "event": "context-cached",
+          "cache": "conversation-context"
+        },
+        "sensitive": {
+          "cache_entry": {
+            "token": "api-token-value"
+          }
+        }
+      },
+      {
+        "component": "provider_tool",
+        "overrides": {
+          "event": "provider-tool-invoked",
+          "provider": "provider-a",
+          "tool": "catalog-search"
+        },
+        "sensitive": {
+          "tool_input": {
+            "prompt": "secret-prompt-body",
+            "api_key": "api-key-value"
+          }
+        }
+      },
+      {
+        "component": "integration",
+        "overrides": {
+          "event": "webhook-deduplicated",
+          "integration": "webhook-replay"
+        },
+        "sensitive": {
+          "webhook": {
+            "authorization": "Bearer deterministic-secret",
+            "secret": "api-secret-value"
+          }
+        }
+      },
+      {
+        "component": "outcome",
+        "overrides": {
+          "event": "commercial-outcome-recorded",
+          "commercial_outcome": "qualified-lead"
+        },
+        "sensitive": {
+          "outcome": {
+            "message": "sensitive-message-body"
+          }
+        }
+      }
+    ]
+  },
+  "queue_scenarios": {
+    "critical": {
+      "tenant_id": "tenant-01",
+      "isolated_tenant_id": "tenant-02",
+      "actor_id": "actor-01",
+      "job": "critical-projection",
+      "event": "critical-projection-requested",
+      "version": "v1",
+      "idempotency_key": "replay-critical-01",
+      "failure_plan": "always_fail",
+      "expected_attempts": [1, 2],
+      "expected_backoff_seconds": [5, 30],
+      "expected_state_sequence": ["queued", "running", "retry_scheduled", "running", "compensation_requested", "compensation_applied", "dead_letter"],
+      "expected_terminal_state": "dead_letter"
+    },
+    "conversations": {
+      "tenant_id": "tenant-01",
+      "isolated_tenant_id": "tenant-02",
+      "actor_id": "actor-01",
+      "job": "conversation-provider-call",
+      "event": "conversation-requested",
+      "version": "v1",
+      "idempotency_key": "replay-conversations-01",
+      "failure_plan": "always_fail",
+      "expected_attempts": [1, 2, 3],
+      "expected_backoff_seconds": [10, 30, 120],
+      "expected_state_sequence": ["queued", "running", "retry_scheduled", "running", "retry_scheduled", "running", "compensation_requested", "compensation_applied", "failed"],
+      "expected_terminal_state": "failed"
+    },
+    "channels": {
+      "tenant_id": "tenant-01",
+      "isolated_tenant_id": "tenant-02",
+      "actor_id": "actor-01",
+      "job": "channel-delivery",
+      "event": "channel-message-requested",
+      "version": "v1",
+      "idempotency_key": "replay-channels-01",
+      "failure_plan": "always_fail",
+      "expected_attempts": [1, 2, 3, 4],
+      "expected_backoff_seconds": [15, 60, 300, 900],
+      "expected_state_sequence": ["queued", "running", "retry_scheduled", "running", "retry_scheduled", "running", "retry_scheduled", "running", "compensation_requested", "compensation_applied", "failed"],
+      "expected_terminal_state": "failed"
+    },
+    "workflows": {
+      "tenant_id": "tenant-01",
+      "isolated_tenant_id": "tenant-02",
+      "actor_id": "actor-01",
+      "job": "workflow-step",
+      "event": "workflow-step-requested",
+      "version": "v1",
+      "idempotency_key": "replay-workflows-01",
+      "failure_plan": "always_fail",
+      "expected_attempts": [1, 2, 3],
+      "expected_backoff_seconds": [30, 120, 600],
+      "expected_state_sequence": ["queued", "running", "retry_scheduled", "running", "retry_scheduled", "running", "compensation_requested", "compensation_applied", "dead_letter"],
+      "expected_terminal_state": "dead_letter"
+    },
+    "indexing": {
+      "tenant_id": "tenant-01",
+      "isolated_tenant_id": "tenant-02",
+      "actor_id": "actor-01",
+      "job": "tenant-index-batch",
+      "event": "index-batch-requested",
+      "version": "v1",
+      "idempotency_key": "replay-indexing-01",
+      "failure_plan": "always_fail",
+      "expected_attempts": [1, 2, 3],
+      "expected_backoff_seconds": [60, 300, 900],
+      "expected_state_sequence": ["queued", "running", "retry_scheduled", "running", "retry_scheduled", "running", "compensation_requested", "compensation_applied", "failed"],
+      "expected_terminal_state": "failed"
+    },
+    "imports": {
+      "tenant_id": "tenant-01",
+      "isolated_tenant_id": "tenant-02",
+      "actor_id": "actor-01",
+      "job": "knowledge-import",
+      "event": "knowledge-import-requested",
+      "version": "v1",
+      "idempotency_key": "replay-imports-01",
+      "failure_plan": "always_fail",
+      "expected_attempts": [1, 2, 3],
+      "expected_backoff_seconds": [60, 300, 1800],
+      "expected_state_sequence": ["queued", "running", "retry_scheduled", "running", "retry_scheduled", "running", "compensation_requested", "compensation_applied", "failed"],
+      "expected_terminal_state": "failed"
+    },
+    "analytics": {
+      "tenant_id": "tenant-01",
+      "isolated_tenant_id": "tenant-02",
+      "actor_id": "actor-01",
+      "job": "analytics-aggregate",
+      "event": "analytics-batch-requested",
+      "version": "v1",
+      "idempotency_key": "replay-analytics-01",
+      "failure_plan": "always_fail",
+      "expected_attempts": [1, 2, 3, 4, 5],
+      "expected_backoff_seconds": [10, 30, 60, 300, 900],
+      "expected_state_sequence": ["queued", "running", "retry_scheduled", "running", "retry_scheduled", "running", "retry_scheduled", "running", "retry_scheduled", "running", "compensation_requested", "compensation_applied", "failed"],
+      "expected_terminal_state": "failed"
+    },
+    "notifications": {
+      "tenant_id": "tenant-01",
+      "isolated_tenant_id": "tenant-02",
+      "actor_id": "actor-01",
+      "job": "notification-delivery",
+      "event": "notification-requested",
+      "version": "v1",
+      "idempotency_key": "replay-notifications-01",
+      "failure_plan": "always_fail",
+      "expected_attempts": [1, 2, 3, 4],
+      "expected_backoff_seconds": [15, 60, 300, 900],
+      "expected_state_sequence": ["queued", "running", "retry_scheduled", "running", "retry_scheduled", "running", "retry_scheduled", "running", "compensation_requested", "compensation_applied", "failed"],
+      "expected_terminal_state": "failed"
+    },
+    "maintenance": {
+      "tenant_id": "tenant-01",
+      "isolated_tenant_id": "tenant-02",
+      "actor_id": "actor-01",
+      "job": "maintenance-wave",
+      "event": "maintenance-requested",
+      "version": "v1",
+      "idempotency_key": "replay-maintenance-01",
+      "failure_plan": "always_fail",
+      "expected_attempts": [1, 2],
+      "expected_backoff_seconds": [60, 600],
+      "expected_state_sequence": ["queued", "running", "retry_scheduled", "running", "compensation_requested", "compensation_applied", "dead_letter"],
+      "expected_terminal_state": "dead_letter"
+    }
+  }
+}
