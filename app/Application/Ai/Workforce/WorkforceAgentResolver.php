@@ -17,7 +17,15 @@ final readonly class WorkforceAgentResolver
         private WorkforceRegistryAuthority $registry,
     ) {}
 
-    public function resolve(string $tenantId, ?string $agentVersionId, ?string $requestedRole = null): WorkforceAgentContext
+    public function resolve(
+        string $tenantId,
+        ?string $agentVersionId,
+        ?string $requestedRole = null,
+        string $channel = 'web',
+        string $marketCode = 'HN',
+        int|string|null $actorId = null,
+        ?string $cohortSubject = null,
+    ): WorkforceAgentContext
     {
         $tenantId = strtolower(trim($tenantId));
         if (! Str::isUuid($tenantId)) {
@@ -32,16 +40,21 @@ final readonly class WorkforceAgentResolver
             }
         }
 
-        $marketCode = strtoupper((string) config('ai.workforce.default_market_code', 'HN'));
+        $marketCode = strtoupper(trim($marketCode));
+        $cohortSubject ??= $actorId === null ? $tenantId : (string) $actorId;
+        $defaultMarketCode = strtoupper((string) config('ai.workforce.default_market_code', 'HN'));
+        if (preg_match('/^[A-Z]{2}$/', $marketCode) !== 1) {
+            $marketCode = preg_match('/^[A-Z]{2}$/', $defaultMarketCode) === 1 ? $defaultMarketCode : 'HN';
+        }
         $query = new AiRegistryQuery(
             tenantId: $tenantId,
             audience: 'private',
             capability: 'private_tenant_agent',
-            channel: 'web',
-            marketCode: preg_match('/^[A-Z]{2}$/', $marketCode) === 1 ? $marketCode : 'HN',
-            residencyClass: preg_match('/^[A-Z]{2}$/', $marketCode) === 1 ? $marketCode : 'HN',
-            actorId: null,
-            cohortSubject: $tenantId,
+            channel: $channel,
+            marketCode: $marketCode,
+            residencyClass: $marketCode,
+            actorId: $actorId,
+            cohortSubject: $cohortSubject,
         );
         $selection = $agentVersionId === null
             ? $this->registry->resolve($query)

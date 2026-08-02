@@ -177,6 +177,10 @@ final readonly class ConversationRuntime
             $workforceContext = $this->workforce->resolve(
                 tenantId: $input->tenantId,
                 agentVersionId: $selection->agentVersionId,
+                channel: $input->channel,
+                marketCode: $market->countryCode,
+                actorId: $input->actorId,
+                cohortSubject: $input->actorId,
             );
             $answer = $this->privateEngine->answer($input, $selection, $claim, $workforceContext);
 
@@ -485,6 +489,7 @@ final readonly class ConversationRuntime
                     'authorization', 'entitlement', 'private_kill_switch',
                     'tenant_allowlist', 'tool_not_allowed',
                     'tool_requires_explicit_confirmation', 'tool_risk_unknown',
+                    'workforce_tool_policy',
                 ], true)) {
                 return 'policy';
             }

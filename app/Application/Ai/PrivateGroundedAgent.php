@@ -196,19 +196,37 @@ final class PrivateGroundedAgent
             'edges' => array_slice((array) ($businessContext['edges'] ?? []), 0, 10),
         ];
 
-        do {
+        while (true) {
             $prompt = json_encode([
                 'user_query_untrusted' => mb_substr($message, 0, 500),
                 'authorized_tenant_evidence_untrusted' => $grounding,
                 'workforce_context' => $workforceContext,
             ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
-            if (strlen($prompt) <= $max || count($grounding) <= 1) {
+            if (strlen($prompt) <= $max) {
                 break;
             }
 
-            array_pop($grounding);
-        } while ($grounding !== []);
+            if (count($grounding) > 1) {
+                array_pop($grounding);
+
+                continue;
+            }
+
+            if ($workforceContext['businessContext']['facts'] !== []) {
+                array_pop($workforceContext['businessContext']['facts']);
+
+                continue;
+            }
+
+            if ($workforceContext['businessContext']['edges'] !== []) {
+                array_pop($workforceContext['businessContext']['edges']);
+
+                continue;
+            }
+
+            break;
+        }
 
         if (strlen($prompt) > $max) {
             throw new AiExecutionDeniedException('prompt_bounds');
