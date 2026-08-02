@@ -116,12 +116,30 @@ final class WorkforceController extends Controller
         }
 
         $result = [];
-        foreach ($byRole as $roleKey => $record) {
-            $role = AgentRoleCatalog::forAgentKey($roleKey);
-            if ($role === null) {
+        foreach (AgentRoleCatalog::roles() as $role) {
+            $roleKey = $role->value;
+            $record = $byRole[$roleKey] ?? null;
+            $configuration = AgentRoleCatalog::configuration($role);
+            if ($record === null) {
+                $result[] = [
+                    'key' => $roleKey,
+                    'title' => ucfirst(str_replace('_', ' ', $roleKey)),
+                    'objective' => $configuration->objective,
+                    'risk_profile' => $configuration->riskProfile,
+                    'metric_keys' => $configuration->metricKeys,
+                    'agent_version_id' => null,
+                    'candidate_status' => 'not_created',
+                    'state' => 'preview',
+                    'live_evidence' => [
+                        'verified' => false,
+                        'state' => 'pending_external_verification',
+                        'label' => 'External verification is pending',
+                    ],
+                ];
+
                 continue;
             }
-            $configuration = AgentRoleCatalog::configuration($role);
+
             $evidence = $this->evidence(
                 $tenantId,
                 (string) $record->id,
@@ -134,8 +152,8 @@ final class WorkforceController extends Controller
             $state = $evidence['verified'] ? 'live_evidence' : ($decision === null ? 'pending_evaluation' : 'pending_external_verification');
 
             $result[] = [
-                'key' => $role->value,
-                'title' => ucfirst(str_replace('_', ' ', $role->value)),
+                'key' => $roleKey,
+                'title' => ucfirst(str_replace('_', ' ', $roleKey)),
                 'objective' => $configuration->objective,
                 'risk_profile' => $configuration->riskProfile,
                 'metric_keys' => $configuration->metricKeys,

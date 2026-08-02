@@ -14,6 +14,7 @@ use App\Domain\Billing\Global\PriceBook;
 use App\Domain\Billing\Global\PriceBookReaderInterface;
 use App\Domain\Billing\Global\WorkforceEntitlement;
 use App\Models\Tenant;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -74,6 +75,59 @@ final class WorkforceEntitlementTest extends TestCase
             ->allows('workforce.live', $this->context('launch', 'USD', (string) $incoherentTenant->id)));
     }
 
+    public function test_live_capability_denies_verified_events_with_incomplete_payloads(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $this->insertEntitlement((string) $tenant->id, includedCredits: 25.0);
+        $this->insertLifecycleEvent((string) $tenant->id);
+        DB::table('global_billing_lifecycle_events')->where('tenant_id', $tenant->id)->update([
+            'payload' => json_encode([
+                'tenant_id' => (string) $tenant->id,
+                'event_type' => 'subscription.activated',
+            ], JSON_THROW_ON_ERROR),
+        ]);
+
+        self::assertFalse((new WorkforceEntitlement($this->allowingAuthority(), $this->priceBooks(25.0)))
+            ->allows('workforce.live', $this->context('launch', 'USD', (string) $tenant->id)));
+    }
+
+    public function test_live_capability_does_not_reactivate_from_an_older_event_processed_later(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $now = CarbonImmutable::now();
+        $this->insertEntitlement(
+            (string) $tenant->id,
+            includedCredits: 25.0,
+            status: 'canceled',
+            eventId: 'evt-cancelled',
+            occurredAt: $now->subMinute(),
+            createdAt: $now->subMinute(),
+        );
+        $this->insertLifecycleEvent(
+            (string) $tenant->id,
+            eventType: 'subscription.canceled',
+            eventId: 'evt-cancelled',
+            occurredAt: $now->subMinute(),
+            createdAt: $now->subMinute(),
+        );
+        $this->insertEntitlement(
+            (string) $tenant->id,
+            includedCredits: 25.0,
+            eventId: 'evt-old-activation',
+            occurredAt: $now->subMinutes(2),
+            createdAt: $now,
+        );
+        $this->insertLifecycleEvent(
+            (string) $tenant->id,
+            eventId: 'evt-old-activation',
+            occurredAt: $now->subMinutes(2),
+            createdAt: $now,
+        );
+
+        self::assertFalse((new WorkforceEntitlement($this->allowingAuthority(), $this->priceBooks(25.0)))
+            ->allows('workforce.live', $this->context('launch', 'USD', (string) $tenant->id)));
+    }
+
     private function allowingAuthority(): EntitlementServiceInterface
     {
         $authority = $this->createMock(EntitlementServiceInterface::class);
@@ -115,9 +169,13 @@ final class WorkforceEntitlementTest extends TestCase
         string $status = 'active',
         string $providerKey = 'deterministic-fake',
         ?string $eventId = null,
+        ?CarbonImmutable $occurredAt = null,
+        ?CarbonImmutable $createdAt = null,
     ): void {
         $eventId ??= 'evt-workforce-'.$tenantId;
         $now = now();
+        $occurredAt ??= CarbonImmutable::parse($now);
+        $createdAt ??= CarbonImmutable::parse($now);
         DB::table('global_billing_entitlements')->insert([
             'id' => (string) Str::uuid(),
             'tenant_id' => $tenantId,
@@ -132,9 +190,9 @@ final class WorkforceEntitlementTest extends TestCase
             'grace_ends_at' => null,
             'provider_key' => $providerKey,
             'provider_event_id' => $eventId,
-            'snapshot' => json_encode(['plan' => 'launch', 'status' => $status], JSON_THROW_ON_ERROR),
-            'created_at' => $now,
-            'updated_at' => $now,
+            'snapshot' => json_encode(['plan' => 'launch', 'status' => $status, 'occurred_at' => $occurredAt->toIso8601String()], JSON_THROW_ON_ERROR),
+            'created_at' => $createdAt,
+            'updated_at' => $createdAt,
         ]);
     }
 
@@ -143,9 +201,13 @@ final class WorkforceEntitlementTest extends TestCase
         string $eventType = 'subscription.activated',
         bool $replayed = false,
         ?string $eventId = null,
+        ?CarbonImmutable $occurredAt = null,
+        ?CarbonImmutable $createdAt = null,
     ): void {
         $eventId ??= 'evt-workforce-'.$tenantId;
         $now = now();
+        $occurredAt ??= CarbonImmutable::parse($now);
+        $createdAt ??= CarbonImmutable::parse($now);
         DB::table('global_billing_lifecycle_events')->insert([
             'id' => (string) Str::uuid(),
             'market_key' => 'hn',
@@ -157,15 +219,16 @@ final class WorkforceEntitlementTest extends TestCase
             'tenant_id' => $tenantId,
             'authenticity_status' => 'verified',
             'replayed' => $replayed,
-            'processed_at' => $now,
+            'processed_at' => $createdAt,
             'payload' => json_encode([
                 'tenant_id' => $tenantId,
                 'plan' => 'launch',
                 'status' => 'active',
                 'event_type' => $eventType,
+                'occurred_at' => $occurredAt->toIso8601String(),
             ], JSON_THROW_ON_ERROR),
-            'created_at' => $now,
-            'updated_at' => $now,
+            'created_at' => $createdAt,
+            'updated_at' => $createdAt,
         ]);
     }
 }

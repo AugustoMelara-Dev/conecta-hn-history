@@ -69,12 +69,11 @@ final readonly class WorkforceEntitlement
         }
 
         $marketKey = strtolower(trim($context->market()->countryCode));
-        $entitlement = DB::table('global_billing_entitlements')
+        $entitlements = DB::table('global_billing_entitlements')
             ->where('tenant_id', $context->tenantId())
             ->where('market_key', $marketKey)
             ->where('created_at', '<=', now())
-            ->orderByDesc('created_at')
-            ->first([
+            ->get([
                 'market_key',
                 'price_book_version',
                 'plan_key',
@@ -85,7 +84,11 @@ final readonly class WorkforceEntitlement
                 'grace_ends_at',
                 'provider_key',
                 'provider_event_id',
+                'snapshot',
+                'created_at',
             ]);
+
+        $entitlement = $this->latestOrderedEntitlement($entitlements);
 
         if ($entitlement === null
             || ! (bool) $entitlement->live_access
@@ -135,9 +138,62 @@ final readonly class WorkforceEntitlement
             return false;
         }
 
-        return (! isset($payload['tenant_id']) || hash_equals((string) $context->tenantId(), (string) $payload['tenant_id']))
-            && (! isset($payload['plan']) || hash_equals(strtolower($context->plan()), strtolower((string) $payload['plan'])))
-            && (! isset($payload['status']) || hash_equals($status, strtolower((string) $payload['status'])));
+        $entitlementSnapshot = json_decode((string) ($entitlement->snapshot ?? ''), true);
+        $eventOccurredAt = $this->payloadOccurredAt($payload);
+        $entitlementOccurredAt = $this->payloadOccurredAt($entitlementSnapshot);
+
+        return isset($payload['tenant_id'], $payload['plan'], $payload['status'], $payload['event_type'])
+            && hash_equals((string) $context->tenantId(), (string) $payload['tenant_id'])
+            && hash_equals(strtolower($context->plan()), strtolower((string) $payload['plan']))
+            && hash_equals($status, strtolower((string) $payload['status']))
+            && hash_equals((string) $event->event_type, (string) $payload['event_type'])
+            && $eventOccurredAt !== null
+            && $entitlementOccurredAt !== null
+            && $eventOccurredAt->equalTo($entitlementOccurredAt);
+    }
+
+    /** @param iterable<object> $entitlements */
+    private function latestOrderedEntitlement(iterable $entitlements): ?object
+    {
+        $selected = null;
+        $selectedOccurredAt = null;
+
+        foreach ($entitlements as $candidate) {
+            if (trim((string) ($candidate->provider_event_id ?? '')) === '') {
+                continue;
+            }
+
+            $occurredAt = $this->payloadOccurredAt(json_decode((string) ($candidate->snapshot ?? ''), true));
+            if ($occurredAt === null) {
+                return null;
+            }
+
+            if ($selected === null
+                || $occurredAt->greaterThan($selectedOccurredAt)
+                || ($occurredAt->equalTo($selectedOccurredAt) && (string) $candidate->created_at > (string) $selected->created_at)) {
+                $selected = $candidate;
+                $selectedOccurredAt = $occurredAt;
+            }
+        }
+
+        return $selected;
+    }
+
+    /** @param array<string, mixed>|mixed $payload */
+    private function payloadOccurredAt(mixed $payload): ?CarbonImmutable
+    {
+        $value = is_array($payload) ? ($payload['occurred_at'] ?? null) : null;
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        try {
+            $occurredAt = CarbonImmutable::parse($value);
+
+            return $occurredAt->isFuture() ? null : $occurredAt;
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     private function eventTypeSupportsStatus(string $eventType, string $status): bool

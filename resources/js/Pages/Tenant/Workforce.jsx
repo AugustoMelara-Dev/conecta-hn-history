@@ -48,7 +48,7 @@ export default function Workforce({ workforce = {} }) {
 
                 <section aria-labelledby="workforce-roles-title">
                     <h2 id="workforce-roles-title" className="text-xl font-semibold text-foreground">Governed role candidates</h2>
-                    {workforce.roles?.length ? <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{workforce.roles.map((role) => <WorkforceRoleCard key={role.key} role={role} selected={selectedRole === role.key} onSelect={setSelectedRole} />)}</div> : <p className="mt-3 rounded-xl border border-border p-4 text-sm text-muted-foreground">No governed role candidate is available. This cockpit remains a preview until the registry supplies one.</p>}
+                    {workforce.roles?.length ? <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{workforce.roles.map((role) => <WorkforceRoleCard key={role.key} role={role} selected={selectedRole === role.key} onSelect={setSelectedRole} />)}</div> : <p className="mt-3 rounded-xl border border-border p-4 text-sm text-muted-foreground">No workforce role is available in the catalog yet.</p>}
                 </section>
 
                 <WorkforceActivationWizard

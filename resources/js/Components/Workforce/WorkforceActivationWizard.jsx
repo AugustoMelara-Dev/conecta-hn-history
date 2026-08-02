@@ -73,7 +73,7 @@ export default function WorkforceActivationWizard({ roles = [], channels = [], s
                 {activeStep === 1 && (
                     <fieldset>
                         <legend className="font-medium text-foreground">Governed role candidate</legend>
-                        {roles.length === 0 ? <p className="mt-3 text-sm text-muted-foreground">No governed role candidate is available yet. The cockpit stays in preview.</p> : (
+                        {roles.length === 0 ? <p className="mt-3 text-sm text-muted-foreground">No workforce role is available in the catalog yet.</p> : (
                             <div className="mt-3 grid gap-2 sm:grid-cols-2">
                                 {roles.map((role) => (
                                     <label key={role.key} className="flex cursor-pointer items-center gap-2 rounded-md border border-border p-3 text-sm text-foreground">

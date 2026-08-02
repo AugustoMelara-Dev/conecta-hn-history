@@ -42,7 +42,9 @@ final class ProductClaimsContractTest extends TestCase
             'Dovra AI is investment-ready and has generated real revenue.',
             'Dovra AI is fully compliant and certified.',
             'Dovra AI has active providers, DNS, and payments.',
-            'Dovra AI tiene ingresos y proveedores certificados.',
+            'Dovra AI está lista para producción pública.',
+            'Dovra AI cumple con GDPR y está certificada.',
+            'Dovra AI tiene tracción y está lista para inversión.',
         ] as $unsupportedClaim) {
             $matched = false;
             foreach ($patterns as $pattern) {

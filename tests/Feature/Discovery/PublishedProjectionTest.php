@@ -243,6 +243,41 @@ final class PublishedProjectionTest extends TestCase
             ->count());
     }
 
+    public function test_it_does_not_publish_when_tenant_market_fields_disagree_with_the_published_pack(): void
+    {
+        $tenant = Tenant::factory()->create([
+            'name' => 'Mismatched Market',
+            'slug' => 'mismatched-market',
+            'subscription_status' => 'active',
+            'verification_status' => 'verified',
+        ]);
+        $this->assignHonduras($tenant);
+        $this->assignCanada($tenant);
+
+        DB::table('tenant_markets')->where('tenant_id', $tenant->id)->update([
+            'country_code' => 'HN',
+        ]);
+
+        $product = Product::factory()->forTenant($tenant)->create([
+            'name' => 'Mismatched offer',
+            'description' => 'The tenant market is intentionally inconsistent.',
+            'price' => 70.00,
+            'price_minor' => 7000,
+            'currency' => 'CAD',
+            'is_active' => true,
+            'is_visible' => true,
+        ]);
+
+        app(PublishedCommercialProjectionService::class)->projectCurrent();
+
+        $projection = DB::table('discovery_published_offers')
+            ->where('projection_key', 'product:'.$product->id)
+            ->sole();
+
+        self::assertFalse((bool) $projection->is_published);
+        self::assertFalse((bool) $projection->is_eligible);
+    }
+
     public function test_it_reconciles_a_projection_when_the_canonical_offer_is_removed(): void
     {
         $tenant = Tenant::factory()->create([

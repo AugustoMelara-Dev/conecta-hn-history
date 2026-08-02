@@ -62,6 +62,7 @@ final class WebhookLifecycleTest extends TestCase
             'tenant_id' => (string) $tenant->getKey(),
             'plan' => 'launch',
             'status' => 'active',
+            'occurred_at' => now()->toIso8601String(),
         ]);
         $provider->handleWebhook('ca', $active['payload'], $active['signature']);
         self::assertTrue($service->allows($tenantContext, BillingCapability::liveAgent())->allowed());
@@ -73,6 +74,7 @@ final class WebhookLifecycleTest extends TestCase
             'plan' => 'launch',
             'status' => 'grace',
             'grace_ends_at' => now()->addDays(7)->toIso8601String(),
+            'occurred_at' => now()->subSecond()->toIso8601String(),
         ]);
         $provider->handleWebhook('ca', $grace['payload'], $grace['signature']);
         self::assertTrue($service->allows($tenantContext, BillingCapability::liveAgent())->allowed());
@@ -87,6 +89,7 @@ final class WebhookLifecycleTest extends TestCase
             'tenant_id' => (string) $tenant->getKey(),
             'plan' => 'launch',
             'status' => 'suspended',
+            'occurred_at' => now()->toIso8601String(),
         ]);
         $provider->handleWebhook('ca', $suspend['payload'], $suspend['signature']);
         self::assertFalse($service->allows($tenantContext, BillingCapability::liveAgent())->allowed());
@@ -165,6 +168,7 @@ final class WebhookLifecycleTest extends TestCase
             'tenant_id' => (string) $tenant->getKey(),
             'plan' => 'launch',
             'status' => 'active',
+            'occurred_at' => now()->toIso8601String(),
         ]);
 
         $provider->handleWebhook('ca', $signed['payload'], $signed['signature']);

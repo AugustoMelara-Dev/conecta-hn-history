@@ -72,6 +72,9 @@ final class CanonicalPublishedOfferSource
                 $join->on('tm.tenant_id', '=', 't.id')
                     ->where('tm.is_primary', '=', 1);
             })
+            ->leftJoin('market_pack_versions as mpv', 'mpv.id', '=', 'tm.market_pack_version_id')
+            ->leftJoin('market_packs as mp', 'mp.id', '=', 'mpv.market_pack_id')
+            ->leftJoin('countries as mc', 'mc.code', '=', 'mp.country_code')
             ->leftJoin('locations as l', function ($join): void {
                 $join->on('l.tenant_id', '=', 't.id')
                     ->where('l.is_primary', '=', 1)
@@ -92,10 +95,20 @@ final class CanonicalPublishedOfferSource
                 't.name as business_name',
                 't.slug as business_slug',
                 'tm.id as tenant_market_id',
+                'tm.market_pack_version_id',
                 'tm.country_code as market_country_code',
                 'tm.locale_code as market_locale_code',
                 'tm.currency_code as market_currency_code',
                 'tm.timezone_name as market_timezone_name',
+                'mp.country_code as market_pack_country_code',
+                'mp.is_active as market_pack_active',
+                'mpv.status as market_pack_status',
+                'mpv.published_at as market_pack_published_at',
+                'mpv.effective_from as market_pack_effective_from',
+                'mpv.supported_locales as market_pack_supported_locales',
+                'mpv.supported_currencies as market_pack_supported_currencies',
+                'mpv.supported_timezones as market_pack_supported_timezones',
+                'mc.is_active as market_country_active',
                 'l.id as location_id',
                 'l.name as location_name',
                 'l.country_code as location_country_code',
@@ -144,11 +157,12 @@ final class CanonicalPublishedOfferSource
 
         return collect($query->get())
             ->map(function (object $row): array {
-                $marketContextExplicit = $row->tenant_market_id !== null;
-                $countryCode = $marketContextExplicit ? $row->market_country_code : null;
-                $localeCode = $marketContextExplicit ? $row->market_locale_code : null;
+                $market = $this->validMarketContext($row);
+                $marketContextExplicit = $market !== null;
+                $countryCode = $market['country_code'] ?? null;
+                $localeCode = $market['locale_code'] ?? null;
                 $currencyCode = $row->currency ?: ($marketContextExplicit ? $row->market_currency_code : null);
-                $timezoneName = $marketContextExplicit ? $row->market_timezone_name : null;
+                $timezoneName = $market['timezone_name'] ?? null;
                 $marketCurrencyCompatible = $marketContextExplicit
                     && ($row->market_currency_code === null
                         || strtoupper((string) $currencyCode) === strtoupper((string) $row->market_currency_code));
@@ -166,7 +180,7 @@ final class CanonicalPublishedOfferSource
                     'source_type' => 'product',
                     'source_record_id' => (int) $row->source_record_id,
                     'source_tenant_id' => (string) $row->source_tenant_id,
-                    'tenant_market_id' => $row->tenant_market_id !== null ? (string) $row->tenant_market_id : null,
+                    'tenant_market_id' => $market['id'] ?? null,
                     'location_id' => $row->location_id !== null ? (string) $row->location_id : null,
                     'country_code' => $countryCode,
                     'locale_code' => $localeCode,
@@ -205,10 +219,10 @@ final class CanonicalPublishedOfferSource
                         ],
                         $countryCode !== null ? [
                             'evidence_type' => 'tenant_market',
-                            'evidence_key' => 'market:'.$row->tenant_market_id,
+                            'evidence_key' => 'market:'.$market['id'],
                             'source_tenant_id' => (string) $row->source_tenant_id,
                             'source_table' => 'tenant_markets',
-                            'source_identifier' => $row->tenant_market_id !== null ? (string) $row->tenant_market_id : null,
+                            'source_identifier' => $market['id'],
                             'freshness_at' => $row->source_updated_at,
                             'summary' => 'Primary tenant market',
                             'facts' => ['country_code' => $countryCode, 'currency_code' => $currencyCode],
@@ -244,6 +258,9 @@ final class CanonicalPublishedOfferSource
                 $join->on('tm.tenant_id', '=', 't.id')
                     ->where('tm.is_primary', '=', 1);
             })
+            ->leftJoin('market_pack_versions as mpv', 'mpv.id', '=', 'tm.market_pack_version_id')
+            ->leftJoin('market_packs as mp', 'mp.id', '=', 'mpv.market_pack_id')
+            ->leftJoin('countries as mc', 'mc.code', '=', 'mp.country_code')
             ->select([
                 's.id as source_record_id',
                 's.tenant_id as source_tenant_id',
@@ -256,10 +273,20 @@ final class CanonicalPublishedOfferSource
                 't.name as business_name',
                 't.slug as business_slug',
                 'tm.id as tenant_market_id',
+                'tm.market_pack_version_id',
                 'tm.country_code as market_country_code',
                 'tm.locale_code as market_locale_code',
                 'tm.currency_code as market_currency_code',
                 'tm.timezone_name as market_timezone_name',
+                'mp.country_code as market_pack_country_code',
+                'mp.is_active as market_pack_active',
+                'mpv.status as market_pack_status',
+                'mpv.published_at as market_pack_published_at',
+                'mpv.effective_from as market_pack_effective_from',
+                'mpv.supported_locales as market_pack_supported_locales',
+                'mpv.supported_currencies as market_pack_supported_currencies',
+                'mpv.supported_timezones as market_pack_supported_timezones',
+                'mc.is_active as market_country_active',
                 'l.id as location_id',
                 'l.name as location_name',
                 'l.country_code as location_country_code',
@@ -296,11 +323,12 @@ final class CanonicalPublishedOfferSource
 
         return collect($query->get())
             ->map(function (object $row): array {
-                $marketContextExplicit = $row->tenant_market_id !== null;
-                $countryCode = $marketContextExplicit ? $row->market_country_code : null;
-                $localeCode = $marketContextExplicit ? $row->market_locale_code : null;
+                $market = $this->validMarketContext($row);
+                $marketContextExplicit = $market !== null;
+                $countryCode = $market['country_code'] ?? null;
+                $localeCode = $market['locale_code'] ?? null;
                 $currencyCode = $row->currency ?: ($marketContextExplicit ? $row->market_currency_code : null);
-                $timezoneName = $marketContextExplicit ? $row->market_timezone_name : null;
+                $timezoneName = $market['timezone_name'] ?? null;
                 $marketCurrencyCompatible = $marketContextExplicit
                     && ($row->market_currency_code === null
                         || strtoupper((string) $currencyCode) === strtoupper((string) $row->market_currency_code));
@@ -322,7 +350,7 @@ final class CanonicalPublishedOfferSource
                     'source_type' => 'service',
                     'source_record_id' => (int) $row->source_record_id,
                     'source_tenant_id' => (string) $row->source_tenant_id,
-                    'tenant_market_id' => $row->tenant_market_id !== null ? (string) $row->tenant_market_id : null,
+                    'tenant_market_id' => $market['id'] ?? null,
                     'location_id' => $row->location_id !== null ? (string) $row->location_id : null,
                     'country_code' => $countryCode,
                     'locale_code' => $localeCode,
@@ -361,10 +389,10 @@ final class CanonicalPublishedOfferSource
                         ],
                         $countryCode !== null ? [
                             'evidence_type' => 'tenant_market',
-                            'evidence_key' => 'market:'.$row->tenant_market_id,
+                            'evidence_key' => 'market:'.$market['id'],
                             'source_tenant_id' => (string) $row->source_tenant_id,
                             'source_table' => 'tenant_markets',
-                            'source_identifier' => $row->tenant_market_id !== null ? (string) $row->tenant_market_id : null,
+                            'source_identifier' => $market['id'],
                             'freshness_at' => $row->source_updated_at,
                             'summary' => 'Primary tenant market',
                             'facts' => ['country_code' => $countryCode, 'currency_code' => $currencyCode],
@@ -394,6 +422,55 @@ final class CanonicalPublishedOfferSource
                 ];
             })
             ->all();
+    }
+
+    /** @return array{id:string, country_code:string, locale_code:string, currency_code:string, timezone_name:string}|null */
+    private function validMarketContext(object $row): ?array
+    {
+        if ($row->tenant_market_id === null
+            || (bool) ($row->market_pack_active ?? false) !== true
+            || (bool) ($row->market_country_active ?? false) !== true
+            || strtolower((string) ($row->market_pack_status ?? '')) !== 'published'
+            || $row->market_pack_published_at === null
+            || $row->market_pack_country_code === null
+            || strtoupper((string) $row->market_country_code) !== strtoupper((string) $row->market_pack_country_code)) {
+            return null;
+        }
+
+        try {
+            $now = CarbonImmutable::now();
+            if (CarbonImmutable::parse((string) $row->market_pack_published_at)->isAfter($now)
+                || ($row->market_pack_effective_from !== null
+                    && CarbonImmutable::parse((string) $row->market_pack_effective_from)->isAfter($now))) {
+                return null;
+            }
+        } catch (\Throwable) {
+            return null;
+        }
+
+        $supported = static function (mixed $encoded, string $value): bool {
+            $values = is_array($encoded) ? $encoded : json_decode((string) $encoded, true);
+
+            return is_array($values) && in_array($value, array_map(static fn (mixed $item): string => (string) $item, $values), true);
+        };
+        $localeCode = (string) $row->market_locale_code;
+        $currencyCode = strtoupper((string) $row->market_currency_code);
+        $timezoneName = (string) $row->market_timezone_name;
+
+        if ($localeCode === '' || $currencyCode === '' || $timezoneName === ''
+            || ! $supported($row->market_pack_supported_locales, $localeCode)
+            || ! $supported($row->market_pack_supported_currencies, $currencyCode)
+            || ! $supported($row->market_pack_supported_timezones, $timezoneName)) {
+            return null;
+        }
+
+        return [
+            'id' => (string) $row->tenant_market_id,
+            'country_code' => strtoupper((string) $row->market_country_code),
+            'locale_code' => $localeCode,
+            'currency_code' => $currencyCode,
+            'timezone_name' => $timezoneName,
+        ];
     }
 
     private function productAvailabilityStatus(object $row): string

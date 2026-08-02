@@ -48,8 +48,9 @@ final class DeterministicBillingProviderFake
         $plan = trim((string) ($decoded['plan'] ?? ''));
         $status = trim((string) ($decoded['status'] ?? ''));
         $eventType = trim((string) ($decoded['event_type'] ?? ''));
+        $occurredAt = trim((string) ($decoded['occurred_at'] ?? ''));
 
-        if ($eventId === '' || $tenantId === '' || $plan === '' || $status === '' || $eventType === '') {
+        if ($eventId === '' || $tenantId === '' || $plan === '' || $status === '' || $eventType === '' || $occurredAt === '') {
             throw new \RuntimeException('webhook payload is incomplete');
         }
 

@@ -147,7 +147,7 @@ final class AgentCapabilityProjection
 
     private function hasPublishedTenantMarket(string $tenantId): bool
     {
-        return DB::table('tenant_markets as markets')
+        $market = DB::table('tenant_markets as markets')
             ->join('market_pack_versions as versions', 'versions.id', '=', 'markets.market_pack_version_id')
             ->join('market_packs as packs', 'packs.id', '=', 'versions.market_pack_id')
             ->join('countries', 'countries.code', '=', 'packs.country_code')
@@ -162,7 +162,32 @@ final class AgentCapabilityProjection
                 $query->whereNull('versions.effective_from')
                     ->orWhere('versions.effective_from', '<=', now());
             })
-            ->exists();
+            ->first([
+                'markets.country_code',
+                'markets.locale_code',
+                'markets.currency_code',
+                'markets.timezone_name',
+                'packs.country_code as pack_country_code',
+                'versions.supported_locales',
+                'versions.supported_currencies',
+                'versions.supported_timezones',
+            ]);
+
+        if ($market === null || strtoupper((string) $market->country_code) !== strtoupper((string) $market->pack_country_code)) {
+            return false;
+        }
+
+        return $this->supportedMarketValue($market->supported_locales, (string) $market->locale_code)
+            && $this->supportedMarketValue($market->supported_currencies, strtoupper((string) $market->currency_code))
+            && $this->supportedMarketValue($market->supported_timezones, (string) $market->timezone_name);
+    }
+
+    private function supportedMarketValue(mixed $encoded, string $value): bool
+    {
+        $values = is_array($encoded) ? $encoded : json_decode((string) $encoded, true);
+
+        return is_array($values)
+            && in_array($value, array_map(static fn (mixed $item): string => (string) $item, $values), true);
     }
 
     private function registryTablesExist(): bool

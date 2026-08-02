@@ -41,7 +41,7 @@ return [
             'table' => 'channel_provider_health',
             'states' => ['available', 'unavailable', 'stale'],
             'stale_after_seconds' => 300,
-            'future_tolerance_seconds' => 30,
+            'future_tolerance_seconds' => 0,
             'market_and_provider_scoped' => true,
         ],
     ],
