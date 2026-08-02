@@ -41,6 +41,21 @@ final readonly class BillingCapability
         return new self('support.priority', false);
     }
 
+    public static function fromKey(string $key): self
+    {
+        $normalized = strtolower(trim($key));
+
+        return match ($normalized) {
+            'ai.sandbox_agent', 'workforce.sandbox' => self::sandboxAgent(),
+            'ai.live_agent', 'workforce.live', 'workforce.agent' => self::liveAgent(),
+            'billing.portal' => self::billingPortal(),
+            'voice', 'workforce.voice' => self::voice(),
+            'api', 'workforce.api' => self::api(),
+            'support.priority', 'workforce.priority_support' => self::prioritySupport(),
+            default => new self($normalized, self::isLiveKey($normalized)),
+        };
+    }
+
     public function key(): string
     {
         return $this->key;
@@ -49,5 +64,15 @@ final readonly class BillingCapability
     public function requiresLiveEntitlement(): bool
     {
         return $this->requiresLiveEntitlement;
+    }
+
+    public function isLiveOnly(): bool
+    {
+        return $this->requiresLiveEntitlement;
+    }
+
+    private static function isLiveKey(string $key): bool
+    {
+        return ! in_array($key, ['billing.portal', 'ai.sandbox_agent', 'workforce.sandbox'], true);
     }
 }

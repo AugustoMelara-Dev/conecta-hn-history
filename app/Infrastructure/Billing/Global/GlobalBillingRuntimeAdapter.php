@@ -8,6 +8,7 @@ use App\Application\Billing\Global\EntitlementServiceInterface;
 use App\Application\Billing\Global\GlobalEntitlementService;
 use App\Domain\Billing\Global\CreditLedgerInterface;
 use App\Domain\Billing\Global\PriceBookReaderInterface;
+use App\Domain\Billing\Global\WorkforceEntitlement;
 use Illuminate\Contracts\Container\Container;
 
 /**
@@ -34,6 +35,11 @@ final class GlobalBillingRuntimeAdapter
     public function creditLedger(): CreditLedgerInterface
     {
         return $this->container->make(CreditLedgerInterface::class);
+    }
+
+    public function workforceEntitlement(): WorkforceEntitlement
+    {
+        return $this->container->make(WorkforceEntitlement::class);
     }
 
     public function legacyAdoptionStatus(): string

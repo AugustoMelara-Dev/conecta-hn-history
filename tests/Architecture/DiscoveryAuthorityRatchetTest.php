@@ -53,6 +53,20 @@ final class DiscoveryAuthorityRatchetTest extends TestCase
         ));
     }
 
+    public function test_task_six_discovery_authority_is_explicit_and_read_only(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $projection = (string) file_get_contents($root.'/app/Application/Discovery/AgentCapabilityProjection.php');
+        $source = (string) file_get_contents($root.'/app/Infrastructure/Discovery/CanonicalPublishedOfferSource.php');
+
+        self::assertStringContainsString('tenant_markets', $projection);
+        self::assertStringContainsString('ai_release_policies', $projection);
+        self::assertStringContainsString('market_context_explicit', $source);
+        self::assertStringNotContainsString('->insert(', $projection);
+        self::assertStringNotContainsString('->update(', $projection);
+        self::assertStringNotContainsString('->delete(', $projection);
+    }
+
     private function hasForbiddenCanonicalMutation(string $source): bool
     {
         return preg_match('/\b(?:Product|Service|Tenant|Order|Appointment|Quote)\s*::\s*(?:create|forceCreate|updateOrCreate|upsert|insert)\s*\(/', $source) === 1

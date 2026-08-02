@@ -32,7 +32,9 @@ final class PublishedCommercialProjectionService
             $prohibited = $this->containsProhibitedTerms($candidate, $prohibitedTerms);
             $moderationStatus = $prohibited ? 'rejected' : 'approved';
             $moderationScore = $prohibited ? 0 : 100;
-            $isPublished = $candidate['country_code'] !== null
+            $isPublished = (bool) ($candidate['market_context_explicit'] ?? ($candidate['tenant_market_id'] !== null))
+                && (bool) ($candidate['market_currency_compatible'] ?? true)
+                && $candidate['country_code'] !== null
                 && $candidate['currency_code'] !== null
                 && $candidate['business_name'] !== '';
             $isEligible = $isPublished

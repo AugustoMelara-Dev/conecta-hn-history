@@ -139,10 +139,14 @@ final class CanonicalPublishedOfferSource
 
         return collect($query->get())
             ->map(function (object $row): array {
-                $countryCode = $row->market_country_code ?: $row->location_country_code;
-                $localeCode = $row->market_locale_code ?: $row->location_locale_code;
-                $currencyCode = $row->currency ?: $row->market_currency_code ?: $row->location_currency_code;
-                $timezoneName = $row->market_timezone_name ?: $row->location_timezone_name;
+                $marketContextExplicit = $row->tenant_market_id !== null;
+                $countryCode = $marketContextExplicit ? $row->market_country_code : null;
+                $localeCode = $marketContextExplicit ? $row->market_locale_code : null;
+                $currencyCode = $row->currency ?: ($marketContextExplicit ? $row->market_currency_code : null);
+                $timezoneName = $marketContextExplicit ? $row->market_timezone_name : null;
+                $marketCurrencyCompatible = $marketContextExplicit
+                    && ($row->market_currency_code === null
+                        || strtoupper((string) $currencyCode) === strtoupper((string) $row->market_currency_code));
                 $priceMinor = $row->price_minor !== null
                     ? (int) $row->price_minor
                     : (int) round(((float) $row->price) * 100);
@@ -159,6 +163,8 @@ final class CanonicalPublishedOfferSource
                     'locale_code' => $localeCode,
                     'currency_code' => $currencyCode,
                     'timezone_name' => $timezoneName,
+                    'market_context_explicit' => $marketContextExplicit,
+                    'market_currency_compatible' => $marketCurrencyCompatible,
                     'business_name' => (string) $row->business_name,
                     'business_slug' => $row->business_slug !== null ? (string) $row->business_slug : null,
                     'business_url' => $this->businessUrl($row->business_slug !== null ? (string) $row->business_slug : null),
@@ -280,10 +286,14 @@ final class CanonicalPublishedOfferSource
 
         return collect($query->get())
             ->map(function (object $row): array {
-                $countryCode = $row->market_country_code ?: $row->location_country_code;
-                $localeCode = $row->market_locale_code ?: $row->location_locale_code;
-                $currencyCode = $row->currency ?: $row->market_currency_code ?: $row->location_currency_code;
-                $timezoneName = $row->market_timezone_name ?: $row->location_timezone_name;
+                $marketContextExplicit = $row->tenant_market_id !== null;
+                $countryCode = $marketContextExplicit ? $row->market_country_code : null;
+                $localeCode = $marketContextExplicit ? $row->market_locale_code : null;
+                $currencyCode = $row->currency ?: ($marketContextExplicit ? $row->market_currency_code : null);
+                $timezoneName = $marketContextExplicit ? $row->market_timezone_name : null;
+                $marketCurrencyCompatible = $marketContextExplicit
+                    && ($row->market_currency_code === null
+                        || strtoupper((string) $currencyCode) === strtoupper((string) $row->market_currency_code));
                 $priceMinor = $row->price_minor !== null
                     ? (int) $row->price_minor
                     : (int) round(((float) $row->price) * 100);
@@ -304,6 +314,8 @@ final class CanonicalPublishedOfferSource
                     'locale_code' => $localeCode,
                     'currency_code' => $currencyCode,
                     'timezone_name' => $timezoneName,
+                    'market_context_explicit' => $marketContextExplicit,
+                    'market_currency_compatible' => $marketCurrencyCompatible,
                     'business_name' => (string) $row->business_name,
                     'business_slug' => $row->business_slug !== null ? (string) $row->business_slug : null,
                     'business_url' => $this->businessUrl($row->business_slug !== null ? (string) $row->business_slug : null),

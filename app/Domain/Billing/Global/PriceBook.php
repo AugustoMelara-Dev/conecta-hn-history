@@ -41,4 +41,20 @@ final readonly class PriceBook
 
         return $this->plans[$normalized];
     }
+
+    public function hasPlan(string $key): bool
+    {
+        return isset($this->plans[strtolower(trim($key))]);
+    }
+
+    /** @return array<string, PlanPrice> */
+    public function plans(): array
+    {
+        return $this->plans;
+    }
+
+    public function supportsCurrency(string $currencyCode): bool
+    {
+        return strtoupper(trim($currencyCode)) === strtoupper($this->currencyCode);
+    }
 }
