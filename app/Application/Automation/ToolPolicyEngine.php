@@ -18,37 +18,21 @@ final readonly class ToolPolicyEngine implements ToolPolicyEngineInterface
 
     public function authorize(ToolAuthorizationRequest $request): ToolAuthorizationDecision
     {
-        $policy = $this->repository->findToolPolicy($request->tenantId, $request->tool, $request->toolVersion);
-        if ($policy === null) {
-            return ToolAuthorizationDecision::deny('policy_missing');
-        }
-
-        if (! $this->contains((array) ($policy['allowed_roles'] ?? []), $request->actorRoles)) {
-            return ToolAuthorizationDecision::deny('role_denied');
-        }
-
-        if (! in_array($request->plan, (array) ($policy['allowed_plans'] ?? []), true)) {
-            return ToolAuthorizationDecision::deny('plan_denied');
-        }
-
-        if (! in_array($request->channel, (array) ($policy['allowed_channels'] ?? []), true)) {
-            return ToolAuthorizationDecision::deny('channel_denied');
-        }
-
-        if ($this->riskRank($request->risk) > $this->riskRank((string) ($policy['max_risk'] ?? 'read'))) {
-            return ToolAuthorizationDecision::deny('risk_denied');
+        $decision = $this->evaluate($request);
+        if (! $decision->allowed) {
+            return $decision;
         }
 
         $occurredAt = CarbonImmutable::now();
 
-        return $this->repository->connection()->transaction(function () use ($request, $policy, $occurredAt): ToolAuthorizationDecision {
+        return $this->repository->connection()->transaction(function () use ($request, $decision, $occurredAt): ToolAuthorizationDecision {
             $scope = 'tool:'.$request->provider.':'.$request->tool;
 
             if ($this->repository->hasIdempotencyClaim($request->tenantId, $scope, $request->idempotencyKey)) {
                 return ToolAuthorizationDecision::deny('idempotency_replay');
             }
 
-            if ($this->requiresConfirmation($request->risk, (bool) ($policy['confirmation_required'] ?? false))) {
+            if ((bool) ($decision->metadata['confirmation_required'] ?? false)) {
                 if ($request->confirmationId === null || $request->confirmationToken === null) {
                     return ToolAuthorizationDecision::deny('confirmation_required');
                 }
@@ -91,8 +75,43 @@ final readonly class ToolPolicyEngine implements ToolPolicyEngineInterface
                 return ToolAuthorizationDecision::deny('idempotency_replay');
             }
 
-            return ToolAuthorizationDecision::allow('authorized');
+            return ToolAuthorizationDecision::allow('authorized', $decision->metadata);
         }, 3);
+    }
+
+    /**
+     * Evaluate policy only. Callers that compose a confirmation and a workflow
+     * must use this method before either can create a side effect.
+     */
+    public function evaluate(ToolAuthorizationRequest $request): ToolAuthorizationDecision
+    {
+        $policy = $this->repository->findToolPolicy($request->tenantId, $request->tool, $request->toolVersion);
+        if ($policy === null) {
+            return ToolAuthorizationDecision::deny('policy_missing');
+        }
+
+        if (! $this->contains((array) ($policy['allowed_roles'] ?? []), $request->actorRoles)) {
+            return ToolAuthorizationDecision::deny('role_denied');
+        }
+
+        if (! in_array($request->plan, (array) ($policy['allowed_plans'] ?? []), true)) {
+            return ToolAuthorizationDecision::deny('plan_denied');
+        }
+
+        if (! in_array($request->channel, (array) ($policy['allowed_channels'] ?? []), true)) {
+            return ToolAuthorizationDecision::deny('channel_denied');
+        }
+
+        if ($this->riskRank($request->risk) > $this->riskRank((string) ($policy['max_risk'] ?? 'read'))) {
+            return ToolAuthorizationDecision::deny('risk_denied');
+        }
+
+        return ToolAuthorizationDecision::allow('policy_authorized', [
+            'confirmation_required' => $this->requiresConfirmation(
+                $request->risk,
+                (bool) ($policy['confirmation_required'] ?? false),
+            ),
+        ]);
     }
 
     /**

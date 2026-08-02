@@ -34,6 +34,15 @@ final class WorkflowRunService
     }
 
     /**
+     * Workforce actions enter only after the outer action executor has made
+     * its policy, confirmation and action-level idempotency decisions.
+     */
+    public function advanceAgentAction(array $run, array $workflowVersion, WorkflowStartRequest $request): WorkflowRunResult
+    {
+        return $this->advance($run, $workflowVersion, $request->actorId, $request->actorRoles, $request->plan, $request->channel, $request->confirmations, $request->occurredAt());
+    }
+
+    /**
      * @param  array<string, mixed>  $run
      * @param  array<string, mixed>  $workflowVersion
      */

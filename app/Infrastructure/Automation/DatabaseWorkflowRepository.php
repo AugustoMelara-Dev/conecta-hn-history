@@ -68,6 +68,74 @@ final readonly class DatabaseWorkflowRepository implements WorkflowRepositoryInt
             ->exists();
     }
 
+    public function claimAgentActionIdempotency(
+        string $tenantId,
+        string $actionKey,
+        string $idempotencyKey,
+        string $fingerprint,
+        CarbonImmutable $occurredAt,
+    ): bool {
+        return $this->claimIdempotency(
+            $tenantId,
+            'agent_action:'.$actionKey,
+            $idempotencyKey,
+            $fingerprint,
+            $occurredAt,
+        );
+    }
+
+    /** @return array<string, mixed>|null */
+    public function findAgentActionAuditByIdempotency(string $tenantId, string $actionKey, string $idempotencyKey): ?array
+    {
+        return $this->normalize(
+            $this->connection->table('dovra_agent_action_audits')
+                ->where('tenant_id', $tenantId)
+                ->where('action_key', $actionKey)
+                ->where('idempotency_key', $idempotencyKey)
+                ->first(),
+            ['metadata'],
+        );
+    }
+
+    /** @return array<string, mixed>|null */
+    public function findAgentActionAuditById(string $auditId, string $tenantId): ?array
+    {
+        return $this->normalize(
+            $this->connection->table('dovra_agent_action_audits')
+                ->where('id', $auditId)
+                ->where('tenant_id', $tenantId)
+                ->first(),
+            ['metadata'],
+        );
+    }
+
+    /** @param array<string, mixed> $attributes */
+    public function createAgentActionAudit(array $attributes): void
+    {
+        $attributes['metadata'] = isset($attributes['metadata'])
+            ? json_encode($attributes['metadata'], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+            : null;
+        $this->connection->table('dovra_agent_action_audits')->insert($attributes);
+    }
+
+    /** @param array<string, mixed> $attributes */
+    public function updateAgentActionAudit(string $auditId, array $attributes): void
+    {
+        if (isset($attributes['metadata']) && is_array($attributes['metadata'])) {
+            $attributes['metadata'] = json_encode($attributes['metadata'], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
+        $this->connection->table('dovra_agent_action_audits')->where('id', $auditId)->update($attributes);
+    }
+
+    /** @param array<string, mixed> $attributes */
+    public function createAgentOutcome(array $attributes): void
+    {
+        $attributes['attribution_metadata'] = isset($attributes['attribution_metadata'])
+            ? json_encode($attributes['attribution_metadata'], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+            : null;
+        $this->connection->table('dovra_agent_outcomes')->insert($attributes);
+    }
+
     public function lockConfirmationAttempt(string $confirmationId): ?array
     {
         return $this->normalize(

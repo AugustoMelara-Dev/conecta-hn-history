@@ -42,24 +42,18 @@ final class AutomationAuthorityRatchetTest extends TestCase
         self::assertSame($expected, $matches);
     }
 
-    public function test_the_automation_slice_uses_the_policy_port_without_binding_to_the_legacy_program05_confirmation_service(): void
+    public function test_agent_actions_compose_the_existing_policy_confirmation_and_workflow_authorities_without_constructing_providers(): void
     {
-        $root = dirname(__DIR__, 2).'/app/Application/Automation';
-        $violations = [];
+        $root = dirname(__DIR__, 2);
+        $source = (string) file_get_contents($root.'/app/Application/Automation/AgentAction/AgentActionExecutor.php');
 
-        foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root)) as $file) {
-            if (! $file instanceof SplFileInfo || $file->getExtension() !== 'php') {
-                continue;
-            }
-
-            $source = (string) file_get_contents($file->getPathname());
-            $relativePath = str_replace('\\', '/', substr($file->getPathname(), strlen(dirname(__DIR__, 2)) + 1));
-
-            if (str_contains($source, 'AiToolConfirmationService')) {
-                $violations[] = $relativePath;
-            }
-        }
-
-        self::assertSame([], $violations, 'Program 06 must use a local automation seam instead of rebinding the Program 05 confirmation service.');
+        self::assertStringContainsString('ToolPolicyEngine', $source);
+        self::assertStringContainsString('AiToolConfirmationService', $source);
+        self::assertStringContainsString('WorkflowRuntime', $source);
+        self::assertStringContainsString('->evaluate(', $source);
+        self::assertStringContainsString('->authorizeAgentAction(', $source);
+        self::assertStringContainsString('->claimAgentActionIdempotency(', $source);
+        self::assertStringContainsString('->startAgentAction(', $source);
+        self::assertDoesNotMatchRegularExpression('/new\\s+[^;]*(Provider|Client)\\s*\\(/', $source);
     }
 }

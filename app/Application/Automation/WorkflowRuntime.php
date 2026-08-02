@@ -31,6 +31,24 @@ final readonly class WorkflowRuntime implements WorkflowRuntimeInterface
 
     public function start(WorkflowStartRequest $request): WorkflowRunResult
     {
+        return $this->startWorkflow($request, false);
+    }
+
+    /**
+     * Dedicated entry point for a workforce action after its outer policy,
+     * confirmation and idempotency checks have succeeded.
+     */
+    public function startAgentAction(WorkflowStartRequest $request): WorkflowRunResult
+    {
+        if ($request->trigger !== 'agent_action') {
+            throw new RuntimeException('Agent action workflow trigger is required.');
+        }
+
+        return $this->startWorkflow($request, true);
+    }
+
+    private function startWorkflow(WorkflowStartRequest $request, bool $agentAction): WorkflowRunResult
+    {
         $version = $this->definitions->publishedVersion($request->tenantId, $request->workflowKey, $request->workflowVersion);
         if ($version === null) {
             throw new RuntimeException('Published workflow version not found.');
@@ -62,7 +80,9 @@ final readonly class WorkflowRuntime implements WorkflowRuntimeInterface
             return $this->resultFromRun($run, true);
         }
 
-        return $this->runService->advanceStart($run, $version, $request);
+        return $agentAction
+            ? $this->runService->advanceAgentAction($run, $version, $request)
+            : $this->runService->advanceStart($run, $version, $request);
     }
 
     public function resume(string $runId, WorkflowResumeRequest $request): WorkflowRunResult
