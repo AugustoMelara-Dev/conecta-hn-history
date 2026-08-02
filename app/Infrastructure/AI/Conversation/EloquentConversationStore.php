@@ -10,6 +10,8 @@ use App\Application\Ai\Conversation\ConversationMessage;
 use App\Application\Ai\Conversation\ConversationMessageClaim;
 use App\Application\Ai\Conversation\ConversationStore;
 use App\Application\Ai\DTOs\AiExecutionResult;
+use App\Application\Ai\Grounding\EvidenceSnapshot;
+use App\Application\Ai\Grounding\GroundingEvidenceProjector;
 use App\Application\Ai\Registry\AiRuntimeSelection;
 use App\Application\Ai\Security\AiContentCipher;
 use App\Application\Ai\Security\EncryptedAiContent;
@@ -52,6 +54,7 @@ final class EloquentConversationStore implements ConversationStore
     public function __construct(
         private readonly AiContentCipher $cipher,
         private readonly TenantContext $tenantContext,
+        private readonly GroundingEvidenceProjector $groundingEvidence,
     ) {}
 
     public function claim(AcceptConversationMessage $command): ConversationMessageClaim
@@ -200,7 +203,7 @@ final class EloquentConversationStore implements ConversationStore
         $this->assertTenantAccess($tenantId);
         $this->assertIdentifiers($tenantId, $conversationId, $requestMessageId);
         $normalizedAnswer = $this->normalizeAnswer($answer);
-        $validatedEvidence = $this->normalizeEvidence($tenantId, $evidence);
+        $validatedEvidence = $this->normalizeEvidence($tenantId, $requestMessageId, $evidence);
         $responseId = $this->responseId($tenantId, $requestMessageId);
         $answerJson = $this->json($normalizedAnswer);
         $completionHash = $this->hash([
@@ -284,7 +287,7 @@ final class EloquentConversationStore implements ConversationStore
 
                 foreach ($validatedEvidence as $index => $item) {
                     DB::table('ai_message_evidence')->insert([
-                        'id' => $this->stableId("evidence|{$responseId}|{$index}"),
+                        'id' => $item['row_id'] ?? $this->stableId("evidence|{$responseId}|{$index}"),
                         'tenant_id' => $tenantId,
                         'message_id' => $responseId,
                         'evidence_type' => $item['evidence_type'],
@@ -292,6 +295,22 @@ final class EloquentConversationStore implements ConversationStore
                         'resource_id' => $item['resource_id'],
                         'content_hash' => $item['content_hash'],
                         'metadata' => null,
+                        'evidence_id' => $item['evidence_id'] ?? null,
+                        'source_type' => $item['source_type'] ?? null,
+                        'source_id' => $item['source_id'] ?? null,
+                        'source_version' => $item['source_version'] ?? null,
+                        'source_tenant_id' => $item['source_tenant_id'] ?? null,
+                        'visibility' => $item['visibility'] ?? null,
+                        'citation_label' => $item['citation_label'] ?? null,
+                        'fresh_at' => $item['fresh_at'] ?? null,
+                        'retrieval_rank' => $item['retrieval_rank'] ?? null,
+                        'retrieval_score' => $item['retrieval_score'] ?? null,
+                        'currency' => $item['currency'] ?? null,
+                        'price_minor' => $item['price_minor'] ?? null,
+                        'availability' => $item['availability'] ?? null,
+                        'excerpt_ciphertext' => $item['excerpt_ciphertext'] ?? null,
+                        'excerpt_hash' => $item['excerpt_hash'] ?? null,
+                        'excerpt_encryption_key_version' => $item['excerpt_encryption_key_version'] ?? null,
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
@@ -721,15 +740,60 @@ final class EloquentConversationStore implements ConversationStore
 
     /**
      * @param  list<array<string, mixed>>  $evidence
-     * @return list<array{evidence_type:string,resource_type:string,resource_id:string,source_tenant_id:string,content_hash:?string}>
+     * @return list<array<string, mixed>>
      */
-    private function normalizeEvidence(string $tenantId, array $evidence): array
+    private function normalizeEvidence(string $tenantId, string $requestMessageId, array $evidence): array
     {
         if (! array_is_list($evidence) || count($evidence) > 20) {
             throw new InvalidArgumentException('AI conversation evidence is invalid.');
         }
         $validated = [];
+        $seen = [];
         foreach ($evidence as $item) {
+            if ($item instanceof EvidenceSnapshot) {
+                $rowId = GroundingEvidenceProjector::rowId(
+                    $tenantId,
+                    $requestMessageId,
+                    $item->evidenceId,
+                );
+                if ($item->tenantId !== $tenantId || isset($seen[$item->evidenceId])) {
+                    throw new InvalidArgumentException('AI conversation evidence is invalid.');
+                }
+                $seen[$item->evidenceId] = true;
+                $this->cipher->decrypt(
+                    $tenantId,
+                    $rowId,
+                    'evidence_excerpt',
+                    $item->excerpt,
+                );
+                $validated[] = [
+                    'snapshot' => true,
+                    'row_id' => $rowId,
+                    'tenant_id' => $tenantId,
+                    'evidence_type' => 'snapshot',
+                    'resource_type' => $item->sourceType,
+                    'resource_id' => $item->sourceId,
+                    'content_hash' => $item->excerpt->contentHash,
+                    'evidence_id' => $item->evidenceId,
+                    'source_type' => $item->sourceType,
+                    'source_id' => $item->sourceId,
+                    'source_version' => $item->sourceVersion,
+                    'source_tenant_id' => $item->sourceTenantId,
+                    'visibility' => $item->visibility,
+                    'citation_label' => $item->citationLabel,
+                    'fresh_at' => $item->freshAt->utc()->format('Y-m-d H:i:s.u'),
+                    'retrieval_rank' => $item->retrievalRank,
+                    'retrieval_score' => $item->retrievalScore,
+                    'currency' => $item->currency,
+                    'price_minor' => $item->priceMinor,
+                    'availability' => $item->availability,
+                    'excerpt_ciphertext' => $item->excerpt->ciphertext,
+                    'excerpt_hash' => $item->excerpt->contentHash,
+                    'excerpt_encryption_key_version' => $item->excerpt->keyVersion,
+                ];
+
+                continue;
+            }
             if (! is_array($item)
                 || array_diff(array_keys($item), [
                     'evidence_type',
@@ -751,6 +815,7 @@ final class EloquentConversationStore implements ConversationStore
                 throw new InvalidArgumentException('AI conversation evidence is invalid.');
             }
             $validated[] = [
+                'snapshot' => false,
                 'evidence_type' => 'resource',
                 'resource_type' => $item['resource_type'],
                 'resource_id' => $item['resource_id'],
@@ -763,12 +828,16 @@ final class EloquentConversationStore implements ConversationStore
     }
 
     /**
-     * @param  list<array{evidence_type:string,resource_type:string,resource_id:string,source_tenant_id:string,content_hash:?string}>  $evidence
+     * @param  list<array<string, mixed>>  $evidence
      */
     private function lockEvidenceResources(string $tenantId, array $evidence): void
     {
+        $this->groundingEvidence->lockAndVerify($evidence);
         $resources = [];
         foreach ($evidence as $item) {
+            if (($item['snapshot'] ?? false) === true) {
+                continue;
+            }
             $key = $item['resource_type'].'|'.$item['resource_id'];
             $resources[$key] = $item;
         }

@@ -11,6 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use PDO;
+use Tests\Support\DatabaseSchemaInspector;
 use Tests\TestCase;
 
 final class AiFoundationSchemaTest extends TestCase
@@ -52,6 +53,35 @@ final class AiFoundationSchemaTest extends TestCase
             'secret_reference',
             'status',
         ]));
+    }
+
+    public function test_message_evidence_has_expand_only_grounding_lineage_and_cipher_columns(): void
+    {
+        self::assertTrue(Schema::hasColumns('ai_message_evidence', [
+            'evidence_id', 'source_type', 'source_id', 'source_version',
+            'source_tenant_id', 'visibility', 'citation_label', 'fresh_at',
+            'retrieval_rank', 'retrieval_score', 'currency', 'price_minor',
+            'availability', 'excerpt_ciphertext', 'excerpt_hash',
+            'excerpt_encryption_key_version',
+        ]));
+        self::assertSame(
+            ['tenant_id', 'message_id', 'evidence_id'],
+            DatabaseSchemaInspector::indexColumns(
+                'ai_message_evidence',
+                'ai_message_evidence_message_evidence_unique',
+            ),
+        );
+        self::assertSame(
+            ['source_tenant_id', 'source_type', 'source_id', 'source_version'],
+            DatabaseSchemaInspector::indexColumns(
+                'ai_message_evidence',
+                'ai_message_evidence_source_version_idx',
+            ),
+        );
+
+        foreach (['resource_type', 'resource_id', 'content_hash', 'metadata'] as $legacyColumn) {
+            self::assertTrue(Schema::hasColumn('ai_message_evidence', $legacyColumn));
+        }
     }
 
     public function test_registry_versions_have_explicit_lifecycle_and_release_metadata(): void
@@ -162,8 +192,7 @@ final class AiFoundationSchemaTest extends TestCase
         string $parent,
         string $column,
         string $parentColumn = 'id',
-    ): void
-    {
+    ): void {
         /** @var list<object{id: int, table: string, from: string, to: string}> $foreignKeys */
         $foreignKeys = DB::select("PRAGMA foreign_key_list('{$table}')");
         $groups = [];

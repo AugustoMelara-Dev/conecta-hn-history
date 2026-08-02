@@ -10,9 +10,14 @@ use App\Application\Ai\Conversation\ConversationMessageClaim;
 use App\Application\Ai\Conversation\PrivateConversationInput;
 use App\Application\Ai\DTOs\AiExecutionContext;
 use App\Application\Ai\DTOs\AiExecutionRequest;
+use App\Application\Ai\Grounding\GroundingEvidenceProjector;
+use App\Application\Ai\Grounding\GroundingPolicy;
+use App\Application\Ai\Grounding\GroundingValidator;
 use App\Application\Ai\Registry\AiRuntimeSelection;
 use App\Exceptions\Ai\AiExecutionDeniedException;
+use App\Exceptions\Ai\AiMalformedResponseException;
 use App\Infrastructure\AI\EloquentTenantAgentReader;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Log;
 
 final class PrivateGroundedAgent
@@ -21,6 +26,8 @@ final class PrivateGroundedAgent
         private readonly EloquentTenantAgentReader $reader,
         private readonly AiExecutionContextFactory $contexts,
         private readonly AiGateway $gateway,
+        private readonly GroundingEvidenceProjector $evidenceProjector,
+        private readonly GroundingValidator $groundingValidator,
     ) {}
 
     public function answer(
@@ -35,6 +42,35 @@ final class PrivateGroundedAgent
         $intent = $fallback['data']['intent'] ?? null;
         if ($grounding === [] || ! is_string($tool) || $tool === ''
             || ! in_array($intent, ['catalog', 'availability'], true)) {
+            return new ConversationEngineResult(
+                payload: $this->presentFallback($fallback),
+                evidence: [],
+                execution: null,
+                fallback: true,
+            );
+        }
+
+        $authorizedEvidence = $this->evidenceProjector->project(
+            ownerTenantId: $input->tenantId,
+            requestMessageId: $claim->requestMessage->id,
+            visibility: 'private',
+            items: $grounding,
+        );
+        $authorizedIds = collect($authorizedEvidence)->pluck('evidenceId')->all();
+        $grounding = collect($grounding)
+            ->filter(static fn (array $item): bool => in_array($item['id'] ?? null, $authorizedIds, true))
+            ->values()
+            ->all();
+        if (is_array($fallback['data']['items'] ?? null)) {
+            $fallback['data']['items'] = collect($fallback['data']['items'])
+                ->filter(static fn (array $item): bool => in_array($item['id'] ?? null, $authorizedIds, true))
+                ->values()
+                ->all();
+        }
+        $fallback['grounding'] = $grounding;
+        if ($grounding === []) {
+            $fallback['answer'] = 'No hay evidencia vigente suficiente para esta consulta.';
+
             return new ConversationEngineResult(
                 payload: $this->presentFallback($fallback),
                 evidence: [],
@@ -64,7 +100,26 @@ final class PrivateGroundedAgent
             requestedTools: [$tool],
         ));
 
-        $evidence = $this->validateEvidence($result->data, $visibleEvidence);
+        try {
+            $validated = $this->groundingValidator->validate(
+                $result->data,
+                $authorizedEvidence,
+                new GroundingPolicy(
+                    tenantId: $input->tenantId,
+                    visibility: 'private',
+                    currency: $authorizedEvidence[0]->currency ?? 'HNL',
+                    freshnessCutoff: CarbonImmutable::now()->subDays(
+                        max(1, (int) config('ai.knowledge.freshness_days', 30)),
+                    ),
+                    allowedClaimTypes: ['product', 'service'],
+                ),
+            );
+        } catch (AiMalformedResponseException) {
+            $validated = null;
+        }
+        $evidence = $validated === null
+            ? null
+            : $this->validateEvidence($result->data, $visibleEvidence);
         if ($evidence === null) {
             Log::warning('Private tenant AI grounding rejected provider output.', [
                 'tenant_id' => $input->tenantId,
@@ -95,7 +150,7 @@ final class PrivateGroundedAgent
 
         return new ConversationEngineResult(
             payload: $response,
-            evidence: [],
+            evidence: $validated->selectedEvidence,
             execution: $result,
             fallback: false,
         );

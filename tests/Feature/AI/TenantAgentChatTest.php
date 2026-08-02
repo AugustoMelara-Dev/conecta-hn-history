@@ -176,6 +176,15 @@ final class TenantAgentChatTest extends TestCase
         self::assertSame(['tenant_catalog.read'], $gateway->request->context->allowedTools);
         self::assertStringNotContainsString('PRODUCTO SECRETO AJENO', $gateway->request->userInput);
         self::assertStringNotContainsString('"stock_quantity":7', $gateway->request->userInput);
+        $storedEvidence = DB::table('ai_message_evidence')
+            ->where('message_id', (string) $response->json('response_message_id'))
+            ->sole();
+        self::assertSame((string) $tenant->id, (string) $storedEvidence->tenant_id);
+        self::assertSame((string) $tenant->id, (string) $storedEvidence->source_tenant_id);
+        self::assertSame('private', (string) $storedEvidence->visibility);
+        self::assertSame('product:'.$selected->id, (string) $storedEvidence->evidence_id);
+        self::assertNotNull($storedEvidence->excerpt_ciphertext);
+        self::assertNull($storedEvidence->metadata);
     }
 
     public function test_real_gateway_charges_once_and_rejects_idempotency_collision(): void

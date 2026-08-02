@@ -10,10 +10,15 @@ use App\Application\Ai\Conversation\ConversationMessageClaim;
 use App\Application\Ai\Conversation\PublicConversationInput;
 use App\Application\Ai\DTOs\AiExecutionContext;
 use App\Application\Ai\DTOs\AiExecutionRequest;
+use App\Application\Ai\Grounding\GroundingEvidenceProjector;
+use App\Application\Ai\Grounding\GroundingPolicy;
+use App\Application\Ai\Grounding\GroundingValidator;
 use App\Application\Ai\Knowledge\KnowledgeRetriever;
 use App\Application\Ai\Registry\AiRuntimeSelection;
 use App\Exceptions\Ai\AiExecutionDeniedException;
+use App\Exceptions\Ai\AiMalformedResponseException;
 use App\Infrastructure\Directory\DirectoryGuideService;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Log;
 
 final class PublicGroundedDiscovery
@@ -23,6 +28,8 @@ final class PublicGroundedDiscovery
         private readonly KnowledgeRetriever $knowledge,
         private readonly AiExecutionContextFactory $contexts,
         private readonly AiGateway $gateway,
+        private readonly GroundingEvidenceProjector $evidenceProjector,
+        private readonly GroundingValidator $grounding,
     ) {}
 
     public function answer(
@@ -41,6 +48,32 @@ final class PublicGroundedDiscovery
                 fallback: true,
             );
         }
+
+        $authorizedEvidence = $this->evidenceProjector->project(
+            ownerTenantId: (string) config('ai.public.billing_tenant_id'),
+            requestMessageId: $claim->requestMessage->id,
+            visibility: 'public',
+            items: $items,
+        );
+        $authorizedIds = collect($authorizedEvidence)->pluck('evidenceId')->all();
+        $items = collect($items)
+            ->filter(static fn (array $item): bool => in_array($item['evidence_id'] ?? null, $authorizedIds, true))
+            ->values()
+            ->all();
+        if ($items === []) {
+            $fallback['items'] = [];
+            $fallback['answer'] = 'No encontre una coincidencia publica suficiente.';
+
+            return new ConversationEngineResult(
+                payload: $this->asFallback($fallback, null),
+                evidence: [],
+                execution: null,
+                fallback: true,
+            );
+        }
+        $fallback['items'] = $items;
+        $fallback['answer'] = $this->canonicalAnswer($items, $input->budget);
+        $fallback['suggestions'] = $this->suggestions($items);
 
         $context = $this->contexts->create(
             capability: 'public_discovery',
@@ -70,7 +103,26 @@ final class PublicGroundedDiscovery
             requestedTools: ['public_catalog.search'],
         ));
 
-        $grounded = $this->ground($result->data, $items, $visibleEvidenceIds, $input->budget);
+        try {
+            $validated = $this->grounding->validate(
+                $result->data,
+                $authorizedEvidence,
+                new GroundingPolicy(
+                    tenantId: (string) config('ai.public.billing_tenant_id'),
+                    visibility: 'public',
+                    currency: $authorizedEvidence[0]->currency ?? 'HNL',
+                    freshnessCutoff: CarbonImmutable::now()->subDays(
+                        max(1, (int) config('ai.knowledge.freshness_days', 30)),
+                    ),
+                    allowedClaimTypes: ['product', 'service'],
+                ),
+            );
+        } catch (AiMalformedResponseException) {
+            $validated = null;
+        }
+        $grounded = $validated === null
+            ? null
+            : $this->ground($result->data, $items, $visibleEvidenceIds, $input->budget);
         if ($grounded === null) {
             Log::warning('Public discovery grounding rejected provider output.', [
                 'correlation_id' => $context->correlationId,
@@ -103,7 +155,7 @@ final class PublicGroundedDiscovery
                     'model' => $result->model,
                 ],
             ],
-            evidence: [],
+            evidence: $validated->selectedEvidence,
             execution: $result,
             fallback: false,
         );
