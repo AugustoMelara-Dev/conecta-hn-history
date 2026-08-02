@@ -14,6 +14,9 @@ use App\Application\Ai\Grounding\GroundingEvidenceProjector;
 use App\Application\Ai\Grounding\GroundingPolicy;
 use App\Application\Ai\Grounding\GroundingValidator;
 use App\Application\Ai\Registry\AiRuntimeSelection;
+use App\Application\Ai\Workforce\WorkforceAgentContext;
+use App\Application\Ai\Workforce\WorkforceAgentResolver;
+use App\Application\BusinessGraph\Contracts\BusinessGraphRepositoryInterface;
 use App\Exceptions\Ai\AiExecutionDeniedException;
 use App\Exceptions\Ai\AiMalformedResponseException;
 use App\Infrastructure\AI\EloquentTenantAgentReader;
@@ -28,12 +31,15 @@ final class PrivateGroundedAgent
         private readonly AiGateway $gateway,
         private readonly GroundingEvidenceProjector $evidenceProjector,
         private readonly GroundingValidator $groundingValidator,
+        private readonly WorkforceAgentResolver $workforce,
+        private readonly BusinessGraphRepositoryInterface $businessGraph,
     ) {}
 
     public function answer(
         PrivateConversationInput $input,
         AiRuntimeSelection $selection,
         ConversationMessageClaim $claim,
+        ?WorkforceAgentContext $workforceContext = null,
     ): ConversationEngineResult {
         $fallback = $this->reader->answer($input->tenantId, $input->message);
         $grounding = is_array($fallback['grounding'] ?? null) ? $fallback['grounding'] : [];
@@ -79,6 +85,17 @@ final class PrivateGroundedAgent
             );
         }
 
+        $workforceContext ??= $this->workforce->resolve(
+            tenantId: $input->tenantId,
+            agentVersionId: $selection->agentVersionId,
+        );
+        if (! in_array($tool, $workforceContext->configuration->allowedJobs, true)) {
+            throw new AiExecutionDeniedException('workforce_tool_policy');
+        }
+        $businessContext = $workforceContext->systemContext(
+            $this->businessGraph->snapshot($input->tenantId),
+        );
+
         $context = $this->contexts->create(
             capability: 'private_tenant_agent',
             rateLimitIdentity: 'private-agent:'.$input->tenantId.':'.$input->actorId,
@@ -90,8 +107,9 @@ final class PrivateGroundedAgent
             correlationId: $claim->requestMessage->id,
             conversationId: $claim->conversationId,
             requestMessageId: $claim->requestMessage->id,
+            workforceContext: $workforceContext,
         );
-        [$prompt, $visibleEvidence] = $this->boundedPrompt($input->message, $grounding);
+        [$prompt, $visibleEvidence] = $this->boundedPrompt($input->message, $grounding, $businessContext);
         $result = $this->gateway->execute(new AiExecutionRequest(
             context: $context,
             selection: $selection,
@@ -166,15 +184,23 @@ final class PrivateGroundedAgent
      * @param  array<int, array<string, mixed>>  $grounding
      * @return array{string, array<string, array<string, mixed>>}
      */
-    private function boundedPrompt(string $message, array $grounding): array
+    private function boundedPrompt(string $message, array $grounding, array $workforceContext = []): array
     {
         $max = max(1, (int) config('ai.limits.max_user_input_characters', 2000));
         $grounding = array_slice($grounding, 0, 20);
+        $businessContext = is_array($workforceContext['businessContext'] ?? null)
+            ? $workforceContext['businessContext']
+            : [];
+        $workforceContext['businessContext'] = [
+            'facts' => array_slice((array) ($businessContext['facts'] ?? []), 0, 10),
+            'edges' => array_slice((array) ($businessContext['edges'] ?? []), 0, 10),
+        ];
 
         do {
             $prompt = json_encode([
                 'user_query_untrusted' => mb_substr($message, 0, 500),
                 'authorized_tenant_evidence_untrusted' => $grounding,
+                'workforce_context' => $workforceContext,
             ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
             if (strlen($prompt) <= $max || count($grounding) <= 1) {

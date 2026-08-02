@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Ai;
 
 use App\Application\Ai\DTOs\AiExecutionContext;
+use App\Application\Ai\Workforce\WorkforceAgentContext;
 use App\Exceptions\Ai\AiExecutionDeniedException;
 use Illuminate\Support\Str;
 
@@ -24,6 +25,7 @@ final class AiExecutionContextFactory
         ?string $correlationId = null,
         ?string $conversationId = null,
         ?string $requestMessageId = null,
+        ?WorkforceAgentContext $workforceContext = null,
     ): AiExecutionContext {
         if (trim($rateLimitIdentity) === '') {
             throw new AiExecutionDeniedException('rate_limit_identity');
@@ -50,6 +52,17 @@ final class AiExecutionContextFactory
 
         if (! is_string($billingTenantId) || ! Str::isUuid($billingTenantId)) {
             throw new AiExecutionDeniedException('billing_tenant');
+        }
+
+        if ($workforceContext !== null) {
+            if ($tenantId === null || ! hash_equals($tenantId, $workforceContext->tenantId)) {
+                throw new AiExecutionDeniedException('workforce_tenant');
+            }
+
+            $allowedTools = array_values(array_intersect(
+                $allowedTools,
+                $workforceContext->configuration->allowedJobs,
+            ));
         }
 
         // Platform-funded public work still needs an owning tenant for RLS,

@@ -12,6 +12,7 @@ use App\Application\Ai\PublicGroundedDiscovery;
 use App\Application\Ai\Registry\AiRegistryResolver;
 use App\Application\Ai\Registry\AiRegistryQuery;
 use App\Application\Ai\Registry\AiRuntimeSelection;
+use App\Application\Ai\Workforce\WorkforceAgentResolver;
 use App\Application\Markets\TenantMarketResolver;
 use App\Domain\Shared\Services\TenantContext;
 use App\Exceptions\Ai\AiCircuitOpenException;
@@ -42,6 +43,7 @@ final readonly class ConversationRuntime
         private PostgresTenantScope $postgresTenantScope,
         private AiHandoffService $handoffs,
         private AiFoundationBackfill $conversationAuthority,
+        private WorkforceAgentResolver $workforce,
     ) {}
 
     public function public(PublicConversationInput $input): ConversationResponse
@@ -172,7 +174,11 @@ final readonly class ConversationRuntime
                     agentVersionId: $selection->agentVersionId,
                 );
             }
-            $answer = $this->privateEngine->answer($input, $selection, $claim);
+            $workforceContext = $this->workforce->resolve(
+                tenantId: $input->tenantId,
+                agentVersionId: $selection->agentVersionId,
+            );
+            $answer = $this->privateEngine->answer($input, $selection, $claim, $workforceContext);
 
             return $this->completeOrFail(
                 tenantId: $input->tenantId,
