@@ -81,10 +81,10 @@ export function DovraLaunchReadinessPanel({
 
                 <Alert variant="default" className="border-border bg-muted/60">
                     <AlertTitle className="text-sm">
-                        Onboarding autoritativo
+                        Fuente esperada del onboarding
                     </AlertTitle>
                     <AlertDescription className="leading-7 text-muted-foreground">
-                        {scenario.onboarding.authoritativeNote}
+                        {scenario.onboarding.authoritativeNote} Esta preview no confirma ni escribe ese estado.
                     </AlertDescription>
                 </Alert>
 

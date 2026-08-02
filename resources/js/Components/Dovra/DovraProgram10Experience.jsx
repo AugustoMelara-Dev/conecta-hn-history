@@ -16,7 +16,20 @@ import { DovraBuyerReadinessPanel } from "./DovraBuyerReadinessPanel"
 import { DovraLaunchReadinessPanel } from "./DovraLaunchReadinessPanel"
 import { DovraScenarioSwitcher } from "./DovraScenarioSwitcher"
 
-function DovraHero({ brand }) {
+const defaultBrand = {
+    ...fixtures.brand,
+    ...PUBLIC_BRAND,
+    promise: PUBLIC_BRAND.commercialPromise || fixtures.brand?.promise,
+}
+
+const defaultEvidence = {
+    surface: "react-component-preview",
+    applicationSurface: false,
+    routeExposure: "not-exposed",
+    marketAuthority: "fixture-preview-only",
+}
+
+function DovraHero({ brand, evidence }) {
     return (
         <Card className="border-border bg-card shadow-sm">
             <CardHeader className="gap-4">
@@ -25,7 +38,9 @@ function DovraHero({ brand }) {
                         {brand.category}
                     </Badge>
                     <Badge variant="outline" className="rounded-full">
-                        Manual AT review required
+                        {evidence?.applicationSurface === false
+                            ? "Vista previa no navegable"
+                            : "Superficie de aplicación"}
                     </Badge>
                 </div>
                 <CardTitle className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
@@ -55,8 +70,10 @@ function DovraHero({ brand }) {
 
 export function DovraProgram10Experience({
     scenarios = fixtures.scenarios,
-    brand = fixtures.brand || PUBLIC_BRAND,
+    brand = defaultBrand,
+    evidence = { ...defaultEvidence, ...(fixtures.evidence || {}) },
     initialScenarioKey = scenarios[0]?.key || "products",
+    initialMarketCode = null,
     focusArea = "full",
 }) {
     const [selectedScenarioKey, setSelectedScenarioKey] = useState(initialScenarioKey)
@@ -65,9 +82,14 @@ export function DovraProgram10Experience({
         [scenarios, selectedScenarioKey],
     )
 
-    const [selectedMarketCode, setSelectedMarketCode] = useState(
-        selectedScenario?.defaultMarketCode || selectedScenario?.marketOptions?.[0]?.code || null,
-    )
+    const [selectedMarketCode, setSelectedMarketCode] = useState(() => {
+        const requestedMarket = selectedScenario?.marketOptions?.find((market) => market.code === initialMarketCode)
+
+        return requestedMarket?.code
+            || selectedScenario?.defaultMarketCode
+            || selectedScenario?.marketOptions?.[0]?.code
+            || null
+    })
 
     useEffect(() => {
         const fallbackMarketCode = selectedScenario?.defaultMarketCode || selectedScenario?.marketOptions?.[0]?.code || null
@@ -107,7 +129,13 @@ export function DovraProgram10Experience({
 
     return (
         <MotionConfig reducedMotion="user">
-            <div className="min-h-screen bg-background text-foreground">
+            <div
+                className="min-h-screen bg-background text-foreground"
+                data-dovra-evidence-surface={evidence.surface}
+                data-dovra-application-surface={String(Boolean(evidence.applicationSurface))}
+                data-dovra-route-exposure={evidence.routeExposure}
+                data-dovra-market-authority={evidence.marketAuthority}
+            >
                 <SkipLink />
 
                 <main id="main-content" tabIndex={-1} className="mx-auto flex min-h-screen max-w-6xl flex-col gap-6 px-4 py-6 outline-none sm:px-6 lg:px-8">
@@ -123,13 +151,19 @@ export function DovraProgram10Experience({
                             </span>
                         </div>
 
-                        <DovraHero brand={brand} />
+                        <DovraHero brand={brand} evidence={evidence} />
                     </div>
 
-                    <Alert variant="default" className="border-border bg-muted/60">
+                    <Alert
+                        variant="default"
+                        className="border-border bg-muted/60"
+                        data-testid="dovra-evidence-contract"
+                    >
                         <AlertTitle>Contrato de vista previa</AlertTitle>
                         <AlertDescription className="leading-7">
-                            El slice usa tokens semánticos, foco visible, live regions y preparación reversible. Los clics del cliente sólo cambian la vista previa; el estado real sigue viniendo del backend autoritativo.
+                            {evidence.applicationSurface === false
+                                ? "Esta vista previa de componente no está expuesta por una ruta/controlador en este slice. Los clics sólo cambian el preview; el mercado y el onboarding reales deben venir de servicios autoritativos en una integración posterior."
+                                : "La superficie integrada usa tokens semánticos, foco visible, live regions y preparación reversible; el mercado y el onboarding vienen del estado autoritativo recibido por la aplicación."}
                         </AlertDescription>
                     </Alert>
 

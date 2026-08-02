@@ -5,6 +5,14 @@
     "category": "Global Conversational Business OS",
     "promise": "Dovra deploys AI employees that know a business, work through its channels, and turn conversations into measurable results."
   },
+  "evidence": {
+    "surface": "react-component-preview",
+    "browserMode": "html-harness",
+    "applicationSurface": false,
+    "routeExposure": "not-exposed",
+    "marketAuthority": "fixture-preview-only",
+    "marketDefaultPolicy": "non-honduras"
+  },
   "scenarios": [
     {
       "key": "products",
@@ -13,6 +21,7 @@
       "summary": "La activación prioriza catálogo visible, compras preparadas y un mercado reversible.",
       "commercialMode": "products",
       "defaultMarketCode": "GT",
+      "defaultMarketSource": "fixture-preview",
       "marketOptions": [
         {
           "code": "HN",
@@ -26,7 +35,7 @@
           "countryName": "Guatemala",
           "label": "Guatemala",
           "isHonduras": false,
-          "note": "Mercado fuera de Honduras para expansión temprana."
+          "note": "Predeterminado de preview no-Honduras para expansión temprana."
         },
         {
           "code": "MX",
@@ -111,7 +120,8 @@
       "title": "Agenda confiable y reversible",
       "summary": "La activación prioriza horarios, confianza y una cita que se puede revisar.",
       "commercialMode": "appointments",
-      "defaultMarketCode": "HN",
+      "defaultMarketCode": "SV",
+      "defaultMarketSource": "fixture-preview",
       "marketOptions": [
         {
           "code": "HN",
@@ -125,7 +135,7 @@
           "countryName": "El Salvador",
           "label": "El Salvador",
           "isHonduras": false,
-          "note": "Mercado regional para comparar reglas de agenda."
+          "note": "Predeterminado de preview no-Honduras para comparar reglas de agenda."
         }
       ],
       "onboarding": {
@@ -203,7 +213,8 @@
       "title": "Una sola operación para productos y servicios",
       "summary": "La activación combina catálogo, agenda y reversibilidad sin esconder capacidad futura.",
       "commercialMode": "hybrid",
-      "defaultMarketCode": "HN",
+      "defaultMarketCode": "PA",
+      "defaultMarketSource": "fixture-preview",
       "marketOptions": [
         {
           "code": "HN",
@@ -217,7 +228,7 @@
           "countryName": "Panamá",
           "label": "Panamá",
           "isHonduras": false,
-          "note": "Mercado alterno para comprobar un lanzamiento regional."
+          "note": "Predeterminado de preview no-Honduras para comprobar un lanzamiento regional."
         }
       ],
       "onboarding": {

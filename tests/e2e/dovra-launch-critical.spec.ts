@@ -5,6 +5,31 @@ import fixtures from '../../resources/stories/dovra-program-10.fixtures.json' as
 
 test.use({ trace: 'off' });
 
+// HTML harness evidence only: routes/controllers are outside the parallel Task 5 write-set.
+const HARNESS_CONTRACT = {
+    evidenceMode: 'html-harness',
+    applicationSurface: false,
+    routeExposure: 'not-exposed',
+};
+
+async function assertHtmlHarnessEvidence(page) {
+    expect(fixtures.evidence).toMatchObject({
+        browserMode: 'html-harness',
+        applicationSurface: false,
+        routeExposure: 'not-exposed',
+    });
+    expect(HARNESS_CONTRACT).toMatchObject({
+        evidenceMode: 'html-harness',
+        applicationSurface: false,
+        routeExposure: 'not-exposed',
+    });
+
+    await expect(page.locator('meta[name="dovra-evidence-mode"]')).toHaveAttribute('content', 'html-harness');
+    await expect(page.locator('meta[name="dovra-application-surface"]')).toHaveAttribute('content', 'false');
+    await expect(page.locator('[data-dovra-evidence-mode="html-harness"][data-dovra-application-surface="false"]')).toHaveCount(1);
+    await expect(page.getByTestId('dovra-evidence-contract')).toContainText('HTML harness evidence only');
+}
+
 const escapeHtml = (value: string): string =>
     String(value)
         .replaceAll('&', '&amp;')
@@ -17,7 +42,12 @@ function buildMarkup(initialScenarioKey = 'products'): string {
     const selectedMarket = scenario.marketOptions.find((market) => market.code === scenario.defaultMarketCode) || scenario.marketOptions[0];
 
     return `
-        <div class="min-h-screen bg-background text-foreground">
+        <div
+            class="min-h-screen bg-background text-foreground"
+            data-dovra-evidence-mode="${HARNESS_CONTRACT.evidenceMode}"
+            data-dovra-application-surface="${String(HARNESS_CONTRACT.applicationSurface)}"
+            data-dovra-route-exposure="${HARNESS_CONTRACT.routeExposure}"
+        >
             <a href="#main-content" style="position:fixed;left:16px;top:16px;z-index:100;padding:8px 16px;border:1px solid #111827;border-radius:8px;background:#111827;color:#fff;font-size:14px;font-weight:600;text-decoration:none;">
                 Saltar al contenido principal
             </a>
@@ -36,7 +66,7 @@ function buildMarkup(initialScenarioKey = 'products'): string {
                                     ${escapeHtml(fixtures.brand.category)}
                                 </span>
                                 <span class="inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold text-foreground rounded-full">
-                                    Manual AT review required
+                                    HTML harness evidence only; not application surface
                                 </span>
                             </div>
                             <h1 class="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">${escapeHtml(fixtures.brand.name)}</h1>
@@ -58,8 +88,8 @@ function buildMarkup(initialScenarioKey = 'products'): string {
                         </div>
                     </article>
 
-                    <div role="status" class="rounded-lg border border-border bg-muted/60 px-4 py-3 text-sm leading-7 text-foreground">
-                        El slice usa tokens semánticos, foco visible, live regions y preparación reversible.
+                    <div role="status" data-testid="dovra-evidence-contract" class="rounded-lg border border-border bg-muted/60 px-4 py-3 text-sm leading-7 text-foreground">
+                        HTML harness evidence only; no es una superficie de aplicación navegable. El slice prueba la interacción del markup, no la integración de rutas/controller.
                     </div>
                 </section>
 
@@ -135,7 +165,7 @@ function buildMarkup(initialScenarioKey = 'products'): string {
                                 </div>
 
                                 <div class="rounded-lg border border-border bg-muted/60 px-4 py-4">
-                                    <p class="text-sm font-semibold text-foreground">Onboarding autoritativo</p>
+                                    <p class="text-sm font-semibold text-foreground">Fuente esperada del onboarding</p>
                                     <p class="mt-2 leading-7 text-muted-foreground">${escapeHtml(scenario.onboarding.authoritativeNote)}</p>
                                 </div>
 
@@ -308,7 +338,7 @@ function buildMarkup(initialScenarioKey = 'products'): string {
 }
 
 async function mountFixture(page, initialScenarioKey = 'products') {
-    await page.setContent(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Dovra AI</title></head><body style="margin:0">${buildMarkup(initialScenarioKey)}</body></html>`);
+    await page.setContent(`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="dovra-evidence-mode" content="html-harness"><meta name="dovra-application-surface" content="false"><title>Dovra AI evidence harness</title></head><body style="margin:0">${buildMarkup(initialScenarioKey)}</body></html>`);
     await page.evaluate(
         ({ markup, scenarios, scenarioKey }) => {
             document.body.innerHTML = markup;
@@ -381,16 +411,24 @@ async function mountFixture(page, initialScenarioKey = 'products') {
             scenarioKey: initialScenarioKey,
         },
     );
+
+    await assertHtmlHarnessEvidence(page);
 }
 
-test('Dovra launch critical journey passes axe, skip-link, reflow, and progress checks', async ({ page }) => {
+test('HTML harness evidence only (not application surface): launch critical automated checks', async ({ page }) => {
     test.setTimeout(120_000);
     await page.setViewportSize({ width: 360, height: 800 });
     await mountFixture(page, 'products');
 
+    const productsDefault = fixtures.scenarios.find((scenario) => scenario.key === 'products');
+    const productsMarket = productsDefault?.marketOptions.find((market) => market.code === productsDefault.defaultMarketCode);
+    expect(productsMarket?.isHonduras).toBe(false);
+    await expect(page.getByTestId('dovra-market-gt')).toHaveAttribute('aria-pressed', 'true');
+
     const axeResults = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
         .analyze();
+    // Automated axe output is evidence only; it does not establish WCAG conformance.
     expect(axeResults.violations, JSON.stringify(axeResults.violations, null, 2)).toEqual([]);
 
     await page.keyboard.press('Tab');
@@ -403,7 +441,8 @@ test('Dovra launch critical journey passes axe, skip-link, reflow, and progress 
         name: 'Servicios: Agenda confiable y reversible',
     });
     await serviceScenario.click();
-    await expect(page.getByTestId('dovra-live-status')).toContainText('Honduras');
+    await expect(page.getByTestId('dovra-live-status')).toContainText('El Salvador');
+    await expect(page.getByTestId('dovra-live-status')).not.toContainText('Mercado actual: Honduras');
     await expect(page.getByTestId('dovra-live-status')).toContainText('Abrir primera cita reservable');
 
     const hasHorizontalOverflow = await page.evaluate(() =>

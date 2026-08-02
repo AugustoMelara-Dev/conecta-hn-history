@@ -8,6 +8,45 @@ import fixtures from "../../stories/dovra-program-10.fixtures.json" assert { typ
 import { DovraProgram10Experience } from "@/Components/Dovra/DovraProgram10Experience"
 
 describe("Dovra Program 10 UX contract", () => {
+    it("labels the component as preview evidence rather than a navigable application surface", () => {
+        expect(fixtures.evidence).toMatchObject({
+            surface: "react-component-preview",
+            applicationSurface: false,
+            routeExposure: "not-exposed",
+            marketAuthority: "fixture-preview-only",
+            marketDefaultPolicy: "non-honduras",
+        })
+
+        render(<DovraProgram10Experience />)
+
+        expect(screen.getByTestId("dovra-evidence-contract")).toHaveTextContent(
+            "no está expuesta por una ruta/controlador",
+        )
+        expect(screen.getByText("Vista previa no navegable")).toBeInTheDocument()
+        expect(screen.getByTestId("dovra-evidence-contract").closest("[data-dovra-evidence-surface]")).toHaveAttribute(
+            "data-dovra-application-surface",
+            "false",
+        )
+    })
+
+    it("uses deterministic non-Honduras defaults for every generic scenario", () => {
+        expect(fixtures.scenarios.map((scenario) => scenario.defaultMarketCode)).toEqual(["GT", "SV", "PA"])
+
+        fixtures.scenarios.forEach((scenario) => {
+            const defaultMarket = scenario.marketOptions.find((market) => market.code === scenario.defaultMarketCode)
+
+            expect(scenario.defaultMarketSource).toBe("fixture-preview")
+            expect(defaultMarket?.isHonduras).toBe(false)
+            expect(defaultMarket?.note).toMatch(/preview no-Honduras/i)
+        })
+
+        render(<DovraProgram10Experience initialScenarioKey="hybrid" />)
+
+        const liveRegion = screen.getByTestId("dovra-live-status")
+        expect(liveRegion).toHaveTextContent("Panamá")
+        expect(liveRegion).not.toHaveTextContent("Mercado actual: Honduras")
+    })
+
     it("renders the brand truth, skip link, named progressbar, and a polite live region", () => {
         render(<DovraProgram10Experience />)
 
@@ -43,10 +82,10 @@ describe("Dovra Program 10 UX contract", () => {
 
         const liveRegion = screen.getByTestId("dovra-live-status")
         expect(liveRegion).toHaveTextContent(/operación mixta/i)
-        expect(liveRegion).toHaveTextContent("Honduras")
+        expect(liveRegion).toHaveTextContent("Panamá")
 
         const panamaMarket = screen.getByRole("button", {
-            name: /Panamá: Mercado alterno para comprobar un lanzamiento regional\./i,
+            name: /Panamá: Predeterminado de preview no-Honduras para comprobar un lanzamiento regional\./i,
         })
         fireEvent.click(panamaMarket)
         expect(panamaMarket).toHaveAttribute("aria-pressed", "true")

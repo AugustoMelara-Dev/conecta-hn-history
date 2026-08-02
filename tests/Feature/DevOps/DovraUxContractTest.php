@@ -31,18 +31,45 @@ final class DovraUxContractTest extends TestCase
 
         self::assertSame('Dovra AI', $fixture['brand']['name']);
         self::assertSame('Dovra', $fixture['brand']['shortName']);
+        self::assertSame('react-component-preview', $fixture['evidence']['surface']);
+        self::assertFalse($fixture['evidence']['applicationSurface']);
+        self::assertSame('not-exposed', $fixture['evidence']['routeExposure']);
+        self::assertSame('fixture-preview-only', $fixture['evidence']['marketAuthority']);
+        self::assertSame('non-honduras', $fixture['evidence']['marketDefaultPolicy']);
 
         self::assertSame(['products', 'services', 'hybrid'], array_column($fixture['scenarios'], 'key'));
-        self::assertNotEmpty(array_filter($fixture['scenarios'], static function (array $scenario): bool {
-            return array_reduce($scenario['marketOptions'], static function (bool $carry, array $market): bool {
-                return $carry || ($market['isHonduras'] === false);
-            }, false);
-        }));
+
+        self::assertSame(['GT', 'SV', 'PA'], array_column($fixture['scenarios'], 'defaultMarketCode'));
 
         foreach ($fixture['scenarios'] as $scenario) {
+            $defaultMarket = collect($scenario['marketOptions'])
+                ->firstWhere('code', $scenario['defaultMarketCode']);
+
+            self::assertIsArray($defaultMarket);
+            self::assertFalse($defaultMarket['isHonduras']);
+            self::assertSame('fixture-preview', $scenario['defaultMarketSource']);
+            self::assertStringContainsString('preview no-Honduras', $defaultMarket['note']);
             self::assertNotEmpty($scenario['buyer']['reversibleCopy']);
             self::assertNotEmpty($scenario['buyer']['liveMessage']);
             self::assertNotEmpty($scenario['onboarding']['authoritativeNote']);
+        }
+    }
+
+    public function test_browser_artifacts_cannot_be_read_as_application_surface_evidence(): void
+    {
+        self::assertFileExists(base_path('resources/js/__tests__/dovra-ux.contract.test.jsx'));
+        self::assertFileDoesNotExist(base_path('resources/js/__tests__/dovra-program10.contract.test.jsx'));
+        self::assertFileExists(base_path('tests/e2e/dovra-launch-critical.spec.ts'));
+        self::assertFileDoesNotExist(base_path('tests/e2e/dovra-program10-critical.spec.ts'));
+        self::assertFileExists(base_path('docs/dovra/evidence/program-10-2026-08-01.md'));
+
+        foreach (['tests/e2e/dovra-launch-critical.spec.ts', 'tests/e2e/dovra-accessibility.spec.ts'] as $path) {
+            $source = (string) file_get_contents(base_path($path));
+
+            self::assertStringContainsString('HTML harness evidence only', $source);
+            self::assertStringContainsString('assertHtmlHarnessEvidence', $source);
+            self::assertStringContainsString('applicationSurface: false', $source);
+            self::assertStringNotContainsString('page.goto(', $source);
         }
     }
 
