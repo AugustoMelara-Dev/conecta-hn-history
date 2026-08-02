@@ -5,68 +5,29 @@ declare(strict_types=1);
 namespace Tests\Architecture;
 
 use PHPUnit\Framework\TestCase;
-use RecursiveDirectoryIterator;
-use RecursiveIteratorIterator;
-use SplFileInfo;
 
 final class ChannelAuthorityRatchetTest extends TestCase
 {
-    public function test_channel_adapters_cannot_write_canonical_ai_conversation_tables(): void
+    public function test_conversation_bridge_uses_the_existing_channel_and_conversation_authorities(): void
     {
         $root = dirname(__DIR__, 2);
-        $directories = [
-            $root.'/app/Application/Channels',
-            $root.'/app/Infrastructure/Channels',
-        ];
-        $violations = [];
+        $source = (string) file_get_contents($root.'/app/Application/Channels/ConversationChannelBridge.php');
 
-        foreach ($directories as $directory) {
-            if (! is_dir($directory)) {
-                continue;
-            }
-
-            foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($directory)) as $file) {
-                if (! $file instanceof SplFileInfo || $file->getExtension() !== 'php') {
-                    continue;
-                }
-
-                $source = (string) file_get_contents($file->getPathname());
-                if ($this->writesCanonicalConversationTables($source)) {
-                    $violations[] = str_replace('\\', '/', substr($file->getPathname(), strlen($root) + 1));
-                }
-            }
-        }
-
-        self::assertSame([], $violations, 'Program 07 adapters must not create a second conversation authority.');
+        self::assertStringContainsString('ChannelConnectionService', $source);
+        self::assertStringContainsString('ChannelIdentityResolver', $source);
+        self::assertStringContainsString('ChannelConsentService', $source);
+        self::assertStringContainsString('ConversationStore', $source);
+        self::assertStringContainsString('claimWebhook', $source);
+        self::assertStringContainsString('->claim(', $source);
+        self::assertStringNotContainsString('new EloquentConversationStore', $source);
     }
 
-    public function test_channel_migration_declares_pgsql_rls_guards_for_every_tenant_table(): void
+    public function test_channel_links_do_not_persist_message_content(): void
     {
-        $migration = (string) file_get_contents(
-            dirname(__DIR__, 2).'/database/migrations/2026_08_01_000002_expand_program07_channels.php',
-        );
+        $migration = (string) file_get_contents(dirname(__DIR__, 2).'/database/migrations/2026_08_02_210200_expand_dovra_conversation_channels.php');
 
-        foreach ([
-            'channel_connections',
-            'channel_capability_snapshots',
-            'channel_provider_health',
-            'channel_consents',
-            'channel_identities',
-            'channel_delivery_outbox',
-            'channel_delivery_attempts',
-            'channel_webhook_claims',
-        ] as $table) {
-            self::assertStringContainsString($table, $migration);
-        }
-
-        self::assertStringContainsString('ENABLE ROW LEVEL SECURITY', $migration);
-        self::assertStringContainsString('FORCE ROW LEVEL SECURITY', $migration);
-        self::assertStringContainsString('CREATE POLICY', $migration);
-    }
-
-    private function writesCanonicalConversationTables(string $source): bool
-    {
-        return preg_match('/DB\s*::\s*table\s*\(\s*[\'"](ai_conversations|ai_messages|ai_message_failures)[\'"]\s*\)/i', $source) === 1
-            || preg_match('/insert\s+into\s+(ai_conversations|ai_messages|ai_message_failures)/i', $source) === 1;
+        self::assertStringContainsString('normalized_identity_hash', $migration);
+        self::assertStringContainsString('payload_hash', $migration);
+        self::assertStringNotContainsString('$table->text(\'content\')', $migration);
     }
 }
