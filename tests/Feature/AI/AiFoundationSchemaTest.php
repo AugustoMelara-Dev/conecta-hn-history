@@ -87,7 +87,7 @@ final class AiFoundationSchemaTest extends TestCase
     public function test_handoffs_have_expand_only_governed_lifecycle_columns_and_indexes(): void
     {
         self::assertTrue(Schema::hasColumns('ai_handoffs', [
-            'trigger_type', 'priority', 'queue_key', 'active_deduplication_key',
+            'legacy_status', 'trigger_type', 'priority', 'queue_key', 'active_deduplication_key',
             'assigned_to_user_id', 'assigned_by_user_id', 'accepted_by_user_id',
             'resolved_by_user_id', 'agent_version_id', 'version', 'queued_at',
             'assigned_at', 'resolved_at', 'cancelled_at', 'expired_at',

@@ -36,6 +36,7 @@ final readonly class AiHandoffService
         private TenantPermissionGuardInterface $permissionGuard,
         private OutboxRepositoryInterface $outbox,
         private TenantContext $tenantContext,
+        private AiHandoffUniqueViolation $uniqueViolations,
     ) {}
 
     public function request(RequestAiHandoff $command): string
@@ -74,6 +75,9 @@ final readonly class AiHandoffService
                     ->where('tenant_id', $tenantId)
                     ->where('conversation_id', $command->conversationId)
                     ->whereIn('status', self::ACTIVE_STATUSES)
+                    ->orderByRaw('CASE WHEN active_deduplication_key IS NULL THEN 1 ELSE 0 END')
+                    ->orderBy('requested_at')
+                    ->orderBy('id')
                     ->lockForUpdate()
                     ->first();
                 if ($active !== null) {
@@ -127,7 +131,7 @@ final readonly class AiHandoffService
                 return $id;
             }, 3);
         } catch (QueryException $exception) {
-            if (! $this->isUniqueViolation($exception)) {
+            if (! $this->uniqueViolations->matches(DB::getDriverName(), $exception)) {
                 throw $exception;
             }
             $existing = DB::table('ai_handoffs')
@@ -300,6 +304,40 @@ final readonly class AiHandoffService
         }
 
         return $this->present($row);
+    }
+
+    public function continuationBlock(string $tenantId, string $conversationId): ?AiHandoffContinuationBlock
+    {
+        if (! Str::isUuid($tenantId) || ! Str::isUuid($conversationId)) {
+            throw new InvalidArgumentException('AI handoff continuation identity is invalid.');
+        }
+        $tenantId = strtolower($tenantId);
+        $this->assertTenantContext($tenantId);
+        $active = DB::table('ai_handoffs')
+            ->where('tenant_id', $tenantId)
+            ->where('conversation_id', strtolower($conversationId))
+            ->whereIn('status', self::ACTIVE_STATUSES)
+            ->orderByRaw('CASE WHEN active_deduplication_key IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('requested_at')
+            ->orderBy('id')
+            ->first(['id', 'status']);
+        if ($active !== null) {
+            return new AiHandoffContinuationBlock((string) $active->id, (string) $active->status);
+        }
+
+        $resolved = DB::table('ai_handoffs')
+            ->where('tenant_id', $tenantId)
+            ->where('conversation_id', strtolower($conversationId))
+            ->where('status', 'resolved')
+            ->orderByDesc('resolved_at')
+            ->orderByDesc('requested_at')
+            ->orderByDesc('id')
+            ->first(['id', 'status', 'return_to_agent']);
+        if ($resolved !== null && ! (bool) $resolved->return_to_agent) {
+            return new AiHandoffContinuationBlock((string) $resolved->id, (string) $resolved->status);
+        }
+
+        return null;
     }
 
     private function validateRequest(RequestAiHandoff $command): void
@@ -485,13 +523,5 @@ final readonly class AiHandoffService
             'accepted_at' => $row->accepted_at,
             'resolved_at' => $row->resolved_at,
         ];
-    }
-
-    private function isUniqueViolation(QueryException $exception): bool
-    {
-        $sqlState = (string) ($exception->errorInfo[0] ?? $exception->getCode());
-
-        return in_array($sqlState, ['23000', '23505'], true)
-            || str_contains(strtolower($exception->getMessage()), 'unique constraint');
     }
 }

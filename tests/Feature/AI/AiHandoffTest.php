@@ -10,6 +10,7 @@ use App\Application\Ai\Handoff\AcceptAiHandoff;
 use App\Application\Ai\Handoff\AiHandoffConflictException;
 use App\Application\Ai\Handoff\AiHandoffForbiddenException;
 use App\Application\Ai\Handoff\AiHandoffService;
+use App\Application\Ai\Handoff\AiHandoffUniqueViolation;
 use App\Application\Ai\Handoff\AssignAiHandoff;
 use App\Application\Ai\Handoff\CancelAiHandoff;
 use App\Application\Ai\Handoff\ExpireAiHandoff;
@@ -22,10 +23,13 @@ use App\Domain\Shared\Services\TenantContext;
 use App\Models\City;
 use App\Models\Tenant;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use PDOException;
 use Tests\Support\AI\AiEligibleRegistryFixture;
 use Tests\Support\GlobalMarketFixture;
 use Tests\TestCase;
@@ -280,6 +284,142 @@ final class AiHandoffTest extends TestCase
         }
     }
 
+    public function test_migration_preserves_historical_statuses_and_nonterminal_duplicate_ownership_across_rollback(): void
+    {
+        [$tenant, , $conversationId, $messageId, $agentVersionId] = $this->fixture();
+        $migration = require database_path('migrations/2026_07_29_000008_expand_ai_handoff_lifecycle.php');
+        $migration->down();
+        $first = (string) Str::uuid();
+        $second = (string) Str::uuid();
+        $third = (string) Str::uuid();
+        $completed = (string) Str::uuid();
+        $requestedAt = now()->subHour();
+        foreach ([
+            [$first, 'pending', $requestedAt->copy(), null],
+            [$second, 'pending', $requestedAt->copy()->addMinute(), null],
+            [$third, 'pending', $requestedAt->copy()->addMinutes(2), null],
+            [$completed, 'completed', $requestedAt->copy()->addMinutes(3), $requestedAt->copy()->addMinutes(4)],
+        ] as [$id, $status, $requested, $completedAt]) {
+            DB::table('ai_handoffs')->insert([
+                'id' => $id,
+                'tenant_id' => $tenant->id,
+                'conversation_id' => $conversationId,
+                'message_id' => $messageId,
+                'from_type' => 'ai_agent',
+                'to_type' => 'human',
+                'status' => $status,
+                'requested_at' => $requested,
+                'completed_at' => $completedAt,
+                'created_at' => $requested,
+                'updated_at' => $completedAt ?? $requested,
+            ]);
+        }
+
+        try {
+            $migration->up();
+            self::assertSame('queued', DB::table('ai_handoffs')->where('id', $first)->value('status'));
+            self::assertNotNull(DB::table('ai_handoffs')->where('id', $first)->value('active_deduplication_key'));
+            foreach ([$second, $third] as $duplicate) {
+                self::assertSame('requested', DB::table('ai_handoffs')->where('id', $duplicate)->value('status'));
+                self::assertNull(DB::table('ai_handoffs')->where('id', $duplicate)->value('active_deduplication_key'));
+                self::assertSame('pending', DB::table('ai_handoffs')->where('id', $duplicate)->value('legacy_status'));
+            }
+            self::assertSame('resolved', DB::table('ai_handoffs')->where('id', $completed)->value('status'));
+            self::assertSame('completed', DB::table('ai_handoffs')->where('id', $completed)->value('legacy_status'));
+
+            self::assertSame($first, app(AiHandoffService::class)->request(new RequestAiHandoff(
+                (string) $tenant->id,
+                $conversationId,
+                $messageId,
+                $agentVersionId,
+                'merchant_rule',
+                'normal',
+                'legacy-support',
+                'Legacy ownership remains active.',
+            )));
+
+            $newQueued = (string) Str::uuid();
+            $newResolved = (string) Str::uuid();
+            foreach ([[$newQueued, 'queued'], [$newResolved, 'resolved']] as [$id, $status]) {
+                DB::table('ai_handoffs')->insert([
+                    'id' => $id,
+                    'tenant_id' => $tenant->id,
+                    'conversation_id' => $conversationId,
+                    'message_id' => $messageId,
+                    'from_type' => 'ai_agent',
+                    'to_type' => 'human',
+                    'status' => $status,
+                    'requested_at' => now(),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            $migration->down();
+            self::assertFalse(Schema::hasColumn('ai_handoffs', 'legacy_status'));
+            foreach ([$first, $second, $third] as $historicalPending) {
+                self::assertSame('pending', DB::table('ai_handoffs')->where('id', $historicalPending)->value('status'));
+            }
+            self::assertSame('completed', DB::table('ai_handoffs')->where('id', $completed)->value('status'));
+            self::assertSame('pending', DB::table('ai_handoffs')->where('id', $newQueued)->value('status'));
+            self::assertSame('completed', DB::table('ai_handoffs')->where('id', $newResolved)->value('status'));
+
+            $migration->up();
+            self::assertTrue(Schema::hasColumn('ai_handoffs', 'legacy_status'));
+            self::assertSame(0, DB::table('ai_handoffs')->where('status', 'cancelled')->count());
+        } finally {
+            if (! Schema::hasColumn('ai_handoffs', 'trigger_type')) {
+                $migration->up();
+            }
+        }
+    }
+
+    public function test_unique_violation_detection_is_driver_exact_and_the_exact_key_still_deduplicates(): void
+    {
+        $detector = new AiHandoffUniqueViolation;
+        self::assertTrue($detector->matches('pgsql', $this->queryException(['23505', 7, 'duplicate key'])));
+        self::assertFalse($detector->matches('pgsql', $this->queryException(['23502', 7, 'not null'])));
+        self::assertTrue($detector->matches('mysql', $this->queryException(['23000', 1062, 'duplicate entry'])));
+        self::assertFalse($detector->matches('mysql', $this->queryException(['23000', 1452, 'foreign key'])));
+        self::assertTrue($detector->matches('sqlite', $this->queryException(['23000', 19, 'UNIQUE constraint failed: ai_handoffs.tenant_id'])));
+        self::assertFalse($detector->matches('sqlite', $this->queryException(['23000', 19, 'FOREIGN KEY constraint failed'])));
+        self::assertFalse($detector->matches('sqlite', $this->queryException(['23000', 19, 'NOT NULL constraint failed: ai_handoffs.tenant_id'])));
+
+        $notNull = $this->capturedQueryException(static fn (): bool => DB::table('ai_handoffs')->insert([
+            'id' => (string) Str::uuid(),
+        ]));
+        self::assertFalse($detector->matches('sqlite', $notNull));
+        $foreignKey = $this->capturedQueryException(static fn (): bool => DB::table('ai_handoffs')->insert([
+            'id' => (string) Str::uuid(),
+            'tenant_id' => (string) Str::uuid(),
+            'conversation_id' => (string) Str::uuid(),
+            'from_type' => 'ai_agent',
+            'to_type' => 'human',
+            'requested_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]));
+        self::assertFalse($detector->matches('sqlite', $foreignKey));
+
+        [$tenant, , $conversationId, $messageId, $agentVersionId] = $this->fixture();
+        $service = app(AiHandoffService::class);
+        $command = new RequestAiHandoff(
+            (string) $tenant->id,
+            $conversationId,
+            $messageId,
+            $agentVersionId,
+            'explicit_user',
+            'normal',
+            'merchant-support',
+            'The user requested human follow-up.',
+        );
+        $handoffId = $service->request($command);
+        DB::table('ai_handoffs')->where('id', $handoffId)->update(['status' => 'cancelled']);
+
+        self::assertSame($handoffId, $service->request($command));
+        self::assertSame(1, DB::table('ai_handoffs')->count());
+    }
+
     /** @return array{Tenant, User, string, string, string} */
     private function fixture(): array
     {
@@ -320,5 +460,26 @@ final class AiHandoffTest extends TestCase
         ));
 
         return [$tenant, $owner, $claim->conversationId, $claim->requestMessage->id, $selection->agentVersionId];
+    }
+
+    /** @param array{0:string,1:int,2:string} $errorInfo */
+    private function queryException(array $errorInfo): QueryException
+    {
+        $previous = new PDOException($errorInfo[2]);
+        $previous->errorInfo = $errorInfo;
+
+        return new QueryException('test', 'insert into ai_handoffs', [], $previous);
+    }
+
+    /** @param callable():bool $operation */
+    private function capturedQueryException(callable $operation): QueryException
+    {
+        try {
+            $operation();
+        } catch (QueryException $exception) {
+            return $exception;
+        }
+
+        self::fail('Expected a database constraint violation.');
     }
 }

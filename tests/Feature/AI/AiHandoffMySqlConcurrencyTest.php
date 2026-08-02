@@ -93,6 +93,83 @@ final class AiHandoffMySqlConcurrencyTest extends TestCase
         }
     }
 
+    public function test_concurrent_different_queue_requests_leave_one_handoff_and_one_stable_conflict(): void
+    {
+        if (DB::getDriverName() !== 'mysql') {
+            self::markTestSkipped('This proof requires the certified disposable MySQL harness.');
+        }
+
+        $tenant = Tenant::factory()->pro()->create(['city_id' => City::factory()->create()->id]);
+        GlobalMarketFixture::assignCanada($tenant);
+        app(TenantContext::class)->setTenant((string) $tenant->id);
+        $selection = AiEligibleRegistryFixture::create(
+            (string) $tenant->id,
+            'private_tenant_agent',
+            'private',
+            'private_agent.evidence_selection.v1',
+            marketCountryCode: 'CA',
+        );
+        $claim = app(ConversationStore::class)->claim(new AcceptConversationMessage(
+            (string) $tenant->id,
+            'tenant_private',
+            'web',
+            null,
+            'mysql-handoff-different-queue-actor',
+            'en-CA',
+            'CA',
+            'CAD',
+            'America/Toronto',
+            'I need a specialist.',
+            'text',
+            'mysql-handoff-different-queue-conversation',
+        ));
+        app(TenantContext::class)->reset();
+
+        $payload = [
+            'tenant_id' => (string) $tenant->id,
+            'conversation_id' => $claim->conversationId,
+            'message_id' => $claim->requestMessage->id,
+            'agent_version_id' => $selection->agentVersionId,
+        ];
+        $first = $this->worker([...$payload, 'queue_key' => 'merchant-support'], true);
+        $second = $this->worker([...$payload, 'queue_key' => 'risk-specialists'], false);
+
+        try {
+            $first['process']->start();
+            $this->awaitFile($first['ready'], $first['process']);
+            file_put_contents($first['go'], 'go');
+            $this->awaitFile($first['locked'], $first['process']);
+            $second['process']->start();
+            $this->awaitFile($second['ready'], $second['process']);
+            file_put_contents($second['go'], 'go');
+            $this->awaitFile($second['attempting'], $second['process']);
+            usleep(600_000);
+            self::assertTrue($second['process']->isRunning());
+            file_put_contents($first['release'], 'release');
+            $first['process']->wait();
+            $second['process']->wait();
+
+            $firstResult = $this->workerResult($first['process']);
+            $secondResult = $this->workerResult($second['process']);
+            self::assertArrayHasKey('handoff_id', $firstResult);
+            self::assertSame('conflict', $secondResult['status'] ?? null);
+            self::assertSame(1, DB::table('ai_handoffs')
+                ->where('tenant_id', $tenant->id)
+                ->where('conversation_id', $claim->conversationId)
+                ->count());
+            self::assertSame('merchant-support', DB::table('ai_handoffs')
+                ->where('tenant_id', $tenant->id)
+                ->where('conversation_id', $claim->conversationId)
+                ->value('queue_key'));
+            self::assertSame(2, DB::table('outbox_messages')
+                ->where('aggregate_id', $firstResult['handoff_id'])
+                ->count());
+        } finally {
+            $this->cleanup($first);
+            $this->cleanup($second);
+        }
+    }
+
     /** @param array<string,string> $payload
      * @return array{process:Process,ready:string,go:string,attempting:string,locked:string,release:string}
      */

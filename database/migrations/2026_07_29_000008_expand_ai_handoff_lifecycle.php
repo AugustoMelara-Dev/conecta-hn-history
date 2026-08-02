@@ -12,6 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('ai_handoffs', function (Blueprint $table): void {
+            $table->string('legacy_status', 24)->nullable();
             $table->string('trigger_type', 32)->nullable();
             $table->string('priority', 16)->nullable();
             $table->string('queue_key', 128)->nullable();
@@ -41,18 +42,19 @@ return new class extends Migration
             ->get();
         $activeOwners = [];
         foreach ($rows as $row) {
-            $status = match ((string) $row->status) {
+            $legacyStatus = (string) $row->status;
+            $status = match ($legacyStatus) {
                 'pending', 'requested' => 'queued',
                 'completed' => 'resolved',
-                default => (string) $row->status,
+                default => $legacyStatus,
             };
             $active = in_array($status, ['queued', 'assigned', 'accepted'], true);
             $identity = strtolower((string) $row->tenant_id).'|'.strtolower((string) $row->conversation_id);
             if ($active && isset($activeOwners[$identity])) {
-                $status = 'cancelled';
-                $active = false;
+                $status = $legacyStatus === 'pending' ? 'requested' : $status;
             }
-            if ($active) {
+            $ownsActiveKey = $active && ! isset($activeOwners[$identity]);
+            if ($ownsActiveKey) {
                 $activeOwners[$identity] = true;
             }
             $agentVersionId = DB::table('ai_conversations')
@@ -61,15 +63,17 @@ return new class extends Migration
                 ->value('agent_version_id');
             DB::table('ai_handoffs')->where('id', $row->id)->update([
                 'status' => $status,
+                'legacy_status' => $legacyStatus,
                 'trigger_type' => 'merchant_rule',
                 'priority' => 'normal',
                 'queue_key' => 'legacy-support',
-                'active_deduplication_key' => $active ? hash('sha256', $identity) : null,
+                'active_deduplication_key' => $ownsActiveKey ? hash('sha256', $identity) : null,
                 'agent_version_id' => is_string($agentVersionId) ? $agentVersionId : null,
                 'version' => 1,
-                'queued_at' => $row->requested_at,
+                'queued_at' => in_array($status, ['queued', 'assigned', 'accepted'], true)
+                    ? $row->requested_at
+                    : null,
                 'resolved_at' => $status === 'resolved' ? ($row->completed_at ?? $row->updated_at) : null,
-                'cancelled_at' => $status === 'cancelled' ? $row->updated_at : null,
                 'return_to_agent' => false,
             ]);
         }
@@ -98,6 +102,19 @@ return new class extends Migration
 
     public function down(): void
     {
+        $rows = DB::table('ai_handoffs')
+            ->select(['id', 'status', 'legacy_status'])
+            ->orderBy('id')
+            ->get();
+        foreach ($rows as $row) {
+            $status = is_string($row->legacy_status) && $row->legacy_status !== ''
+                ? $row->legacy_status
+                : (in_array((string) $row->status, [
+                    'pending', 'requested', 'queued', 'assigned', 'accepted',
+                ], true) ? 'pending' : 'completed');
+            DB::table('ai_handoffs')->where('id', $row->id)->update(['status' => $status]);
+        }
+
         Schema::table('ai_handoffs', function (Blueprint $table): void {
             if (DB::getDriverName() === 'sqlite') {
                 $table->dropForeign(['tenant_id', 'agent_version_id']);
@@ -115,7 +132,7 @@ return new class extends Migration
             $table->dropUnique('ai_handoffs_tenant_active_dedup_unique');
             $table->dropIndex('ai_handoffs_tenant_queue_status_queued_idx');
             $table->dropColumn([
-                'trigger_type', 'priority', 'queue_key', 'active_deduplication_key',
+                'legacy_status', 'trigger_type', 'priority', 'queue_key', 'active_deduplication_key',
                 'assigned_to_user_id', 'assigned_by_user_id', 'accepted_by_user_id',
                 'resolved_by_user_id', 'agent_version_id', 'version', 'queued_at',
                 'assigned_at', 'resolved_at', 'cancelled_at', 'expired_at',

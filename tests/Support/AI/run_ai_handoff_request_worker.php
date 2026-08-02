@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Application\Ai\Handoff\AiHandoffConflictException;
 use App\Application\Ai\Handoff\AiHandoffService;
 use App\Application\Ai\Handoff\RequestAiHandoff;
 use App\Domain\Shared\Services\TenantContext;
@@ -60,11 +61,17 @@ try {
         (string) $payload['agent_version_id'],
         'explicit_user',
         'normal',
-        'merchant-support',
+        (string) ($payload['queue_key'] ?? 'merchant-support'),
         'The user explicitly requested human follow-up.',
     ));
     echo json_encode([
         'handoff_id' => $id,
+        'started_at' => $startedAt,
+        'completed_at' => microtime(true),
+    ], JSON_THROW_ON_ERROR);
+} catch (AiHandoffConflictException) {
+    echo json_encode([
+        'status' => 'conflict',
         'started_at' => $startedAt,
         'completed_at' => microtime(true),
     ], JSON_THROW_ON_ERROR);

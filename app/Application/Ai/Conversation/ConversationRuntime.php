@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Ai\Conversation;
 
+use App\Application\Ai\Handoff\AiHandoffContinuationBlock;
 use App\Application\Ai\Handoff\AiHandoffService;
 use App\Application\Ai\Handoff\RequestAiHandoff;
 use App\Application\Ai\PrivateGroundedAgent;
@@ -79,6 +80,9 @@ final readonly class ConversationRuntime
         if ($claim->replayed) {
             return $this->replay($claim);
         }
+        if (($block = $this->handoffs->continuationBlock($tenantId, $claim->conversationId)) !== null) {
+            return $this->blockedByHandoff($tenantId, $command, $claim, $block);
+        }
 
         $selection = null;
         try {
@@ -139,6 +143,9 @@ final readonly class ConversationRuntime
         $claim = $this->store->claim($command);
         if ($claim->replayed) {
             return $this->replay($claim);
+        }
+        if (($block = $this->handoffs->continuationBlock($input->tenantId, $claim->conversationId)) !== null) {
+            return $this->blockedByHandoff($input->tenantId, $command, $claim, $block);
         }
 
         $selection = null;
@@ -318,6 +325,40 @@ final readonly class ConversationRuntime
             code: $claim->response->status === 'failed'
                 ? $this->failureCode($claim->response)
                 : null,
+        );
+    }
+
+    private function blockedByHandoff(
+        string $tenantId,
+        AcceptConversationMessage $command,
+        ConversationMessageClaim $claim,
+        AiHandoffContinuationBlock $block,
+    ): ConversationResponse {
+        DB::transaction(function () use ($tenantId, $claim, $block): void {
+            $this->store->failAssistantMessage(
+                tenantId: $tenantId,
+                conversationId: $claim->conversationId,
+                requestMessageId: $claim->requestMessage->id,
+                publicCode: 'ai_handoff_required',
+                retryable: false,
+                fallback: [
+                    'answer' => AiHandoffContinuationBlock::MESSAGE,
+                    'fallback' => true,
+                    'handoff' => $block->response(),
+                ],
+            );
+        }, 3);
+
+        $stored = $this->store->claim($command);
+        if ($stored->response === null) {
+            throw new AiExecutionDeniedException('conversation_failure_persistence');
+        }
+
+        return $this->response(
+            claim: $stored,
+            message: $stored->response,
+            status: 'failed',
+            code: 'ai_handoff_required',
         );
     }
 

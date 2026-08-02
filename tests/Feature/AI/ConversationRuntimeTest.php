@@ -235,6 +235,109 @@ final class ConversationRuntimeTest extends TestCase
         self::assertSame(1, DB::table('ai_handoffs')->count());
     }
 
+    public function test_active_handoff_ownership_blocks_ai_and_persists_one_replayable_safe_response(): void
+    {
+        [$tenant, , , $gateway] = $this->privateCatalogFixture();
+        $runtime = app(ConversationRuntime::class);
+        $opened = $runtime->private(new PrivateConversationInput(
+            tenantId: (string) $tenant->id,
+            actorId: 'owner-runtime-1',
+            message: 'I need to speak with a human, please.',
+            idempotencyKey: 'private-runtime-active-handoff-open',
+        ));
+        $input = new PrivateConversationInput(
+            tenantId: (string) $tenant->id,
+            actorId: 'owner-runtime-1',
+            message: 'Show my catalog now.',
+            idempotencyKey: 'private-runtime-active-handoff-block',
+            conversationId: $opened->conversationId,
+        );
+
+        $blocked = $runtime->private($input);
+        $replay = $runtime->private($input);
+
+        self::assertSame('failed', $blocked->status);
+        self::assertSame('ai_handoff_required', $blocked->code);
+        self::assertSame($opened->handoff['id'], $blocked->handoff['id'] ?? null);
+        self::assertSame('queued', $blocked->handoff['status'] ?? null);
+        self::assertSame('A human follow-up has been requested.', $blocked->handoff['message'] ?? null);
+        self::assertSame($blocked->toArray(), $replay->toArray());
+        self::assertSame(0, $gateway->calls);
+        self::assertSame(1, DB::table('ai_handoffs')->count());
+        self::assertSame(2, DB::table('outbox_messages')->where('aggregate_id', $opened->handoff['id'])->count());
+    }
+
+    public function test_resolved_handoff_without_safe_return_keeps_ai_blocked_and_replayable(): void
+    {
+        [$tenant, , , $gateway] = $this->privateCatalogFixture();
+        $runtime = app(ConversationRuntime::class);
+        $opened = $runtime->private(new PrivateConversationInput(
+            tenantId: (string) $tenant->id,
+            actorId: 'owner-runtime-1',
+            message: 'I need to speak with a human, please.',
+            idempotencyKey: 'private-runtime-resolved-block-open',
+        ));
+        DB::table('ai_handoffs')->where('id', $opened->handoff['id'])->update([
+            'status' => 'resolved',
+            'return_to_agent' => false,
+            'active_deduplication_key' => null,
+            'resolved_at' => now(),
+            'completed_at' => now(),
+        ]);
+        $input = new PrivateConversationInput(
+            tenantId: (string) $tenant->id,
+            actorId: 'owner-runtime-1',
+            message: 'Can the AI continue?',
+            idempotencyKey: 'private-runtime-resolved-block',
+            conversationId: $opened->conversationId,
+        );
+
+        $blocked = $runtime->private($input);
+        $replay = $runtime->private($input);
+
+        self::assertSame('failed', $blocked->status);
+        self::assertSame($opened->handoff['id'], $blocked->handoff['id'] ?? null);
+        self::assertSame('resolved', $blocked->handoff['status'] ?? null);
+        self::assertSame($blocked->toArray(), $replay->toArray());
+        self::assertSame(0, $gateway->calls);
+        self::assertSame(2, DB::table('outbox_messages')->where('aggregate_id', $opened->handoff['id'])->count());
+    }
+
+    public function test_resolved_handoff_with_safe_return_allows_ai_once_and_replays_completion(): void
+    {
+        [$tenant, , , $gateway] = $this->privateCatalogFixture();
+        $runtime = app(ConversationRuntime::class);
+        $opened = $runtime->private(new PrivateConversationInput(
+            tenantId: (string) $tenant->id,
+            actorId: 'owner-runtime-1',
+            message: 'I need to speak with a human, please.',
+            idempotencyKey: 'private-runtime-return-open',
+        ));
+        DB::table('ai_handoffs')->where('id', $opened->handoff['id'])->update([
+            'status' => 'resolved',
+            'return_to_agent' => true,
+            'active_deduplication_key' => null,
+            'resolved_at' => now(),
+            'completed_at' => now(),
+        ]);
+        $input = new PrivateConversationInput(
+            tenantId: (string) $tenant->id,
+            actorId: 'owner-runtime-1',
+            message: 'Show my catalog again.',
+            idempotencyKey: 'private-runtime-return-allowed',
+            conversationId: $opened->conversationId,
+        );
+
+        $completed = $runtime->private($input);
+        $replay = $runtime->private($input);
+
+        self::assertSame('completed', $completed->status);
+        self::assertNull($completed->handoff);
+        self::assertSame($completed->toArray(), $replay->toArray());
+        self::assertSame(1, $gateway->calls);
+        self::assertSame(2, DB::table('outbox_messages')->where('aggregate_id', $opened->handoff['id'])->count());
+    }
+
     public function test_policy_denial_maps_honestly_to_one_queued_handoff(): void
     {
         [$tenant] = $this->privateCatalogFixture();
