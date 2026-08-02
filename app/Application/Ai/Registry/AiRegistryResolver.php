@@ -20,6 +20,25 @@ final readonly class AiRegistryResolver
 
     public function resolve(AiRegistryQuery $query): AiRuntimeSelection
     {
+        return $this->resolveInternal($query);
+    }
+
+    /**
+     * Resolve the exact eligible registry selection already pinned to a
+     * conversation. A rollout change cannot silently move a live thread to a
+     * different agent; if the pinned version is no longer eligible, deny.
+     */
+    public function resolvePinned(AiRegistryQuery $query, string $agentVersionId): AiRuntimeSelection
+    {
+        if (! Str::isUuid($agentVersionId)) {
+            throw new AiExecutionDeniedException('registry_selection');
+        }
+
+        return $this->resolveInternal($query, $agentVersionId);
+    }
+
+    private function resolveInternal(AiRegistryQuery $query, ?string $expectedAgentVersionId = null): AiRuntimeSelection
+    {
         if ($query->tenantId === null) {
             throw new AiExecutionDeniedException('tenant_context');
         }
@@ -50,6 +69,15 @@ final readonly class AiRegistryResolver
                         throw $exception;
                     }
                 }
+            }
+            if ($expectedAgentVersionId !== null) {
+                $eligible = array_values(array_filter(
+                    $eligible,
+                    static fn (AiRuntimeSelection $selection): bool => hash_equals(
+                        $expectedAgentVersionId,
+                        $selection->agentVersionId,
+                    ),
+                ));
             }
             if (count($eligible) > 1) {
                 throw new AiExecutionDeniedException('registry_conflict');

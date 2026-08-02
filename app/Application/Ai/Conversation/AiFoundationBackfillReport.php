@@ -20,9 +20,11 @@ final readonly class AiFoundationBackfillReport
         public bool $hasMore = false,
         public bool $validated = false,
         public string $contractStatus = 'deferred',
+        /** @var array{executions:?array{created_at:string,id:string,empty?:bool},conversations:?array{created_at:string,id:string,empty?:bool}}|null */
+        public ?array $sourceSnapshot = null,
     ) {}
 
-    /** @return array<string, int|string|bool|null> */
+    /** @return array<string, int|string|bool|array<string, mixed>|null> */
     public function toArray(): array
     {
         return [
@@ -39,6 +41,7 @@ final readonly class AiFoundationBackfillReport
             'has_more' => $this->hasMore,
             'validated' => $this->validated,
             'contract_status' => $this->contractStatus,
+            'source_snapshot' => $this->sourceSnapshot,
         ];
     }
 }

@@ -158,10 +158,88 @@ final class DovraBackfillCommandTest extends TestCase
             'dovra:backfill-identity-governance',
             'dovra:backfill-business-operations',
         ] as $command) {
+            $checkpointPath = tempnam(sys_get_temp_dir(), 'dovra-blocked-checkpoint-');
+            self::assertNotFalse($checkpointPath);
+            @unlink($checkpointPath);
+
             $this->artisan($command, [
                 '--phase' => 'contract',
                 '--json' => true,
+                '--checkpoint' => $checkpointPath,
             ])->assertExitCode(5);
+
+            self::assertFileDoesNotExist($checkpointPath);
+            @unlink($checkpointPath);
+        }
+    }
+
+    public function test_resume_rejects_a_checkpoint_owned_by_another_command(): void
+    {
+        $checkpointPath = tempnam(sys_get_temp_dir(), 'dovra-foreign-checkpoint-');
+        self::assertNotFalse($checkpointPath);
+        @unlink($checkpointPath);
+
+        try {
+            $this->artisan('dovra:backfill-honduras-market', [
+                '--phase' => 'backfill',
+                '--json' => true,
+                '--limit' => 1,
+                '--max-blocking-gaps' => 10,
+                '--checkpoint' => $checkpointPath,
+            ])->assertExitCode(0);
+
+            $this->artisan('dovra:backfill-identity-governance', [
+                '--phase' => 'backfill',
+                '--json' => true,
+                '--limit' => 1,
+                '--max-blocking-gaps' => 10,
+                '--resume' => true,
+                '--checkpoint' => $checkpointPath,
+            ])->assertExitCode(2);
+        } finally {
+            @unlink($checkpointPath);
+        }
+    }
+
+    public function test_resume_rejects_a_tampered_checkpoint_progression(): void
+    {
+        $checkpointPath = tempnam(sys_get_temp_dir(), 'dovra-tampered-checkpoint-');
+        self::assertNotFalse($checkpointPath);
+        @unlink($checkpointPath);
+
+        try {
+            $arguments = [
+                '--phase' => 'backfill',
+                '--json' => true,
+                '--limit' => 1,
+                '--max-blocking-gaps' => 10,
+                '--checkpoint' => $checkpointPath,
+            ];
+            $this->artisan('dovra:backfill-honduras-market', $arguments)->assertExitCode(0);
+            $checkpoint = json_decode((string) file_get_contents($checkpointPath), true, 512, JSON_THROW_ON_ERROR);
+            $checkpoint['next_source_offset'] = 99;
+            file_put_contents($checkpointPath, json_encode($checkpoint, JSON_THROW_ON_ERROR));
+
+            $this->artisan('dovra:backfill-honduras-market', $arguments + ['--resume' => true])
+                ->assertExitCode(2);
+        } finally {
+            @unlink($checkpointPath);
+        }
+    }
+
+    public function test_source_window_rejects_offset_plus_limit_overflow(): void
+    {
+        foreach ([
+            'dovra:backfill-honduras-market',
+            'dovra:backfill-identity-governance',
+            'dovra:backfill-business-operations',
+        ] as $command) {
+            $this->artisan($command, [
+                '--phase' => 'backfill',
+                '--json' => true,
+                '--limit' => 5000,
+                '--offset' => 2147483647,
+            ])->assertExitCode(2);
         }
     }
 }

@@ -17,6 +17,48 @@ return [
             'removal_program' => 'Program 12',
         ],
         [
+            'path' => 'app/Application/Ai/PrivateGroundedAgent.php',
+            'classification' => 'operational_compatibility',
+            'reason' => 'The private-result encryption fallback remains stable until retained ciphertext is covered by a key-version migration.',
+            'removal_program' => 'Program 12',
+        ],
+        [
+            'path' => 'app/Application/Privacy/AccountPrivacyService.php',
+            'classification' => 'historical_evidence',
+            'reason' => 'The v1 account export format identifier remains readable while Program 11 introduces a versioned Dovra successor.',
+            'removal_program' => 'Program 11',
+        ],
+        [
+            'path' => 'app/Application/Privacy/Dovra/PrivacyRequestService.php',
+            'classification' => 'operational_compatibility',
+            'reason' => 'The Dovra privacy adapter preserves the historical export format identifier while retained consumers migrate to the v2 envelope.',
+            'removal_program' => 'Program 11',
+        ],
+        [
+            'path' => 'app/Console/Commands/ObservabilitySmokeCommand.php',
+            'classification' => 'operational_compatibility',
+            'reason' => 'Existing alert routing may match the smoke identifier until Program 12 migrates dashboards and runbooks.',
+            'removal_program' => 'Program 12',
+        ],
+        [
+            'path' => 'app/Console/Commands/StorageSmokeCommand.php',
+            'classification' => 'operational_compatibility',
+            'reason' => 'Existing storage-smoke cleanup and runbooks retain this object marker until Program 12 migration evidence exists.',
+            'removal_program' => 'Program 12',
+        ],
+        [
+            'path' => 'app/DataTransferObjects/Payment/PaymentData.php',
+            'classification' => 'legal_dependency',
+            'reason' => 'The payment statement descriptor remains tied to the current provider and legal account until Program 09 reconfigures it explicitly.',
+            'removal_program' => 'Program 09',
+        ],
+        [
+            'path' => 'app/Services/TenantRegistrationService.php',
+            'classification' => 'operational_compatibility',
+            'reason' => 'Legacy brand slugs remain reserved to prevent impersonation and broken historical links during the tenancy migration.',
+            'removal_program' => 'Program 03',
+        ],
+        [
             'path' => 'config/conecta.php',
             'classification' => 'operational_compatibility',
             'reason' => 'Legacy feature-flag keys remain readable until tenant governance moves them behind the Dovra compatibility adapter.',

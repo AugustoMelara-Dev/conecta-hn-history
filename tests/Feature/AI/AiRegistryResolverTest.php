@@ -50,6 +50,31 @@ final class AiRegistryResolverTest extends TestCase
         self::assertNotSame($platform['agent_version_id'], $selection->agentVersionId);
     }
 
+    public function test_it_can_resolve_a_persisted_agent_version_without_following_a_new_rollout(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $pinned = $this->registryFixture(
+            $tenant,
+            scopeType: 'tenant',
+            scopeKey: (string) $tenant->id,
+            modelKey: 'pinned-model',
+        );
+        $this->registryFixture(
+            $tenant,
+            scopeType: 'platform',
+            scopeKey: '*',
+            modelKey: 'broader-model',
+        );
+
+        $selection = app(AiRegistryResolver::class)->resolvePinned(
+            $this->registryQuery($tenant),
+            $pinned['agent_version_id'],
+        );
+
+        self::assertSame($pinned['agent_version_id'], $selection->agentVersionId);
+        self::assertSame('pinned-model', $selection->modelKey);
+    }
+
     public function test_it_rejects_conflicting_activations_at_the_same_specificity(): void
     {
         $tenant = Tenant::factory()->create();
@@ -498,11 +523,26 @@ final class AiRegistryResolverTest extends TestCase
             'decided_at' => $decidedAt,
             'created_at' => now(),
         ]);
+        $secondRunId = (string) Str::uuid();
+        $secondRun = (array) DB::table('ai_evaluation_runs')
+            ->where('id', $fixture['evaluation_run_id'])
+            ->first();
+        $secondRun['id'] = $secondRunId;
+        $secondRun['request_checksum'] = null;
+        DB::table('ai_evaluation_runs')->insert($secondRun);
+        foreach (DB::table('ai_evaluation_results')
+            ->where('evaluation_run_id', $fixture['evaluation_run_id'])
+            ->get() as $result) {
+            $copy = (array) $result;
+            $copy['id'] = (string) Str::uuid();
+            $copy['evaluation_run_id'] = $secondRunId;
+            DB::table('ai_evaluation_results')->insert($copy);
+        }
         DB::table('ai_release_decisions')->insert([
             'id' => (string) Str::uuid(),
             'tenant_id' => (string) $tenant->id,
             'release_policy_id' => $fixture['release_policy_id'],
-            'evaluation_run_id' => $fixture['evaluation_run_id'],
+            'evaluation_run_id' => $secondRunId,
             'agent_version_id' => $fixture['agent_version_id'],
             'decision' => 'passed',
             'decided_by' => 'second-reviewer',

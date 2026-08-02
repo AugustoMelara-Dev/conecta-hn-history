@@ -83,6 +83,7 @@ if ($declaredPaths['missing_count'] > 0) {
 $brandScan = emptyScan(array_keys($config['manifest']['brand_patterns']));
 $secretScan = emptyScan(array_keys($config['manifest']['secret_patterns']));
 $unsupportedClaims = emptyClaimsScan();
+$exactArtifactClean = ! $gitUnavailable && $dirtyPaths === [];
 
 // HEAD mismatch and missing git are strict failures; avoid an expensive full
 // tree scan when the artifact identity is already untrustworthy.
@@ -141,9 +142,10 @@ $payload = [
     ],
     'summary' => [
         'strict_failures' => array_column($errors, 'code'),
-        'can_certify_exact_artifact' => $exitCode === 0,
+        'manifest_executed_without_strict_failures' => $exitCode === 0,
+        'can_certify_exact_artifact' => $exitCode === 0 && $exactArtifactClean,
         'notes' => [
-            'Dirty-tree state is evidence metadata and never a pass.',
+            'A dirty tree can produce an accounting manifest but cannot be certified as an exact immutable artifact.',
             'Repository certification is not public production, legal compliance, independent certification, traction, revenue, PMF, or investment readiness.',
         ],
     ],

@@ -12,7 +12,7 @@ return [
     ],
 
     'legal' => [
-        'entity_name' => env('DOVRA_LEGAL_ENTITY_NAME'),
+        'entity_name' => env('DOVRA_LEGAL_ENTITY_NAME') ?: null,
         'name_clearance_confirmed' => (bool) env('DOVRA_NAME_CLEARANCE_CONFIRMED', false),
     ],
 ];

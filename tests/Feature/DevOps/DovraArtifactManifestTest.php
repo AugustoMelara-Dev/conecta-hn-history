@@ -27,7 +27,11 @@ final class DovraArtifactManifestTest extends TestCase
         self::assertArrayHasKey('secrets', $payload['scans']);
         self::assertArrayHasKey('unsupported_claims', $payload['scans']);
         self::assertArrayHasKey('strict_failures', $payload['summary']);
-        self::assertTrue($payload['summary']['can_certify_exact_artifact']);
+        self::assertSame(
+            $payload['dirty'] ? false : true,
+            $payload['summary']['can_certify_exact_artifact'],
+        );
+        self::assertTrue($payload['summary']['manifest_executed_without_strict_failures']);
     }
 
     public function test_manifest_fails_when_expected_head_does_not_match(): void

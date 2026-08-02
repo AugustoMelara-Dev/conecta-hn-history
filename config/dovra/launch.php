@@ -255,7 +255,7 @@ return [
         [
             'id' => 'AC15',
             'title' => 'Exact-artifact certification',
-            'result' => 'proved',
+            'result' => 'incomplete',
             'authority_paths' => [
                 'config/dovra/launch.php',
                 'scripts/certify-dovra-launch.ps1',
@@ -270,7 +270,7 @@ return [
                 'docs/dovra/evidence/program-14-2026-08-01.md',
             ],
             'commands' => ['pwsh -File scripts/certify-dovra-launch.ps1'],
-            'limitation' => 'Certification proves repository artifact state only; it does not prove public production, legal compliance, independent certification, traction, revenue, PMF, or investment readiness.',
+            'limitation' => 'The manifest executes without strict failures, but the current dirty checkout reports can_certify_exact_artifact=false; an immutable clean artifact and a Git-capable certified runtime are still required. This does not prove public production, legal compliance, independent certification, traction, revenue, PMF, or investment readiness.',
         ],
         [
             'id' => 'AC16',
@@ -465,6 +465,8 @@ return [
             'config/dovra/launch.php',
         ],
         'artifact_files' => [
+            'bootstrap/app.php',
+            'scripts/qa/certify-launch.mjs',
             'tests/e2e/dovra-launch-critical.spec.ts',
             'tests/e2e/dovra-accessibility.spec.ts',
             'tests/Feature/DevOps/DockerComposeContractTest.php',
@@ -480,6 +482,11 @@ return [
             'app/Application/Identity/IdentityGovernanceBackfillReport.php',
             'app/Application/Operations/BusinessOperationsBackfill.php',
             'app/Application/Operations/BusinessOperationsBackfillReport.php',
+            'database/migrations/2026_03_16_020000_create_tenant_memberships_table.php',
+            'database/migrations/2026_07_22_172000_create_ai_executions_table.php',
+            'database/migrations/2026_07_28_000001_create_global_market_kernel.php',
+            'database/migrations/2026_07_28_000004_expand_business_operations.php',
+            'database/migrations/2026_07_29_000004_link_ai_executions_to_foundation.php',
             'docs/dovra/acceptance-matrix-2026-08-01.md',
             'docs/dovra/launch-gates-2026-08-01.md',
             'docs/dovra/external-dependency-register-2026-08-01.md',
@@ -522,7 +529,7 @@ return [
         ],
         'brand_patterns' => [
             'canonical' => '/\bDovra(?: AI)?\b/i',
-            'legacy' => '/\bConecta HN\b/i',
+            'legacy' => '/\bConecta'.' HN\b/i',
         ],
     ],
 ];

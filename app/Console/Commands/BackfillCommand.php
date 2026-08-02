@@ -9,6 +9,10 @@ use Illuminate\Support\Facades\Schema;
 
 abstract class BackfillCommand extends Command
 {
+    private const MAX_BATCH_LIMIT = 5_000;
+
+    private const MAX_SOURCE_OFFSET = 2_147_483_647;
+
     /**
      * @param  callable(bool, int, int): array<string, mixed>  $runner
      * @param  callable(array<string, mixed>): int  $blockingIssueCounter
@@ -28,7 +32,7 @@ abstract class BackfillCommand extends Command
             ]);
         }
 
-        $limit = $this->integerOption('limit', 1000, minimum: 1);
+        $limit = $this->integerOption('limit', 1000, minimum: 1, maximum: self::MAX_BATCH_LIMIT);
         if ($limit === null) {
             return $this->failWithPayload([
                 'status' => 'failed',
@@ -37,7 +41,7 @@ abstract class BackfillCommand extends Command
             ]);
         }
 
-        $offset = $this->integerOption('offset', 0, minimum: 0);
+        $offset = $this->integerOption('offset', 0, minimum: 0, maximum: self::MAX_SOURCE_OFFSET);
         if ($offset === null) {
             return $this->failWithPayload([
                 'status' => 'failed',
@@ -57,11 +61,36 @@ abstract class BackfillCommand extends Command
             }
 
             $checkpoint = $this->readJson($checkpointPath);
-            if ($checkpoint === null || ! isset($checkpoint['next_source_offset'])) {
+            if ($checkpoint === null) {
                 return $this->failWithPayload([
                     'status' => 'failed',
                     'code' => 'checkpoint_not_resumable',
-                    'message' => 'The checkpoint does not contain a resumable source offset.',
+                    'message' => 'The checkpoint is missing or invalid JSON.',
+                ]);
+            }
+
+            $checkpointError = $this->checkpointError($checkpoint, $phase, $limit);
+            if ($checkpointError !== null) {
+                return $this->failWithPayload([
+                    'status' => 'failed',
+                    'code' => 'checkpoint_not_resumable',
+                    'message' => $checkpointError,
+                ]);
+            }
+
+            $requestedOffset = $this->integerOption('offset', 0, minimum: 0, maximum: self::MAX_SOURCE_OFFSET);
+            if ($requestedOffset === null) {
+                return $this->failWithPayload([
+                    'status' => 'failed',
+                    'code' => 'invalid_offset',
+                    'message' => 'offset must be a non-negative bounded integer.',
+                ]);
+            }
+            if ($requestedOffset !== 0 && $requestedOffset !== (int) $checkpoint['next_source_offset']) {
+                return $this->failWithPayload([
+                    'status' => 'failed',
+                    'code' => 'resume_offset_conflict',
+                    'message' => 'An explicit offset must equal the checkpoint next source offset.',
                 ]);
             }
 
@@ -80,12 +109,20 @@ abstract class BackfillCommand extends Command
             $offset = (int) $checkpointOffset;
         }
 
-        $maxBlockingGaps = $this->integerOption('max-blocking-gaps', 0, minimum: 0);
+        $maxBlockingGaps = $this->integerOption('max-blocking-gaps', 0, minimum: 0, maximum: self::MAX_SOURCE_OFFSET);
         if ($maxBlockingGaps === null) {
             return $this->failWithPayload([
                 'status' => 'failed',
                 'code' => 'invalid_max_blocking_gaps',
                 'message' => 'max-blocking-gaps must be a non-negative integer.',
+            ]);
+        }
+
+        if ($offset > self::MAX_SOURCE_OFFSET - $limit) {
+            return $this->failWithPayload([
+                'status' => 'failed',
+                'code' => 'source_window_overflow',
+                'message' => 'offset plus limit must remain within the bounded source window.',
             ]);
         }
 
@@ -210,15 +247,18 @@ abstract class BackfillCommand extends Command
             'limit' => $limit,
             'source_offset' => $sourceOffset,
             'next_source_offset' => $sourceOffset + $limit,
+            'max_blocking_gaps' => $maxBlockingGaps,
+            'status' => $status,
             'blocking_issue_count' => $blockingIssueCount,
             'report_sha256' => hash('sha256', $canonical),
         ];
+        $payload['checkpoint']['checkpoint_sha256'] = $this->checkpointChecksum($payload['checkpoint']);
 
         return $payload;
     }
 
     /** @return int|null */
-    private function integerOption(string $name, int $default, int $minimum): ?int
+    private function integerOption(string $name, int $default, int $minimum, int $maximum): ?int
     {
         $value = $this->option($name);
         $value = $value === null || $value === '' ? (string) $default : (string) $value;
@@ -229,7 +269,7 @@ abstract class BackfillCommand extends Command
 
         $integer = (int) $value;
 
-        return $integer >= $minimum ? $integer : null;
+        return $integer >= $minimum && $integer <= $maximum ? $integer : null;
     }
 
     /** @param array<string, mixed> $payload */
@@ -241,7 +281,9 @@ abstract class BackfillCommand extends Command
         }
 
         $checkpointPath = $this->option('checkpoint');
-        if (is_string($checkpointPath) && trim($checkpointPath) !== '') {
+        if ($exitCode === self::SUCCESS
+            && is_string($checkpointPath)
+            && trim($checkpointPath) !== '') {
             $this->writeJson($checkpointPath, $payload['checkpoint']);
         }
 
@@ -280,9 +322,78 @@ abstract class BackfillCommand extends Command
         }
 
         $encoded = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR).PHP_EOL;
-        if (file_put_contents($resolved, $encoded, LOCK_EX) === false) {
-            throw new \RuntimeException('Unable to write report: '.$resolved);
+        $temporary = $resolved.'.'.bin2hex(random_bytes(6)).'.tmp';
+        if (file_put_contents($temporary, $encoded, LOCK_EX) === false || ! rename($temporary, $resolved)) {
+            @unlink($temporary);
+            throw new \RuntimeException('Unable to atomically write report: '.$resolved);
         }
+    }
+
+    /** @param array<string, mixed> $checkpoint */
+    private function checkpointError(array $checkpoint, string $phase, int $limit): ?string
+    {
+        if (($checkpoint['schema'] ?? null) !== 1
+            || ($checkpoint['command'] ?? null) !== $this->getName()
+            || ($checkpoint['phase'] ?? null) !== $phase
+            || ($checkpoint['status'] ?? null) !== 'proved') {
+            return 'The checkpoint command, phase, schema, or status does not match this resumable run.';
+        }
+
+        foreach (['limit', 'source_offset', 'next_source_offset', 'max_blocking_gaps', 'blocking_issue_count'] as $key) {
+            if (! is_int($checkpoint[$key] ?? null) || $checkpoint[$key] < 0) {
+                return 'The checkpoint contains an invalid numeric progression field.';
+            }
+        }
+        $maxBlockingGaps = $this->integerOption('max-blocking-gaps', 0, minimum: 0, maximum: self::MAX_SOURCE_OFFSET);
+        if ($maxBlockingGaps === null) {
+            return 'The current max-blocking-gaps option is invalid.';
+        }
+        if ($checkpoint['limit'] !== $limit
+            || $checkpoint['max_blocking_gaps'] !== $maxBlockingGaps
+            || $checkpoint['source_offset'] > self::MAX_SOURCE_OFFSET
+            || $checkpoint['next_source_offset'] > self::MAX_SOURCE_OFFSET
+            || $checkpoint['source_offset'] > self::MAX_SOURCE_OFFSET - $checkpoint['limit']
+            || $checkpoint['next_source_offset'] !== $checkpoint['source_offset'] + $checkpoint['limit']) {
+            return 'The checkpoint limit or source progression does not match this run.';
+        }
+        if (! is_string($checkpoint['report_sha256'] ?? null)
+            || preg_match('/^[a-f0-9]{64}$/', $checkpoint['report_sha256']) !== 1) {
+            return 'The checkpoint report digest is invalid.';
+        }
+        if (! is_string($checkpoint['checkpoint_sha256'] ?? null)
+            || preg_match('/^[a-f0-9]{64}$/', $checkpoint['checkpoint_sha256']) !== 1
+            || ! hash_equals($checkpoint['checkpoint_sha256'], $this->checkpointChecksum($checkpoint))) {
+            return 'The checkpoint integrity checksum is invalid.';
+        }
+
+        $reportPath = $this->option('report');
+        if (is_string($reportPath) && trim($reportPath) !== '') {
+            if (! is_file($this->resolvePath($reportPath))) {
+                return 'The report bound to this checkpoint is missing.';
+            }
+            $report = $this->readJson($reportPath);
+            if ($report === null) {
+                return 'The report bound to this checkpoint is invalid JSON.';
+            }
+            unset($report['checkpoint']);
+            $reportDigest = hash(
+                'sha256',
+                json_encode($report, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+            );
+            if (! hash_equals($checkpoint['report_sha256'], $reportDigest)) {
+                return 'The checkpoint report digest does not match the report file.';
+            }
+        }
+
+        return null;
+    }
+
+    /** @param array<string, mixed> $checkpoint */
+    private function checkpointChecksum(array $checkpoint): string
+    {
+        unset($checkpoint['checkpoint_sha256']);
+
+        return hash('sha256', json_encode($checkpoint, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
     }
 
     /** @return array<string, mixed>|null */

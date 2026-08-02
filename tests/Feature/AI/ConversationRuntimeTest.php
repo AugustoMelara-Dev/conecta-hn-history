@@ -44,6 +44,11 @@ final class ConversationRuntimeTest extends TestCase
 
         self::assertSame('completed', $response->status, json_encode($response->toArray(), JSON_THROW_ON_ERROR));
         self::assertNotNull($response->conversationId);
+        self::assertNotNull($gateway->agentVersionAtExecution);
+        self::assertSame(
+            DB::table('ai_conversations')->where('id', $response->conversationId)->value('agent_version_id'),
+            $gateway->agentVersionAtExecution,
+        );
         $this->assertDatabaseHas('ai_messages', [
             'id' => $response->responseMessageId,
             'conversation_id' => $response->conversationId,
@@ -771,6 +776,7 @@ final class ConversationRuntimeTest extends TestCase
 final class PersistingConversationGateway implements AiGateway
 {
     public int $calls = 0;
+    public ?string $agentVersionAtExecution = null;
 
     /** @param array<string, mixed> $data */
     public function __construct(private readonly array $data) {}
@@ -778,6 +784,9 @@ final class PersistingConversationGateway implements AiGateway
     public function execute(AiExecutionRequest $request): AiExecutionResult
     {
         $this->calls++;
+        $this->agentVersionAtExecution = DB::table('ai_conversations')
+            ->where('id', $request->context->conversationId)
+            ->value('agent_version_id');
         DB::table('ai_executions')->insert([
             'correlation_id' => $request->context->correlationId,
             'tenant_id' => $request->context->tenantId,

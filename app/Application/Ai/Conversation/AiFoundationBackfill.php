@@ -26,6 +26,12 @@ final class AiFoundationBackfill
         string $conversationId,
         string $agentVersionId,
     ): ?object {
+        if (! Str::isUuid($tenantId)
+            || ! Str::isUuid($conversationId)
+            || ! Str::isUuid($agentVersionId)) {
+            throw new InvalidArgumentException('AI canary path identifiers are invalid.');
+        }
+
         return DB::transaction(function () use ($tenantId, $conversationId, $agentVersionId): ?object {
             $conversation = DB::table('ai_conversations')
                 ->where('tenant_id', $tenantId)
@@ -55,6 +61,25 @@ final class AiFoundationBackfill
     }
 
     /**
+     * Read the canonical sticky agent assignment for a conversation.
+     * A non-null value is intentionally returned without coercion so the
+     * registry resolver can fail closed when legacy data is malformed.
+     */
+    public function pinnedAgentVersionId(string $tenantId, string $conversationId): ?string
+    {
+        if (! Str::isUuid($tenantId) || ! Str::isUuid($conversationId)) {
+            return null;
+        }
+
+        $value = DB::table('ai_conversations')
+            ->where('tenant_id', $tenantId)
+            ->where('id', $conversationId)
+            ->value('agent_version_id');
+
+        return $value === null ? null : (string) $value;
+    }
+
+    /**
      * Run one bounded, deterministic batch.
      *
      * The cursor is an opaque, integrity-checked tuple of created_at and the
@@ -69,6 +94,8 @@ final class AiFoundationBackfill
         string $phase = 'backfill',
         bool $dryRun = false,
         ?string $conversationCursor = null,
+        ?array $executionSnapshot = null,
+        ?array $conversationSnapshot = null,
     ): AiFoundationBackfillReport {
         $limit = min(5_000, max(1, $limit));
         if (! in_array($phase, self::PHASES, true)) {
@@ -97,7 +124,11 @@ final class AiFoundationBackfill
         }
 
         $executionCursor = $this->decodeCursor($cursor, 'execution');
-        [$executionRows, $executionSnapshot] = $this->executions($limit, $executionCursor);
+        [$executionRows, $executionSnapshot] = $this->executions(
+            $limit,
+            $executionCursor,
+            $executionSnapshot ?? $executionCursor['snapshot'] ?? null,
+        );
         $executions = $executionRows->take($limit)->values();
         $apply = $phase === 'backfill' && ! $dryRun;
         $gaps = 0;
@@ -133,17 +164,22 @@ final class AiFoundationBackfill
             $conversationNextCursor,
             $conversationHasMore,
             $conversationSnapshot,
+            $conversationChecksum,
         ] = $this->classifyConversations(
             $limit,
             $this->decodeCursor($conversationCursor, 'conversation'),
             $apply,
+            $conversationSnapshot,
         );
 
         $nextCursor = $executionRows->count() > $limit
             ? $this->encodeCursor($executions->last(), 'execution', $executionSnapshot)
             : null;
         $hasMore = $executionRows->count() > $limit;
-        $batchChecksum = $this->batchChecksum($executions, 'execution');
+        $batchChecksum = hash('sha256', json_encode([
+            'executions' => $this->batchChecksum($executions, 'execution'),
+            'conversations' => $conversationChecksum,
+        ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
 
         return new AiFoundationBackfillReport(
             registryLinked: $registryLinked,
@@ -164,41 +200,70 @@ final class AiFoundationBackfill
             contractStatus: $phase === 'contract'
                 ? 'deferred_until_consumers_proven'
                 : 'no_contract_requested',
+            sourceSnapshot: [
+                'executions' => $executionSnapshot,
+                'conversations' => $conversationSnapshot,
+            ],
         );
     }
 
-    /** @return array{\Illuminate\Support\Collection<int, object>,?array{created_at:string,id:string}} */
-    private function executions(int $limit, ?array $cursor): array
+    /** @return array{\Illuminate\Support\Collection<int, object>,array{created_at:string,id:string,empty?:bool}} */
+    private function executions(int $limit, ?array $cursor, ?array $snapshot = null): array
     {
-        $query = DB::table('ai_executions')
-            ->orderBy('created_at')
-            ->orderBy('correlation_id');
+        $query = DB::table('ai_executions as backfill_executions')
+            ->leftJoin('ai_messages as backfill_request', function ($join): void {
+                $join
+                    ->on('backfill_request.tenant_id', '=', 'backfill_executions.tenant_id')
+                    ->on('backfill_request.id', '=', 'backfill_executions.request_message_id');
+            })
+            ->leftJoin('ai_messages as backfill_response', function ($join): void {
+                $join
+                    ->on('backfill_response.tenant_id', '=', 'backfill_executions.tenant_id')
+                    ->on('backfill_response.id', '=', 'backfill_executions.response_message_id');
+            })
+            ->select('backfill_executions.*')
+            ->addSelect([
+                'backfill_request.conversation_id as request_conversation_id',
+                'backfill_request.provider_version_id as request_provider_version_id',
+                'backfill_request.model_version_id as request_model_version_id',
+                'backfill_request.agent_version_id as request_agent_version_id',
+                'backfill_request.prompt_version_id as request_prompt_version_id',
+                'backfill_response.conversation_id as response_conversation_id',
+                'backfill_response.provider_version_id as response_provider_version_id',
+                'backfill_response.model_version_id as response_model_version_id',
+                'backfill_response.agent_version_id as response_agent_version_id',
+                'backfill_response.prompt_version_id as response_prompt_version_id',
+            ])
+            ->orderBy('backfill_executions.created_at')
+            ->orderBy('backfill_executions.correlation_id');
 
-        $snapshot = $cursor['snapshot'] ?? $this->snapshotBoundary('ai_executions', 'correlation_id');
-        $this->afterCursor($query, $cursor, 'correlation_id');
-        $this->withinSnapshot($query, $snapshot, 'correlation_id');
+        $snapshot = $snapshot ?? $cursor['snapshot'] ?? $this->snapshotBoundary('ai_executions', 'correlation_id');
+        $this->afterCursor($query, $cursor, 'backfill_executions.correlation_id', 'backfill_executions.created_at');
+        $this->withinSnapshot($query, $snapshot, 'backfill_executions.correlation_id', 'backfill_executions.created_at');
 
         return [$query->limit($limit + 1)->get(), $snapshot];
     }
 
     /**
-     * @return array{int,?string,bool,?array{created_at:string,id:string}}
+     * @return array{int,?string,bool,array{created_at:string,id:string,empty?:bool},string}
      */
     private function classifyConversations(
         int $limit,
         ?array $cursor,
         bool $apply,
+        ?array $snapshot = null,
     ): array {
         $retentionDays = max(1, (int) config('ai.retention.conversation_days', 30));
         $query = DB::table('ai_conversations')
             ->orderBy('created_at')
             ->orderBy('id');
-        $snapshot = $cursor['snapshot'] ?? $this->snapshotBoundary('ai_conversations', 'id');
-        $this->afterCursor($query, $cursor, 'id');
-        $this->withinSnapshot($query, $snapshot, 'id');
+        $snapshot = $snapshot ?? $cursor['snapshot'] ?? $this->snapshotBoundary('ai_conversations', 'id');
+        $this->afterCursor($query, $cursor, 'id', 'created_at');
+        $this->withinSnapshot($query, $snapshot, 'id', 'created_at');
         $rows = $query->limit($limit + 1)->get();
         $conversations = $rows->take($limit)->values();
         $classified = 0;
+        $conversationChecksum = $this->batchChecksum($conversations, 'conversation');
 
         foreach ($conversations as $conversation) {
             $classified++;
@@ -244,6 +309,7 @@ final class AiFoundationBackfill
                 : null,
             $rows->count() > $limit,
             $snapshot,
+            $conversationChecksum,
         ];
     }
 
@@ -531,12 +597,21 @@ final class AiFoundationBackfill
             'created_at' => $createdAt,
             'id' => $identifier,
         ];
+        if ($snapshot !== null) {
+            $payload['snapshot'] = [
+                'created_at' => (string) $snapshot['created_at'],
+                'id' => (string) $snapshot['id'],
+            ];
+            if (($snapshot['empty'] ?? false) === true) {
+                $payload['snapshot']['empty'] = true;
+            }
+        }
         $payload['checksum'] = $this->cursorChecksum($payload);
 
         return rtrim(strtr(base64_encode(json_encode($payload, JSON_THROW_ON_ERROR)), '+/', '-_'), '=');
     }
 
-    /** @return array{kind:string,created_at:string,id:string,snapshot:?array{created_at:string,id:string}}|null */
+    /** @return array{kind:string,created_at:string,id:string,snapshot:?array{created_at:string,id:string,empty?:bool}}|null */
     private function decodeCursor(?string $cursor, string $expectedKind): ?array
     {
         if ($cursor === null || trim($cursor) === '') {
@@ -564,15 +639,25 @@ final class AiFoundationBackfill
 
         $snapshot = null;
         if (isset($payload['snapshot'])) {
-            if (! is_array($payload['snapshot'])
-                || ! is_string($payload['snapshot']['created_at'] ?? null)
-                || ! is_string($payload['snapshot']['id'] ?? null)) {
+            $rawSnapshot = $payload['snapshot'];
+            $emptySnapshot = is_array($rawSnapshot) ? ($rawSnapshot['empty'] ?? false) : false;
+            if (! is_array($rawSnapshot)
+                || ! is_bool($emptySnapshot)
+                || ! is_string($rawSnapshot['created_at'] ?? null)
+                || ! is_string($rawSnapshot['id'] ?? null)
+                || ($emptySnapshot
+                    && ($rawSnapshot['created_at'] !== '' || $rawSnapshot['id'] !== ''))
+                || (! $emptySnapshot
+                    && ($rawSnapshot['created_at'] === '' || $rawSnapshot['id'] === ''))) {
                 throw new InvalidArgumentException('AI foundation backfill cursor snapshot is invalid.');
             }
             $snapshot = [
-                'created_at' => $payload['snapshot']['created_at'],
-                'id' => $payload['snapshot']['id'],
+                'created_at' => $rawSnapshot['created_at'],
+                'id' => $rawSnapshot['id'],
             ];
+            if ($emptySnapshot) {
+                $snapshot['empty'] = true;
+            }
         }
 
         return [
@@ -593,46 +678,52 @@ final class AiFoundationBackfill
             (string) ($payload['id'] ?? ''),
             (string) ($snapshot['created_at'] ?? ''),
             (string) ($snapshot['id'] ?? ''),
+            ($snapshot['empty'] ?? false) === true ? 'empty' : 'bounded',
         ]));
     }
 
-    private function afterCursor($query, ?array $cursor, string $identifierColumn): void
+    private function afterCursor($query, ?array $cursor, string $identifierColumn, string $createdAtColumn = 'created_at'): void
     {
         if ($cursor === null) {
             return;
         }
 
-        $query->where(function ($builder) use ($cursor, $identifierColumn): void {
+        $query->where(function ($builder) use ($cursor, $identifierColumn, $createdAtColumn): void {
             $builder
-                ->where('created_at', '>', $cursor['created_at'])
-                ->orWhere(function ($sameTimestamp) use ($cursor, $identifierColumn): void {
+                ->where($createdAtColumn, '>', $cursor['created_at'])
+                ->orWhere(function ($sameTimestamp) use ($cursor, $identifierColumn, $createdAtColumn): void {
                     $sameTimestamp
-                        ->where('created_at', '=', $cursor['created_at'])
+                        ->where($createdAtColumn, '=', $cursor['created_at'])
                         ->where($identifierColumn, '>', $cursor['id']);
                 });
         });
     }
 
-    /** @param array{created_at:string,id:string}|null $snapshot */
-    private function withinSnapshot($query, ?array $snapshot, string $identifierColumn): void
+    /** @param array{created_at:string,id:string,empty?:bool}|null $snapshot */
+    private function withinSnapshot($query, ?array $snapshot, string $identifierColumn, string $createdAtColumn = 'created_at'): void
     {
         if ($snapshot === null) {
             return;
         }
+        if (($snapshot['empty'] ?? false) === true) {
+            $query->whereRaw('1 = 0');
 
-        $query->where(function ($builder) use ($snapshot, $identifierColumn): void {
+            return;
+        }
+
+        $query->where(function ($builder) use ($snapshot, $identifierColumn, $createdAtColumn): void {
             $builder
-                ->where('created_at', '<', $snapshot['created_at'])
-                ->orWhere(function ($sameTimestamp) use ($snapshot, $identifierColumn): void {
+                ->where($createdAtColumn, '<', $snapshot['created_at'])
+                ->orWhere(function ($sameTimestamp) use ($snapshot, $identifierColumn, $createdAtColumn): void {
                     $sameTimestamp
-                        ->where('created_at', '=', $snapshot['created_at'])
+                        ->where($createdAtColumn, '=', $snapshot['created_at'])
                         ->where($identifierColumn, '<=', $snapshot['id']);
                 });
         });
     }
 
-    /** @return array{created_at:string,id:string}|null */
-    private function snapshotBoundary(string $table, string $identifierColumn): ?array
+    /** @return array{created_at:string,id:string,empty?:bool} */
+    private function snapshotBoundary(string $table, string $identifierColumn): array
     {
         $row = DB::table($table)
             ->orderByDesc('created_at')
@@ -640,7 +731,11 @@ final class AiFoundationBackfill
             ->first(['created_at', $identifierColumn]);
 
         if ($row === null) {
-            return null;
+            return [
+                'created_at' => '',
+                'id' => '',
+                'empty' => true,
+            ];
         }
 
         return [
@@ -651,41 +746,83 @@ final class AiFoundationBackfill
 
     private function batchChecksum(iterable $rows, string $kind): string
     {
-        $fields = $kind === 'execution'
-            ? [
-                'tenant_id',
-                'correlation_id',
-                'created_at',
-                'provider',
-                'model',
-                'provider_version_id',
-                'model_version_id',
-                'agent_version_id',
-                'prompt_version_id',
-                'conversation_id',
-                'request_message_id',
-                'response_message_id',
-            ]
-            : [
-                'tenant_id',
-                'id',
-                'created_at',
-                'actor_id',
-                'agent_version_id',
-                'retention_category',
-                'retention_expires_at',
-                'status',
-            ];
         $items = [];
         foreach ($rows as $row) {
-            $item = ['kind' => $kind];
-            foreach ($fields as $field) {
-                $item[$field] = $row->{$field} ?? null;
+            if ($kind === 'execution') {
+                $item = [
+                    'kind' => $kind,
+                    'tenant_id' => $row->tenant_id ?? null,
+                    'correlation_id' => $row->correlation_id ?? null,
+                    'created_at' => $row->created_at ?? null,
+                    'provider' => $row->provider ?? null,
+                    'model' => $row->model ?? null,
+                    'request_message_id' => $row->request_message_id ?? null,
+                    'response_message_id' => $row->response_message_id ?? null,
+                    'lineage' => [
+                        'conversation' => $this->lineageValues([
+                            $row->conversation_id ?? null,
+                            $row->request_conversation_id ?? null,
+                            $row->response_conversation_id ?? null,
+                        ]),
+                        'provider_version' => $this->lineageValues([
+                            $row->provider_version_id ?? null,
+                            $row->request_provider_version_id ?? null,
+                            $row->response_provider_version_id ?? null,
+                        ]),
+                        'model_version' => $this->lineageValues([
+                            $row->model_version_id ?? null,
+                            $row->request_model_version_id ?? null,
+                            $row->response_model_version_id ?? null,
+                        ]),
+                        'agent_version' => $this->lineageValues([
+                            $row->agent_version_id ?? null,
+                            $row->request_agent_version_id ?? null,
+                            $row->response_agent_version_id ?? null,
+                        ]),
+                        'prompt_version' => $this->lineageValues([
+                            $row->prompt_version_id ?? null,
+                            $row->request_prompt_version_id ?? null,
+                            $row->response_prompt_version_id ?? null,
+                        ]),
+                    ],
+                ];
+            } else {
+                $item = [
+                    'kind' => $kind,
+                    'tenant_id' => $row->tenant_id ?? null,
+                    'id' => $row->id ?? null,
+                    'created_at' => $row->created_at ?? null,
+                    'visibility' => $row->visibility ?? null,
+                    'origin_type' => $row->origin_type ?? null,
+                    'external_thread_hash' => $row->external_thread_hash ?? null,
+                    'actor_id' => $row->actor_id ?? null,
+                    'locale' => $row->locale ?? null,
+                    'market_country_code' => $row->market_country_code ?? null,
+                    'currency' => $row->currency ?? null,
+                    'timezone' => $row->timezone ?? null,
+                ];
             }
             $items[] = $item;
         }
 
         return hash('sha256', json_encode($items, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
+    }
+
+    /** @param array<int,mixed> $values @return list<string> */
+    private function lineageValues(array $values): array
+    {
+        $normalized = [];
+        foreach ($values as $value) {
+            if ($value === null || $value === '') {
+                continue;
+            }
+            $normalized[] = is_scalar($value) ? (string) $value : json_encode($value, JSON_THROW_ON_ERROR);
+        }
+
+        $normalized = array_values(array_unique($normalized));
+        sort($normalized, SORT_STRING);
+
+        return $normalized;
     }
 
     /** @return list<string> */

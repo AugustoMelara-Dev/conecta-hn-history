@@ -10,6 +10,7 @@ use App\Application\Ai\Handoff\RequestAiHandoff;
 use App\Application\Ai\PrivateGroundedAgent;
 use App\Application\Ai\PublicGroundedDiscovery;
 use App\Application\Ai\Registry\AiRegistryResolver;
+use App\Application\Ai\Registry\AiRegistryQuery;
 use App\Application\Ai\Registry\AiRuntimeSelection;
 use App\Application\Markets\TenantMarketResolver;
 use App\Domain\Shared\Services\TenantContext;
@@ -40,6 +41,7 @@ final readonly class ConversationRuntime
         private TenantContext $tenantContext,
         private PostgresTenantScope $postgresTenantScope,
         private AiHandoffService $handoffs,
+        private AiFoundationBackfill $conversationAuthority,
     ) {}
 
     public function public(PublicConversationInput $input): ConversationResponse
@@ -86,7 +88,11 @@ final readonly class ConversationRuntime
 
         $selection = null;
         try {
-            $selection = $this->registry->resolve($input->toRegistryQuery($tenantId, $market));
+            $selection = $this->resolveConversationSelection(
+                tenantId: $tenantId,
+                conversationId: $claim->conversationId,
+                query: $input->toRegistryQuery($tenantId, $market),
+            );
             if ($this->isExplicitHandoffRequest($input->message)) {
                 return $this->failed(
                     tenantId: $tenantId,
@@ -150,7 +156,11 @@ final readonly class ConversationRuntime
 
         $selection = null;
         try {
-            $selection = $this->registry->resolve($input->toRegistryQuery($market));
+            $selection = $this->resolveConversationSelection(
+                tenantId: $input->tenantId,
+                conversationId: $claim->conversationId,
+                query: $input->toRegistryQuery($market),
+            );
             if ($this->isExplicitHandoffRequest($input->message)) {
                 return $this->failed(
                     tenantId: $input->tenantId,
@@ -193,6 +203,38 @@ final readonly class ConversationRuntime
                 agentVersionId: $selection?->agentVersionId,
             );
         }
+    }
+
+    private function resolveConversationSelection(
+        string $tenantId,
+        string $conversationId,
+        AiRegistryQuery $query,
+    ): AiRuntimeSelection {
+        $pinnedAgentVersionId = $this->conversationAuthority->pinnedAgentVersionId(
+            tenantId: $tenantId,
+            conversationId: $conversationId,
+        );
+
+        if ($pinnedAgentVersionId !== null) {
+            return $this->registry->resolvePinned($query, $pinnedAgentVersionId);
+        }
+
+        $candidate = $this->registry->resolve($query);
+        $persisted = $this->conversationAuthority->persistCanaryPath(
+            tenantId: $tenantId,
+            conversationId: $conversationId,
+            agentVersionId: $candidate->agentVersionId,
+        );
+        if ($persisted === null || $persisted->agent_version_id === null) {
+            throw new AiExecutionDeniedException('conversation_selection');
+        }
+
+        $persistedAgentVersionId = (string) $persisted->agent_version_id;
+        if (hash_equals($persistedAgentVersionId, $candidate->agentVersionId)) {
+            return $candidate;
+        }
+
+        return $this->registry->resolvePinned($query, $persistedAgentVersionId);
     }
 
     private function completeOrFail(
