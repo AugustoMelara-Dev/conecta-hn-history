@@ -134,6 +134,49 @@ final class WebhookLifecycleTest extends TestCase
         ], JSON_THROW_ON_ERROR), 'bad-signature');
     }
 
+    public function test_provider_fake_reads_the_config_secret_without_persisting_secret_material(): void
+    {
+        config()->set('dovra_billing.price_books.ca', [
+            'version' => 'ca-2026-08-v1',
+            'currency' => 'CAD',
+            'plans' => [
+                'launch' => [
+                    'monthly_minor' => 2900,
+                    'annual_minor' => 29000,
+                    'sandbox_only' => false,
+                    'live_entitled' => true,
+                    'included_credits' => 100,
+                    'capabilities' => ['private_agent'],
+                ],
+            ],
+        ]);
+        config()->set('dovra_billing.market_providers.ca', [
+            'provider' => 'deterministic-ca',
+            'checkout_mode' => 'external',
+            'signing_secret' => 'config-only-secret',
+        ]);
+
+        $tenant = Tenant::factory()->create();
+        $service = new GlobalEntitlementService(new ConfigPriceBookReader);
+        $provider = new DeterministicBillingProviderFake($service);
+        $signed = $provider->signedWebhook('ca', [
+            'event_id' => 'evt-secret-1',
+            'event_type' => 'subscription.activated',
+            'tenant_id' => (string) $tenant->getKey(),
+            'plan' => 'launch',
+            'status' => 'active',
+        ]);
+
+        $provider->handleWebhook('ca', $signed['payload'], $signed['signature']);
+
+        self::assertNull(DB::table('global_billing_market_providers')
+            ->where('market_key', 'ca')
+            ->value('signing_secret'));
+        self::assertSame(1, DB::table('global_billing_lifecycle_events')
+            ->where('provider_event_id', 'evt-secret-1')
+            ->count());
+    }
+
     public function test_live_checkout_contract_remains_external(): void
     {
         $tenant = Tenant::factory()->create();

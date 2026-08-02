@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Billing\Global;
 
-use App\Application\Billing\Global\GlobalEntitlementService;
+use App\Application\Billing\Global\EntitlementServiceInterface;
 use App\Application\Markets\MarketContext;
 use App\Domain\Billing\Global\GlobalTenantContext;
 use App\Domain\Billing\Global\SubscriptionCheckoutContract;
@@ -14,7 +14,7 @@ use Illuminate\Support\Str;
 final class DeterministicBillingProviderFake
 {
     public function __construct(
-        private readonly GlobalEntitlementService $entitlements,
+        private readonly EntitlementServiceInterface $entitlements,
     ) {}
 
     /**
@@ -59,7 +59,8 @@ final class DeterministicBillingProviderFake
                 [
                     'provider_key' => (string) $config['provider'],
                     'checkout_mode' => (string) $config['checkout_mode'],
-                    'signing_secret' => (string) $config['signing_secret'],
+                    // The legacy nullable column is compatibility-only; never persist the config secret.
+                    'signing_secret' => null,
                     'created_at' => now()->utc(),
                     'updated_at' => now()->utc(),
                 ],
@@ -113,7 +114,8 @@ final class DeterministicBillingProviderFake
             [
                 'provider_key' => (string) $config['provider'],
                 'checkout_mode' => (string) $config['checkout_mode'],
-                'signing_secret' => (string) $config['signing_secret'],
+                // The legacy nullable column is compatibility-only; never persist the config secret.
+                'signing_secret' => null,
                 'created_at' => now()->utc(),
                 'updated_at' => now()->utc(),
             ],

@@ -66,4 +66,11 @@ return [
             'signing_secret' => 'hn-secret',
         ],
     ],
+
+    'runtime' => [
+        'adapter' => \App\Infrastructure\Billing\Global\GlobalBillingRuntimeAdapter::class,
+        'entitlement_authority' => \App\Application\Billing\Global\GlobalEntitlementService::class,
+        'credit_ledger_authority' => \App\Domain\Billing\Global\CreditLedgerInterface::class,
+        'legacy_adoption' => 'not_migrated',
+    ],
 ];

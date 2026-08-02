@@ -43,4 +43,13 @@ final class BillingGlobalAuthorityRatchetTest extends TestCase
 
         self::assertSame([], $violations, 'Global billing must stay isolated from legacy billing/payment/AI authorities.');
     }
+
+    public function test_global_billing_configuration_names_the_runtime_adapter_and_discloses_legacy_adoption_status(): void
+    {
+        $config = (string) file_get_contents(dirname(__DIR__, 2).'/config/dovra_billing.php');
+
+        self::assertStringContainsString("'runtime'", $config);
+        self::assertStringContainsString('GlobalBillingRuntimeAdapter::class', $config);
+        self::assertStringContainsString("'legacy_adoption' => 'not_migrated'", $config);
+    }
 }

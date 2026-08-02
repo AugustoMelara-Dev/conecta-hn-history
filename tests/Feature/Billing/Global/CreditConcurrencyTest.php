@@ -9,6 +9,7 @@ use App\Infrastructure\Billing\Global\ImmutableCreditLedger;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 final class CreditConcurrencyTest extends TestCase
@@ -96,5 +97,47 @@ final class CreditConcurrencyTest extends TestCase
             ->pluck('threshold')
             ->map(static fn ($value): int => (int) $value)
             ->all());
+    }
+
+    public function test_reservations_and_ledger_entries_scope_reused_idempotency_keys_to_the_tenant(): void
+    {
+        $tenantA = Tenant::factory()->create();
+        $tenantB = Tenant::factory()->create();
+        $ledger = new ImmutableCreditLedger;
+
+        $ledger->adjust((string) $tenantA->getKey(), 5.0, 'monthly_allocation', 'shared-key');
+        $ledger->adjust((string) $tenantB->getKey(), 5.0, 'monthly_allocation', 'shared-key');
+
+        $reservationA = $ledger->reserve((string) $tenantA->getKey(), 1.0, 'private_agent', 'shared-key');
+        $reservationB = $ledger->reserve((string) $tenantB->getKey(), 1.0, 'private_agent', 'shared-key');
+
+        self::assertNotSame($reservationA->reservationId(), $reservationB->reservationId());
+        self::assertSame((string) $tenantA->getKey(), $reservationA->tenantId());
+        self::assertSame((string) $tenantB->getKey(), $reservationB->tenantId());
+        self::assertSame(2, DB::table('global_billing_credit_reservations')
+            ->where('idempotency_key', 'shared-key')
+            ->count());
+        self::assertSame(2, DB::table('global_billing_credit_ledger_entries')
+            ->where('idempotency_key', 'shared-key')
+            ->count());
+    }
+
+    public function test_idempotency_indexes_are_composite_and_global_unique_indexes_are_removed(): void
+    {
+        $reservationIndexes = collect(Schema::getIndexes('global_billing_credit_reservations'));
+        $ledgerIndexes = collect(Schema::getIndexes('global_billing_credit_ledger_entries'));
+
+        self::assertTrue($reservationIndexes->contains(static fn (array $index): bool =>
+            $index['name'] === 'global_billing_credit_reservations_tenant_idempotency_unique'
+            && $index['unique'] === true
+            && $index['columns'] === ['tenant_id', 'idempotency_key']));
+        self::assertFalse($reservationIndexes->contains(static fn (array $index): bool =>
+            $index['name'] === 'global_billing_credit_reservations_idempotency_key_unique'));
+        self::assertTrue($ledgerIndexes->contains(static fn (array $index): bool =>
+            $index['name'] === 'global_billing_credit_ledger_entries_tenant_idempotency_unique'
+            && $index['unique'] === true
+            && $index['columns'] === ['tenant_id', 'idempotency_key']));
+        self::assertFalse($ledgerIndexes->contains(static fn (array $index): bool =>
+            $index['name'] === 'global_billing_credit_ledger_entries_idempotency_key_unique'));
     }
 }

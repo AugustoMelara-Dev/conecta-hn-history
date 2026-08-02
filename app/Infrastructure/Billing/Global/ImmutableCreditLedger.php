@@ -18,6 +18,7 @@ final class ImmutableCreditLedger implements CreditLedgerInterface
         $this->assertFinite($credits, positive: true);
 
         $existing = DB::table('global_billing_credit_reservations')
+            ->where('tenant_id', $tenantId)
             ->where('idempotency_key', $idempotencyKey)
             ->first(['id', 'tenant_id', 'authorized_credits', 'status', 'idempotency_key']);
 
@@ -33,6 +34,22 @@ final class ImmutableCreditLedger implements CreditLedgerInterface
 
         return DB::transaction(function () use ($tenantId, $credits, $operation, $idempotencyKey, $metadata): CreditReservation {
             $account = $this->lockAccount($tenantId);
+            $existing = DB::table('global_billing_credit_reservations')
+                ->where('tenant_id', $tenantId)
+                ->where('idempotency_key', $idempotencyKey)
+                ->lockForUpdate()
+                ->first(['id', 'tenant_id', 'authorized_credits', 'status', 'idempotency_key']);
+
+            if ($existing !== null) {
+                return new CreditReservation(
+                    reservationId: (string) $existing->id,
+                    tenantId: (string) $existing->tenant_id,
+                    authorizedCredits: (float) $existing->authorized_credits,
+                    status: (string) $existing->status,
+                    idempotencyKey: (string) $existing->idempotency_key,
+                );
+            }
+
             $available = (float) $account->available_credits - (float) $account->reserved_credits;
 
             if ($available + 0.000001 < $credits) {
@@ -103,6 +120,7 @@ final class ImmutableCreditLedger implements CreditLedgerInterface
 
             if ((string) $reservation->status === 'settled') {
                 $reconciliation = DB::table('global_billing_credit_reconciliations')
+                    ->where('tenant_id', $tenantId)
                     ->where('reservation_id', $reservationId)
                     ->first();
 
@@ -246,16 +264,18 @@ final class ImmutableCreditLedger implements CreditLedgerInterface
     {
         $this->assertFinite($credits, positive: false);
 
-        $existing = DB::table('global_billing_credit_ledger_entries')
-            ->where('idempotency_key', $idempotencyKey)
-            ->exists();
-
-        if ($existing) {
-            return;
-        }
-
         DB::transaction(function () use ($tenantId, $credits, $reason, $idempotencyKey, $metadata): void {
             $account = $this->lockAccount($tenantId);
+            $existing = DB::table('global_billing_credit_ledger_entries')
+                ->where('tenant_id', $tenantId)
+                ->where('idempotency_key', $idempotencyKey)
+                ->lockForUpdate()
+                ->exists();
+
+            if ($existing) {
+                return;
+            }
+
             $availableAfter = (float) $account->available_credits + $credits;
             $allowance = isset($metadata['allowance_credits']) && is_numeric($metadata['allowance_credits'])
                 ? (float) $metadata['allowance_credits']
