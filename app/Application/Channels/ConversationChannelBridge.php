@@ -46,6 +46,7 @@ final readonly class ConversationChannelBridge
         $identityHash = $this->identityHash($message);
         $providerEventId = $message->providerEventId ?? $message->externalMessageId;
         $payloadHash = $this->payloadHash($message);
+        $webhookPayloadHash = $this->webhookPayloadHash($message, $providerEventId);
         $replayed = $this->existingByProviderEvent($tenantId, $context, $providerEventId, $payloadHash);
         if ($replayed !== null) {
             return $replayed->conversationId;
@@ -54,7 +55,17 @@ final readonly class ConversationChannelBridge
         // A webhook claim can commit before the conversation/link transaction.
         // If that boundary is interrupted, retry the deterministic conversation
         // claim below so a later delivery can repair the missing lineage.
-        $this->connections->claimWebhook($context, $message);
+        if (! $this->connections->claimWebhook($context, $message)) {
+            $claimedHash = DB::table('channel_webhook_claims')
+                ->where('tenant_id', $tenantId)
+                ->where('channel', $context->channel)
+                ->where('connection_key', $context->connectionKey)
+                ->where('provider_event_id', $providerEventId)
+                ->value('payload_hash');
+            if (! is_string($claimedHash) || ! hash_equals($claimedHash, $webhookPayloadHash)) {
+                throw new ChannelConflictException('Channel webhook payload conflicts with an existing claim.');
+            }
+        }
 
         $identity = $this->identities->resolve($context, $message);
         $consent = $this->consents->record($context, $identity, $message, self::CONSENT_PURPOSE);
@@ -81,6 +92,7 @@ final readonly class ConversationChannelBridge
                 ->first([
                     'actor_id',
                     'origin_type',
+                    'external_thread_hash',
                     'locale',
                     'market_country_code',
                     'currency',
@@ -95,13 +107,19 @@ final readonly class ConversationChannelBridge
             $marketCountryCode = (string) ($existingConversation->market_country_code ?: $marketCountryCode);
             $currency = (string) ($existingConversation->currency ?: $currency);
             $timezone = (string) ($existingConversation->timezone ?: $timezone);
-            if ($conversationThreadReference === null) {
-                $conversationThreadReference = DB::table('dovra_conversation_channel_links')
+            if ($existingConversation->external_thread_hash === null) {
+                $conversationThreadReference = null;
+            } else {
+                $canonicalThreadReference = DB::table('dovra_conversation_channel_links')
                     ->where('tenant_id', $tenantId)
                     ->where('conversation_id', $conversationId)
                     ->whereNotNull('external_thread_reference')
                     ->orderBy('last_inbound_at')
                     ->value('external_thread_reference');
+                if (! is_string($canonicalThreadReference) || trim($canonicalThreadReference) === '') {
+                    throw new ChannelConflictException('Conversation thread lineage is incomplete.');
+                }
+                $conversationThreadReference = $canonicalThreadReference;
             }
         }
 
@@ -381,6 +399,11 @@ final readonly class ConversationChannelBridge
             'normalized_identity' => $message->normalizedIdentity,
             'content_hash' => hash('sha256', $message->content),
         ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+    }
+
+    private function webhookPayloadHash(NormalizedInboundMessage $message, string $providerEventId): string
+    {
+        return (string) ($message->metadata['webhook_payload_hash'] ?? hash('sha256', $providerEventId));
     }
 
     private function inboundIdempotencyKey(NormalizedInboundMessage $message): string
