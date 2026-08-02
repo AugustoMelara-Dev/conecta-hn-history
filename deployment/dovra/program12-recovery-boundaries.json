@@ -1,0 +1,28 @@
+{
+  "name": "program12-recovery-boundaries",
+  "targets": {
+    "rpo_minutes": 15,
+    "rto_hours": 4
+  },
+  "local_rehearsal": {
+    "status": "proved",
+    "scope": "repository-controlled artifact rehearsal",
+    "notes": [
+      "Synthetic fixture only",
+      "Exercises backup integrity, isolated restore directory, and tenant-safe validation",
+      "Does not prove managed PITR or provider snapshots"
+    ]
+  },
+  "managed_aws_proof": {
+    "status": "external",
+    "required_evidence": [
+      "LatestRestorableTime",
+      "requested_restore_point",
+      "observed_rpo_minutes",
+      "observed_rto_minutes",
+      "source_arn",
+      "target_arn",
+      "authorized_destroy_timestamp"
+    ]
+  }
+}

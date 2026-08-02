@@ -1,0 +1,65 @@
+{
+  "name": "program12-observability-contract",
+  "trace_context_interface": "TraceContextInterface",
+  "correlation": {
+    "required_keys": [
+      "request_id",
+      "conversation_id",
+      "correlation_id",
+      "tenant_id",
+      "actor_id",
+      "job",
+      "event",
+      "database",
+      "cache",
+      "provider",
+      "tool",
+      "integration",
+      "commercial_outcome",
+      "idempotency_key",
+      "version"
+    ]
+  },
+  "redaction": {
+    "forbidden_keys": [
+      "authorization",
+      "cookie",
+      "set-cookie",
+      "prompt",
+      "message",
+      "content",
+      "secret",
+      "token",
+      "api_key",
+      "password"
+    ]
+  },
+  "initial_objectives": {
+    "availability_monthly": "99.9%",
+    "non_ai_p95_ms": 500,
+    "healthy_provider_first_stream_p95_ms": 2500,
+    "critical_jobs_p95_ms": 10000
+  },
+  "shared_runtime_seams": {
+    "logging": {
+      "path": "config/logging.php",
+      "status": "proved",
+      "evidence": "security and security_file channels exist for repository-controlled guardrails"
+    },
+    "sentry": {
+      "path": "config/sentry.php",
+      "status": "proved",
+      "evidence": "before_send scrubber is required and send_default_pii stays false"
+    },
+    "opentelemetry": {
+      "path": "config/observability.php",
+      "status": "proved",
+      "evidence": "OTEL_PHP_AUTOLOAD_ENABLED defaults disabled until explicitly configured"
+    },
+    "runtime_topology": {
+      "path": "config/queue.php + config/horizon.php",
+      "status": "incomplete",
+      "reason": "Queue-class topology still lives in shared config outside the Task 7 exclusive write set; this slice ships contracts, scripts, runbooks, and honest evidence only."
+    }
+  }
+}

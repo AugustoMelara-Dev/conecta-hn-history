@@ -1,0 +1,152 @@
+{
+  "name": "program12-queue-resilience-contract",
+  "queue_classes": {
+    "critical": {
+      "tenant_context": "server-derived",
+      "correlation_id": "required",
+      "idempotency": "required",
+      "version": "required",
+      "compensation": "required",
+      "timeout_seconds": 10,
+      "retry": {
+        "max_attempts": 2,
+        "backoff_seconds": [5, 30]
+      },
+      "failure_mode": "fail_closed",
+      "cleanup": ["tenant-safe", "idempotent", "poison-message quarantine"],
+      "compensation_contract": "Stop mutation, preserve audit trail, and page operator."
+    },
+    "conversations": {
+      "tenant_context": "server-derived",
+      "correlation_id": "required",
+      "idempotency": "required",
+      "version": "required",
+      "compensation": "required",
+      "timeout_seconds": 30,
+      "retry": {
+        "max_attempts": 3,
+        "backoff_seconds": [10, 30, 120]
+      },
+      "failure_mode": "degrade_read_only",
+      "cleanup": ["tenant-safe", "idempotent", "drop transient provider handles"],
+      "compensation_contract": "Persist safe failure code and allow manual or later retry without replaying paid side effects."
+    },
+    "channels": {
+      "tenant_context": "server-derived",
+      "correlation_id": "required",
+      "idempotency": "required",
+      "version": "required",
+      "compensation": "required",
+      "timeout_seconds": 45,
+      "retry": {
+        "max_attempts": 4,
+        "backoff_seconds": [15, 60, 300, 900]
+      },
+      "failure_mode": "degrade_read_only",
+      "cleanup": ["tenant-safe", "idempotent", "release channel leases"],
+      "compensation_contract": "Keep outbound state pending or failed without duplicating provider sends."
+    },
+    "workflows": {
+      "tenant_context": "server-derived",
+      "correlation_id": "required",
+      "idempotency": "required",
+      "version": "required",
+      "compensation": "required",
+      "timeout_seconds": 60,
+      "retry": {
+        "max_attempts": 3,
+        "backoff_seconds": [30, 120, 600]
+      },
+      "failure_mode": "fail_closed",
+      "cleanup": ["tenant-safe", "idempotent", "close approval windows"],
+      "compensation_contract": "Workflow retries must preserve version and confirmation bindings or stop."
+    },
+    "indexing": {
+      "tenant_context": "server-derived",
+      "correlation_id": "required",
+      "idempotency": "required",
+      "version": "required",
+      "compensation": "required",
+      "timeout_seconds": 120,
+      "retry": {
+        "max_attempts": 3,
+        "backoff_seconds": [60, 300, 900]
+      },
+      "failure_mode": "degrade_read_only",
+      "cleanup": ["tenant-safe", "idempotent", "release stale batches"],
+      "compensation_contract": "Do not publish partially indexed material; mark stale work for replay."
+    },
+    "imports": {
+      "tenant_context": "server-derived",
+      "correlation_id": "required",
+      "idempotency": "required",
+      "version": "required",
+      "compensation": "required",
+      "timeout_seconds": 180,
+      "retry": {
+        "max_attempts": 3,
+        "backoff_seconds": [60, 300, 1800]
+      },
+      "failure_mode": "degrade_read_only",
+      "cleanup": ["tenant-safe", "idempotent", "remove temporary blobs"],
+      "compensation_contract": "Rollback local staging metadata and keep import unpublished."
+    },
+    "analytics": {
+      "tenant_context": "server-derived",
+      "correlation_id": "required",
+      "idempotency": "required",
+      "version": "required",
+      "compensation": "required",
+      "timeout_seconds": 60,
+      "retry": {
+        "max_attempts": 5,
+        "backoff_seconds": [10, 30, 60, 300, 900]
+      },
+      "failure_mode": "degrade_read_only",
+      "cleanup": ["tenant-safe", "idempotent", "deduplicate aggregates"],
+      "compensation_contract": "Rebuild derived analytics from canonical ledgers instead of trusting partial batches."
+    },
+    "notifications": {
+      "tenant_context": "server-derived",
+      "correlation_id": "required",
+      "idempotency": "required",
+      "version": "required",
+      "compensation": "required",
+      "timeout_seconds": 30,
+      "retry": {
+        "max_attempts": 4,
+        "backoff_seconds": [15, 60, 300, 900]
+      },
+      "failure_mode": "degrade_read_only",
+      "cleanup": ["tenant-safe", "idempotent", "cancel stale notification intents"],
+      "compensation_contract": "Do not claim delivery on uncertain provider outcomes."
+    },
+    "maintenance": {
+      "tenant_context": "server-derived",
+      "correlation_id": "required",
+      "idempotency": "required",
+      "version": "required",
+      "compensation": "required",
+      "timeout_seconds": 300,
+      "retry": {
+        "max_attempts": 2,
+        "backoff_seconds": [60, 600]
+      },
+      "failure_mode": "fail_closed",
+      "cleanup": ["tenant-safe", "idempotent", "resume-safe checkpoints"],
+      "compensation_contract": "Abort maintenance wave on unsafe partial completion and require operator review."
+    }
+  },
+  "shared_runtime_seams": {
+    "queue_config": {
+      "path": "config/queue.php",
+      "status": "incomplete",
+      "reason": "Shared config seam: repository contract defined here, shared queue wiring remains out of write set."
+    },
+    "horizon_config": {
+      "path": "config/horizon.php",
+      "status": "incomplete",
+      "reason": "Shared config seam: repository contract defined here, Horizon topology still resides in shared config."
+    }
+  }
+}

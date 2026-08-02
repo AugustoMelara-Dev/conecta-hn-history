@@ -1,0 +1,24 @@
+{
+  "snapshot": {
+    "captured_at": "2026-08-02T00:00:00Z",
+    "tenants": [
+      {
+        "tenant_id": "tenant-hn-retail",
+        "orders": 4,
+        "messages": 7,
+        "private_objects": 3
+      },
+      {
+        "tenant_id": "tenant-hn-services",
+        "orders": 2,
+        "messages": 5,
+        "private_objects": 2
+      }
+    ],
+    "artifacts": [
+      "postgres-schema.json",
+      "private-objects.json",
+      "queue-checkpoints.json"
+    ]
+  }
+}
