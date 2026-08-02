@@ -202,74 +202,78 @@ final class TenantWorkforceController extends Controller
 
     private function ensureDraftCandidate(string $tenantId, AgentRole $role): ?object
     {
-        $candidate = $this->candidate($tenantId, $role);
-        if ($candidate !== null) {
-            return $candidate;
-        }
+        return DB::transaction(function () use ($tenantId, $role): ?object {
+            DB::table('tenants')->where('id', $tenantId)->lockForUpdate()->first();
 
-        $configuration = AgentRoleCatalog::configuration($role);
-        $definitionKey = 'tenant.'.$role->value;
-        $definition = DB::table('ai_agent_definitions')
-            ->where('tenant_id', $tenantId)
-            ->where('key', $definitionKey)
-            ->first();
-        if ($definition === null) {
-            $definitionId = (string) Str::uuid();
-            DB::table('ai_agent_definitions')->insert([
-                'id' => $definitionId,
-                'tenant_id' => $tenantId,
-                'key' => $definitionKey,
-                'name' => 'Dovra '.ucwords(str_replace('_', ' ', $role->value)).' workforce role',
-                'visibility' => 'private',
-                'status' => 'active',
-                'metadata' => $this->json(['source' => 'dovra_workforce_activation']),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-            $definition = DB::table('ai_agent_definitions')->where('id', $definitionId)->first();
-        }
-        if ($definition === null) {
-            return null;
-        }
+            $candidate = $this->candidate($tenantId, $role);
+            if ($candidate !== null) {
+                return $candidate;
+            }
 
-        $draftConfiguration = [
-            'workforce_role' => $role->value,
-            'objective' => $configuration->objective,
-            'allowed_jobs' => $configuration->allowedJobs,
-            'risk_profile' => $configuration->riskProfile,
-            'metric_keys' => $configuration->metricKeys,
-            'source' => 'dovra_workforce_activation',
-        ];
-        $checksum = hash('sha256', $this->json([
-            'definition_id' => (string) $definition->id,
-            'configuration' => $draftConfiguration,
-        ]));
-        $version = DB::table('ai_agent_versions')
-            ->where('agent_definition_id', $definition->id)
-            ->where('checksum', $checksum)
-            ->first();
-        if ($version === null) {
-            $versionId = (string) Str::uuid();
-            DB::table('ai_agent_versions')->insert([
-                'id' => $versionId,
-                'tenant_id' => $tenantId,
-                'agent_definition_id' => $definition->id,
-                'model_version_id' => null,
-                'version' => ((int) DB::table('ai_agent_versions')->where('agent_definition_id', $definition->id)->max('version')) + 1,
-                'checksum' => $checksum,
-                'configuration' => $this->json($draftConfiguration),
-                'released_at' => null,
-                'lifecycle_status' => 'draft',
-                'kill_switch_enabled' => false,
-                'blocked_at' => null,
-                'blocked_by' => null,
-                'blocked_reason' => null,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
+            $configuration = AgentRoleCatalog::configuration($role);
+            $definitionKey = 'tenant.'.$role->value;
+            $definition = DB::table('ai_agent_definitions')
+                ->where('tenant_id', $tenantId)
+                ->where('key', $definitionKey)
+                ->first();
+            if ($definition === null) {
+                $definitionId = (string) Str::uuid();
+                DB::table('ai_agent_definitions')->insert([
+                    'id' => $definitionId,
+                    'tenant_id' => $tenantId,
+                    'key' => $definitionKey,
+                    'name' => 'Dovra '.ucwords(str_replace('_', ' ', $role->value)).' workforce role',
+                    'visibility' => 'private',
+                    'status' => 'active',
+                    'metadata' => $this->json(['source' => 'dovra_workforce_activation']),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                $definition = DB::table('ai_agent_definitions')->where('id', $definitionId)->first();
+            }
+            if ($definition === null) {
+                return null;
+            }
 
-        return $this->candidate($tenantId, $role);
+            $draftConfiguration = [
+                'workforce_role' => $role->value,
+                'objective' => $configuration->objective,
+                'allowed_jobs' => $configuration->allowedJobs,
+                'risk_profile' => $configuration->riskProfile,
+                'metric_keys' => $configuration->metricKeys,
+                'source' => 'dovra_workforce_activation',
+            ];
+            $checksum = hash('sha256', $this->json([
+                'definition_id' => (string) $definition->id,
+                'configuration' => $draftConfiguration,
+            ]));
+            $version = DB::table('ai_agent_versions')
+                ->where('agent_definition_id', $definition->id)
+                ->where('checksum', $checksum)
+                ->first();
+            if ($version === null) {
+                $versionId = (string) Str::uuid();
+                DB::table('ai_agent_versions')->insert([
+                    'id' => $versionId,
+                    'tenant_id' => $tenantId,
+                    'agent_definition_id' => $definition->id,
+                    'model_version_id' => null,
+                    'version' => ((int) DB::table('ai_agent_versions')->where('agent_definition_id', $definition->id)->max('version')) + 1,
+                    'checksum' => $checksum,
+                    'configuration' => $this->json($draftConfiguration),
+                    'released_at' => null,
+                    'lifecycle_status' => 'draft',
+                    'kill_switch_enabled' => false,
+                    'blocked_at' => null,
+                    'blocked_by' => null,
+                    'blocked_reason' => null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            return $this->candidate($tenantId, $role);
+        }, 3);
     }
 
     private function candidate(string $tenantId, AgentRole $role): ?object

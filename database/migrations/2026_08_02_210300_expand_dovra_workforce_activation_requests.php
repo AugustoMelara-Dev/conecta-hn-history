@@ -31,9 +31,9 @@ return new class extends Migration
             $table->unique(['tenant_id', 'idempotency_key'], 'dovra_workforce_activation_idempotency_unique');
             $table->index(['tenant_id', 'role_key', 'state'], 'dovra_workforce_activation_role_state_idx');
             $table->foreign(['tenant_id', 'candidate_agent_version_id'], 'dovra_workforce_activation_candidate_fk')
-                ->references(['tenant_id', 'id'])->on('ai_agent_versions')->nullOnDelete();
+                ->references(['tenant_id', 'id'])->on('ai_agent_versions')->restrictOnDelete();
             $table->foreign(['tenant_id', 'release_decision_id'], 'dovra_workforce_activation_release_fk')
-                ->references(['tenant_id', 'id'])->on('ai_release_decisions')->nullOnDelete();
+                ->references(['tenant_id', 'id'])->on('ai_release_decisions')->restrictOnDelete();
         });
 
         if (DB::getDriverName() === 'pgsql') {
