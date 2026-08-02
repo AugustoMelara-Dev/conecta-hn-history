@@ -40,7 +40,7 @@ final class WorkforceRegistryBackfillTest extends TestCase
         ], $roles);
     }
 
-    public function test_role_metadata_creates_a_draft_without_mutating_the_legacy_active_version(): void
+    public function test_role_metadata_creates_a_draft_without_rerouting_the_open_legacy_activation(): void
     {
         $platformTenant = Tenant::factory()->create();
         $this->configureRegistry((string) $platformTenant->getKey(), []);
@@ -49,6 +49,19 @@ final class WorkforceRegistryBackfillTest extends TestCase
 
         $legacy = DB::table('ai_agent_versions')->first();
         self::assertNotNull($legacy);
+        $activation = DB::table('ai_agent_activations')
+            ->where('agent_version_id', $legacy->id)
+            ->whereNull('effective_until')
+            ->first();
+        self::assertNotNull($activation);
+        $activationBeforeRoleMetadata = [
+            'id' => $activation->id,
+            'agent_version_id' => $activation->agent_version_id,
+            'previous_activation_id' => $activation->previous_activation_id,
+            'effective_from' => $activation->effective_from,
+            'effective_until' => $activation->effective_until,
+        ];
+
         $legacyConfiguration = $this->decodeConfiguration((string) $legacy->configuration);
         unset($legacyConfiguration['workforce_role']);
         $legacyChecksum = hash('sha256', 'legacy-active-agent-without-workforce-role');
@@ -72,6 +85,8 @@ final class WorkforceRegistryBackfillTest extends TestCase
         self::assertNotNull($replacement);
         self::assertSame('draft', $replacement->lifecycle_status);
         self::assertSame('front_desk', $this->decodeConfiguration((string) $replacement->configuration)['workforce_role'] ?? null);
+        self::assertDatabaseHas('ai_agent_activations', $activationBeforeRoleMetadata);
+        self::assertSame(1, DB::table('ai_agent_activations')->whereNull('effective_until')->count());
     }
 
     public function test_unmapped_agent_key_is_recorded_as_a_gap_without_creating_registry_rows(): void

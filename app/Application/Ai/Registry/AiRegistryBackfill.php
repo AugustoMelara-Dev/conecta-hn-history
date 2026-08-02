@@ -466,26 +466,15 @@ final class AiRegistryBackfill
 
     private function ensureActivation(string $tenantId, string $capability, string $agentVersionId): void
     {
-        $openActivations = DB::table('ai_agent_activations')
-            ->where('tenant_id', $tenantId)
-            ->where('scope_type', 'capability')
-            ->where('scope_key', $capability)
-            ->whereNull('effective_until')
-            ->orderByDesc('effective_from')
-            ->get();
+        $openActivations = $this->locks->activationScope($tenantId, 'capability', $capability);
         if ($openActivations->count() > 1) {
             $this->conflicts++;
 
             return;
         }
 
-        $current = $openActivations->first();
-        if ($current !== null && $current->agent_version_id === $agentVersionId) {
+        if ($openActivations->isNotEmpty()) {
             return;
-        }
-
-        if ($current !== null) {
-            DB::table('ai_agent_activations')->where('id', $current->id)->update(['effective_until' => now(), 'updated_at' => now()]);
         }
 
         DB::table('ai_agent_activations')->insert([
@@ -497,7 +486,7 @@ final class AiRegistryBackfill
             'rollout_percentage' => 100,
             'cohort_salt' => hash('sha256', $tenantId.'|'.$capability),
             'release_decision_id' => null,
-            'previous_activation_id' => $current?->id,
+            'previous_activation_id' => null,
             'effective_from' => now(),
             'effective_until' => null,
             'activated_by' => 'registry_backfill',
