@@ -6,6 +6,7 @@ namespace App\Application\Ai\Registry;
 
 use App\Application\Ai\PrivateGroundedAgent;
 use App\Application\Ai\PublicGroundedDiscovery;
+use App\Application\Ai\Workforce\AgentRoleCatalog;
 use App\Infrastructure\AI\Security\LaravelAiContentCipher;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -64,11 +65,13 @@ final class AiRegistryBackfill
             foreach (array_count_values(array_map('strval', $allowlist)) as $tenantId => $occurrences) {
                 if ($occurrences > 1) {
                     $this->conflicts++;
+
                     continue;
                 }
 
                 if (! Str::isUuid($tenantId) || ! DB::table('tenants')->where('id', $tenantId)->where('is_active', true)->exists()) {
                     $this->gaps++;
+
                     continue;
                 }
 
@@ -248,6 +251,13 @@ final class AiRegistryBackfill
         string $promptName,
         string $prompt,
     ): void {
+        $workforceRole = AgentRoleCatalog::forAgentKey($agentKey);
+        if ($workforceRole === null) {
+            $this->gaps++;
+
+            return;
+        }
+
         $provider = $definition['provider'] ?? null;
         $models = is_array($definition['models'] ?? null)
             ? array_values($definition['models'])
@@ -271,7 +281,7 @@ final class AiRegistryBackfill
 
         $model = $models[0];
 
-        DB::transaction(function () use ($tenantId, $capability, $definition, $agentKey, $visibility, $promptKey, $promptName, $prompt, $provider, $model, $models, $modelVersionIds): void {
+        DB::transaction(function () use ($tenantId, $capability, $definition, $agentKey, $visibility, $promptKey, $promptName, $prompt, $provider, $model, $models, $modelVersionIds, $workforceRole): void {
             $this->locks->tenant($tenantId);
             $promptVersion = $this->ensurePrompt($tenantId, $promptKey, $promptName, $visibility, $prompt);
             if ($promptVersion === null) {
@@ -287,6 +297,7 @@ final class AiRegistryBackfill
             $configuration = [
                 'capability' => $capability,
                 'audience' => $visibility === 'platform_public' ? 'public' : 'private',
+                'workforce_role' => $workforceRole->value,
                 'channels' => array_values(array_map(
                     'strval',
                     (array) ($definition['channels'] ?? ['web']),
