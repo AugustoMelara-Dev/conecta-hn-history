@@ -26,14 +26,23 @@ final class AgentCapabilityProjectionTest extends TestCase
         self::assertSame([], $projection->forTenant((string) $tenant->id));
 
         $this->assignHondurasMarket($tenant->id);
-        $selection = $this->createEligibleAgent($tenant->id);
+        $selection = $this->createEligibleAgent($tenant->id, 'public');
 
         $capabilities = $projection->forTenant((string) $tenant->id);
 
         self::assertCount(1, $capabilities);
-        self::assertSame('private_tenant_agent', $capabilities[0]['capability']);
+        self::assertSame('public_tenant_agent', $capabilities[0]['capability']);
         self::assertSame($selection->agentVersionId, $capabilities[0]['agentVersionId']);
         self::assertTrue($capabilities[0]['marketContextRequired']);
+    }
+
+    public function test_it_never_projects_a_private_agent_as_public_discover_evidence(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $this->assignHondurasMarket($tenant->id);
+        $this->createEligibleAgent($tenant->id, 'private');
+
+        self::assertSame([], app(AgentCapabilityProjection::class)->forTenant((string) $tenant->id));
     }
 
     public function test_it_rejects_noncanonical_decisions_lineage_and_nonactive_agent_versions(): void
@@ -85,12 +94,12 @@ final class AgentCapabilityProjectionTest extends TestCase
         self::assertSame([], app(AgentCapabilityProjection::class)->forTenant((string) $other->id));
     }
 
-    private function createEligibleAgent(string $tenantId): AiRuntimeSelection
+    private function createEligibleAgent(string $tenantId, string $audience = 'public'): AiRuntimeSelection
     {
         return AiEligibleRegistryFixture::create(
             tenantId: $tenantId,
-            capability: 'private_tenant_agent',
-            audience: 'private',
+            capability: 'public_tenant_agent',
+            audience: $audience,
             outputSchema: 'private_agent.answer.v1',
             marketCountryCode: 'HN',
         );

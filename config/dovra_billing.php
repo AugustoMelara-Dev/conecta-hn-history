@@ -8,7 +8,7 @@ return [
     'price_books' => [
         'hn' => [
             'version' => 'research-v1',
-            'currency' => 'USD',
+            'currency' => 'HNL',
             'plans' => [
                 'explore' => [
                     'monthly_minor' => 0,

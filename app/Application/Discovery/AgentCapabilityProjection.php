@@ -30,6 +30,7 @@ final class AgentCapabilityProjection
      *     requiredCapabilities:list<string>,
      *     policyKey:string,
      *     policyChecksum:string,
+     *     audience:string,
      *     marketContextRequired:bool
      * }>
      */
@@ -100,6 +101,10 @@ final class AgentCapabilityProjection
 
             $agentConfiguration = $candidate->agentConfiguration;
             $policyRules = $candidate->policyRules;
+            if (! $this->isPublicCapability($candidate)) {
+                continue;
+            }
+
             $capability = trim((string) ($agentConfiguration['capability'] ?? ''));
             if ($capability === '') {
                 continue;
@@ -125,11 +130,19 @@ final class AgentCapabilityProjection
                 'requiredCapabilities' => $required,
                 'policyKey' => (string) $row->policy_key,
                 'policyChecksum' => (string) $row->policy_checksum,
+                'audience' => 'public',
                 'marketContextRequired' => true,
             ];
         }
 
         return array_values($result);
+    }
+
+    private function isPublicCapability(object $candidate): bool
+    {
+        return strtolower(trim((string) ($candidate->agentConfiguration['audience'] ?? ''))) === 'public'
+            && hash_equals('platform_public', (string) ($candidate->agentDefinition->visibility ?? ''))
+            && hash_equals('platform_public', (string) ($candidate->promptDefinition->visibility ?? ''));
     }
 
     private function hasPublishedTenantMarket(string $tenantId): bool

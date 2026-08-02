@@ -10,6 +10,7 @@ use App\Models\Service;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Tests\Support\AI\AiEligibleRegistryFixture;
 use Tests\TestCase;
 
 final class PublishedProjectionTest extends TestCase
@@ -27,6 +28,13 @@ final class PublishedProjectionTest extends TestCase
             'plan_type' => 'enterprise',
         ]);
         $hnLocationId = $this->assignHonduras($hnTenant);
+        AiEligibleRegistryFixture::create(
+            tenantId: (string) $hnTenant->id,
+            capability: 'public_tenant_agent',
+            audience: 'public',
+            outputSchema: 'private_agent.answer.v1',
+            marketCountryCode: 'HN',
+        );
 
         $coffee = Product::factory()->forTenant($hnTenant)->create([
             'name' => 'Café filtrado',
@@ -158,6 +166,15 @@ final class PublishedProjectionTest extends TestCase
         self::assertGreaterThanOrEqual(2, DB::table('discovery_offer_evidence')
             ->where('projection_id', $coffeeProjection->id)
             ->count());
+        $agentEvidence = DB::table('discovery_offer_evidence')
+            ->where('projection_id', $coffeeProjection->id)
+            ->where('evidence_type', 'agent_capability')
+            ->first();
+        self::assertNotNull($agentEvidence);
+        self::assertSame(
+            'public_tenant_agent',
+            json_decode((string) $agentEvidence->metadata, true, 512, JSON_THROW_ON_ERROR)['capability'],
+        );
         self::assertGreaterThanOrEqual(3, DB::table('discovery_offer_evidence')
             ->where('projection_id', $caProjection->id)
             ->count());
