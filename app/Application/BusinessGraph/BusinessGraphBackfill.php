@@ -340,17 +340,11 @@ final class BusinessGraphBackfill
                 'isPrimary' => $this->rowValue($row, 'is_primary'),
             ], 'tenant_market', $sourceId, $dryRun);
 
-            $versionId = $this->rowIdValue($row, 'market_pack_version_id');
-            if ($versionId === null) {
-                continue;
-            }
-
             $packId = null;
-            if (Schema::hasTable('market_pack_versions')) {
-                $version = DB::table('market_pack_versions')->where('id', $versionId)->first();
-                $packId = $version === null ? null : $this->rowIdValue($version, 'market_pack_id');
+            if (Schema::hasColumn('tenant_markets', 'market_pack_id')) {
+                $packId = $this->rowIdValue($row, 'market_pack_id');
             } else {
-                $this->skip('market_pack_versions');
+                $this->skip('tenant_markets.market_pack_id');
             }
 
             if ($packId !== null && Schema::hasTable('market_packs')) {

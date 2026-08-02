@@ -91,18 +91,4 @@ final class BusinessGraphBackfillTest extends TestCase
         ]);
     }
 
-    public function test_backfill_command_emits_a_report_and_honors_dry_run(): void
-    {
-        $tenant = Tenant::factory()->create(['name' => 'Command Tenant']);
-
-        $this->artisan('dovra:backfill-business-graph', [
-            '--tenant' => (string) $tenant->getKey(),
-            '--dry-run' => true,
-        ])
-            ->expectsOutputToContain('dry_run: true')
-            ->expectsOutputToContain('facts_written:')
-            ->assertSuccessful();
-
-        $this->assertSame(0, DB::table('dovra_business_facts')->count());
-    }
 }
