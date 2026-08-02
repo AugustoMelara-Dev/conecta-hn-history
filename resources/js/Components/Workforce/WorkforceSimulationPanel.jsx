@@ -1,5 +1,5 @@
-export default function WorkforceSimulationPanel({ simulation = {}, liveEvidence = {} }) {
-    const isSimulation = Boolean(simulation.enabled ?? true);
+export default function WorkforceSimulationPanel({ simulation = null, liveEvidence = {} }) {
+    const isSimulation = Boolean(simulation?.enabled);
 
     return (
         <section aria-labelledby="workforce-simulation-title" className="rounded-xl border border-border bg-muted/30 p-4">
@@ -10,12 +10,12 @@ export default function WorkforceSimulationPanel({ simulation = {}, liveEvidence
                 </span>
             </div>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                {simulation.provider_label || "Simulation fixture — no external provider call"}
+                {simulation?.provider_label || "No simulation selected yet. Choose a sandbox case before requesting activation."}
             </p>
             <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
                 <div>
                     <dt className="font-medium text-foreground">Evidence source</dt>
-                    <dd className="mt-1 text-muted-foreground">{simulation.evidence_label || "Scenario source"}</dd>
+                    <dd className="mt-1 text-muted-foreground">{simulation?.evidence_label || "Scenario source"}</dd>
                 </div>
                 <div>
                     <dt className="font-medium text-foreground">External delivery</dt>

@@ -19,7 +19,6 @@ export default function Workforce({ workforce = {} }) {
             headers: {
                 "Content-Type": "application/json",
                 "Accept": "application/json",
-                "Idempotency-Key": `workforce-${payload.role_key}-${payload.approval_mode}`,
                 ...(csrfToken ? { "X-CSRF-TOKEN": csrfToken } : {}),
             },
             body: JSON.stringify(payload),
@@ -52,7 +51,13 @@ export default function Workforce({ workforce = {} }) {
                     {workforce.roles?.length ? <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{workforce.roles.map((role) => <WorkforceRoleCard key={role.key} role={role} selected={selectedRole === role.key} onSelect={setSelectedRole} />)}</div> : <p className="mt-3 rounded-xl border border-border p-4 text-sm text-muted-foreground">No governed role candidate is available. This cockpit remains a preview until the registry supplies one.</p>}
                 </section>
 
-                <WorkforceActivationWizard roles={workforce.roles} channels={workforce.channels} onSubmit={requestActivation} />
+                <WorkforceActivationWizard
+                    roles={workforce.roles}
+                    channels={workforce.channels}
+                    selectedRoleKey={selectedRole}
+                    onRoleChange={setSelectedRole}
+                    onSubmit={requestActivation}
+                />
                 <WorkforceSimulationPanel simulation={activation?.simulation} liveEvidence={activation?.live_evidence || workforce.live_evidence} />
                 {activation && <p role="status" className="rounded-md border border-border bg-muted/30 p-4 text-sm text-foreground">Activation state: <strong>{activation.state}</strong>. This is an evidence state, not a blanket live deployment claim.</p>}
                 {error && <p role="alert" className="rounded-md border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">{error}</p>}

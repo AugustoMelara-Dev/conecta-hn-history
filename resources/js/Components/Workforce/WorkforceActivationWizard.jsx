@@ -9,13 +9,20 @@ const outcomes = [
     ["task_completion", "Task completion"],
 ];
 
-export default function WorkforceActivationWizard({ roles = [], channels = [], onSubmit }) {
+export default function WorkforceActivationWizard({ roles = [], channels = [], selectedRoleKey = "", onRoleChange, onSubmit }) {
     const [activeStep, setActiveStep] = useState(0);
-    const [roleKey, setRoleKey] = useState(roles[0]?.key ?? "");
+    const [roleKey, setRoleKey] = useState(selectedRoleKey || roles[0]?.key || "");
     const [outcome, setOutcome] = useState(outcomes[0][0]);
     const [selectedChannels, setSelectedChannels] = useState([]);
     const [approvalMode, setApprovalMode] = useState("human_review");
+    const [runSimulation, setRunSimulation] = useState(true);
     const id = useId();
+    const effectiveRoleKey = selectedRoleKey || roleKey;
+
+    const chooseRole = (key) => {
+        setRoleKey(key);
+        onRoleChange?.(key);
+    };
 
     const toggleChannel = (key) => setSelectedChannels((current) => (
         current.includes(key) ? current.filter((item) => item !== key) : [...current, key]
@@ -70,7 +77,7 @@ export default function WorkforceActivationWizard({ roles = [], channels = [], o
                             <div className="mt-3 grid gap-2 sm:grid-cols-2">
                                 {roles.map((role) => (
                                     <label key={role.key} className="flex cursor-pointer items-center gap-2 rounded-md border border-border p-3 text-sm text-foreground">
-                                        <input type="radio" name={`${id}-role`} value={role.key} checked={roleKey === role.key} onChange={() => setRoleKey(role.key)} />
+                                    <input type="radio" name={`${id}-role`} value={role.key} checked={effectiveRoleKey === role.key} onChange={() => chooseRole(role.key)} />
                                         {role.title}
                                     </label>
                                 ))}
@@ -93,7 +100,16 @@ export default function WorkforceActivationWizard({ roles = [], channels = [], o
                         </div>
                     </fieldset>
                 )}
-                {activeStep === 3 && <p className="rounded-md border border-border bg-muted/30 p-4 text-sm text-muted-foreground">Run a sandbox simulation before requesting evaluation. Simulation fixtures never send a live provider request.</p>}
+                {activeStep === 3 && (
+                    <fieldset className="rounded-md border border-border bg-muted/30 p-4">
+                        <legend className="font-medium text-foreground">Sandbox simulation</legend>
+                        <p className="mt-1 text-sm text-muted-foreground">Simulation fixtures never send a live provider request.</p>
+                        <label className="mt-4 flex items-center gap-2 text-sm text-foreground">
+                            <input type="checkbox" checked={runSimulation} onChange={(event) => setRunSimulation(event.target.checked)} />
+                            Include this outcome in the sandbox simulation
+                        </label>
+                    </fieldset>
+                )}
                 {activeStep === 4 && (
                     <fieldset>
                         <legend className="font-medium text-foreground">Approval mode</legend>
@@ -105,7 +121,7 @@ export default function WorkforceActivationWizard({ roles = [], channels = [], o
                                 </label>
                             ))}
                         </div>
-                        <button type="button" onClick={() => onSubmit?.({ role_key: roleKey, channel_keys: selectedChannels, simulation_case_ids: [outcome], approval_mode: approvalMode })} disabled={!roleKey} className="mt-5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                        <button type="button" onClick={() => onSubmit?.({ role_key: effectiveRoleKey, channel_keys: selectedChannels, simulation_case_ids: runSimulation ? [outcome] : [], approval_mode: approvalMode })} disabled={!effectiveRoleKey} className="mt-5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                             Request evidence-gated activation
                         </button>
                     </fieldset>

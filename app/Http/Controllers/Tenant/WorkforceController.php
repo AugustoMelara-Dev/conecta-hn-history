@@ -162,8 +162,9 @@ final class WorkforceController extends Controller
                 'channel_provider_health.status as health_status', 'channel_provider_health.checked_at',
             ])
             ->map(static fn (object $channel): array => [
-                'key' => (string) $channel->connection_key,
+                'key' => (string) $channel->channel.':'.(string) $channel->connection_key,
                 'channel' => (string) $channel->channel,
+                'connection_key' => (string) $channel->connection_key,
                 'connection_status' => (string) $channel->status,
                 'evidence_state' => (string) ($channel->health_status ?? 'pending_external_verification'),
                 'checked_at' => $channel->checked_at,
@@ -174,23 +175,38 @@ final class WorkforceController extends Controller
     /** @return array{verified: bool, state: string, label: string} */
     private function evidence(string $tenantId, string $agentVersionId, ?string $marketCode, array $channels, AiFoundationHealth $health, AiRegistryResolver $registry): array
     {
-        $registryVerified = false;
-        try {
-            $selection = $registry->resolve(new AiRegistryQuery(
-                tenantId: $tenantId,
-                audience: 'private',
-                capability: 'private_tenant_agent',
-                channel: 'web',
-                marketCode: strtoupper((string) ($marketCode ?? '')),
-                residencyClass: strtoupper((string) ($marketCode ?? '')),
-                cohortSubject: $tenantId.'|workforce-cockpit',
-            ));
-            $registryVerified = hash_equals($agentVersionId, $selection->agentVersionId);
-        } catch (AiExecutionDeniedException) {
-            // A registry denial is evidence that the cockpit must stay pending.
+        if ($marketCode === null || $channels === []) {
+            return [
+                'verified' => false,
+                'state' => 'pending_external_verification',
+                'label' => 'External verification is pending',
+            ];
         }
 
-        $channelVerified = collect($channels)->contains(
+        $registryVerified = true;
+        foreach ($channels as $channel) {
+            try {
+                $selection = $registry->resolve(new AiRegistryQuery(
+                    tenantId: $tenantId,
+                    audience: 'private',
+                    capability: 'private_tenant_agent',
+                    channel: strtolower((string) $channel['channel']),
+                    marketCode: strtoupper($marketCode),
+                    residencyClass: strtoupper($marketCode),
+                    cohortSubject: $tenantId.'|workforce-cockpit|'.$channel['key'],
+                ));
+                if (! hash_equals($agentVersionId, $selection->agentVersionId)) {
+                    $registryVerified = false;
+                    break;
+                }
+            } catch (AiExecutionDeniedException) {
+                // A registry denial is evidence that the cockpit must stay pending.
+                $registryVerified = false;
+                break;
+            }
+        }
+
+        $channelVerified = collect($channels)->every(
             static fn (array $channel): bool => $channel['evidence_state'] === 'available',
         );
         $verified = $registryVerified && $channelVerified && $health->snapshot()->ready;
@@ -198,7 +214,7 @@ final class WorkforceController extends Controller
         return [
             'verified' => $verified,
             'state' => $verified ? 'live_evidence' : 'pending_external_verification',
-            'label' => $verified ? 'Registry, health and channel evidence verified' : 'External verification is pending',
+            'label' => $verified ? 'Registry, health and selected channel evidence verified' : 'External verification is pending',
         ];
     }
 
