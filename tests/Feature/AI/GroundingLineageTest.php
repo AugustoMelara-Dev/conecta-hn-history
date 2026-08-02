@@ -151,6 +151,8 @@ final class GroundingLineageTest extends TestCase
         $product = Product::factory()->forTenant($merchant)->create([
             'name' => 'Mutable product',
             'price' => 25,
+            'price_minor' => 2_500,
+            'currency' => 'CAD',
             'is_active' => true,
             'is_visible' => true,
         ]);
@@ -179,6 +181,7 @@ final class GroundingLineageTest extends TestCase
                 'public',
                 [['evidence_id' => 'product:'.$product->id]],
             );
+            self::assertSame(2_500, $snapshots[0]->priceMinor);
             $selection = AiRuntimeSelectionFixture::create((string) $platform->id);
             $result = $this->execution(
                 (string) $platform->id,
@@ -187,8 +190,7 @@ final class GroundingLineageTest extends TestCase
                 $selection,
             );
             DB::table('products')->where('id', $product->id)->update([
-                'price' => 99,
-                'updated_at' => now()->addSecond(),
+                'price_minor' => 9_900,
             ]);
 
             try {
@@ -210,6 +212,55 @@ final class GroundingLineageTest extends TestCase
             self::assertSame(0, DB::table('ai_message_evidence')->count());
             self::assertSame(1, (int) DB::table('ai_conversations')->value('last_message_sequence'));
             self::assertNull(DB::table('ai_executions')->value('response_message_id'));
+        } finally {
+            app(TenantContext::class)->reset();
+        }
+    }
+
+    public function test_projector_prefers_canonical_price_minor_over_legacy_decimal_price(): void
+    {
+        $platform = Tenant::factory()->create();
+        $merchant = Tenant::factory()->create([
+            'is_active' => true,
+            'subscription_status' => 'active',
+        ]);
+        GlobalMarketFixture::assignCanada($platform);
+        GlobalMarketFixture::assignCanada($merchant);
+        $product = Product::factory()->forTenant($merchant)->create([
+            'name' => 'Canonical price product',
+            'price' => 25,
+            'price_minor' => 1_234,
+            'currency' => 'CAD',
+            'is_active' => true,
+            'is_visible' => true,
+        ]);
+        config()->set('ai.public.billing_tenant_id', (string) $platform->id);
+        app(TenantContext::class)->setTenant((string) $platform->id);
+
+        try {
+            $claim = app(ConversationStore::class)->claim(new AcceptConversationMessage(
+                tenantId: (string) $platform->id,
+                visibility: 'platform_public',
+                originType: 'web',
+                externalThreadReference: null,
+                actorId: 'public-price-test-actor',
+                locale: 'en-CA',
+                marketCountryCode: 'CA',
+                currency: 'CAD',
+                timezone: 'America/Toronto',
+                content: 'Show the canonical price',
+                contentType: 'text',
+                idempotencyKey: 'grounding-canonical-price-1',
+            ));
+            $snapshots = app(GroundingEvidenceProjector::class)->project(
+                (string) $platform->id,
+                $claim->requestMessage->id,
+                'public',
+                [['evidence_id' => 'product:'.$product->id]],
+            );
+
+            self::assertCount(1, $snapshots);
+            self::assertSame(1_234, $snapshots[0]->priceMinor);
         } finally {
             app(TenantContext::class)->reset();
         }

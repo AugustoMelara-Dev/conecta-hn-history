@@ -13,6 +13,7 @@ use App\Infrastructure\Persistence\Eloquent\Scopes\TenantScope;
 use App\Models\Product;
 use App\Models\Service;
 use App\Models\Tenant;
+use App\Scopes\LocationScope;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -30,7 +31,11 @@ final class EloquentTenantAgentReader
     /** @return array<string, mixed> */
     public function answer(string $tenantId, string $message): array
     {
-        $tenant = Tenant::query()->whereKey($tenantId)->firstOrFail();
+        // INFRA_TENANT_FILTER: public location preference is not private-tenant authority; exact ID remains mandatory.
+        $tenant = Tenant::query()
+            ->withoutGlobalScope(LocationScope::class)
+            ->whereKey($tenantId)
+            ->firstOrFail();
         $market = $this->markets->resolve($tenant);
         $intent = $this->intent($message);
 
@@ -187,7 +192,7 @@ final class EloquentTenantAgentReader
                     'name' => mb_substr(strip_tags((string) $product->name), 0, 100),
                     'description' => mb_substr(strip_tags((string) ($product->description ?? '')), 0, 120),
                     'price' => (float) $product->price,
-                    'price_label' => $this->presenter->money($this->priceMinor($product), $market),
+                    'price_label' => $this->presenter->money($this->priceMinor($product, $market), $market),
                     'availability' => $availability,
                 ];
             });
@@ -205,7 +210,7 @@ final class EloquentTenantAgentReader
                 'name' => mb_substr(strip_tags((string) $service->name), 0, 100),
                 'description' => mb_substr(strip_tags((string) ($service->description ?? '')), 0, 120),
                 'price' => (float) $service->price,
-                'price_label' => $this->presenter->money($this->priceMinor($service), $market),
+                'price_label' => $this->presenter->money($this->priceMinor($service, $market), $market),
                 'availability' => 'available',
             ]);
         $items = collect($products->all())->merge($services->all())->take(20)->values()->all();
@@ -292,8 +297,13 @@ final class EloquentTenantAgentReader
         return [$localStart->utc(), $localStart->addDay()->utc()];
     }
 
-    private function priceMinor(Product|Service $item): int
+    private function priceMinor(Product|Service $item, MarketContext $market): int
     {
+        $declaredCurrency = strtoupper((string) ($item->currency ?? ''));
+        if ($declaredCurrency !== '' && $declaredCurrency !== $market->currencyCode) {
+            throw new \InvalidArgumentException('AI catalog currency is invalid.');
+        }
+
         return $item->price_minor === null
             ? (int) round(((float) $item->price) * 100)
             : (int) $item->price_minor;

@@ -10,6 +10,7 @@ use App\Application\Markets\MissingMarketContextException;
 use App\Infrastructure\AI\EloquentTenantAgentReader;
 use App\Infrastructure\Tenant\TenantPrivateAgentService;
 use App\Models\Appointment;
+use App\Models\City;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Service;
@@ -17,6 +18,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
 use Tests\Support\GlobalMarketFixture;
@@ -175,6 +177,34 @@ final class GlobalPrivateAgentTest extends TestCase
         $this->expectException(MissingMarketContextException::class);
 
         app(EloquentTenantAgentReader::class)->answer((string) $tenant->id, 'cuanto vendi hoy');
+    }
+
+    public function test_reader_resolves_exact_tenant_despite_a_different_selected_public_city(): void
+    {
+        $tenantCity = City::factory()->create();
+        $selectedCity = City::factory()->create();
+        $tenant = Tenant::factory()->create(['city_id' => $tenantCity->id]);
+        GlobalMarketFixture::assignCanada($tenant);
+        $originalRequest = $this->app->make('request');
+        $consoleProperty = new \ReflectionProperty($this->app, 'isRunningInConsole');
+        $originalConsoleState = $consoleProperty->getValue($this->app);
+        $session = $this->app->make('session')->driver();
+        $session->start();
+        $session->put('user_selected_city_id', $selectedCity->id);
+        $request = Request::create('/api/v1/tenant/agent/chat', 'POST');
+        $request->setLaravelSession($session);
+        $this->app->instance('request', $request);
+        $consoleProperty->setValue($this->app, false);
+
+        try {
+            $response = app(EloquentTenantAgentReader::class)->answer((string) $tenant->id, 'cuanto vendi hoy');
+
+            self::assertSame((string) $tenant->id, $response['tenant_id']);
+            self::assertSame('CAD', $response['meta']['currency']);
+        } finally {
+            $consoleProperty->setValue($this->app, $originalConsoleState);
+            $this->app->instance('request', $originalRequest);
+        }
     }
 
     private function orderAt(Tenant $tenant, string $createdAt): void

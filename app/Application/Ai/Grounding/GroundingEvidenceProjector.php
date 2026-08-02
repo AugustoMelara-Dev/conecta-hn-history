@@ -208,6 +208,10 @@ final readonly class GroundingEvidenceProjector
         if ($sourceCurrency !== $currency) {
             throw new InvalidArgumentException('AI evidence projection is invalid.');
         }
+        $declaredCurrency = strtoupper((string) ($source->currency ?? ''));
+        if ($declaredCurrency !== '' && $declaredCurrency !== $sourceCurrency) {
+            throw new InvalidArgumentException('AI evidence projection is invalid.');
+        }
         $availability = $sourceType === 'service'
             ? 'available'
             : $this->productAvailability($source);
@@ -224,7 +228,7 @@ final readonly class GroundingEvidenceProjector
             'currency' => $sourceCurrency,
             'description' => mb_substr(strip_tags((string) ($source->description ?? '')), 0, 500),
             'name' => mb_substr(strip_tags((string) ($source->name ?? '')), 0, 160),
-            'price_minor' => (int) round(((float) $source->price) * 100),
+            'price_minor' => $this->priceMinor($source),
             'source_id' => (string) $source->id,
             'source_tenant_id' => $sourceTenantId,
             'source_type' => $sourceType,
@@ -294,5 +298,12 @@ final readonly class GroundingEvidenceProjector
         }
 
         return (bool) ($product->allow_backorders ?? false) ? 'backorder' : 'unavailable';
+    }
+
+    private function priceMinor(object $source): int
+    {
+        return $source->price_minor === null
+            ? (int) round(((float) $source->price) * 100)
+            : (int) $source->price_minor;
     }
 }
