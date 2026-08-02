@@ -107,7 +107,7 @@ final class PrivateGroundedAgent
                 new GroundingPolicy(
                     tenantId: $input->tenantId,
                     visibility: 'private',
-                    currency: $authorizedEvidence[0]->currency ?? 'HNL',
+                    currency: $authorizedEvidence[0]->currency ?? (string) ($fallback['meta']['currency'] ?? ''),
                     freshnessCutoff: CarbonImmutable::now()->subDays(
                         max(1, (int) config('ai.knowledge.freshness_days', 30)),
                     ),
@@ -139,14 +139,14 @@ final class PrivateGroundedAgent
         $response = $this->applyEvidenceSelection($this->presentFallback($fallback, $context), $evidence);
         $response['fallback'] = false;
         $response['evidence'] = $evidence;
-        $response['meta'] = [
+        $response['meta'] = array_merge(is_array($response['meta'] ?? null) ? $response['meta'] : [], [
             'mode' => 'grounded_tenant_private_agent',
             'llm_used' => true,
             'privacy_scope' => 'tenant_private_only',
             'correlation_id' => $result->correlationId,
             'provider' => $result->provider,
             'model' => $result->model,
-        ];
+        ]);
 
         return new ConversationEngineResult(
             payload: $response,

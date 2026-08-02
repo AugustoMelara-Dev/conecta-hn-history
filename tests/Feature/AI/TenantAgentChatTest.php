@@ -115,7 +115,7 @@ final class TenantAgentChatTest extends TestCase
             ])
             ->assertJsonPath('source', 'private_tenant_scope')
             ->assertJsonPath('tenant_id', (string) $tenant->id)
-            ->assertJsonFragment(['answer' => 'Hoy tenes 1 ordenes registradas e ingresos netos verificados por L. 275.00.'])
+            ->assertJsonFragment(['answer' => 'Hoy tenes 1 ordenes registradas e ingresos netos verificados por CAD 275.00.'])
             ->assertJsonPath('data.verified_net_revenue', 275)
             ->assertJsonMissing(['999']);
     }
@@ -162,6 +162,10 @@ final class TenantAgentChatTest extends TestCase
             ->assertOk()
             ->assertJsonPath('fallback', false)
             ->assertJsonPath('tenant_id', (string) $tenant->id)
+            ->assertJsonPath('meta.country', 'CA')
+            ->assertJsonPath('meta.locale', 'en-CA')
+            ->assertJsonPath('meta.currency', 'CAD')
+            ->assertJsonPath('meta.timezone', 'America/Toronto')
             ->assertJsonPath('data.items.0.id', 'product:'.$selected->id)
             ->assertJsonPath('data.items.0.availability', 'available')
             ->assertJsonMissing(['stock_quantity' => 7])
@@ -474,7 +478,7 @@ final class TenantAgentChatTest extends TestCase
             'outcome' => CommercialOutcome::OrderPaid->value,
             'projection_key' => "{$tenantId}:order:{$aggregateId}:paid-test",
             'amount_minor' => $amountMinor,
-            'currency' => 'HNL',
+            'currency' => 'CAD',
             'source_occurred_at' => now(),
             'source_version' => 1,
             'created_at' => now(),
