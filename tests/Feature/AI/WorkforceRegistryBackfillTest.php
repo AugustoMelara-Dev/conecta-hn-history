@@ -8,6 +8,7 @@ use App\Application\Ai\Registry\AiRegistryBackfill;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use ReflectionClass;
 use Tests\TestCase;
 
@@ -53,6 +54,30 @@ final class WorkforceRegistryBackfillTest extends TestCase
             ->where('agent_version_id', $legacy->id)
             ->whereNull('effective_until')
             ->first();
+        self::assertNotNull($activation);
+        $historicalActivationId = (string) Str::uuid();
+        DB::table('ai_agent_activations')->insert([
+            'id' => $historicalActivationId,
+            'tenant_id' => $activation->tenant_id,
+            'scope_type' => $activation->scope_type,
+            'scope_key' => $activation->scope_key,
+            'agent_version_id' => $activation->agent_version_id,
+            'rollout_percentage' => $activation->rollout_percentage,
+            'cohort_salt' => $activation->cohort_salt,
+            'release_decision_id' => null,
+            'previous_activation_id' => null,
+            'effective_from' => now()->subMinute(),
+            'effective_until' => now()->subSecond(),
+            'activated_by' => 'workforce_backfill_test',
+            'reason' => 'Historical activation fixture',
+            'lock_version' => 0,
+            'created_at' => now()->subMinute(),
+            'updated_at' => now()->subSecond(),
+        ]);
+        DB::table('ai_agent_activations')->where('id', $activation->id)->update([
+            'previous_activation_id' => $historicalActivationId,
+        ]);
+        $activation = DB::table('ai_agent_activations')->where('id', $activation->id)->first();
         self::assertNotNull($activation);
         $activationBeforeRoleMetadata = [
             'id' => $activation->id,
