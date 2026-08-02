@@ -39,9 +39,12 @@ final class ProductClaimsContractTest extends TestCase
 
         foreach ([
             'Dovra AI is publicly live and operational.',
+            'Dovra AI is in production.',
+            'Dovra AI is ready for production.',
             'Dovra AI is investment-ready and has generated real revenue.',
             'Dovra AI is fully compliant and certified.',
             'Dovra AI has active providers, DNS, and payments.',
+            'Dovra AI cumple con GDPR.',
             'Dovra AI está lista para producción pública.',
             'Dovra AI cumple con GDPR y está certificada.',
             'Dovra AI tiene tracción y está lista para inversión.',
@@ -61,6 +64,7 @@ final class ProductClaimsContractTest extends TestCase
             'README.md',
             'docs/dovra/product/dovra-global-ai-workforce-os-truth.md',
             'docs/dovra/evidence/program-workforce-2026-08-02.md',
+            'task-8-report.md',
         ] as $path) {
             $contents = (string) file_get_contents(base_path($path));
 

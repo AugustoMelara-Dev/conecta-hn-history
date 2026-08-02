@@ -69,6 +69,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'track.tenant.visit' => \App\Http\Middleware\TrackTenantVisit::class, // First-party analytics
             'maintenance' => \App\Http\Middleware\CheckMaintenanceMode::class, // Alias para uso granular
             'tenant.ownership' => \App\Http\Middleware\EnsureTenantOwnership::class, // Security: IDOR protection
+            'tenant.context' => \App\Http\Middleware\InitializeAuthenticatedTenantContext::class,
             'idempotency' => \App\Http\Middleware\EnsureIdempotencyKey::class, // Metadata Transport
             'api.lifecycle' => \App\Http\Middleware\ApiLifecycleHeaders::class,
             'feature.rollout' => \App\Http\Middleware\EnsureFeatureRolloutEnabled::class,

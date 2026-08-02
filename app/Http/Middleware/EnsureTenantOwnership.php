@@ -62,9 +62,15 @@ class EnsureTenantOwnership
         // Get the user's accessible tenant IDs
         $allowedTenantIds = $this->getUserTenantIds();
 
-        // If user has no tenants, allow (might be admin or buyer)
+        // A tenant-scoped route must fail closed for authenticated users with
+        // no membership. The only bypass is an explicit, configured platform
+        // super-admin identity; buyer/public routes do not use this middleware.
         if (empty($allowedTenantIds)) {
-            return $next($request);
+            abort_unless(
+                method_exists($request->user(), 'isSuperAdmin') && $request->user()->isSuperAdmin(),
+                403,
+                'Authenticated user has no authorized tenant.',
+            );
         }
 
         // Check all route parameters for tenant-bound models

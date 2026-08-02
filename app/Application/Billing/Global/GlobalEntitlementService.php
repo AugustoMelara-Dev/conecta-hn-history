@@ -111,6 +111,7 @@ final class GlobalEntitlementService implements EntitlementServiceInterface
         $book = $this->priceBooks->forMarket($tenant->market());
         $rows = DB::table('global_billing_entitlements')
             ->where('tenant_id', $tenant->tenantId())
+            ->where('market_key', strtolower($tenant->market()->countryCode))
             ->get(['plan_key', 'status', 'provider_event_id', 'snapshot', 'created_at']);
 
         $row = null;

@@ -137,6 +137,62 @@ final class WebhookLifecycleTest extends TestCase
         ], JSON_THROW_ON_ERROR), 'bad-signature');
     }
 
+    public function test_current_state_ignores_same_tenant_entitlements_from_other_market(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $occurredAt = now()->subMinute();
+
+        config()->set('dovra_billing.price_books.ca', [
+            'version' => 'research-v1',
+            'currency' => 'CAD',
+            'plans' => [
+                'launch' => [
+                    'monthly_minor' => 4900,
+                    'annual_minor' => 48804,
+                    'sandbox_only' => false,
+                    'live_entitled' => true,
+                    'included_credits' => 25.0,
+                    'capabilities' => ['ai.live_agent'],
+                ],
+            ],
+        ]);
+
+        DB::table('global_billing_entitlements')->insert([
+            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'tenant_id' => (string) $tenant->getKey(),
+            'market_key' => 'hn',
+            'price_book_version' => 'hn-v1',
+            'plan_key' => 'launch',
+            'currency_code' => 'HNL',
+            'status' => 'suspended',
+            'sandbox_access' => false,
+            'live_access' => false,
+            'included_credits' => 0,
+            'grace_ends_at' => null,
+            'provider_key' => 'deterministic-fake',
+            'provider_event_id' => 'evt-other-market-1',
+            'snapshot' => json_encode([
+                'tenant_id' => (string) $tenant->getKey(),
+                'plan' => 'launch',
+                'status' => 'suspended',
+                'occurred_at' => $occurredAt->toIso8601String(),
+            ], JSON_THROW_ON_ERROR),
+            'created_at' => $occurredAt,
+            'updated_at' => $occurredAt,
+        ]);
+
+        $context = GlobalTenantContext::fromArray([
+            'tenant_id' => (string) $tenant->getKey(),
+            'market' => new MarketContext('CA', 'en-CA', 'CAD', 'America/Toronto', 'tenant_market'),
+            'plan' => 'launch',
+            'status' => 'active',
+        ]);
+
+        $service = new GlobalEntitlementService(new ConfigPriceBookReader);
+
+        self::assertTrue($service->allows($context, BillingCapability::liveAgent())->allowed());
+    }
+
     public function test_provider_fake_reads_the_config_secret_without_persisting_secret_material(): void
     {
         config()->set('dovra_billing.price_books.ca', [
