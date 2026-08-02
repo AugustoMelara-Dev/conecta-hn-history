@@ -57,18 +57,18 @@
   "shared_runtime_seams": {
     "logging": {
       "path": "config/logging.php",
-      "status": "proved",
-      "evidence": "security and security_file channels exist for repository-controlled guardrails"
+      "status": "incomplete",
+      "evidence": "Shared logging runtime is outside the Task 7 owned artifact set; this contract does not require or inspect it."
     },
     "sentry": {
       "path": "config/sentry.php",
-      "status": "proved",
-      "evidence": "before_send scrubber is required and send_default_pii stays false"
+      "status": "incomplete",
+      "evidence": "Shared Sentry runtime is outside the Task 7 owned artifact set; redaction proof comes from the owned deterministic harness."
     },
     "opentelemetry": {
       "path": "config/observability.php",
-      "status": "proved",
-      "evidence": "OTEL_PHP_AUTOLOAD_ENABLED defaults disabled until explicitly configured"
+      "status": "incomplete",
+      "evidence": "Shared OpenTelemetry runtime is outside the Task 7 owned artifact set; this contract does not require or inspect it."
     },
     "runtime_topology": {
       "path": "config/queue.php + config/horizon.php",

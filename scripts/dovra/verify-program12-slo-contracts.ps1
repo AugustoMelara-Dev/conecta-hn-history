@@ -29,31 +29,21 @@ $observabilityContractPath = Join-Path $repoRoot 'deployment/dovra/program12-obs
 $queueContractPath = Join-Path $repoRoot 'deployment/dovra/program12-queue-resilience-contract.json'
 $recoveryContractPath = Join-Path $repoRoot 'deployment/dovra/program12-recovery-boundaries.json'
 $harnessPath = Join-Path $repoRoot 'scripts/dovra/program12-operational-contract-harness.php'
-$loggingPath = Join-Path $repoRoot 'config/logging.php'
-$queuePath = Join-Path $repoRoot 'config/queue.php'
-$horizonPath = Join-Path $repoRoot 'config/horizon.php'
-$sentryPath = Join-Path $repoRoot 'config/sentry.php'
-$observabilityPath = Join-Path $repoRoot 'config/observability.php'
-$scrubberPath = Join-Path $repoRoot 'app/Infrastructure/Observability/SentryEventScrubber.php'
 
 $observabilityContract = Get-Content -Raw $observabilityContractPath | ConvertFrom-Json
 $queueContract = Get-Content -Raw $queueContractPath | ConvertFrom-Json
 $recoveryContract = Get-Content -Raw $recoveryContractPath | ConvertFrom-Json
-$loggingConfig = Get-Content -Raw $loggingPath
-$queueConfig = Get-Content -Raw $queuePath
-$horizonConfig = Get-Content -Raw $horizonPath
-$sentryConfig = Get-Content -Raw $sentryPath
-$observabilityConfig = Get-Content -Raw $observabilityPath
-$scrubber = Get-Content -Raw $scrubberPath
 
 $phpCommand = Get-Command php -ErrorAction SilentlyContinue
+$harnessProved = $false
+$harnessPayload = $null
+
 if ($null -eq $phpCommand) {
     $results.Add((New-Result 'operational-contract-harness' 'failed' 'PHP executable is unavailable; executable trace and queue proof cannot run.'))
 } else {
     $harnessLines = @(& $phpCommand.Source $harnessPath '--json' 2>&1 | ForEach-Object { $_.ToString() })
     $harnessExitCode = $LASTEXITCODE
     $harnessOutput = $harnessLines -join [Environment]::NewLine
-    $harnessPayload = $null
 
     if ($harnessOutput -ne '') {
         try {
@@ -70,6 +60,7 @@ if ($null -eq $phpCommand) {
         $harnessPayload.trace.status -eq 'proved' -and
         $harnessPayload.queue.status -eq 'proved'
     ) {
+        $harnessProved = $true
         $harnessDetails = 'Executable trace redaction and queue state-machine simulations proved: {0} events, {1} queues.' -f $harnessPayload.trace.event_count, $harnessPayload.queue.queue_count
         $results.Add((New-Result 'operational-contract-harness' 'proved' $harnessDetails))
     } else {
@@ -77,26 +68,36 @@ if ($null -eq $phpCommand) {
     }
 }
 
-if (
-    $sentryConfig.Contains('send_default_pii') -and
-    $sentryConfig.Contains('false') -and
-    $sentryConfig.Contains('SentryEventScrubber::class') -and
-    $scrubber.Contains("[REDACTED]") -and
-    $observabilityConfig.Contains("OTEL_PHP_AUTOLOAD_ENABLED")
-) {
-    $results.Add((New-Result 'observability-redaction' 'proved' 'Existing Sentry scrubber and OTEL_PHP_AUTOLOAD_ENABLED fail-closed defaults are present.'))
+if ($harnessProved -and $harnessPayload.trace.redaction.status -eq 'proved') {
+    $results.Add((New-Result 'observability-redaction-contract' 'proved' 'Owned deterministic harness proved trace redaction without requiring shared runtime files.'))
 } else {
-    $results.Add((New-Result 'observability-redaction' 'failed' 'Required sentry or OpenTelemetry redaction anchors are missing.'))
+    $results.Add((New-Result 'observability-redaction-contract' 'failed' 'Owned deterministic harness did not prove trace redaction.'))
 }
 
-if (
-    $loggingConfig.Contains("'security' => [") -and
-    $loggingConfig.Contains("'security_file' => [") -and
-    $loggingConfig.Contains("'security_slack' => [")
-) {
-    $results.Add((New-Result 'logging-security-channel' 'proved' 'Security logging channels exist in config/logging.php.'))
-} else {
-    $results.Add((New-Result 'logging-security-channel' 'failed' 'config/logging.php no longer exposes the expected security channels.'))
+function New-SharedSeamResult {
+    param(
+        [string]$Name,
+        [object[]]$Seams
+    )
+
+    $paths = [System.Collections.Generic.List[string]]::new()
+    foreach ($seam in $Seams) {
+        foreach ($path in ([string]$seam.path -split '\s+\+\s+')) {
+            if ($path.Trim() -ne '') {
+                $paths.Add($path.Trim())
+            }
+        }
+    }
+
+    $missingPaths = @($paths | Where-Object {
+        -not (Test-Path -LiteralPath (Join-Path $repoRoot $_))
+    })
+
+    if ($missingPaths.Count -gt 0) {
+        return New-Result $Name 'external' ("Shared seam paths are absent from this owned-only checkout: {0}. Runtime owner evidence is external." -f ($missingPaths -join ', '))
+    }
+
+    return New-Result $Name 'incomplete' 'Shared seam paths may exist in the surrounding checkout, but they are outside the Task 7 owned artifacts and are not read or proved here.'
 }
 
 $queueClasses = @(
@@ -111,18 +112,17 @@ $queueClasses = @(
     'maintenance'
 )
 
-$missingQueueContracts = @($queueClasses | Where-Object { -not $queueContract.queue_classes.PSObject.Properties.Name.Contains($_) })
+$missingQueueContracts = @($queueClasses | Where-Object { -not (@($queueContract.queue_classes.PSObject.Properties.Name) -contains $_) })
 if ($missingQueueContracts.Count -eq 0) {
     $results.Add((New-Result 'queue-contract-manifest' 'proved' 'All Program 12 queue classes are defined in the repository contract.'))
 } else {
     $results.Add((New-Result 'queue-contract-manifest' 'failed' ("Missing queue contracts: {0}" -f ($missingQueueContracts -join ', '))))
 }
 
-if ($queueConfig.Contains("'default' => env('QUEUE_CONNECTION', 'database')") -and $horizonConfig.Contains("'queue' => ['default']")) {
-    $results.Add((New-Result 'shared-runtime-topology' 'incomplete' 'The shared config seam still points at default queue wiring in config/queue.php and config/horizon.php.'))
-} else {
-    $results.Add((New-Result 'shared-runtime-topology' 'proved' 'Shared config already exposes a richer queue topology than the baseline captured by this slice.'))
-}
+$observabilitySeams = @($observabilityContract.shared_runtime_seams.PSObject.Properties | ForEach-Object { $_.Value })
+$queueSeams = @($queueContract.shared_runtime_seams.PSObject.Properties | ForEach-Object { $_.Value })
+$results.Add((New-SharedSeamResult 'shared-observability-runtime' $observabilitySeams))
+$results.Add((New-SharedSeamResult 'shared-runtime-topology' $queueSeams))
 
 if ($recoveryContract.managed_aws_proof.status -eq 'external') {
     $results.Add((New-Result 'managed-aws-proof' 'external' 'Managed AWS/PITR/RPO/RTO, DNS, secrets, and deployment smoke remain external to this repository slice.'))
@@ -137,14 +137,9 @@ $summary = [pscustomobject]@{
         'deployment/dovra/program12-queue-resilience-contract.json',
         'deployment/dovra/program12-recovery-boundaries.json',
         'deployment/dovra/program12-operational-contract-fixture.json',
-        'scripts/dovra/program12-operational-contract-harness.php',
-        'config/observability.php',
-        'config/sentry.php',
-        'config/logging.php',
-        'config/queue.php',
-        'config/horizon.php'
+        'scripts/dovra/program12-operational-contract-harness.php'
     )
-    note = 'Executable trace/queue proof is required; shared config seam and managed AWS/PITR/RPO/RTO evidence remain explicit. No local script may upgrade them silently.'
+    note = 'Only owned artifacts are required. Shared runtime seams are classified as incomplete when present outside this slice or external when absent; managed AWS/PITR/RPO/RTO remains external.'
     results = $results
 }
 

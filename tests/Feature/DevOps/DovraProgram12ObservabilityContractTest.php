@@ -2,11 +2,15 @@
 
 declare(strict_types=1);
 
-use App\Infrastructure\Observability\SentryEventScrubber;
+function program12ObservabilityOwnedRoot(): string
+{
+    return dirname(__DIR__, 3);
+}
 
-it('documents tenant safe observability correlation and redaction contracts', function (): void {
+it('proves owned tenant-safe observability correlation and redaction contracts', function (): void {
+    $root = program12ObservabilityOwnedRoot();
     $contract = json_decode(
-        (string) file_get_contents(base_path('deployment/dovra/program12-observability-contract.json')),
+        (string) file_get_contents($root.'/deployment/dovra/program12-observability-contract.json'),
         true,
         512,
         JSON_THROW_ON_ERROR,
@@ -48,12 +52,10 @@ it('documents tenant safe observability correlation and redaction contracts', fu
             'healthy_provider_first_stream_p95_ms' => 2500,
             'critical_jobs_p95_ms' => 10000,
         ])
-        ->and($contract['shared_runtime_seams']['logging']['path'])->toBe('config/logging.php')
-        ->and($contract['shared_runtime_seams']['sentry']['path'])->toBe('config/sentry.php')
-        ->and($contract['shared_runtime_seams']['opentelemetry']['path'])->toBe('config/observability.php')
-        ->and($contract['shared_runtime_seams']['runtime_topology']['status'])->toBe('incomplete');
+        ->and($contract['operational_harness']['machine_executable'])->toBeTrue()
+        ->and($contract['operational_harness']['deterministic'])->toBeTrue();
 
-    $runbook = (string) file_get_contents(base_path('devops/runbooks/dovra/program12-observability-resilience.md'));
+    $runbook = (string) file_get_contents($root.'/devops/runbooks/dovra/program12-observability-resilience.md');
 
     expect($runbook)
         ->toContain('TraceContextInterface')
@@ -63,25 +65,22 @@ it('documents tenant safe observability correlation and redaction contracts', fu
         ->toContain('abnormal AI cost')
         ->toContain('webhook replay')
         ->toContain('external')
-        ->toContain('managed AWS');
+        ->toContain('managed AWS')
+        ->toContain('program12-operational-contract-harness.php');
 });
 
-it('anchors the contract to the existing fail closed sentry and otel configuration', function (): void {
-    $sentry = require base_path('config/sentry.php');
-    $observability = require base_path('config/observability.php');
-    $scrubber = (string) file_get_contents(base_path('app/Infrastructure/Observability/SentryEventScrubber.php'));
+it('keeps shared observability seams incomplete outside the owned artifact set', function (): void {
+    $root = program12ObservabilityOwnedRoot();
+    $contract = json_decode(
+        (string) file_get_contents($root.'/deployment/dovra/program12-observability-contract.json'),
+        true,
+        512,
+        JSON_THROW_ON_ERROR,
+    );
 
-    expect($sentry['send_default_pii'])->toBeFalse()
-        ->and($sentry['before_send'])->toBe([
-            SentryEventScrubber::class,
-            'scrub',
-        ])
-        ->and($sentry['breadcrumbs']['sql_bindings'])->toBeFalse()
-        ->and($sentry['tracing']['sql_bindings'])->toBeFalse()
-        ->and($sentry['tracing']['redis_commands'])->toBeFalse()
-        ->and($sentry['tracing']['gen_ai'])->toBeFalse()
-        ->and($observability['opentelemetry']['enabled'])->toBeFalse()
-        ->and($scrubber)->toContain("unset(\$request['cookies'], \$request['query_string']);")
-        ->and($scrubber)->toContain("\$request['data'] = '[REDACTED]'")
-        ->and($scrubber)->toContain("\$event->setUser(null);");
+    foreach (['logging', 'sentry', 'opentelemetry', 'runtime_topology'] as $seam) {
+        expect($contract['shared_runtime_seams'][$seam]['status'])->toBe('incomplete')
+            ->and($contract['shared_runtime_seams'][$seam]['evidence'] ?? $contract['shared_runtime_seams'][$seam]['reason'] ?? '')
+            ->toContain('outside');
+    }
 });

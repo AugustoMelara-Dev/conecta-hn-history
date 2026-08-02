@@ -4,13 +4,19 @@ declare(strict_types=1);
 
 use Symfony\Component\Process\Process;
 
+function program12OperationalHarnessRoot(): string
+{
+    return dirname(__DIR__, 3);
+}
+
 function program12OperationalHarnessResult(): array
 {
+    $root = program12OperationalHarnessRoot();
     $process = new Process([
         PHP_BINARY,
-        base_path('scripts/dovra/program12-operational-contract-harness.php'),
+        $root.'/scripts/dovra/program12-operational-contract-harness.php',
         '--json',
-    ], base_path());
+    ], $root);
 
     $process->setTimeout(20);
     $exitCode = $process->run();
@@ -26,6 +32,7 @@ function program12OperationalHarnessResult(): array
 
 it('executes trace correlation and proves sensitive values are redacted', function (): void {
     $run = program12OperationalHarnessResult();
+    $root = program12OperationalHarnessRoot();
 
     expect($run['exit_code'])->toBe(0)
         ->and($run['payload']['status'] ?? null)->toBe('proved')
@@ -50,7 +57,7 @@ it('executes trace correlation and proves sensitive values are redacted', functi
         ->and($run['payload']['trace']['redaction']['redacted_field_count'] ?? 0)->toBeGreaterThan(0);
 
     $fixture = json_decode(
-        (string) file_get_contents(base_path('deployment/dovra/program12-operational-contract-fixture.json')),
+        (string) file_get_contents($root.'/deployment/dovra/program12-operational-contract-fixture.json'),
         true,
         512,
         JSON_THROW_ON_ERROR,
@@ -103,14 +110,15 @@ it('executes every required queue state machine with retries idempotency and ten
 });
 
 it('requires machine-readable harness and fixture references instead of prose-only contracts', function (): void {
+    $root = program12OperationalHarnessRoot();
     $observability = json_decode(
-        (string) file_get_contents(base_path('deployment/dovra/program12-observability-contract.json')),
+        (string) file_get_contents($root.'/deployment/dovra/program12-observability-contract.json'),
         true,
         512,
         JSON_THROW_ON_ERROR,
     );
     $queues = json_decode(
-        (string) file_get_contents(base_path('deployment/dovra/program12-queue-resilience-contract.json')),
+        (string) file_get_contents($root.'/deployment/dovra/program12-queue-resilience-contract.json'),
         true,
         512,
         JSON_THROW_ON_ERROR,

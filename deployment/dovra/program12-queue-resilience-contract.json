@@ -173,12 +173,12 @@
     "queue_config": {
       "path": "config/queue.php",
       "status": "incomplete",
-      "reason": "Shared config seam: repository contract defined here, shared queue wiring remains out of write set."
+      "reason": "Shared config seam is outside the Task 7 exclusive write set; repository contract is defined here, but shared queue wiring remains unverified."
     },
     "horizon_config": {
       "path": "config/horizon.php",
       "status": "incomplete",
-      "reason": "Shared config seam: repository contract defined here, Horizon topology still resides in shared config."
+      "reason": "Shared config seam is outside the Task 7 exclusive write set; repository contract is defined here, but Horizon topology remains unverified."
     }
   }
 }

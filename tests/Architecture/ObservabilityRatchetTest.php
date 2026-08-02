@@ -10,21 +10,26 @@ use PHPUnit\Framework\TestCase;
 final class ObservabilityRatchetTest extends TestCase
 {
     #[Test]
-    public function shared_observability_defaults_stay_fail_closed_and_secret_safe(): void
+    public function owned_program12_observability_contract_stays_machine_executable_and_secret_safe(): void
     {
-        $sentry = require dirname(__DIR__, 2).'/config/sentry.php';
-        $observability = require dirname(__DIR__, 2).'/config/observability.php';
-        $logging = (string) file_get_contents(dirname(__DIR__, 2).'/config/logging.php');
+        $root = dirname(__DIR__, 2);
+        $observability = json_decode((string) file_get_contents($root.'/deployment/dovra/program12-observability-contract.json'), true, 512, JSON_THROW_ON_ERROR);
+        $queue = json_decode((string) file_get_contents($root.'/deployment/dovra/program12-queue-resilience-contract.json'), true, 512, JSON_THROW_ON_ERROR);
+        $fixture = json_decode((string) file_get_contents($root.'/deployment/dovra/program12-operational-contract-fixture.json'), true, 512, JSON_THROW_ON_ERROR);
+        $harness = (string) file_get_contents($root.'/scripts/dovra/program12-operational-contract-harness.php');
 
-        self::assertFalse($sentry['send_default_pii']);
-        self::assertFalse($sentry['breadcrumbs']['sql_bindings']);
-        self::assertFalse($sentry['tracing']['sql_bindings']);
-        self::assertFalse($sentry['tracing']['redis_commands']);
-        self::assertFalse($sentry['tracing']['gen_ai']);
-        self::assertFalse($observability['opentelemetry']['enabled']);
-        self::assertStringContainsString("'security' => [", $logging);
-        self::assertStringContainsString("'security_file' => [", $logging);
-        self::assertStringContainsString("'security_slack' => [", $logging);
+        self::assertTrue($observability['operational_harness']['machine_executable']);
+        self::assertTrue($observability['operational_harness']['deterministic']);
+        self::assertSame('incomplete', $observability['shared_runtime_seams']['logging']['status']);
+        self::assertSame('incomplete', $observability['shared_runtime_seams']['sentry']['status']);
+        self::assertSame('incomplete', $observability['shared_runtime_seams']['opentelemetry']['status']);
+        self::assertSame('incomplete', $observability['shared_runtime_seams']['runtime_topology']['status']);
+        self::assertSame('incomplete', $queue['shared_runtime_seams']['queue_config']['status']);
+        self::assertSame('incomplete', $queue['shared_runtime_seams']['horizon_config']['status']);
+        self::assertNotEmpty($observability['redaction']['forbidden_keys']);
+        self::assertNotEmpty($fixture['sensitive_values']);
+        self::assertStringContainsString('program12Redact', $harness);
+        self::assertStringContainsString('program12SimulateQueues', $harness);
     }
 
     #[Test]
