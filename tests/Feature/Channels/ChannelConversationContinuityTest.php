@@ -6,6 +6,8 @@ namespace Tests\Feature\Channels;
 
 use App\Application\Channels\ChannelAuthorizationEnvelope;
 use App\Application\Channels\ChannelContext;
+use App\Application\Channels\ChannelOutboundMessage;
+use App\Application\Channels\ChannelConflictException;
 use App\Application\Channels\ConversationChannelBridge;
 use App\Application\Channels\NormalizedInboundMessage;
 use App\Models\Tenant;
@@ -33,6 +35,40 @@ final class ChannelConversationContinuityTest extends TestCase
         self::assertSame($first, $continued);
         self::assertNotSame($first, $withoutConsent);
         self::assertSame(3, DB::table('dovra_conversation_channel_links')->where('tenant_id', $tenant->getKey())->count());
+    }
+
+    public function test_outbound_lineage_replay_is_stable_and_payload_conflicts_are_rejected(): void
+    {
+        [$tenant, $actor] = $this->tenant();
+        $bridge = app(ConversationChannelBridge::class);
+        $conversationId = $bridge->resolveOrCreate(
+            (string) $tenant->getKey(),
+            $this->context($tenant, $actor, 'whatsapp'),
+            $this->message($tenant, 'whatsapp', 'wa-outbound-seed', 'thread-outbound', 'granted'),
+        );
+        $message = new ChannelOutboundMessage(
+            tenantId: (string) $tenant->getKey(),
+            channel: 'whatsapp',
+            connectionKey: 'primary',
+            idempotencyKey: 'outbound-1',
+            externalThreadReference: 'thread-outbound',
+            recipient: '+50499990000',
+            content: 'Tu solicitud fue recibida.',
+            metadata: ['conversation_id' => $conversationId],
+        );
+        $bridge->linkOutbound((string) $tenant->getKey(), $conversationId, $message);
+        $bridge->linkOutbound((string) $tenant->getKey(), $conversationId, $message);
+
+        $this->expectException(ChannelConflictException::class);
+        $bridge->linkOutbound(
+            (string) $tenant->getKey(),
+            $conversationId,
+            new ChannelOutboundMessage(
+                tenantId: (string) $tenant->getKey(), channel: 'whatsapp', connectionKey: 'primary',
+                idempotencyKey: 'outbound-1', externalThreadReference: 'thread-outbound',
+                recipient: '+50499990000', content: 'Mensaje diferente.', metadata: ['conversation_id' => $conversationId],
+            ),
+        );
     }
 
     /** @return array{Tenant, User} */

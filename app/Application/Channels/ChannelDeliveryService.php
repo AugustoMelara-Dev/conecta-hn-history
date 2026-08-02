@@ -12,7 +12,10 @@ use Throwable;
 
 final class ChannelDeliveryService
 {
-    public function __construct(private readonly ChannelConnectionService $connections) {}
+    public function __construct(
+        private readonly ChannelConnectionService $connections,
+        private readonly ?ConversationChannelBridge $conversationBridge = null,
+    ) {}
 
     public function send(
         ChannelAdapterInterface $adapter,
@@ -34,7 +37,10 @@ final class ChannelDeliveryService
         }
 
         if (in_array((string) $intent->delivery_state, ['delivered', 'blocked'], true)) {
-            return $this->toReceipt($intent);
+            $receipt = $this->toReceipt($intent);
+            $this->linkOutboundIfBound($message, $receipt);
+
+            return $receipt;
         }
 
         if (! $decision->allowed) {
@@ -87,8 +93,22 @@ final class ChannelDeliveryService
         }
 
         $this->finalizeIntent($context, $message, $intent, $payloadHash, $receipt, null);
+        $this->linkOutboundIfBound($message, $receipt);
 
         return $receipt;
+    }
+
+    private function linkOutboundIfBound(ChannelOutboundMessage $message, DeliveryReceipt $receipt): void
+    {
+        if ($this->conversationBridge === null || $receipt->deliveryState !== 'delivered') {
+            return;
+        }
+        $conversationId = $message->metadata['conversation_id'] ?? null;
+        if (! is_string($conversationId) || ! Str::isUuid($conversationId)) {
+            return;
+        }
+
+        $this->conversationBridge->linkOutbound($message->tenantId, $conversationId, $message);
     }
 
     private function payloadHash(ChannelOutboundMessage $message): string

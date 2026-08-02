@@ -51,9 +51,10 @@ final readonly class ConversationChannelBridge
             return $replayed->conversationId;
         }
 
-        if (! $this->connections->claimWebhook($context, $message)) {
-            throw new RuntimeException('Channel webhook replay has no stored conversation lineage.');
-        }
+        // A webhook claim can commit before the conversation/link transaction.
+        // If that boundary is interrupted, retry the deterministic conversation
+        // claim below so a later delivery can repair the missing lineage.
+        $this->connections->claimWebhook($context, $message);
 
         $identity = $this->identities->resolve($context, $message);
         $consent = $this->consents->record($context, $identity, $message, self::CONSENT_PURPOSE);
@@ -67,16 +68,33 @@ final readonly class ConversationChannelBridge
         );
 
         $conversationThreadReference = $message->externalThreadReference;
+        $originType = $this->originType($context->channel);
+        $locale = $context->locale;
+        $marketCountryCode = $context->marketCountryCode;
+        $currency = $context->currency;
+        $timezone = $context->timezone;
         $actorId = $identity->id;
         if ($conversationId !== null) {
             $existingConversation = DB::table('ai_conversations')
                 ->where('tenant_id', $tenantId)
                 ->where('id', $conversationId)
-                ->first(['actor_id']);
+                ->first([
+                    'actor_id',
+                    'origin_type',
+                    'locale',
+                    'market_country_code',
+                    'currency',
+                    'timezone',
+                ]);
             if ($existingConversation === null) {
                 throw new AuthorizationException('Conversation does not belong to the tenant.');
             }
             $actorId = (string) ($existingConversation->actor_id ?: $identity->id);
+            $originType = (string) $existingConversation->origin_type;
+            $locale = (string) ($existingConversation->locale ?: $locale);
+            $marketCountryCode = (string) ($existingConversation->market_country_code ?: $marketCountryCode);
+            $currency = (string) ($existingConversation->currency ?: $currency);
+            $timezone = (string) ($existingConversation->timezone ?: $timezone);
             if ($conversationThreadReference === null) {
                 $conversationThreadReference = DB::table('dovra_conversation_channel_links')
                     ->where('tenant_id', $tenantId)
@@ -90,13 +108,13 @@ final readonly class ConversationChannelBridge
         $claim = $this->conversations->claim(new AcceptConversationMessage(
             tenantId: $tenantId,
             visibility: 'tenant_private',
-            originType: $this->originType($context->channel),
+            originType: $originType,
             externalThreadReference: $conversationThreadReference,
             actorId: $actorId,
-            locale: $context->locale,
-            marketCountryCode: $context->marketCountryCode,
-            currency: $context->currency,
-            timezone: $context->timezone,
+            locale: $locale,
+            marketCountryCode: $marketCountryCode,
+            currency: $currency,
+            timezone: $timezone,
             content: $message->content,
             contentType: 'text',
             idempotencyKey: $this->inboundIdempotencyKey($message),
@@ -132,42 +150,69 @@ final readonly class ConversationChannelBridge
             ->exists() || throw new AuthorizationException('Conversation does not belong to the tenant.');
 
         $now = now();
+        $channel = strtolower($message->channel);
         $payloadHash = hash('sha256', json_encode([
             'tenant_id' => $tenantId,
             'conversation_id' => $conversationId,
-            'channel' => $message->channel,
+            'channel' => $channel,
             'connection_key' => $message->connectionKey,
             'recipient' => strtolower(trim($message->recipient)),
+            'content_hash' => hash('sha256', $message->content),
             'external_thread_reference' => $message->externalThreadReference,
             'metadata' => $message->metadata,
         ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
-        DB::table('dovra_conversation_channel_links')->updateOrInsert(
-            [
-                'tenant_id' => $tenantId,
-                'channel' => strtolower($message->channel),
-                'connection_key' => $message->connectionKey,
-                'lineage_idempotency_key' => $message->idempotencyKey,
-            ],
-            [
-                'id' => (string) (DB::table('dovra_conversation_channel_links')
-                    ->where('tenant_id', $tenantId)
-                    ->where('channel', strtolower($message->channel))
-                    ->where('connection_key', $message->connectionKey)
-                    ->where('lineage_idempotency_key', $message->idempotencyKey)
-                    ->value('id') ?: Str::uuid()),
-                'conversation_id' => $conversationId,
-                'normalized_identity_hash' => hash('sha256', 'recipient|'.strtolower(trim($message->recipient))),
-                'external_thread_reference' => $message->externalThreadReference,
-                'consent_purpose' => self::CONSENT_PURPOSE,
-                'consent_status' => null,
-                'external_message_id' => null,
-                'provider_event_id' => null,
-                'payload_hash' => $payloadHash,
+        $lineage = DB::table('dovra_conversation_channel_links')
+            ->where('tenant_id', $tenantId)
+            ->where('channel', $channel)
+            ->where('connection_key', $message->connectionKey)
+            ->where('lineage_idempotency_key', $message->idempotencyKey)
+            ->first();
+        if ($lineage !== null) {
+            if ((string) $lineage->conversation_id !== $conversationId
+                || ! hash_equals((string) $lineage->payload_hash, $payloadHash)) {
+                throw new ChannelConflictException('Outbound channel lineage idempotency conflict.');
+            }
+            DB::table('dovra_conversation_channel_links')->where('id', $lineage->id)->update([
                 'last_outbound_at' => $now,
                 'updated_at' => $now,
-                'created_at' => $now,
-            ],
-        );
+            ]);
+
+            return;
+        }
+
+        DB::table('dovra_conversation_channel_links')->insertOrIgnore([
+            'id' => (string) Str::uuid(),
+            'tenant_id' => $tenantId,
+            'conversation_id' => $conversationId,
+            'channel' => $channel,
+            'connection_key' => $message->connectionKey,
+            'normalized_identity_hash' => hash('sha256', 'recipient|'.strtolower(trim($message->recipient))),
+            'external_thread_reference' => $message->externalThreadReference,
+            'consent_purpose' => self::CONSENT_PURPOSE,
+            'consent_status' => null,
+            'external_message_id' => null,
+            'provider_event_id' => null,
+            'lineage_idempotency_key' => $message->idempotencyKey,
+            'payload_hash' => $payloadHash,
+            'last_outbound_at' => $now,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        $stored = DB::table('dovra_conversation_channel_links')
+            ->where('tenant_id', $tenantId)
+            ->where('channel', $channel)
+            ->where('connection_key', $message->connectionKey)
+            ->where('lineage_idempotency_key', $message->idempotencyKey)
+            ->first();
+        if ($stored === null
+            || (string) $stored->conversation_id !== $conversationId
+            || ! hash_equals((string) $stored->payload_hash, $payloadHash)) {
+            throw new ChannelConflictException('Outbound channel lineage idempotency conflict.');
+        }
+        /*
+         * Keep the lineage table free of message bodies. The payload hash above
+         * only binds recipient/thread/metadata to the idempotency key.
+         */
     }
 
     private function assertTenantContext(string $tenantId): void

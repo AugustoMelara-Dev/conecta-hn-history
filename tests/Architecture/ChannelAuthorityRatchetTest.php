@@ -87,6 +87,15 @@ final class ChannelAuthorityRatchetTest extends TestCase
         self::assertStringNotContainsString('$table->text(\'content\')', $migration);
     }
 
+    public function test_delivery_service_records_bound_outbound_lineage_through_the_bridge(): void
+    {
+        $source = (string) file_get_contents(dirname(__DIR__, 2).'/app/Application/Channels/ChannelDeliveryService.php');
+
+        self::assertStringContainsString('ConversationChannelBridge', $source);
+        self::assertStringContainsString('linkOutboundIfBound', $source);
+        self::assertStringContainsString('->linkOutbound(', $source);
+    }
+
     private function writesCanonicalConversationTables(string $source): bool
     {
         return preg_match('/DB\s*::\s*table\s*\(\s*[\'"](ai_conversations|ai_messages|ai_message_failures)[\'"]\s*\)/i', $source) === 1
