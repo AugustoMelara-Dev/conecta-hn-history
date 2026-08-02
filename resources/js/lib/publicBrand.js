@@ -1,10 +1,13 @@
 export const PUBLIC_BRAND = {
-    name: 'Vito Business OS',
-    shortName: 'Vito',
+    name: 'Dovra AI',
+    shortName: 'Dovra',
+    category: 'Global Conversational Business OS',
+    commercialPromise:
+        'Dovra deploys AI employees that know a business, work through its channels, and turn conversations into measurable results.',
     supportEmail: null,
-    supportWhatsAppUrl: 'https://wa.me/50499999999',
+    supportWhatsAppUrl: null,
     websiteUrl: null,
 };
 
 export const PUBLIC_BRAND_POLICY_NOTE =
-    'Marca publica canonica: Vito Business OS. El naming legacy queda reservado para artefactos internos o excepciones documentadas.';
+    'Canonical public product: Dovra AI. Legal entities and operational identifiers remain explicit, separately governed dependencies.';

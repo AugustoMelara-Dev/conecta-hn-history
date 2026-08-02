@@ -26,12 +26,12 @@ export default function OnboardingWidget({ progress = 0, steps = [] }) {
                 <div>
                     <h2 className="text-xl font-bold mb-1">🚀 Configura tu Tienda</h2>
                     <p className="text-indigo-100 text-sm">
-                        Completa estos pasos para empezar a vender
+                        Complete the business context first; workforce preview and simulation remain evidence-gated.
                     </p>
                 </div>
                 <div className="text-right">
                     <span className="text-3xl font-bold">{progress}%</span>
-                    <p className="text-indigo-200 text-xs">{completedSteps}/{totalSteps} pasos</p>
+                    <p className="text-indigo-200 text-xs">{completedSteps}/{totalSteps} setup steps</p>
                 </div>
             </div>
 

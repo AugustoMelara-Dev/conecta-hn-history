@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\V1\SalesExportController;
 use App\Http\Controllers\Api\V1\TenantAgentChatController;
 use App\Http\Controllers\Api\V1\TenantAiConfigurationController;
 use App\Http\Controllers\Api\V1\TenantSettingsController;
+use App\Http\Controllers\Api\V1\TenantWorkforceController;
 use App\Http\Controllers\Auth\OtpController;
 use App\Http\Controllers\Public\CheckoutController;
 use App\Http\Controllers\Webhook\PaymentWebhookController;
@@ -364,6 +365,10 @@ Route::prefix('v1')->group(function () {
                 ->whereUuid('conversation')
                 ->name('api.tenant.ai.conversations.handoff');
         });
+
+    Route::post('/tenant/workforce/activate', [TenantWorkforceController::class, 'activate'])
+        ->middleware(['auth:sanctum', 'tenant.ownership', 'tenant.context', 'throttle:api'])
+        ->name('api.tenant.workforce.activate');
 
     Route::prefix('tenant/agent/tools')
         ->middleware(['auth:sanctum', 'tenant.ownership', 'tenant.context', 'throttle:api.ai-tools'])

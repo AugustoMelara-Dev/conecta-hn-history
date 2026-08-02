@@ -16,7 +16,9 @@
 |
 */
 
+use App\Http\Controllers\Tenant\CatalogImportWorkspaceController;
 use App\Http\Controllers\Tenant\LegacyWorkspaceActionController;
+use App\Http\Controllers\Tenant\WorkforceController;
 use App\Http\Controllers\Tenant\WorkspaceRedirectController;
 use App\Infrastructure\Http\Middleware\IdentifyTenantMiddleware;
 use Illuminate\Support\Facades\Route;
@@ -46,6 +48,12 @@ Route::middleware(['auth', 'verified', IdentifyTenantMiddleware::class])->prefix
         Route::put('/{product}/toggle-visibility', LegacyWorkspaceActionController::class)
             ->name('tenant.products.toggle-visibility');
     });
+
+    Route::get('/catalog-imports', CatalogImportWorkspaceController::class)
+        ->name('tenant.catalog-imports.index');
+
+    Route::get('/workforce', [WorkforceController::class, 'show'])
+        ->name('tenant.workforce.show');
 
     // ─────────────────────────────────────────────────────────────────────────
     // ORDERS MANAGEMENT

@@ -39,7 +39,7 @@ function PlanCard({ active, recommended = false, title, caption, price, bullets,
                 </span>
             ) : null}
 
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex min-w-0 items-start justify-between gap-4">
                 <div>
                     <p className="text-xl font-extrabold tracking-tight">
                         {title}
@@ -77,7 +77,7 @@ function BusinessTypeCard({ active, title, description, capabilities, examples, 
         <label
             htmlFor={id}
             aria-disabled={disabled ? "true" : undefined}
-            className={`cursor-pointer rounded-lg border p-4 text-left ${
+            className={`min-w-0 cursor-pointer rounded-lg border p-4 text-left ${
                 disabled
                     ? "border-dashed border-border bg-muted/50 text-muted-foreground"
                     :
@@ -86,8 +86,8 @@ function BusinessTypeCard({ active, title, description, capabilities, examples, 
                     : "border-border bg-muted text-foreground hover:border-ring/40 hover:bg-background"
             }`}
         >
-            <div className="flex items-start justify-between gap-4">
-                <div className="flex flex-col gap-2">
+            <div className="flex min-w-0 items-start justify-between gap-4">
+                <div className="flex min-w-0 flex-col gap-2">
                     <p className="text-base font-extrabold tracking-tight">
                         {title}
                     </p>
@@ -178,7 +178,7 @@ export function BusinessStep({
                         {slugState.status === "available" ? "Disponible" : slugState.status === "checking" ? "Revisando" : slugState.status === "unavailable" ? "Ocupada" : "Pendiente"}
                     </span>
                 </div>
-                <div className={`grid h-12 grid-cols-[minmax(90px,auto)_auto_1fr] items-center gap-1 rounded-lg border bg-muted px-3 text-sm focus-within:ring-4 ${
+                <div className={`grid min-h-12 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1 rounded-lg border bg-muted px-3 text-sm focus-within:ring-4 ${
                     errorFor("slug")
                         ? "border-destructive/50 focus-within:border-destructive/50 focus-within:ring-destructive/20"
                         : "border-border focus-within:border-primary focus-within:ring-ring/30"
@@ -196,7 +196,7 @@ export function BusinessStep({
                         placeholder="tunegocio"
                         aria-invalid={Boolean(errorFor("slug"))}
                         aria-describedby="slug-help"
-                        className="h-full w-full border-0 bg-transparent px-1 text-foreground shadow-none placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                        className="h-full w-full min-w-0 border-0 bg-transparent px-1 text-foreground shadow-none placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
                     />
                 </div>
                 <FieldDescription id="slug-help" aria-live="polite" role={errorFor("slug") ? "alert" : undefined} className={slugState.status === "unavailable" || slugState.status === "error" || errorFor("slug") ? "text-destructive" : "text-muted-foreground"}>
@@ -208,7 +208,7 @@ export function BusinessStep({
                     </FieldDescription>
                 ) : null}
                 {slugState.suggestions?.length ? (
-                    <div className="flex flex-col gap-2">
+                    <div className="flex min-w-0 flex-col gap-2">
                         <p className="text-xs font-semibold text-muted-foreground">Opciones sugeridas:</p>
                         <div className="flex flex-wrap gap-2">
                             {slugState.suggestions.map((suggestion) => (
@@ -253,7 +253,7 @@ export function BusinessStep({
             </Field>
 
             <Field data-invalid={errorFor("commercial_mode") ? "true" : undefined}>
-                <div className="flex flex-col gap-2">
+                <div className="flex min-w-0 flex-col gap-2">
                     <FieldLabel>Como quieres recibir clientes</FieldLabel>
                     <FieldDescription id={helpId("commercial_mode")}>
                         Elige la ruta comercial principal. La categoría queda para SEO y recomendaciones, no para limitar tu negocio.
@@ -271,7 +271,7 @@ export function BusinessStep({
                         if (nextType?.business_type) updateField("business_type", nextType.business_type)
                         if (nextType?.rubro_key) updateField("rubro_key", nextType.rubro_key)
                     }}
-                    className="grid gap-3 xl:grid-cols-2"
+                    className="grid min-w-0 gap-3 xl:grid-cols-2"
                     aria-label="Ruta comercial"
                     aria-describedby={describedBy("commercial_mode", errorFor, helpId("commercial_mode"))}
                 >
@@ -314,7 +314,7 @@ export function BusinessStep({
                                 </span>
                             </div>
 
-                            <div className="flex flex-col gap-2">
+                            <div className="flex min-w-0 flex-col gap-2">
                                 <h3 className="text-xl font-extrabold tracking-tight text-foreground">
                                     {selectedSegment.onboardingTitle}
                                 </h3>
@@ -337,7 +337,7 @@ export function BusinessStep({
                             ) : null}
 
                             {segmentCandidates.length > 1 ? (
-                                <div className="flex flex-col gap-2">
+                                <div className="flex min-w-0 flex-col gap-2">
                                     <p
                                         className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground"
                                     >
@@ -365,39 +365,215 @@ export function BusinessStep({
     )
 }
 
-export function LocationStep({ data, cities, selectedCityValue, updateField, errorFor, inputClass }) {
+function MarketSelectField({
+    field,
+    label,
+    value,
+    placeholder,
+    items,
+    itemValue,
+    itemLabel,
+    updateField,
+    errorFor,
+    testId,
+}) {
+    return (
+        <Field data-invalid={errorFor(field) ? "true" : undefined}>
+            <FieldLabel htmlFor={field}>{label}</FieldLabel>
+            <Select value={value || "none"} onValueChange={(next) => updateField(field, next === "none" ? "" : next)}>
+                <SelectTrigger
+                    id={field}
+                    data-testid={testId}
+                    aria-invalid={Boolean(errorFor(field))}
+                    aria-describedby={describedBy(field, errorFor)}
+                    className={`h-12 rounded-lg border-border bg-muted px-4 text-foreground focus:ring-4 focus:ring-ring/30 ${errorFor(field) ? "border-destructive/50 focus:ring-destructive/20" : ""}`}
+                >
+                    <SelectValue placeholder={placeholder} />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectGroup>
+                        <SelectItem value="none">{placeholder}</SelectItem>
+                        {items.map((item) => (
+                            <SelectItem key={itemValue(item)} value={String(itemValue(item))}>
+                                {itemLabel(item)}
+                            </SelectItem>
+                        ))}
+                    </SelectGroup>
+                </SelectContent>
+            </Select>
+            {errorFor(field) ? (
+                <FieldDescription id={errorId(field)} role="alert" className="text-destructive">
+                    {errorFor(field)}
+                </FieldDescription>
+            ) : null}
+        </Field>
+    )
+}
+
+export function LocationStep({
+    data,
+    markets = [],
+    cities,
+    selectedCityValue,
+    updateField,
+    errorFor,
+    inputClass,
+}) {
+    const usesGlobalMarket = markets.length > 0
+    const selectedMarket = markets.find((market) => market.countryCode === data.country_code) || markets[0] || null
+    const localities = selectedMarket?.localities || []
+    const locales = selectedMarket?.locales || []
+    const currencies = selectedMarket?.currencies || []
+    const timezones = selectedMarket?.timezones || []
+
+    const selectCountry = (countryCode) => {
+        const market = markets.find((candidate) => candidate.countryCode === countryCode)
+
+        updateField("city_id", "")
+        updateField("country_code", countryCode)
+        updateField("locality_id", "")
+        updateField("locale_code", market?.defaults?.localeCode || "")
+        updateField("currency_code", market?.defaults?.currencyCode || "")
+        updateField("timezone", market?.defaults?.timezone || "")
+    }
+
+    const selectLocality = (localityId) => {
+        updateField("locality_id", localityId)
+
+        const locality = localities.find((candidate) => String(candidate.id) === String(localityId))
+        if (locality?.timezone && timezones.some((candidate) => candidate.name === locality.timezone)) {
+            updateField("timezone", locality.timezone)
+        }
+    }
+
     return (
         <FieldGroup>
-            <Field data-invalid={errorFor("city_id") ? "true" : undefined}>
-                <FieldLabel htmlFor="city_id">Ciudad</FieldLabel>
-                <Select
-                    value={selectedCityValue}
-                    onValueChange={(value) => updateField("city_id", value === "none" ? "" : value)}
-                >
-                    <SelectTrigger
-                        id="city_id"
-                        data-testid="register-city-select"
-                        aria-invalid={Boolean(errorFor("city_id"))}
-                        aria-describedby={describedBy("city_id", errorFor)}
-                        className={`h-12 rounded-lg border-border bg-muted px-4 text-foreground focus:ring-4 focus:ring-ring/30 ${errorFor("city_id") ? "border-destructive/50 focus:ring-destructive/20" : ""}`}
+            {usesGlobalMarket ? (
+                <>
+                    <MarketSelectField
+                        field="country_code"
+                        label="País o mercado"
+                        value={data.country_code}
+                        placeholder="Selecciona un mercado disponible"
+                        items={markets}
+                        itemValue={(market) => market.countryCode}
+                        itemLabel={(market) => market.countryName}
+                        updateField={(_field, value) => selectCountry(value)}
+                        errorFor={errorFor}
+                        testId="register-country-select"
+                    />
+
+                    <MarketSelectField
+                        field="locality_id"
+                        label="Localidad"
+                        value={data.locality_id}
+                        placeholder="Selecciona una localidad"
+                        items={localities}
+                        itemValue={(locality) => locality.id}
+                        itemLabel={(locality) => locality.administrativeArea
+                            ? `${locality.name}, ${locality.administrativeArea}`
+                            : locality.name}
+                        updateField={(_field, value) => selectLocality(value)}
+                        errorFor={errorFor}
+                        testId="register-locality-select"
+                    />
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <MarketSelectField
+                            field="locale_code"
+                            label="Idioma y formato"
+                            value={data.locale_code}
+                            placeholder="Selecciona un idioma"
+                            items={locales}
+                            itemValue={(locale) => locale.code}
+                            itemLabel={(locale) => locale.nativeName || locale.name}
+                            updateField={updateField}
+                            errorFor={errorFor}
+                            testId="register-locale-select"
+                        />
+                        <MarketSelectField
+                            field="currency_code"
+                            label="Moneda"
+                            value={data.currency_code}
+                            placeholder="Selecciona una moneda"
+                            items={currencies}
+                            itemValue={(currency) => currency.code}
+                            itemLabel={(currency) => `${currency.code} — ${currency.name}`}
+                            updateField={updateField}
+                            errorFor={errorFor}
+                            testId="register-currency-select"
+                        />
+                    </div>
+
+                    <MarketSelectField
+                        field="timezone"
+                        label="Zona horaria"
+                        value={data.timezone}
+                        placeholder="Selecciona una zona horaria"
+                        items={timezones}
+                        itemValue={(timezone) => timezone.name}
+                        itemLabel={(timezone) => timezone.label}
+                        updateField={updateField}
+                        errorFor={errorFor}
+                        testId="register-timezone-select"
+                    />
+
+                    <Field data-invalid={errorFor("address") ? "true" : undefined}>
+                        <FieldLabel htmlFor="address">Dirección</FieldLabel>
+                        <Input
+                            id="address"
+                            name="address"
+                            autoComplete="street-address"
+                            value={data.address}
+                            onChange={(event) => updateField("address", event.target.value)}
+                            placeholder="Calle, número y referencias"
+                            className={inputClass("address")}
+                            aria-invalid={Boolean(errorFor("address"))}
+                            aria-describedby={describedBy("address", errorFor, helpId("address"))}
+                        />
+                        {errorFor("address") ? (
+                            <FieldDescription id={errorId("address")} role="alert" className="text-destructive">
+                                {errorFor("address")}
+                            </FieldDescription>
+                        ) : (
+                            <FieldDescription id={helpId("address")}>
+                                Opcional. Puedes completar o cambiar la dirección desde tu espacio de trabajo.
+                            </FieldDescription>
+                        )}
+                    </Field>
+                </>
+            ) : (
+                <Field data-invalid={errorFor("city_id") ? "true" : undefined}>
+                    <FieldLabel htmlFor="city_id">Ciudad</FieldLabel>
+                    <Select
+                        value={selectedCityValue}
+                        onValueChange={(value) => updateField("city_id", value === "none" ? "" : value)}
                     >
-                        <SelectValue placeholder="Selecciona una ciudad" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectGroup>
-                            <SelectItem value="none">Selecciona una ciudad</SelectItem>
-                            {cities.map((item) => (
-                                <SelectItem key={item.id} value={String(item.id)}>{item.name}</SelectItem>
-                            ))}
-                        </SelectGroup>
-                    </SelectContent>
-                </Select>
-                {errorFor("city_id") ? <FieldDescription id={errorId("city_id")} role="alert" className="text-destructive">{errorFor("city_id")}</FieldDescription> : null}
-            </Field>
+                        <SelectTrigger
+                            id="city_id"
+                            data-testid="register-city-select"
+                            aria-invalid={Boolean(errorFor("city_id"))}
+                            aria-describedby={describedBy("city_id", errorFor)}
+                            className={`h-12 rounded-lg border-border bg-muted px-4 text-foreground focus:ring-4 focus:ring-ring/30 ${errorFor("city_id") ? "border-destructive/50 focus:ring-destructive/20" : ""}`}
+                        >
+                            <SelectValue placeholder="Selecciona una ciudad" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectGroup>
+                                <SelectItem value="none">Selecciona una ciudad</SelectItem>
+                                {cities.map((item) => (
+                                    <SelectItem key={item.id} value={String(item.id)}>{item.name}</SelectItem>
+                                ))}
+                            </SelectGroup>
+                        </SelectContent>
+                    </Select>
+                    {errorFor("city_id") ? <FieldDescription id={errorId("city_id")} role="alert" className="text-destructive">{errorFor("city_id")}</FieldDescription> : null}
+                </Field>
+            )}
 
             <Field>
                 <FieldLabel htmlFor="whatsapp">WhatsApp</FieldLabel>
-                <Input id="whatsapp" name="whatsapp" type="tel" autoComplete="tel" inputMode="tel" value={data.whatsapp} onChange={(event) => updateField("whatsapp", event.target.value)} placeholder="+504 9999-9999" className={inputClass("whatsapp")} aria-invalid={Boolean(errorFor("whatsapp"))} aria-describedby={describedBy("whatsapp", errorFor, helpId("whatsapp"))} />
+                <Input id="whatsapp" name="whatsapp" type="tel" autoComplete="tel" inputMode="tel" value={data.whatsapp} onChange={(event) => updateField("whatsapp", event.target.value)} placeholder={usesGlobalMarket ? `${selectedMarket?.callingCode || "+"} teléfono` : "+504 9999-9999"} className={inputClass("whatsapp")} aria-invalid={Boolean(errorFor("whatsapp"))} aria-describedby={describedBy("whatsapp", errorFor, helpId("whatsapp"))} />
                 {errorFor("whatsapp") ? (
                     <FieldDescription id={errorId("whatsapp")} role="alert" className="text-destructive">{errorFor("whatsapp")}</FieldDescription>
                 ) : (
@@ -455,7 +631,7 @@ export function PlanSummaryStep({
     selectedCategory,
     selectedBusinessType,
     selectedSegment,
-    selectedCity,
+    selectedLocationLabel,
     errorFor,
     updateField,
     legalTermsUrl,
@@ -480,8 +656,8 @@ export function PlanSummaryStep({
         ],
         hybrid: [
             "Perfil digital público",
-            "Operación mixta disponible solo por piloto",
-            "Panel base con activación por allowlist",
+            "Operación mixta disponible desde el lanzamiento",
+            "Panel unificado para productos y servicios",
         ],
     }
     const modeProBullets = {
@@ -498,12 +674,12 @@ export function PlanSummaryStep({
         products: [
             `Capacidad comercial de hasta ${proLimit} productos`,
             "Reservas/reportes y campañas según capacidades",
-            "Agente IA privado con activación segura por tenant",
+            "AI workforce roles can be prepared with tenant-scoped evidence",
         ],
         hybrid: [
             "Operación mixta avanzada",
             "Analíticas avanzadas",
-            "Capacidad comercial ampliada por piloto",
+            "Capacidad comercial ampliada para negocios híbridos",
         ],
     }
     const basicBullets = modeBasicBullets[mode] || modeBasicBullets.products
@@ -532,7 +708,7 @@ export function PlanSummaryStep({
                     <SummaryRow label="Categoría" value={selectedCategory?.name || "Pendiente"} />
                     <SummaryRow label="Tipo" value={selectedBusinessType?.label || "Pendiente"} />
                     <SummaryRow label="Segmento" value={selectedSegment?.label || "Pendiente"} />
-                    <SummaryRow label="Ciudad" value={selectedCity?.name || "Pendiente"} />
+                    <SummaryRow label="Mercado" value={selectedLocationLabel || "Pendiente"} />
                     <SummaryRow label="Cuenta" value={data.email || "Sin correo aún"} />
                     <SummaryRow label="Plan" value={data.selected_plan === "pro" ? "Business Pro" : "Basic"} />
                 </div>
