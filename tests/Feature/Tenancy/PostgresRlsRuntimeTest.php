@@ -78,6 +78,34 @@ final class PostgresRlsRuntimeTest extends TestCase
         }
     }
 
+    public function test_every_program_five_ai_table_has_forced_rls_under_the_restricted_role(): void
+    {
+        $programFiveTables = array_values(array_filter(
+            PostgresRlsPolicyInventory::requiredTables(),
+            static fn (string $table): bool => str_starts_with($table, 'ai_'),
+        ));
+
+        self::assertNotEmpty($programFiveTables);
+
+        foreach ($programFiveTables as $table) {
+            $metadata = DB::selectOne(
+                'select c.relrowsecurity, c.relforcerowsecurity, '
+                .'exists (select 1 from pg_policies p '
+                .'where p.schemaname = current_schema() and p.tablename = c.relname) as has_policy, '
+                .'(pg_get_userbyid(c.relowner) = current_user) as runtime_is_owner '
+                .'from pg_class c join pg_namespace n on n.oid = c.relnamespace '
+                .'where n.nspname = current_schema() and c.relname = ?',
+                [$table],
+            );
+
+            self::assertNotNull($metadata, "Missing Program 05 RLS table [{$table}].");
+            self::assertTrue((bool) $metadata->relrowsecurity, "RLS is disabled for [{$table}].");
+            self::assertTrue((bool) $metadata->relforcerowsecurity, "RLS is not forced for [{$table}].");
+            self::assertTrue((bool) $metadata->has_policy, "RLS policy is missing for [{$table}].");
+            self::assertFalse((bool) $metadata->runtime_is_owner, "Runtime role owns [{$table}].");
+        }
+    }
+
     public function test_governance_memberships_are_isolated_by_the_restricted_runtime_role(): void
     {
         $userA = User::factory()->create();

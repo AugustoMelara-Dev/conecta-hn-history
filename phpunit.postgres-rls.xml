@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true">
+    <testsuites>
+        <testsuite name="PostgreSQL RLS">
+            <file>tests/Feature/Tenancy/PostgresRlsRuntimeTest.php</file>
+            <file>tests/Unit/Tenancy/PostgresRlsPolicyInventoryTest.php</file>
+            <file>tests/Feature/AI/Program05AcceptanceTest.php</file>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>app</directory>
+        </include>
+    </source>
+    <php>
+        <env name="APP_KEY" value="base64:2fl+Ktvkfl+Fuz4Qk/NaWvy1Pt7EQqHMA2wc/ulkZyo="/>
+        <env name="APP_ENV" value="testing"/>
+        <env name="APP_CONFIG_CACHE" value="bootstrap/cache/config-testing-postgres-rls.php"/>
+        <env name="CACHE_STORE" value="array"/>
+        <env name="DB_CONNECTION" value="pgsql"/>
+        <env name="DB_HOST" value="127.0.0.1"/>
+        <env name="DB_PORT" value="5432"/>
+        <env name="DB_DATABASE" value="dovra_program05_rls"/>
+        <env name="DB_USERNAME" value="dovra_runtime"/>
+        <env name="DB_PASSWORD" value="dovra-runtime-password"/>
+        <env name="DB_PLATFORM_USERNAME" value="dovra_platform"/>
+        <env name="DB_PLATFORM_PASSWORD" value="dovra-platform-password"/>
+        <env name="DB_SSLMODE" value="prefer"/>
+        <env name="MAIL_MAILER" value="array"/>
+        <env name="QUEUE_CONNECTION" value="sync"/>
+        <env name="SESSION_DRIVER" value="array"/>
+        <env name="PULSE_ENABLED" value="false"/>
+        <env name="TELESCOPE_ENABLED" value="false"/>
+        <env name="RUN_POSTGRES_RLS_TESTS" value="true"/>
+    </php>
+</phpunit>
