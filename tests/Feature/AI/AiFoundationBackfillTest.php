@@ -230,6 +230,24 @@ final class AiFoundationBackfillTest extends TestCase
         self::assertStringContainsString('"legacy_unresolved": 0', $output);
     }
 
+    public function test_phase_contract_is_explicit_and_non_destructive(): void
+    {
+        $expand = app(AiFoundationBackfill::class)->run(10, phase: 'expand');
+        self::assertSame('expand', $expand->phase);
+        self::assertSame('expand_ready', $expand->contractStatus);
+        self::assertTrue($expand->validated);
+
+        $validate = app(AiFoundationBackfill::class)->run(10, phase: 'validate');
+        self::assertSame('validate', $validate->phase);
+        self::assertTrue($validate->validated);
+        self::assertSame('no_contract_requested', $validate->contractStatus);
+
+        $contract = app(AiFoundationBackfill::class)->run(10, phase: 'contract');
+        self::assertSame('contract', $contract->phase);
+        self::assertFalse($contract->validated);
+        self::assertSame('deferred_until_consumers_proven', $contract->contractStatus);
+    }
+
     private function conversation(string $tenantId, string $actorId, ?string $retentionCategory): string
     {
         $id = (string) Str::uuid();

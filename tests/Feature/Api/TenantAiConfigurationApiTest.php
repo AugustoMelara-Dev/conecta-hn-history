@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api;
 
+use App\Application\Ai\Contracts\AiProviderPool;
 use App\Domain\Access\Enums\Role;
+use App\Infrastructure\AI\ConfiguredAiProviderPool;
 use App\Models\City;
 use App\Models\Tenant;
 use App\Models\User;
@@ -12,11 +14,23 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\Support\AI\AiEligibleRegistryFixture;
 use Tests\Support\GlobalMarketFixture;
+use Tests\Fakes\AI\FakeAiProvider;
 use Tests\TestCase;
 
 final class TenantAiConfigurationApiTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->app->instance(AiProviderPool::class, new ConfiguredAiProviderPool([
+            'fake_structured_text' => [
+                'fake.primary' => new FakeAiProvider,
+            ],
+        ]));
+    }
 
     public function test_tenant_configuration_returns_only_authorized_labels_credit_summary_and_kill_switch_state(): void
     {
@@ -42,6 +56,7 @@ final class TenantAiConfigurationApiTest extends TestCase
             'private_tenant_agent',
             'private',
             'private_agent.answer.v1',
+            marketCountryCode: 'CA',
         );
 
         Sanctum::actingAs($owner);
@@ -94,6 +109,7 @@ final class TenantAiConfigurationApiTest extends TestCase
             'private_tenant_agent',
             'private',
             'private_agent.answer.v1',
+            marketCountryCode: 'CA',
         );
 
         Sanctum::actingAs($viewer);
@@ -116,6 +132,7 @@ final class TenantAiConfigurationApiTest extends TestCase
             'private_tenant_agent',
             'private',
             'private_agent.answer.v1',
+            marketCountryCode: 'CA',
         );
 
         Sanctum::actingAs($otherOwner);

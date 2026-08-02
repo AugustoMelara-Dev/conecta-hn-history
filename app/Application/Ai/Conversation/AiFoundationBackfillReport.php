@@ -13,9 +13,16 @@ final readonly class AiFoundationBackfillReport
         public int $retentionClassified,
         public int $gaps,
         public int $conflicts,
+        public string $phase = 'backfill',
+        public ?string $batchChecksum = null,
+        public ?string $nextCursor = null,
+        public ?string $conversationNextCursor = null,
+        public bool $hasMore = false,
+        public bool $validated = false,
+        public string $contractStatus = 'deferred',
     ) {}
 
-    /** @return array<string, int> */
+    /** @return array<string, int|string|bool|null> */
     public function toArray(): array
     {
         return [
@@ -25,6 +32,13 @@ final readonly class AiFoundationBackfillReport
             'retention_classified' => $this->retentionClassified,
             'gaps' => $this->gaps,
             'conflicts' => $this->conflicts,
+            'phase' => $this->phase,
+            'batch_checksum' => $this->batchChecksum,
+            'next_cursor' => $this->nextCursor,
+            'conversation_next_cursor' => $this->conversationNextCursor,
+            'has_more' => $this->hasMore,
+            'validated' => $this->validated,
+            'contract_status' => $this->contractStatus,
         ];
     }
 }

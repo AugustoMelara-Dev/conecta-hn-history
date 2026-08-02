@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Application\Ai\Registry\AiRegistryQuery;
+use App\Application\Ai\Registry\AiRegistryResolver;
 use App\Application\Markets\TenantMarketResolver;
 use App\Domain\Access\Enums\Role;
 use App\Domain\Shared\Services\TenantContext;
+use App\Exceptions\Ai\AiExecutionDeniedException;
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use App\Scopes\LocationScope;
@@ -19,6 +22,7 @@ final class TenantAiConfigurationController extends Controller
     public function __construct(
         private readonly TenantMarketResolver $markets,
         private readonly TenantContext $tenantContext,
+        private readonly AiRegistryResolver $registry,
     ) {}
 
     public function __invoke(Request $request): JsonResponse
@@ -35,49 +39,62 @@ final class TenantAiConfigurationController extends Controller
             ->firstOrFail();
 
         $market = $this->markets->resolve($tenant);
-        $privateAssignment = $this->assignment(
-            audience: 'private',
-            tenantId: $tenantId,
-            subject: $tenantId.'|'.$userId.'|web',
-        );
+        $conversationId = $request->query('conversation_id');
+        if ($conversationId !== null && (! is_string($conversationId) || ! \Illuminate\Support\Str::isUuid($conversationId))) {
+            abort(422, 'conversation_id must be a UUID.');
+        }
+        $persistedConversation = $conversationId === null
+            ? null
+            : DB::table('ai_conversations')
+                ->where('tenant_id', $tenantId)
+                ->where('id', $conversationId)
+                ->first();
+        abort_if($conversationId !== null && $persistedConversation === null, 404);
 
-        $activeAgent = null;
-        $webEligible = false;
-
-        if ((bool) config('ai.enabled', false)
+        $selection = null;
+        $selectionDenied = null;
+        $flagsEnabled = (bool) config('ai.enabled', false)
             && (bool) config('ai.private.enabled', false)
-            && in_array($tenantId, array_map('strval', (array) config('ai.private.tenant_allowlist', [])), true)) {
-            $activeAgent = DB::table('ai_agent_activations')
-                ->join('ai_agent_versions', function ($join): void {
-                    $join->on('ai_agent_versions.id', '=', 'ai_agent_activations.agent_version_id')
-                        ->on('ai_agent_versions.tenant_id', '=', 'ai_agent_activations.tenant_id');
-                })
+            && (bool) config('ai.capabilities.private_tenant_agent.enabled', false)
+            && in_array($tenantId, array_map('strval', (array) config('ai.private.tenant_allowlist', [])), true);
+
+        if ($flagsEnabled) {
+            try {
+                $selection = $this->registry->resolve(new AiRegistryQuery(
+                    tenantId: $tenantId,
+                    audience: 'private',
+                    capability: 'private_tenant_agent',
+                    channel: 'web',
+                    marketCode: strtoupper((string) $market->countryCode),
+                    residencyClass: strtoupper((string) $market->countryCode),
+                    actorId: $userId,
+                    cohortSubject: $tenantId.'|'.$userId.'|web',
+                ));
+            } catch (AiExecutionDeniedException $exception) {
+                $selectionDenied = $exception->reason;
+            }
+        }
+
+        $activeAgent = $selection === null
+            ? null
+            : DB::table('ai_agent_versions')
                 ->join('ai_agent_definitions', function ($join): void {
                     $join->on('ai_agent_definitions.id', '=', 'ai_agent_versions.agent_definition_id')
                         ->on('ai_agent_definitions.tenant_id', '=', 'ai_agent_versions.tenant_id');
                 })
-                ->where('ai_agent_activations.tenant_id', $tenantId)
-                ->where('ai_agent_activations.effective_from', '<=', now())
-                ->where(function ($builder): void {
-                    $builder
-                        ->whereNull('ai_agent_activations.effective_until')
-                        ->orWhere('ai_agent_activations.effective_until', '>', now());
-                })
-                ->whereIn('ai_agent_activations.scope_type', ['tenant_channel', 'tenant', 'capability'])
-                ->whereIn('ai_agent_activations.scope_key', [$tenantId.'|web', $tenantId, 'private_tenant_agent'])
-                ->whereIn('ai_agent_versions.lifecycle_status', ['candidate', 'eligible', 'active'])
-                ->where('ai_agent_versions.kill_switch_enabled', false)
-                ->orderByRaw("CASE ai_agent_activations.scope_type WHEN 'tenant_channel' THEN 0 WHEN 'tenant' THEN 1 ELSE 2 END")
-                ->orderByDesc('ai_agent_activations.effective_from')
+                ->where('ai_agent_versions.tenant_id', $tenantId)
+                ->where('ai_agent_versions.id', $selection->agentVersionId)
                 ->select([
                     'ai_agent_versions.id',
                     'ai_agent_versions.version',
                     'ai_agent_definitions.name',
                 ])
                 ->first();
-
-            $webEligible = $activeAgent !== null;
-        }
+        $webEligible = $selection !== null && $activeAgent !== null;
+        $persistedPath = $persistedConversation !== null
+            && is_string($persistedConversation->agent_version_id)
+            && $selection !== null
+            && hash_equals((string) $persistedConversation->agent_version_id, $selection->agentVersionId);
 
         $balance = round((float) ($tenant->getAttribute('ai_balance') ?? 0), 2);
         $reserved = round((float) ($tenant->getAttribute('ai_reserved_balance') ?? 0), 2);
@@ -102,24 +119,18 @@ final class TenantAiConfigurationController extends Controller
                     'available' => $available,
                 ],
                 'kill_switch' => [
-                    'enabled' => ! (bool) config('ai.enabled', false) || ! (bool) config('ai.private.enabled', false),
+                    'enabled' => ! $webEligible,
+                    'reason' => $webEligible ? null : ($selectionDenied ?? 'configuration_unavailable'),
                 ],
                 'canary' => [
                     'private' => [
-                        'assignment' => $privateAssignment,
+                        'assignment' => $webEligible ? 'canonical' : 'compatibility',
+                        'stickiness' => 'deterministic_registry_cohort',
+                        'persisted_path' => $persistedPath,
                     ],
                 ],
             ],
         ], 200, [], JSON_PRESERVE_ZERO_FRACTION);
-    }
-
-    private function assignment(string $audience, string $tenantId, string $subject): string
-    {
-        $percent = max(0, min(100, (int) config("ai.cutover.{$audience}_percent", 0)));
-        $salt = (string) config('ai.cutover.cohort_salt', 'dovra-ai-foundation');
-        $bucket = hexdec(substr(hash('sha256', $salt.'|'.$tenantId.'|'.$subject.'|'.$audience), 0, 8)) % 100;
-
-        return $bucket < $percent ? 'canonical' : 'compatibility';
     }
 
     private function hasSupportAccess(string $tenantId, string $userId): bool
