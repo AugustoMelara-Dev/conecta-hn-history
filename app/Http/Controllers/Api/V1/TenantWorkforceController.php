@@ -17,12 +17,12 @@ use App\Domain\Shared\Services\TenantContext;
 use App\Domain\TenantGovernance\Enums\Capability;
 use App\Exceptions\Ai\AiExecutionDeniedException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\TenantWorkforceActivationRequest;
 use App\Models\Tenant;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 final class TenantWorkforceController extends Controller
@@ -36,19 +36,10 @@ final class TenantWorkforceController extends Controller
         private readonly TenantPermissionGuardInterface $permissions,
     ) {}
 
-    public function activate(Request $request): JsonResponse
+    public function activate(TenantWorkforceActivationRequest $request): JsonResponse
     {
         $tenantId = $this->tenantId();
-        $validated = $request->validate([
-            'role_key' => ['required', 'string', Rule::in(array_map(static fn (AgentRole $role): string => $role->value, AgentRoleCatalog::roles()))],
-            'channel_keys' => ['nullable', 'array'],
-            'channel_keys.*' => ['string', 'max:128'],
-            'knowledge_source_ids' => ['nullable', 'array'],
-            'knowledge_source_ids.*' => ['string', 'max:255'],
-            'simulation_case_ids' => ['nullable', 'array'],
-            'simulation_case_ids.*' => ['string', 'max:255'],
-            'approval_mode' => ['required', 'string', Rule::in(['human_review', 'policy_gate'])],
-        ]);
+        $validated = $request->validated();
 
         /** @var Tenant $tenant */
         $tenant = Tenant::query()->whereKey($tenantId)->where('is_active', true)->firstOrFail();
@@ -152,6 +143,10 @@ final class TenantWorkforceController extends Controller
                 $response,
                 $user,
             ): ?array {
+                // Serialize activation requests for this tenant so a pair of
+                // concurrent requests cannot both pass the idempotency read.
+                DB::table('tenants')->where('id', $tenantId)->lockForUpdate()->first();
+
                 $existing = DB::table('dovra_workforce_activation_requests')
                     ->where('tenant_id', $tenantId)
                     ->where('idempotency_key', $idempotencyKey)
@@ -284,6 +279,7 @@ final class TenantWorkforceController extends Controller
                     ->on('ai_agent_definitions.tenant_id', '=', 'ai_agent_versions.tenant_id');
             })
             ->where('ai_agent_versions.tenant_id', $tenantId)
+            ->where('ai_agent_versions.lifecycle_status', 'draft')
             ->orderByRaw("CASE ai_agent_versions.lifecycle_status WHEN 'active' THEN 0 WHEN 'eligible' THEN 1 WHEN 'candidate' THEN 2 WHEN 'draft' THEN 3 ELSE 4 END")
             ->orderByDesc('ai_agent_versions.created_at')
             ->get(['ai_agent_versions.id', 'ai_agent_versions.configuration', 'ai_agent_versions.lifecycle_status', 'ai_agent_definitions.key as definition_key'])
@@ -305,15 +301,48 @@ final class TenantWorkforceController extends Controller
             })
             ->where('channel_connections.tenant_id', $tenantId)
             ->whereNull('channel_connections.deleted_at')
-            ->get(['channel_connections.channel', 'channel_connections.connection_key', 'channel_provider_health.status as health_status', 'channel_provider_health.checked_at'])
-            ->map(static fn (object $channel): array => [
+            ->get([
+                'channel_connections.channel',
+                'channel_connections.connection_key',
+                'channel_connections.provider_key',
+                'channel_connections.status as connection_status',
+                'channel_connections.disconnected_at',
+                'channel_provider_health.provider_key as health_provider_key',
+                'channel_provider_health.status as health_status',
+                'channel_provider_health.checked_at',
+            ])
+            ->map(fn (object $channel): array => [
                 'key' => (string) $channel->channel.':'.(string) $channel->connection_key,
                 'channel' => (string) $channel->channel,
                 'connection_key' => (string) $channel->connection_key,
-                'evidence_state' => (string) ($channel->health_status ?? 'pending_external_verification'),
+                'evidence_state' => $this->channelEvidenceAvailable($channel)
+                    ? 'available'
+                    : 'pending_external_verification',
                 'checked_at' => $channel->checked_at,
             ])
             ->all();
+    }
+
+    private function channelEvidenceAvailable(object $channel): bool
+    {
+        if ((string) ($channel->connection_status ?? '') !== 'active'
+            || $channel->disconnected_at !== null
+            || (string) ($channel->health_status ?? '') !== 'available'
+            || trim((string) ($channel->provider_key ?? '')) === ''
+            || ! hash_equals(
+                (string) $channel->provider_key,
+                (string) ($channel->health_provider_key ?? ''),
+            )
+            || $channel->checked_at === null) {
+            return false;
+        }
+
+        try {
+            return CarbonImmutable::parse((string) $channel->checked_at)
+                ->greaterThanOrEqualTo(now()->subSeconds((int) config('dovra_channels.contract.health.stale_after_seconds', 300)));
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     /** @return array{verified: bool, state: string, label: string} */

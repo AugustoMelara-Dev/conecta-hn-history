@@ -17,6 +17,7 @@ use App\Domain\TenantGovernance\Enums\Capability;
 use App\Exceptions\Ai\AiExecutionDeniedException;
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -158,18 +159,48 @@ final class WorkforceController extends Controller
             ->whereNull('channel_connections.deleted_at')
             ->orderBy('channel_connections.channel')
             ->get([
-                'channel_connections.channel', 'channel_connections.connection_key', 'channel_connections.status',
-                'channel_provider_health.status as health_status', 'channel_provider_health.checked_at',
+                'channel_connections.channel',
+                'channel_connections.connection_key',
+                'channel_connections.provider_key',
+                'channel_connections.status',
+                'channel_connections.disconnected_at',
+                'channel_provider_health.provider_key as health_provider_key',
+                'channel_provider_health.status as health_status',
+                'channel_provider_health.checked_at',
             ])
-            ->map(static fn (object $channel): array => [
+            ->map(fn (object $channel): array => [
                 'key' => (string) $channel->channel.':'.(string) $channel->connection_key,
                 'channel' => (string) $channel->channel,
                 'connection_key' => (string) $channel->connection_key,
                 'connection_status' => (string) $channel->status,
-                'evidence_state' => (string) ($channel->health_status ?? 'pending_external_verification'),
+                'evidence_state' => $this->channelEvidenceAvailable($channel)
+                    ? 'available'
+                    : 'pending_external_verification',
                 'checked_at' => $channel->checked_at,
             ])
             ->all();
+    }
+
+    private function channelEvidenceAvailable(object $channel): bool
+    {
+        if ((string) ($channel->status ?? '') !== 'active'
+            || $channel->disconnected_at !== null
+            || (string) ($channel->health_status ?? '') !== 'available'
+            || trim((string) ($channel->provider_key ?? '')) === ''
+            || ! hash_equals(
+                (string) $channel->provider_key,
+                (string) ($channel->health_provider_key ?? ''),
+            )
+            || $channel->checked_at === null) {
+            return false;
+        }
+
+        try {
+            return CarbonImmutable::parse((string) $channel->checked_at)
+                ->greaterThanOrEqualTo(now()->subSeconds((int) config('dovra_channels.contract.health.stale_after_seconds', 300)));
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     /** @return array{verified: bool, state: string, label: string} */

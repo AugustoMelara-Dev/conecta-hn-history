@@ -9,6 +9,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -98,6 +99,47 @@ final class TenantWorkforceApiTest extends TestCase
             ->where('tenant_id', $tenant->id)
             ->where('idempotency_key', 'workforce-conflict-001')
             ->count());
+    }
+
+    public function test_stale_channel_health_never_becomes_live_evidence(): void
+    {
+        [$owner, $tenant] = $this->tenantOwner();
+        $now = now();
+        DB::table('channel_connections')->insert([
+            'id' => (string) Str::uuid(),
+            'tenant_id' => $tenant->id,
+            'channel' => 'whatsapp',
+            'connection_key' => 'primary',
+            'provider_key' => 'whatsapp.fake',
+            'status' => 'active',
+            'connected_at' => $now->copy()->subHour(),
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        DB::table('channel_provider_health')->insert([
+            'id' => (string) Str::uuid(),
+            'tenant_id' => $tenant->id,
+            'channel' => 'whatsapp',
+            'connection_key' => 'primary',
+            'provider_key' => 'whatsapp.fake',
+            'status' => 'available',
+            'checked_at' => $now->copy()->subMinutes(10),
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        Sanctum::actingAs($owner);
+
+        $this->withHeader('X-Tenant-ID', (string) $tenant->id)
+            ->withHeader('Idempotency-Key', 'workforce-stale-channel-001')
+            ->postJson('/api/v1/tenant/workforce/activate', [
+                'role_key' => 'support',
+                'channel_keys' => ['whatsapp:primary'],
+                'approval_mode' => 'human_review',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.live_evidence.verified', false)
+            ->assertJsonPath('data.channels.0.evidence_state', 'pending_external_verification');
     }
 
     /** @return array{User, Tenant} */
