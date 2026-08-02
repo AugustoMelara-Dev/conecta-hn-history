@@ -1,11 +1,20 @@
-# Conecta HN (Vito Business OS legacy)
+# Dovra AI — Global Conversational Business OS
 
-Conecta HN es una plataforma SaaS multi-tenant para comercio local, catalogos, pedidos, citas, marketing y operacion de negocios. Este repositorio conserva historicamente el nombre interno `Vito Business OS` en varias superficies legacy, pero la marca publica canonica es Conecta HN. El repo concentra el sitio publico, los micrositios de negocio, las apps operativas, los paneles Filament, las APIs y la capa de contratos del sistema.
+Dovra AI es la identidad publica canonica de este repositorio. El sistema es un modular monolith multi-tenant con capacidades de catalogos, pedidos, citas, marketing, operaciones, inteligencia y automatizacion gobernada. El repositorio conserva superficies y artefactos historicos de Conecta HN y `Vito Business OS` como evidencia de migracion y compatibilidad; esos nombres no son la identidad publica actual.
 
 Este README documenta el estado actual del proyecto al 2026-05-04.
 
 > Nota de marca y alcance
-> El producto comercial actual se opera como Conecta HN, pero el codebase y varios artefactos todavia conservan naming `Vito Business OS` en vistas, componentes, configs, correos, providers y metadatos. Este README documenta el alcance funcional real actual y no debe leerse como promesa de roadmap no implementado.
+> Migracion fechada: Conecta HN → Dovra AI. La linea historica se conserva para compatibilidad, auditoria y rollback; la identidad de producto que debe usarse en nuevas superficies publicas es Dovra AI.
+
+## Product truth and claims boundary
+
+- `verified_repository_capability`: solo lo que tiene una ruta de codigo y evidencia local reproducible en este checkout.
+- `implementation_target`: contratos, interfaces o slices descritos por el plan que aun requieren validacion adicional.
+- `external_dependency`: secretos, proveedores live, DNS, pagos, despliegue, restore administrado, legal y compliance.
+- `unsupported_claim`: no se infieren produccion publica, certificaciones, compliance, traccion, ingresos, investment readiness ni disponibilidad live a partir de nombres, tests o documentos.
+
+La certificacion exacta se limita al artefacto que inspecciona `scripts/certify-dovra-launch.php`. Un arbol dirty puede producir un inventario, pero no es un artefacto inmutable certificable ni evidencia de disponibilidad publica.
 
 ## Operacion y auditoria (No-MVP)
 
@@ -89,7 +98,8 @@ No debe interpretarse como CRM enterprise completo. Aunque existen pipelines/eta
 
 ## Estado de readiness comercial
 
-- Este repositorio tiene capacidades de produccion en varias superficies, pero el estado "release-ready" depende de gates operativos (smokes desplegados, secretos, colas, storage, observabilidad y checks de CI).
+- Este repositorio contiene capacidades implementadas y contratos operativos en varias superficies; la disponibilidad en produccion publica no esta establecida por este README.
+- El estado de lanzamiento depende de gates operativos (smokes desplegados, secretos, colas, storage, observabilidad y checks de CI), varios de los cuales son externos o estan pendientes.
 - Las capacidades de Growth, AI y RAG requieren datos, jobs y configuracion de integraciones (por ejemplo keys y vector store) para operar de forma verificable en cada entorno.
 
 ## Stack actual
@@ -267,7 +277,7 @@ Superficie activa bajo `/admin` y `/admin/{tenant}`:
 
 ## Arquitectura
 
-Vito Business OS sigue una arquitectura de **modular monolith** con **DDD + Ports and Adapters**.
+Dovra AI sigue una arquitectura de **modular monolith** con **DDD + Ports and Adapters**.
 
 Topologia principal:
 
@@ -534,7 +544,7 @@ Cobertura visible en tests:
 El `.env.example` es minimo. Para que el proyecto y varios comandos de Artisan arranquen sin excepciones, configura al menos esto en local:
 
 ```dotenv
-APP_NAME="Conecta HN"
+APP_NAME="Dovra AI"
 APP_URL=http://localhost:8000
 DB_CONNECTION=sqlite
 SESSION_DRIVER=database

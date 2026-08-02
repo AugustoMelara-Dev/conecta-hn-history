@@ -11,6 +11,28 @@ use Tests\TestCase;
 
 final class DovraProgram13MarketingTruthTest extends TestCase
 {
+    public function test_task7_workforce_truth_evidence_is_explicitly_bounded(): void
+    {
+        $truth = (string) file_get_contents(base_path('docs/dovra/product/dovra-global-ai-workforce-os-truth.md'));
+        $evidence = (string) file_get_contents(base_path('docs/dovra/evidence/program-workforce-2026-08-02.md'));
+
+        foreach ([
+            '`verified_repository_capability`',
+            '`implementation_target`',
+            '`external_dependency`',
+            '`unsupported_claim`',
+        ] as $class) {
+            self::assertStringContainsString($class, $truth);
+            self::assertStringContainsString($class, $evidence);
+        }
+
+        self::assertStringContainsString('Dovra AI', $truth);
+        self::assertStringContainsString('Conecta HN → Dovra AI', $truth);
+        self::assertStringContainsString('can_certify_exact_artifact', $truth);
+        self::assertStringContainsString('vendor blocker', $truth);
+        self::assertStringNotContainsString('public production availability is established', $truth);
+    }
+
     public function test_growth_truth_catalog_labels_claims_and_links_existing_evidence(): void
     {
         $catalog = new RepositoryMarketingTruthCatalog(new StaticGrowthFactSource);
