@@ -27,6 +27,7 @@ final class DovraProgram11RetentionTest extends TestCase
         $tenant = Tenant::factory()->create();
         $userA = User::factory()->create();
         $userB = User::factory()->create();
+        $userB->forceFill(['tenant_id' => $tenant->id])->save();
 
         $store = new DatabasePrivacyEvidenceStore;
         $retention = new RetentionLifecycleService($store);

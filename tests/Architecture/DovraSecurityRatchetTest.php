@@ -26,7 +26,32 @@ final class DovraSecurityRatchetTest extends TestCase
             'postgres_rls_runtime',
             'sales_export_tenant_guard',
             'audit_context',
+            'postgres_rls_inventory_registration',
         ], $keys);
+
+        self::assertSame('incomplete', (new DovraIntegrationSeamRegistry)->status('postgres_rls_inventory_registration'));
+    }
+
+    #[Test]
+    public function dovra_rls_contract_cannot_pass_by_missing_tables_or_unregistered_inventory(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $migration = (string) file_get_contents($root.'/database/migrations/2026_08_01_000006_expand_program11_privacy_tenancy.php');
+
+        foreach ([
+            'dovra_privacy_requests',
+            'dovra_privacy_request_events',
+            'dovra_legal_holds',
+            'dovra_data_retention_records',
+        ] as $table) {
+            self::assertStringContainsString("'{$table}'", $migration);
+        }
+
+        self::assertStringContainsString('ALTER TABLE {$identifier} ENABLE ROW LEVEL SECURITY', $migration);
+        self::assertStringContainsString('ALTER TABLE {$identifier} FORCE ROW LEVEL SECURITY', $migration);
+        self::assertStringContainsString("current_setting('app.tenant_id', true)", $migration);
+        self::assertStringContainsString('assertTablesExist', $migration);
+        self::assertSame('incomplete', (new DovraIntegrationSeamRegistry)->status('postgres_rls_inventory_registration'));
     }
 
     #[Test]

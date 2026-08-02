@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature\Security;
 
 use App\Application\Privacy\Dovra\DataClassificationPolicy;
+use App\Application\Privacy\Dovra\DovraDataIngressGuard;
 use App\Domain\Privacy\Dovra\DataEnvelope;
 use App\Infrastructure\Logging\SensitiveDataScrubber;
+use App\Infrastructure\Privacy\Dovra\DovraIntegrationSeamRegistry;
 use App\Infrastructure\Privacy\Dovra\LegacySensitivePayloadRedactor;
 use Tests\TestCase;
 
@@ -92,7 +94,7 @@ final class DovraProgram11RestrictedDataTest extends TestCase
         self::assertContains('phi_prohibited', $rejected->reasons);
     }
 
-    public function test_policy_rejects_prompt_injection_ssrf_and_unsafe_uploads_before_dispatch(): void
+    public function test_policy_rejects_prompt_injection_ssrf_and_unsafe_uploads_at_registered_entrypoints(): void
     {
         $policy = $this->policy();
 
@@ -119,6 +121,58 @@ final class DovraProgram11RestrictedDataTest extends TestCase
         ));
         self::assertFalse($unsafeUpload->allowed);
         self::assertContains('upload_type_prohibited', $unsafeUpload->reasons);
+    }
+
+    public function test_clinic_business_type_rejects_non_commercial_or_scheduling_fields(): void
+    {
+        $policy = $this->policy();
+        $payload = ['customer_name' => 'Ana', 'treatment_plan' => 'routine follow-up'];
+
+        $clinic = $policy->classifyAndValidate(new DataEnvelope(
+            sourceSystem: 'channel_message',
+            payload: $payload,
+            channel: 'web_chat',
+            context: ['business_type' => 'clinic'],
+        ));
+
+        $retail = $policy->classifyAndValidate(new DataEnvelope(
+            sourceSystem: 'channel_message',
+            payload: $payload,
+            channel: 'web_chat',
+            context: ['business_type' => 'retail'],
+        ));
+
+        self::assertFalse($clinic->allowed);
+        self::assertContains('clinic_scope_prohibited', $clinic->reasons);
+        self::assertTrue($retail->allowed);
+    }
+
+    public function test_unregistered_or_contextless_entrypoints_fail_closed(): void
+    {
+        $guard = new DovraDataIngressGuard($this->policy(), new DovraIntegrationSeamRegistry);
+
+        $unregistered = $guard->inspect(new DataEnvelope(
+            sourceSystem: 'future_shared_path',
+            payload: ['safe' => 'value'],
+        ));
+
+        $missingTenant = $guard->inspect(new DataEnvelope(
+            sourceSystem: 'upload',
+            payload: ['filename' => 'safe.jpg', 'mime' => 'image/jpeg'],
+        ));
+
+        $registered = $guard->inspect(new DataEnvelope(
+            sourceSystem: 'upload',
+            payload: ['filename' => 'safe.jpg', 'mime' => 'image/jpeg'],
+            tenantId: '019d0000-0000-7000-8000-000000000001',
+        ));
+
+        self::assertFalse($unregistered->allowed);
+        self::assertContains('entrypoint_not_registered', $unregistered->reasons);
+        self::assertSame([], $unregistered->integrationSeams);
+        self::assertFalse($missingTenant->allowed);
+        self::assertContains('tenant_context_required', $missingTenant->reasons);
+        self::assertTrue($registered->allowed);
     }
 
     private function policy(): DataClassificationPolicy

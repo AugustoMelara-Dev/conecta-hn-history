@@ -27,16 +27,23 @@ final class PrivacyRequestService
 
     public function export(User $actor, User $subject, ?Tenant $tenant, string $idempotencyKey): PrivacyRequestResult
     {
-        if ($existing = $this->store->findRequestByKey($idempotencyKey)) {
+        $tenantId = $this->authorize($actor, $subject, $tenant);
+
+        if ($existing = $this->store->findRequestByKey(
+            idempotencyKey: $idempotencyKey,
+            tenantId: $tenantId,
+            actorId: (string) $actor->getKey(),
+            subjectType: User::class,
+            subjectId: (string) $subject->getKey(),
+            requestType: 'export',
+        )) {
             return $this->resultFromRow($existing);
         }
-
-        $this->authorize($actor, $subject, $tenant);
 
         $requestId = $this->store->beginRequest(
             requestType: 'export',
             idempotencyKey: $idempotencyKey,
-            tenantId: $tenant !== null ? (string) $tenant->getKey() : ($subject->tenant_id !== null ? (string) $subject->tenant_id : null),
+            tenantId: $tenantId,
             actorId: (string) $actor->getKey(),
             subjectType: User::class,
             subjectId: (string) $subject->getKey(),
@@ -46,7 +53,7 @@ final class PrivacyRequestService
         $decision = $this->policy->classifyAndValidate(new DataEnvelope(
             sourceSystem: 'export',
             payload: $payload,
-            tenantId: $tenant?->id !== null ? (string) $tenant->id : ($subject->tenant_id !== null ? (string) $subject->tenant_id : null),
+            tenantId: $tenantId,
             actorId: (string) $actor->id,
             channel: 'privacy_request',
         ));
@@ -77,7 +84,7 @@ final class PrivacyRequestService
         ]);
 
         $this->retention->registerRecord(
-            tenantId: $tenant?->id !== null ? (string) $tenant->id : ($subject->tenant_id !== null ? (string) $subject->tenant_id : null),
+            tenantId: $tenantId,
             subjectType: User::class,
             subjectId: (string) $subject->id,
             classification: $decision->classification,
@@ -91,17 +98,25 @@ final class PrivacyRequestService
 
     public function delete(User $actor, User $subject, string $idempotencyKey): PrivacyRequestResult
     {
-        if ($existing = $this->store->findRequestByKey($idempotencyKey)) {
+        $tenantId = $this->authorize($actor, $subject, null);
+
+        if ($existing = $this->store->findRequestByKey(
+            idempotencyKey: $idempotencyKey,
+            tenantId: $tenantId,
+            actorId: (string) $actor->getKey(),
+            subjectType: User::class,
+            subjectId: (string) $subject->getKey(),
+            requestType: 'delete',
+        )) {
             return $this->resultFromRow($existing);
         }
 
-        $this->authorize($actor, $subject, null);
-        $this->assertNoActiveHold($subject);
+        $this->assertNoActiveHold($subject, $tenantId);
 
         $requestId = $this->store->beginRequest(
             requestType: 'delete',
             idempotencyKey: $idempotencyKey,
-            tenantId: $subject->tenant_id !== null ? (string) $subject->tenant_id : null,
+            tenantId: $tenantId,
             actorId: (string) $actor->getKey(),
             subjectType: User::class,
             subjectId: (string) $subject->getKey(),
@@ -118,17 +133,25 @@ final class PrivacyRequestService
 
     public function anonymize(User $actor, User $subject, string $idempotencyKey): PrivacyRequestResult
     {
-        if ($existing = $this->store->findRequestByKey($idempotencyKey)) {
+        $tenantId = $this->authorize($actor, $subject, null);
+
+        if ($existing = $this->store->findRequestByKey(
+            idempotencyKey: $idempotencyKey,
+            tenantId: $tenantId,
+            actorId: (string) $actor->getKey(),
+            subjectType: User::class,
+            subjectId: (string) $subject->getKey(),
+            requestType: 'anonymize',
+        )) {
             return $this->resultFromRow($existing);
         }
 
-        $this->authorize($actor, $subject, null);
-        $this->assertNoActiveHold($subject);
+        $this->assertNoActiveHold($subject, $tenantId);
 
         $requestId = $this->store->beginRequest(
             requestType: 'anonymize',
             idempotencyKey: $idempotencyKey,
-            tenantId: $subject->tenant_id !== null ? (string) $subject->tenant_id : null,
+            tenantId: $tenantId,
             actorId: (string) $actor->getKey(),
             subjectType: User::class,
             subjectId: (string) $subject->getKey(),
@@ -166,23 +189,30 @@ final class PrivacyRequestService
 
     public function hold(User $actor, User $subject, ?Tenant $tenant, string $reason, string $idempotencyKey): PrivacyRequestResult
     {
-        if ($existing = $this->store->findRequestByKey($idempotencyKey)) {
+        $tenantId = $this->authorize($actor, $subject, $tenant);
+
+        if ($existing = $this->store->findRequestByKey(
+            idempotencyKey: $idempotencyKey,
+            tenantId: $tenantId,
+            actorId: (string) $actor->getKey(),
+            subjectType: User::class,
+            subjectId: (string) $subject->getKey(),
+            requestType: 'hold',
+        )) {
             return $this->resultFromRow($existing);
         }
-
-        $this->authorize($actor, $subject, $tenant);
 
         $requestId = $this->store->beginRequest(
             requestType: 'hold',
             idempotencyKey: $idempotencyKey,
-            tenantId: $tenant?->id !== null ? (string) $tenant->id : ($subject->tenant_id !== null ? (string) $subject->tenant_id : null),
+            tenantId: $tenantId,
             actorId: (string) $actor->getKey(),
             subjectType: User::class,
             subjectId: (string) $subject->getKey(),
         );
 
         $holdId = $this->store->upsertLegalHold(
-            tenantId: $tenant?->id !== null ? (string) $tenant->id : ($subject->tenant_id !== null ? (string) $subject->tenant_id : null),
+            tenantId: $tenantId,
             subjectType: User::class,
             subjectId: (string) $subject->getKey(),
             requestedBy: (string) $actor->getKey(),
@@ -203,26 +233,38 @@ final class PrivacyRequestService
         return new PrivacyRequestResult($requestId, 'hold', 'completed', $summary);
     }
 
-    private function authorize(User $actor, User $subject, ?Tenant $tenant): void
+    private function authorize(User $actor, User $subject, ?Tenant $tenant): ?string
     {
+        $subjectTenantId = $subject->tenant_id !== null ? (string) $subject->tenant_id : null;
+        $requestedTenantId = $tenant !== null ? (string) $tenant->getKey() : $subjectTenantId;
+
+        if ($tenant !== null && $subjectTenantId !== $requestedTenantId) {
+            throw new AuthorizationException('The tenant does not own the privacy subject.');
+        }
+
         if ((string) $actor->getKey() === (string) $subject->getKey()) {
-            return;
+            return $requestedTenantId;
         }
 
         if ($actor->isSuperAdmin()) {
-            return;
+            return $requestedTenantId;
         }
 
-        if ($tenant !== null && $actor->canAccessTenant($tenant) && (string) $subject->tenant_id === (string) $tenant->getKey()) {
-            return;
+        $effectiveTenant = $tenant;
+        if ($effectiveTenant === null && $requestedTenantId !== null) {
+            $effectiveTenant = Tenant::query()->find($requestedTenantId);
+        }
+
+        if ($effectiveTenant !== null && $actor->canAccessTenant($effectiveTenant) && (string) $subject->tenant_id === (string) $effectiveTenant->getKey()) {
+            return $requestedTenantId;
         }
 
         throw new AuthorizationException('The actor is not authorized for this privacy request.');
     }
 
-    private function assertNoActiveHold(User $subject): void
+    private function assertNoActiveHold(User $subject, ?string $tenantId): void
     {
-        if ($this->store->hasActiveHold(User::class, (string) $subject->getKey(), $subject->tenant_id !== null ? (string) $subject->tenant_id : null)) {
+        if ($this->store->hasActiveHold(User::class, (string) $subject->getKey(), $tenantId)) {
             throw ValidationException::withMessages([
                 'privacy' => 'An active legal hold prevents this disposition.',
             ]);

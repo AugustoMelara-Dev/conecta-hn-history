@@ -69,6 +69,36 @@ final class DovraProgram11PrivacyRequestTest extends TestCase
         $this->service()->export($actor, $subject, $tenant, 'forbidden-export');
     }
 
+    public function test_authorization_precedes_idempotent_replay_for_cross_actor_and_cross_tenant_reuse(): void
+    {
+        $subject = User::factory()->create();
+        $tenantA = Tenant::factory()->forUser($subject)->create();
+        $subject->forceFill(['tenant_id' => $tenantA->id])->save();
+        $service = $this->service();
+
+        $first = $service->export($subject, $subject, $tenantA, 'shared-privacy-key');
+
+        $foreignActor = User::factory()->create();
+        try {
+            $service->export($foreignActor, $subject, $tenantA, 'shared-privacy-key');
+            self::fail('Cross-actor idempotency replay unexpectedly returned a result.');
+        } catch (AuthorizationException) {
+            self::assertTrue(true);
+        }
+
+        $crossTenantActor = User::factory()->create();
+        $tenantB = Tenant::factory()->forUser($crossTenantActor)->create();
+        try {
+            $service->export($crossTenantActor, $subject, $tenantB, 'shared-privacy-key');
+            self::fail('Cross-tenant idempotency replay unexpectedly returned a result.');
+        } catch (AuthorizationException) {
+            self::assertTrue(true);
+        }
+
+        self::assertSame($first->requestId, $service->export($subject, $subject, $tenantA, 'shared-privacy-key')->requestId);
+        self::assertSame(1, DB::table('dovra_privacy_requests')->where('idempotency_key', 'shared-privacy-key')->count());
+    }
+
     public function test_anonymize_scrubs_identity_and_revokes_live_credentials(): void
     {
         $user = User::factory()->create([

@@ -39,10 +39,23 @@ final class DatabasePrivacyEvidenceStore
     /**
      * @return array<string, mixed>|null
      */
-    public function findRequestByKey(string $idempotencyKey): ?array
-    {
+    public function findRequestByKey(
+        string $idempotencyKey,
+        ?string $tenantId,
+        ?string $actorId,
+        string $subjectType,
+        string $subjectId,
+        string $requestType,
+    ): ?array {
         $row = DB::table('dovra_privacy_requests')
             ->where('idempotency_key', $idempotencyKey)
+            ->where('subject_type', $subjectType)
+            ->where('subject_id', $subjectId)
+            ->where('request_type', $requestType)
+            ->when($tenantId === null, static fn ($query) => $query->whereNull('tenant_id'))
+            ->when($tenantId !== null, static fn ($query) => $query->where('tenant_id', $tenantId))
+            ->when($actorId === null, static fn ($query) => $query->whereNull('actor_id'))
+            ->when($actorId !== null, static fn ($query) => $query->where('actor_id', $actorId))
             ->first();
 
         if ($row === null) {
@@ -99,11 +112,13 @@ final class DatabasePrivacyEvidenceStore
         ?string $requestedBy,
         string $reason,
     ): string {
-        $existing = DB::table('dovra_legal_holds')
+        $existingQuery = DB::table('dovra_legal_holds')
             ->where('subject_type', $subjectType)
             ->where('subject_id', $subjectId)
-            ->where('status', 'active')
-            ->first(['id']);
+            ->where('status', 'active');
+
+        $this->scopeNullableTenant($existingQuery, $tenantId);
+        $existing = $existingQuery->first(['id']);
 
         if ($existing !== null) {
             return (string) $existing->id;
@@ -132,11 +147,7 @@ final class DatabasePrivacyEvidenceStore
             ->where('subject_id', $subjectId)
             ->where('status', 'active');
 
-        if ($tenantId !== null) {
-            $query->where(function ($builder) use ($tenantId): void {
-                $builder->whereNull('tenant_id')->orWhere('tenant_id', $tenantId);
-            });
-        }
+        $this->scopeNullableTenant($query, $tenantId);
 
         return $query->exists();
     }
@@ -212,5 +223,16 @@ final class DatabasePrivacyEvidenceStore
         $decoded = json_decode($value, true);
 
         return is_array($decoded) ? $decoded : [];
+    }
+
+    private function scopeNullableTenant(mixed $query, ?string $tenantId): void
+    {
+        if ($tenantId === null) {
+            $query->whereNull('tenant_id');
+
+            return;
+        }
+
+        $query->where('tenant_id', $tenantId);
     }
 }

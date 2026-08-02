@@ -7,6 +7,7 @@ namespace App\Application\Privacy\Dovra;
 use App\Domain\Privacy\Dovra\DataDecision;
 use App\Domain\Privacy\Dovra\DataEnvelope;
 use App\Domain\Privacy\Dovra\SensitivePayloadRedactor;
+use App\Infrastructure\Privacy\Dovra\DovraIntegrationSeamRegistry;
 
 final class DataClassificationPolicy
 {
@@ -19,12 +20,23 @@ final class DataClassificationPolicy
 
     public function __construct(
         private readonly SensitivePayloadRedactor $redactor,
-    ) {}
+        ?DovraIntegrationSeamRegistry $seams = null,
+    ) {
+        $this->seams = $seams ?? new DovraIntegrationSeamRegistry;
+    }
+
+    private readonly DovraIntegrationSeamRegistry $seams;
 
     public function classifyAndValidate(DataEnvelope $data): DataDecision
     {
         $redacted = $this->redactor->scrub($data->payload);
         $reasons = [];
+        $integrationSeams = $this->seams->seamsForEntrypoint($data->sourceSystem);
+
+        if ($integrationSeams === null) {
+            $reasons[] = 'entrypoint_not_registered';
+            $integrationSeams = [];
+        }
 
         if ($this->containsPhi($data)) {
             $reasons[] = 'phi_prohibited';
@@ -46,6 +58,10 @@ final class DataClassificationPolicy
             $reasons[] = 'minor_data_prohibited';
         }
 
+        if ($this->containsClinicScopeViolation($data)) {
+            $reasons[] = 'clinic_scope_prohibited';
+        }
+
         if ($this->containsPromptInjection($data->payload)) {
             $reasons[] = 'prompt_injection_detected';
         }
@@ -65,7 +81,7 @@ final class DataClassificationPolicy
                 retentionCategory: 'prohibited_quarantine',
                 reasons: array_values(array_unique($reasons)),
                 redactedPayload: $redacted,
-                integrationSeams: $this->seamsFor($data->sourceSystem),
+                integrationSeams: $integrationSeams,
             );
         }
 
@@ -75,7 +91,7 @@ final class DataClassificationPolicy
             retentionCategory: $this->retentionCategoryFor($data),
             reasons: [],
             redactedPayload: $redacted,
-            integrationSeams: $this->seamsFor($data->sourceSystem),
+            integrationSeams: $integrationSeams,
         );
     }
 
@@ -98,20 +114,6 @@ final class DataClassificationPolicy
             'export' => 'dsr_audit',
             'audit', 'log', 'webhook' => 'security_incident',
             default => 'conversation_standard',
-        };
-    }
-
-    /**
-     * @return list<string>
-     */
-    private function seamsFor(string $sourceSystem): array
-    {
-        return match ($sourceSystem) {
-            'export' => ['legacy_account_privacy', 'sales_export_tenant_guard', 'audit_context'],
-            'upload', 'website_import' => ['safe_catalog_image_normalizer', 'postgres_rls_runtime'],
-            'private_ai_prompt', 'knowledge_ingestion' => ['ai_capability_policy', 'postgres_rls_runtime'],
-            'audit', 'log', 'webhook' => ['sensitive_log_scrubber', 'audit_context'],
-            default => ['postgres_rls_runtime'],
         };
     }
 
@@ -150,13 +152,17 @@ final class DataClassificationPolicy
     {
         foreach ($this->flattenValues($payload) as $key => $value) {
             $normalizedKey = strtolower((string) $key);
+            $rawValue = trim((string) $value);
             $normalizedValue = preg_replace('/\D+/', '', (string) $value) ?? '';
 
-            if (str_contains($normalizedKey, 'cvv') || str_contains($normalizedKey, 'cvc')) {
+            if (preg_match('/(?:card|pan|cvv|cvc)/i', $normalizedKey) === 1) {
                 return true;
             }
 
-            if ($normalizedValue !== '' && strlen($normalizedValue) >= 13 && strlen($normalizedValue) <= 19 && $this->passesLuhn($normalizedValue)) {
+            if (preg_match('/^\d[\d\s-]{11,22}\d$/', $rawValue) === 1
+                && strlen($normalizedValue) >= 13
+                && strlen($normalizedValue) <= 19
+                && $this->passesLuhn($normalizedValue)) {
                 return true;
             }
         }
@@ -235,6 +241,21 @@ final class DataClassificationPolicy
             'tool call without approval',
         ] as $needle) {
             if (str_contains($text, $needle)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function containsClinicScopeViolation(DataEnvelope $data): bool
+    {
+        if (strtolower((string) ($data->context['business_type'] ?? '')) !== 'clinic') {
+            return false;
+        }
+
+        foreach (array_keys($this->flattenValues($data->payload)) as $key) {
+            if (preg_match('/(?:clinical|medical|treatment|medication|prescription|symptom|diagnosis|patient|lab|vital|procedure|medical_history|case_record)/i', (string) $key) === 1) {
                 return true;
             }
         }
