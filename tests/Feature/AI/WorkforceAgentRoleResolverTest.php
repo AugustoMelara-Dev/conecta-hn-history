@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Tests\Feature\AI;
 
 use App\Application\Ai\Registry\AiRegistryResolver;
-use App\Application\Ai\Registry\AiRuntimeSelection;
 use App\Application\Ai\Workforce\AgentRole;
 use App\Application\Ai\Workforce\AgentRoleCatalog;
 use App\Application\Ai\Workforce\WorkforceAgentContext;
 use App\Application\Ai\Workforce\WorkforceAgentResolver;
+use App\Application\BusinessGraph\BusinessGraphFact;
 use App\Application\BusinessGraph\BusinessGraphSnapshot;
 use App\Exceptions\Ai\AiExecutionDeniedException;
 use Illuminate\Support\Str;
@@ -43,6 +43,14 @@ final class WorkforceAgentRoleResolverTest extends TestCase
         $resolver->resolve((string) Str::uuid(), null, 'unknown_role');
     }
 
+    public function test_agent_key_mapping_is_explicit_and_ambiguous_keys_are_rejected(): void
+    {
+        self::assertSame(AgentRole::FRONT_DESK, AgentRoleCatalog::forAgentKey('public.discovery'));
+        self::assertSame(AgentRole::MANAGER, AgentRoleCatalog::forAgentKey('tenant.private_assistant'));
+        self::assertSame(AgentRole::SERVICE, AgentRoleCatalog::forAgentKey('service'));
+        self::assertNull(AgentRoleCatalog::forAgentKey('sales-support'));
+    }
+
     public function test_context_redacts_runtime_secrets_and_rejects_other_tenant_snapshot(): void
     {
         $tenantId = (string) Str::uuid();
@@ -54,39 +62,61 @@ final class WorkforceAgentRoleResolverTest extends TestCase
             configuration: AgentRoleCatalog::configuration(AgentRole::MANAGER),
         );
 
-        $serialized = $context->systemContext(new BusinessGraphSnapshot($tenantId, [], []));
+        $fact = BusinessGraphFact::fromSource(
+            tenantId: $tenantId,
+            subjectType: 'tenant',
+            subjectId: $tenantId,
+            factKey: 'business.profile',
+            value: [
+                'api_key' => 'never-expose',
+                'nested' => ['password' => 'never-expose', 'safe' => 'visible'],
+            ],
+            sourceType: 'tenant',
+            sourceId: 'tenant:'.$tenantId,
+        );
+        $serialized = $context->systemContext(new BusinessGraphSnapshot($tenantId, [$fact], []));
         self::assertSame($agentVersionId, $serialized['agentVersionId']);
         self::assertArrayNotHasKey('secretReference', $serialized);
         self::assertArrayNotHasKey('systemPrompt', $serialized);
         self::assertStringStartsWith('business-graph:v1:', $serialized['businessContextVersion']);
+        self::assertSame('[redacted]', $serialized['businessContext']['facts'][0]['value']['api_key']);
+        self::assertStringNotContainsString('never-expose', json_encode($serialized, JSON_THROW_ON_ERROR));
 
         $this->expectException(InvalidArgumentException::class);
         $context->systemContext(new BusinessGraphSnapshot((string) Str::uuid(), [], []));
     }
 
-    public function test_context_cannot_be_constructed_with_unpinned_selection(): void
+    public function test_graph_version_is_stable_when_fact_order_changes(): void
     {
-        $this->expectException(InvalidArgumentException::class);
-        new WorkforceAgentContext(
-            tenantId: (string) Str::uuid(),
+        $tenantId = (string) Str::uuid();
+        $context = new WorkforceAgentContext(
+            tenantId: $tenantId,
             agentVersionId: (string) Str::uuid(),
-            role: AgentRole::SERVICE,
-            configuration: AgentRoleCatalog::configuration(AgentRole::SERVICE),
-            selection: new AiRuntimeSelection(
-                providerVersionId: (string) Str::uuid(),
-                modelVersionId: (string) Str::uuid(),
-                agentVersionId: (string) Str::uuid(),
-                promptVersionId: (string) Str::uuid(),
-                providerKey: 'test',
-                adapterKey: 'test.adapter',
-                secretReference: 'secret.reference',
-                modelKey: 'test-model',
-                systemPrompt: 'test prompt',
-                outputSchema: 'test.schema.v1',
-                requiredCapabilities: ['structured_output'],
-                maxOutputTokens: 64,
-                releaseDecisionId: (string) Str::uuid(),
-            ),
+            role: AgentRole::MANAGER,
+            configuration: AgentRoleCatalog::configuration(AgentRole::MANAGER),
         );
+
+        $first = BusinessGraphFact::fromSource($tenantId, 'tenant', $tenantId, 'business.z', ['value' => 'z'], 'tenant', 'tenant:'.$tenantId.':z');
+        $second = BusinessGraphFact::fromSource($tenantId, 'tenant', $tenantId, 'business.a', ['value' => 'a'], 'tenant', 'tenant:'.$tenantId.':a');
+        $left = $context->systemContext(new BusinessGraphSnapshot($tenantId, [$first, $second], []));
+        $right = $context->systemContext(new BusinessGraphSnapshot($tenantId, [$second, $first], []));
+
+        self::assertSame($left['businessContextVersion'], $right['businessContextVersion']);
+    }
+
+    public function test_mixed_tenant_graph_records_are_rejected(): void
+    {
+        $tenantId = (string) Str::uuid();
+        $context = new WorkforceAgentContext(
+            tenantId: $tenantId,
+            agentVersionId: (string) Str::uuid(),
+            role: AgentRole::MANAGER,
+            configuration: AgentRoleCatalog::configuration(AgentRole::MANAGER),
+        );
+        $foreignTenantId = (string) Str::uuid();
+        $foreignFact = BusinessGraphFact::fromSource($foreignTenantId, 'tenant', $foreignTenantId, 'business.name', ['value' => 'foreign'], 'tenant', 'tenant:'.$foreignTenantId);
+
+        $this->expectException(InvalidArgumentException::class);
+        $context->systemContext(new BusinessGraphSnapshot($tenantId, [$foreignFact], []));
     }
 }

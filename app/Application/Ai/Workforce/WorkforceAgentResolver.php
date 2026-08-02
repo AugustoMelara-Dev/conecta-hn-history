@@ -6,7 +6,6 @@ namespace App\Application\Ai\Workforce;
 
 use App\Application\Ai\Registry\AiRegistryQuery;
 use App\Application\Ai\Registry\AiRegistryResolver;
-use App\Application\Ai\Registry\AiRuntimeSelection;
 use App\Exceptions\Ai\AiExecutionDeniedException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -78,15 +77,28 @@ final readonly class WorkforceAgentResolver
                 ->value('key') ?? '');
         }
 
-        $role = $requested
-            ?? AgentRole::tryFromKey((string) ($configuration['workforce_role'] ?? $configuration['role'] ?? ''))
-            ?? AgentRoleCatalog::forAgentKey($definitionKey);
-        if ($role === null) {
-            throw new AiExecutionDeniedException('workforce_role');
+        $configuredRoleKey = array_key_exists('workforce_role', $configuration)
+            ? $configuration['workforce_role']
+            : (array_key_exists('role', $configuration) ? $configuration['role'] : null);
+        $configuredRole = null;
+        if ($configuredRoleKey !== null) {
+            if (! is_string($configuredRoleKey) || ($configuredRole = AgentRole::tryFromKey($configuredRoleKey)) === null) {
+                throw new AiExecutionDeniedException('workforce_role');
+            }
         }
 
-        $configuredRole = AgentRole::tryFromKey((string) ($configuration['workforce_role'] ?? ''));
-        if ($configuredRole !== null && $configuredRole !== $role) {
+        $derivedRole = AgentRoleCatalog::forAgentKey($definitionKey);
+        if ($requested !== null) {
+            if (($configuredRole !== null && $configuredRole !== $requested)
+                || ($configuredRole === null && $derivedRole !== null && $derivedRole !== $requested)) {
+                throw new AiExecutionDeniedException('workforce_role');
+            }
+
+            $role = $requested;
+        } else {
+            $role = $configuredRole ?? $derivedRole;
+        }
+        if ($role === null) {
             throw new AiExecutionDeniedException('workforce_role');
         }
 
@@ -95,7 +107,6 @@ final readonly class WorkforceAgentResolver
             agentVersionId: $selection->agentVersionId,
             role: $role,
             configuration: AgentRoleCatalog::configuration($role),
-            selection: $selection,
         );
     }
 

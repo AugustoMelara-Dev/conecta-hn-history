@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Application\Ai\Workforce;
 
-use App\Application\Ai\Registry\AiRuntimeSelection;
 use App\Application\BusinessGraph\BusinessGraphEdge;
 use App\Application\BusinessGraph\BusinessGraphFact;
 use App\Application\BusinessGraph\BusinessGraphSnapshot;
@@ -18,14 +17,9 @@ final readonly class WorkforceAgentContext
         public string $agentVersionId,
         public AgentRole $role,
         public WorkforceRoleConfiguration $configuration,
-        public ?AiRuntimeSelection $selection = null,
     ) {
         if (! Str::isUuid($tenantId) || ! Str::isUuid($agentVersionId)) {
             throw new InvalidArgumentException('Workforce context IDs must be UUIDs.');
-        }
-
-        if ($selection !== null && ! hash_equals($selection->agentVersionId, $agentVersionId)) {
-            throw new InvalidArgumentException('Workforce context selection is not pinned to the requested agent version.');
         }
 
         if ($configuration->role !== $role) {
@@ -40,24 +34,39 @@ final readonly class WorkforceAgentContext
             throw new InvalidArgumentException('Workforce context cannot consume another tenant business graph.');
         }
 
+        foreach ($snapshot->facts as $fact) {
+            if (! $fact instanceof BusinessGraphFact || ! hash_equals($this->tenantId, $fact->tenantId)) {
+                throw new InvalidArgumentException('Workforce context received a mixed-tenant business fact.');
+            }
+        }
+
+        foreach ($snapshot->edges as $edge) {
+            if (! $edge instanceof BusinessGraphEdge || ! hash_equals($this->tenantId, $edge->tenantId)) {
+                throw new InvalidArgumentException('Workforce context received a mixed-tenant business edge.');
+            }
+        }
+
+        $facts = array_map(fn (BusinessGraphFact $fact): array => [
+            'subjectType' => $fact->subjectType,
+            'subjectId' => $fact->subjectId,
+            'factKey' => $fact->factKey,
+            'value' => $this->sanitize($fact->value),
+            'sourceType' => $fact->sourceType,
+            'sourceId' => $fact->sourceId,
+        ], $snapshot->facts);
+        $edges = array_map(fn (BusinessGraphEdge $edge): array => [
+            'fromType' => $edge->fromType,
+            'fromId' => $edge->fromId,
+            'relation' => $edge->relation,
+            'toType' => $edge->toType,
+            'toId' => $edge->toId,
+            'sourceType' => $edge->sourceType,
+            'sourceId' => $edge->sourceId,
+        ], $snapshot->edges);
+
         $businessContext = [
-            'facts' => array_map(fn (BusinessGraphFact $fact): array => [
-                'subjectType' => $fact->subjectType,
-                'subjectId' => $fact->subjectId,
-                'factKey' => $fact->factKey,
-                'value' => $fact->value,
-                'sourceType' => $fact->sourceType,
-                'sourceId' => $fact->sourceId,
-            ], $snapshot->facts),
-            'edges' => array_map(fn (BusinessGraphEdge $edge): array => [
-                'fromType' => $edge->fromType,
-                'fromId' => $edge->fromId,
-                'relation' => $edge->relation,
-                'toType' => $edge->toType,
-                'toId' => $edge->toId,
-                'sourceType' => $edge->sourceType,
-                'sourceId' => $edge->sourceId,
-            ], $snapshot->edges),
+            'facts' => $this->canonicalList($facts),
+            'edges' => $this->canonicalList($edges),
         ];
         $version = 'business-graph:v1:'.hash(
             'sha256',
@@ -75,5 +84,64 @@ final readonly class WorkforceAgentContext
             'businessContextVersion' => $version,
             'businessContext' => $businessContext,
         ];
+    }
+
+    private function isSensitiveKey(string $key): bool
+    {
+        return preg_match('/(?:secret|credential|token|password|api[_-]?key|private[_-]?key|prompt|cipher|authorization)/i', $key) === 1;
+    }
+
+    private function sanitize(mixed $value, string $key = ''): mixed
+    {
+        if ($this->isSensitiveKey($key)) {
+            return '[redacted]';
+        }
+
+        if (! is_array($value)) {
+            return is_scalar($value) || $value === null ? $value : (string) $value;
+        }
+
+        $result = [];
+        foreach ($value as $childKey => $childValue) {
+            $normalizedKey = is_string($childKey) ? $childKey : (string) $childKey;
+            $result[$childKey] = $this->sanitize($childValue, $normalizedKey);
+        }
+
+        return $this->canonicalArray($result);
+    }
+
+    /** @param list<array<string, mixed>> $items */
+    private function canonicalList(array $items): array
+    {
+        $items = array_map(fn (array $item): array => $this->canonicalArray($item), $items);
+        usort($items, static fn (array $left, array $right): int => strcmp(
+            json_encode($left, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
+            json_encode($right, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
+        ));
+
+        return $items;
+    }
+
+    /** @param array<array-key, mixed> $value */
+    private function canonicalArray(array $value): array
+    {
+        if (array_is_list($value)) {
+            $items = array_map(fn (mixed $item): mixed => is_array($item) ? $this->canonicalArray($item) : $item, $value);
+            usort($items, static fn (mixed $left, mixed $right): int => strcmp(
+                json_encode($left, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
+                json_encode($right, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
+            ));
+
+            return $items;
+        }
+
+        ksort($value);
+        foreach ($value as $key => $child) {
+            if (is_array($child)) {
+                $value[$key] = $this->canonicalArray($child);
+            }
+        }
+
+        return $value;
     }
 }

@@ -74,15 +74,15 @@ final class AgentRoleCatalog
     {
         $key = strtolower(trim($agentKey));
 
-        return match (true) {
-            $key === 'public.discovery' || str_contains($key, 'front_desk') => AgentRole::FRONT_DESK,
-            str_contains($key, 'revenue') || str_contains($key, 'sales') => AgentRole::REVENUE,
-            str_contains($key, 'service') => AgentRole::SERVICE,
-            str_contains($key, 'support') => AgentRole::SUPPORT,
-            str_contains($key, 'operations') || str_contains($key, 'ops') => AgentRole::OPERATIONS,
-            str_contains($key, 'growth') || str_contains($key, 'marketing') => AgentRole::GROWTH,
-            str_contains($key, 'manager') || str_contains($key, 'private_assistant') => AgentRole::MANAGER,
-            default => null,
+        return match ($key) {
+            'front_desk', 'agent.front_desk', 'public.discovery' => AgentRole::FRONT_DESK,
+            'revenue', 'agent.revenue', 'tenant.revenue' => AgentRole::REVENUE,
+            'service', 'agent.service', 'tenant.service' => AgentRole::SERVICE,
+            'support', 'agent.support', 'tenant.support' => AgentRole::SUPPORT,
+            'operations', 'agent.operations', 'tenant.operations' => AgentRole::OPERATIONS,
+            'growth', 'agent.growth', 'tenant.growth' => AgentRole::GROWTH,
+            'manager', 'agent.manager', 'tenant.manager', 'tenant.private_assistant' => AgentRole::MANAGER,
+            default => AgentRole::tryFromKey($key),
         };
     }
 
