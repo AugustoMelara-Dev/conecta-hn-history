@@ -491,6 +491,9 @@ return [
             'docs/dovra/launch-gates-2026-08-01.md',
             'docs/dovra/external-dependency-register-2026-08-01.md',
             'docs/dovra/evidence/program-14-2026-08-01.md',
+            'docs/dovra/product/dovra-global-ai-workforce-os-truth.md',
+            'docs/dovra/evidence/program-workforce-2026-08-02.md',
+            'task-7-report.md',
         ],
         'scan_roots' => [
             'app',
@@ -509,6 +512,8 @@ return [
             'resources',
             'tests/e2e',
             'scripts',
+            'README.md',
+            'task-7-report.md',
         ],
         'unsupported_claim_patterns' => [
             '/\bproduction-ready\b/i',
