@@ -11,17 +11,23 @@ declare(strict_types=1);
 
 $options = parseOptions($argv);
 $root = normalizePath($options['root'] ?? dirname(__DIR__));
-$config = require $root.'/config/dovra/launch.php';
+$configPath = normalizePath($options['config'] ?? $root.'/config/dovra/launch.php');
+$config = require $configPath;
 $expectedHead = $options['expected-head'] ?? null;
 $claimScanExtras = $options['claims-scan-path'] ?? [];
 if (! is_array($claimScanExtras)) {
     $claimScanExtras = [$claimScanExtras];
 }
 
-$head = trim(runShell('git rev-parse HEAD', $root)['output']);
-$branch = trim(runShell('git rev-parse --abbrev-ref HEAD', $root)['output']);
+$headResult = runShell('git rev-parse HEAD', $root);
+$branchResult = runShell('git rev-parse --abbrev-ref HEAD', $root);
 $status = runShell('git status --porcelain=v1', $root);
-$dirtyLines = array_values(array_filter(preg_split('/\r\n|\r|\n/', trim($status['output'])) ?: []));
+$gitUnavailable = $headResult['code'] !== 0 || $branchResult['code'] !== 0 || $status['code'] !== 0;
+$head = $gitUnavailable ? null : trim($headResult['output']);
+$branch = $gitUnavailable ? null : trim($branchResult['output']);
+$dirtyLines = $status['code'] === 0
+    ? array_values(array_filter(preg_split('/\r\n|\r|\n/', trim($status['output'])) ?: []))
+    : [];
 $dirtyPaths = [];
 
 foreach ($dirtyLines as $line) {
@@ -41,36 +47,64 @@ foreach ($config['manifest']['artifact_files'] as $relativePath) {
     $artifactFiles[] = describeFile($root, $relativePath);
 }
 
+$declaredPaths = auditDeclaredPaths($config, $root);
 $claimScanPaths = array_values(array_unique(array_merge($config['manifest']['claims_scan_paths'], $claimScanExtras)));
-$brandScan = scanPatterns(
-    $root,
-    $config['manifest']['scan_roots'],
-    $config['manifest']['brand_patterns'],
-    limit: 40,
-);
-$secretScan = scanPatterns(
-    $root,
-    $config['manifest']['scan_roots'],
-    $config['manifest']['secret_patterns'],
-    limit: 40,
-);
-$unsupportedClaims = scanRegexList(
-    $root,
-    $claimScanPaths,
-    $config['manifest']['unsupported_claim_patterns'],
-    limit: 20,
-);
-
 $errors = [];
 $exitCode = 0;
+$headMismatch = ! $gitUnavailable && $expectedHead !== null && $expectedHead !== $head;
 
-if ($expectedHead !== null && $expectedHead !== $head) {
+if ($gitUnavailable) {
+    $errors[] = [
+        'code' => 'git_unavailable',
+        'head_exit_code' => $headResult['code'],
+        'branch_exit_code' => $branchResult['code'],
+        'status_exit_code' => $status['code'],
+    ];
+    $exitCode = max($exitCode, 3);
+}
+
+if ($headMismatch) {
     $errors[] = [
         'code' => 'head_mismatch',
         'expected' => $expectedHead,
         'actual' => $head,
     ];
-    $exitCode = 2;
+    $exitCode = max($exitCode, 2);
+}
+
+if ($declaredPaths['missing_count'] > 0) {
+    $errors[] = [
+        'code' => 'missing_declared_paths',
+        'missing_count' => $declaredPaths['missing_count'],
+    ];
+    $exitCode = max($exitCode, 8);
+}
+
+$brandScan = emptyScan(array_keys($config['manifest']['brand_patterns']));
+$secretScan = emptyScan(array_keys($config['manifest']['secret_patterns']));
+$unsupportedClaims = emptyClaimsScan();
+
+// HEAD mismatch and missing git are strict failures; avoid an expensive full
+// tree scan when the artifact identity is already untrustworthy.
+if (! $gitUnavailable && ! $headMismatch) {
+    $brandScan = scanPatterns(
+        $root,
+        $config['manifest']['scan_roots'],
+        $config['manifest']['brand_patterns'],
+        limit: 40,
+    );
+    $secretScan = scanPatterns(
+        $root,
+        $config['manifest']['scan_roots'],
+        $config['manifest']['secret_patterns'],
+        limit: 40,
+    );
+    $unsupportedClaims = scanRegexList(
+        $root,
+        $claimScanPaths,
+        $config['manifest']['unsupported_claim_patterns'],
+        limit: 20,
+    );
 }
 
 if ($unsupportedClaims['match_count'] > 0) {
@@ -85,6 +119,8 @@ $payload = [
     'manifest' => 'dovra-launch-certification',
     'generated_at_utc' => gmdate('c'),
     'repo_root' => $root,
+    'config_path' => $configPath,
+    'git_available' => ! $gitUnavailable,
     'branch' => $branch,
     'head' => $head,
     'expected_head' => $expectedHead,
@@ -93,6 +129,7 @@ $payload = [
     'dirty_paths_sample' => array_slice($dirtyPaths, 0, 25),
     'lock_files' => $lockFiles,
     'artifacts' => $artifactFiles,
+    'declared_paths' => $declaredPaths,
     'scans' => [
         'brand' => $brandScan,
         'secrets' => $secretScan,
@@ -173,18 +210,99 @@ function runShell(string $command, string $cwd): array
 }
 
 /**
- * @return array{path: string, exists: bool, sha256: string|null, bytes: int|null}
+ * @return array{path: string, exists: bool, type: string, sha256: string|null, bytes: int|null}
  */
 function describeFile(string $root, string $relativePath): array
 {
     $absolutePath = $root.'/'.str_replace('\\', '/', $relativePath);
-    $exists = is_file($absolutePath);
+    $exists = is_file($absolutePath) || is_dir($absolutePath);
+    $isFile = is_file($absolutePath);
 
     return [
         'path' => str_replace('\\', '/', $relativePath),
         'exists' => $exists,
-        'sha256' => $exists ? hash_file('sha256', $absolutePath) : null,
-        'bytes' => $exists ? filesize($absolutePath) ?: 0 : null,
+        'type' => $isFile ? 'file' : ($exists ? 'directory' : 'missing'),
+        'sha256' => $isFile ? hash_file('sha256', $absolutePath) : null,
+        'bytes' => $isFile ? filesize($absolutePath) ?: 0 : null,
+    ];
+}
+
+/** @param list<string> $labels */
+function emptyScan(array $labels): array
+{
+    return [
+        'paths_scanned' => 0,
+        'totals' => array_fill_keys($labels, 0),
+        'matches' => [],
+    ];
+}
+
+/** @return array{paths_scanned: int, match_count: int, matches: list<array<string, string>>} */
+function emptyClaimsScan(): array
+{
+    return [
+        'paths_scanned' => 0,
+        'match_count' => 0,
+        'matches' => [],
+    ];
+}
+
+/**
+ * @param  array<string, mixed>  $config
+ * @return array{paths: list<array{path: string, exists: bool, type: string}>, missing_count: int, missing_paths: list<string>}
+ */
+function auditDeclaredPaths(array $config, string $root): array
+{
+    $paths = [];
+
+    foreach (($config['programs'] ?? []) as $program) {
+        if (is_string($program['evidence_path'] ?? null) && $program['evidence_path'] !== '') {
+            $paths[] = $program['evidence_path'];
+        }
+    }
+
+    foreach (['acceptance', 'gates'] as $section) {
+        foreach ($config[$section] ?? [] as $row) {
+            foreach (array_merge($row['authority_paths'] ?? [], $row['artifacts'] ?? []) as $path) {
+                if (is_string($path) && $path !== '') {
+                    $paths[] = $path;
+                }
+            }
+        }
+    }
+
+    foreach (['lock_files', 'artifact_files', 'scan_roots', 'claims_scan_paths'] as $section) {
+        foreach ($config['manifest'][$section] ?? [] as $path) {
+            if (is_string($path) && $path !== '') {
+                $paths[] = $path;
+            }
+        }
+    }
+
+    $paths = array_values(array_unique(array_map(
+        static fn (string $path): string => str_replace('\\', '/', $path),
+        $paths,
+    )));
+    $descriptions = [];
+    $missing = [];
+
+    foreach ($paths as $path) {
+        $description = describeFile($root, $path);
+        $descriptions[] = [
+            'path' => $description['path'],
+            'exists' => $description['exists'],
+            'type' => $description['type'],
+        ];
+
+        if (! $description['exists']) {
+            $missing[] = $description['path'];
+        }
+    }
+
+    return [
+        'paths' => $descriptions,
+        'missing_count' => count($missing),
+        'missing_paths' => $missing,
     ];
 }
 
@@ -300,6 +418,12 @@ function scanRegexList(string $root, array $roots, array $patterns, int $limit):
  */
 function collectFiles(string $root, array $roots): array
 {
+    static $cache = [];
+    $cacheKey = $root.'|'.json_encode(array_values($roots), JSON_UNESCAPED_SLASHES);
+    if (isset($cache[$cacheKey])) {
+        return $cache[$cacheKey];
+    }
+
     $files = [];
     $seen = [];
 
@@ -350,6 +474,8 @@ function collectFiles(string $root, array $roots): array
         $files,
         static fn (array $left, array $right): int => strcmp($left['relative'], $right['relative']),
     );
+
+    $cache[$cacheKey] = $files;
 
     return $files;
 }
