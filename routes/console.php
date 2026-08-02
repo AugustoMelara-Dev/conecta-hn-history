@@ -77,6 +77,11 @@ Schedule::command('auth:prune-idempotency', ['--days=30', '--chunk=1000'])
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/idempotency-pruner.log'));
 
+Schedule::command('dovra:ai-conversations-prune --limit=500')
+    ->dailyAt('03:35')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/ai-conversation-pruner.log'));
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // APPOINTMENT REMINDERS - 24h Pre-Notification Engine
 // ═══════════════════════════════════════════════════════════════════════════════

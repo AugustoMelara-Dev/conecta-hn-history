@@ -17,4 +17,7 @@ return [
             explode(',', (string) env('AI_PRIVATE_TENANT_ALLOWLIST', env('TENANT_PRIVATE_RAG_TENANT_ALLOWLIST', ''))),
         ))),
     ],
+    'retention' => [
+        'conversation_days' => (int) env('AI_CONVERSATION_RETENTION_DAYS', 30),
+    ],
 ];

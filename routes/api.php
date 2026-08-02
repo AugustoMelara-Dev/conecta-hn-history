@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AiHandoffController;
+use App\Http\Controllers\Api\V1\AiFoundationHealthController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CouponController;
 use App\Http\Controllers\Api\V1\Crm\CrmDealController;
@@ -71,6 +72,13 @@ Route::prefix('v1')->group(function () {
                 [PlatformAiRegistryController::class, 'revokeReleaseDecision'],
             );
         });
+
+    Route::get('/platform/ai/health', AiFoundationHealthController::class)
+        ->middleware([
+            'auth:sanctum',
+            EnsurePlatformAiRegistryConfigured::class,
+            'throttle:api',
+        ]);
 
     Route::prefix('otp')->group(function () {
         Route::post('/generate', [OtpController::class, 'generate'])
