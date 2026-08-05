@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\AI;
 
 use App\Application\Ai\Conversation\AcceptConversationMessage;
+use App\Application\Ai\Conversation\ConversationContinuationContext;
 use App\Application\Ai\Conversation\ConversationMessage;
 use App\Application\Ai\Conversation\ConversationStore;
 use App\Application\Ai\DTOs\AiExecutionResult;
@@ -70,6 +71,103 @@ final class ConversationStoreTest extends TestCase
             'What did I sell today?',
             DB::table('ai_messages')->where('id', $first->requestMessage->id)->value('content_ciphertext'),
         );
+    }
+
+    public function test_active_tenant_private_lookup_returns_exact_continuation_context_without_mutation(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $this->supportMarket();
+        $this->scope((string) $tenant->id);
+        $store = app(ConversationStore::class);
+        $claim = $store->claim($this->command(
+            (string) $tenant->id,
+            originType: 'whatsapp',
+            externalThreadReference: 'lookup-thread-001',
+            actorId: 'actor-lookup-001',
+            locale: 'en-CA',
+            marketCountryCode: 'CA',
+            currency: 'CAD',
+            timezone: 'America/Toronto',
+            idempotencyKey: 'lookup-001',
+        ));
+        $before = (array) DB::table('ai_conversations')->where('id', $claim->conversationId)->first();
+
+        $context = $store->findActiveTenantPrivate((string) $tenant->id, $claim->conversationId);
+
+        self::assertInstanceOf(ConversationContinuationContext::class, $context);
+        self::assertSame((string) $tenant->id, $context->tenantId);
+        self::assertSame($claim->conversationId, $context->conversationId);
+        self::assertSame('actor-lookup-001', $context->actorId);
+        self::assertSame('whatsapp', $context->originType);
+        self::assertSame(hash('sha256', 'lookup-thread-001'), $context->externalThreadHash);
+        self::assertSame('en-CA', $context->locale);
+        self::assertSame('CA', $context->marketCountryCode);
+        self::assertSame('CAD', $context->currency);
+        self::assertSame('America/Toronto', $context->timezone);
+        self::assertSame($before, (array) DB::table('ai_conversations')->where('id', $claim->conversationId)->first());
+        self::assertSame(1, DB::table('ai_conversations')->where('tenant_id', $tenant->id)->count());
+        self::assertSame(1, DB::table('ai_messages')->where('tenant_id', $tenant->id)->count());
+    }
+
+    public function test_lookup_returns_null_for_closed_or_public_rows_without_mutation(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $this->supportMarket();
+        $this->scope((string) $tenant->id);
+        $store = app(ConversationStore::class);
+        $closed = $store->claim($this->command(
+            (string) $tenant->id,
+            externalThreadReference: 'closed-lookup-thread',
+            idempotencyKey: 'lookup-closed-001',
+        ));
+        DB::table('ai_conversations')->where('id', $closed->conversationId)->update(['status' => 'closed']);
+        $closedBefore = (array) DB::table('ai_conversations')->where('id', $closed->conversationId)->first();
+
+        self::assertNull($store->findActiveTenantPrivate((string) $tenant->id, $closed->conversationId));
+        self::assertSame($closedBefore, (array) DB::table('ai_conversations')->where('id', $closed->conversationId)->first());
+
+        $platform = Tenant::factory()->create();
+        config()->set('ai.public.billing_tenant_id', (string) $platform->id);
+        app(TenantContext::class)->reset();
+        $this->scope((string) $platform->id);
+        $public = $store->claim($this->command(
+            (string) $platform->id,
+            visibility: 'platform_public',
+            actorId: null,
+            idempotencyKey: 'lookup-public-001',
+        ));
+        $publicBefore = (array) DB::table('ai_conversations')->where('id', $public->conversationId)->first();
+
+        self::assertNull($store->findActiveTenantPrivate((string) $platform->id, $public->conversationId));
+        self::assertSame($publicBefore, (array) DB::table('ai_conversations')->where('id', $public->conversationId)->first());
+    }
+
+    public function test_lookup_denies_foreign_tenant_context_before_observing_owner_row(): void
+    {
+        $owner = Tenant::factory()->create();
+        $foreign = Tenant::factory()->create();
+        $this->supportMarket();
+        $this->scope((string) $owner->id);
+        $store = app(ConversationStore::class);
+        $claim = $store->claim($this->command(
+            (string) $owner->id,
+            externalThreadReference: 'foreign-lookup-thread',
+            idempotencyKey: 'lookup-foreign-001',
+        ));
+        $ownerBefore = (array) DB::table('ai_conversations')->where('id', $claim->conversationId)->first();
+
+        app(TenantContext::class)->reset();
+        $this->scope((string) $foreign->id);
+        try {
+            $store->findActiveTenantPrivate((string) $owner->id, $claim->conversationId);
+            self::fail('A foreign tenant context must not observe the owner conversation.');
+        } catch (AiExecutionDeniedException $exception) {
+            self::assertSame('ai_access_denied', $exception->reason);
+            self::assertSame('AI execution denied.', $exception->getMessage());
+        }
+
+        self::assertSame($ownerBefore, (array) DB::table('ai_conversations')->where('id', $claim->conversationId)->first());
+        self::assertSame(1, DB::table('ai_messages')->where('conversation_id', $claim->conversationId)->count());
     }
 
     public function test_public_conversation_is_owned_only_by_the_configured_platform_tenant(): void

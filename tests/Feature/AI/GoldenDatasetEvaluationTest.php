@@ -7,6 +7,7 @@ namespace Tests\Feature\AI;
 use App\Application\Ai\Contracts\AiGateway;
 use App\Application\Ai\Contracts\AiProviderPool;
 use App\Application\Ai\DTOs\AiProviderResult;
+use App\Application\Markets\HondurasMarketBackfill;
 use App\Infrastructure\AI\ConfiguredAiProviderPool;
 use App\Models\Product;
 use App\Models\Tenant;
@@ -23,6 +24,26 @@ use Tests\TestCase;
 final class GoldenDatasetEvaluationTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_program05_release_fixture_covers_global_governance_blockers(): void
+    {
+        $path = base_path('tests/Fixtures/ai/program05-launch-v1.json');
+        self::assertFileExists($path);
+        $dataset = json_decode((string) file_get_contents($path), true, 64, JSON_THROW_ON_ERROR);
+        self::assertSame('program05-launch-v1', $dataset['dataset_version'] ?? null);
+        self::assertSame(hash_file('sha256', $path), hash('sha256', (string) file_get_contents($path)));
+
+        $cases = collect($dataset['cases'] ?? []);
+        self::assertNotEmpty($cases);
+        self::assertSame($cases->count(), $cases->pluck('id')->unique()->count());
+        self::assertEqualsCanonicalizing(['public_discovery', 'tenant_private'], $cases->pluck('surface')->unique()->all());
+        self::assertEqualsCanonicalizing(['CA', 'HN'], $cases->pluck('market.country')->unique()->all());
+        foreach (['no-evidence', 'stale-evidence', 'prompt-injection', 'cross-tenant', 'wrong-tool', 'confirmation', 'cost-latency', 'provider-regression'] as $requiredIdFragment) {
+            self::assertTrue($cases->contains(
+                static fn (array $case): bool => str_contains((string) $case['id'], $requiredIdFragment),
+            ), "Missing deterministic fixture coverage for [{$requiredIdFragment}].");
+        }
+    }
 
     public function test_versioned_golden_dataset_meets_launch_thresholds(): void
     {
@@ -73,6 +94,7 @@ final class GoldenDatasetEvaluationTest extends TestCase
             'is_active' => true,
             'is_visible' => true,
         ]);
+        app(HondurasMarketBackfill::class)->run();
 
         config()->set([
             'ai.enabled' => true,

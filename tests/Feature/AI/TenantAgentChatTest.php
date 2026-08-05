@@ -17,6 +17,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\Tenant;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
@@ -83,22 +84,37 @@ final class TenantAgentChatTest extends TestCase
             'is_active' => true,
         ]);
 
+        $todayTorontoNoonUtc = CarbonImmutable::now('America/Toronto')
+            ->startOfDay()
+            ->addHours(12)
+            ->utc();
         $order = Order::factory()->forTenant($tenant)->create([
             'total' => 275,
-            'created_at' => now(),
+            'created_at' => $todayTorontoNoonUtc,
         ]);
 
         Order::factory()->forTenant($otherTenant)->create([
             'total' => 999,
-            'created_at' => now(),
+            'created_at' => $todayTorontoNoonUtc,
         ]);
-        $this->insertVerifiedRevenue((string) $tenant->getKey(), (string) $order->getKey(), 27500);
-        $this->insertVerifiedRevenue((string) $otherTenant->getKey(), 'other-order', 99900);
+        $this->insertVerifiedRevenue(
+            (string) $tenant->getKey(),
+            (string) $order->getKey(),
+            27500,
+            $todayTorontoNoonUtc,
+        );
+        $this->insertVerifiedRevenue(
+            (string) $otherTenant->getKey(),
+            'other-order',
+            99900,
+            $todayTorontoNoonUtc,
+        );
 
         config([
             'ai.private.enabled' => true,
             'ai.private.tenant_allowlist' => [(string) $tenant->id],
         ]);
+        $this->makePrivateRegistryEligible($tenant);
 
         Sanctum::actingAs($owner);
 
@@ -469,7 +485,12 @@ final class TenantAgentChatTest extends TestCase
             ->assertJsonPath('message', 'Private AI is not enabled for this tenant.');
     }
 
-    private function insertVerifiedRevenue(string $tenantId, string $aggregateId, int $amountMinor): void
+    private function insertVerifiedRevenue(
+        string $tenantId,
+        string $aggregateId,
+        int $amountMinor,
+        CarbonImmutable $sourceOccurredAt,
+    ): void
     {
         DB::table('verified_commercial_outcomes')->insert([
             'tenant_id' => $tenantId,
@@ -479,7 +500,7 @@ final class TenantAgentChatTest extends TestCase
             'projection_key' => "{$tenantId}:order:{$aggregateId}:paid-test",
             'amount_minor' => $amountMinor,
             'currency' => 'CAD',
-            'source_occurred_at' => now(),
+            'source_occurred_at' => $sourceOccurredAt,
             'source_version' => 1,
             'created_at' => now(),
             'updated_at' => now(),
@@ -494,6 +515,7 @@ final class TenantAgentChatTest extends TestCase
             audience: 'private',
             outputSchema: 'private_agent.evidence_selection.v1',
             marketCountryCode: 'CA',
+            workforceRole: 'manager',
         );
         $this->app->instance(AiProviderPool::class, new ConfiguredAiProviderPool([
             $selection->adapterKey => [

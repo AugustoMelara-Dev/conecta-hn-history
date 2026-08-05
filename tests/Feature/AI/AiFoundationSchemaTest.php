@@ -110,6 +110,41 @@ final class AiFoundationSchemaTest extends TestCase
         );
     }
 
+    public function test_evaluations_have_immutable_run_result_and_release_evidence_bindings(): void
+    {
+        self::assertTrue(Schema::hasColumns('ai_evaluation_runs', [
+            'release_policy_id', 'baseline_run_id', 'release_policy_checksum',
+            'evaluation_version_checksum', 'candidate_checksum', 'prompt_checksum',
+            'provider_checksum', 'model_checksum', 'dataset_checksum', 'evaluator_version',
+            'evaluator_checksum', 'artifact_sha', 'request_checksum', 'result_checksum',
+            'deterministic_seed', 'aggregate_metrics', 'blocking_codes', 'blocking_failures',
+        ]));
+        self::assertTrue(Schema::hasColumns('ai_evaluation_results', [
+            'input_checksum', 'result_checksum', 'latency_ms', 'cost_usd', 'diagnostic_code',
+        ]));
+        self::assertTrue(Schema::hasColumns('ai_release_decisions', [
+            'prompt_version_id', 'provider_version_id', 'model_version_id',
+            'release_policy_checksum', 'evaluation_version_checksum', 'prompt_checksum',
+            'provider_checksum', 'model_checksum', 'dataset_checksum', 'evaluator_version',
+            'evaluator_checksum', 'artifact_sha', 'run_result_checksum',
+        ]));
+        self::assertSame(
+            ['tenant_id', 'request_checksum'],
+            DatabaseSchemaInspector::indexColumns('ai_evaluation_runs', 'aierun_tenant_request_unique'),
+        );
+        self::assertSame(
+            ['tenant_id', 'evaluation_run_id'],
+            DatabaseSchemaInspector::indexColumns('ai_release_decisions', 'aird_tenant_run_unique'),
+        );
+
+        foreach (['status', 'triggered_by', 'started_at', 'completed_at'] as $legacyColumn) {
+            self::assertTrue(Schema::hasColumn('ai_evaluation_runs', $legacyColumn));
+        }
+        foreach (['output_ciphertext', 'output_hash', 'encryption_key_version'] as $encryptedColumn) {
+            self::assertTrue(Schema::hasColumn('ai_evaluation_results', $encryptedColumn));
+        }
+    }
+
     public function test_registry_versions_have_explicit_lifecycle_and_release_metadata(): void
     {
         foreach ([
@@ -194,11 +229,14 @@ final class AiFoundationSchemaTest extends TestCase
             ['ai_evaluation_runs', 'ai_evaluation_versions', 'evaluation_version_id'],
             ['ai_evaluation_runs', 'ai_agent_versions', 'agent_version_id'],
             ['ai_evaluation_runs', 'ai_prompt_versions', 'prompt_version_id'],
+            ['ai_evaluation_runs', 'ai_release_policies', 'release_policy_id'],
+            ['ai_evaluation_runs', 'ai_evaluation_runs', 'baseline_run_id'],
             ['ai_evaluation_results', 'ai_evaluation_runs', 'evaluation_run_id'],
             ['ai_evaluation_results', 'ai_evaluation_cases', 'evaluation_case_id'],
             ['ai_release_decisions', 'ai_release_policies', 'release_policy_id'],
             ['ai_release_decisions', 'ai_evaluation_runs', 'evaluation_run_id'],
             ['ai_release_decisions', 'ai_agent_versions', 'agent_version_id'],
+            ['ai_release_decisions', 'ai_prompt_versions', 'prompt_version_id'],
         ];
 
         foreach ($relations as [$table, $parent, $column]) {

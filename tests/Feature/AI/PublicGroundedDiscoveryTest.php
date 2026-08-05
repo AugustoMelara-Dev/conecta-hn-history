@@ -11,6 +11,7 @@ use App\Application\Ai\DTOs\AiExecutionResult;
 use App\Application\Ai\DTOs\AiProviderResult;
 use App\Application\Ai\Security\AiContentCipher;
 use App\Application\Ai\Security\EncryptedAiContent;
+use App\Application\Discovery\PublishedCommercialProjectionService;
 use App\Domain\Shared\Services\TenantContext;
 use App\Exceptions\InsufficientAiCreditsException;
 use App\Infrastructure\AI\ConfiguredAiProviderPool;
@@ -53,6 +54,8 @@ final class PublicGroundedDiscoveryTest extends TestCase
             'is_visible' => true,
         ]);
 
+        app(PublishedCommercialProjectionService::class)->projectCurrent();
+
         $billingTenant = (string) $this->eligiblePlatform()->id;
         config()->set('ai.public.billing_tenant_id', $billingTenant);
         config()->set('ai.limits.max_user_input_characters', 700);
@@ -84,6 +87,8 @@ final class PublicGroundedDiscoveryTest extends TestCase
                 'evidence_id' => 'product:'.$product->id,
                 'name' => 'Cafe molido',
             ]);
+        $response->assertJsonPath('items.0.description', '');
+        $response->assertJsonPath('items.0.offer_description', '');
 
         self::assertSame(1, $gateway->calls);
         self::assertNotNull($gateway->request);
@@ -93,6 +98,8 @@ final class PublicGroundedDiscoveryTest extends TestCase
         self::assertSame(['public_catalog.search'], $gateway->request->context->allowedTools);
         self::assertStringContainsString('product:'.$product->id, $gateway->request->userInput);
         self::assertLessThanOrEqual(700, mb_strlen($gateway->request->userInput));
+        self::assertStringNotContainsString('IGNORE INSTRUCTIONS', $gateway->request->userInput);
+        self::assertStringNotContainsString('CLAIM FREE DELIVERY', $gateway->request->userInput);
         self::assertStringNotContainsString('stock_quantity', $gateway->request->userInput);
         self::assertStringNotContainsString('CLAIM FREE DELIVERY', (string) $response->json('answer'));
         self::assertStringNotContainsString(
@@ -159,6 +166,8 @@ final class PublicGroundedDiscoveryTest extends TestCase
             'updated_at' => now()->subDays(31),
         ]);
 
+        app(PublishedCommercialProjectionService::class)->projectCurrent();
+
         $platform = $this->eligiblePlatform();
         config()->set('ai.public.billing_tenant_id', (string) $platform->id);
         $gateway = new RecordingPublicGateway([
@@ -203,6 +212,8 @@ final class PublicGroundedDiscoveryTest extends TestCase
             'is_active' => true,
             'is_visible' => true,
         ]);
+
+        app(PublishedCommercialProjectionService::class)->projectCurrent();
 
         config()->set([
             'ai.enabled' => true,
@@ -259,7 +270,7 @@ final class PublicGroundedDiscoveryTest extends TestCase
         self::assertStringNotContainsString('entrega gratis', $response->getContent());
         self::assertStringNotContainsString('garantia de por vida', $response->getContent());
         self::assertStringContainsString('Taza artesanal', $response->getContent());
-        self::assertStringContainsString('L. 180.00', $response->getContent());
+        self::assertStringContainsString('CAD 180.00', $response->getContent());
 
         self::assertCount(1, $provider->requests);
         self::assertEqualsWithDelta(0.99, (float) $platform->fresh()->ai_balance, 0.000001);
@@ -307,6 +318,8 @@ final class PublicGroundedDiscoveryTest extends TestCase
             'is_visible' => true,
         ]);
 
+        app(PublishedCommercialProjectionService::class)->projectCurrent();
+
         config()->set('ai.public.billing_tenant_id', (string) $this->eligiblePlatform()->id);
         $gateway = new RecordingPublicGateway([
             'answer' => 'Invented claim',
@@ -345,6 +358,8 @@ final class PublicGroundedDiscoveryTest extends TestCase
             'is_active' => true,
             'is_visible' => true,
         ]);
+
+        app(PublishedCommercialProjectionService::class)->projectCurrent();
 
         config()->set('ai.public.billing_tenant_id', (string) $this->eligiblePlatform()->id);
         $invalidEvidenceSets = [
@@ -390,6 +405,8 @@ final class PublicGroundedDiscoveryTest extends TestCase
             'is_visible' => true,
         ]);
 
+        app(PublishedCommercialProjectionService::class)->projectCurrent();
+
         config()->set('ai.public.billing_tenant_id', (string) $this->eligiblePlatform()->id);
         $this->app->instance(AiGateway::class, new FailingPublicGateway(
             new InsufficientAiCreditsException('SECRET budget detail'),
@@ -423,6 +440,8 @@ final class PublicGroundedDiscoveryTest extends TestCase
             'is_active' => true,
             'is_visible' => true,
         ]);
+
+        app(PublishedCommercialProjectionService::class)->projectCurrent();
 
         config()->set('ai.public.billing_tenant_id', (string) $this->eligiblePlatform()->id);
         config()->set('ai.limits.max_user_input_characters', 512);

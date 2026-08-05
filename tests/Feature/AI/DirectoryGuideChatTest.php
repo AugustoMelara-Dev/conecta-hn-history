@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\AI;
 
+use App\Application\Discovery\PublishedCommercialProjectionService;
 use App\Models\Product;
 use App\Models\Service;
 use App\Models\Tenant;
@@ -14,11 +15,13 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Tests\Feature\Discovery\BuildsDiscoveryFixtures;
 use Tests\Support\GlobalMarketFixture;
 use Tests\TestCase;
 
 final class DirectoryGuideChatTest extends TestCase
 {
+    use BuildsDiscoveryFixtures;
     use RefreshDatabase;
 
     private const PUBLIC_SUBJECT_COOKIE = 'dovra_ai_subject';
@@ -27,6 +30,9 @@ final class DirectoryGuideChatTest extends TestCase
     {
         parent::setUp();
 
+        Tenant::created(static function (Tenant $tenant): void {
+            GlobalMarketFixture::assignCanada($tenant);
+        });
         $platform = Tenant::factory()->create();
         GlobalMarketFixture::assignCanada($platform);
         config()->set('ai.public.billing_tenant_id', (string) $platform->id);
@@ -55,6 +61,8 @@ final class DirectoryGuideChatTest extends TestCase
             'is_active' => true,
             'is_visible' => true,
         ]);
+
+        app(PublishedCommercialProjectionService::class)->projectCurrent();
 
         $response = $this->postJson('/api/v1/directory/guide/chat', [
             'message' => 'que puedo comprar con 150 lempiras',
@@ -88,8 +96,20 @@ final class DirectoryGuideChatTest extends TestCase
             'name' => 'Masaje breve',
             'description' => 'Servicio publico',
             'price' => 120,
+            'price_minor' => 12000,
+            'currency' => 'CAD',
             'is_active' => true,
         ]);
+
+        $locationId = (string) DB::table('locations')->where('tenant_id', $tenant->id)->value('id');
+        $this->attachServiceToLocation($tenant, (int) $service->id, $locationId);
+        $this->createAvailabilityRule(
+            tenant: $tenant,
+            locationId: $locationId,
+            serviceId: (int) $service->id,
+            timezoneName: 'America/Toronto',
+            localDate: now()->toDateString(),
+        );
 
         Product::factory()->forTenant($tenant)->outOfStock()->create([
             'name' => 'Aceite agotado',
@@ -98,6 +118,8 @@ final class DirectoryGuideChatTest extends TestCase
             'is_visible' => true,
             'allow_backorders' => false,
         ]);
+
+        app(PublishedCommercialProjectionService::class)->projectCurrent();
 
         $response = $this->postJson('/api/v1/directory/guide/chat', [
             'message' => 'masaje con 150 lempiras',
@@ -166,6 +188,7 @@ final class DirectoryGuideChatTest extends TestCase
             'is_active' => true,
             'is_visible' => true,
         ]);
+
         Product::factory()->forTenant($cancelled)->create([
             'name' => 'Producto sin suscripcion',
             'price' => 10,
@@ -173,6 +196,7 @@ final class DirectoryGuideChatTest extends TestCase
             'is_active' => true,
             'is_visible' => true,
         ]);
+
         Product::factory()->forTenant($active)->create([
             'name' => 'Producto sin publicar',
             'price' => 15,
@@ -180,6 +204,8 @@ final class DirectoryGuideChatTest extends TestCase
             'is_active' => true,
             'is_visible' => true,
         ]);
+
+        app(PublishedCommercialProjectionService::class)->projectCurrent();
 
         $response = $this->postJson('/api/v1/directory/guide/chat', [
             'message' => 'producto con 50 lempiras',
@@ -237,6 +263,8 @@ final class DirectoryGuideChatTest extends TestCase
             'is_active' => true,
             'is_visible' => true,
         ]);
+
+        app(PublishedCommercialProjectionService::class)->projectCurrent();
 
         $response = $this->postJson('/api/v1/directory/guide/chat', [
             'message' => 'que puedo comprar con 50 lempiras',

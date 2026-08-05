@@ -12,6 +12,7 @@ use App\Application\Ai\Conversation\PublicConversationInput;
 use App\Application\Ai\DTOs\AiExecutionRequest;
 use App\Application\Ai\DTOs\AiExecutionResult;
 use App\Application\Ai\Registry\AiRegistryResolver;
+use App\Application\Discovery\PublishedCommercialProjectionService;
 use App\Application\Markets\TenantMarketResolver;
 use App\Domain\Shared\Services\TenantContext;
 use App\Exceptions\Ai\AiConversationConflictException;
@@ -29,6 +30,7 @@ use Tests\Fakes\AI\FakeAiProvider;
 use Tests\Support\AI\AiEligibleRegistryFixture;
 use Tests\Support\GlobalMarketFixture;
 use Tests\TestCase;
+use InvalidArgumentException;
 
 final class ConversationRuntimeTest extends TestCase
 {
@@ -60,6 +62,68 @@ final class ConversationRuntimeTest extends TestCase
             'request_message_id' => $response->requestMessageId,
         ]);
         self::assertSame(1, $gateway->calls);
+        self::assertSame(['tenant_catalog.read'], $gateway->allowedToolsAtExecution);
+        self::assertSame((string) $tenant->id, $gateway->executionTenantId);
+        self::assertSame('manager', json_decode(
+            (string) DB::table('ai_agent_versions')
+                ->where('id', $gateway->agentVersionAtExecution)
+                ->value('configuration'),
+            true,
+            512,
+            JSON_THROW_ON_ERROR,
+        )['workforce_role'] ?? null);
+    }
+
+    public function test_roleless_private_registry_version_fails_closed_before_provider_and_replays_safely(): void
+    {
+        [, , $input, $gateway] = $this->privateCatalogFixture(workforceRole: null);
+
+        $first = app(ConversationRuntime::class)->private($input);
+        $replay = app(ConversationRuntime::class)->private($input);
+
+        self::assertSame('failed', $first->status);
+        self::assertSame('ai_configuration_unavailable', $first->code);
+        self::assertSame($first->toArray(), $replay->toArray());
+        self::assertSame(0, $gateway->calls);
+        self::assertSame([], $gateway->allowedToolsAtExecution);
+        self::assertSame(0, DB::table('ai_executions')->count());
+        self::assertSame(0, DB::table('ai_handoffs')->count());
+        self::assertSame(1, DB::table('ai_message_failures')
+            ->where('failure_code', 'ai_configuration_unavailable')
+            ->count());
+    }
+
+    public function test_eligible_fixture_rejects_unknown_or_non_private_workforce_roles(): void
+    {
+        $unknownCounts = $this->registryFixtureCounts();
+        try {
+            AiEligibleRegistryFixture::create(
+                tenantId: (string) Tenant::factory()->create()->getKey(),
+                capability: 'private_tenant_agent',
+                audience: 'private',
+                outputSchema: 'private_agent.evidence_selection.v1',
+                workforceRole: 'administrator',
+            );
+            self::fail('An unknown Workforce role must be rejected by the fixture.');
+        } catch (InvalidArgumentException $exception) {
+            self::assertSame('Eligible AI fixture Workforce role is invalid.', $exception->getMessage());
+        }
+        self::assertSame($unknownCounts, $this->registryFixtureCounts());
+
+        $publicCounts = $this->registryFixtureCounts();
+        try {
+            AiEligibleRegistryFixture::create(
+                tenantId: (string) Tenant::factory()->create()->getKey(),
+                capability: 'public_discovery',
+                audience: 'public',
+                outputSchema: 'public_discovery.answer.v1',
+                workforceRole: 'manager',
+            );
+            self::fail('A public fixture must not receive a Workforce role.');
+        } catch (InvalidArgumentException $exception) {
+            self::assertSame('Workforce role is only valid for the private tenant agent fixture.', $exception->getMessage());
+        }
+        self::assertSame($publicCounts, $this->registryFixtureCounts());
     }
 
     public function test_replay_returns_the_persisted_response_without_reexecuting_ai_and_continues_by_conversation_id(): void
@@ -390,6 +454,7 @@ final class ConversationRuntimeTest extends TestCase
             'is_active' => true,
             'is_visible' => true,
         ]);
+        app(PublishedCommercialProjectionService::class)->projectCurrent();
         config()->set('ai.public.billing_tenant_id', (string) $platform->id);
         app(TenantContext::class)->setTenant((string) $platform->id);
         $selection = AiEligibleRegistryFixture::create(
@@ -704,6 +769,7 @@ final class ConversationRuntimeTest extends TestCase
             'is_active' => true,
             'is_visible' => true,
         ]);
+        app(PublishedCommercialProjectionService::class)->projectCurrent();
         config()->set('ai.public.billing_tenant_id', (string) $platform->id);
         $selection = AiEligibleRegistryFixture::create(
             tenantId: (string) $platform->id,
@@ -732,7 +798,7 @@ final class ConversationRuntimeTest extends TestCase
     }
 
     /** @return array{Tenant, Product, PrivateConversationInput, PersistingConversationGateway} */
-    private function privateCatalogFixture(): array
+    private function privateCatalogFixture(?string $workforceRole = 'manager'): array
     {
         $tenant = Tenant::factory()->create();
         GlobalMarketFixture::assignCanada($tenant);
@@ -747,6 +813,7 @@ final class ConversationRuntimeTest extends TestCase
             audience: 'private',
             outputSchema: 'private_agent.evidence_selection.v1',
             marketCountryCode: 'CA',
+            workforceRole: $workforceRole,
         );
         $this->app->instance(AiProviderPool::class, new ConfiguredAiProviderPool([
             $selection->adapterKey => [
@@ -771,11 +838,28 @@ final class ConversationRuntimeTest extends TestCase
 
         return [$tenant, $product, $input, $gateway];
     }
+
+    /** @return array{ai_agent_definitions: int, ai_agent_versions: int, ai_release_decisions: int, ai_agent_activations: int} */
+    private function registryFixtureCounts(): array
+    {
+        return [
+            'ai_agent_definitions' => DB::table('ai_agent_definitions')->count(),
+            'ai_agent_versions' => DB::table('ai_agent_versions')->count(),
+            'ai_release_decisions' => DB::table('ai_release_decisions')->count(),
+            'ai_agent_activations' => DB::table('ai_agent_activations')->count(),
+        ];
+    }
 }
 
 final class PersistingConversationGateway implements AiGateway
 {
     public int $calls = 0;
+
+    /** @var list<string> */
+    public array $allowedToolsAtExecution = [];
+
+    public ?string $executionTenantId = null;
+
     public ?string $agentVersionAtExecution = null;
 
     /** @param array<string, mixed> $data */
@@ -783,6 +867,8 @@ final class PersistingConversationGateway implements AiGateway
 
     public function execute(AiExecutionRequest $request): AiExecutionResult
     {
+        $this->allowedToolsAtExecution = $request->context->allowedTools;
+        $this->executionTenantId = $request->context->tenantId;
         $this->calls++;
         $this->agentVersionAtExecution = DB::table('ai_conversations')
             ->where('id', $request->context->conversationId)
