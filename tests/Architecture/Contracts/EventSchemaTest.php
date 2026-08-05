@@ -7,6 +7,7 @@ namespace Tests\Architecture\Contracts;
 use App\Domain\Auth\Events\UserPasswordChanged;
 use App\Domain\User\Events\UserProfileUpdated;
 use DateTimeImmutable;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -26,9 +27,7 @@ class EventSchemaTest extends TestCase
 {
     private const SCHEMA_BASE_PATH = __DIR__.'/../../../resources/schemas';
 
-    /**
-     * @dataProvider eventSchemaProvider
-     */
+    #[DataProvider('eventSchemaProvider')]
     public function test_event_payload_matches_json_schema(
         string $eventClass,
         array $constructorArgs,

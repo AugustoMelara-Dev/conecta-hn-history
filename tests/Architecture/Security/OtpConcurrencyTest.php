@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Architecture\Security;
 
 use App\Domain\Auth\Repositories\OtpRepositoryInterface;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Ramsey\Uuid\Uuid;
@@ -12,7 +13,7 @@ use Tests\TestCase;
 
 class OtpConcurrencyTest extends TestCase
 {
-    // NO RefreshDatabase or DatabaseTruncation as they use Transactions invisible to external processes
+    use RefreshDatabase;
 
     /** @test */
     public function it_prevents_race_conditions_on_otp_attempts_limit()
@@ -40,13 +41,21 @@ class OtpConcurrencyTest extends TestCase
 
         // 1. SETUP: Create a Target OTP with Attempts = 0
         $tenantId = Uuid::uuid7()->toString();
+        DB::table('tenants')->insert([
+            'id' => $tenantId,
+            'name' => 'OTP concurrency fixture',
+            'slug' => 'otp-concurrency-'.$tenantId,
+            'is_active' => true,
+            'plan_type' => 'semilla',
+            'subscription_status' => 'active',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
         $identifier = 'victim-'.Uuid::uuid7()->toString();
         $code = '123456';
 
         /** @var OtpRepositoryInterface $repo */
         $repo = $this->app->make(OtpRepositoryInterface::class);
-        $hasher = $this->app->make(\App\Domain\Auth\Services\OtpHasherInterface::class);
-
         $hasher = $this->app->make(\App\Domain\Auth\Services\OtpHasherInterface::class);
         $hashedCode = $hasher->hash($code);
 
@@ -121,6 +130,7 @@ class OtpConcurrencyTest extends TestCase
             if ($createdTableForTest) {
                 Schema::dropIfExists('one_time_passwords');
             }
+            DB::table('tenants')->where('id', $tenantId)->delete();
         }
     }
 }

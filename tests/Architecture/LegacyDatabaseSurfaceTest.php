@@ -9,7 +9,6 @@ it('keeps legacy database table references limited to documented compatibility s
 
     $legacyReferences = [
         'domain_outbox_messages' => [
-            'app/Infrastructure/Persistence/Eloquent/Models/OutboxMessage.php',
             'tests/Feature/Database/PlatformLedgerSchemaTest.php',
         ],
         'domain_outbox' => [

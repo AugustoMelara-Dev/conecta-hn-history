@@ -20,6 +20,7 @@ test('Actions layer - Domain Purity')
     ->ignoring([
         'App\Actions\Interactions\RecordInteractionAction', // Uses DB::transaction (Allowed pragmatism)
         'App\Actions\Authentication\ResetPasswordAction', // Legacy (Uses Hash/DB implicit)
+        'App\Actions\Authentication\UpdateUserPassword', // Fortify adapter owns token/session revocation transaction.
         'App\Actions\Identity\ReactivateUserAction', // Legacy
     ])
     ->expect('App\Actions')

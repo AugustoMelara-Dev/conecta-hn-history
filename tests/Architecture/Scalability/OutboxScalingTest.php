@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Architecture\Scalability;
 
+use App\Domain\Auth\Events\OtpVerified;
 use App\Infrastructure\Models\OutboxMessage;
 use Illuminate\Process\Pool;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Schema;
@@ -52,6 +54,12 @@ class OutboxScalingTest extends TestCase
                 $table->timestamps();
             });
         }
+        if (! Schema::hasTable('tenants')) {
+            Schema::create('tenants', function ($table): void {
+                $table->uuid('id')->primary();
+                $table->softDeletes();
+            });
+        }
 
         OutboxMessage::query()->delete();
     }
@@ -59,6 +67,10 @@ class OutboxScalingTest extends TestCase
     /** @test */
     public function it_prevents_duplicate_processing_under_parallel_worker_load(): void
     {
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            $this->markTestSkipped('Competing-process lock semantics require MySQL or PostgreSQL; SQLite is covered by the bounded command tests.');
+        }
+
         // 1. SETUP: Create 100 pending messages
         $messageCount = 100;
         $messageIds = $this->seedPendingMessages($messageCount);
@@ -132,9 +144,9 @@ class OutboxScalingTest extends TestCase
         OutboxMessage::query()->delete();
 
         // Run with a timeout (should sleep and exit cleanly)
-        $result = Process::timeout(10)->run('php artisan outbox:process --once');
+        $exitCode = Artisan::call('outbox:process', ['--once' => true]);
 
-        $this->assertTrue($result->successful(), 'Command should complete successfully on empty queue');
+        $this->assertSame(0, $exitCode, 'Command should complete successfully on empty queue');
     }
 
     /** @test */
@@ -144,9 +156,9 @@ class OutboxScalingTest extends TestCase
         $this->seedPendingMessages(50);
 
         // Process with limit=20
-        $result = Process::run('php artisan outbox:process --once --limit=20');
+        $exitCode = Artisan::call('outbox:process', ['--once' => true, '--limit' => 20]);
 
-        $this->assertTrue($result->successful());
+        $this->assertSame(0, $exitCode);
 
         // Should have processed exactly 20
         $publishedCount = OutboxMessage::where('status', OutboxMessage::STATUS_COMPLETED)->count();
@@ -165,20 +177,31 @@ class OutboxScalingTest extends TestCase
     private function seedPendingMessages(int $count): array
     {
         $ids = [];
+        $tenantId = Uuid::uuid7()->toString();
+        DB::table('tenants')->insert([
+            'id' => $tenantId,
+            'deleted_at' => null,
+        ]);
 
         for ($i = 0; $i < $count; $i++) {
             $id = Uuid::uuid7()->toString();
             $ids[] = $id;
 
+            $event = OtpVerified::now(
+                otpIdentifier: 'scaling-test-'.$i,
+                userId: null,
+                tenantId: $tenantId,
+            );
+
             OutboxMessage::create([
                 'id' => $id,
-                'type' => 'App\\Domain\\Test\\Events\\TestEvent',
+                'type' => OtpVerified::class,
                 'aggregate_id' => Uuid::uuid7()->toString(),
                 'partition_key' => $i % 64,
                 'sequence_number' => $i + 1,
                 'payload' => [
                     'meta' => ['version' => '1.0'],
-                    'data' => ['test_id' => $i, 'message' => "Test message {$i}"],
+                    'data' => $event->toPayload(),
                 ],
                 'occurred_at' => now(),
                 'status' => 'PENDING',

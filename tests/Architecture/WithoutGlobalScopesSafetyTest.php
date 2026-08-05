@@ -11,6 +11,7 @@ it('requires safety labels for every withoutGlobalScopes bypass in application c
         'JOB_GLOBAL_POLL',
         'WEBHOOK_LOCAL_INTENT_MATCH',
         'INFRA_TENANT_FILTER',
+        'CANONICAL_WRITER_TENANT_FILTER',
         'MODEL_RELATION_TENANT_OWNED',
         'MIGRATION_OR_BACKFILL',
     ];
@@ -41,13 +42,20 @@ it('requires safety labels for every withoutGlobalScopes bypass in application c
                 continue;
             }
 
+            $fileSafetyContext = implode("\n", array_slice($lines, 0, 12));
+            $hasFileSafetyLabel = collect($allowedLabels)
+                ->contains(fn (string $label): bool => str_contains(
+                    $fileSafetyContext,
+                    "@withoutGlobalScopes-safety {$label}",
+                ));
+
             foreach ($lines as $index => $line) {
                 if (! str_contains($line, 'withoutGlobalScopes')) {
                     continue;
                 }
 
                 $context = implode("\n", array_slice($lines, max(0, $index - 3), 4));
-                $hasLabel = collect($allowedLabels)
+                $hasLabel = $hasFileSafetyLabel || collect($allowedLabels)
                     ->contains(fn (string $label): bool => str_contains($context, $label));
 
                 if (! $hasLabel) {

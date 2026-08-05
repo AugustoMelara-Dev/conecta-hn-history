@@ -976,6 +976,7 @@ it('keeps every canonical registry table and mutation method behind its exact ow
         'app/Application/Ai/Registry/AiRegistryLifecycle.php|ai_provider_versions|insert' => 1,
         'app/Application/Ai/Registry/AiRegistryLifecycle.php|ai_provider_versions|update' => 3,
         'app/Application/Ai/Registry/AiRegistryLifecycle.php|ai_release_decisions|update' => 1,
+        'app/Application/Ai/Evaluation/AiReleaseGate.php|ai_release_decisions|insert' => 1,
     ];
 
     $actualOwnership = collect((new RegistryMutationScanner)->scan($roots, $registryTables))

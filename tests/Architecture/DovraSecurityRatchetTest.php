@@ -16,7 +16,8 @@ final class DovraSecurityRatchetTest extends TestCase
     #[Test]
     public function dovra_security_slice_documents_the_required_shared_authority_seams(): void
     {
-        $keys = array_column((new DovraIntegrationSeamRegistry)->all(), 'key');
+        $registry = new DovraIntegrationSeamRegistry;
+        $keys = array_column($registry->all(), 'key');
 
         self::assertSame([
             'legacy_account_privacy',
@@ -30,6 +31,53 @@ final class DovraSecurityRatchetTest extends TestCase
         ], $keys);
 
         self::assertSame('incomplete', (new DovraIntegrationSeamRegistry)->status('postgres_rls_inventory_registration'));
+        self::assertSame(
+            ['ai_capability_policy', 'sensitive_log_scrubber', 'postgres_rls_runtime'],
+            $registry->seamsForEntrypoint('directory_guide_chat'),
+        );
+        self::assertSame(
+            ['ai_capability_policy', 'sensitive_log_scrubber', 'postgres_rls_runtime'],
+            $registry->seamsForEntrypoint('tenant_agent_chat'),
+        );
+        self::assertFalse($registry->entrypointRequiresTenantContext('directory_guide_chat'));
+        self::assertTrue($registry->entrypointRequiresTenantContext('tenant_agent_chat'));
+    }
+
+    #[Test]
+    public function the_two_ai_http_owners_guard_before_runtime(): void
+    {
+        $root = dirname(__DIR__, 2);
+
+        foreach ([
+            'app/Http/Controllers/Api/V1/DirectoryGuideChatController.php' => 'public',
+            'app/Http/Controllers/Api/V1/TenantAgentChatController.php' => 'private',
+        ] as $relativePath => $runtimeMethod) {
+            $source = (string) file_get_contents($root.'/'.$relativePath);
+
+            self::assertStringContainsString('DovraDataIngressGuard', $source);
+            self::assertStringContainsString('DOVRA_SOURCE', $source);
+            self::assertStringContainsString('DataEnvelope', $source);
+            self::assertStringContainsString(
+                $runtimeMethod === 'public'
+                    ? "private const DOVRA_SOURCE = 'directory_guide_chat';"
+                    : "private const DOVRA_SOURCE = 'tenant_agent_chat';",
+                $source,
+            );
+
+            $guardPosition = strpos($source, '->inspect(new DataEnvelope');
+            $runtimePosition = strpos($source, 'runtime->'.$runtimeMethod.'(');
+
+            self::assertIsInt($guardPosition);
+            self::assertIsInt($runtimePosition);
+            self::assertLessThan($runtimePosition, $guardPosition === false ? PHP_INT_MAX : $guardPosition);
+            // The inspected envelope intentionally contains the validated request
+            // payload. Check only the controller code after the guard's decision
+            // handling begins, so this ratchet does not flag that legitimate use.
+            $postGuardPosition = strpos($source, '$failure = $this->ingressFailureResponse($decision);', $guardPosition);
+
+            self::assertIsInt($postGuardPosition);
+            self::assertStringNotContainsString('$validated', substr($source, $postGuardPosition));
+        }
     }
 
     #[Test]
