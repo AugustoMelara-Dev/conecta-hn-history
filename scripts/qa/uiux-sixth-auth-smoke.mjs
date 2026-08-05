@@ -2,6 +2,7 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import { spawn, spawnSync } from "node:child_process"
+import AxeBuilder from "@axe-core/playwright"
 import { chromium } from "@playwright/test"
 
 const root = process.cwd()
@@ -320,6 +321,21 @@ try {
         })
         pushCheck("payment_pending_fixture_200", paymentResponse?.status() === 200, `status=${paymentResponse?.status()}`)
         pushCheck("payment_pending_summary_visible", await visible(page, "payment-pending-summary").catch(() => false))
+
+        const paymentAxe = await new AxeBuilder({ page })
+            .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
+            .analyze()
+        pushCheck(
+            "payment_pending_no_detected_wcag_a_aa_violations",
+            paymentAxe.violations.length === 0,
+            JSON.stringify(paymentAxe.violations),
+        )
+
+        await page.setViewportSize({ width: 360, height: 800 })
+        const paymentHasHorizontalOverflow = await page.evaluate(
+            () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+        )
+        pushCheck("payment_pending_reflows_at_360px", !paymentHasHorizontalOverflow)
         await screenshot(page, "payment-pending-fixture")
     } else {
         pushCheck("payment_pending_fixture_available", true, "skipped: subscription_payments table unavailable")

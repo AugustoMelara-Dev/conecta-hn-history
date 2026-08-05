@@ -3,14 +3,12 @@ param(
 
     [string]$OutputPath = "docs/qa/commercial-mode-release-gate-$(Get-Date -Format 'yyyy-MM-dd').md",
 
-    [string]$Modes = "appointments,products,consulting_leads",
+    [string]$Modes = "appointments,products,consulting_leads,hybrid",
 
     [string]$AppointmentsEvidence = "",
     [string]$ProductsEvidence = "",
     [string]$ConsultingEvidence = "",
     [string]$HybridEvidence = "",
-
-    [string]$HybridAllowlist = "",
 
     [int]$UpExpectedStatus = 200,
     [int]$LoginExpectedStatus = 200,
@@ -70,21 +68,12 @@ foreach ($mode in $modeList) {
     }
 
     $evidenceOk = -not [string]::IsNullOrWhiteSpace($evidence)
-    $allowlistOk = $true
-    $allowlistNote = ""
-
-    if ($mode -eq "hybrid") {
-        $allowlistOk = -not [string]::IsNullOrWhiteSpace($HybridAllowlist)
-        $allowlistNote = if ($allowlistOk) { $HybridAllowlist } else { "MISSING (hybrid must stay tenant-allowlisted)" }
-    }
 
     $modeChecks += @{
         Mode = $mode
         Evidence = if ($evidenceOk) { $evidence } else { "MISSING" }
         EvidenceOk = $evidenceOk
-        Allowlist = if ($mode -eq "hybrid") { $allowlistNote } else { "N/A" }
-        AllowlistOk = $allowlistOk
-        Status = if ($evidenceOk -and $allowlistOk) { "PASS" } else { "FAIL" }
+        Status = if ($evidenceOk) { "PASS" } else { "FAIL" }
     }
 }
 
@@ -106,13 +95,13 @@ Write-Line "- Core HTTP smoke status: $(if ($httpOk) { 'PASS' } else { 'FAIL' })
 Write-Line ""
 Write-Line "## Mode evidence gate"
 foreach ($row in $modeChecks) {
-    Write-Line "- $($row.Mode): $($row.Status) | evidence=$($row.Evidence) | allowlist=$($row.Allowlist)"
+    Write-Line "- $($row.Mode): $($row.Status) | evidence=$($row.Evidence)"
 }
 Write-Line ""
 Write-Line "## Required notes"
 Write-Line "- Do not enable risky features globally without smoke evidence."
-Write-Line "- `hybrid` must remain disabled globally and only enabled by tenant allowlist."
-Write-Line "- Keep release artifacts linked per mode (appointments/products/consulting_leads/hybrid pilot)."
+Write-Line "- `hybrid` is a launch mode and requires the same reproducible smoke evidence as every other mode."
+Write-Line "- Keep release artifacts linked per mode (appointments/products/consulting_leads/hybrid)."
 
 Write-Host "Commercial mode gate report: $OutputPath"
 if (-not $httpOk -or -not $modeGateOk) {

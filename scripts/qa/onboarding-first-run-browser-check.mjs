@@ -3,7 +3,7 @@ import path from "node:path";
 import { chromium } from "@playwright/test";
 
 const baseUrl = process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:8011";
-const ownerEmail = process.env.SMOKE_OWNER_EMAIL || process.env.BUSINESS_OWNER_EMAIL || "owner-demo-ai-guide-hn@vitobusinessos.app";
+const ownerEmail = process.env.SMOKE_OWNER_EMAIL || process.env.BUSINESS_OWNER_EMAIL || "owner-demo-ai-guide-hn@conectahn.test";
 const ownerPassword = process.env.SMOKE_OWNER_PASSWORD || process.env.BUSINESS_OWNER_PASSWORD || "ChangeMe123!";
 const tenantSlug = process.env.SMOKE_PRODUCT_TENANT_SLUG || process.env.E2E_PRODUCT_TENANT_SLUG || "demo-ai-guide-hn";
 const outputRoot = process.env.ONBOARDING_FIRST_RUN_ARTIFACT_ROOT || "artifacts/onboarding-first-run-browser-check";
@@ -45,16 +45,18 @@ try {
 
   const firstRunWizard = page.getByTestId("first-run-wizard");
   const wizardVisible = await firstRunWizard.isVisible().catch(() => false);
-  pushCheck("first_run_wizard_visibility_check_executed", true, `visible=${wizardVisible}`);
+  pushCheck("first_run_wizard_visible", wizardVisible);
 
-  if (wizardVisible) {
-    const activeStepVisible = await firstRunWizard.locator('[aria-current="step"]').first().isVisible().catch(() => false);
-    pushCheck("first_run_active_step_visible", activeStepVisible);
+  const activeStepVisible = await firstRunWizard.locator('[aria-current="step"]').first().isVisible().catch(() => false);
+  pushCheck("first_run_active_step_visible", activeStepVisible);
 
-    const openStepVisible = await page.getByTestId("first-run-open-step").isVisible().catch(() => false);
-    const disabledOpenStepVisible = await page.getByTestId("first-run-open-step-disabled").isVisible().catch(() => false);
-    pushCheck("first_run_cta_state_visible", openStepVisible || disabledOpenStepVisible, `open=${openStepVisible} disabled=${disabledOpenStepVisible}`);
-  }
+  const openStepVisible = await page.getByTestId("first-run-open-step").isVisible().catch(() => false);
+  const disabledOpenStepVisible = await page.getByTestId("first-run-open-step-disabled").isVisible().catch(() => false);
+  pushCheck("first_run_cta_state_visible", openStepVisible || disabledOpenStepVisible, `open=${openStepVisible} disabled=${disabledOpenStepVisible}`);
+  pushCheck(
+    "launch_readiness_card_visible",
+    await page.getByTestId("launch-readiness-card").isVisible().catch(() => false),
+  );
 
   await page.screenshot({ path: path.join(outDir, "onboarding-first-run.png"), fullPage: true });
 
