@@ -45,8 +45,10 @@ final readonly class ConversationChannelBridge
 
         $identityHash = $this->identityHash($message);
         $providerEventId = $message->providerEventId ?? $message->externalMessageId;
-        $payloadHash = $this->payloadHash($message);
+        $authenticatedClaimHash = WebhookAuthenticityEnvelope::authenticatedClaimHash($message);
+        $payloadHash = $authenticatedClaimHash ?? $this->payloadHash($message);
         $webhookPayloadHash = $this->webhookPayloadHash($message, $providerEventId);
+        $claimComparisonHash = $authenticatedClaimHash ?? $webhookPayloadHash;
         $replayed = $this->existingByProviderEvent($tenantId, $context, $providerEventId, $payloadHash);
         if ($replayed !== null) {
             return $replayed->conversationId;
@@ -62,7 +64,7 @@ final readonly class ConversationChannelBridge
                 ->where('connection_key', $context->connectionKey)
                 ->where('provider_event_id', $providerEventId)
                 ->value('payload_hash');
-            if (! is_string($claimedHash) || ! hash_equals($claimedHash, $webhookPayloadHash)) {
+            if (! is_string($claimedHash) || ! hash_equals($claimedHash, $claimComparisonHash)) {
                 throw new ChannelConflictException('Channel webhook payload conflicts with an existing claim.');
             }
         }
@@ -86,34 +88,25 @@ final readonly class ConversationChannelBridge
         $timezone = $context->timezone;
         $actorId = $identity->id;
         if ($conversationId !== null) {
-            $existingConversation = DB::table('ai_conversations')
-                ->where('tenant_id', $tenantId)
-                ->where('id', $conversationId)
-                ->first([
-                    'actor_id',
-                    'origin_type',
-                    'external_thread_hash',
-                    'locale',
-                    'market_country_code',
-                    'currency',
-                    'timezone',
-                ]);
+            $existingConversation = $this->conversations->findActiveTenantPrivate($tenantId, $conversationId);
             if ($existingConversation === null) {
                 throw new AuthorizationException('Conversation does not belong to the tenant.');
             }
-            $actorId = (string) ($existingConversation->actor_id ?: $identity->id);
-            $originType = (string) $existingConversation->origin_type;
-            $locale = (string) ($existingConversation->locale ?: $locale);
-            $marketCountryCode = (string) ($existingConversation->market_country_code ?: $marketCountryCode);
-            $currency = (string) ($existingConversation->currency ?: $currency);
-            $timezone = (string) ($existingConversation->timezone ?: $timezone);
-            if ($existingConversation->external_thread_hash === null) {
+            $actorId = $existingConversation->actorId !== '' ? $existingConversation->actorId : $identity->id;
+            $originType = $existingConversation->originType;
+            $locale = $existingConversation->locale !== '' ? $existingConversation->locale : $locale;
+            $marketCountryCode = $existingConversation->marketCountryCode !== ''
+                ? $existingConversation->marketCountryCode
+                : $marketCountryCode;
+            $currency = $existingConversation->currency !== '' ? $existingConversation->currency : $currency;
+            $timezone = $existingConversation->timezone !== '' ? $existingConversation->timezone : $timezone;
+            if ($existingConversation->externalThreadHash === null) {
                 $conversationThreadReference = null;
             } else {
                 $canonicalThreadReference = $this->canonicalThreadReference(
                     tenantId: $tenantId,
                     conversationId: $conversationId,
-                    externalThreadHash: (string) $existingConversation->external_thread_hash,
+                    externalThreadHash: $existingConversation->externalThreadHash,
                 );
                 if (! is_string($canonicalThreadReference) || trim($canonicalThreadReference) === '') {
                     throw new ChannelConflictException('Conversation thread lineage is incomplete.');
@@ -161,10 +154,9 @@ final readonly class ConversationChannelBridge
             throw new AuthorizationException('Outbound conversation tenant lineage is invalid.');
         }
         $this->assertTenantContext($tenantId);
-        DB::table('ai_conversations')
-            ->where('tenant_id', $tenantId)
-            ->where('id', $conversationId)
-            ->exists() || throw new AuthorizationException('Conversation does not belong to the tenant.');
+        if ($this->conversations->findActiveTenantPrivate($tenantId, $conversationId) === null) {
+            throw new AuthorizationException('Conversation does not belong to the tenant.');
+        }
 
         $now = now();
         $channel = strtolower($message->channel);
@@ -382,6 +374,18 @@ final readonly class ConversationChannelBridge
                 'created_at' => $now,
             ],
         );
+        $stored = DB::table('dovra_conversation_channel_links')
+            ->where('tenant_id', $tenantId)
+            ->where('channel', $context->channel)
+            ->where('connection_key', $context->connectionKey)
+            ->where('external_message_id', $message->externalMessageId)
+            ->first();
+        if ($stored === null
+            || (string) $stored->conversation_id !== $conversationId
+            || (string) $stored->provider_event_id !== $providerEventId
+            || ! hash_equals((string) $stored->payload_hash, $payloadHash)) {
+            throw new ChannelConflictException('Inbound channel lineage conflicts with an existing link.');
+        }
     }
 
     private function linkFromRow(object $row): ConversationChannelLink

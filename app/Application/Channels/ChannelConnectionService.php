@@ -109,9 +109,11 @@ final class ChannelConnectionService
     {
         $this->authorization->assertAuthorized($context, 'claim webhook');
         $context->assertNormalizedInboundLineage($message);
+        $claimHash = WebhookAuthenticityEnvelope::authenticatedClaimHash($message);
         $this->connect($context);
         $providerEventId = $message->providerEventId ?? $message->externalMessageId;
-        $payloadHash = (string) ($message->metadata['webhook_payload_hash'] ?? hash('sha256', $providerEventId));
+        $payloadHash = $claimHash
+            ?? (string) ($message->metadata[WebhookAuthenticityEnvelope::META_PAYLOAD_HASH] ?? hash('sha256', $providerEventId));
         $now = now();
 
         return DB::table('channel_webhook_claims')->insertOrIgnore([
