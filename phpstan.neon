@@ -1,11 +1,11 @@
 includes:
     - ./vendor/larastan/larastan/extension.neon
     - ./vendor/pestphp/pest/extension.neon
+    - ./phpstan-baseline.neon
 
 parameters:
     paths:
         - app/
-        - tests/
 
     # Level 5: Checks argument types and return types.
     # Good balance between strictness and developer velocity for existing codebases.

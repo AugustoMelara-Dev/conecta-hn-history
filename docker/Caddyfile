@@ -1,0 +1,16 @@
+{
+	auto_https off
+	admin off
+}
+
+:8080 {
+	root * /app/public
+	encode zstd br gzip
+
+	header {
+		-Server
+		X-Content-Type-Options "nosniff"
+	}
+
+	php_server
+}

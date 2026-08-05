@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+>
+    <testsuites>
+        <testsuite name="Tenant Safety">
+            <file>tests/Architecture/TenantScopeBypassRatchetTest.php</file>
+            <file>tests/Feature/Analytics/TenantAnalyticsAggregationIsolationTest.php</file>
+            <file>tests/Feature/Billing/SubscriptionPaymentApprovalTenantIsolationTest.php</file>
+            <file>tests/Feature/Auth/OtpOutboxDeliveryContractTest.php</file>
+            <file>tests/Feature/Api/AnalyticsTrackingTenantIsolationTest.php</file>
+            <file>tests/Feature/Api/CrmPipelineApiTest.php</file>
+            <file>tests/Feature/Api/CatalogImportTenantIsolationTest.php</file>
+            <file>tests/Feature/Api/InteractionEndpointTenantIsolationTest.php</file>
+            <file>tests/Feature/Api/OrderApiTenantIsolationTest.php</file>
+            <file>tests/Feature/Api/PrivateAiTenantContextIsolationTest.php</file>
+            <file>tests/Feature/Api/PublicProductCatalogTenantIsolationTest.php</file>
+            <file>tests/Feature/Api/ReportExportTenantIsolationTest.php</file>
+            <file>tests/Feature/Api/TenantSettingsMediaIsolationTest.php</file>
+            <file>tests/Feature/Database/TenantOwnershipSchemaTest.php</file>
+            <file>tests/Feature/Infrastructure/AtomicSequenceGeneratorTest.php</file>
+            <file>tests/Feature/Infrastructure/OutboxEventDeliveryTest.php</file>
+            <file>tests/Feature/AI/ProcessCatalogImportItemTest.php</file>
+            <file>tests/Feature/Jobs/SendAppointmentRemindersTest.php</file>
+            <file>tests/Feature/Jobs/ReleaseStaleOrdersTenantIsolationTest.php</file>
+            <file>tests/Feature/Jobs/AuditTenantLimitsTest.php</file>
+            <file>tests/Feature/Loyalty/AwardLoyaltyPointsTenantIsolationTest.php</file>
+            <file>tests/Feature/Marketing/CampaignDeliveryTenantIsolationTest.php</file>
+            <file>tests/Feature/Http/Controllers/Payment/PaymentWebhookControllerTest.php</file>
+            <file>tests/Feature/Public/ReviewSubmissionTenantIsolationTest.php</file>
+            <file>tests/Feature/Public/TenantFavoriteIsolationTest.php</file>
+            <file>tests/Feature/Tenancy/TenantQueueMiddlewareTest.php</file>
+            <file>tests/Feature/Tenancy/QueuedListenerTenantContextTest.php</file>
+            <file>tests/Feature/Tenant/LegacyWorkspaceActionAuthorizationTest.php</file>
+            <file>tests/Unit/Domain/AdminNotifierTenantIdContractTest.php</file>
+            <file>tests/Unit/Events/DomainEventUuidContractTest.php</file>
+            <file>tests/Unit/Listeners/SendLowStockNotificationTest.php</file>
+        </testsuite>
+    </testsuites>
+
+    <source>
+        <include>
+            <directory>app</directory>
+        </include>
+    </source>
+
+    <php>
+        <env name="APP_KEY" value="base64:2fl+Ktvkfl+Fuz4Qk/NaWvy1Pt7EQqHMA2wc/ulkZyo="/>
+        <env name="APP_ENV" value="testing"/>
+        <env name="APP_CONFIG_CACHE" value="bootstrap/cache/config-testing-tenant-safety.php"/>
+        <env name="APP_MAINTENANCE_DRIVER" value="file"/>
+        <env name="BCRYPT_ROUNDS" value="4"/>
+        <env name="BROADCAST_CONNECTION" value="null"/>
+        <env name="CACHE_STORE" value="array"/>
+
+        <env name="DB_CONNECTION" value="sqlite"/>
+        <env name="DB_DATABASE" value=":memory:"/>
+
+        <env name="MAIL_MAILER" value="array"/>
+        <env name="QUEUE_CONNECTION" value="sync"/>
+        <env name="SESSION_DRIVER" value="array"/>
+        <env name="PULSE_ENABLED" value="false"/>
+        <env name="TELESCOPE_ENABLED" value="false"/>
+
+        <env name="ACTIVITY_LOGGER_ENABLED" value="false"/>
+        <env name="PAYMENT_WEBHOOK_SECRET" value="testing-secret"/>
+    </php>
+</phpunit>

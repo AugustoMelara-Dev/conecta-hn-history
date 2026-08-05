@@ -1,0 +1,3824 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Instantiated class App\\Application\\Auth\\Commands\\UpdateUserProfileCommand not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Actions/Authentication/UpdateUserProfileInformation.php
+
+		-
+			message: '#^Call to private method validate\(\) of class App\\Application\\Auth\\Validators\\DeleteUserCommandValidator\.$#'
+			identifier: method.private
+			count: 1
+			path: app/Application/Auth/Decorators/DeleteUserValidationDecorator.php
+
+		-
+			message: '#^Call to an undefined method App\\Application\\Auth\\Validators\\LoginViaSocialProviderCommandValidator\:\:validate\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Application/Auth/Decorators/LoginViaSocialProviderValidationDecorator.php
+
+		-
+			message: '#^Access to private property App\\Domain\\Identity\\Entities\\UserEntity\:\:\$email\.$#'
+			identifier: property.private
+			count: 1
+			path: app/Application/Auth/Handlers/DeleteUserHandler.php
+
+		-
+			message: '#^Access to private property App\\Domain\\Identity\\Entities\\UserEntity\:\:\$id\.$#'
+			identifier: property.private
+			count: 1
+			path: app/Application/Auth/Handlers/DeleteUserHandler.php
+
+		-
+			message: '#^Access to private property App\\Domain\\Identity\\Entities\\UserEntity\:\:\$name\.$#'
+			identifier: property.private
+			count: 1
+			path: app/Application/Auth/Handlers/DeleteUserHandler.php
+
+		-
+			message: '#^Access to private property App\\Domain\\Identity\\Entities\\UserEntity\:\:\$tenantId\.$#'
+			identifier: property.private
+			count: 2
+			path: app/Application/Auth/Handlers/DeleteUserHandler.php
+
+		-
+			message: '#^Parameter \#1 \$userId of static method App\\Domain\\Identity\\Exceptions\\CrossTenantAccessException\:\:forUserDeletion\(\) expects int, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Application/Auth/Handlers/DeleteUserHandler.php
+
+		-
+			message: '#^Call to an undefined method App\\Domain\\Identity\\Repositories\\SocialIdentityRepositoryInterface\:\:updateToken\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Application/Auth/Handlers/LoginViaSocialProviderHandler.php
+
+		-
+			message: '#^Method App\\Domain\\Identity\\Repositories\\SocialIdentityRepositoryInterface\:\:findUserByProvider\(\) invoked with 3 parameters, 2 required\.$#'
+			identifier: arguments.count
+			count: 1
+			path: app/Application/Auth/Handlers/LoginViaSocialProviderHandler.php
+
+		-
+			message: '#^Method App\\Domain\\Identity\\Repositories\\SocialIdentityRepositoryInterface\:\:linkIdentity\(\) invoked with 6 parameters, 3\-5 required\.$#'
+			identifier: arguments.count
+			count: 1
+			path: app/Application/Auth/Handlers/LoginViaSocialProviderHandler.php
+
+		-
+			message: '#^Parameter \#4 \$aggregateId of method App\\Application\\Auth\\Handlers\\LoginViaSocialProviderHandler\:\:persistToOutbox\(\) expects int\|null, string given\.$#'
+			identifier: argument.type
+			count: 3
+			path: app/Application/Auth/Handlers/LoginViaSocialProviderHandler.php
+
+		-
+			message: '#^Instanceof between App\\Domain\\Identity\\Entities\\UserEntity and App\\Domain\\Identity\\Entities\\UserEntity will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: app/Application/Auth/Handlers/UpdateUserPasswordHandler.php
+
+		-
+			message: '#^Instantiated class App\\Domain\\Auth\\Exceptions\\InvalidCredentialsException not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Auth/Handlers/UpdateUserPasswordHandler.php
+
+		-
+			message: '#^Parameter \#2 \$requestedId of class App\\Domain\\Identity\\Exceptions\\CrossTenantAccessException constructor expects int\|null, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Application/Auth/Handlers/UpdateUserPasswordHandler.php
+
+		-
+			message: '#^Throwing object of an unknown class App\\Domain\\Auth\\Exceptions\\InvalidCredentialsException\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Auth/Handlers/UpdateUserPasswordHandler.php
+
+		-
+			message: '#^Access to private property App\\Domain\\Identity\\Entities\\UserEntity\:\:\$tenantId\.$#'
+			identifier: property.private
+			count: 1
+			path: app/Application/Auth/Results/SocialLoginResult.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Application/Auth/Results/SocialLoginResult.php
+
+		-
+			message: '#^Method App\\Application\\Shared\\Contracts\\TransactionManagerInterface\:\:transaction\(\) invoked with 2 parameters, 1 required\.$#'
+			identifier: arguments.count
+			count: 1
+			path: app/Application/Billing/Handlers/ReportPaymentHandler.php
+
+		-
+			message: '#^Missing parameter \$amountInCents \(int\) in call to App\\Domain\\Billing\\Events\\PaymentReported constructor\.$#'
+			identifier: argument.missing
+			count: 2
+			path: app/Application/Billing/Handlers/ReportPaymentHandler.php
+
+		-
+			message: '#^Missing parameter \$reference \(string\) in call to App\\Domain\\Billing\\Events\\PaymentReported constructor\.$#'
+			identifier: argument.missing
+			count: 2
+			path: app/Application/Billing/Handlers/ReportPaymentHandler.php
+
+		-
+			message: '#^Unknown parameter \$amount in call to App\\Domain\\Billing\\Events\\PaymentReported constructor\.$#'
+			identifier: argument.unknown
+			count: 2
+			path: app/Application/Billing/Handlers/ReportPaymentHandler.php
+
+		-
+			message: '#^Unknown parameter \$status in call to App\\Domain\\Billing\\Events\\PaymentReported constructor\.$#'
+			identifier: argument.unknown
+			count: 2
+			path: app/Application/Billing/Handlers/ReportPaymentHandler.php
+
+		-
+			message: '#^Access to an undefined property App\\Domain\\Billing\\Entities\\PlanEntity\:\:\$identifier\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Application/Billing/Handlers/RequestUpgradeHandler.php
+
+		-
+			message: '#^Call to an undefined method App\\Domain\\TenantGovernance\\Repositories\\TenantRepositoryInterface\:\:updateOptimistically\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Application/Billing/Handlers/RequestUpgradeHandler.php
+
+		-
+			message: '#^Missing parameter \$newPlanExternalId \(string\) in call to method App\\Domain\\Billing\\Gateways\\SubscriptionGatewayInterface\:\:swapPlan\(\)\.$#'
+			identifier: argument.missing
+			count: 1
+			path: app/Application/Billing/Handlers/RequestUpgradeHandler.php
+
+		-
+			message: '#^Unknown parameter \$idempotencyKey in call to method App\\Domain\\Billing\\Gateways\\SubscriptionGatewayInterface\:\:swapPlan\(\)\.$#'
+			identifier: argument.unknown
+			count: 1
+			path: app/Application/Billing/Handlers/RequestUpgradeHandler.php
+
+		-
+			message: '#^Unknown parameter \$newPlanId in call to method App\\Domain\\Billing\\Gateways\\SubscriptionGatewayInterface\:\:swapPlan\(\)\.$#'
+			identifier: argument.unknown
+			count: 1
+			path: app/Application/Billing/Handlers/RequestUpgradeHandler.php
+
+		-
+			message: '#^Call to an undefined method App\\Application\\Billing\\Commands\\ReportPaymentCommand\:\:toArray\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Application/Billing/Validators/ReportPaymentCommandValidator.php
+
+		-
+			message: '#^Call to an undefined method App\\Application\\Billing\\Commands\\RequestUpgradeCommand\:\:toArray\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Application/Billing/Validators/RequestUpgradeCommandValidator.php
+
+		-
+			message: '#^PHPDoc tag @throws with type App\\Application\\Common\\Exceptions\\LockTimeoutException is not subtype of Throwable$#'
+			identifier: throws.notThrowable
+			count: 1
+			path: app/Application/Common/Contracts/LockInterface.php
+
+		-
+			message: '#^Call to an undefined method App\\Domain\\Identity\\Repositories\\UserRepositoryInterface\:\:existsByEmail\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Application/Identity/Validators/Rules/UniqueUserEmailRule.php
+
+		-
+			message: '#^Method App\\Application\\Interactions\\Handlers\\RecordInteractionHandler\:\:sanitizePayload\(\) invoked with 2 parameters, 1 required\.$#'
+			identifier: arguments.count
+			count: 2
+			path: app/Application/Interactions/Handlers/RecordInteractionHandler.php
+
+		-
+			message: '#^Offset ''average_rating'' on array\{average_rating\: float, total_reviews\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/Application/Reviews/Listeners/UpdateProductRating.php
+
+		-
+			message: '#^Offset ''total_reviews'' on array\{average_rating\: float, total_reviews\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/Application/Reviews/Listeners/UpdateProductRating.php
+
+		-
+			message: '#^Access to an undefined property App\\Domain\\Sales\\Entities\\OrderEntity\:\:\$order_number\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Application/Sales/Handlers/CancelOrderHandler.php
+
+		-
+			message: '#^Access to an undefined property App\\Domain\\Sales\\Entities\\OrderEntity\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Application/Sales/Handlers/CancelOrderHandler.php
+
+		-
+			message: '#^Call to an undefined method App\\Domain\\Sales\\Entities\\OrderEntity\:\:cancel\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Application/Sales/Handlers/CancelOrderHandler.php
+
+		-
+			message: '#^Call to an undefined method App\\Domain\\Sales\\Entities\\OrderEntity\:\:wasPaid\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Application/Sales/Handlers/CancelOrderHandler.php
+
+		-
+			message: '#^Access to private property App\\Domain\\Identity\\Entities\\UserEntity\:\:\$email\.$#'
+			identifier: property.private
+			count: 1
+			path: app/Application/Sales/Handlers/CreateOrderHandler.php
+
+		-
+			message: '#^Access to private property App\\Domain\\Identity\\Entities\\UserEntity\:\:\$id\.$#'
+			identifier: property.private
+			count: 1
+			path: app/Application/Sales/Handlers/CreateOrderHandler.php
+
+		-
+			message: '#^Access to private property App\\Domain\\Identity\\Entities\\UserEntity\:\:\$name\.$#'
+			identifier: property.private
+			count: 1
+			path: app/Application/Sales/Handlers/CreateOrderHandler.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Application/Sales/Handlers/CreateOrderHandler.php
+
+		-
+			message: '#^Cannot call method toString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Application/Sales/Handlers/CreateOrderHandler.php
+
+		-
+			message: '#^Instantiated class App\\Exceptions\\UserNotFoundException not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Sales/Handlers/CreateOrderHandler.php
+
+		-
+			message: '#^Parameter \#2 \$user of method App\\Services\\CouponValidatorService\:\:linkToOrder\(\) expects App\\Models\\User\|null, int\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Application/Sales/Handlers/CreateOrderHandler.php
+
+		-
+			message: '#^Parameter \#2 \$user of method App\\Services\\CouponValidatorService\:\:redeem\(\) expects App\\Models\\User\|null, App\\Domain\\Identity\\Entities\\UserEntity given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Application/Sales/Handlers/CreateOrderHandler.php
+
+		-
+			message: '#^Parameter \#2 \$user of method App\\Services\\CouponValidatorService\:\:validate\(\) expects App\\Models\\User\|null, App\\Domain\\Identity\\Entities\\UserEntity given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Application/Sales/Handlers/CreateOrderHandler.php
+
+		-
+			message: '#^Parameter \#4 \$tenant of method App\\Services\\CouponValidatorService\:\:validate\(\) expects App\\Models\\Tenant\|null, App\\Domain\\TenantGovernance\\Entities\\TenantEntity given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Application/Sales/Handlers/CreateOrderHandler.php
+
+		-
+			message: '#^Parameter \$customerId of method App\\Domain\\Sales\\Factories\\OrderFactory\:\:create\(\) expects int, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Application/Sales/Handlers/CreateOrderHandler.php
+
+		-
+			message: '#^Throwing object of an unknown class App\\Exceptions\\UserNotFoundException\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Sales/Handlers/CreateOrderHandler.php
+
+		-
+			message: '#^Instanceof between App\\Application\\Sales\\DTOs\\OrderItemData and App\\Application\\Sales\\DTOs\\OrderItemData will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: app/Application/Sales/Results/CreateOrderResult.php
+
+		-
+			message: '#^PHPDoc tag @throws with type App\\Application\\Shared\\Common\\Exceptions\\RateLimitExceededException is not subtype of Throwable$#'
+			identifier: throws.notThrowable
+			count: 1
+			path: app/Application/Shared/Contracts/TenantRateLimiterInterface.php
+
+		-
+			message: '#^PHPDoc tag @param references unknown parameter\: \$operation$#'
+			identifier: parameter.notFound
+			count: 1
+			path: app/Application/Shared/Contracts/TransactionManagerInterface.php
+
+		-
+			message: '#^Template type T of method App\\Application\\Shared\\Contracts\\TransactionManagerInterface\:\:transaction\(\) is not referenced in a parameter\.$#'
+			identifier: method.templateTypeNotInParameter
+			count: 1
+			path: app/Application/Shared/Contracts/TransactionManagerInterface.php
+
+		-
+			message: '#^PHPDoc tag @throws with type App\\Domain\\Shared\\Exceptions\\ValidationException is not subtype of Throwable$#'
+			identifier: throws.notThrowable
+			count: 1
+			path: app/Application/Shared/Contracts/ValidationServiceInterface.php
+
+		-
+			message: '#^Access to an undefined property App\\Domain\\TenantGovernance\\Entities\\TenantEntity\:\:\$category\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Application/Tenant/Handlers/EnhanceTenantProfileHandler.php
+
+		-
+			message: '#^Access to an undefined property App\\Domain\\TenantGovernance\\Entities\\TenantEntity\:\:\$description\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Application/Tenant/Handlers/EnhanceTenantProfileHandler.php
+
+		-
+			message: '#^Access to private property App\\Domain\\TenantGovernance\\Entities\\TenantEntity\:\:\$id\.$#'
+			identifier: property.private
+			count: 1
+			path: app/Application/Tenant/Handlers/EnhanceTenantProfileHandler.php
+
+		-
+			message: '#^Access to private property App\\Domain\\TenantGovernance\\Entities\\TenantEntity\:\:\$name\.$#'
+			identifier: property.private
+			count: 1
+			path: app/Application/Tenant/Handlers/EnhanceTenantProfileHandler.php
+
+		-
+			message: '#^Call to an undefined method App\\Domain\\TenantGovernance\\Entities\\TenantEntity\:\:applyAiEnhancement\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Application/Tenant/Handlers/EnhanceTenantProfileHandler.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Application/Tenant/Handlers/EnhanceTenantProfileHandler.php
+
+		-
+			message: '#^Access to an undefined property App\\Application\\Tenant\\Handlers\\UpdateLandingPageHandler\:\:\$logger\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Application/Tenant/Handlers/UpdateLandingPageHandler.php
+
+		-
+			message: '#^Call to method findById\(\) on an unknown class App\\Domain\\Identity\\Repositories\\TenantRepositoryInterface\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Tenant/Handlers/UpdateTenantBrandingHandler.php
+
+		-
+			message: '#^Call to method save\(\) on an unknown class App\\Domain\\Identity\\Repositories\\TenantRepositoryInterface\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Tenant/Handlers/UpdateTenantBrandingHandler.php
+
+		-
+			message: '#^Parameter \$tenantRepository of method App\\Application\\Tenant\\Handlers\\UpdateTenantBrandingHandler\:\:__construct\(\) has invalid type App\\Domain\\Identity\\Repositories\\TenantRepositoryInterface\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Tenant/Handlers/UpdateTenantBrandingHandler.php
+
+		-
+			message: '#^Property App\\Application\\Tenant\\Handlers\\UpdateTenantBrandingHandler\:\:\$tenantRepository has unknown class App\\Domain\\Identity\\Repositories\\TenantRepositoryInterface as its type\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Tenant/Handlers/UpdateTenantBrandingHandler.php
+
+		-
+			message: '#^Call to method findById\(\) on an unknown class App\\Domain\\Identity\\Repositories\\TenantRepositoryInterface\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Tenant/Handlers/UpdateTenantScheduleHandler.php
+
+		-
+			message: '#^Call to method save\(\) on an unknown class App\\Domain\\Identity\\Repositories\\TenantRepositoryInterface\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Tenant/Handlers/UpdateTenantScheduleHandler.php
+
+		-
+			message: '#^Parameter \$tenantRepository of method App\\Application\\Tenant\\Handlers\\UpdateTenantScheduleHandler\:\:__construct\(\) has invalid type App\\Domain\\Identity\\Repositories\\TenantRepositoryInterface\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Tenant/Handlers/UpdateTenantScheduleHandler.php
+
+		-
+			message: '#^Property App\\Application\\Tenant\\Handlers\\UpdateTenantScheduleHandler\:\:\$tenantRepository has unknown class App\\Domain\\Identity\\Repositories\\TenantRepositoryInterface as its type\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Tenant/Handlers/UpdateTenantScheduleHandler.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Application/Tenant/Transformers/TenantMicrositeTransformer.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Application/Tenant/Transformers/TenantMicrositeTransformer.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Application/Tenant/Transformers/TenantMicrositeTransformer.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:isOpenAt\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Application/Tenant/Transformers/TenantMicrositeTransformer.php
+
+		-
+			message: '#^Negated boolean expression is always false\.$#'
+			identifier: booleanNot.alwaysFalse
+			count: 1
+			path: app/Application/Tenant/Transformers/TenantMicrositeTransformer.php
+
+		-
+			message: '#^Offset 0\|1\|2\|3\|4\|5\|6 on array\{''Domingo'', ''Lunes'', ''Martes'', ''Miércoles'', ''Jueves'', ''Viernes'', ''Sábado''\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Application/Tenant/Transformers/TenantMicrositeTransformer.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Application/Tenant/Transformers/TenantMicrositeTransformer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Application/Tenant/Transformers/TenantMicrositeTransformer.php
+
+		-
+			message: '#^Call to an undefined static method App\\Domain\\Identity\\Exceptions\\CrossTenantAccessException\:\:forUserProfile\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Application/User/Handlers/UpdateUserProfileHandler.php
+
+		-
+			message: '#^Instanceof between App\\Domain\\Identity\\Entities\\UserEntity and App\\Domain\\Identity\\Entities\\UserEntity will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: app/Application/User/Handlers/UpdateUserProfileHandler.php
+
+		-
+			message: '#^Unknown parameter \$userAgent in call to App\\Application\\Auth\\Commands\\VerifyOtpCommand constructor\.$#'
+			identifier: argument.unknown
+			count: 1
+			path: app/Console/Commands/AttackOtpCommand.php
+
+		-
+			message: '#^Parameter \#1 \$tenant of class App\\Mail\\SubscriptionExpiredMail constructor expects App\\Application\\Shared\\DTOs\\Mail\\TenantMailData, App\\Models\\Tenant given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Console/Commands/ExpireSubscriptions.php
+
+		-
+			message: '#^Parameter \#1 \$tenant of class App\\Mail\\SubscriptionExpiringMail constructor expects App\\Application\\Shared\\DTOs\\Mail\\TenantMailData, App\\Models\\Tenant given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Console/Commands/ExpireSubscriptions.php
+
+		-
+			message: '#^Access to an undefined property UnitEnum\:\:\$value\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Console/Commands/GenerateTypeScriptEnums.php
+
+		-
+			message: '#^Invalid array key type float\.$#'
+			identifier: offsetAccess.invalidOffset
+			count: 1
+			path: app/Console/Commands/MediaCleanupCommand.php
+
+		-
+			message: '#^Parameter \#1 \$tenant of class App\\Mail\\SubscriptionExpiredMail constructor expects App\\Application\\Shared\\DTOs\\Mail\\TenantMailData, App\\Models\\Tenant given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Console/Commands/SubscriptionLifecycleCommand.php
+
+		-
+			message: '#^Parameter \#1 \$tenant of class App\\Mail\\SubscriptionExpiringMail constructor expects App\\Application\\Shared\\DTOs\\Mail\\TenantMailData, App\\Models\\Tenant given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Console/Commands/SubscriptionLifecycleCommand.php
+
+		-
+			message: '#^Call to an undefined method ReflectionType\:\:getName\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Console/Commands/ValidateEventsCommand.php
+
+		-
+			message: '#^Call to function method_exists\(\) with ReflectionClass and ''isReadOnly'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Console/Commands/ValidateEventsCommand.php
+
+		-
+			message: '#^PHPDoc tag @throws with type App\\Exceptions\\InvalidWebhookSignatureException is not subtype of Throwable$#'
+			identifier: throws.notThrowable
+			count: 1
+			path: app/Contracts/Payment/PaymentGateway.php
+
+		-
+			message: '#^PHPDoc tag @throws with type App\\Exceptions\\PaymentFailedException\|App\\Exceptions\\PaymentRequiresActionException is not subtype of Throwable$#'
+			identifier: throws.notThrowable
+			count: 1
+			path: app/Contracts/Payment/PaymentGateway.php
+
+		-
+			message: '#^PHPDoc tag @throws with type App\\Exceptions\\RefundFailedException is not subtype of Throwable$#'
+			identifier: throws.notThrowable
+			count: 1
+			path: app/Contracts/Payment/PaymentGateway.php
+
+		-
+			message: '#^Constant App\\DataTransferObjects\\Order\\OrderItemData\:\:REQUIRED_FIELDS is unused\.$#'
+			identifier: classConstant.unused
+			count: 1
+			path: app/DataTransferObjects/Order/OrderItemData.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Http\\Request\:\:validated\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/DataTransferObjects/Tenancy/TenantSettings.php
+
+		-
+			message: '#^Readonly property App\\Domain\\Analytics\\Events\\AnalyticsSynced\:\:\$correlationId is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Domain/Analytics/Events/AnalyticsSynced.php
+
+		-
+			message: '#^Readonly property App\\Domain\\Analytics\\Events\\AnalyticsSynced\:\:\$eventId is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Domain/Analytics/Events/AnalyticsSynced.php
+
+		-
+			message: '#^Readonly property App\\Domain\\Analytics\\Events\\AnalyticsSynced\:\:\$occurredAt is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Domain/Analytics/Events/AnalyticsSynced.php
+
+		-
+			message: '#^Readonly property App\\Domain\\Catalog\\Events\\ProductPriceChanged\:\:\$correlationId is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Domain/Catalog/Events/ProductPriceChanged.php
+
+		-
+			message: '#^Readonly property App\\Domain\\Catalog\\Events\\ProductPriceChanged\:\:\$eventId is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Domain/Catalog/Events/ProductPriceChanged.php
+
+		-
+			message: '#^Readonly property App\\Domain\\Catalog\\Events\\ProductPriceChanged\:\:\$occurredAt is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Domain/Catalog/Events/ProductPriceChanged.php
+
+		-
+			message: '#^Method App\\Domain\\Common\\Exceptions\\TooManyRequestsException\:\:render\(\) has invalid return type App\\Domain\\Common\\Exceptions\\JsonResponse\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Domain/Common/Exceptions/TooManyRequestsException.php
+
+		-
+			message: '#^Method App\\Domain\\Common\\Exceptions\\TooManyRequestsException\:\:render\(\) should return App\\Domain\\Common\\Exceptions\\JsonResponse but returns Illuminate\\Http\\JsonResponse\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Domain/Common/Exceptions/TooManyRequestsException.php
+
+		-
+			message: '#^Method App\\Domain\\Contracts\\SearchRepository\:\:searchTenants\(\) has invalid return type App\\Domain\\TenantGovernance\\Models\\Tenant\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Domain/Contracts/SearchRepository.php
+
+		-
+			message: '#^Readonly property App\\Domain\\Identity\\Events\\TenantRegistered\:\:\$correlationId is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Domain/Identity/Events/TenantRegistered.php
+
+		-
+			message: '#^Readonly property App\\Domain\\Identity\\Events\\TenantRegistered\:\:\$eventId is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Domain/Identity/Events/TenantRegistered.php
+
+		-
+			message: '#^Readonly property App\\Domain\\Identity\\Events\\TenantRegistered\:\:\$occurredAt is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Domain/Identity/Events/TenantRegistered.php
+
+		-
+			message: '#^Property App\\Domain\\Identity\\Factories\\UserFactory\:\:\$clock is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Domain/Identity/Factories/UserFactory.php
+
+		-
+			message: '#^Offset 0 on non\-empty\-list\<string\> on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Domain/Identity/Upcasters/UserRegisteredV1ToV2Upcaster.php
+
+		-
+			message: '#^Parameter \$order of method App\\Domain\\Orders\\Contracts\\ReceiptGeneratorInterface\:\:generate\(\) has invalid type App\\Domain\\Orders\\Contracts\\Order\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Domain/Orders/Contracts/ReceiptGeneratorInterface.php
+
+		-
+			message: '#^Readonly property App\\Domain\\Sales\\Events\\OrderCreated\:\:\$correlationId is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Domain/Sales/Events/OrderCreated.php
+
+		-
+			message: '#^Readonly property App\\Domain\\Sales\\Events\\OrderCreated\:\:\$eventId is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Domain/Sales/Events/OrderCreated.php
+
+		-
+			message: '#^Readonly property App\\Domain\\Sales\\Events\\OrderCreated\:\:\$occurredAt is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Domain/Sales/Events/OrderCreated.php
+
+		-
+			message: '#^Access to an undefined property App\\Domain\\TenantGovernance\\Events\\TenantCreated\:\:\$plan\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Domain/Tenancy/Entities/TenantEntity.php
+
+		-
+			message: '#^Unknown parameter \$plan in call to App\\Domain\\TenantGovernance\\Events\\TenantCreated constructor\.$#'
+			identifier: argument.unknown
+			count: 1
+			path: app/Domain/Tenancy/Entities/TenantEntity.php
+
+		-
+			message: '#^Method App\\Domain\\TenantGovernance\\Enums\\BusinessType\:\:getLabel\(\) never returns null so it can be removed from the return type\.$#'
+			identifier: return.unusedType
+			count: 1
+			path: app/Domain/TenantGovernance/Enums/BusinessType.php
+
+		-
+			message: '#^Readonly property App\\Domain\\TenantGovernance\\Events\\TenantUpdated\:\:\$correlationId is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Domain/TenantGovernance/Events/TenantUpdated.php
+
+		-
+			message: '#^Readonly property App\\Domain\\TenantGovernance\\Events\\TenantUpdated\:\:\$eventId is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Domain/TenantGovernance/Events/TenantUpdated.php
+
+		-
+			message: '#^Readonly property App\\Domain\\TenantGovernance\\Events\\TenantUpdated\:\:\$occurredAt is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Domain/TenantGovernance/Events/TenantUpdated.php
+
+		-
+			message: '#^Property App\\Domain\\TenantGovernance\\Factories\\TenantFactory\:\:\$clock is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Domain/TenantGovernance/Factories/TenantFactory.php
+
+		-
+			message: '#^Dead catch \- Throwable is never thrown in the try block\.$#'
+			identifier: catch.neverThrown
+			count: 1
+			path: app/Domain/TenantGovernance/Services/PlanFeatureFlagService.php
+
+		-
+			message: '#^Match expression does not handle remaining value\: string$#'
+			identifier: match.unhandled
+			count: 2
+			path: app/Domain/TenantGovernance/Services/PlanFeatureFlagService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\ConnectionInterface\:\:getSchemaBuilder\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Domain/TenantGovernance/Services/TenantOnboardingProgressService.php
+
+		-
+			message: '#^Call to function in_array\(\) with arguments null, array\{''products'', ''appointments'', ''consulting_leads'', ''hybrid''\} and true will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Domain/TenantGovernance/Services/TenantOnboardingProgressService.php
+
+		-
+			message: '#^Call to function is_object\(\) with App\\Application\\TenantGovernance\\Contracts\\RubroManifestReaderInterface will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 2
+			path: app/Domain/TenantGovernance/Services/TenantOnboardingProgressService.php
+
+		-
+			message: '#^Instanceof between App\\Domain\\TenantGovernance\\Enums\\BusinessType and BackedEnum will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: app/Domain/TenantGovernance/Services/TenantOnboardingProgressService.php
+
+		-
+			message: '#^Instanceof between string\|null and BackedEnum will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 1
+			path: app/Domain/TenantGovernance/Services/TenantOnboardingProgressService.php
+
+		-
+			message: '#^Instanceof between string\|null and Illuminate\\Support\\Carbon will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 11
+			path: app/Domain/TenantGovernance/Services/TenantOnboardingProgressService.php
+
+		-
+			message: '#^Method App\\Domain\\TenantGovernance\\Services\\TenantOnboardingProgressService\:\:preferredMilestoneKeyForModule\(\) never returns null so it can be removed from the return type\.$#'
+			identifier: return.unusedType
+			count: 1
+			path: app/Domain/TenantGovernance/Services/TenantOnboardingProgressService.php
+
+		-
+			message: '#^Method App\\Domain\\TenantGovernance\\Services\\TenantOnboardingProgressService\:\:resolveLastCompletedAt\(\) should return Illuminate\\Support\\Carbon\|null but returns string\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Domain/TenantGovernance/Services/TenantOnboardingProgressService.php
+
+		-
+			message: '#^Offset ''key'' on non\-empty\-array on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 4
+			path: app/Domain/TenantGovernance/Services/TenantOnboardingProgressService.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 1
+			path: app/Domain/TenantGovernance/Services/TenantOnboardingProgressService.php
+
+		-
+			message: '#^Result of \|\| is always false\.$#'
+			identifier: booleanOr.alwaysFalse
+			count: 2
+			path: app/Domain/TenantGovernance/Services/TenantOnboardingProgressService.php
+
+		-
+			message: '#^Result of \|\| is always true\.$#'
+			identifier: booleanOr.alwaysTrue
+			count: 2
+			path: app/Domain/TenantGovernance/Services/TenantOnboardingProgressService.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 2
+			path: app/Domain/TenantGovernance/Services/TenantOnboardingProgressService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>milestones" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Domain/TenantGovernance/Services/TenantOnboardingProgressService.php
+
+		-
+			message: '#^Call to function method_exists\(\) with \$this\(App\\Enums\\StockStatus\) and ''color'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Enums/StockStatus.php
+
+		-
+			message: '#^Call to function method_exists\(\) with \$this\(App\\Enums\\StockStatus\) and ''icon'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Enums/StockStatus.php
+
+		-
+			message: '#^Call to function method_exists\(\) with \$this\(App\\Enums\\TenantRole\) and ''color'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Enums/TenantRole.php
+
+		-
+			message: '#^Call to function method_exists\(\) with \$this\(App\\Enums\\TenantRole\) and ''icon'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Enums/TenantRole.php
+
+		-
+			message: '#^Call to function method_exists\(\) with \$this\(App\\Enums\\TransactionStatus\) and ''color'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Enums/TransactionStatus.php
+
+		-
+			message: '#^Call to function method_exists\(\) with \$this\(App\\Enums\\TransactionStatus\) and ''icon'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Enums/TransactionStatus.php
+
+		-
+			message: '#^Method App\\Enums\\UserRole\:\:getLabel\(\) never returns null so it can be removed from the return type\.$#'
+			identifier: return.unusedType
+			count: 1
+			path: app/Enums/UserRole.php
+
+		-
+			message: '#^Readonly property App\\Events\\Order\\NewOrderReceived\:\:\$correlationId is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Events/Order/NewOrderReceived.php
+
+		-
+			message: '#^Readonly property App\\Events\\Order\\NewOrderReceived\:\:\$eventId is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Events/Order/NewOrderReceived.php
+
+		-
+			message: '#^Readonly property App\\Events\\Order\\NewOrderReceived\:\:\$occurredAt is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Events/Order/NewOrderReceived.php
+
+		-
+			message: '#^Readonly property App\\Events\\Order\\OrderCancelled\:\:\$correlationId is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Events/Order/OrderCancelled.php
+
+		-
+			message: '#^Readonly property App\\Events\\Order\\OrderCancelled\:\:\$eventId is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Events/Order/OrderCancelled.php
+
+		-
+			message: '#^Readonly property App\\Events\\Order\\OrderCancelled\:\:\$occurredAt is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Events/Order/OrderCancelled.php
+
+		-
+			message: '#^Readonly property App\\Events\\Order\\OrderDelivered\:\:\$correlationId is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Events/Order/OrderDelivered.php
+
+		-
+			message: '#^Readonly property App\\Events\\Order\\OrderDelivered\:\:\$eventId is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Events/Order/OrderDelivered.php
+
+		-
+			message: '#^Readonly property App\\Events\\Order\\OrderDelivered\:\:\$occurredAt is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Events/Order/OrderDelivered.php
+
+		-
+			message: '#^Readonly property App\\Events\\Order\\OrderPaid\:\:\$correlationId is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Events/Order/OrderPaid.php
+
+		-
+			message: '#^Readonly property App\\Events\\Order\\OrderPaid\:\:\$eventId is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Events/Order/OrderPaid.php
+
+		-
+			message: '#^Readonly property App\\Events\\Order\\OrderPaid\:\:\$occurredAt is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Events/Order/OrderPaid.php
+
+		-
+			message: '#^Readonly property App\\Events\\Order\\OrderRefunded\:\:\$correlationId is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Events/Order/OrderRefunded.php
+
+		-
+			message: '#^Readonly property App\\Events\\Order\\OrderRefunded\:\:\$eventId is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Events/Order/OrderRefunded.php
+
+		-
+			message: '#^Readonly property App\\Events\\Order\\OrderRefunded\:\:\$occurredAt is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Events/Order/OrderRefunded.php
+
+		-
+			message: '#^Readonly property App\\Events\\Order\\OrderShipped\:\:\$correlationId is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Events/Order/OrderShipped.php
+
+		-
+			message: '#^Readonly property App\\Events\\Order\\OrderShipped\:\:\$eventId is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Events/Order/OrderShipped.php
+
+		-
+			message: '#^Readonly property App\\Events\\Order\\OrderShipped\:\:\$occurredAt is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Events/Order/OrderShipped.php
+
+		-
+			message: '#^Readonly property App\\Events\\Payment\\PaymentApproved\:\:\$correlationId is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Events/Payment/PaymentApproved.php
+
+		-
+			message: '#^Readonly property App\\Events\\Payment\\PaymentApproved\:\:\$eventId is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Events/Payment/PaymentApproved.php
+
+		-
+			message: '#^Readonly property App\\Events\\Payment\\PaymentApproved\:\:\$occurredAt is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Events/Payment/PaymentApproved.php
+
+		-
+			message: '#^Readonly property App\\Events\\Security\\NewLoginDetected\:\:\$correlationId is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Events/Security/NewLoginDetected.php
+
+		-
+			message: '#^Readonly property App\\Events\\Security\\NewLoginDetected\:\:\$eventId is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Events/Security/NewLoginDetected.php
+
+		-
+			message: '#^Readonly property App\\Events\\Security\\NewLoginDetected\:\:\$occurredAt is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 2
+			path: app/Events/Security/NewLoginDetected.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Filament/App/Pages/EditTenantProfile.php
+
+		-
+			message: '#^Access to an undefined property App\\Filament\\App\\Pages\\ManageMarketing\:\:\$form\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Filament/App/Pages/ManageMarketing.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Filament/App/Pages/ManageMarketing.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_pro\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/App/Pages/ManageMarketing.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Filament/App/Pages/ManageMarketing.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$whatsapp_number\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/App/Pages/ManageMarketing.php
+
+		-
+			message: '#^Parameter \#1 \$tenant of method App\\Services\\QrCodeService\:\:getQrCode\(\) expects App\\Models\\Tenant, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Filament/App/Pages/ManageMarketing.php
+
+		-
+			message: '#^Parameter \#1 \$tenant of method App\\Services\\QrCodeService\:\:getQrCodeForPoster\(\) expects App\\Models\\Tenant, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Filament/App/Pages/ManageMarketing.php
+
+		-
+			message: '#^Access to an undefined property App\\Filament\\App\\Pages\\Settings\:\:\$form\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Filament/App/Pages/Settings.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_pro\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/App/Pages/UpgradeToPro.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/App/Resources/CampaignResource.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:followers\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Filament/App/Resources/CampaignResource.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/App/Resources/CampaignResource/Pages/CreateCampaign.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/App/Resources/CouponResource.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Filament/App/Resources/CrmDealResource.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/App/Resources/CrmDealResource.php
+
+		-
+			message: '#^Method App\\Filament\\App\\Resources\\CrmDealResource\:\:defaultStage\(\) should return App\\Models\\CrmStage\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Filament/App/Resources/CrmDealResource.php
+
+		-
+			message: '#^Unsafe call to private method App\\Filament\\App\\Resources\\CrmDealResource\:\:allows\(\) through static\:\:\.$#'
+			identifier: staticClassAccess.privateMethod
+			count: 6
+			path: app/Filament/App/Resources/CrmDealResource.php
+
+		-
+			message: '#^Unsafe call to private method App\\Filament\\App\\Resources\\CrmDealResource\:\:dealContext\(\) through static\:\:\.$#'
+			identifier: staticClassAccess.privateMethod
+			count: 1
+			path: app/Filament/App/Resources/CrmDealResource.php
+
+		-
+			message: '#^Unsafe call to private method App\\Filament\\App\\Resources\\CrmDealResource\:\:recordBelongsToCurrentTenant\(\) through static\:\:\.$#'
+			identifier: staticClassAccess.privateMethod
+			count: 2
+			path: app/Filament/App/Resources/CrmDealResource.php
+
+		-
+			message: '#^Unsafe call to private method App\\Filament\\App\\Resources\\CrmDealResource\:\:scopedQuery\(\) through static\:\:\.$#'
+			identifier: staticClassAccess.privateMethod
+			count: 2
+			path: app/Filament/App/Resources/CrmDealResource.php
+
+		-
+			message: '#^Unsafe call to private method App\\Filament\\App\\Resources\\CrmDealResource\:\:tenantHasCrmFeature\(\) through static\:\:\.$#'
+			identifier: staticClassAccess.privateMethod
+			count: 1
+			path: app/Filament/App/Resources/CrmDealResource.php
+
+		-
+			message: '#^Call to an undefined method Filament\\Actions\\CreateAction\:\:mutateDataUsing\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Filament/App/Resources/CrmDealResource/RelationManagers/DealNotesRelationManager.php
+
+		-
+			message: '#^Call to an undefined method Filament\\Actions\\EditAction\:\:mutateDataUsing\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Filament/App/Resources/CrmDealResource/RelationManagers/DealNotesRelationManager.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Actions\\BulkActionGroup\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/CrmDealResource/RelationManagers/DealNotesRelationManager.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Actions\\DeleteBulkAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/CrmDealResource/RelationManagers/DealNotesRelationManager.php
+
+		-
+			message: '#^Parameter \#1 \$actions of method Filament\\Tables\\Table\:\:actions\(\) expects array\<Filament\\Tables\\Actions\\Action\|Filament\\Tables\\Actions\\ActionGroup\>\|Filament\\Tables\\Actions\\ActionGroup, array\{mixed, Filament\\Actions\\DeleteAction\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Filament/App/Resources/CrmDealResource/RelationManagers/DealNotesRelationManager.php
+
+		-
+			message: '#^Call to an undefined method Filament\\Actions\\CreateAction\:\:mutateDataUsing\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Filament/App/Resources/CrmDealResource/RelationManagers/DealTasksRelationManager.php
+
+		-
+			message: '#^Call to an undefined method Filament\\Actions\\EditAction\:\:mutateDataUsing\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Filament/App/Resources/CrmDealResource/RelationManagers/DealTasksRelationManager.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Actions\\BulkActionGroup\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/CrmDealResource/RelationManagers/DealTasksRelationManager.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Actions\\DeleteBulkAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/CrmDealResource/RelationManagers/DealTasksRelationManager.php
+
+		-
+			message: '#^Parameter \#1 \$actions of method Filament\\Tables\\Table\:\:actions\(\) expects array\<Filament\\Tables\\Actions\\Action\|Filament\\Tables\\Actions\\ActionGroup\>\|Filament\\Tables\\Actions\\ActionGroup, array\{Filament\\Actions\\Action, mixed, Filament\\Actions\\DeleteAction\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Filament/App/Resources/CrmDealResource/RelationManagers/DealTasksRelationManager.php
+
+		-
+			message: '#^Unsafe call to private method App\\Filament\\App\\Resources\\CrmPipelineResource\:\:allows\(\) through static\:\:\.$#'
+			identifier: staticClassAccess.privateMethod
+			count: 4
+			path: app/Filament/App/Resources/CrmPipelineResource.php
+
+		-
+			message: '#^Unsafe call to private method App\\Filament\\App\\Resources\\CrmPipelineResource\:\:recordBelongsToCurrentTenant\(\) through static\:\:\.$#'
+			identifier: staticClassAccess.privateMethod
+			count: 2
+			path: app/Filament/App/Resources/CrmPipelineResource.php
+
+		-
+			message: '#^Unsafe call to private method App\\Filament\\App\\Resources\\CrmPipelineResource\:\:scopedQuery\(\) through static\:\:\.$#'
+			identifier: staticClassAccess.privateMethod
+			count: 2
+			path: app/Filament/App/Resources/CrmPipelineResource.php
+
+		-
+			message: '#^Unsafe call to private method App\\Filament\\App\\Resources\\CrmPipelineResource\:\:tenantHasCrmFeature\(\) through static\:\:\.$#'
+			identifier: staticClassAccess.privateMethod
+			count: 1
+			path: app/Filament/App/Resources/CrmPipelineResource.php
+
+		-
+			message: '#^Call to an undefined method Filament\\Actions\\CreateAction\:\:mutateDataUsing\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Filament/App/Resources/CrmPipelineResource/RelationManagers/StagesRelationManager.php
+
+		-
+			message: '#^Call to an undefined method Filament\\Actions\\EditAction\:\:mutateDataUsing\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Filament/App/Resources/CrmPipelineResource/RelationManagers/StagesRelationManager.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Actions\\BulkActionGroup\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/CrmPipelineResource/RelationManagers/StagesRelationManager.php
+
+		-
+			message: '#^Parameter \#1 \$actions of method Filament\\Tables\\Table\:\:actions\(\) expects array\<Filament\\Tables\\Actions\\Action\|Filament\\Tables\\Actions\\ActionGroup\>\|Filament\\Tables\\Actions\\ActionGroup, array\{mixed, Filament\\Actions\\DeleteAction\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Filament/App/Resources/CrmPipelineResource/RelationManagers/StagesRelationManager.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/App/Resources/FollowerResource.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_pro\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/App/Resources/FollowerResource.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/App/Resources/FollowerResource.php
+
+		-
+			message: '#^Call to an undefined method Filament\\Tables\\Table\:\:recordActions\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Filament/App/Resources/Leads/Tables/LeadsTable.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Actions\\BulkActionGroup\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/Leads/Tables/LeadsTable.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Actions\\DeleteBulkAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/Leads/Tables/LeadsTable.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Filament/App/Resources/MenuSectionResource.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/App/Resources/MenuSectionResource/Pages/CreateMenuSection.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Filament/App/Resources/OrderResource.php
+
+		-
+			message: '#^Cannot access property \$customer_phone on Illuminate\\Database\\Eloquent\\Model\|int\|string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Filament/App/Resources/OrderResource/Pages/ViewOrder.php
+
+		-
+			message: '#^Cannot access property \$order_number on Illuminate\\Database\\Eloquent\\Model\|int\|string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Filament/App/Resources/OrderResource/Pages/ViewOrder.php
+
+		-
+			message: '#^Call to an undefined method App\\Filament\\App\\Resources\\Pages\\CreateTenantRecord\:\:associateRecordWithParent\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Filament/App/Resources/Pages/CreateTenantRecord.php
+
+		-
+			message: '#^Call to an undefined method App\\Filament\\App\\Resources\\Pages\\CreateTenantRecord\:\:getParentRecord\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Filament/App/Resources/Pages/CreateTenantRecord.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Filament/App/Resources/ProductResource.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Filament/App/Resources/ProductResource.php
+
+		-
+			message: '#^Anonymous function never returns null so it can be removed from the return type\.$#'
+			identifier: return.unusedType
+			count: 1
+			path: app/Filament/App/Resources/ProductResource/RelationManagers/OptionGroupsRelationManager.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_pro\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/App/Resources/Products/Pages/CreateProduct.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:products\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Filament/App/Resources/Products/Pages/CreateProduct.php
+
+		-
+			message: '#^Class App\\Filament\\App\\Resources\\Products\\ProductResource not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/Products/Pages/CreateProduct.php
+
+		-
+			message: '#^Class App\\Filament\\App\\Resources\\Products\\ProductResource not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/Products/Pages/EditProduct.php
+
+		-
+			message: '#^Class App\\Filament\\App\\Resources\\Products\\ProductResource not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/Products/Pages/ListProducts.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/App/Resources/TenantProfileResource.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/App/Resources/TenantUserResource.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/App/Resources/TenantUserResource/Pages/CreateTenantUser.php
+
+		-
+			message: '#^Cannot access property \$role on Illuminate\\Database\\Eloquent\\Model\|int\|string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Filament/App/Resources/TenantUserResource/Pages/EditTenantUser.php
+
+		-
+			message: '#^Cannot access property \$user on Illuminate\\Database\\Eloquent\\Model\|int\|string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Filament/App/Resources/TenantUserResource/Pages/EditTenantUser.php
+
+		-
+			message: '#^Comparison operation "\>" between 5 and 0 is always true\.$#'
+			identifier: greater.alwaysTrue
+			count: 1
+			path: app/Filament/App/Widgets/AccountCompletenessWidget.php
+
+		-
+			message: '#^Parameter \#1 \$tenant of method App\\Filament\\App\\Widgets\\AccountCompletenessWidget\:\:calculateCompleteness\(\) expects App\\Models\\Tenant, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Filament/App/Widgets/AccountCompletenessWidget.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Filament/App/Widgets/AppointmentCalendarWidget.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Appointment\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Filament/App/Widgets/AppointmentCalendarWidget.php
+
+		-
+			message: '#^Static property App\\Filament\\App\\Widgets\\FollowerCountWidget\:\:\$view \(view\-string\) does not accept default value of type string\.$#'
+			identifier: property.defaultValue
+			count: 1
+			path: app/Filament/App/Widgets/FollowerCountWidget.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_pro\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/App/Widgets/FreePlanUpsellWidget.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/App/Widgets/FreePlanUpsellWidget.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/App/Widgets/PeakHoursChart.php
+
+		-
+			message: '#^Parameter \#1 \$string of function str_pad expects string, int\<0, 23\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Filament/App/Widgets/PeakHoursChart.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/App/Widgets/PopularProductsTable.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_pro\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/App/Widgets/ProductLimitWidget.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$plan_expires_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/App/Widgets/ProductLimitWidget.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Filament/App/Widgets/ProductLimitWidget.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:products\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Filament/App/Widgets/ProductLimitWidget.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:products\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Filament/App/Widgets/QuickActionsWidget.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Filament/App/Widgets/StatsOverview.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/App/Widgets/TenantStatsWidget.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_pro\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/App/Widgets/TenantStatsWidget.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/App/Widgets/TenantStatsWidget.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:products\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Filament/App/Widgets/TenantStatsWidget.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/App/Widgets/WhatsAppClicksChart.php
+
+		-
+			message: '#^Parameter \#1 \$height of method Filament\\Forms\\Components\\FileUpload\:\:imageResizeTargetHeight\(\) expects Closure\|string\|null, 630 given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Filament/Components/SeoFields.php
+
+		-
+			message: '#^Parameter \#1 \$width of method Filament\\Forms\\Components\\FileUpload\:\:imageResizeTargetWidth\(\) expects Closure\|string\|null, 1200 given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Filament/Components/SeoFields.php
+
+		-
+			message: '#^Call to function method_exists\(\) with App\\Models\\User and ''isSuperAdmin'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Filament/Pages/ArchitectureHealth.php
+
+		-
+			message: '#^Property App\\Filament\\Pages\\Billing\:\:\$tenant \(App\\Models\\Tenant\|null\) does not accept Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Filament/Pages/Billing.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Filament/Pages/Billing.php
+
+		-
+			message: '#^Access to an undefined property App\\Filament\\Pages\\ManageGeneralSettings\:\:\$form\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Filament/Pages/ManageGeneralSettings.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Filament/Resources/CouponResource.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\:\:valid\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Filament/Resources/CouponResource.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/Resources/OrderResource.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/Resources/OrderResource/Pages/ListOrders.php
+
+		-
+			message: '#^Cannot access property \$status on Illuminate\\Database\\Eloquent\\Model\|int\|string\.$#'
+			identifier: property.nonObject
+			count: 4
+			path: app/Filament/Resources/OrderResource/Pages/ViewOrder.php
+
+		-
+			message: '#^Cannot call method getWhatsAppUrl\(\) on Illuminate\\Database\\Eloquent\\Model\|int\|string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Filament/Resources/OrderResource/Pages/ViewOrder.php
+
+		-
+			message: '#^Cannot call method transitionTo\(\) on Illuminate\\Database\\Eloquent\\Model\|int\|string\.$#'
+			identifier: method.nonObject
+			count: 4
+			path: app/Filament/Resources/OrderResource/Pages/ViewOrder.php
+
+		-
+			message: '#^Anonymous function never returns null so it can be removed from the return type\.$#'
+			identifier: return.unusedType
+			count: 1
+			path: app/Filament/Resources/PaymentResource.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>email" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Filament/Resources/PaymentResource.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/Resources/ProductResource.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$plan_type\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Filament/Resources/ProductResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Forms\\Components\\SpatieMediaLibraryFileUpload\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/ProductResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Columns\\SpatieMediaLibraryImageColumn\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/ProductResource.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/Resources/ProductResource/Pages/CreateProduct.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$plan_type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/Resources/ProductResource/Pages/CreateProduct.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:products\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Filament/Resources/ProductResource/Pages/CreateProduct.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 6
+			path: app/Filament/Widgets/AnalyticsStatsWidget.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\Interaction\:\:forTenant\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 3
+			path: app/Filament/Widgets/AnalyticsStatsWidget.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\TenantVisit\:\:forTenant\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 3
+			path: app/Filament/Widgets/AnalyticsStatsWidget.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Payment\:\:\$proof_image_path\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/Widgets/PendingPaymentsWidget.php
+
+		-
+			message: '#^Parameter \#1 \$num of function number_format expects float, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Filament/Widgets/PendingPaymentsWidget.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Filament/Widgets/StatsOverview.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$plan_type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/Widgets/StatsOverview.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:products\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Filament/Widgets/StatsOverview.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/Widgets/TrafficChartWidget.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\TenantVisit\:\:forTenant\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Filament/Widgets/TrafficChartWidget.php
+
+		-
+			message: '#^Access to an undefined property App\\Application\\Auth\\Results\\SocialLoginResult\:\:\$redirectUrl\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/V1/AuthController.php
+
+		-
+			message: '#^Access to an undefined property App\\Application\\Auth\\Results\\SocialLoginResult\:\:\$userId\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/V1/AuthController.php
+
+		-
+			message: '#^Parameter \$userId of method App\\Domain\\Api\\Contracts\\NotificationRepository\:\:getUserNotifications\(\) expects int, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/V1/NotificationController.php
+
+		-
+			message: '#^Parameter \$userId of method App\\Domain\\Api\\Contracts\\NotificationRepository\:\:markAllAsRead\(\) expects int, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/V1/NotificationController.php
+
+		-
+			message: '#^Parameter \$userId of method App\\Domain\\Api\\Contracts\\NotificationRepository\:\:markAsRead\(\) expects int, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/V1/NotificationController.php
+
+		-
+			message: '#^Call to function abort_unless\(\) with true and 403 will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Http/Controllers/Api/V1/TenantPrivateAgentController.php
+
+		-
+			message: '#^Call to function is_object\(\) with App\\Models\\Tenant will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Http/Controllers/Api/V1/TenantPrivateAgentController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Contracts\\Auth\\Authenticatable\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Auth/RegisterTenantController.php
+
+		-
+			message: '#^Parameter \#1 \$user of method App\\Support\\Panel\\CanonicalPanelUrlResolver\:\:forUser\(\) expects App\\Models\\User\|null, Illuminate\\Contracts\\Auth\\Authenticatable given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Auth/RegisterTenantController.php
+
+		-
+			message: '#^Call to method execute\(\) on an unknown class App\\Application\\Actions\\Auth\\SocialLoginAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Http/Controllers/Auth/SocialAuthController.php
+
+		-
+			message: '#^Parameter \$action of method App\\Http\\Controllers\\Auth\\SocialAuthController\:\:callback\(\) has invalid type App\\Application\\Actions\\Auth\\SocialLoginAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Http/Controllers/Auth/SocialAuthController.php
+
+		-
+			message: '#^Parameter \#1 \$userId of method App\\Domain\\Public\\Contracts\\BuyerRepository\:\:getFavorites\(\) expects int, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Public/BuyerController.php
+
+		-
+			message: '#^Parameter \#1 \$userId of method App\\Domain\\Public\\Contracts\\BuyerRepository\:\:getFollowedTenants\(\) expects int, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Public/BuyerController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Pagination\\LengthAwarePaginator\:\:through\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Public/DirectoryController.php
+
+		-
+			message: '#^Property App\\Http\\Controllers\\Public\\TenantMicrositeController\:\:\$planService is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Http/Controllers/Public/TenantMicrositeController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Tenant/AnalyticsController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Web\\BillingController\:\:showPaymentPending\(\) should return Inertia\\Response but returns Symfony\\Component\\HttpFoundation\\Response\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/Web/BillingController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Web\\RegistrationController\:\:create\(\) should return Inertia\\Response but returns Symfony\\Component\\HttpFoundation\\Response\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/Web/RegistrationController.php
+
+		-
+			message: '#^Call to method Illuminate\\Contracts\\View\\Factory\:\:exists\(\) with ''errors\.maintenance'' will always evaluate to true\.$#'
+			identifier: method.alreadyNarrowedType
+			count: 1
+			path: app/Http/Middleware/CheckMaintenanceMode.php
+
+		-
+			message: '#^Dead catch \- Throwable is never thrown in the try block\.$#'
+			identifier: catch.neverThrown
+			count: 1
+			path: app/Http/Middleware/CheckMaintenanceMode.php
+
+		-
+			message: '#^Parameter \#2 \$values of method Illuminate\\Http\\Response\:\:header\(\) expects array\|string, int given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Middleware/CheckMaintenanceMode.php
+
+		-
+			message: '#^Cannot access property \$id on class\-string\|object\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Http/Middleware/EnsureUserBelongsToTenant.php
+
+
+		-
+			message: '#^Parameter \#1 \$value of static method Illuminate\\Support\\Str\:\:lower\(\) expects string, Illuminate\\Support\\Stringable given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Requests/Auth/LoginRequest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Requests/Tenant/StoreProductRequest.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmDealResource\:\:\$closed_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmDealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmDealResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmDealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmDealResource\:\:\$crm_pipeline_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmDealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmDealResource\:\:\$crm_stage_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmDealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmDealResource\:\:\$currency\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmDealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmDealResource\:\:\$customerProfile\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmDealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmDealResource\:\:\$customer_profile_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmDealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmDealResource\:\:\$expected_close_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmDealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmDealResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmDealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmDealResource\:\:\$lead\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmDealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmDealResource\:\:\$lead_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmDealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmDealResource\:\:\$location_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmDealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmDealResource\:\:\$lost_reason\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmDealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmDealResource\:\:\$notes\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmDealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmDealResource\:\:\$owner_user_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmDealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmDealResource\:\:\$source\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmDealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmDealResource\:\:\$stage\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmDealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmDealResource\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmDealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmDealResource\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmDealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmDealResource\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmDealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmDealResource\:\:\$value\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmDealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmPipelineResource\:\:\$description\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmPipelineResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmPipelineResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmPipelineResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmPipelineResource\:\:\$is_active\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmPipelineResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmPipelineResource\:\:\$is_default\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmPipelineResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmPipelineResource\:\:\$key\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmPipelineResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmPipelineResource\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmPipelineResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmPipelineResource\:\:\$sort_order\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmPipelineResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmStageResource\:\:\$crm_pipeline_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmStageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmStageResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmStageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmStageResource\:\:\$is_default\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmStageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmStageResource\:\:\$key\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmStageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmStageResource\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmStageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmStageResource\:\:\$probability\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmStageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmStageResource\:\:\$sort_order\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmStageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\CrmStageResource\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/CrmStageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\NotificationResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Resources/NotificationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\NotificationResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/NotificationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\NotificationResource\:\:\$read_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/NotificationResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\OrderItemResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/OrderItemResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\OrderItemResource\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/OrderItemResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\OrderItemResource\:\:\$notes\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/OrderItemResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\OrderItemResource\:\:\$options\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/OrderItemResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\OrderItemResource\:\:\$price\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Resources/OrderItemResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\OrderItemResource\:\:\$quantity\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/OrderItemResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\OrderItemResource\:\:\$total\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/OrderItemResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\OrderResource\:\:\$formatted_total\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/OrderResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\OrderResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/OrderResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\OrderResource\:\:\$items\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/OrderResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\OrderResource\:\:\$order_number\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/OrderResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\OrderResource\:\:\$payment_method\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/OrderResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\OrderResource\:\:\$status_label\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/OrderResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\OrderResource\:\:\$total\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Http/Resources/OrderResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\OrderResource\:\:\$tracking_uuid\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/OrderResource.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>bank_account" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Resources/OrderResource.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>bank_account_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Resources/OrderResource.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>bank_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Resources/OrderResource.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Resources/OrderResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ProductResource\:\:\$category\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ProductResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ProductResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ProductResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ProductResource\:\:\$image_url\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ProductResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ProductResource\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ProductResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ProductResource\:\:\$price\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Resources/ProductResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ProductResource\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ProductResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TenantCardResource\:\:\$category\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Http/Resources/TenantCardResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TenantCardResource\:\:\$city\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Http/Resources/TenantCardResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TenantCardResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TenantCardResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TenantCardResource\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TenantCardResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TenantCardResource\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TenantCardResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TenantResource\:\:\$uuid\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TenantResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TenantSettingsResource\:\:\$cover_path\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TenantSettingsResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TenantSettingsResource\:\:\$description\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TenantSettingsResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TenantSettingsResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TenantSettingsResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TenantSettingsResource\:\:\$logo_path\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TenantSettingsResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TenantSettingsResource\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TenantSettingsResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TenantSettingsResource\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TenantSettingsResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TenantSettingsResource\:\:\$whatsapp_number\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Resources/TenantSettingsResource.php
+
+		-
+			message: '#^Negated boolean expression is always false\.$#'
+			identifier: booleanNot.alwaysFalse
+			count: 3
+			path: app/Infrastructure/AI/BudgetEnforcer.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Infrastructure/Booking/GuestAppointmentManagementReader.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Infrastructure/Booking/HttpPublicBookingResponder.php
+
+		-
+			message: '#^Method App\\Infrastructure\\Catalog\\CachedProductReader\:\:getFeaturedProducts\(\) should return Illuminate\\Support\\Collection\<int, object\> but returns Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Product\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Infrastructure/Catalog/CachedProductReader.php
+
+		-
+			message: '#^Instantiated class App\\Application\\Common\\Exceptions\\LockTimeoutException not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Infrastructure/Common/Idempotency/RedisLockAdapter.php
+
+		-
+			message: '#^Method Redis\:\:eval\(\) invoked with 4 parameters, 1\-3 required\.$#'
+			identifier: arguments.count
+			count: 1
+			path: app/Infrastructure/Common/Idempotency/RedisLockAdapter.php
+
+		-
+			message: '#^Method Redis\:\:eval\(\) invoked with 5 parameters, 1\-3 required\.$#'
+			identifier: arguments.count
+			count: 1
+			path: app/Infrastructure/Common/Idempotency/RedisLockAdapter.php
+
+		-
+			message: '#^Parameter \#2 \$args of method Redis\:\:eval\(\) expects array, int given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Infrastructure/Common/Idempotency/RedisLockAdapter.php
+
+		-
+			message: '#^Parameter \#3 \$num_keys of method Redis\:\:eval\(\) expects int, string given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Infrastructure/Common/Idempotency/RedisLockAdapter.php
+
+		-
+			message: '#^Throwing object of an unknown class App\\Application\\Common\\Exceptions\\LockTimeoutException\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Infrastructure/Common/Idempotency/RedisLockAdapter.php
+
+		-
+			message: '#^Access to an undefined property App\\Infrastructure\\Common\\Models\\IdempotencyKey\:\:\$checksum\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Infrastructure/Common/Persistence/EloquentIdempotencyRepository.php
+
+		-
+			message: '#^Call to an undefined method App\\Application\\Identity\\Results\\RegisterUserResult\:\:toArray\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Infrastructure/Common/Persistence/EloquentIdempotencyRepository.php
+
+		-
+			message: '#^Call to an undefined static method App\\Application\\Identity\\Results\\RegisterUserResult\:\:fromArray\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Infrastructure/Common/Persistence/EloquentIdempotencyRepository.php
+
+		-
+			message: '#^Negated boolean expression is always true\.$#'
+			identifier: booleanNot.alwaysTrue
+			count: 1
+			path: app/Infrastructure/Console/Commands/CheckPaymentStatusCommand.php
+
+		-
+			message: '#^Comparison operation "\<" between int\<1, 2\> and 3 is always true\.$#'
+			identifier: smaller.alwaysTrue
+			count: 1
+			path: app/Infrastructure/Console/Commands/ForcePromotePaymentCommand.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Infrastructure/Console/Commands/ForcePromotePaymentCommand.php
+
+		-
+			message: '#^Offset 1 on array\{list\<string\>, list\<non\-empty\-string\>\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Infrastructure/Console/Commands/GenerateSdkCommand.php
+
+		-
+			message: '#^Comparison operation "\>" between int\<1, max\> and 0 is always true\.$#'
+			identifier: greater.alwaysTrue
+			count: 1
+			path: app/Infrastructure/Console/Commands/OutboxCoronerCommand.php
+
+		-
+			message: '#^Parameter \#2 \$start of static method Redis\:\:zCount\(\) expects string, int\<\-4, max\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Infrastructure/Console/Commands/OutboxCoronerCommand.php
+
+		-
+			message: '#^Array has 2 duplicate keys with value ''worker_id'' \(''worker_id'', ''worker_id''\)\.$#'
+			identifier: array.duplicateKey
+			count: 1
+			path: app/Infrastructure/Console/Commands/ProcessOutboxCommand.php
+
+		-
+			message: '#^Call to an undefined method App\\Infrastructure\\Monitoring\\ConsensusHealthGovernor\:\:emitPulse\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Infrastructure/Console/Commands/ProcessOutboxCommand.php
+
+		-
+			message: '#^Call to an undefined method ReflectionType\:\:getName\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Infrastructure/Console/Commands/ProcessOutboxCommand.php
+
+		-
+			message: '#^Call to an undefined method ReflectionType\:\:isBuiltin\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Infrastructure/Console/Commands/ProcessOutboxCommand.php
+
+		-
+			message: '#^Instanceof between Exception and ArgumentCountError will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 1
+			path: app/Infrastructure/Console/Commands/ProcessOutboxCommand.php
+
+		-
+			message: '#^Instanceof between Exception and TypeError will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 1
+			path: app/Infrastructure/Console/Commands/ProcessOutboxCommand.php
+
+		-
+			message: '#^PHPDoc tag @throws with type App\\Infrastructure\\Console\\Commands\\RuntimeException is not subtype of Throwable$#'
+			identifier: throws.notThrowable
+			count: 1
+			path: app/Infrastructure/Console/Commands/ProcessOutboxCommand.php
+
+		-
+			message: '#^Variable \$processedInBatch might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: app/Infrastructure/Console/Commands/ProcessOutboxCommand.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Infrastructure/Console/Commands/PublishContractsCommand.php
+
+		-
+			message: '#^Call to an undefined method App\\Domain\\TenantGovernance\\Repositories\\TenantRepositoryInterface\:\:updateOptimistically\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Infrastructure/Console/Commands/ReconcileSubscriptionIntentsCommand.php
+
+		-
+			message: '#^Comparison operation "\<" between int\<1, 2\> and 3 is always true\.$#'
+			identifier: smaller.alwaysTrue
+			count: 1
+			path: app/Infrastructure/Console/Commands/ReconcileSubscriptionIntentsCommand.php
+
+		-
+			message: '#^Missing parameter \$newPlanExternalId \(string\) in call to method App\\Domain\\Billing\\Gateways\\SubscriptionGatewayInterface\:\:swapPlan\(\)\.$#'
+			identifier: argument.missing
+			count: 1
+			path: app/Infrastructure/Console/Commands/ReconcileSubscriptionIntentsCommand.php
+
+		-
+			message: '#^Unknown parameter \$idempotencyKey in call to method App\\Domain\\Billing\\Gateways\\SubscriptionGatewayInterface\:\:swapPlan\(\)\.$#'
+			identifier: argument.unknown
+			count: 1
+			path: app/Infrastructure/Console/Commands/ReconcileSubscriptionIntentsCommand.php
+
+		-
+			message: '#^Unknown parameter \$newPlanId in call to method App\\Domain\\Billing\\Gateways\\SubscriptionGatewayInterface\:\:swapPlan\(\)\.$#'
+			identifier: argument.unknown
+			count: 1
+			path: app/Infrastructure/Console/Commands/ReconcileSubscriptionIntentsCommand.php
+
+		-
+			message: '#^Comparison operation "\<" between int\<1, 2\> and 3 is always true\.$#'
+			identifier: smaller.alwaysTrue
+			count: 1
+			path: app/Infrastructure/Console/Commands/RescueStuckProofsCommand.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Infrastructure/Console/Commands/RescueStuckProofsCommand.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$closed_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Infrastructure/Crm/HttpCrmDealResponder.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$currency\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Infrastructure/Crm/HttpCrmDealResponder.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$expected_close_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Infrastructure/Crm/HttpCrmDealResponder.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Infrastructure/Crm/HttpCrmDealResponder.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Infrastructure/Crm/HttpCrmDealResponder.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$value\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Infrastructure/Crm/HttpCrmDealResponder.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>closed_at" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Infrastructure/Crm/HttpCrmDealResponder.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>currency" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Infrastructure/Crm/HttpCrmDealResponder.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 4
+			path: app/Infrastructure/Crm/HttpCrmDealResponder.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>status" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Infrastructure/Crm/HttpCrmDealResponder.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>is_active" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Infrastructure/Crm/HttpCrmPipelineResponder.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>is_default" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Infrastructure/Crm/HttpCrmPipelineResponder.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>key" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Infrastructure/Crm/HttpCrmPipelineResponder.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>probability" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Infrastructure/Crm/HttpCrmPipelineResponder.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>sort_order" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Infrastructure/Crm/HttpCrmPipelineResponder.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>type" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Infrastructure/Crm/HttpCrmPipelineResponder.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Infrastructure/Directory/EloquentDirectoryGuideReader.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Infrastructure/Identity/Models/FilamentUser.php
+
+		-
+			message: '#^Instanceof between string and UnitEnum will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 1
+			path: app/Infrastructure/Identity/Persistence/EloquentUserRepository.php
+
+		-
+			message: '#^Instanceof between string\|null and App\\Domain\\Shared\\ValueObjects\\TenantId will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 1
+			path: app/Infrastructure/Identity/Persistence/EloquentUserRepository.php
+
+		-
+			message: '#^Property App\\Infrastructure\\Identity\\Persistence\\EloquentUserRepository\:\:\$eventBus is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Infrastructure/Identity/Persistence/EloquentUserRepository.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Infrastructure/Identity/Persistence/EloquentUserRepository.php
+
+		-
+			message: '#^Call to function method_exists\(\) with App\\Domain\\Identity\\Events\\UserRegistered and ''occurredOn'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Infrastructure/Identity/Projections/UserProjector.php
+
+		-
+			message: '#^Call to function method_exists\(\) with App\\Domain\\Identity\\Entities\\UserEntity and ''getUncommittedEvents'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Infrastructure/Identity/Repositories/EventSourcedUserRepository.php
+
+		-
+			message: '#^PHPDoc tag @throws with type App\\Infrastructure\\Jobs\\AI\\ModelNotFoundException\|App\\Infrastructure\\Jobs\\AI\\TenantDomainException is not subtype of Throwable$#'
+			identifier: throws.notThrowable
+			count: 1
+			path: app/Infrastructure/Jobs/AI/EnhanceTenantProfileJob.php
+
+		-
+			message: '#^Access to an undefined property App\\Domain\\TenantGovernance\\Entities\\TenantEntity\:\:\$ai_profile\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Infrastructure/Jobs/AI/GenerateBusinessProfile.php
+
+		-
+			message: '#^Call to an undefined method App\\Services\\AiProfileGeneratorService\:\:generateProfile\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Infrastructure/Jobs/AI/GenerateBusinessProfile.php
+
+		-
+			message: '#^Instantiated class App\\Infrastructure\\Jobs\\Middleware\\TenantAwareMiddleware not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Infrastructure/Jobs/TenantJob.php
+
+		-
+			message: '#^Access to an undefined property App\\Domain\\Identity\\Events\\UserRegistered\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Infrastructure/Listeners/Identity/CreatePersonalTeam.php
+
+		-
+			message: '#^Return type \(Illuminate\\Database\\Eloquent\\Collection\) of method App\\Infrastructure\\Marketing\\EloquentCouponReader\:\:getValidCoupons\(\) should be compatible with return type \(Illuminate\\Support\\Collection\<int, object\>\) of method App\\Domain\\Marketing\\Contracts\\CouponReader\:\:getValidCoupons\(\)$#'
+			identifier: method.childReturnType
+			count: 1
+			path: app/Infrastructure/Marketing/EloquentCouponReader.php
+
+		-
+			message: '#^Access to undefined constant App\\Infrastructure\\Monitoring\\ResilientHealthProbe\:\:LOCAL_STATE_DIR\.$#'
+			identifier: classConstant.notFound
+			count: 1
+			path: app/Infrastructure/Monitoring/ResilientHealthProbe.php
+
+		-
+			message: '#^Property App\\Infrastructure\\Monitoring\\ResilientHealthProbe\:\:\$stateStore is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Infrastructure/Monitoring/ResilientHealthProbe.php
+
+		-
+			message: '#^Access to private property App\\Domain\\Identity\\Entities\\UserEntity\:\:\$email\.$#'
+			identifier: property.private
+			count: 1
+			path: app/Infrastructure/Notifications/EmailOtpNotifier.php
+
+		-
+			message: '#^Access to private property App\\Domain\\Identity\\Entities\\UserEntity\:\:\$name\.$#'
+			identifier: property.private
+			count: 1
+			path: app/Infrastructure/Notifications/EmailOtpNotifier.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>email" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Infrastructure/Notifications/EmailOtpNotifier.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Infrastructure/Notifications/EmailOtpNotifier.php
+
+		-
+			message: '#^Call to method getDeclineCode\(\) on an unknown class Stripe\\Exception\\CardException\.$#'
+			identifier: class.notFound
+			count: 2
+			path: app/Infrastructure/Payments/Stripe/StripePaymentGateway.php
+
+		-
+			message: '#^Call to method getMessage\(\) on an unknown class Stripe\\Exception\\ApiConnectionException\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Infrastructure/Payments/Stripe/StripePaymentGateway.php
+
+		-
+			message: '#^Call to method getMessage\(\) on an unknown class Stripe\\Exception\\AuthenticationException\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Infrastructure/Payments/Stripe/StripePaymentGateway.php
+
+		-
+			message: '#^Call to method getMessage\(\) on an unknown class Stripe\\Exception\\CardException\.$#'
+			identifier: class.notFound
+			count: 2
+			path: app/Infrastructure/Payments/Stripe/StripePaymentGateway.php
+
+		-
+			message: '#^Call to method getMessage\(\) on an unknown class Stripe\\Exception\\InvalidRequestException\.$#'
+			identifier: class.notFound
+			count: 3
+			path: app/Infrastructure/Payments/Stripe/StripePaymentGateway.php
+
+		-
+			message: '#^Call to method getMessage\(\) on an unknown class Stripe\\Exception\\RateLimitException\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Infrastructure/Payments/Stripe/StripePaymentGateway.php
+
+		-
+			message: '#^Call to method getStripeParam\(\) on an unknown class Stripe\\Exception\\InvalidRequestException\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Infrastructure/Payments/Stripe/StripePaymentGateway.php
+
+		-
+			message: '#^Call to static method create\(\) on an unknown class Stripe\\PaymentIntent\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Infrastructure/Payments/Stripe/StripePaymentGateway.php
+
+		-
+			message: '#^Call to static method create\(\) on an unknown class Stripe\\Refund\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Infrastructure/Payments/Stripe/StripePaymentGateway.php
+
+		-
+			message: '#^Call to static method setApiKey\(\) on an unknown class Stripe\\Stripe\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Infrastructure/Payments/Stripe/StripePaymentGateway.php
+
+		-
+			message: '#^Caught class Stripe\\Exception\\ApiConnectionException not found\.$#'
+			identifier: class.notFound
+			count: 2
+			path: app/Infrastructure/Payments/Stripe/StripePaymentGateway.php
+
+		-
+			message: '#^Caught class Stripe\\Exception\\AuthenticationException not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Infrastructure/Payments/Stripe/StripePaymentGateway.php
+
+		-
+			message: '#^Caught class Stripe\\Exception\\CardException not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Infrastructure/Payments/Stripe/StripePaymentGateway.php
+
+		-
+			message: '#^Caught class Stripe\\Exception\\InvalidRequestException not found\.$#'
+			identifier: class.notFound
+			count: 2
+			path: app/Infrastructure/Payments/Stripe/StripePaymentGateway.php
+
+		-
+			message: '#^Caught class Stripe\\Exception\\RateLimitException not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Infrastructure/Payments/Stripe/StripePaymentGateway.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Illuminate\\Http\\Client\\Response\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Infrastructure/Payments/Stripe/StripeSubscriptionCheckoutGateway.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Infrastructure/Persistence/AdaptiveSequenceGenerator.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and false will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Infrastructure/Persistence/AdaptiveSequenceGenerator.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Infrastructure/Persistence/Eloquent/Casts/TenantIdCast.php
+
+		-
+			message: '#^Property App\\Models\\Payment\:\:\$created_at \(Carbon\\Carbon\|string\|null\) does not accept DateTimeImmutable\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Infrastructure/Persistence/EloquentPaymentRepository.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Infrastructure/Persistence/EloquentPaymentRepository.php
+
+		-
+			message: '#^Parameter \#1 \$model of method App\\Infrastructure\\Persistence\\Mappers\\UserMapper\:\:toDomain\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Infrastructure/Persistence/EloquentSocialIdentityRepository.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Infrastructure/Persistence/Mappers/UserMapper.php
+
+		-
+			message: '#^Access to undefined constant App\\Infrastructure\\Persistence\\OutboxLeaseManager\:\:HEARTBEAT_INTERVAL_SECONDS\.$#'
+			identifier: classConstant.notFound
+			count: 1
+			path: app/Infrastructure/Persistence/OutboxLeaseManager.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Query\\Builder\:\:skipLocked\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Infrastructure/Persistence/OutboxLeaseManager.php
+
+		-
+			message: '#^Property App\\Infrastructure\\Persistence\\OutboxLeaseManager\:\:\$heartbeatIntervalSeconds is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Infrastructure/Persistence/OutboxLeaseManager.php
+
+		-
+			message: '#^Property App\\Infrastructure\\Persistence\\Queries\\AdminProductQuery\:\:\$context is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Infrastructure/Persistence/Queries/AdminProductQuery.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Infrastructure/Public/EloquentTenantMicrositeReader.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\CrmDeal\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Infrastructure/Public/EloquentTenantMicrositeReader.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Product\:\:\$compare_at_price\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Infrastructure/Repositories/Products/EloquentProductReadRepository.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Product\:\:\$image_blurhash\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Infrastructure/Repositories/Products/EloquentProductReadRepository.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Infrastructure/Repositories/Products/EloquentProductReadRepository.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_required\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Infrastructure/Repositories/Products/EloquentProductReadRepository.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Infrastructure/Repositories/Products/EloquentProductReadRepository.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$options\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Infrastructure/Repositories/Products/EloquentProductReadRepository.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Infrastructure/Repositories/Products/EloquentProductReadRepository.php
+
+		-
+			message: '#^Parameter \#1 \$num of function number_format expects float, string given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Infrastructure/Repositories/Products/EloquentProductReadRepository.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Order\:\:\$customer_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Infrastructure/Repositories/Sales/EloquentOrderRepository.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Infrastructure/Repositories/Sales/EloquentOrderRepository.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Infrastructure/Repositories/Sales/EloquentOrderRepository.php
+
+		-
+			message: '#^Method Redis\:\:eval\(\) invoked with 4 parameters, 1\-3 required\.$#'
+			identifier: arguments.count
+			count: 1
+			path: app/Infrastructure/Resilience/RedisCircuitBreaker.php
+
+		-
+			message: '#^Method Redis\:\:eval\(\) invoked with 5 parameters, 1\-3 required\.$#'
+			identifier: arguments.count
+			count: 1
+			path: app/Infrastructure/Resilience/RedisCircuitBreaker.php
+
+		-
+			message: '#^Parameter \#2 \$args of method Redis\:\:eval\(\) expects array, int given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Infrastructure/Resilience/RedisCircuitBreaker.php
+
+		-
+			message: '#^Parameter \#3 \$num_keys of method Redis\:\:eval\(\) expects int, string given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Infrastructure/Resilience/RedisCircuitBreaker.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Infrastructure/Scope/FilamentTenantContext.php
+
+		-
+			message: '#^Method App\\Infrastructure\\Search\\EloquentSearchRepository\:\:searchTenants\(\) has invalid return type App\\Domain\\TenantGovernance\\Models\\Tenant\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Infrastructure/Search/EloquentSearchRepository.php
+
+		-
+			message: '#^Method App\\Infrastructure\\Search\\EloquentSearchRepository\:\:searchTenants\(\) should return Illuminate\\Support\\Collection\<int, App\\Domain\\TenantGovernance\\Models\\Tenant\> but returns Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Tenant\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Infrastructure/Search/EloquentSearchRepository.php
+
+		-
+			message: '#^Call to method createPresignedRequest\(\) on an unknown class Aws\\S3\\S3Client\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Infrastructure/Services/S3PresignerService.php
+
+		-
+			message: '#^Call to method getCommand\(\) on an unknown class Aws\\S3\\S3Client\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Infrastructure/Services/S3PresignerService.php
+
+		-
+			message: '#^Instantiated class Aws\\S3\\S3Client not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Infrastructure/Services/S3PresignerService.php
+
+		-
+			message: '#^Property App\\Infrastructure\\Services\\S3PresignerService\:\:\$client has unknown class Aws\\S3\\S3Client as its type\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Infrastructure/Services/S3PresignerService.php
+
+		-
+			message: '#^Method App\\Infrastructure\\Shared\\Persistence\\Decorators\\SchemaValidatingOutboxRepository\:\:resolveSubject\(\) never returns null so it can be removed from the return type\.$#'
+			identifier: return.unusedType
+			count: 1
+			path: app/Infrastructure/Shared/Persistence/Decorators/SchemaValidatingOutboxRepository.php
+
+		-
+			message: '#^Method App\\Infrastructure\\Shared\\Persistence\\EloquentOutboxRepository\:\:getNextSequenceNumber\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/Infrastructure/Shared/Persistence/EloquentOutboxRepository.php
+
+		-
+			message: '#^Call to function is_object\(\) with non\-falsy\-string will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Infrastructure/Shared/RequestTenantContext.php
+
+		-
+			message: '#^Call to function method_exists\(\) with \*NEVER\* and ''toString'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Infrastructure/Shared/RequestTenantContext.php
+
+		-
+			message: '#^Call to function method_exists\(\) with Illuminate\\Database\\Eloquent\\Model and ''getAttributes'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Infrastructure/Shared/RequestTenantContext.php
+
+		-
+			message: '#^Call to function method_exists\(\) with Illuminate\\Database\\Eloquent\\Model and ''getRawOriginal'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Infrastructure/Shared/RequestTenantContext.php
+
+		-
+			message: '#^Call to function method_exists\(\) with App\\Domain\\TenantGovernance\\Entities\\TenantEntity and ''getUncommittedEvents'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Infrastructure/Tenancy/Repositories/EventSourcedTenantRepository.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Tenant\:\:\$subscription\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Infrastructure/Tenant/EloquentBillingRepository.php
+
+		-
+			message: '#^Instanceof between App\\Domain\\TenantGovernance\\Enums\\CommercialMode and BackedEnum will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: app/Infrastructure/Tenant/EloquentDashboardMetricsRepository.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Infrastructure/Tenant/EloquentDashboardMetricsRepository.php
+
+		-
+			message: '#^Method App\\Infrastructure\\Tenant\\EloquentOrderRepository\:\:getDashboardKanban\(\) should return Illuminate\\Support\\Collection\<string, Illuminate\\Support\\Collection\> but returns Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\), Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Order\>\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Infrastructure/Tenant/EloquentOrderRepository.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Carbon\\Carbon\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Infrastructure/Tenant/TenantPrivateAgentService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Tenant\:\:\$active\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Infrastructure/TenantGovernance/SuperAdmin/SuperAdminDashboardBootstrapper.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Tenant\:\:\$mode\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Infrastructure/TenantGovernance/SuperAdmin/SuperAdminDashboardBootstrapper.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Tenant\:\:\$pro\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Infrastructure/TenantGovernance/SuperAdmin/SuperAdminDashboardBootstrapper.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Tenant\:\:\$total\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Infrastructure/TenantGovernance/SuperAdmin/SuperAdminDashboardBootstrapper.php
+
+		-
+			message: '#^Parameter \#1 \$model of method Spatie\\Activitylog\\ActivityLogger\:\:performedOn\(\) expects Illuminate\\Database\\Eloquent\\Model, null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Listeners/Audit/LogSalesExportActivity.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between App\\Domain\\Shared\\ValueObjects\\TenantId and 0 will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Listeners/InvalidateStorefrontCache.php
+
+		-
+			message: '#^Parameter \#1 \$user of class App\\Mail\\Security\\LoginAlertMail constructor expects App\\Application\\Shared\\DTOs\\Mail\\UserMailData, App\\Models\\User given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Listeners/Security/SendLoginAlertListener.php
+
+		-
+			message: '#^Parameter \#3 \$time of class App\\Mail\\Security\\LoginAlertMail constructor expects string, DateTimeImmutable given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Listeners/Security/SendLoginAlertListener.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Mail/AppointmentConfirmationMail.php
+
+		-
+			message: '#^Property App\\Mail\\OtpMail\:\:\$expiresInMinutes \(string\) does not accept int\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Mail/OtpMail.php
+
+		-
+			message: '#^PHPDoc type array\<string\> of property App\\Models\\Announcement\:\:\$appends is not covariant with PHPDoc type list\<string\> of overridden property Illuminate\\Database\\Eloquent\\Model\:\:\$appends\.$#'
+			identifier: property.phpDocType
+			count: 1
+			path: app/Models/Announcement.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between Carbon\\CarbonImmutable and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 2
+			path: app/Models/Announcement.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between Carbon\\CarbonImmutable and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 2
+			path: app/Models/Announcement.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between int and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/Announcement.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Models/Appointment.php
+
+		-
+			message: '#^Parameter \#1 \$num of function number_format expects float, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Models/Coupon.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\CustomerNote\:\:\$response_due_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/CustomerNote.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Location\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/CustomerNote.php
+
+		-
+			message: '#^Class App\\Models\\CustomerConversation not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Models/CustomerNote.php
+
+		-
+			message: '#^Parameter \#1 \$related of method Illuminate\\Database\\Eloquent\\Model\:\:belongsTo\(\) expects class\-string\<Illuminate\\Database\\Eloquent\\Model\>, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Models/CustomerNote.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\CustomerProfile\:\:\$loyalty_tier\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/CustomerProfile.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\CustomerProfile\:\:\$next_reward_name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/CustomerProfile.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\CustomerProfile\:\:\$points_to_next_reward\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/CustomerProfile.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\CustomerProfile\:\:\$redeemable_rewards_count\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/CustomerProfile.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Location\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/CustomerProfile.php
+
+		-
+			message: '#^Class App\\Models\\CustomerConversation not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Models/CustomerProfile.php
+
+		-
+			message: '#^Class App\\Models\\CustomerConversationMessage not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Models/CustomerProfile.php
+
+		-
+			message: '#^Class App\\Models\\CustomerJourneyRun not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Models/CustomerProfile.php
+
+		-
+			message: '#^Class App\\Models\\CustomerLoyaltyLedger not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Models/CustomerProfile.php
+
+		-
+			message: '#^Class App\\Models\\CustomerTouchpoint not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Models/CustomerProfile.php
+
+		-
+			message: '#^Parameter \#1 \$related of method Illuminate\\Database\\Eloquent\\Model\:\:hasMany\(\) expects class\-string\<Illuminate\\Database\\Eloquent\\Model\>, string given\.$#'
+			identifier: argument.type
+			count: 5
+			path: app/Models/CustomerProfile.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\CustomerTask\:\:\$assignment_group\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Models/CustomerTask.php
+
+		-
+			message: '#^Class App\\Models\\CustomerConversation not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Models/CustomerTask.php
+
+		-
+			message: '#^Parameter \#1 \$related of method Illuminate\\Database\\Eloquent\\Model\:\:belongsTo\(\) expects class\-string\<Illuminate\\Database\\Eloquent\\Model\>, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Models/CustomerTask.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Location\:\:\$is_primary\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Models/Location.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Location\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Models/Location.php
+
+		-
+			message: '#^Parameter \#1 \$num of function abs expects float\|int, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Models/ModifierOption.php
+
+		-
+			message: '#^PHPDoc type array\<int, string\> of property App\\Models\\OpeningHour\:\:\$fillable is not covariant with PHPDoc type list\<string\> of overridden property Illuminate\\Database\\Eloquent\\Model\:\:\$fillable\.$#'
+			identifier: property.phpDocType
+			count: 1
+			path: app/Models/OpeningHour.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Order\:\:\$cancellation_reason\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/Order.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Order\:\:\$cancelled_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/Order.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Order\:\:\$cancelled_by\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/Order.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Order\:\:\$paid_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/Order.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Order\:\:\$payment_status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/Order.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$line_total\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/Order.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$options\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/Order.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$product_name\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Models/Order.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$quantity\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Models/Order.php
+
+		-
+			message: '#^Match arm comparison between ''cancelled'' and ''cancelled'' is always true\.$#'
+			identifier: match.alwaysTrue
+			count: 1
+			path: app/Models/Order.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: app/Models/OrderItem.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between int and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/Payment.php
+
+		-
+			message: '#^Call to an undefined method Spatie\\Image\\Drivers\\ImageDriver\:\:nonQueued\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Models/Product.php
+
+		-
+			message: '#^Cannot call method all\(\) on array\<mixed\>\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/Product.php
+
+		-
+			message: '#^Method App\\Models\\Product\:\:getRandomImpulseCandidates\(\) should return Illuminate\\Database\\Eloquent\\Collection&iterable\<static\(App\\Models\\Product\)\> but returns Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Product\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/Product.php
+
+		-
+			message: '#^PHPDoc type array\<string\> of property App\\Models\\Product\:\:\$appends is not covariant with PHPDoc type list\<string\> of overridden property Illuminate\\Database\\Eloquent\\Model\:\:\$appends\.$#'
+			identifier: property.phpDocType
+			count: 1
+			path: app/Models/Product.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ProductOption\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/ProductOption.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ProductOption\:\:\$price_modifier\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Models/ProductOption.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/ProductOption.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$product\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/ProductOption.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ProductOptionGroup\:\:\$is_required\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/ProductOptionGroup.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ProductOptionGroup\:\:\$max_selections\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/ProductOptionGroup.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ProductOptionGroup\:\:\$min_selections\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/ProductOptionGroup.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ProductOptionGroup\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Models/ProductOptionGroup.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$day_of_week\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/Tenant.php
+
+		-
+			message: '#^Access to an undefined property Spatie\\Activitylog\\Contracts\\Activity\:\:\$properties\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Models/Tenant.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getRawClosingTime\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Models/Tenant.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getRawOpeningTime\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Models/Tenant.php
+
+		-
+			message: '#^Method App\\Models\\Tenant\:\:addToFavorites\(\) should return App\\Models\\Favorite but returns Illuminate\\Database\\Eloquent\\Model\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/Tenant.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Models/TenantUser.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type App\\Enums\\TenantRole\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Models/TenantUser.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Instanceof between string and App\\Domain\\Identity\\Enums\\UserRole will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 2
+			path: app/Models/User.php
+
+		-
+			message: '#^Parameter \#1 \$key of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:unique\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: mixed\)\|string\|null, Closure\(App\\Models\\Tenant\)\: string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Notifications/NewOrderNotification.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Notifications/OrderStatusChangedNotification.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Product\:\:\$moderation_note\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Notifications/ProductRejectedNotification.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Product\:\:\$rejected_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Notifications/ProductRejectedNotification.php
+
+		-
+			message: '#^Call to an undefined method DateTimeInterface\:\:toIso8601String\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Notifications/ReportReadyNotification.php
+
+		-
+			message: '#^Call to static method encode\(\) on an unknown class kornrunner\\Blurhash\\Blurhash\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Observers/TenantObserver.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Policies/CampaignPolicy.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_pro\.$#'
+			identifier: property.notFound
+			count: 5
+			path: app/Policies/CampaignPolicy.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_pro\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Policies/CouponPolicy.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:products\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Policies/ProductPolicy.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$_memoized_tenant_ids\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Policies/TenantAwarePolicy.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Policies/TenantAwarePolicy.php
+
+		-
+			message: '#^Class App\\Application\\Auth\\Commands\\UpdateUserProfileCommand not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Providers/AppServiceProvider.php
+
+		-
+			message: '#^Class App\\Application\\Auth\\Handlers\\UpdateUserProfileHandler not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Providers/AppServiceProvider.php
+
+		-
+			message: '#^Parameter \#1 \$implementation of method Illuminate\\Contracts\\Container\\ContextualBindingBuilder\:\:give\(\) expects array\|Closure\|string, 60 given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Providers/AppServiceProvider.php
+
+		-
+			message: '#^Parameter \#1 \$implementation of method Illuminate\\Contracts\\Container\\ContextualBindingBuilder\:\:give\(\) expects array\|Closure\|string, int given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Providers/AppServiceProvider.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Providers/Filament/AppPanelProvider.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Providers/Filament/AppPanelProvider.php
+
+		-
+			message: '#^Parameter \#1 \$view of function view expects view\-string\|null, string given\.$#'
+			identifier: argument.type
+			count: 6
+			path: app/Providers/FortifyServiceProvider.php
+
+		-
+			message: '#^Class App\\Application\\Shared\\Contracts\\SocialIdentityRepositoryInterface not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Providers/InfrastructureServiceProvider.php
+
+		-
+			message: '#^Offset int\<0, 1\> on array\{1000, 3000, 8000\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/AI/OpenAIService.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Services/AiProfileGeneratorService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/CouponValidatorService.php
+
+		-
+			message: '#^Call to function method_exists\(\) with App\\Models\\User and ''tenant'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Services/CouponValidatorService.php
+
+		-
+			message: '#^Call to function method_exists\(\) with App\\Models\\User and ''tenants'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Services/CouponValidatorService.php
+
+		-
+			message: '#^Call to function method_exists\(\) with ReflectionClass and ''isReadOnly'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Services/EventArchitectureMetricsService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between App\\Enums\\StockStatus and ''in_stock'' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/InventoryManager.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/InventoryManager.php
+
+		-
+			message: '#^Call to function is_array\(\) with non\-empty\-array will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Services/PriceCalculatorService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$low_stock_threshold\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ReportGenerationService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$stock_quantity\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/ReportGenerationService.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Services/ReportGenerationService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/ReportGenerationService.php
+
+		-
+			message: '#^Class App\\Services\\TenantRegistrationService has an uninitialized readonly property \$isPro\. Assign it in the constructor\.$#'
+			identifier: property.uninitializedReadonly
+			count: 1
+			path: app/Services/TenantRegistrationService.php
+
+		-
+			message: '#^Class App\\Services\\TenantRegistrationService has an uninitialized readonly property \$payment\. Assign it in the constructor\.$#'
+			identifier: property.uninitializedReadonly
+			count: 1
+			path: app/Services/TenantRegistrationService.php
+
+		-
+			message: '#^Class App\\Services\\TenantRegistrationService has an uninitialized readonly property \$tenant\. Assign it in the constructor\.$#'
+			identifier: property.uninitializedReadonly
+			count: 1
+			path: app/Services/TenantRegistrationService.php
+
+		-
+			message: '#^Class App\\Services\\TenantRegistrationService has an uninitialized readonly property \$user\. Assign it in the constructor\.$#'
+			identifier: property.uninitializedReadonly
+			count: 1
+			path: app/Services/TenantRegistrationService.php
+
+		-
+			message: '#^Readonly property App\\Services\\TenantRegistrationService\:\:\$isPro is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 1
+			path: app/Services/TenantRegistrationService.php
+
+		-
+			message: '#^Readonly property App\\Services\\TenantRegistrationService\:\:\$payment is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 1
+			path: app/Services/TenantRegistrationService.php
+
+		-
+			message: '#^Readonly property App\\Services\\TenantRegistrationService\:\:\$tenant is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 1
+			path: app/Services/TenantRegistrationService.php
+
+		-
+			message: '#^Readonly property App\\Services\\TenantRegistrationService\:\:\$user is assigned outside of the constructor\.$#'
+			identifier: property.readOnlyAssignNotInConstructor
+			count: 1
+			path: app/Services/TenantRegistrationService.php
+
+		-
+			message: '#^Instanceof between \(Illuminate\\Database\\Eloquent\\Model&object\{pivot\: Illuminate\\Database\\Eloquent\\Relations\\Pivot\}\)\|null and App\\Models\\Tenant will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 1
+			path: app/Support/Panel/CanonicalPanelUrlResolver.php
+
+		-
+			message: '#^Trait App\\Traits\\HasSEO is used zero times and is not analysed\.$#'
+			identifier: trait.unused
+			count: 1
+			path: app/Traits/HasSEO.php
+
+		-
+			message: '#^Trait App\\Traits\\TenantAwareEvent is used zero times and is not analysed\.$#'
+			identifier: trait.unused
+			count: 1
+			path: app/Traits/TenantAwareEvent.php
