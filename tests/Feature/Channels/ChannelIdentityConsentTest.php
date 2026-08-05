@@ -10,9 +10,11 @@ use App\Application\Channels\ChannelConsentService;
 use App\Application\Channels\ChannelContext;
 use App\Application\Channels\ChannelIdentityResolver;
 use App\Application\Channels\ChannelInboundMessage;
+use App\Application\Channels\WebhookAuthenticityEnvelope;
 use App\Infrastructure\Channels\Sms\FailClosedSmsAdapter;
 use App\Models\Tenant;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\GlobalMarketFixture;
@@ -21,6 +23,18 @@ use Tests\TestCase;
 final class ChannelIdentityConsentTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-08-03T15:00:00Z', 'UTC'));
+    }
+
+    protected function tearDown(): void
+    {
+        CarbonImmutable::setTestNow();
+        parent::tearDown();
+    }
 
     public function test_email_and_phone_identities_are_normalized_per_tenant_and_do_not_leak(): void
     {
@@ -123,7 +137,7 @@ final class ChannelIdentityConsentTest extends TestCase
         $adapter = new FailClosedSmsAdapter(credentialsConfigured: true, webhookSecret: 'sms-webhook-secret');
         $payload = json_encode(['event' => 'message.received', 'id' => 'sms-in-001'], JSON_THROW_ON_ERROR);
 
-        $normalized = $adapter->receive($context, new ChannelInboundMessage(
+        $normalized = $adapter->receive($context, self::signedMessage(new ChannelInboundMessage(
             tenantId: (string) $tenant->id,
             channel: 'sms',
             connectionKey: 'sms-primary',
@@ -135,10 +149,9 @@ final class ChannelIdentityConsentTest extends TestCase
             consentStatus: 'granted',
             webhookEventId: 'sms-in-001',
             webhookPayload: $payload,
-            webhookSignature: hash_hmac('sha256', $payload, 'sms-webhook-secret'),
-            webhookTimestamp: '2026-08-02T15:03:00Z',
+            webhookTimestamp: '2026-08-03T15:00:00Z',
             webhookReplayKey: 'sms-replay-001',
-        ));
+        ), 'sms-webhook-secret'));
 
         $identity = (new ChannelIdentityResolver)->resolve($context, $normalized);
         $consent = (new ChannelConsentService)->record($context, $identity, $normalized, 'messaging');
@@ -201,5 +214,26 @@ final class ChannelIdentityConsentTest extends TestCase
         DB::table('market_pack_versions')
             ->where('id', $versionId)
             ->update(['capabilities' => json_encode($capabilities, JSON_THROW_ON_ERROR)]);
+    }
+
+    private static function signedMessage(ChannelInboundMessage $message, string $secret): ChannelInboundMessage
+    {
+        return new ChannelInboundMessage(
+            tenantId: $message->tenantId,
+            channel: $message->channel,
+            connectionKey: $message->connectionKey,
+            externalMessageId: $message->externalMessageId,
+            externalThreadReference: $message->externalThreadReference,
+            identityType: $message->identityType,
+            identityValue: $message->identityValue,
+            content: $message->content,
+            attachments: $message->attachments,
+            consentStatus: $message->consentStatus,
+            webhookEventId: $message->webhookEventId,
+            webhookPayload: $message->webhookPayload,
+            webhookSignature: hash_hmac('sha256', WebhookAuthenticityEnvelope::fromInbound($message)->canonicalBytes, $secret),
+            webhookTimestamp: $message->webhookTimestamp,
+            webhookReplayKey: $message->webhookReplayKey,
+        );
     }
 }

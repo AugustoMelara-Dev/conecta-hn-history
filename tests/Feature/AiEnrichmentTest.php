@@ -208,7 +208,7 @@ test('service handles flagged content response', function () {
 test('job can be dispatched to queue', function () {
     Queue::fake();
 
-    $tenantId = 123;
+    $tenantId = '019f8c00-0000-7000-8000-000000000123';
     $command = new EnhanceTenantProfileCommand($tenantId);
 
     EnhanceTenantProfileJob::dispatch($command);
@@ -219,12 +219,13 @@ test('job can be dispatched to queue', function () {
 });
 
 test('job has correct queue configuration', function () {
-    $job = new EnhanceTenantProfileJob(new EnhanceTenantProfileCommand(1));
+    $tenantId = '019f8c00-0000-7000-8000-000000000001';
+    $job = new EnhanceTenantProfileJob(new EnhanceTenantProfileCommand($tenantId));
 
     expect($job->tries)->toBe(3);
     expect($job->uniqueFor)->toBe(3600);
     expect($job->timeout)->toBe(180);
-    expect($job->uniqueId())->toBe('enhance_1');
+    expect($job->uniqueId())->toBe('enhance_'.$tenantId);
 });
 
 test('job handle signature is aligned with handler contract', function () {

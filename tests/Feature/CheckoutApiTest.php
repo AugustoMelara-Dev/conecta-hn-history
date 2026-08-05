@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Domain\Shared\Services\TenantContext;
+use App\Models\City;
 use App\Models\Coupon;
 use App\Models\Tenant;
 use App\Models\User;
@@ -37,15 +38,18 @@ class CheckoutApiTest extends TestCase
     {
         parent::setUp();
 
+        $city = City::factory()->create();
+
         // Create tenant for tests
         $this->tenant = Tenant::factory()->create([
             'name' => 'API Test Business',
             'slug' => 'api-test',
+            'city_id' => $city->getKey(),
         ]);
 
         // Bind tenant to container
         app()->instance('currentTenant', $this->tenant);
-        app(TenantContext::class)->setTenant($this->tenant->id);
+        app(TenantContext::class)->setTenant((string) $this->tenant->id);
 
         $this->apiEndpoint = '/api/v1/checkout/validate-coupon';
     }

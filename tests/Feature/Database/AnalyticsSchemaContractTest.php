@@ -4,44 +4,19 @@ declare(strict_types=1);
 
 use App\Models\TenantVisit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Tests\Support\DatabaseSchemaInspector;
 
 uses(RefreshDatabase::class);
 
 function analyticsColumnNames(string $table): array
 {
-    if (DB::connection()->getDriverName() === 'sqlite') {
-        return collect(DB::select("PRAGMA table_info('{$table}')"))
-            ->map(fn (object $column): string => (string) $column->name)
-            ->all();
-    }
-
-    return collect(DB::select(
-        "select column_name from information_schema.columns where table_schema = database() and table_name = ? order by ordinal_position",
-        [$table]
-    ))->map(fn (object $column): string => (string) $column->column_name)->all();
+    return DatabaseSchemaInspector::columnNames($table);
 }
 
 function analyticsIndexColumns(string $table, string $index): array
 {
-    if (DB::connection()->getDriverName() === 'sqlite') {
-        $matching = collect(DB::select("PRAGMA index_list('{$table}')"))
-            ->first(fn (object $row): bool => (string) $row->name === $index);
-
-        if ($matching === null) {
-            return [];
-        }
-
-        return collect(DB::select("PRAGMA index_info('{$index}')"))
-            ->map(fn (object $column): string => (string) $column->name)
-            ->all();
-    }
-
-    return collect(DB::select(
-        "select column_name from information_schema.statistics where table_schema = database() and table_name = ? and index_name = ? order by seq_in_index",
-        [$table, $index]
-    ))->map(fn (object $column): string => (string) $column->column_name)->all();
+    return DatabaseSchemaInspector::indexColumns($table, $index);
 }
 
 it('keeps interactions aligned with the analytics model contract', function (): void {
@@ -56,6 +31,9 @@ it('keeps interactions aligned with the analytics model contract', function (): 
         'session_id',
         'product_id',
         'type',
+        'signal_class',
+        'source_authority',
+        'is_verified',
         'metadata',
         'ip_address',
         'user_agent',
@@ -71,6 +49,8 @@ it('keeps interactions aligned with the analytics model contract', function (): 
 
     expect(analyticsIndexColumns('interactions', 'interactions_tenant_session_type_created_idx'))
         ->toBe(['tenant_id', 'session_id', 'type', 'created_at']);
+    expect(analyticsIndexColumns('interactions', 'interactions_tenant_trust_class_created_idx'))
+        ->toBe(['tenant_id', 'is_verified', 'signal_class', 'created_at']);
 });
 
 it('keeps tenant visits as hashed first party session fingerprints', function (): void {
@@ -117,4 +97,26 @@ it('keeps tenant analytics as daily tenant aggregates', function (): void {
 
     expect(analyticsIndexColumns('tenant_analytics', 'tenant_analytics_tenant_id_date_unique'))
         ->toBe(['tenant_id', 'date']);
+});
+
+it('keeps verified commercial outcomes provenance and idempotency contract', function (): void {
+    expect(Schema::hasTable('verified_commercial_outcomes'))->toBeTrue();
+
+    expect(analyticsColumnNames('verified_commercial_outcomes'))->toContain(
+        'tenant_id',
+        'aggregate_type',
+        'aggregate_id',
+        'outcome',
+        'projection_key',
+        'amount_minor',
+        'currency',
+        'source_occurred_at',
+        'source_version',
+        'metadata'
+    );
+
+    expect(analyticsIndexColumns(
+        'verified_commercial_outcomes',
+        'verified_outcomes_tenant_type_occurred_idx',
+    ))->toBe(['tenant_id', 'outcome', 'source_occurred_at']);
 });

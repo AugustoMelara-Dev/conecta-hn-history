@@ -3,84 +3,27 @@
 declare(strict_types=1);
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
+use Tests\Support\DatabaseSchemaInspector;
 
 uses(RefreshDatabase::class);
 
 it('requires tenant ownership for orders at database level', function (): void {
-    $driver = DB::connection()->getDriverName();
-
-    if ($driver === 'sqlite') {
-        $columns = DB::select("PRAGMA table_info('orders')");
-        $tenantColumn = collect($columns)->firstWhere('name', 'tenant_id');
-
-        expect($tenantColumn)->not->toBeNull();
-        expect((int) $tenantColumn->notnull)->toBe(1);
-
-        return;
-    }
-
-    $column = collect(DB::select(
-        "select is_nullable from information_schema.columns where table_schema = database() and table_name = 'orders' and column_name = 'tenant_id'"
-    ))->first();
-
-    expect($column)->not->toBeNull();
-    expect(strtoupper((string) $column->is_nullable))->toBe('NO');
+    expect(DatabaseSchemaInspector::columnIsNullable('orders', 'tenant_id'))->toBeFalse();
 });
 
 it('keeps ai usage tenant ownership nullable by explicit domain decision', function (): void {
-    $driver = DB::connection()->getDriverName();
-
-    if ($driver === 'sqlite') {
-        $columns = DB::select("PRAGMA table_info('ai_usage_logs')");
-        $tenantColumn = collect($columns)->firstWhere('name', 'tenant_id');
-
-        expect($tenantColumn)->not->toBeNull();
-        expect((int) $tenantColumn->notnull)->toBe(0);
-
-        return;
-    }
-
-    $column = collect(DB::select(
-        "select is_nullable from information_schema.columns where table_schema = database() and table_name = 'ai_usage_logs' and column_name = 'tenant_id'"
-    ))->first();
-
-    expect($column)->not->toBeNull();
-    expect(strtoupper((string) $column->is_nullable))->toBe('YES');
+    expect(DatabaseSchemaInspector::columnIsNullable('ai_usage_logs', 'tenant_id'))->toBeTrue();
 });
 
 it('allows nullable tenant ownership only for documented cross-context tables', function (): void {
     $allowedNullableTenantTables = [
+        'ai_executions',
         'ai_usage_logs',
         'stored_events',
         'users',
     ];
 
-    $driver = DB::connection()->getDriverName();
-    $nullableTenantTables = [];
-
-    if ($driver === 'sqlite') {
-        $tables = DB::select("select name from sqlite_master where type = 'table'");
-
-        foreach ($tables as $table) {
-            $tableName = (string) $table->name;
-            $escapedTableName = str_replace("'", "''", $tableName);
-            $columns = DB::select("PRAGMA table_info('{$escapedTableName}')");
-            $tenantColumn = collect($columns)->firstWhere('name', 'tenant_id');
-
-            if ($tenantColumn !== null && (int) $tenantColumn->notnull === 0) {
-                $nullableTenantTables[] = $tableName;
-            }
-        }
-    } else {
-        $columns = DB::select(
-            "select table_name from information_schema.columns where table_schema = database() and column_name = 'tenant_id' and is_nullable = 'YES'"
-        );
-
-        $nullableTenantTables = collect($columns)
-            ->map(fn (object $column): string => (string) $column->table_name)
-            ->all();
-    }
+    $nullableTenantTables = DatabaseSchemaInspector::tablesWithColumn('tenant_id', true);
 
     sort($nullableTenantTables);
     sort($allowedNullableTenantTables);
@@ -90,9 +33,21 @@ it('allows nullable tenant ownership only for documented cross-context tables', 
 
 it('documents the current tenant owned table inventory', function (): void {
     $expectedTenantTables = [
+        'ai_credit_grants',
+        'ai_credit_ledger_entries',
+        'ai_credit_reservations',
+        'ai_credit_usage_alerts',
+        'ai_executions',
+        'ai_knowledge_chunks',
+        'ai_tool_confirmations',
         'ai_usage_logs',
         'appointments',
+        'availability_exceptions',
+        'availability_rules',
+        'availability_write_operations',
         'campaigns',
+        'catalog_import_batches',
+        'catalog_import_items',
         'coupons',
         'crm_deals',
         'crm_pipelines',
@@ -101,8 +56,11 @@ it('documents the current tenant owned table inventory', function (): void {
         'customer_profiles',
         'customer_tasks',
         'follows',
+        'impersonation_grants',
         'interactions',
+        'inventory_movements',
         'leads',
+        'locations',
         'loyalty_ledger',
         'loyalty_programs',
         'loyalty_rewards',
@@ -111,9 +69,14 @@ it('documents the current tenant owned table inventory', function (): void {
         'opening_hours',
         'orders',
         'payments',
+        'product_media_cleanup_tasks',
+        'product_media_operations',
         'processed_commands',
         'products',
+        'quotes',
         'reviews',
+        'service_locations',
+        'service_provider_locations',
         'services',
         'service_providers',
         'stored_events',
@@ -121,38 +84,19 @@ it('documents the current tenant owned table inventory', function (): void {
         'subscription_payments',
         'tenant_analytics',
         'tenant_billing_references',
+        'tenant_favorites',
+        'tenant_invitations',
+        'tenant_markets',
         'tenant_memberships',
         'tenant_onboarding_milestone_events',
         'tenant_onboarding_states',
         'tenant_users',
         'tenant_visits',
         'users',
+        'verified_commercial_outcomes',
     ];
 
-    $driver = DB::connection()->getDriverName();
-
-    if ($driver === 'sqlite') {
-        $tables = DB::select("select name from sqlite_master where type = 'table'");
-
-        $actualTenantTables = collect($tables)
-            ->map(fn (object $table): string => (string) $table->name)
-            ->filter(function (string $tableName): bool {
-                $escapedTableName = str_replace("'", "''", $tableName);
-                $columns = DB::select("PRAGMA table_info('{$escapedTableName}')");
-
-                return collect($columns)->contains(fn (object $column): bool => (string) $column->name === 'tenant_id');
-            })
-            ->values()
-            ->all();
-    } else {
-        $columns = DB::select(
-            "select table_name from information_schema.columns where table_schema = database() and column_name = 'tenant_id'"
-        );
-
-        $actualTenantTables = collect($columns)
-            ->map(fn (object $column): string => (string) $column->table_name)
-            ->all();
-    }
+    $actualTenantTables = DatabaseSchemaInspector::tablesWithColumn('tenant_id');
 
     sort($actualTenantTables);
     sort($expectedTenantTables);

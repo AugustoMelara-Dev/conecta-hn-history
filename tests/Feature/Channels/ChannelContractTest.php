@@ -11,19 +11,36 @@ use App\Application\Channels\ChannelDeliveryService;
 use App\Application\Channels\ChannelIdentityResolver;
 use App\Application\Channels\ChannelInboundMessage;
 use App\Application\Channels\ChannelOutboundMessage;
+use App\Application\Channels\NormalizedInboundMessage;
+use App\Application\Channels\WebhookAuthenticityEnvelope;
 use App\Infrastructure\Channels\Email\FakeEmailAdapter;
+use App\Infrastructure\Channels\Support\ChannelInboundNormalizer;
 use App\Infrastructure\Channels\WebChat\FakeWebChatAdapter;
 use App\Infrastructure\Channels\Widget\FakeWidgetAdapter;
 use App\Models\Tenant;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 use Tests\Support\GlobalMarketFixture;
 use Tests\TestCase;
 
 final class ChannelContractTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-08-03T15:00:00Z', 'UTC'));
+    }
+
+    protected function tearDown(): void
+    {
+        CarbonImmutable::setTestNow();
+        parent::tearDown();
+    }
 
     public function test_web_chat_fake_normalizes_anonymous_identity_and_classifies_attachments(): void
     {
@@ -46,15 +63,45 @@ final class ChannelContractTest extends TestCase
             identityValue: ' Session-ABC ',
             content: 'Need availability for tomorrow.',
             attachments: [
-                ['name' => 'photo.jpg', 'mime_type' => 'image/jpeg'],
-                ['name' => 'menu.pdf', 'mime_type' => 'application/pdf'],
+                [
+                    'name' => 'photo.jpg',
+                    'mime_type' => 'image/jpeg',
+                    'size_bytes' => 120,
+                    'url' => 'https://provider.invalid/photo.jpg',
+                    'token' => 'opaque-token',
+                ],
+                [
+                    'name' => 'menu.pdf',
+                    'mime_type' => 'application/pdf',
+                    'size_bytes' => 240,
+                    'body' => 'raw-provider-body',
+                ],
             ],
             consentStatus: 'granted',
         ));
 
         self::assertSame('web_chat', $normalized->channel);
         self::assertSame('session-abc', $normalized->normalizedIdentity);
-        self::assertSame(['image', 'document'], array_column($normalized->attachments, 'classification'));
+        self::assertSame([
+            [
+                'name' => 'photo.jpg',
+                'mime_type' => 'image/jpeg',
+                'size_bytes' => 120,
+                'classification' => 'image',
+                'security_status' => 'descriptor_only',
+                'content_verified' => false,
+                'download_allowed' => false,
+            ],
+            [
+                'name' => 'menu.pdf',
+                'mime_type' => 'application/pdf',
+                'size_bytes' => 240,
+                'classification' => 'document',
+                'security_status' => 'descriptor_only',
+                'content_verified' => false,
+                'download_allowed' => false,
+            ],
+        ], $normalized->attachments);
         self::assertSame('delivered', $normalized->deliveryState);
 
         $identity = (new ChannelIdentityResolver)->resolve($context, $normalized);
@@ -118,9 +165,8 @@ final class ChannelContractTest extends TestCase
         $connectionService->connect($context);
         $adapter = new FakeEmailAdapter('email-webhook-secret');
         $payload = json_encode(['message' => 'Reply by email', 'event' => 'mail-evt-001'], JSON_THROW_ON_ERROR);
-        $signature = hash_hmac('sha256', $payload, 'email-webhook-secret');
 
-        $normalized = $adapter->receive($context, new ChannelInboundMessage(
+        $normalized = $adapter->receive($context, self::signedMessage(new ChannelInboundMessage(
             tenantId: (string) $tenant->id,
             channel: 'email',
             connectionKey: 'email-local',
@@ -131,11 +177,10 @@ final class ChannelContractTest extends TestCase
             content: 'Can you send the invoice?',
             webhookEventId: 'mail-evt-001',
             webhookPayload: $payload,
-            webhookSignature: $signature,
-            webhookTimestamp: '2026-08-02T15:02:00Z',
+            webhookTimestamp: '2026-08-03T15:00:00Z',
             webhookReplayKey: 'mail-replay-001',
             consentStatus: 'granted',
-        ));
+        ), 'email-webhook-secret'));
 
         self::assertSame('person+sales@example.test', $normalized->normalizedIdentity);
         self::assertTrue($connectionService->claimWebhook($context, $normalized));
@@ -169,6 +214,83 @@ final class ChannelContractTest extends TestCase
         ]);
     }
 
+    public function test_signed_normalization_protects_envelope_metadata_and_claim_persistence(): void
+    {
+        $actor = User::factory()->create();
+        $tenant = Tenant::factory()->forUser($actor)->create();
+        GlobalMarketFixture::assignCanada($tenant);
+        $context = $this->context($tenant, $actor, 'email', 'email-local');
+        $payload = "{\"raw\":true}\n";
+        $unsigned = new ChannelInboundMessage(
+            tenantId: (string) $tenant->id,
+            channel: 'email',
+            connectionKey: 'email-local',
+            externalMessageId: 'mail-in-protected',
+            externalThreadReference: 'thread@example.test',
+            identityType: 'email',
+            identityValue: 'buyer@example.test',
+            content: 'protected',
+            webhookEventId: 'mail-event-protected',
+            webhookPayload: $payload,
+            webhookTimestamp: '2026-08-03T15:00:00Z',
+            webhookReplayKey: 'mail-replay-protected',
+        );
+        $signed = self::signedMessage($unsigned, 'email-webhook-secret');
+        $normalized = ChannelInboundNormalizer::normalize(
+            adapterKey: 'email.fake',
+            context: $context,
+            message: $signed,
+            attachments: [],
+            metadata: [
+                'custom' => 'preserved',
+                WebhookAuthenticityEnvelope::META_SIGNATURE_VERSION => 'forged-version',
+                WebhookAuthenticityEnvelope::META_PAYLOAD_HASH => str_repeat('b', 64),
+                WebhookAuthenticityEnvelope::META_CLAIM_HASH => str_repeat('c', 64),
+                WebhookAuthenticityEnvelope::META_REPLAY_PROOF_HASH => str_repeat('d', 64),
+            ],
+        );
+        $envelope = WebhookAuthenticityEnvelope::fromInbound($signed);
+
+        self::assertSame('preserved', $normalized->metadata['custom']);
+        self::assertSame(WebhookAuthenticityEnvelope::VERSION, $normalized->metadata[WebhookAuthenticityEnvelope::META_SIGNATURE_VERSION]);
+        self::assertSame($envelope->payloadHash, $normalized->metadata[WebhookAuthenticityEnvelope::META_PAYLOAD_HASH]);
+        self::assertSame($envelope->claimHash, $normalized->metadata[WebhookAuthenticityEnvelope::META_CLAIM_HASH]);
+        self::assertSame($envelope->replayProofHash, $normalized->metadata[WebhookAuthenticityEnvelope::META_REPLAY_PROOF_HASH]);
+
+        $connectionService = new ChannelConnectionService;
+        self::assertTrue($connectionService->claimWebhook($context, $normalized));
+        self::assertSame($envelope->claimHash, (string) DB::table('channel_webhook_claims')->value('payload_hash'));
+    }
+
+    public function test_partial_protected_metadata_cannot_downgrade_to_unsigned(): void
+    {
+        $normalized = new NormalizedInboundMessage(
+            adapterKey: 'email.fake',
+            tenantId: '00000000-0000-4000-8000-000000000001',
+            channel: 'email',
+            connectionKey: 'email-local',
+            externalMessageId: 'mail-partial',
+            externalThreadReference: null,
+            normalizedIdentity: 'buyer@example.test',
+            identityType: 'email',
+            content: 'partial',
+            attachments: [],
+            consentStatus: null,
+            deliveryState: 'delivered',
+            providerEventId: 'mail-partial-event',
+            costAmount: '0.00',
+            costCurrency: 'CAD',
+            marketCountryCode: 'CA',
+            locale: 'en-CA',
+            timezone: 'America/Toronto',
+            metadata: [WebhookAuthenticityEnvelope::META_CLAIM_HASH => str_repeat('a', 64)],
+        );
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Channel webhook authenticity metadata is invalid.');
+        WebhookAuthenticityEnvelope::authenticatedClaimHash($normalized);
+    }
+
     private function context(Tenant $tenant, User $actor, string $channel, string $connectionKey, array $connection = []): ChannelContext
     {
         return new ChannelContext(
@@ -185,6 +307,27 @@ final class ChannelContractTest extends TestCase
                 tenantId: (string) $tenant->id,
                 actorId: (string) $actor->id,
             ),
+        );
+    }
+
+    private static function signedMessage(ChannelInboundMessage $message, string $secret): ChannelInboundMessage
+    {
+        return new ChannelInboundMessage(
+            tenantId: $message->tenantId,
+            channel: $message->channel,
+            connectionKey: $message->connectionKey,
+            externalMessageId: $message->externalMessageId,
+            externalThreadReference: $message->externalThreadReference,
+            identityType: $message->identityType,
+            identityValue: $message->identityValue,
+            content: $message->content,
+            attachments: $message->attachments,
+            consentStatus: $message->consentStatus,
+            webhookEventId: $message->webhookEventId,
+            webhookPayload: $message->webhookPayload,
+            webhookSignature: hash_hmac('sha256', WebhookAuthenticityEnvelope::fromInbound($message)->canonicalBytes, $secret),
+            webhookTimestamp: $message->webhookTimestamp,
+            webhookReplayKey: $message->webhookReplayKey,
         );
     }
 }

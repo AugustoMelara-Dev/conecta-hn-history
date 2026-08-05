@@ -16,20 +16,21 @@ afterEach(function (): void {
 it('injects the active tenant when creating tenant-owned models', function (): void {
     $tenant = Tenant::factory()->create();
 
-    app(TenantContext::class)->setTenant($tenant->id);
+    app(TenantContext::class)->setTenant((string) $tenant->id);
 
     $pipeline = CrmPipeline::query()->create([
         'name' => 'Ventas',
         'key' => 'ventas',
     ]);
 
-expect((string) $pipeline->tenant_id)->toBe((string) $tenant->id);
+    expect((string) $pipeline->tenant_id)->toBe((string) $tenant->id);
 });
+
 it('blocks force-filled tenant hopping during creation', function (): void {
     $activeTenant = Tenant::factory()->create();
     $otherTenant = Tenant::factory()->create();
 
-    app(TenantContext::class)->setTenant($activeTenant->id);
+    app(TenantContext::class)->setTenant((string) $activeTenant->id);
 
     $pipeline = new CrmPipeline([
         'name' => 'Cross Tenant',

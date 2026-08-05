@@ -103,7 +103,10 @@ final class AppPanelAccessContractTest extends TestCase
 
     public function test_admin_panel_http_is_allowlisted_superadmin_only(): void
     {
-        config(['auth.super_admins' => ['ops@example.test']]);
+        config([
+            'auth.super_admins' => ['ops@example.test'],
+            'security.admin_mfa_required' => false,
+        ]);
 
         $normal = User::factory()->create();
         $unallowlistedSuperAdmin = User::factory()->superAdmin()->create([

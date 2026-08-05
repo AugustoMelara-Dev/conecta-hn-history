@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Application\Ai\PrivateAiAccessGate;
+use App\Domain\Shared\Services\TenantContext;
 use App\Http\Controllers\Api\V1\AiController;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -32,7 +33,9 @@ test('generate denies tenants outside the private AI gate', function (): void {
     ]);
     $request->setUserResolver(fn () => $user);
 
-    $response = (new AiController($privateAiAccess))->generate($request);
+    $tenantContext = new TenantContext;
+    $tenantContext->setTenant((string) $user->tenant_id);
+    $response = (new AiController($privateAiAccess, $tenantContext))->generate($request);
 
     expect($response->getStatusCode())->toBe(403);
     Queue::assertNothingPushed();

@@ -2,26 +2,35 @@
 
 declare(strict_types=1);
 
-use App\Models\Tenant;
+use App\Application\Discovery\PublishedCommercialProjectionService;
+use App\Http\Resources\TenantCardResource;
 use App\Models\Product;
+use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
+use Tests\Support\GlobalMarketFixture;
+
 use function Pest\Laravel\get;
 use function Pest\Laravel\postJson;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     config(['app.domain' => 'localhost']);
 });
 
 describe('Canonical public routing', function () {
-    it('renders the SaaS landing at root', function () {
+    it('renders the SaaS landing at root with the canonical configurable pro price', function () {
+        config()->set('subscriptions.plans.pro.price', 63900);
+
         $response = get('/');
 
         $response->assertStatus(200);
-        $response->assertInertia(fn ($page) => $page->component('Welcome'));
+        $response->assertInertia(fn ($page) => $page
+            ->component('Welcome')
+            ->where('proPlanPrice', 639));
     });
 
     it('renders the canonical buyer directory at /directorio', function () {
@@ -101,7 +110,7 @@ describe('Public directory privacy', function () {
             'subscription_status' => 'active',
         ]);
 
-        $payload = (new \App\Http\Resources\TenantCardResource($tenant))->resolve(Request::create('/directorio'));
+        $payload = (new TenantCardResource($tenant))->resolve(Request::create('/directorio'));
 
         expect(array_key_exists('is_pro', $payload))->toBeFalse();
         expect(array_key_exists('plan_type', $payload))->toBeFalse();
@@ -129,17 +138,25 @@ describe('Public directory privacy', function () {
     });
 
     it('answers directory guide questions with public catalog data only', function () {
+        $platform = Tenant::factory()->create();
+        GlobalMarketFixture::assignCanada($platform);
+        config()->set('ai.public.billing_tenant_id', (string) $platform->id);
+
         $user = User::factory()->create();
         $tenant = Tenant::factory()->create([
             'user_id' => $user->id,
             'name' => 'Mercado Norte',
             'slug' => 'mercado-norte',
             'is_active' => true,
+            'subscription_status' => 'active',
         ]);
+        GlobalMarketFixture::assignCanada($tenant);
 
         $productPayload = [
             'name' => 'Cafe molido premium',
             'price' => 120,
+            'price_minor' => 12000,
+            'currency' => 'CAD',
             'is_active' => true,
             'is_visible' => true,
         ];
@@ -149,15 +166,17 @@ describe('Public directory privacy', function () {
         }
 
         Product::factory()->forTenant($tenant)->create($productPayload);
+        app(PublishedCommercialProjectionService::class)->projectCurrent();
 
         postJson('/api/v1/directory/guide/chat', [
             'message' => 'que puedo comprar con 150 lempiras',
         ])
             ->assertOk()
             ->assertJsonPath('meta.privacy_scope', 'public_directory_only')
-            ->assertJsonPath('items.0.tenant.slug', 'mercado-norte')
+            ->assertJsonPath('items.0.business_name', 'Mercado Norte')
+            ->assertJsonPath('items.0.business_url', '/t/mercado-norte')
             ->assertJsonPath('items.0.url', '/t/mercado-norte')
-            ->assertJsonMissingPath('items.0.tenant.plan_type');
+            ->assertJsonMissingPath('items.0.tenant');
     });
 });
 

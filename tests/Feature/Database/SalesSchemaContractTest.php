@@ -3,44 +3,19 @@
 declare(strict_types=1);
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Tests\Support\DatabaseSchemaInspector;
 
 uses(RefreshDatabase::class);
 
 function salesColumnNames(string $table): array
 {
-    if (DB::connection()->getDriverName() === 'sqlite') {
-        return collect(DB::select("PRAGMA table_info('{$table}')"))
-            ->map(fn (object $column): string => (string) $column->name)
-            ->all();
-    }
-
-    return collect(DB::select(
-        "select column_name from information_schema.columns where table_schema = database() and table_name = ? order by ordinal_position",
-        [$table]
-    ))->map(fn (object $column): string => (string) $column->column_name)->all();
+    return DatabaseSchemaInspector::columnNames($table);
 }
 
 function salesIndexColumns(string $table, string $index): array
 {
-    if (DB::connection()->getDriverName() === 'sqlite') {
-        $indexes = collect(DB::select("PRAGMA index_list('{$table}')"));
-        $matching = $indexes->first(fn (object $row): bool => (string) $row->name === $index);
-
-        if ($matching === null) {
-            return [];
-        }
-
-        return collect(DB::select("PRAGMA index_info('{$index}')"))
-            ->map(fn (object $column): string => (string) $column->name)
-            ->all();
-    }
-
-    return collect(DB::select(
-        "select column_name from information_schema.statistics where table_schema = database() and table_name = ? and index_name = ? order by seq_in_index",
-        [$table, $index]
-    ))->map(fn (object $column): string => (string) $column->column_name)->all();
+    return DatabaseSchemaInspector::indexColumns($table, $index);
 }
 
 it('keeps orders as the tenant owned sales aggregate root', function (): void {
@@ -53,6 +28,9 @@ it('keeps orders as the tenant owned sales aggregate root', function (): void {
         'tenant_id',
         'order_number',
         'tracking_uuid',
+        'currency',
+        'refund_idempotency_key',
+        'refund_attempted_at',
         'customer_name',
         'customer_phone',
         'subtotal',

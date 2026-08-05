@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use App\Application\Ai\PrivateAiAccessGate;
-use App\Domain\Shared\Contracts\TenantContext;
+use App\Domain\Shared\Services\TenantContext;
 use App\Http\Controllers\Api\V1\AiOptimizationController;
 use App\Http\Requests\Api\OptimizeProfileRequest;
 use App\Jobs\GenerateBusinessProfileJob;
@@ -15,14 +15,16 @@ beforeEach(function (): void {
 });
 
 test('optimizeProfile dispatches provider work only after private AI gate allows it', function (): void {
-    $tenantContext = Mockery::mock(TenantContext::class);
-    $tenantContext->shouldReceive('getTenantId')->once()->andReturn(42);
+    $tenantId = '00000000-0000-4000-8000-000000000042';
+    $tenantContext = new TenantContext;
+    $tenantContext->setTenant($tenantId);
 
     $user = new User(['name' => 'Owner', 'email' => 'owner@example.test']);
-    $user->forceFill(['id' => 123]);
+    $userId = '00000000-0000-4000-8000-000000000123';
+    $user->forceFill(['id' => $userId]);
 
     $privateAiAccess = Mockery::mock(PrivateAiAccessGate::class);
-    $privateAiAccess->shouldReceive('allows')->once()->with($user, 42)->andReturnTrue();
+    $privateAiAccess->shouldReceive('allows')->once()->with($user, $tenantId)->andReturnTrue();
 
     $controller = new AiOptimizationController($tenantContext, $privateAiAccess);
 
@@ -46,10 +48,10 @@ test('optimizeProfile dispatches provider work only after private AI gate allows
     expect($data['status'])->toBe('processing');
     expect($data['message'])->toBe('Profile optimization has been queued.');
 
-    Queue::assertPushed(GenerateBusinessProfileJob::class, function (GenerateBusinessProfileJob $job): bool {
+    Queue::assertPushed(GenerateBusinessProfileJob::class, function (GenerateBusinessProfileJob $job) use ($tenantId, $userId): bool {
         return $job->businessName === 'Cafe Tegus'
-            && $job->tenantId === 42
-            && $job->userId === 123
+            && $job->tenantId === $tenantId
+            && $job->userId === $userId
             && $job->targetAudience === 'Millennials'
             && $job->tone === 'professional'
             && $job->keywords === ['cafe', 'honduras'];
@@ -57,13 +59,14 @@ test('optimizeProfile dispatches provider work only after private AI gate allows
 });
 
 test('optimizeProfile denies tenants outside the private AI gate', function (): void {
-    $tenantContext = Mockery::mock(TenantContext::class);
-    $tenantContext->shouldReceive('getTenantId')->once()->andReturn(42);
+    $tenantId = '00000000-0000-4000-8000-000000000042';
+    $tenantContext = new TenantContext;
+    $tenantContext->setTenant($tenantId);
 
     $user = new User(['name' => 'Owner', 'email' => 'owner@example.test']);
 
     $privateAiAccess = Mockery::mock(PrivateAiAccessGate::class);
-    $privateAiAccess->shouldReceive('allows')->once()->with($user, 42)->andReturnFalse();
+    $privateAiAccess->shouldReceive('allows')->once()->with($user, $tenantId)->andReturnFalse();
 
     $controller = new AiOptimizationController($tenantContext, $privateAiAccess);
 

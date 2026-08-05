@@ -3,11 +3,12 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
+
 use function Pest\Laravel\get;
 
 beforeEach(function (): void {
     config([
-        'app.name' => 'Conecta HN',
+        'app.name' => 'Dovra AI',
         'app.url' => 'https://conecta.hn',
     ]);
 });
@@ -25,8 +26,8 @@ it('renders canonical public SEO defaults without legacy brand copy', function (
         ->assertSee('<meta name="description" content="Encuentra comercios locales, servicios y restaurantes cerca de ti.">', false)
         ->assertSee('<meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">', false)
         ->assertSee('<link rel="canonical" href="https://conecta.hn/directorio">', false)
-        ->assertSee('<meta property="og:site_name" content="Conecta HN">', false)
-        ->assertDontSee('Vito Business OS', false);
+        ->assertSee('<meta property="og:site_name" content="Dovra AI">', false)
+        ->assertDontSee('Vito', false);
 });
 
 it('renders structured data as valid escaped JSON-LD', function (): void {
@@ -41,6 +42,7 @@ it('renders structured data as valid escaped JSON-LD', function (): void {
     Route::get('/__seo/jsonld', fn () => view('components.seo-meta', [
         'model' => $model,
         'canonical' => '/t/cafe-el-centro',
+        'marketCode' => 'HN',
     ]));
 
     $response = get('/__seo/jsonld')

@@ -7,6 +7,7 @@ namespace Tests\Feature\Tenant;
 use App\Domain\TenantGovernance\Services\TenantOnboardingProgressService;
 use App\Enums\UserRole;
 use App\Models\Product;
+use App\Models\Service;
 use App\Models\Tenant;
 use App\Models\TenantOnboardingState;
 use App\Models\User;
@@ -306,7 +307,7 @@ final class OnboardingProgressServiceTest extends TestCase
         self::assertSame('customer_follow', (string) $snapshot['nextAction']['key']);
     }
 
-    public function test_first_run_wizard_starts_advances_moves_and_dismisses_without_blocking_snapshot(): void
+    public function test_first_run_wizard_uses_authoritative_progress_and_allows_navigation_and_dismissal(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-05-04 08:00:00'));
 
@@ -338,8 +339,9 @@ final class OnboardingProgressServiceTest extends TestCase
 
         $advanced = $service->completeFirstRunStep($tenant->fresh(), $owner, $firstStepKey);
 
-        self::assertContains($firstStepKey, $advanced['completedSteps']);
-        self::assertNotSame($firstStepKey, (string) $advanced['currentStepKey']);
+        self::assertNotContains($firstStepKey, $advanced['completedSteps']);
+        self::assertSame($firstStepKey, (string) $advanced['currentStepKey']);
+        self::assertFalse((bool) $advanced['completed']);
 
         $service->moveFirstRunStep($tenant->fresh(), $owner, $firstStepKey);
         $movedState = TenantOnboardingState::query()
@@ -409,8 +411,217 @@ final class OnboardingProgressServiceTest extends TestCase
                 ->where('tenant_id', (string) $tenant->id)
                 ->where('user_id', (string) $owner->id)
                 ->where('event_type', 'first_run_abandoned')
-            ->count(),
+                ->count(),
         );
+    }
+
+    public function test_authoritative_recompute_invalidates_a_stale_legacy_completion(): void
+    {
+        $owner = User::factory()->create([
+            'role' => UserRole::TENANT_OWNER->value,
+        ]);
+        $tenant = Tenant::factory()->forUser($owner)->create([
+            'business_type' => 'retail',
+            'commercial_mode' => 'products',
+            'is_active' => false,
+        ]);
+
+        $this->setTenantContext($tenant);
+        $service = app(TenantOnboardingProgressService::class);
+        $wizard = $service->firstRunWizardFor($tenant, $owner);
+        $allStepKeys = array_column((array) $wizard['steps'], 'key');
+
+        $state = TenantOnboardingState::query()
+            ->where('tenant_id', (string) $tenant->getKey())
+            ->where('user_id', (string) $owner->getKey())
+            ->firstOrFail();
+        $state->forceFill([
+            'first_run_completed_steps' => $allStepKeys,
+            'first_run_completed_at' => now(),
+        ])->save();
+
+        $recomputed = $service->firstRunWizardFor($tenant->fresh(), $owner);
+
+        self::assertFalse((bool) $recomputed['completed']);
+        self::assertNull($recomputed['completedAt']);
+        self::assertNotEqualsCanonicalizing($allStepKeys, $recomputed['completedSteps']);
+        $this->assertDatabaseHas('tenant_onboarding_milestone_events', [
+            'tenant_id' => (string) $tenant->getKey(),
+            'user_id' => (string) $owner->getKey(),
+            'event_type' => 'first_run_regressed',
+        ]);
+    }
+
+    public function test_offer_readiness_requires_a_visible_product(): void
+    {
+        $owner = User::factory()->create([
+            'role' => UserRole::TENANT_OWNER->value,
+        ]);
+        $tenant = Tenant::factory()->forUser($owner)->create([
+            'business_type' => 'retail',
+            'commercial_mode' => 'products',
+        ]);
+        $product = Product::factory()->forTenant($tenant)->create([
+            'is_visible' => false,
+        ]);
+
+        $this->setTenantContext($tenant);
+        $service = app(TenantOnboardingProgressService::class);
+
+        $hidden = collect($service->buildForTenant($tenant->fresh(), $owner)['milestones'])
+            ->firstWhere('key', 'owner_catalog');
+        self::assertFalse((bool) $hidden['completed']);
+
+        $product->forceFill(['is_visible' => true])->save();
+        $published = collect($service->buildForTenant($tenant->fresh(), $owner)['milestones'])
+            ->firstWhere('key', 'owner_catalog');
+        self::assertTrue((bool) $published['completed']);
+    }
+
+    public function test_offer_readiness_cannot_be_satisfied_by_the_wrong_commercial_capability(): void
+    {
+        $productsOwner = User::factory()->create(['role' => UserRole::TENANT_OWNER->value]);
+        $productsTenant = Tenant::factory()->forUser($productsOwner)->create([
+            'business_type' => 'retail',
+            'commercial_mode' => 'products',
+        ]);
+        Service::factory()->create(['tenant_id' => $productsTenant->getKey(), 'is_active' => true]);
+
+        $this->setTenantContext($productsTenant);
+        $productsOffer = collect(app(TenantOnboardingProgressService::class)
+            ->buildForTenant($productsTenant->fresh(), $productsOwner)['milestones'])
+            ->firstWhere('key', 'owner_catalog');
+        self::assertFalse((bool) $productsOffer['completed']);
+
+        $appointmentsOwner = User::factory()->create(['role' => UserRole::TENANT_OWNER->value]);
+        $appointmentsTenant = Tenant::factory()->forUser($appointmentsOwner)->create([
+            'business_type' => 'service',
+            'commercial_mode' => 'appointments',
+        ]);
+        Product::factory()->forTenant($appointmentsTenant)->create(['is_visible' => true]);
+
+        $this->setTenantContext($appointmentsTenant);
+        $appointmentsOffer = collect(app(TenantOnboardingProgressService::class)
+            ->buildForTenant($appointmentsTenant->fresh(), $appointmentsOwner)['milestones'])
+            ->firstWhere('key', 'owner_catalog');
+        self::assertFalse((bool) $appointmentsOffer['completed']);
+    }
+
+    public function test_hybrid_offer_requires_both_a_visible_product_and_an_active_service(): void
+    {
+        $owner = User::factory()->create(['role' => UserRole::TENANT_OWNER->value]);
+        $tenant = Tenant::factory()->forUser($owner)->create([
+            'business_type' => 'service',
+            'commercial_mode' => 'hybrid',
+            'product_limit' => 0,
+        ]);
+        Product::factory()->forTenant($tenant)->create(['is_visible' => true]);
+
+        $this->setTenantContext($tenant);
+        $service = app(TenantOnboardingProgressService::class);
+        $withProductOnly = collect($service->buildForTenant($tenant->fresh(), $owner)['milestones'])
+            ->firstWhere('key', 'owner_catalog');
+
+        self::assertFalse((bool) $withProductOnly['completed']);
+        self::assertSame('pending', (string) $withProductOnly['status']);
+        self::assertStringContainsString('/services', (string) $withProductOnly['href']);
+        self::assertStringNotContainsString('billing', (string) $withProductOnly['href']);
+
+        Service::factory()->create(['tenant_id' => $tenant->getKey(), 'is_active' => true]);
+        $withBoth = collect($service->buildForTenant($tenant->fresh(), $owner)['milestones'])
+            ->firstWhere('key', 'owner_catalog');
+
+        self::assertTrue((bool) $withBoth['completed']);
+        self::assertSame('ready', (string) $withBoth['status']);
+    }
+
+    public function test_plan_blocked_offer_is_explicit_and_routes_to_billing(): void
+    {
+        $owner = User::factory()->create(['role' => UserRole::TENANT_OWNER->value]);
+        $tenant = Tenant::factory()->forUser($owner)->create([
+            'business_type' => 'retail',
+            'commercial_mode' => 'products',
+            'product_limit' => 0,
+        ]);
+
+        $this->setTenantContext($tenant);
+        $offer = collect(app(TenantOnboardingProgressService::class)
+            ->buildForTenant($tenant->fresh(), $owner)['milestones'])
+            ->firstWhere('key', 'owner_catalog');
+
+        self::assertFalse((bool) $offer['completed']);
+        self::assertSame('blocked_by_plan', (string) $offer['status']);
+        self::assertNotSame('', (string) $offer['blockedReason']);
+        self::assertNotSame('#', (string) $offer['href']);
+        self::assertStringContainsString('billing', (string) $offer['href']);
+    }
+
+    public function test_route_helper_falls_back_to_the_tenant_dashboard_instead_of_hash(): void
+    {
+        $owner = User::factory()->create(['role' => UserRole::TENANT_OWNER->value]);
+        $tenant = Tenant::factory()->forUser($owner)->create();
+        $method = new \ReflectionMethod(TenantOnboardingProgressService::class, 'routeWithFallback');
+        $method->setAccessible(true);
+
+        $href = $method->invoke(
+            app(TenantOnboardingProgressService::class),
+            'missing.onboarding.route',
+            'filament.app.pages.dashboard',
+            ['tenant' => $tenant->slug],
+        );
+
+        self::assertIsString($href);
+        self::assertNotSame('#', $href);
+        self::assertStringContainsString('/app/'.$tenant->slug, $href);
+    }
+
+    public function test_all_onboarding_navigation_helpers_fail_closed_to_useful_non_hash_routes(): void
+    {
+        $owner = User::factory()->create(['role' => UserRole::TENANT_OWNER->value]);
+        $tenant = Tenant::factory()->forUser($owner)->create();
+        $service = app(TenantOnboardingProgressService::class);
+
+        foreach (['micrositeHref', 'settingsHref', 'operationsHref', 'appointmentsHref', 'catalogHref'] as $methodName) {
+            $method = new \ReflectionMethod(TenantOnboardingProgressService::class, $methodName);
+            $method->setAccessible(true);
+            $href = $method->invoke($service, $tenant->slug);
+
+            self::assertIsString($href, $methodName);
+            self::assertNotSame('#', $href, $methodName);
+            self::assertStringContainsString('/'.$tenant->slug, $href, $methodName);
+        }
+    }
+
+    public function test_wizard_refresh_advances_from_an_authoritatively_completed_step(): void
+    {
+        $owner = User::factory()->create(['role' => UserRole::TENANT_OWNER->value]);
+        $tenant = Tenant::factory()->forUser($owner)->create([
+            'business_type' => 'retail',
+            'commercial_mode' => 'products',
+            'description' => null,
+            'whatsapp_number' => null,
+        ]);
+
+        $this->setTenantContext($tenant);
+        $service = app(TenantOnboardingProgressService::class);
+        $initial = $service->firstRunWizardFor($tenant, $owner);
+        self::assertSame('owner_profile', (string) $initial['currentStepKey']);
+
+        $tenant->forceFill([
+            'description' => 'Tienda con oferta clara y atencion local.',
+            'whatsapp_number' => '+50499990001',
+        ])->save();
+
+        $refreshed = $service->firstRunWizardFor($tenant->fresh(), $owner);
+
+        self::assertContains('owner_profile', $refreshed['completedSteps']);
+        self::assertSame('owner_catalog', (string) $refreshed['currentStepKey']);
+        self::assertTrue((bool) collect($refreshed['steps'])->firstWhere('key', 'owner_catalog')['current']);
+        $this->assertDatabaseHas('tenant_onboarding_states', [
+            'tenant_id' => (string) $tenant->getKey(),
+            'user_id' => (string) $owner->getKey(),
+            'first_run_step_key' => 'owner_catalog',
+        ]);
     }
 
     public function test_first_run_wizard_auto_completes_when_real_milestones_are_done(): void

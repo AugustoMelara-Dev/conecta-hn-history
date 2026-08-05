@@ -147,6 +147,75 @@ final class DovraProgram11RestrictedDataTest extends TestCase
         self::assertTrue($retail->allowed);
     }
 
+    public function test_clinic_scope_tokens_are_exact_structural_ascii_markers(): void
+    {
+        $policy = $this->policy();
+
+        foreach ([
+            'treatment_plan: routine follow-up',
+            '{"medical_history" = routine follow-up',
+            "['case_record': routine follow-up",
+            ',CLINICAL_NOTES = routine follow-up',
+            ';"lab_result": routine follow-up',
+            "\rvital_sign = routine follow-up",
+            "\n'procedure_record' : routine follow-up",
+        ] as $marker) {
+            $decision = $policy->classifyAndValidate(new DataEnvelope(
+                sourceSystem: 'channel_message',
+                payload: ['message' => $marker],
+                channel: 'web_chat',
+                context: ['business_type' => 'clinic'],
+            ));
+
+            self::assertFalse($decision->allowed);
+            self::assertContains('clinic_scope_prohibited', $decision->reasons);
+        }
+
+        foreach ([
+            'Please treatment_plan: routine follow-up',
+            '.treatment_plan: routine follow-up',
+            '(treatment_plan: routine follow-up)',
+            'prefix_treatment_plan: routine follow-up',
+            'treatment_plan_suffix: routine follow-up',
+            'treatment-plan: routine follow-up',
+            'treatment plan: routine follow-up',
+            '"treatment_plan\': routine follow-up',
+            'ＴＲＥＡＴＭＥＮＴ＿ＰＬＡＮ: routine follow-up',
+            'treatment_plan. routine follow-up',
+        ] as $negative) {
+            $decision = $policy->classifyAndValidate(new DataEnvelope(
+                sourceSystem: 'channel_message',
+                payload: ['message' => $negative],
+                channel: 'web_chat',
+                context: ['business_type' => 'clinic'],
+            ));
+
+            self::assertTrue($decision->allowed, $negative);
+            self::assertNotContains('clinic_scope_prohibited', $decision->reasons);
+        }
+
+        $legacyKeyPath = $policy->classifyAndValidate(new DataEnvelope(
+            sourceSystem: 'channel_message',
+            payload: ['patient_name' => 'Ana'],
+            channel: 'web_chat',
+            context: ['business_type' => 'clinic'],
+        ));
+
+        self::assertFalse($legacyKeyPath->allowed);
+        self::assertContains('clinic_scope_prohibited', $legacyKeyPath->reasons);
+
+        foreach (['retail', 'service'] as $businessType) {
+            $decision = $policy->classifyAndValidate(new DataEnvelope(
+                sourceSystem: 'channel_message',
+                payload: ['message' => 'treatment_plan: routine follow-up'],
+                channel: 'web_chat',
+                context: ['business_type' => $businessType],
+            ));
+
+            self::assertTrue($decision->allowed, $businessType);
+        }
+    }
+
     public function test_unregistered_or_contextless_entrypoints_fail_closed(): void
     {
         $guard = new DovraDataIngressGuard($this->policy(), new DovraIntegrationSeamRegistry);
@@ -173,6 +242,17 @@ final class DovraProgram11RestrictedDataTest extends TestCase
         self::assertFalse($missingTenant->allowed);
         self::assertContains('tenant_context_required', $missingTenant->reasons);
         self::assertTrue($registered->allowed);
+    }
+
+    public function test_ai_chat_ingress_sources_use_the_shared_dovra_seams(): void
+    {
+        $registry = new DovraIntegrationSeamRegistry;
+        $required = ['ai_capability_policy', 'sensitive_log_scrubber', 'postgres_rls_runtime'];
+
+        self::assertSame($required, $registry->seamsForEntrypoint('directory_guide_chat'));
+        self::assertSame($required, $registry->seamsForEntrypoint('tenant_agent_chat'));
+        self::assertFalse($registry->entrypointRequiresTenantContext('directory_guide_chat'));
+        self::assertTrue($registry->entrypointRequiresTenantContext('tenant_agent_chat'));
     }
 
     private function policy(): DataClassificationPolicy

@@ -3,44 +3,19 @@
 declare(strict_types=1);
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Tests\Support\DatabaseSchemaInspector;
 
 uses(RefreshDatabase::class);
 
 function billingColumnNames(string $table): array
 {
-    if (DB::connection()->getDriverName() === 'sqlite') {
-        return collect(DB::select("PRAGMA table_info('{$table}')"))
-            ->map(fn (object $column): string => (string) $column->name)
-            ->all();
-    }
-
-    return collect(DB::select(
-        "select column_name from information_schema.columns where table_schema = database() and table_name = ? order by ordinal_position",
-        [$table]
-    ))->map(fn (object $column): string => (string) $column->column_name)->all();
+    return DatabaseSchemaInspector::columnNames($table);
 }
 
 function billingIndexColumns(string $table, string $index): array
 {
-    if (DB::connection()->getDriverName() === 'sqlite') {
-        $matching = collect(DB::select("PRAGMA index_list('{$table}')"))
-            ->first(fn (object $row): bool => (string) $row->name === $index);
-
-        if ($matching === null) {
-            return [];
-        }
-
-        return collect(DB::select("PRAGMA index_info('{$index}')"))
-            ->map(fn (object $column): string => (string) $column->name)
-            ->all();
-    }
-
-    return collect(DB::select(
-        "select column_name from information_schema.statistics where table_schema = database() and table_name = ? and index_name = ? order by seq_in_index",
-        [$table, $index]
-    ))->map(fn (object $column): string => (string) $column->column_name)->all();
+    return DatabaseSchemaInspector::indexColumns($table, $index);
 }
 
 it('keeps subscription payments as the tenant owned payment evidence ledger', function (): void {
@@ -133,6 +108,14 @@ it('keeps webhook logs as the provider event idempotency audit table', function 
         'external_event_id',
         'event_type',
         'payload',
+        'status',
+        'attempts',
+        'processing_started_at',
+        'processed_at',
+        'failed_at',
+        'last_error',
+        'payload_hash',
+        'processing_token',
         'created_at'
     );
 

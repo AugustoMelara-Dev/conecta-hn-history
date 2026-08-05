@@ -13,12 +13,15 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Jobs;
 
+use App\Jobs\DispatchAppointmentReminders;
 use App\Jobs\SendAppointmentReminders;
 use App\Mail\AppointmentReminderMail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
+use stdClass;
 use Tests\TestCase;
 
 class SendAppointmentRemindersTest extends TestCase
@@ -26,8 +29,11 @@ class SendAppointmentRemindersTest extends TestCase
     use RefreshDatabase;
 
     private string $tenantId;
+
     private string $userId;
+
     private int $serviceId;
+
     private int $providerId;
 
     protected function setUp(): void
@@ -48,7 +54,7 @@ class SendAppointmentRemindersTest extends TestCase
         DB::table('users')->insert([
             'id' => $this->userId,
             'name' => 'Test User',
-            'email' => 'test-' . Str::random(8) . '@example.com',
+            'email' => 'test-'.Str::random(8).'@example.com',
             'password' => bcrypt('password'),
             'role' => 'customer',
             'created_at' => now(),
@@ -61,7 +67,7 @@ class SendAppointmentRemindersTest extends TestCase
             'id' => $this->tenantId,
             'user_id' => $this->userId,
             'name' => 'Test Reminder Tenant',
-            'slug' => 'test-reminder-' . Str::random(6),
+            'slug' => 'test-reminder-'.Str::random(6),
             'plan' => 'SEED',
             'is_active' => true,
             'plan_type' => 'semilla',
@@ -88,7 +94,7 @@ class SendAppointmentRemindersTest extends TestCase
         $this->providerId = DB::table('service_providers')->insertGetId([
             'tenant_id' => $this->tenantId,
             'name' => 'Test Provider',
-            'email' => 'provider-' . Str::random(8) . '@example.com',
+            'email' => 'provider-'.Str::random(8).'@example.com',
             'phone' => '9999-9999',
             'schedule_config' => null,
             'is_active' => true,
@@ -137,11 +143,11 @@ class SendAppointmentRemindersTest extends TestCase
             'reminder_sent_at' => null,
         ]);
 
-        (new SendAppointmentReminders)->handle();
+        (new SendAppointmentReminders($this->tenantId))->handle();
 
         // Assert: Email was queued
         Mail::assertQueued(AppointmentReminderMail::class, function ($mail) use ($appointmentId) {
-            return $mail->appointment->id === $appointmentId;
+            return $mail->reminder->appointmentId === (string) $appointmentId;
         });
 
         // Assert: Idempotency flag was set
@@ -164,7 +170,7 @@ class SendAppointmentRemindersTest extends TestCase
             'reminder_sent_at' => null,
         ]);
 
-        (new SendAppointmentReminders)->handle();
+        (new SendAppointmentReminders($this->tenantId))->handle();
 
         Mail::assertNothingSent();
     }
@@ -182,7 +188,7 @@ class SendAppointmentRemindersTest extends TestCase
             'reminder_sent_at' => now()->subHour(), // Already reminded!
         ]);
 
-        (new SendAppointmentReminders)->handle();
+        (new SendAppointmentReminders($this->tenantId))->handle();
 
         Mail::assertNothingSent();
     }
@@ -200,7 +206,7 @@ class SendAppointmentRemindersTest extends TestCase
             'reminder_sent_at' => null,
         ]);
 
-        (new SendAppointmentReminders)->handle();
+        (new SendAppointmentReminders($this->tenantId))->handle();
 
         Mail::assertNothingSent();
     }
@@ -218,7 +224,7 @@ class SendAppointmentRemindersTest extends TestCase
             'reminder_sent_at' => null,
         ]);
 
-        (new SendAppointmentReminders)->handle();
+        (new SendAppointmentReminders($this->tenantId))->handle();
 
         Mail::assertNothingSent();
     }
@@ -236,12 +242,121 @@ class SendAppointmentRemindersTest extends TestCase
             'reminder_sent_at' => null,
         ]);
 
-        (new SendAppointmentReminders)->handle();
+        (new SendAppointmentReminders($this->tenantId))->handle();
 
         Mail::assertQueued(AppointmentReminderMail::class, function ($mail) {
             $subject = $mail->envelope()->subject;
+
             return str_contains($subject, 'Recordatorio de Cita') &&
                    str_contains($subject, 'Test Reminder Tenant');
         });
+    }
+
+    public function test_tenant_job_does_not_touch_another_tenants_appointment(): void
+    {
+        $tenantB = (string) Str::uuid();
+        DB::table('tenants')->insert([
+            'id' => $tenantB,
+            'user_id' => $this->userId,
+            'name' => 'Tenant B',
+            'slug' => 'tenant-b-'.Str::random(6),
+            'plan' => 'SEED',
+            'is_active' => true,
+            'plan_type' => 'semilla',
+            'subscription_status' => 'active',
+            'ai_balance' => 1,
+            'ai_reserved_balance' => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $serviceB = DB::table('services')->insertGetId([
+            'tenant_id' => $tenantB,
+            'name' => 'Tenant B service',
+            'description' => 'Foreign reminder fixture',
+            'duration_minutes' => 60,
+            'price' => 100,
+            'is_active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $providerB = DB::table('service_providers')->insertGetId([
+            'tenant_id' => $tenantB,
+            'name' => 'Tenant B provider',
+            'email' => 'provider-b@example.test',
+            'phone' => '9999-9998',
+            'is_active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $foreignAppointment = $this->createAppointment([
+            'tenant_id' => $tenantB,
+            'service_id' => $serviceB,
+            'service_provider_id' => $providerB,
+        ]);
+
+        (new SendAppointmentReminders($this->tenantId))->handle();
+
+        self::assertNull(DB::table('appointments')->where('id', $foreignAppointment)->value('reminder_sent_at'));
+        Mail::assertNothingQueued();
+    }
+
+    public function test_job_middleware_restores_and_cleans_uuid_tenant_context(): void
+    {
+        $context = app(\App\Domain\Shared\Services\TenantContext::class);
+        $context->reset();
+        $job = new SendAppointmentReminders($this->tenantId);
+        $middleware = $job->middleware();
+
+        $middleware[0]->handle(new stdClass, function () use ($context): void {
+            self::assertSame($this->tenantId, (string) $context->id());
+            self::assertSame($this->tenantId, (string) app('currentTenant')->getKey());
+        });
+
+        self::assertFalse($context->isInitialized());
+        self::assertFalse(app()->bound('currentTenant'));
+    }
+
+    public function test_global_coordinator_dispatches_one_job_per_active_tenant_only(): void
+    {
+        Queue::fake();
+
+        $activeTenantId = (string) Str::uuid();
+        $inactiveTenantId = (string) Str::uuid();
+
+        foreach ([
+            [$activeTenantId, true, 'active-reminder'],
+            [$inactiveTenantId, false, 'inactive-reminder'],
+        ] as [$tenantId, $isActive, $slugPrefix]) {
+            DB::table('tenants')->insert([
+                'id' => $tenantId,
+                'user_id' => $this->userId,
+                'name' => $isActive ? 'Active Tenant' : 'Inactive Tenant',
+                'slug' => $slugPrefix.'-'.Str::random(6),
+                'plan' => 'SEED',
+                'is_active' => $isActive,
+                'plan_type' => 'semilla',
+                'subscription_status' => 'active',
+                'ai_balance' => 1,
+                'ai_reserved_balance' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        (new DispatchAppointmentReminders)->handle();
+
+        Queue::assertPushed(SendAppointmentReminders::class, 2);
+        Queue::assertPushed(
+            SendAppointmentReminders::class,
+            fn (SendAppointmentReminders $job): bool => $job->tenantId === $this->tenantId,
+        );
+        Queue::assertPushed(
+            SendAppointmentReminders::class,
+            fn (SendAppointmentReminders $job): bool => $job->tenantId === $activeTenantId,
+        );
+        Queue::assertNotPushed(
+            SendAppointmentReminders::class,
+            fn (SendAppointmentReminders $job): bool => $job->tenantId === $inactiveTenantId,
+        );
     }
 }

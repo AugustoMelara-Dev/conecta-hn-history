@@ -21,19 +21,21 @@ test('report download controller uses urldecode not urnDecode', function () {
 });
 
 test('report download validates path without fatal error', function () {
-    $controller = new \App\Http\Controllers\Api\V1\ReportDownloadController();
+    $tenantId = 'a25122c0-a33e-4a07-91c2-8b00f4d2859e';
+    app(\App\Domain\Shared\Services\TenantContext::class)->setTenant($tenantId);
+    $controller = app(\App\Http\Controllers\Api\V1\ReportDownloadController::class);
     $method = new ReflectionMethod($controller, 'validateAndSanitizePath');
     $method->setAccessible(true);
 
     // Test URL-encoded path - should not throw "undefined function" error
-    $result = $method->invoke($controller, 'reports%2Ftest.pdf');
+    $result = $method->invoke($controller, "tenants%2F{$tenantId}%2Freports%2Ftest.pdf");
 
     // Key assertion: no Fatal Error, returns sanitized path
-    expect($result)->toBe('reports/test.pdf');
+    expect($result)->toBe("tenants/{$tenantId}/reports/test.pdf");
 });
 
 test('report download blocks path traversal', function () {
-    $controller = new \App\Http\Controllers\Api\V1\ReportDownloadController();
+    $controller = app(\App\Http\Controllers\Api\V1\ReportDownloadController::class);
     $method = new ReflectionMethod($controller, 'validateAndSanitizePath');
     $method->setAccessible(true);
 

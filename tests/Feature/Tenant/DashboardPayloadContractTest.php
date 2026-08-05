@@ -7,6 +7,7 @@ namespace Tests\Feature\Tenant;
 use App\Domain\Shared\Services\TenantContext as RuntimeTenantContext;
 use App\Domain\TenantGovernance\Enums\CommercialMode;
 use App\Infrastructure\Tenant\EloquentDashboardMetricsRepository;
+use App\Models\City;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -27,6 +28,7 @@ final class DashboardPayloadContractTest extends TestCase
         $owner = User::factory()->create();
         $tenant = Tenant::factory()->forUser($owner)->create([
             'commercial_mode' => CommercialMode::CONSULTING_LEADS->value,
+            'city_id' => City::factory()->create()->id,
         ]);
 
         DB::table('leads')->insert([
@@ -46,9 +48,9 @@ final class DashboardPayloadContractTest extends TestCase
             ],
         ]);
 
-        app(RuntimeTenantContext::class)->setTenant($tenant->id);
+        app(RuntimeTenantContext::class)->setTenant((string) $tenant->id);
 
-        $summary = app(EloquentDashboardMetricsRepository::class)->getKpiSummary($tenant->id);
+        $summary = app(EloquentDashboardMetricsRepository::class)->getKpiSummary((string) $tenant->id);
 
         $this->assertSame('consulting_leads', $summary['commercial_mode']);
         $this->assertSame('Starter Consulting', $summary['commercial_mode_label']);

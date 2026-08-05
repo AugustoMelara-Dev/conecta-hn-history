@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Tenant;
 
 use App\Domain\Access\Enums\Role;
+use App\Http\Controllers\Tenant\LegacyWorkspaceActionController;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\Panel\CanonicalPanelUrlResolver;
@@ -75,7 +76,10 @@ final class CanonicalPanelUrlTest extends TestCase
 
     public function test_resolves_superadmin_url_to_platform_panel(): void
     {
-        config(['auth.super_admins' => ['ops@example.test']]);
+        config([
+            'auth.super_admins' => ['ops@example.test'],
+            'security.admin_mfa_required' => false,
+        ]);
 
         $user = User::factory()->superAdmin()->create([
             'email' => 'ops@example.test',
@@ -168,7 +172,7 @@ final class CanonicalPanelUrlTest extends TestCase
 
             $this->assertNotNull($route, "Expected route [{$routeName}] to remain registered as a compatibility endpoint.");
             $this->assertSame(
-                \App\Http\Controllers\Tenant\LegacyWorkspaceActionController::class,
+                LegacyWorkspaceActionController::class,
                 $route->getAction('controller'),
                 "Expected route [{$routeName}] to be retired behind LegacyWorkspaceActionController."
             );
@@ -197,7 +201,7 @@ final class CanonicalPanelUrlTest extends TestCase
             }
         }
 
-        $tenant = new Tenant();
+        $tenant = new Tenant;
         $tenant->forceFill($attributes);
         $tenant->save();
 

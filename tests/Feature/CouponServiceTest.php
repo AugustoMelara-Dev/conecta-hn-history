@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Exceptions\InvalidCouponException;
 use App\Domain\Shared\Services\TenantContext;
+use App\Exceptions\InvalidCouponException;
+use App\Models\City;
 use App\Models\Coupon;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\CouponValidatorService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -43,11 +46,12 @@ class CouponServiceTest extends TestCase
         $this->tenant = Tenant::factory()->create([
             'name' => 'Test Business',
             'slug' => 'test-business',
+            'city_id' => City::factory()->create()->id,
         ]);
 
         // Bind tenant to container (simulates TenantMiddleware)
         app()->instance('currentTenant', $this->tenant);
-        app(TenantContext::class)->setTenant($this->tenant->id);
+        app(TenantContext::class)->setTenant((string) $this->tenant->id);
     }
 
     protected function tearDown(): void
@@ -69,6 +73,7 @@ class CouponServiceTest extends TestCase
      * SCENARIO: Anonymous user validates an unrestricted coupon
      * EXPECTED: Validation succeeds, returns Coupon model
      */
+    #[Test]
     public function it_allows_guests_to_use_unrestricted_coupons(): void
     {
         // Arrange: Create a coupon with no per-user limits
@@ -103,6 +108,7 @@ class CouponServiceTest extends TestCase
      * @test
      * Verifies guests can validate coupons with global limits (but not per-user).
      */
+    #[Test]
     public function it_allows_guests_when_global_limit_not_reached(): void
     {
         $coupon = Coupon::factory()->create([
@@ -138,10 +144,11 @@ class CouponServiceTest extends TestCase
      *
      * This test ensures guests cannot bypass per-user tracking by staying anonymous.
      */
+    #[Test]
     public function it_throws_exception_for_guests_using_restricted_coupons(): void
     {
         // Skip if coupon_user table doesn't exist
-        if (! \Illuminate\Support\Facades\Schema::hasTable('coupon_user')) {
+        if (! Schema::hasTable('coupon_user')) {
             $this->markTestSkipped('coupon_user table does not exist');
         }
 
@@ -183,6 +190,7 @@ class CouponServiceTest extends TestCase
      * SCENARIO: Coupon with usage_limit = 5, usage_count = 5
      * EXPECTED: InvalidCouponException with code DEPLETED
      */
+    #[Test]
     public function it_prevents_usage_when_global_limit_reached(): void
     {
         // Arrange: Create a fully depleted coupon
@@ -220,6 +228,7 @@ class CouponServiceTest extends TestCase
      * @test
      * Verifies authenticated users can validate unrestricted coupons.
      */
+    #[Test]
     public function it_allows_authenticated_users_to_use_coupons(): void
     {
         $user = User::factory()->create();
@@ -251,6 +260,7 @@ class CouponServiceTest extends TestCase
      * @test
      * Verifies that coupons with minimum spend requirement are enforced.
      */
+    #[Test]
     public function it_rejects_coupon_when_minimum_spend_not_met(): void
     {
         Coupon::factory()->create([
@@ -286,6 +296,7 @@ class CouponServiceTest extends TestCase
      * @test
      * Verifies expired coupons are rejected.
      */
+    #[Test]
     public function it_rejects_expired_coupons(): void
     {
         Coupon::factory()->create([
@@ -316,6 +327,7 @@ class CouponServiceTest extends TestCase
      * @test
      * Verifies future coupons (not yet started) are rejected.
      */
+    #[Test]
     public function it_rejects_future_coupons(): void
     {
         Coupon::factory()->create([
@@ -346,6 +358,7 @@ class CouponServiceTest extends TestCase
      * @test
      * Verifies inactive coupons are rejected.
      */
+    #[Test]
     public function it_rejects_inactive_coupons(): void
     {
         Coupon::factory()->create([
@@ -375,6 +388,7 @@ class CouponServiceTest extends TestCase
      * @test
      * Verifies non-existent coupons are rejected.
      */
+    #[Test]
     public function it_rejects_nonexistent_coupons(): void
     {
         $this->expectException(InvalidCouponException::class);

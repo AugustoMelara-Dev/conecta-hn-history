@@ -1,10 +1,10 @@
 <?php
 
+use App\Application\Common\Contracts\IdempotencyServiceInterface;
 use App\Application\Sales\Commands\CreateOrderCommand;
 use App\Application\Sales\Decorators\IdempotentCreateOrderHandler;
 use App\Application\Sales\Handlers\CreateOrderHandlerInterface;
 use App\Application\Sales\Results\CreateOrderResult;
-use App\Application\Common\Contracts\IdempotencyServiceInterface;
 
 /**
  * ⚔️ TEST DE ATAQUE DE REPETICIÓN (Stress Test)
@@ -34,19 +34,33 @@ it('survives a synthetic replay attack ensuring single execution of core logic',
 
     // 2. Ensamblaje de la Defensa (The Onion)
     $memory = [];
-    $service = new class($memory) implements IdempotencyServiceInterface {
+    $service = new class($memory) implements IdempotencyServiceInterface
+    {
         public function __construct(private array &$memory) {}
-        public function get(string $key): mixed { return $this->memory[$key] ?? null; }
-        public function getState(string $key): ?string { return array_key_exists($key, $this->memory) ? 'COMPLETED' : null; }
+
+        public function get(string $key): mixed
+        {
+            return $this->memory[$key] ?? null;
+        }
+
+        public function getState(string $key): ?string
+        {
+            return array_key_exists($key, $this->memory) ? 'COMPLETED' : null;
+        }
+
         public function registerProcessing(string $key, int $ttlSeconds = 60): void {}
-        public function store(string $key, mixed $value, int $ttlSeconds = 86400): void { $this->memory[$key] = $value; }
+
+        public function store(string $key, mixed $value, int $ttlSeconds = 86400): void
+        {
+            $this->memory[$key] = $value;
+        }
     };
 
     $decorator = new IdempotentCreateOrderHandler($mockCore, $service);
 
     // 3. Command Setup
     $command = new CreateOrderCommand(
-        tenantId: 1,
+        tenantId: '00000000-0000-4000-8000-000000000001',
         customerId: 10,
         currency: 'HNL',
         items: [['product_id' => 1, 'quantity' => 1]],

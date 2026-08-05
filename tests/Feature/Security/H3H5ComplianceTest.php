@@ -35,14 +35,14 @@ test('track routes have throttle middleware', function () {
 // H5: StoreOrderRequest Context Hardening
 // ═══════════════════════════════════════════════════════════════════════════
 
-test('store order request does not validate tenant_id from input', function () {
-    $request = new StoreOrderRequest();
+test('public order request derives tenant authority instead of accepting tenant_id', function () {
+    $request = new StoreOrderRequest;
     $rules = $request->rules();
 
     expect($rules)->not->toHaveKey('tenant_id');
 });
 
-test('store order request strips tenant_id from validated data', function () {
+test('public order request ignores a caller supplied tenant id', function () {
     $request = StoreOrderRequest::create('/api/orders', 'POST', [
         'tenant_id' => 999, // Malicious input
         'customer_name' => 'Test User',
@@ -56,7 +56,5 @@ test('store order request strips tenant_id from validated data', function () {
     // Manually set route parameters to simulate binding
     $request->setRouteResolver(fn () => null);
 
-    $rules = $request->rules();
-
-    expect(array_key_exists('tenant_id', $rules))->toBeFalse();
+    expect($request->rules())->not->toHaveKey('tenant_id');
 });

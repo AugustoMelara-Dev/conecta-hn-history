@@ -193,11 +193,59 @@ final class ChannelConversationContinuityTest extends TestCase
     /** @return array{Tenant, User} */
     private function tenant(): array
     {
+        $this->supportHondurasMarket();
         $actor = User::factory()->create();
         $tenant = Tenant::factory()->forUser($actor)->pro()->create();
         $this->app->make(\App\Domain\Shared\Services\TenantContext::class)->setTenant((string) $tenant->getKey());
 
         return [$tenant, $actor];
+    }
+
+    private function supportHondurasMarket(): void
+    {
+        $now = now();
+        DB::table('countries')->updateOrInsert(
+            ['code' => 'HN'],
+            [
+                'name' => 'Honduras',
+                'native_name' => 'Honduras',
+                'calling_code' => '+504',
+                'is_active' => true,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+        );
+        DB::table('currencies')->updateOrInsert(
+            ['code' => 'HNL'],
+            [
+                'name' => 'Lempira',
+                'symbol' => 'L',
+                'minor_unit' => 2,
+                'is_active' => true,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+        );
+        DB::table('locales')->updateOrInsert(
+            ['code' => 'es-HN'],
+            [
+                'name' => 'Spanish (Honduras)',
+                'native_name' => 'Español (Honduras)',
+                'is_active' => true,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+        );
+        DB::table('timezones')->updateOrInsert(
+            ['name' => 'America/Tegucigalpa'],
+            [
+                'label' => 'Tegucigalpa',
+                'utc_offset' => '-06:00',
+                'is_active' => true,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+        );
     }
 
     private function context(Tenant $tenant, User $actor, string $channel): ChannelContext

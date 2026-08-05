@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\AiToolConfirmation;
 use App\Models\CrmDeal;
 use App\Models\CrmPipeline;
 use App\Models\CrmStage;
@@ -20,6 +21,7 @@ it('guards tenant ownership on tenant-owned CRM models', function (string $model
     expect($model->getFillable())->not->toContain('tenant_id');
     expect($model->getGuarded())->toContain('tenant_id');
 })->with([
+    AiToolConfirmation::class,
     CrmDeal::class,
     CrmPipeline::class,
     CrmStage::class,

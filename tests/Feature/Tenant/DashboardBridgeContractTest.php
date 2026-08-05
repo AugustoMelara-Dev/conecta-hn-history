@@ -38,7 +38,10 @@ final class DashboardBridgeContractTest extends TestCase
 
     public function test_dashboard_redirects_superadmin_to_superadmin_panel(): void
     {
-        config(['auth.super_admins' => ['ops@example.test']]);
+        config([
+            'auth.super_admins' => ['ops@example.test'],
+            'security.admin_mfa_required' => false,
+        ]);
 
         $superAdmin = User::factory()->superAdmin()->create([
             'email' => 'ops@example.test',
