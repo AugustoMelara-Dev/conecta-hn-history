@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Application\Ai\Registry;
 
+use App\Application\Ai\Evaluation\EvaluationDecisionEvidence;
+use App\Application\Ai\Evaluation\EvaluationRequestEvidence;
+use App\Application\Ai\Evaluation\EvaluationRunEvidence;
 use App\Exceptions\Ai\AiExecutionDeniedException;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
@@ -12,6 +15,8 @@ use Illuminate\Support\Str;
 
 final class AiReleaseEligibility
 {
+    public function __construct(private readonly EvaluationRunEvidence $runEvidence) {}
+
     /**
      * @param  list<string>  $allowedLifecycleStatuses
      */
@@ -75,7 +80,7 @@ final class AiReleaseEligibility
         $run = $this->read(DB::table('ai_evaluation_runs')
             ->where('tenant_id', $tenantId)
             ->where('id', $decision->evaluation_run_id)
-            ->where('status', 'completed'), $lockForUpdate)
+            ->whereIn('status', ['completed', 'passed']), $lockForUpdate)
             ->first();
         if ($policy === null
             || $run === null
@@ -176,6 +181,90 @@ final class AiReleaseEligibility
             || ! hash_equals((string) $model->provider_version_id, (string) $provider->id)
             || ! hash_equals((string) $modelDefinition->provider_id, (string) $provider->provider_id)
             || ! hash_equals((string) $run->provider_version_id, (string) $provider->id)) {
+            $this->deny($denialReason);
+        }
+
+        $newEvidence = $decision->run_result_checksum !== null
+            || $decision->artifact_sha !== null
+            || $run->result_checksum !== null;
+        if ($newEvidence) {
+            $evaluationConfiguration = $this->jsonObject($evaluationVersion->configuration);
+            foreach ([
+                [$decision->release_policy_checksum, $run->release_policy_checksum],
+                [$decision->release_policy_checksum, $policy->checksum],
+                [$decision->evaluation_version_checksum, $run->evaluation_version_checksum],
+                [$decision->evaluation_version_checksum, $evaluationVersion->checksum],
+                [$decision->candidate_checksum, $run->candidate_checksum],
+                [$decision->prompt_checksum, $run->prompt_checksum],
+                [$decision->prompt_checksum, $prompt->checksum],
+                [$decision->provider_checksum, $run->provider_checksum],
+                [$decision->provider_checksum, $provider->checksum],
+                [$decision->model_checksum, $run->model_checksum],
+                [$decision->model_checksum, $model->checksum],
+                [$decision->dataset_checksum, $run->dataset_checksum],
+                [$decision->dataset_checksum, $evaluationConfiguration['dataset_checksum'] ?? null],
+                [$decision->evaluator_checksum, $run->evaluator_checksum],
+                [$decision->evaluator_checksum, $evaluationConfiguration['evaluator_checksum'] ?? null],
+                [$decision->run_result_checksum, $run->result_checksum],
+            ] as [$left, $right]) {
+                if (! $this->sameChecksum($left, $right)) {
+                    $this->deny($denialReason);
+                }
+            }
+            foreach ([
+                [$decision->prompt_version_id, $run->prompt_version_id],
+                [$decision->provider_version_id, $run->provider_version_id],
+                [$decision->model_version_id, $run->model_version_id],
+                [$decision->release_policy_id, $run->release_policy_id],
+            ] as [$left, $right]) {
+                if (! is_string($left) || ! is_string($right) || ! hash_equals($left, $right)) {
+                    $this->deny($denialReason);
+                }
+            }
+            if (! is_string($decision->artifact_sha)
+                || ! is_string($run->artifact_sha)
+                || ! hash_equals($decision->artifact_sha, $run->artifact_sha)
+                || ! is_string($decision->evaluator_version)
+                || ! is_string($run->evaluator_version)
+                || ! hash_equals($decision->evaluator_version, $run->evaluator_version)
+                || ! hash_equals((string) ($evaluationConfiguration['evaluator_version'] ?? ''), $run->evaluator_version)) {
+                $this->deny($denialReason);
+            }
+            $requestChecksum = EvaluationRequestEvidence::checksum([
+                'tenant_id' => $tenantId,
+                'evaluation_version_id' => (string) $run->evaluation_version_id,
+                'evaluation_version_checksum' => (string) $run->evaluation_version_checksum,
+                'release_policy_id' => (string) $run->release_policy_id,
+                'release_policy_checksum' => (string) $run->release_policy_checksum,
+                'agent_version_id' => (string) $run->agent_version_id,
+                'candidate_checksum' => (string) $run->candidate_checksum,
+                'prompt_version_id' => (string) $run->prompt_version_id,
+                'prompt_checksum' => (string) $run->prompt_checksum,
+                'provider_version_id' => (string) $run->provider_version_id,
+                'provider_checksum' => (string) $run->provider_checksum,
+                'model_version_id' => (string) $run->model_version_id,
+                'model_checksum' => (string) $run->model_checksum,
+                'dataset_checksum' => (string) $run->dataset_checksum,
+                'evaluator_version' => (string) $run->evaluator_version,
+                'evaluator_checksum' => (string) $run->evaluator_checksum,
+                'deterministic_seed' => (int) $run->deterministic_seed,
+                'baseline_run_id' => $run->baseline_run_id,
+                'artifact_sha' => (string) $run->artifact_sha,
+            ]);
+            if (! $this->sameChecksum($run->request_checksum, $requestChecksum)
+                || ! $this->sameChecksum($decision->evidence_hash, EvaluationDecisionEvidence::checksum($run))) {
+                $this->deny($denialReason);
+            }
+            $integrity = $this->runEvidence->assert($run, $lockForUpdate);
+            if ($integrity['blocking_codes'] !== [] || ! $integrity['all_passed']
+                || (int) $run->blocking_failures !== 0) {
+                $this->deny($denialReason);
+            }
+        }
+
+        if (($agentConfiguration['audience'] ?? null) === 'public'
+            && (! hash_equals('platform_public', (string) $agentDefinition->visibility)
+                || ! hash_equals('platform_public', (string) $promptDefinition->visibility))) {
             $this->deny($denialReason);
         }
 
@@ -285,6 +374,13 @@ final class AiReleaseEligibility
         } catch (\Throwable) {
             return false;
         }
+    }
+
+    private function sameChecksum(mixed $left, mixed $right): bool
+    {
+        return is_string($left) && is_string($right)
+            && preg_match('/^[a-f0-9]{64}$/', $left) === 1
+            && hash_equals($left, $right);
     }
 
     private function read(Builder $query, bool $lockForUpdate): Builder
