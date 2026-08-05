@@ -41,7 +41,7 @@ export function ResetPasswordForm({ token, email, className, ...props }) {
             <CardHeader className="gap-2 border-b bg-muted/30 text-center">
                 <CardTitle>Cambia tu contraseña</CardTitle>
                 <CardDescription>
-                    Crea una contraseña nueva para recuperar el acceso a Vito Business OS.
+                    Crea una contraseña nueva para recuperar el acceso a Dovra AI.
                 </CardDescription>
             </CardHeader>
 

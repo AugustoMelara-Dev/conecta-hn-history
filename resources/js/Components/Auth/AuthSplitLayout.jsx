@@ -1,6 +1,7 @@
 import { Link } from "@inertiajs/react"
-import { GalleryVerticalEnd } from "lucide-react"
+import DovraMonogram from "@/Components/Brand/DovraMonogram"
 
+import { SkipLink } from "@/Components/ui/skip-link"
 import { cn } from "@/lib/utils"
 import {
     PUBLIC_BODY_FONT,
@@ -12,20 +13,20 @@ export function AuthBrand({ href = "/", className }) {
     return (
         <Link href={href} className={cn("inline-flex items-center gap-3", className)}>
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-lg shadow-slate-950/10">
-                <GalleryVerticalEnd className="h-5 w-5" />
+                <DovraMonogram variant="mark" />
             </div>
             <div>
                 <p
                     className="text-base font-extrabold tracking-tight text-slate-950"
                     style={{ fontFamily: PUBLIC_DISPLAY_FONT }}
                 >
-                    Vito Business OS
+                    Dovra AI
                 </p>
                 <p
                     className="text-[11px] font-bold uppercase tracking-[0.28em] text-slate-500"
                     style={{ fontFamily: PUBLIC_LABEL_FONT }}
                 >
-                    Vito Business OS
+                    Dovra AI
                 </p>
             </div>
         </Link>
@@ -114,20 +115,21 @@ export default function AuthSplitLayout({
 }) {
     return (
         <div
-            className="grid min-h-[100svh] bg-[radial-gradient(circle_at_top_right,hsl(var(--secondary))_0,transparent_34%),linear-gradient(180deg,#fff_0%,#f8fafc_100%)] text-slate-950 xl:grid-cols-[0.9fr_1.1fr]"
+            className="grid min-h-[100svh] min-w-0 bg-[radial-gradient(circle_at_top_right,hsl(var(--secondary))_0,transparent_34%),linear-gradient(180deg,#fff_0%,#f8fafc_100%)] text-slate-950 xl:grid-cols-[0.9fr_1.1fr]"
             style={{ fontFamily: PUBLIC_BODY_FONT }}
         >
-            <div className="flex flex-col gap-6 p-6 md:p-10">
-                <div className="flex items-center justify-between gap-4">
+            <SkipLink />
+            <div className="flex min-w-0 flex-col gap-6 p-6 md:p-10">
+                <header className="flex min-w-0 flex-wrap items-center justify-between gap-4">
                     <AuthBrand />
                     {topActions ? (
-                        <div className="flex items-center gap-3">{topActions}</div>
+                        <div className="flex min-w-0 flex-wrap items-center justify-end gap-3">{topActions}</div>
                     ) : null}
-                </div>
+                </header>
 
-                <div className={cn("flex flex-1 items-center justify-center py-6", contentClassName)}>
+                <main id="main-content" tabIndex={-1} className={cn("flex min-w-0 flex-1 items-center justify-center py-6 outline-none", contentClassName)}>
                     {children}
-                </div>
+                </main>
             </div>
 
             <aside className="relative hidden overflow-hidden bg-slate-950 xl:block">

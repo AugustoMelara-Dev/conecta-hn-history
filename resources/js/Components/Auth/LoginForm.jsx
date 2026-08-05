@@ -40,13 +40,13 @@ export function LoginForm({
     )
 
     return (
-        <Card className={cn("overflow-hidden border-border/70 shadow-[0_24px_80px_rgba(15,23,42,0.08)]", className)} {...props}>
-            <CardHeader className="gap-3 border-b bg-background">
+        <Card className={cn("min-w-0 overflow-hidden border-border/70 [overflow-wrap:anywhere] shadow-[0_24px_80px_rgba(15,23,42,0.08)]", className)} {...props}>
+            <CardHeader className="min-w-0 gap-3 border-b bg-background">
                 <Badge variant="outline" className="w-fit gap-2 rounded-full">
                     <ShieldCheck aria-hidden="true" />
                     {t("auth.login.badge")}
                 </Badge>
-                <div>
+                <div className="min-w-0">
                     <CardTitle className="font-display text-3xl font-bold">
                         {t("auth.login.title")}
                     </CardTitle>
@@ -56,13 +56,13 @@ export function LoginForm({
                 </div>
             </CardHeader>
             <CardContent className="p-5 sm:p-6">
-                <Tabs defaultValue="password" className="w-full">
-                    <TabsList className="grid h-11 w-full grid-cols-2 rounded-xl bg-muted">
-                        <TabsTrigger value="password" className="gap-2">
+                <Tabs defaultValue="password" className="min-w-0 w-full">
+                    <TabsList className="grid h-auto min-h-11 w-full min-w-0 grid-cols-2 rounded-xl bg-muted">
+                        <TabsTrigger value="password" className="min-w-0 whitespace-normal py-2 text-center leading-tight">
                             <Building2 data-icon="inline-start" aria-hidden="true" />
                             {t("auth.login.passwordTab")}
                         </TabsTrigger>
-                        <TabsTrigger value="quick" className="gap-2">
+                        <TabsTrigger value="quick" className="min-w-0 whitespace-normal py-2 text-center leading-tight">
                             <Mail data-icon="inline-start" aria-hidden="true" />
                             {t("auth.login.quickTab")}
                         </TabsTrigger>
@@ -88,7 +88,6 @@ export function LoginForm({
                                         autoComplete="email"
                                         spellCheck={false}
                                         required
-                                        autoFocus
                                         data-testid="login-email-input"
                                         aria-invalid={errors.email ? "true" : "false"}
                                         aria-describedby={errors.email ? "login-email-error" : undefined}
@@ -102,7 +101,7 @@ export function LoginForm({
                                 </Field>
 
                                 <Field data-invalid={errors.password ? "true" : undefined}>
-                                    <div className="flex items-center">
+                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                                         <FieldLabel htmlFor="password">{t("auth.login.password")}</FieldLabel>
                                         {canResetPassword ? (
                                             <Link

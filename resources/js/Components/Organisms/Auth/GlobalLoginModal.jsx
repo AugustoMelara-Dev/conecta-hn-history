@@ -9,6 +9,7 @@ import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/Components/ui
 import { Input } from "@/Components/ui/input"
 import { Spinner } from "@/Components/ui/spinner"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/Components/ui/tabs"
+import { PUBLIC_BRAND } from '@/lib/publicBrand';
 import { useUIStore } from "@/Stores/useUIStore"
 
 export default function GlobalLoginModal() {
@@ -43,7 +44,9 @@ export default function GlobalLoginModal() {
         <Dialog open={isLoginModalOpen} onOpenChange={handleClose}>
             <DialogContent className="sm:max-w-[460px]">
                 <DialogHeader>
-                    <DialogTitle className="text-2xl font-semibold">Entrar a Vito Business OS</DialogTitle>
+                    <DialogTitle className="text-2xl font-semibold">
+                        Entrar a {PUBLIC_BRAND.name}
+                    </DialogTitle>
                     <DialogDescription>
                         Elige acceso con contraseña o enlace/código de respaldo.
                     </DialogDescription>

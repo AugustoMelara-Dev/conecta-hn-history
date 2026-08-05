@@ -1,18 +1,40 @@
 import { Link } from '@inertiajs/react';
 
-export default function ApplicationLogo({ className = '', showText = true }) {
+import DovraMonogram from '@/Components/Brand/DovraMonogram';
+import { cn } from '@/lib/utils';
+import { PUBLIC_BRAND } from '@/lib/publicBrand';
+
+/**
+ * ApplicationLogo - canonical brand mark for the application chrome.
+ *
+ * Backed by `DovraMonogram` so every header, footer and authenticated
+ * surface inherits the canonical identity instead of a CSS letter.
+ * `className` flows to the SVG so consumers can size and recolor it.
+ */
+export default function ApplicationLogo({
+    className = '',
+    showText = true,
+    variant = 'combo',
+    monogramClassName = '',
+    textClassName = 'text-gray-800 dark:text-gray-200',
+}) {
     return (
-        <Link href="/" className="flex items-center gap-2 group">
-            {/* Logo Icon: "C" in rounded square */}
-            <div className="w-10 h-10 bg-sky-600 rounded-xl flex items-center justify-center text-white shadow-lg group-hover:scale-105 transition-transform">
-                <span className="font-bold text-xl">C</span>
-            </div>
-            {/* Logo Text (optional) */}
-            {showText && (
-                <span className={`font-bold text-xl tracking-tight text-slate-900 dark:text-white ${className}`}>
-                    Vito Business OS
+        <Link href="/" className={cn('flex items-center gap-2 group', className)}>
+            <DovraMonogram
+                variant={variant === 'combo' || variant === 'mark' ? 'mark' : 'type'}
+                className={cn('h-9 w-auto text-current', monogramClassName)}
+                aria-hidden={variant === 'type' ? undefined : 'true'}
+            />
+            {showText ? (
+                <span
+                    className={cn(
+                        'font-bold text-xl tracking-tight',
+                        textClassName,
+                    )}
+                >
+                    {PUBLIC_BRAND.name}
                 </span>
-            )}
+            ) : null}
         </Link>
     );
 }

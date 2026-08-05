@@ -51,7 +51,7 @@ export default function UpsellCard({
         : 'este negocio';
     const whatsappMessage = `Hola ${safeName}!
 
-Vi su pagina en Vito Business OS y quisiera conocer el menu completo.`;
+Vi su pagina en Dovra AI y quisiera conocer el menu completo.`;
     const customerWhatsAppUrl = buildWhatsAppUrl(tenantWhatsapp, whatsappMessage);
     const hasValidWhatsApp = isValidWhatsAppPhone(tenantWhatsapp);
     const adminRouteUrl = getAdminRouteUrl(tenantSlug);

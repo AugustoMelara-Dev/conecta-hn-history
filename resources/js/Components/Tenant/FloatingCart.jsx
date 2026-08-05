@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, Percent, ShoppingBag, ShoppingCart } from 'lucide-react';
+import { toast } from 'sonner';
 import { Badge } from '@/Components/ui/badge';
 import { Button } from '@/Components/ui/button';
 import { Card, CardContent } from '@/Components/ui/card';
@@ -143,6 +144,10 @@ export default function FloatingCart() {
         const result = await submitOrder();
 
         if (result.success) {
+            toast.success(`Pedido ${result.orderNumber} creado`, {
+                description: 'Tu pedido quedó pendiente.',
+            });
+
             if (result.whatsappUrl) {
                 window.open(result.whatsappUrl, '_blank');
             }

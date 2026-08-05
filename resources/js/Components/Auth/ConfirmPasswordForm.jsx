@@ -53,7 +53,6 @@ export function ConfirmPasswordForm({ className, ...props }) {
                                 id="password"
                                 type="password"
                                 required
-                                autoFocus
                                 autoComplete="current-password"
                                 value={data.password}
                                 onChange={(event) => setData("password", event.target.value)}

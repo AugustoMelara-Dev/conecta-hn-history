@@ -14,6 +14,25 @@ import { Input } from "@/Components/ui/input"
 import { InputOTP } from "@/Components/ui/input-otp"
 import { Spinner } from "@/Components/ui/spinner"
 
+export function safeInternalDestination(value, fallback = "/directorio", baseOrigin = window.location.origin) {
+    if (typeof value !== "string" || value.trim() === "") {
+        return fallback
+    }
+
+    try {
+        const base = new URL(baseOrigin)
+        const destination = new URL(value.trim(), base)
+
+        if (destination.origin !== base.origin || !["http:", "https:"].includes(destination.protocol)) {
+            return fallback
+        }
+
+        return `${destination.pathname}${destination.search}${destination.hash}` || fallback
+    } catch {
+        return fallback
+    }
+}
+
 export function QuickAccessForm({ className = "", onAuthenticated }) {
     const [step, setStep] = useState("identifier")
     const [identifier, setIdentifier] = useState("")
@@ -69,7 +88,7 @@ export function QuickAccessForm({ className = "", onAuthenticated }) {
                 return
             }
 
-            const destination = response.data.redirect_to || response.data.redirect || "/directorio"
+            const destination = safeInternalDestination(response.data.redirect_to || response.data.redirect)
             onAuthenticated?.(destination)
             window.location.href = destination
         } catch (requestError) {

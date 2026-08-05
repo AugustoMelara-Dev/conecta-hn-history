@@ -20,7 +20,7 @@ import {
     LocationStep,
     PlanSummaryStep,
 } from "@/Components/Auth/RegisterTenantWizardSteps"
-import { Alert, AlertDescription, AlertTitle } from "@/Components/ui/alert"
+import { Alert, AlertDescription } from "@/Components/ui/alert"
 import { Button } from "@/Components/ui/button"
 import { Card } from "@/Components/ui/card"
 import { Progress } from "@/Components/ui/progress"
@@ -39,7 +39,20 @@ const STEPS = [
 
 const STEP_FIELDS = {
     0: ["business_name", "slug", "category_id", "commercial_mode"],
-    1: ["city_id", "whatsapp", "name", "email", "password", "password_confirmation"],
+    1: [
+        "city_id",
+        "country_code",
+        "locality_id",
+        "locale_code",
+        "currency_code",
+        "timezone",
+        "address",
+        "whatsapp",
+        "name",
+        "email",
+        "password",
+        "password_confirmation",
+    ],
     2: ["selected_plan", "terms_accepted", "privacy_accepted"],
 }
 
@@ -129,7 +142,7 @@ function StepPill({ step, index, currentStep, onClick }) {
             data-testid={`register-step-${step.key}`}
             aria-current={active ? "step" : undefined}
             aria-disabled={locked ? "true" : undefined}
-            className={`flex min-w-0 items-center gap-2 rounded-lg border px-3 py-2 text-left transition-colors ${
+            className={`flex min-w-0 items-center gap-2 rounded-lg border px-3 py-2 text-left transition-colors motion-reduce:transition-none ${
                 active
                     ? "border-primary bg-primary text-primary-foreground"
                 : complete
@@ -162,6 +175,7 @@ function SummaryRow({ label, value }) {
 export function RegisterTenantWizard({
     categories = [],
     cities = [],
+    markets = [],
     businessTypes = [],
     businessTypeSuggestions = {},
     segmentProfiles = [],
@@ -177,6 +191,7 @@ export function RegisterTenantWizard({
         message: "La URL se revisa en vivo mientras escribes.",
         suggestions: [],
     })
+    const initialMarket = markets[0] || null
 
     const { data, setData, post, processing, errors, clearErrors } = useForm({
         business_name: "",
@@ -186,6 +201,12 @@ export function RegisterTenantWizard({
         business_type: businessTypes[0]?.business_type || "retail",
         rubro_key: businessTypes[0]?.rubro_key || "",
         city_id: "",
+        country_code: initialMarket?.countryCode || "",
+        locality_id: "",
+        locale_code: initialMarket?.defaults?.localeCode || "",
+        currency_code: initialMarket?.defaults?.currencyCode || "",
+        timezone: initialMarket?.defaults?.timezone || "",
+        address: "",
         whatsapp: "",
         name: "",
         email: "",
@@ -215,6 +236,7 @@ export function RegisterTenantWizard({
             appointments: ["servicios", "salud"],
             products: ["tiendas", "restaurantes"],
             consulting_leads: ["consultorias", "abogados", "servicios"],
+            hybrid: ["tiendas", "servicios", "restaurantes", "salud"],
         }
 
         const preferredSlugs = slugByMode[mode] || []
@@ -228,6 +250,17 @@ export function RegisterTenantWizard({
         () => cities.find((item) => String(item.id) === String(data.city_id)),
         [cities, data.city_id]
     )
+    const selectedMarket = useMemo(
+        () => markets.find((item) => item.countryCode === data.country_code) || null,
+        [data.country_code, markets]
+    )
+    const selectedLocality = useMemo(
+        () => selectedMarket?.localities?.find((item) => String(item.id) === String(data.locality_id)) || null,
+        [data.locality_id, selectedMarket]
+    )
+    const selectedLocationLabel = selectedLocality
+        ? `${selectedLocality.name}${selectedLocality.administrativeArea ? `, ${selectedLocality.administrativeArea}` : ""} · ${selectedMarket?.countryName || data.country_code}`
+        : selectedCity?.name || "Pendiente"
     const suggestedBusinessType = useMemo(() => {
         if (!selectedCategory?.slug) {
             return null
@@ -276,7 +309,7 @@ export function RegisterTenantWizard({
         const configuredHost = normalizeHost(settings?.registrationHost)
         const legacyHost = normalizeHost(settings?.slugBaseHost)
 
-        return configuredDirectoryHost || configuredDirectoryUrl || currentHost || forwardedHost || configuredHost || legacyHost || "vito.hn"
+        return configuredDirectoryHost || configuredDirectoryUrl || currentHost || forwardedHost || configuredHost || legacyHost || "conecta.hn"
     }, [settings?.directoryHost, settings?.platformDirectoryUrl, settings?.registrationHost, settings?.requestHost, settings?.slugBaseHost])
     const registrationHost = useMemo(() => {
         const currentHost = typeof window !== "undefined" ? normalizeHost(window.location?.host) : null
@@ -325,8 +358,11 @@ export function RegisterTenantWizard({
     const freeLimit = Number(settings.freeProductLimit ?? 10)
     const proLimit = Number(settings.proProductLimit ?? 100)
     const freePrice = money(settings.freePlanPrice ?? 0)
-    const proPrice = money(settings.proPlanPrice ?? 500)
-    const canSubmit = categories.length > 0 && cities.length > 0
+    const canonicalProPrice = Number(settings.proPlanPrice)
+    const hasCanonicalProPrice = Number.isFinite(canonicalProPrice) && canonicalProPrice > 0
+    const proPrice = hasCanonicalProPrice ? money(canonicalProPrice) : "No disponible"
+    const hasRegistrationMarket = markets.length > 0 || cities.length > 0
+    const canSubmit = categories.length > 0 && hasRegistrationMarket && (data.selected_plan !== "pro" || hasCanonicalProPrice)
     const selectedCategoryValue = data.category_id ? String(data.category_id) : "none"
     const selectedCityValue = data.city_id ? String(data.city_id) : "none"
 
@@ -518,7 +554,15 @@ export function RegisterTenantWizard({
         }
 
         if (targetStep === 1) {
-            if (!String(data.city_id).trim()) nextErrors.city_id = "Selecciona una ciudad."
+            if (markets.length > 0) {
+                if (!String(data.country_code).trim()) nextErrors.country_code = "Selecciona un país o mercado."
+                if (!String(data.locality_id).trim()) nextErrors.locality_id = "Selecciona una localidad."
+                if (!String(data.locale_code).trim()) nextErrors.locale_code = "Selecciona el idioma y formato."
+                if (!String(data.currency_code).trim()) nextErrors.currency_code = "Selecciona una moneda."
+                if (!String(data.timezone).trim()) nextErrors.timezone = "Selecciona una zona horaria."
+            } else if (!String(data.city_id).trim()) {
+                nextErrors.city_id = "Selecciona una ciudad."
+            }
             if (!data.name.trim()) nextErrors.name = "Escribe tu nombre completo."
             if (!data.email.trim()) nextErrors.email = "Escribe el correo de acceso."
             else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) nextErrors.email = "Escribe un correo válido."
@@ -573,7 +617,7 @@ export function RegisterTenantWizard({
                     <Button variant="ghost" className="hidden md:inline-flex" asChild>
                         <Link href="/login">Iniciar sesión</Link>
                     </Button>
-                    <Button variant="outline" asChild>
+                    <Button variant="outline" className="h-auto min-h-10 whitespace-normal text-center" asChild>
                         <Link href={directoryUrl}>Directorio</Link>
                     </Button>
                 </>
@@ -633,7 +677,7 @@ export function RegisterTenantWizard({
                                 <SummaryRow label="Categoría" value={selectedCategory?.name || "Pendiente"} />
                                 <SummaryRow label="Modo" value={selectedBusinessType?.label || "Pendiente"} />
                                 <SummaryRow label="Segmento" value={selectedSegment?.label || "Pendiente"} />
-                                <SummaryRow label="Ciudad" value={selectedCity?.name || "Pendiente"} />
+                                <SummaryRow label="Mercado" value={selectedLocationLabel} />
                                 <SummaryRow label="Plan" value={data.selected_plan === "pro" ? "Business Pro" : "Basic"} />
                             </div>
                         </AuthAsideCard>
@@ -641,8 +685,8 @@ export function RegisterTenantWizard({
                 </>
             }
         >
-            <section className="w-full max-w-3xl" style={{ fontFamily: PUBLIC_BODY_FONT }}>
-                <Card className="rounded-lg border-border bg-card p-5 shadow-sm sm:p-6">
+            <section className="w-full min-w-0 max-w-3xl [overflow-wrap:anywhere]" style={{ fontFamily: PUBLIC_BODY_FONT }}>
+                <Card className="min-w-0 rounded-lg border-border bg-card p-5 shadow-sm sm:p-6">
                     <div className="flex flex-col gap-4">
                         <div className="flex flex-col gap-2">
                             <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
@@ -652,11 +696,11 @@ export function RegisterTenantWizard({
                                 Crea tu negocio sin llenar un formulario eterno.
                             </h1>
                             <p className="max-w-2xl text-base leading-7 text-muted-foreground">
-                                Dejamos listo lo obligatorio: identidad, ciudad, cuenta propietaria, plan y consentimientos. Lo operativo se configura después desde el panel.
+                                Dejamos listo lo obligatorio: identidad, mercado, cuenta propietaria, plan y consentimientos. Lo operativo se configura después desde el panel.
                             </p>
                         </div>
 
-                        <div className="flex flex-wrap gap-2" aria-label="Progreso de registro por pasos">
+                        <div className="flex flex-wrap gap-2" role="group" aria-label="Progreso de registro por pasos">
                             {STEPS.map((item, index) => (
                                 <StepPill key={item.key} step={item} index={index} currentStep={step} onClick={() => index <= step && setStep(index)} />
                             ))}
@@ -668,9 +712,9 @@ export function RegisterTenantWizard({
 
                     {!canSubmit ? (
                         <Alert variant="destructive" className="mt-8 rounded-2xl">
-                            <AlertTitle>Datos incompletos</AlertTitle>
+                            <p className="mb-1 font-semibold leading-none">Datos incompletos</p>
                             <AlertDescription>
-                                No pudimos cargar ciudades o categorías. Recarga la página e inténtalo de nuevo.
+                                No pudimos cargar mercados o categorías. Recarga la página e inténtalo de nuevo.
                             </AlertDescription>
                         </Alert>
                     ) : null}
@@ -713,6 +757,7 @@ export function RegisterTenantWizard({
                                 <div className="flex flex-col gap-6">
                                     <LocationStep
                                         data={data}
+                                        markets={markets}
                                         cities={cities}
                                         selectedCityValue={selectedCityValue}
                                         updateField={updateField}
@@ -740,7 +785,7 @@ export function RegisterTenantWizard({
                                     selectedCategory={selectedCategory}
                                     selectedBusinessType={selectedBusinessType}
                                     selectedSegment={selectedSegment}
-                                    selectedCity={selectedCity}
+                                    selectedLocationLabel={selectedLocationLabel}
                                     errorFor={errorFor}
                                     updateField={updateField}
                                     legalTermsUrl={legalTermsUrl}
@@ -751,26 +796,26 @@ export function RegisterTenantWizard({
                     </div>
 
                     <div className="mt-6 flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex items-center gap-3">
-                            <span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
+                        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                            <span className="break-words text-xs font-bold uppercase tracking-[0.2em] text-slate-500" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
                                 Progreso
                             </span>
-                            <Progress value={progress} className="h-2 w-32 bg-slate-200 sm:w-40 [&>div]:bg-slate-950" />
+                            <Progress value={progress} className="h-2 w-full min-w-0 bg-slate-200 sm:w-40 [&>div]:bg-slate-950" />
                         </div>
 
-                        <div className="flex items-center justify-end gap-2">
-                            <Button type="button" variant="outline" onClick={() => setStep((current) => Math.max(current - 1, 0))} disabled={step === 0 || processing} className="h-12 rounded-lg">
+                        <div className="flex min-w-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end">
+                            <Button type="button" variant="outline" onClick={() => setStep((current) => Math.max(current - 1, 0))} disabled={step === 0 || processing} className="h-auto min-h-12 whitespace-normal rounded-lg text-center">
                                 <ArrowLeft data-icon="inline-start" aria-hidden="true" />
                                 Atrás
                             </Button>
 
                             {step < STEPS.length - 1 ? (
-                                <Button type="button" data-testid="register-next-step" onClick={() => validateStep(step, { focus: true }) && setStep((current) => current + 1)} disabled={processing || !canSubmit} className="h-12 rounded-lg">
+                                <Button type="button" data-testid="register-next-step" onClick={() => validateStep(step, { focus: true }) && setStep((current) => current + 1)} disabled={processing || !canSubmit} className="h-auto min-h-12 whitespace-normal rounded-lg text-center">
                                     Continuar
                                     <ArrowRight data-icon="inline-end" aria-hidden="true" />
                                 </Button>
                             ) : (
-                                <Button type="button" data-testid="register-submit" onClick={submit} disabled={processing || !canSubmit} className="h-12 rounded-lg">
+                                <Button type="button" data-testid="register-submit" onClick={submit} disabled={processing || !canSubmit} className="h-auto min-h-12 whitespace-normal rounded-lg text-center">
                                     {processing ? (
                                         <>
                                             <Spinner data-icon="inline-start" />

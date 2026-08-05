@@ -28,7 +28,7 @@ export default function SmartNavbar() {
                             <span className="text-primary-foreground font-bold text-sm">C</span>
                         </div>
                         <span className="font-bold text-lg tracking-tight hidden sm:inline">
-                            Vito Business OS
+                            Dovra AI
                         </span>
                     </Link>
 
@@ -43,7 +43,7 @@ export default function SmartNavbar() {
                             </SheetTrigger>
                             <SheetContent side="top" className="w-full h-[80vh] rounded-b-2xl">
                                 <SheetHeader className="mb-4">
-                                    <SheetTitle>Explorar Vito Business OS</SheetTitle>
+                                    <SheetTitle>Explorar Dovra AI</SheetTitle>
                                 </SheetHeader>
                                 <div className="space-y-6">
                                     <div className="space-y-2">

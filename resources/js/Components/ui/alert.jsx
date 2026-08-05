@@ -4,9 +4,9 @@ import { cn } from "@/lib/utils"
 
 const variants = {
     default: "border-border bg-background text-foreground",
-    success: "border-primary/25 bg-primary/10 text-foreground",
+    success: "border-success/30 bg-success/10 text-success",
     destructive: "border-destructive/30 bg-destructive/10 text-destructive",
-    warning: "border-accent bg-accent text-accent-foreground",
+    warning: "border-warning/30 bg-warning/10 text-warning",
 }
 
 const Alert = React.forwardRef(({ className, variant = "default", ...props }, ref) => (

@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * PRODUCT OPTIONS MODAL - Vito Business OS
+ * PRODUCT OPTIONS MODAL - Dovra AI
  * ═══════════════════════════════════════════════════════════════════════════
  * 
  * Modal para seleccionar opciones/variantes antes de agregar al carrito.

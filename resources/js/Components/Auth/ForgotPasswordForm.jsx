@@ -59,7 +59,6 @@ export function ForgotPasswordForm({ status = null, className, ...props }) {
                                 type="email"
                                 placeholder={t("auth.forgotPassword.placeholderEmail")}
                                 autoComplete="email"
-                                autoFocus
                                 required
                                 value={data.email}
                                 onChange={(event) => setData("email", event.target.value)}

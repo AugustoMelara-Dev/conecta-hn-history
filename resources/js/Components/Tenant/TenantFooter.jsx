@@ -1,7 +1,7 @@
 /**
  * TenantFooter - Shared Footer Component for Both Tiers
  *
- * For Semilla: Shows "Powered by Vito Business OS" branding.
+ * For Semilla: Shows "Powered by Dovra AI" branding.
  * For Pro: Shows clean footer without branding.
  */
 
@@ -33,10 +33,10 @@ export default function TenantFooter({
                 <div>
                     <p className="inline-flex items-center gap-2 text-sm font-medium">
                         <Zap className="size-4 text-primary" aria-hidden="true" />
-                        Powered by <span className="font-semibold">Vito Business OS</span>
+                        Powered by <span className="font-semibold">Dovra AI</span>
                     </p>
                     <p className="text-xs text-muted-foreground">
-                        Crea tu micrositio gratis en Vito App
+                        Crea tu micrositio gratis en Dovra AI
                     </p>
                 </div>
                 <Button size="sm" asChild>

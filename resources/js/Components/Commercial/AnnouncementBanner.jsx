@@ -139,9 +139,23 @@ const containsHtml = (content) => {
 /**
  * Check if image source is from trusted CDN.
  */
-const isTrustedImageSource = (src) => {
-    if (!src) return false;
-    return TRUSTED_IMAGE_ORIGINS.some(origin => src.startsWith(origin));
+export const isTrustedImageSource = (src, trustedOrigins = TRUSTED_IMAGE_ORIGINS) => {
+    if (typeof src !== 'string' || src.trim() === '') return false;
+
+    try {
+        const currentOrigin = typeof window !== 'undefined' ? window.location.origin : undefined;
+        const candidate = new URL(src, currentOrigin);
+
+        return trustedOrigins.some((origin) => {
+            try {
+                return candidate.origin === new URL(origin, currentOrigin).origin;
+            } catch {
+                return false;
+            }
+        });
+    } catch {
+        return false;
+    }
 };
 
 /**
