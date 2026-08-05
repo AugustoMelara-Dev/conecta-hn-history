@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace Tests\Feature\Api;
 
 use App\Domain\Access\Enums\Role;
+use App\Domain\Analytics\Enums\CommercialOutcome;
 use App\Models\Appointment;
+use App\Models\City;
 use App\Models\Order;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -46,9 +49,9 @@ final class TenantPrivateAgentChatTest extends TestCase
     public function test_allowlisted_owner_gets_deterministic_sales_answer_for_current_tenant(): void
     {
         [$owner, $tenant] = $this->tenantOwner('agente-owner');
-        config()->set('conecta.features.tenant_private_agent_tenants', [$tenant->slug]);
+        $this->enablePrivateAgentFor($tenant);
 
-        Order::factory()->create([
+        $order = Order::factory()->create([
             'tenant_id' => $tenant->getKey(),
             'total' => 150.50,
             'status' => Order::STATUS_CONFIRMED,
@@ -60,6 +63,7 @@ final class TenantPrivateAgentChatTest extends TestCase
             'status' => Order::STATUS_CANCELLED,
             'created_at' => now(),
         ]);
+        $this->insertVerifiedRevenue((string) $tenant->getKey(), (string) $order->getKey(), 15050);
 
         Sanctum::actingAs($owner);
 
@@ -68,7 +72,8 @@ final class TenantPrivateAgentChatTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.intent', 'sales_today')
             ->assertJsonPath('data.orders_count', 1)
-            ->assertJsonPath('data.gross_total', 150.5)
+            ->assertJsonPath('data.verified_net_revenue', 150.5)
+            ->assertJsonPath('data.currency', 'HNL')
             ->assertJsonPath('meta.mode', 'deterministic_tenant_private_agent')
             ->assertJsonPath('meta.llm_used', false)
             ->assertJsonPath('meta.privacy_scope', 'tenant_private_only')
@@ -79,7 +84,7 @@ final class TenantPrivateAgentChatTest extends TestCase
     {
         [$owner] = $this->tenantOwner('agente-a');
         [, $otherTenant] = $this->tenantOwner('agente-b', 'other-owner@example.com');
-        config()->set('conecta.features.tenant_private_agent_tenants', [$otherTenant->slug]);
+        $this->enablePrivateAgentFor($otherTenant);
 
         Sanctum::actingAs($owner);
 
@@ -92,7 +97,7 @@ final class TenantPrivateAgentChatTest extends TestCase
     {
         [$owner, $tenant] = $this->tenantOwner('agente-permisos');
         $viewer = User::factory()->create(['email' => 'viewer-agent@example.com']);
-        config()->set('conecta.features.tenant_private_agent_tenants', [$tenant->slug]);
+        $this->enablePrivateAgentFor($tenant);
 
         $tenant->memberships()->create([
             'user_id' => $viewer->getKey(),
@@ -111,7 +116,7 @@ final class TenantPrivateAgentChatTest extends TestCase
     {
         [$owner, $tenant] = $this->tenantOwner('agente-reservas');
         [, $otherTenant] = $this->tenantOwner('agente-reservas-otro', 'appointments-other@example.com');
-        config()->set('conecta.features.tenant_private_agent_tenants', [$tenant->slug]);
+        $this->enablePrivateAgentFor($tenant);
 
         Appointment::factory()->create([
             'tenant_id' => $tenant->getKey(),
@@ -133,8 +138,9 @@ final class TenantPrivateAgentChatTest extends TestCase
         $this->withHeader('X-Tenant-ID', (string) $tenant->getKey())
             ->postJson('/api/v1/tenant/agent/chat', ['message' => 'Que reservas tengo hoy y a que hora?'])
             ->assertOk()
-            ->assertJsonPath('data.intent', 'appointments')
-            ->assertJsonPath('data.appointments.0.customer_name', 'Cliente Correcto')
+            ->assertJsonPath('data.intent', 'appointments_today')
+            ->assertJsonMissingPath('data.appointments.0.customer_name')
+            ->assertJsonMissing(['customer_name' => 'Cliente Correcto'])
             ->assertJsonMissing(['customer_name' => 'Cliente Ajeno']);
     }
 
@@ -148,7 +154,10 @@ final class TenantPrivateAgentChatTest extends TestCase
         $tenant = Tenant::factory()
             ->pro()
             ->forUser($owner)
-            ->create(['slug' => $slug]);
+            ->create([
+                'slug' => $slug,
+                'city_id' => City::factory()->create()->id,
+            ]);
 
         $owner->forceFill(['tenant_id' => (string) $tenant->getKey()])->save();
 
@@ -159,5 +168,30 @@ final class TenantPrivateAgentChatTest extends TestCase
         ]);
 
         return [$owner, $tenant];
+    }
+
+    private function enablePrivateAgentFor(Tenant $tenant): void
+    {
+        config()->set([
+            'ai.private.enabled' => true,
+            'ai.private.tenant_allowlist' => [(string) $tenant->getKey()],
+        ]);
+    }
+
+    private function insertVerifiedRevenue(string $tenantId, string $aggregateId, int $amountMinor): void
+    {
+        DB::table('verified_commercial_outcomes')->insert([
+            'tenant_id' => $tenantId,
+            'aggregate_type' => 'order',
+            'aggregate_id' => $aggregateId,
+            'outcome' => CommercialOutcome::OrderPaid->value,
+            'projection_key' => "{$tenantId}:order:{$aggregateId}:paid-test",
+            'amount_minor' => $amountMinor,
+            'currency' => 'HNL',
+            'source_occurred_at' => now(),
+            'source_version' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 }

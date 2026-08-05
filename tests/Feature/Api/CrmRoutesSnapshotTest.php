@@ -4,34 +4,39 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api;
 
-use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 final class CrmRoutesSnapshotTest extends TestCase
 {
     public function test_crm_route_surface_remains_stable(): void
     {
-        Artisan::call('route:list', [
-            '--path' => 'api/v1/crm',
-        ]);
+        $names = collect(Route::getRoutes()->getRoutes())
+            ->filter(fn ($route): bool => str_starts_with($route->uri(), 'api/v1/crm'))
+            ->map(fn ($route): ?string => $route->getName())
+            ->filter()
+            ->values()
+            ->all();
 
-        $output = Artisan::output();
-
-        $this->assertStringContainsString('api.crm.pipelines.index', $output);
-        $this->assertStringContainsString('api.crm.pipeline-summary.show', $output);
-        $this->assertStringContainsString('api.crm.deals.index', $output);
-        $this->assertStringContainsString('api.crm.deals.store', $output);
-        $this->assertStringContainsString('api.crm.deals.import', $output);
-        $this->assertStringContainsString('api.crm.deals.export', $output);
-        $this->assertStringContainsString('api.crm.leads.convert-to-deal', $output);
-        $this->assertStringContainsString('api.crm.pipelines.store', $output);
-        $this->assertStringContainsString('api.crm.pipelines.update', $output);
-        $this->assertStringContainsString('api.crm.pipelines.destroy', $output);
-        $this->assertStringContainsString('api.crm.pipelines.stages.store', $output);
-        $this->assertStringContainsString('api.crm.stages.update', $output);
-        $this->assertStringContainsString('api.crm.stages.destroy', $output);
-        $this->assertStringContainsString('api.crm.deals.update', $output);
-        $this->assertStringContainsString('api.crm.deals.stage.update', $output);
-        $this->assertStringContainsString('api.crm.deals.destroy', $output);
+        foreach ([
+            'api.crm.pipelines.index',
+            'api.crm.pipeline-summary.show',
+            'api.crm.deals.index',
+            'api.crm.deals.store',
+            'api.crm.deals.import',
+            'api.crm.deals.export',
+            'api.crm.leads.convert-to-deal',
+            'api.crm.pipelines.store',
+            'api.crm.pipelines.update',
+            'api.crm.pipelines.destroy',
+            'api.crm.pipelines.stages.store',
+            'api.crm.stages.update',
+            'api.crm.stages.destroy',
+            'api.crm.deals.update',
+            'api.crm.deals.stage.update',
+            'api.crm.deals.destroy',
+        ] as $expectedName) {
+            $this->assertContains($expectedName, $names);
+        }
     }
 }

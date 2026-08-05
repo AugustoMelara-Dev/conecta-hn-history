@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\DevOps;
 
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
+use SplFileInfo;
 use Tests\TestCase;
 
 final class DovraProductTruthContractTest extends TestCase
@@ -73,5 +76,74 @@ final class DovraProductTruthContractTest extends TestCase
         self::assertContains('.env.example', $registeredPaths);
         self::assertContains('config/observability.php', $registeredPaths);
         self::assertContains('app/ValueObjects/AuditContext.php', $registeredPaths);
+    }
+
+    public function test_server_product_surfaces_have_no_unregistered_legacy_brand_references(): void
+    {
+        $registeredPaths = array_column(
+            (array) config('dovra_legacy.allowed_references', []),
+            'path',
+        );
+        $violations = [];
+
+        foreach ([app_path(), config_path(), resource_path('views')] as $root) {
+            $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root));
+
+            foreach ($files as $file) {
+                if (! $file instanceof SplFileInfo || ! $file->isFile() || $file->getExtension() !== 'php') {
+                    continue;
+                }
+
+                $relativePath = str_replace(
+                    '\\',
+                    '/',
+                    substr($file->getPathname(), strlen(base_path()) + 1),
+                );
+
+                if (in_array($relativePath, $registeredPaths, true)) {
+                    continue;
+                }
+
+                $contents = file_get_contents($file->getPathname());
+                if (is_string($contents) && preg_match('/Conecta HN|ConectaHN|conecta-hn/ui', $contents) === 1) {
+                    $violations[] = $relativePath;
+                }
+            }
+        }
+
+        sort($violations);
+
+        self::assertSame([], $violations, implode(PHP_EOL, $violations));
+    }
+
+    public function test_server_brand_migration_does_not_invent_legal_identity_or_email_privilege(): void
+    {
+        $billingPage = (string) file_get_contents(app_path('Filament/Pages/Billing.php'));
+        $directoryView = (string) file_get_contents(resource_path('views/livewire/pages/directory.blade.php'));
+
+        self::assertStringContainsString('ProductIdentity::legalEntityName()', $billingPage);
+        self::assertStringNotContainsString('CONECTA HN S.A. de C.V.', $billingPage);
+        self::assertStringContainsString("hasRole('super_admin')", $directoryView);
+        self::assertDoesNotMatchRegularExpression(
+            '/email\s*===?\s*[\'"][^\'"]+[\'"]/',
+            $directoryView,
+        );
+    }
+
+    public function test_global_server_metadata_has_no_honduras_only_or_unvalidated_domain_fallback(): void
+    {
+        $seo = (string) file_get_contents(resource_path('views/components/seo-meta.blade.php'));
+        $guestLayout = (string) file_get_contents(resource_path('views/layouts/guest.blade.php'));
+        $legacyHome = (string) file_get_contents(resource_path('views/livewire/pages/home.blade.php'));
+
+        self::assertStringContainsString("config('dovra.identity.category')", $seo);
+        self::assertStringContainsString("config('dovra.identity.commercial_promise')", $seo);
+        self::assertStringContainsString('$presentationLocale', $seo);
+        self::assertStringContainsString('og:locale:alternate', $seo);
+        self::assertStringNotContainsString("config('app.url', 'https://conecta.hn')", $seo);
+        self::assertStringNotContainsString("'addressCountry' => 'HN'", $seo);
+        self::assertStringNotContainsString('Directorio de negocios en Honduras', $seo);
+        self::assertStringNotContainsString('directorio más completo de Honduras', $guestLayout);
+        self::assertStringNotContainsString('directorio de negocios más completo de Honduras', $legacyHome);
     }
 }

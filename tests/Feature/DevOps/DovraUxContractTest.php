@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
 
 final class DovraUxContractTest extends TestCase
@@ -55,22 +56,67 @@ final class DovraUxContractTest extends TestCase
         }
     }
 
-    public function test_browser_artifacts_cannot_be_read_as_application_surface_evidence(): void
+    public function test_routed_browser_artifacts_use_authoritative_application_surfaces(): void
     {
         self::assertFileExists(base_path('resources/js/__tests__/dovra-ux.contract.test.jsx'));
         self::assertFileDoesNotExist(base_path('resources/js/__tests__/dovra-program10.contract.test.jsx'));
         self::assertFileExists(base_path('tests/e2e/dovra-launch-critical.spec.ts'));
+        self::assertFileExists(base_path('tests/e2e/support/dovra-routed-surface.ts'));
         self::assertFileDoesNotExist(base_path('tests/e2e/dovra-program10-critical.spec.ts'));
         self::assertFileExists(base_path('docs/dovra/evidence/program-10-2026-08-01.md'));
 
         foreach (['tests/e2e/dovra-launch-critical.spec.ts', 'tests/e2e/dovra-accessibility.spec.ts'] as $path) {
             $source = (string) file_get_contents(base_path($path));
 
-            self::assertStringContainsString('HTML harness evidence only', $source);
-            self::assertStringContainsString('assertHtmlHarnessEvidence', $source);
-            self::assertStringContainsString('applicationSurface: false', $source);
-            self::assertStringNotContainsString('page.goto(', $source);
+            self::assertStringNotContainsString('page.setContent(', $source);
+            self::assertStringNotContainsString('buildMarkup', $source);
+            self::assertStringNotContainsString('mountFixture', $source);
+            self::assertStringNotContainsString('dovra-program-10.fixtures.json', $source);
+            self::assertStringNotContainsString('HTML harness evidence only', $source);
+            self::assertStringNotContainsString('applicationSurface: false', $source);
         }
+
+        $routedHelper = (string) file_get_contents(base_path('tests/e2e/support/dovra-routed-surface.ts'));
+        self::assertStringContainsString('getComputedStyle(', $routedHelper);
+        self::assertStringContainsString('transitionDuration', $routedHelper);
+        self::assertStringContainsString('animationDuration', $routedHelper);
+
+        $page = (string) file_get_contents(base_path('resources/js/Pages/Auth/RegisterTenant.jsx'));
+        $wizard = (string) file_get_contents(base_path('resources/js/Components/Auth/RegisterTenantWizard.jsx'));
+        $layout = (string) file_get_contents(base_path('resources/js/Components/Auth/AuthSplitLayout.jsx'));
+
+        self::assertStringContainsString('<RegisterTenantWizard {...props} />', $page);
+        self::assertStringNotContainsString('<main', $page);
+        self::assertStringNotContainsString('SkipLink', $page);
+        self::assertStringContainsString('<AuthSplitLayout', $wizard);
+        self::assertStringContainsString('SkipLink', $layout);
+        self::assertStringContainsString('id="main-content"', $layout);
+        self::assertStringContainsString('tabIndex={-1}', $layout);
+
+        $wizard = (string) file_get_contents(base_path('resources/js/Components/Auth/RegisterTenantWizard.jsx'));
+        $directory = (string) file_get_contents(base_path('resources/js/Pages/Directory/Index.jsx'));
+        self::assertStringContainsString('motion-reduce:transition-none', $wizard);
+        self::assertStringContainsString('motion-reduce:transition-none', $directory);
+    }
+
+    public function test_directory_route_renders_the_authoritative_inertia_surface(): void
+    {
+        $response = $this->get('/directorio');
+
+        $response->assertSuccessful();
+        $response->assertInertia(
+            fn (AssertableInertia $page) => $page->component('Directory/Index'),
+        );
+    }
+
+    public function test_registration_route_renders_the_authoritative_inertia_surface(): void
+    {
+        $response = $this->get('/registrar-negocio');
+
+        $response->assertSuccessful();
+        $response->assertInertia(
+            fn (AssertableInertia $page) => $page->component('Auth/RegisterTenant'),
+        );
     }
 
     public function test_client_acknowledgement_alone_does_not_mark_authoritative_onboarding_complete(): void

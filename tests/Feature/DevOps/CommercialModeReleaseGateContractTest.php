@@ -18,7 +18,7 @@ final class CommercialModeReleaseGateContractTest extends TestCase
         $this->assertStringContainsString('Test-ExpectedStatus -Route "/verify-email"', $script);
     }
 
-    public function test_release_gate_enforces_mode_evidence_and_hybrid_allowlist(): void
+    public function test_release_gate_enforces_evidence_for_every_launch_mode_without_hybrid_allowlist(): void
     {
         $script = file_get_contents(base_path('scripts/qa/commercial-mode-release-gate.ps1'));
 
@@ -27,6 +27,8 @@ final class CommercialModeReleaseGateContractTest extends TestCase
         $this->assertStringContainsString('"products"', $script);
         $this->assertStringContainsString('"consulting_leads"', $script);
         $this->assertStringContainsString('"hybrid"', $script);
-        $this->assertStringContainsString('hybrid must stay tenant-allowlisted', $script);
+        $this->assertStringContainsString('[string]$Modes = "appointments,products,consulting_leads,hybrid"', $script);
+        $this->assertStringNotContainsString('HybridAllowlist', $script);
+        $this->assertStringNotContainsString('tenant-allowlisted', $script);
     }
 }

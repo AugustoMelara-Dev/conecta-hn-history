@@ -37,7 +37,11 @@ final class AgentOutcomeAttributionTest extends TestCase
             'risk' => 'read',
             'policy_code' => 'policy_authorized',
             'status' => 'completed',
-            'metadata' => json_encode(['customer_email' => 'not-stored@example.test'], JSON_THROW_ON_ERROR),
+            'metadata' => json_encode([
+                'customer_email' => 'not-stored@example.test',
+                'workflow_status' => 'completed',
+                'workflow_reason_code' => 'completed',
+            ], JSON_THROW_ON_ERROR),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -72,7 +76,12 @@ final class AgentOutcomeAttributionTest extends TestCase
                 workflowRunId: null,
                 outcomeId: null,
                 occurredAt: CarbonImmutable::now(),
-                metadata: ['api_key' => 'must-not-leak', 'aggregate_id' => '42'],
+                metadata: [
+                    'api_key' => 'must-not-leak',
+                    'aggregate_id' => '42',
+                    'workflow_status' => 'completed',
+                    'workflow_reason_code' => 'completed',
+                ],
             ),
         );
 
@@ -103,6 +112,13 @@ final class AgentOutcomeAttributionTest extends TestCase
         self::assertNotNull($outcome->verified_commercial_outcome_id);
         self::assertStringNotContainsString('must-not-leak', (string) $outcome->attribution_metadata);
         $this->assertDatabaseHas('dovra_agent_action_audits', ['id' => $auditId, 'outcome_id' => $outcomeId]);
+        $audit = DB::table('dovra_agent_action_audits')->where('id', $auditId)->first();
+        self::assertNotNull($audit);
+        self::assertSame('policy_authorized', (string) $audit->policy_code);
+        self::assertSame('completed', (string) $audit->status);
+        $auditMetadata = json_decode((string) $audit->metadata, true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame('completed', $auditMetadata['workflow_status'] ?? null);
+        self::assertSame('completed', $auditMetadata['workflow_reason_code'] ?? null);
         self::assertSame(3, DB::table('dovra_agent_outcomes')->whereIn('id', [
             $reservationOutcomeId,
             $quoteOutcomeId,

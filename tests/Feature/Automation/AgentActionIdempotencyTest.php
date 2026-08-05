@@ -29,7 +29,13 @@ final class AgentActionIdempotencyTest extends TestCase
         [$tenant] = $this->tenant();
         $repository = new DatabaseWorkflowRepository(DB::connection());
         $definitions = new WorkflowDefinitionService($repository);
-        $draft = $definitions->createDraft((string) $tenant->getKey(), 'agent.lookup', ['steps' => []], (string) Str::uuid());
+        $draft = $definitions->createDraft((string) $tenant->getKey(), 'agent.lookup', [
+            'steps' => [[
+                'id' => 'counted-step',
+                'type' => 'tool',
+                'action' => 'counted-tool',
+            ]],
+        ], (string) Str::uuid());
         $definitions->publishDraft((string) $tenant->getKey(), 'agent.lookup', $draft['version_id'], 'v1', (string) Str::uuid());
         DB::table('automation_tool_policies')->insert([
             'id' => (string) Str::uuid(),
@@ -45,10 +51,22 @@ final class AgentActionIdempotencyTest extends TestCase
             'updated_at' => now(),
         ]);
         $policy = new ToolPolicyEngine($repository);
+        $handlerCalls = 0;
         $executor = new AgentActionExecutor(
             policyEngine: $policy,
             confirmations: app(AiToolConfirmationService::class),
-            workflowRuntime: new WorkflowRuntime(new WorkflowDefinitionService($repository), $repository, $policy),
+            workflowRuntime: new WorkflowRuntime(
+                new WorkflowDefinitionService($repository),
+                $repository,
+                $policy,
+                [
+                    'counted-tool' => function () use (&$handlerCalls): array {
+                        $handlerCalls++;
+
+                        return ['output' => ['counted' => true]];
+                    },
+                ],
+            ),
             repository: $repository,
             tenantContext: app(TenantContext::class),
         );
@@ -63,14 +81,73 @@ final class AgentActionIdempotencyTest extends TestCase
         );
 
         $first = $executor->execute($request);
+        $tenantStateBeforeReplay = $this->automationState((string) $tenant->getKey());
+        $tenantHashBeforeReplay = $this->automationStateHash($tenantStateBeforeReplay);
+        $tenantCountsBeforeReplay = $this->automationStateCounts($tenantStateBeforeReplay);
+        $runsBeforeReplay = DB::table('automation_workflow_runs')->where('tenant_id', $tenant->getKey())->count();
+        $auditsBeforeReplay = DB::table('dovra_agent_action_audits')->where('tenant_id', $tenant->getKey())->count();
         $replayed = $executor->execute($request);
 
         self::assertTrue($first->executed);
+        self::assertSame('policy_authorized', $first->audit->policyCode);
         self::assertFalse($replayed->executed);
         self::assertSame('idempotency_replay', $replayed->reasonCode);
         self::assertSame($first->audit->id, $replayed->audit->id);
-        self::assertSame(1, DB::table('automation_workflow_runs')->where('tenant_id', $tenant->getKey())->count());
-        self::assertSame(1, DB::table('dovra_agent_action_audits')->where('tenant_id', $tenant->getKey())->count());
+        self::assertSame('policy_authorized', $replayed->audit->policyCode);
+        self::assertSame($first->audit->toArray(), $replayed->audit->toArray());
+        self::assertSame($runsBeforeReplay, DB::table('automation_workflow_runs')->where('tenant_id', $tenant->getKey())->count());
+        self::assertSame($auditsBeforeReplay, DB::table('dovra_agent_action_audits')->where('tenant_id', $tenant->getKey())->count());
+        self::assertSame(1, $handlerCalls);
+        $audit = DB::table('dovra_agent_action_audits')->where('id', $first->audit->id)->first();
+        self::assertNotNull($audit);
+        self::assertSame('policy_authorized', (string) $audit->policy_code);
+        self::assertSame('completed', (string) $audit->status);
+        $metadata = json_decode((string) $audit->metadata, true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame('completed', $metadata['workflow_status'] ?? null);
+        self::assertSame('completed', $metadata['workflow_reason_code'] ?? null);
+        $tenantStateAfterReplay = $this->automationState((string) $tenant->getKey());
+        self::assertSame($tenantStateBeforeReplay, $tenantStateAfterReplay);
+        self::assertSame($tenantHashBeforeReplay, $this->automationStateHash($tenantStateAfterReplay));
+        self::assertSame($tenantCountsBeforeReplay, $this->automationStateCounts($tenantStateAfterReplay));
+    }
+
+    /** @return array<string, list<array<string, mixed>>> */
+    private function automationState(string $tenantId): array
+    {
+        $tables = [
+            'dovra_agent_action_audits',
+            'automation_workflow_runs',
+            'automation_workflow_steps',
+            'automation_workflow_step_attempts',
+            'automation_integration_idempotency',
+            'dovra_agent_outcomes',
+        ];
+        $state = [];
+        foreach ($tables as $table) {
+            $state[$table] = DB::table($table)
+                ->where('tenant_id', $tenantId)
+                ->orderBy('id')
+                ->get()
+                ->map(static fn (object $row): array => (array) $row)
+                ->values()
+                ->all();
+        }
+
+        return $state;
+    }
+
+    /** @param array<string, list<array<string, mixed>>> $state */
+    private function automationStateHash(array $state): string
+    {
+        return hash('sha256', json_encode($state, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    }
+
+    /** @param array<string, list<array<string, mixed>>> $state
+     *  @return array<string, int>
+     */
+    private function automationStateCounts(array $state): array
+    {
+        return array_map(static fn (array $rows): int => count($rows), $state);
     }
 
     /** @return array{Tenant, User} */

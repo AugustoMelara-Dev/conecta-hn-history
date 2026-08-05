@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api;
 
+use App\Application\TenantGovernance\Crm\CrmDefaultPipelineService;
 use App\Domain\Access\Enums\Role;
-use App\Domain\Identity\Enums\UserRole;
-use App\Domain\TenantGovernance\Enums\TenantPlan;
+use App\Domain\Shared\Services\TenantContext;
 use App\Domain\TenantGovernance\Enums\TenantFeature;
+use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Models\CrmDeal;
 use App\Models\CrmPipeline;
 use App\Models\CrmStage;
@@ -17,6 +18,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -24,6 +26,33 @@ use Tests\TestCase;
 final class CrmPipelineApiTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_crm_request_cleans_the_domain_tenant_context_after_response(): void
+    {
+        [$owner, $tenant] = $this->tenantOwner();
+        $context = app(TenantContext::class);
+        $context->reset();
+
+        Sanctum::actingAs($owner);
+
+        $this->withHeader('X-Tenant-ID', (string) $tenant->getKey())
+            ->getJson('/api/v1/crm/pipelines')
+            ->assertOk();
+
+        self::assertFalse($context->isInitialized());
+    }
+
+    public function test_crm_rejects_an_authenticated_users_unrelated_tenant_header(): void
+    {
+        [$owner] = $this->tenantOwner();
+        [, $otherTenant] = $this->tenantOwner(email: 'unrelated-crm-owner@example.com');
+
+        Sanctum::actingAs($owner);
+
+        $this->withHeader('X-Tenant-ID', (string) $otherTenant->getKey())
+            ->getJson('/api/v1/crm/pipelines')
+            ->assertForbidden();
+    }
 
     public function test_free_tenant_cannot_access_gated_crm_pipeline_api(): void
     {
@@ -61,7 +90,7 @@ final class CrmPipelineApiTest extends TestCase
     {
         [$owner, $tenant] = $this->tenantOwner();
 
-        config()->set('tenant-features.features.marketing_suite.all_capabilities', ['service_packages']);
+        config()->set('tenant-features.features.marketing_suite', null);
 
         self::assertFalse($tenant->hasFeature(TenantFeature::MARKETING_SUITE));
         self::assertFalse($tenant->hasFeature(TenantFeature::CRM_PIPELINES));
@@ -133,7 +162,7 @@ final class CrmPipelineApiTest extends TestCase
     {
         [$owner, $tenant] = $this->tenantOwner();
         $pipeline = $this->pipeline($tenant);
-        $stage = $pipeline->stages()->where('key', 'new')->firstOrFail();
+        $stage = $this->stage($tenant, $pipeline, 'new');
 
         CrmDeal::query()->withoutGlobalScopes()->forceCreate([
             'tenant_id' => (string) $tenant->getKey(),
@@ -163,7 +192,7 @@ final class CrmPipelineApiTest extends TestCase
         [$owner, $tenant] = $this->tenantOwner();
         [, $otherTenant] = $this->tenantOwner(email: 'other-pipeline-owner@example.com');
         $otherPipeline = $this->pipeline($otherTenant);
-        $otherStage = $otherPipeline->stages()->where('key', 'new')->firstOrFail();
+        $otherStage = $this->stage($otherTenant, $otherPipeline, 'new');
 
         Sanctum::actingAs($owner);
 
@@ -191,7 +220,7 @@ final class CrmPipelineApiTest extends TestCase
             'accepted_at' => now(),
         ]);
         $pipeline = $this->pipeline($tenant);
-        $stage = $pipeline->stages()->where('key', 'new')->firstOrFail();
+        $stage = $this->stage($tenant, $pipeline, 'new');
 
         Sanctum::actingAs($viewer);
 
@@ -212,8 +241,8 @@ final class CrmPipelineApiTest extends TestCase
     {
         [$owner, $tenant] = $this->tenantOwner();
         $pipeline = $this->pipeline($tenant);
-        $stage = $pipeline->stages()->where('key', 'new')->firstOrFail();
-        $proposal = $pipeline->stages()->where('key', 'proposal')->firstOrFail();
+        $stage = $this->stage($tenant, $pipeline, 'new');
+        $proposal = $this->stage($tenant, $pipeline, 'proposal');
         $customer = CustomerProfile::query()->withoutGlobalScopes()->forceCreate([
             'tenant_id' => (string) $tenant->getKey(),
             'name' => 'Cliente CRM',
@@ -368,7 +397,8 @@ final class CrmPipelineApiTest extends TestCase
         [$owner, $tenant] = $this->tenantOwner();
         [, $otherTenant] = $this->tenantOwner(email: 'other-owner@example.com');
         $pipeline = $this->pipeline($tenant);
-        $otherStage = $this->pipeline($otherTenant)->stages()->where('key', 'new')->firstOrFail();
+        $otherPipeline = $this->pipeline($otherTenant);
+        $otherStage = $this->stage($otherTenant, $otherPipeline, 'new');
 
         Sanctum::actingAs($owner);
 
@@ -381,13 +411,91 @@ final class CrmPipelineApiTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_deal_mutations_reject_a_cross_tenant_deal_id(): void
+    {
+        [$owner, $tenant] = $this->tenantOwner();
+        [, $otherTenant] = $this->tenantOwner(email: 'other-deal-owner@example.com');
+        $pipeline = $this->pipeline($tenant);
+        $localStage = $this->stage($tenant, $pipeline, 'new');
+        $otherPipeline = $this->pipeline($otherTenant);
+        $otherStage = $this->stage($otherTenant, $otherPipeline, 'new');
+        $otherDeal = CrmDeal::query()->withoutGlobalScopes()->forceCreate([
+            'tenant_id' => (string) $otherTenant->getKey(),
+            'crm_pipeline_id' => $otherPipeline->getKey(),
+            'crm_stage_id' => $otherStage->getKey(),
+            'title' => 'Deal del otro tenant',
+            'value' => 500,
+            'currency' => 'HNL',
+            'status' => CrmDeal::STATUS_OPEN,
+        ]);
+
+        Sanctum::actingAs($owner);
+
+        $this->withHeader('X-Tenant-ID', (string) $tenant->getKey())
+            ->patchJson("/api/v1/crm/deals/{$otherDeal->getKey()}", ['title' => 'Cruce indebido'])
+            ->assertNotFound();
+
+        $this->withHeader('X-Tenant-ID', (string) $tenant->getKey())
+            ->patchJson("/api/v1/crm/deals/{$otherDeal->getKey()}/stage", ['stage_id' => $localStage->getKey()])
+            ->assertNotFound();
+
+        $this->withHeader('X-Tenant-ID', (string) $tenant->getKey())
+            ->deleteJson("/api/v1/crm/deals/{$otherDeal->getKey()}")
+            ->assertNotFound();
+
+        $this->assertDatabaseHas('crm_deals', [
+            'id' => $otherDeal->getKey(),
+            'tenant_id' => (string) $otherTenant->getKey(),
+            'title' => 'Deal del otro tenant',
+            'crm_stage_id' => $otherStage->getKey(),
+        ]);
+    }
+
+    public function test_crm_relationships_hide_internally_inconsistent_cross_tenant_rows(): void
+    {
+        [, $tenant] = $this->tenantOwner();
+        [, $otherTenant] = $this->tenantOwner(email: 'other-corrupt-row-owner@example.com');
+        $pipeline = $this->pipeline($tenant);
+        $otherPipeline = $this->pipeline($otherTenant);
+        $otherStage = $this->stage($otherTenant, $otherPipeline, 'new');
+
+        $foreignStage = CrmStage::query()->withoutGlobalScopes()->forceCreate([
+            'tenant_id' => (string) $otherTenant->getKey(),
+            'crm_pipeline_id' => $pipeline->getKey(),
+            'name' => 'Fila contaminada',
+            'key' => 'cross-tenant-poison',
+            'type' => CrmStage::TYPE_OPEN,
+            'probability' => 10,
+            'is_default' => false,
+            'sort_order' => 999,
+        ]);
+
+        $foreignDeal = CrmDeal::query()->withoutGlobalScopes()->forceCreate([
+            'tenant_id' => (string) $tenant->getKey(),
+            'crm_pipeline_id' => $otherPipeline->getKey(),
+            'crm_stage_id' => $otherStage->getKey(),
+            'title' => 'Relaciones contaminadas',
+            'value' => 100,
+            'currency' => 'HNL',
+            'status' => CrmDeal::STATUS_OPEN,
+        ]);
+
+        $context = app(TenantContext::class);
+        $context->reset();
+        $context->setTenant((string) $tenant->getKey());
+
+        self::assertFalse($pipeline->stages()->whereKey($foreignStage->getKey())->exists());
+        self::assertNull($foreignDeal->pipeline()->first());
+        self::assertNull($foreignDeal->stage()->first());
+    }
+
     public function test_pipeline_summary_reports_real_counts_and_values(): void
     {
         [$owner, $tenant] = $this->tenantOwner();
         $pipeline = $this->pipeline($tenant);
-        $stage = $pipeline->stages()->where('key', 'new')->firstOrFail();
-        $wonStage = $pipeline->stages()->where('type', CrmStage::TYPE_WON)->firstOrFail();
-        $lostStage = $pipeline->stages()->where('type', CrmStage::TYPE_LOST)->firstOrFail();
+        $stage = $this->stage($tenant, $pipeline, 'new');
+        $wonStage = $this->stageOfType($tenant, $pipeline, CrmStage::TYPE_WON);
+        $lostStage = $this->stageOfType($tenant, $pipeline, CrmStage::TYPE_LOST);
 
         CrmDeal::query()->withoutGlobalScopes()->forceCreate([
             'tenant_id' => (string) $tenant->getKey(),
@@ -442,7 +550,7 @@ final class CrmPipelineApiTest extends TestCase
     {
         [$owner, $tenant] = $this->tenantOwner();
         $pipeline = $this->pipeline($tenant);
-        $stage = $pipeline->stages()->where('key', 'new')->firstOrFail();
+        $stage = $this->stage($tenant, $pipeline, 'new');
 
         Sanctum::actingAs($owner);
 
@@ -515,7 +623,7 @@ final class CrmPipelineApiTest extends TestCase
         ]);
 
         $pipeline = $this->pipeline($tenant);
-        $stage = $pipeline->stages()->where('key', 'new')->firstOrFail();
+        $stage = $this->stage($tenant, $pipeline, 'new');
         $deal = CrmDeal::query()->withoutGlobalScopes()->forceCreate([
             'tenant_id' => (string) $tenant->getKey(),
             'crm_pipeline_id' => $pipeline->getKey(),
@@ -576,7 +684,7 @@ final class CrmPipelineApiTest extends TestCase
     {
         [$owner, $tenant] = $this->tenantOwner();
         $pipeline = $this->pipeline($tenant);
-        $stage = $pipeline->stages()->where('key', 'new')->firstOrFail();
+        $stage = $this->stage($tenant, $pipeline, 'new');
         $deal = CrmDeal::query()->withoutGlobalScopes()->forceCreate([
             'tenant_id' => (string) $tenant->getKey(),
             'crm_pipeline_id' => $pipeline->getKey(),
@@ -596,7 +704,7 @@ final class CrmPipelineApiTest extends TestCase
     {
         [$owner, $tenant] = $this->tenantOwner();
         $pipeline = $this->pipeline($tenant);
-        $stage = $pipeline->stages()->where('key', 'new')->firstOrFail();
+        $stage = $this->stage($tenant, $pipeline, 'new');
         $deal = CrmDeal::query()->withoutGlobalScopes()->forceCreate([
             'tenant_id' => (string) $tenant->getKey(),
             'crm_pipeline_id' => $pipeline->getKey(),
@@ -627,7 +735,7 @@ final class CrmPipelineApiTest extends TestCase
     {
         [$owner, $tenant] = $this->tenantOwner();
         $pipeline = $this->pipeline($tenant);
-        $stage = $pipeline->stages()->where('key', 'new')->firstOrFail();
+        $stage = $this->stage($tenant, $pipeline, 'new');
         $deal = CrmDeal::query()->withoutGlobalScopes()->forceCreate([
             'tenant_id' => (string) $tenant->getKey(),
             'crm_pipeline_id' => $pipeline->getKey(),
@@ -699,6 +807,30 @@ final class CrmPipelineApiTest extends TestCase
      */
     private function tenantOwner(string $plan = TenantPlan::PRO->value, string $email = 'owner@example.com'): array
     {
+        DB::table('cities')->updateOrInsert(
+            ['slug' => 'tegucigalpa-crm-contract'],
+            [
+                'name' => 'Tegucigalpa',
+                'is_active' => true,
+                'is_featured' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        );
+        $cityId = (int) DB::table('cities')
+            ->where('slug', 'tegucigalpa-crm-contract')
+            ->value('id');
+        DB::table('currencies')->updateOrInsert(
+            ['code' => 'HNL'],
+            [
+                'name' => 'Honduran Lempira',
+                'symbol' => 'L',
+                'minor_unit' => 2,
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        );
         $owner = User::factory()->tenantOwner()->create([
             'email' => $email,
         ]);
@@ -709,6 +841,7 @@ final class CrmPipelineApiTest extends TestCase
                 'plan_type' => $plan,
                 'subscription_status' => 'active',
                 'business_type' => 'retail',
+                'city_id' => $cityId,
             ]);
 
         $owner->forceFill(['tenant_id' => (string) $tenant->getKey()])->save();
@@ -724,6 +857,26 @@ final class CrmPipelineApiTest extends TestCase
 
     private function pipeline(Tenant $tenant): CrmPipeline
     {
-        return app(\App\Application\TenantGovernance\Crm\CrmDefaultPipelineService::class)->ensureForTenant($tenant);
+        return app(CrmDefaultPipelineService::class)->ensureForTenant($tenant);
+    }
+
+    private function stage(Tenant $tenant, CrmPipeline $pipeline, string $key): CrmStage
+    {
+        return CrmStage::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', (string) $tenant->getKey())
+            ->where('crm_pipeline_id', $pipeline->getKey())
+            ->where('key', $key)
+            ->firstOrFail();
+    }
+
+    private function stageOfType(Tenant $tenant, CrmPipeline $pipeline, string $type): CrmStage
+    {
+        return CrmStage::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', (string) $tenant->getKey())
+            ->where('crm_pipeline_id', $pipeline->getKey())
+            ->where('type', $type)
+            ->firstOrFail();
     }
 }
