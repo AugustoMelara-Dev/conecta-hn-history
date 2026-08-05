@@ -1,0 +1,6 @@
+<?php
+
+function bypass(Product $record): void
+{
+    $record->delete();
+}

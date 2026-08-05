@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Support\AI;
 
+use App\Application\Ai\Workforce\AgentRole;
 use App\Application\Ai\Registry\AiRuntimeSelection;
 use App\Models\City;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 
 final class AiEligibleRegistryFixture
 {
@@ -18,7 +20,19 @@ final class AiEligibleRegistryFixture
         string $outputSchema,
         int $maxOutputTokens = 600,
         string $marketCountryCode = 'HN',
+        ?string $workforceRole = null,
     ): AiRuntimeSelection {
+        $role = null;
+        if ($workforceRole !== null) {
+            $role = AgentRole::tryFromKey($workforceRole);
+            if ($role === null) {
+                throw new InvalidArgumentException('Eligible AI fixture Workforce role is invalid.');
+            }
+            if ($capability !== 'private_tenant_agent' || $audience !== 'private') {
+                throw new InvalidArgumentException('Workforce role is only valid for the private tenant agent fixture.');
+            }
+        }
+
         if (DB::table('tenants')->where('id', $tenantId)->whereNull('city_id')->exists()) {
             $cityId = DB::table('cities')->value('id') ?? City::factory()->create()->getKey();
             DB::table('tenants')->where('id', $tenantId)->update(['city_id' => $cityId]);
@@ -48,17 +62,23 @@ final class AiEligibleRegistryFixture
                 'configuration' => json_encode($configuration, JSON_THROW_ON_ERROR),
             ]);
         }
+        $agentConfiguration = [
+            'capability' => $capability,
+            'audience' => $audience,
+            'channels' => ['*'],
+            'model_version_ids' => [$selection->modelVersionId],
+            'prompt_version_id' => $selection->promptVersionId,
+            'output_schema' => $outputSchema,
+            'required_capabilities' => ['structured_output'],
+            'max_output_tokens' => $maxOutputTokens,
+        ];
+
+        if ($role !== null) {
+            $agentConfiguration['workforce_role'] = $role->value;
+        }
+
         DB::table('ai_agent_versions')->where('id', $selection->agentVersionId)->update([
-            'configuration' => json_encode([
-                'capability' => $capability,
-                'audience' => $audience,
-                'channels' => ['*'],
-                'model_version_ids' => [$selection->modelVersionId],
-                'prompt_version_id' => $selection->promptVersionId,
-                'output_schema' => $outputSchema,
-                'required_capabilities' => ['structured_output'],
-                'max_output_tokens' => $maxOutputTokens,
-            ], JSON_THROW_ON_ERROR),
+            'configuration' => json_encode($agentConfiguration, JSON_THROW_ON_ERROR),
         ]);
 
         $evaluationSuiteId = (string) Str::uuid();

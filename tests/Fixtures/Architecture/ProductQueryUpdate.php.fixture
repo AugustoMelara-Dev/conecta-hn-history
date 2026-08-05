@@ -1,0 +1,3 @@
+<?php
+
+Product::query()->whereKey(1)->update(['price' => '1.00']);

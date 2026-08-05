@@ -1,0 +1,3 @@
+<?php
+
+$tenant->products()->create(['name' => 'Bypass']);

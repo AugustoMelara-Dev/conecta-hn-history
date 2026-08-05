@@ -8,6 +8,7 @@ use App\Domain\Shared\ValueObjects\TenantId;
 use App\ValueObjects\Money;
 use App\ValueObjects\OrderNumber;
 use DateTimeImmutable;
+use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -20,6 +21,20 @@ use PHPUnit\Framework\TestCase;
  */
 class ValueObjectsSerializationTest extends TestCase
 {
+    public function test_active_tenant_id_factory_rejects_legacy_numeric_identity(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        TenantId::fromString('42');
+    }
+
+    public function test_serialized_tenant_id_boundary_normalizes_legacy_numeric_identity(): void
+    {
+        $tenantId = TenantId::fromSerialized(42);
+
+        $this->assertSame('42', $tenantId->toString());
+    }
+
     /**
      * Test: TenantId is JSON serializable and recoverable
      */
@@ -160,7 +175,7 @@ class ValueObjectsSerializationTest extends TestCase
     public function test_all_value_objects_implement_json_serializable(): void
     {
         $valueObjects = [
-            TenantId::fromInt(1),
+            TenantId::fromString('00000000-0000-4000-8000-000000000001'),
             Money::fromCents(1000, 'HNL'),
             OrderNumber::fromString('ORD-001'),
         ];

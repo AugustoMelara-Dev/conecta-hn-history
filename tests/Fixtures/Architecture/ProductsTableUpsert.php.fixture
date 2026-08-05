@@ -1,0 +1,3 @@
+<?php
+
+DB::table('products')->upsert([['id' => 1]], ['id'], ['price']);

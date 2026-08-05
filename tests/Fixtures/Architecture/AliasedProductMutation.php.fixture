@@ -1,0 +1,5 @@
+<?php
+
+use App\Models\Product as CatalogItem;
+
+CatalogItem::query()->whereKey(1)->update(['is_visible' => false]);

@@ -13,29 +13,16 @@ async function loginAs(page: Page, email: string, password: string): Promise<voi
     await page.locator('#password').fill(password);
     await loginSubmitButton(page).click();
     await page.waitForLoadState('networkidle');
-}
-
-async function ensureLoggedInSession(page: Page, email: string, password: string): Promise<void> {
-    const loginHeadingVisible = await page.getByText(/Entre a su cuenta|Iniciar sesi[oó]n/i).first().isVisible().catch(() => false);
-    const emailFieldVisible = await page.locator('#email').isVisible().catch(() => false);
-    if (loginHeadingVisible && emailFieldVisible) {
-        await page.locator('#email').fill(email);
-        await page.locator('#password').fill(password);
-        await loginSubmitButton(page).click();
-        await page.waitForLoadState('networkidle');
-    }
+    await expect(page).not.toHaveURL(/\/login(?:[/?#]|$)/);
+    await expect(page.locator('#email')).toHaveCount(0);
 }
 
 async function gotoResilient(page: Page, url: string): Promise<number> {
-    try {
-        const response = await page.goto(url, { waitUntil: 'domcontentloaded' });
-        return response?.status() ?? 0;
-    } catch {
-        await page.waitForLoadState('domcontentloaded');
-        return 200;
-    }
-}
+    const response = await page.goto(url, { waitUntil: 'domcontentloaded' });
+    expect(response, `navigation to ${url} must return an HTTP response`).not.toBeNull();
 
+    return response!.status();
+}
 async function waitForSelectOptions(page: Page, testId: string): Promise<void> {
     await expect.poll(async () => page.getByTestId(testId).count(), {
         timeout: 15_000,
@@ -148,7 +135,7 @@ async function fillMinimalBusinessRegistration(page: Page): Promise<void> {
     await expect(registerSubmitButton(page)).toBeEnabled({ timeout: 10_000 });
 }
 
-test.describe('Vito Business OS critical journey', () => {
+test.describe('Conecta HN critical journey', () => {
     test('visitor registration reaches the owner onboarding boundary without server errors', async ({ page }) => {
         test.setTimeout(120_000);
 
@@ -188,67 +175,123 @@ test.describe('Vito Business OS critical journey', () => {
         await loginAs(page, officialFixtures.owner.email, officialFixtures.owner.password);
 
         const appStatus = await gotoResilient(page, `/app/${officialFixtures.product.slug}`);
-        expect(appStatus, 'tenant admin dashboard must be reachable').toBeLessThan(500);
-        await ensureLoggedInSession(page, officialFixtures.owner.email, officialFixtures.owner.password);
-        await gotoResilient(page, `/app/${officialFixtures.product.slug}`);
+        expect(appStatus, 'tenant admin dashboard must return 2xx/3xx').toBeGreaterThanOrEqual(200);
+        expect(appStatus, 'tenant admin dashboard must return 2xx/3xx').toBeLessThan(400);
         await expect(page.locator('body')).not.toContainText(/500|server error|internal server error/i);
-        await expect(page.locator('body')).toContainText(/Ruta sugerida|Frentes que debes activar|Demo AI Guide HN|Dashboard|Panel|Entre a su cuenta/i, {
+        await expect(page.locator('body')).toContainText(/Ruta sugerida|Frentes que debes activar|Demo AI Guide HN|Dashboard|Panel/i, {
             timeout: 20_000,
         });
 
         const firstRunWizard = page.getByTestId('first-run-wizard');
-        const wizardVisible = await firstRunWizard.isVisible().catch(() => false);
+        await expect(firstRunWizard).toBeVisible({ timeout: 10_000 });
+        await expect(firstRunWizard.locator('[aria-current="step"]').first()).toBeVisible({ timeout: 10_000 });
 
-        if (wizardVisible) {
-            await expect(firstRunWizard).toBeVisible({ timeout: 10_000 });
+        const openStepCta = page.getByTestId('first-run-open-step');
+        const disabledOpenStep = page.getByTestId('first-run-open-step-disabled');
+        const hasOpenStepCta = await openStepCta.isVisible().catch(() => false);
+        const hasDisabledOpenStep = await disabledOpenStep.isVisible().catch(() => false);
 
-            const activeStep = firstRunWizard.locator('[aria-current="step"]').first();
-            await expect(activeStep).toBeVisible({ timeout: 10_000 });
-
-            const openStepCta = page.getByTestId('first-run-open-step');
-            const disabledOpenStep = page.getByTestId('first-run-open-step-disabled');
-
-            const hasOpenStepCta = await openStepCta.isVisible().catch(() => false);
-            const hasDisabledOpenStep = await disabledOpenStep.isVisible().catch(() => false);
-
-            expect(
-                hasOpenStepCta || hasDisabledOpenStep,
-                'first-run wizard must expose a clear next-step CTA state'
-            ).toBeTruthy();
-        }
+        expect(
+            hasOpenStepCta || hasDisabledOpenStep,
+            'first-run wizard must expose a clear next-step CTA state'
+        ).toBeTruthy();
+        await expect(page.getByTestId('launch-readiness-card')).toBeVisible();
 
         const settingsStatus = await gotoResilient(page, `/app/${officialFixtures.product.slug}/settings`);
-        expect(settingsStatus, 'tenant settings must be reachable').toBeLessThan(500);
-        await ensureLoggedInSession(page, officialFixtures.owner.email, officialFixtures.owner.password);
+        expect(settingsStatus, 'tenant settings must return 2xx/3xx').toBeGreaterThanOrEqual(200);
+        expect(settingsStatus, 'tenant settings must return 2xx/3xx').toBeLessThan(400);
         await expect(page.locator('body')).not.toContainText(/500|server error|internal server error/i);
-        await expect(page.locator('body')).toContainText(/configur|perfil|ajustes|negocio|Entre a su cuenta|Iniciar sesi[oó]n/i, {
+        await expect(page.locator('body')).toContainText(/configur|perfil|ajustes|negocio/i, {
             timeout: 20_000,
         });
 
         const copilotStatus = await gotoResilient(page, `/app/${officialFixtures.product.slug}/copilot`);
-        expect(copilotStatus, 'business copilot must be reachable').toBeLessThan(500);
-        await ensureLoggedInSession(page, officialFixtures.owner.email, officialFixtures.owner.password);
+        expect(copilotStatus, 'business copilot must return 2xx/3xx').toBeGreaterThanOrEqual(200);
+        expect(copilotStatus, 'business copilot must return 2xx/3xx').toBeLessThan(400);
         await expect(page.locator('body')).not.toContainText(/500|server error|internal server error/i);
-        await expect(page.locator('body')).toContainText(/copilot|copiloto|dashboard|panel|ia|404|pagina no encontrada|Entre a su cuenta|Iniciar sesi[oó]n/i, {
+        await expect(page.locator('body')).toContainText(/copilot|copiloto|dashboard|panel|ia/i, {
             timeout: 20_000,
         });
 
         const micrositeStatus = await gotoResilient(page, officialRoutes.productMicrosite);
-        expect(micrositeStatus, 'published microsite must be reachable').toBeLessThan(500);
+        expect(micrositeStatus, 'published microsite must return 2xx/3xx').toBeGreaterThanOrEqual(200);
+        expect(micrositeStatus, 'published microsite must return 2xx/3xx').toBeLessThan(400);
         await expect(page.locator('body')).not.toContainText(/500|server error|internal server error/i);
         await expect(page.locator('body')).toContainText(
-            new RegExp(`${officialFixtures.product.expectedPanelText}|Demo AI Guide HN|demo-ai-guide-hn|404|pagina no encontrada`, 'i'),
+            new RegExp(`${officialFixtures.product.expectedPanelText}|Demo AI Guide HN|demo-ai-guide-hn`, 'i'),
             { timeout: 20_000 }
         );
     });
 
+    test('owner confirms an economic AI tool against a server quote exactly once', async ({ page }) => {
+        test.skip(
+            process.env.E2E_MODE === 'smoke',
+            'Uses deterministic CI seed data that is intentionally absent from deployed environments.',
+        );
+        test.setTimeout(60_000);
+
+        const tenantId = '019d0000-0000-7000-8000-000000000003';
+        const request = page.context().request;
+        const commonHeaders = {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer 900001|e2e-owner-economic-token',
+            'X-Tenant-ID': tenantId,
+        };
+        const catalogResponse = await request.get(`/api/v1/products?tenant_id=${tenantId}`, {
+            headers: { Accept: 'application/json' },
+        });
+        const catalog = await catalogResponse.json();
+        const product = catalog?.data?.find((item: { name?: string }) => item.name === 'Producto E2E confirmado');
+
+        expect(catalogResponse.status()).toBe(200);
+        expect(product?.id, 'deterministic economic E2E product must exist').toBeTruthy();
+
+        const preparedResponse = await request.post('/api/v1/tenant/agent/tools/prepare', {
+            headers: { ...commonHeaders, 'Idempotency-Key': `e2e-economic-${Date.now()}` },
+            data: {
+                tool: 'commerce.order.create',
+                payload: {
+                    customer_name: 'Cliente E2E confirmado',
+                    customer_phone: '9999-7777',
+                    delivery_type: 'pickup',
+                    payment_method: 'cash',
+                    items: [{ product_id: product.id, quantity: 2 }],
+                },
+            },
+        });
+        const prepared = await preparedResponse.json();
+
+        expect(preparedResponse.status(), JSON.stringify(prepared)).toBe(201);
+        expect(prepared?.confirmation?.preview?.quote?.total).toBe(251);
+
+        const confirmationId = String(prepared.confirmation.id);
+        const confirmationToken = String(prepared.confirmation.confirmation_token);
+        const confirmedResponse = await request.post(`/api/v1/tenant/agent/tools/${confirmationId}/confirm`, {
+            headers: commonHeaders,
+            data: { confirmation_token: confirmationToken },
+        });
+        const confirmed = await confirmedResponse.json();
+        const replayResponse = await request.post(`/api/v1/tenant/agent/tools/${confirmationId}/confirm`, {
+            headers: commonHeaders,
+            data: { confirmation_token: confirmationToken },
+        });
+        const replay = await replayResponse.json();
+
+        expect(confirmedResponse.status()).toBe(200);
+        expect(confirmed?.result?.total).toBe(251);
+        expect(replayResponse.status()).toBe(200);
+        expect(replay?.replayed).toBe(true);
+        expect(replay?.result?.order_id).toBe(confirmed?.result?.order_id);
+    });
     test('customer uses directory guide UI and directory AI chat contract', async ({ page }) => {
         test.setTimeout(90_000);
 
         await loginAs(page, officialFixtures.customer.email, officialFixtures.customer.password);
 
         const directoryResponse = await page.goto('/directorio?category=restaurantes&city=tegucigalpa', { waitUntil: 'domcontentloaded' });
-        expect(directoryResponse?.status(), 'directory must be reachable').toBeLessThan(500);
+        expect(directoryResponse?.status(), 'directory must return 2xx/3xx').toBeGreaterThanOrEqual(200);
+        expect(directoryResponse?.status(), 'directory must return 2xx/3xx').toBeLessThan(400);
 
         const guideInput = page.locator('[data-testid="directory-guide-chat-input"]:visible').first();
         const guideSubmit = page.locator('[data-testid="directory-guide-chat-submit"]:visible').first();

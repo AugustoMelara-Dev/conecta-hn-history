@@ -1,0 +1,5 @@
+<?php
+
+use App\Models\Product;
+
+Product::create(['name' => 'architecture bypass']);
