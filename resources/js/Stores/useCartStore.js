@@ -91,6 +91,7 @@ const useCartStore = create(
             submitError: null,
             lastOrderNumber: null,
             lastOrderId: null,
+            checkoutIdempotencyKey: null,
 
             // ═══════════════════════════════════════════════════════════════════════
             // STATE: Cart Drawer UI Control
@@ -221,7 +222,7 @@ const useCartStore = create(
                         quantity: updatedItems[existingIndex].quantity + quantity,
                         notes: notes || updatedItems[existingIndex].notes,
                     };
-                    set({ items: updatedItems });
+                    set({ items: updatedItems, checkoutIdempotencyKey: null });
                 } else {
                     // New item
                     const newItem = {
@@ -234,7 +235,7 @@ const useCartStore = create(
                         selectedModifiers,
                         notes,
                     };
-                    set({ items: [...items, newItem] });
+                    set({ items: [...items, newItem], checkoutIdempotencyKey: null });
                 }
 
                 // Revalidate coupon if items changed (minimum subtotal may have changed)
@@ -247,6 +248,7 @@ const useCartStore = create(
             removeItem: (cartItemId) => {
                 set({
                     items: get().items.filter(item => item.id !== cartItemId),
+                    checkoutIdempotencyKey: null,
                 });
                 // Revalidate coupon after removal (minimum subtotal may have changed)
                 get().revalidateCoupon();
@@ -267,6 +269,7 @@ const useCartStore = create(
                             ? { ...item, quantity: newQuantity }
                             : item
                     ),
+                    checkoutIdempotencyKey: null,
                 });
                 // Revalidate coupon after quantity change
                 get().revalidateCoupon();
@@ -286,6 +289,7 @@ const useCartStore = create(
                     lastOrderNumber: null,
                     lastOrderId: null,
                     submitError: null,
+                    checkoutIdempotencyKey: null,
                 });
             },
 
@@ -311,6 +315,7 @@ const useCartStore = create(
                     submitError: null,
                     lastOrderNumber: null,
                     lastOrderId: null,
+                    checkoutIdempotencyKey: null,
                 });
             },
 
@@ -630,7 +635,7 @@ const useCartStore = create(
              * FLOW:
              * 1. Validate customer data
              * 2. Build API payload
-             * 3. POST to /api/orders
+             * 3. POST to /api/v1/orders
              * 4. On success: clear cart, return WhatsApp URL
              * 5. On error: set error state
              */
@@ -657,6 +662,14 @@ const useCartStore = create(
                 set({ isSubmitting: true, submitError: null });
 
                 try {
+                    const idempotencyKey = state.checkoutIdempotencyKey
+                        || globalThis.crypto?.randomUUID?.()
+                        || `order-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+                    if (!state.checkoutIdempotencyKey) {
+                        set({ checkoutIdempotencyKey: idempotencyKey });
+                    }
+
                     // Build API payload matching OrderController validation
                     const payload = {
                         tenant_id: state.tenantId,
@@ -671,13 +684,11 @@ const useCartStore = create(
                         payment_method: state.paymentMethod,
                         items: state.items.map(item => ({
                             product_id: item.productId,
-                            name: item.name,
-                            price: item.price,
                             quantity: item.quantity,
                             options: item.selectedModifiers?.map(mod => ({
+                                option_id: mod.optionId,
                                 group: mod.groupName,
                                 option: mod.name,
-                                price: mod.price || 0,
                             })) || [],
                             notes: item.notes || null,
                         })),
@@ -686,7 +697,9 @@ const useCartStore = create(
                     };
 
                     // Make API call
-                    const response = await axios.post('/api/orders', payload);
+                    const response = await axios.post('/api/v1/orders', payload, {
+                        headers: { 'Idempotency-Key': idempotencyKey },
+                    });
 
                     if (response.data.success) {
                         const { order_number, order_id, whatsapp_url } = response.data.data;
@@ -698,6 +711,7 @@ const useCartStore = create(
                             submitError: null,
                             lastOrderNumber: order_number,
                             lastOrderId: order_id,
+                            checkoutIdempotencyKey: null,
                         });
 
                         return {

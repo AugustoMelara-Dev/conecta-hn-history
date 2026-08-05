@@ -36,7 +36,9 @@ export function resolveTenantCityName(tenant) {
         return tenant.city.name;
     }
 
-    return 'Honduras';
+    return tenant?.location?.locality
+        || tenant?.market?.country_code
+        || 'Ubicación no configurada';
 }
 
 export function resolveTenantCategoryName(tenant) {
@@ -51,7 +53,7 @@ export function resolveTenantCategoryName(tenant) {
     return 'Negocio local';
 }
 
-export function resolveTenantDescription(tenant, fallback = 'Negocio local activo dentro de Vito Business OS.') {
+export function resolveTenantDescription(tenant, fallback = 'Negocio local activo dentro de Dovra AI.') {
     if (typeof tenant?.description === 'string' && tenant.description.trim() !== '') {
         return tenant.description;
     }

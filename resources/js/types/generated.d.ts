@@ -41,7 +41,7 @@ items: { [key: number]: App.Application.Sales.DTOs.OrderItemData };
 }
 declare namespace App.Application.Tenant.Results {
 export type RegisterTenantResult = {
-tenantId: number;
+tenantId: string;
 domain: string;
 ownerEmail: string;
 setupUrl: string;
@@ -57,6 +57,16 @@ name: string;
 value: string;
 };
 }
+declare namespace App.Domain.Access.Enums {
+export type Permission = {
+name: string;
+value: string;
+};
+export type Role = {
+name: string;
+value: string;
+};
+}
 declare namespace App.Domain.Analytics.Enums {
 export type InteractionType = {
 name: string;
@@ -65,6 +75,12 @@ value: string;
 }
 declare namespace App.Domain.Billing.Enums {
 export type PaymentStatus = {
+name: string;
+value: string;
+};
+}
+declare namespace App.Domain.Catalog.Enums {
+export type CatalogImportStatus = {
 name: string;
 value: string;
 };
@@ -92,6 +108,22 @@ value: string;
 };
 }
 declare namespace App.Domain.TenantGovernance.Enums {
+export type BusinessType = {
+name: string;
+value: string;
+};
+export type Capability = {
+name: string;
+value: string;
+};
+export type CommercialMode = {
+name: string;
+value: string;
+};
+export type TenantFeature = {
+name: string;
+value: string;
+};
 export type TenantPlan = {
 name: string;
 value: string;

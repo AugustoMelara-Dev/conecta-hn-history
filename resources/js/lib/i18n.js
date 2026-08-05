@@ -2,9 +2,9 @@ const messages = {
     auth: {
         verifyEmail: {
             title: "Verifica tu correo",
-            headTitle: "Verifica tu correo | Vito Business OS",
+            headTitle: "Verifica tu correo | Dovra AI",
             descriptionPrefix: "Te enviamos un enlace de verificación a",
-            descriptionSuffix: "Ábrelo para desbloquear el panel correcto de Vito Business OS.",
+            descriptionSuffix: "Ábrelo para desbloquear el panel correcto de Dovra AI.",
             resentTitle: "Correo reenviado",
             resentDescription: "Te enviamos un nuevo enlace de verificación. Revisa también spam o promociones.",
             nextActionTitle: "Después de verificar: {title}",
@@ -16,8 +16,8 @@ const messages = {
             footerDescription: "Verifica tu correo para continuar al panel que corresponde a tu cuenta.",
         },
         login: {
-            headTitle: "Iniciar sesión | Vito Business OS",
-            metaDescription: "Accede a Vito Business OS para administrar operaciones, clientes y ventas desde un solo panel.",
+            headTitle: "Iniciar sesión | Dovra AI",
+            metaDescription: "Accede a Dovra AI para administrar operaciones, clientes y ventas desde un solo panel.",
             backToSite: "Volver al sitio",
             eyebrow: "Business Operating System",
             heroTitle: "Una entrada limpia para operar tu negocio sin fricción.",
@@ -27,7 +27,7 @@ const messages = {
             proofVerifiedEmail: "Correo verificado",
             mobileHome: "Inicio",
             badge: "Acceso seguro",
-            title: "Entra a Vito Business OS",
+            title: "Entra a Dovra AI",
             description: "Usa contraseña para el panel de negocio o acceso rápido con correo y código.",
             passwordTab: "Acceso con correo",
             quickTab: "Acceso rápido",
@@ -41,7 +41,7 @@ const messages = {
             placeholderEmail: "nombre@negocio.hn",
         },
         forgotPassword: {
-            headTitle: "Recuperar acceso | Vito Business OS",
+            headTitle: "Recuperar acceso | Dovra AI",
             imageAlt: "Panel de recuperación de acceso",
             title: "Recupera tu acceso",
             description: "Escribe tu correo y enviaremos un enlace seguro para cambiar la contraseña.",
@@ -54,7 +54,7 @@ const messages = {
             login: "Iniciar sesión",
         },
         globalLogin: {
-            title: "Entrar a Vito Business OS",
+            title: "Entrar a Dovra AI",
             description: "Elige acceso con contraseña o enlace/código de respaldo.",
             passwordTab: "Acceso con correo",
             quickTab: "Acceso rápido",
@@ -65,7 +65,7 @@ const messages = {
     },
     billing: {
         paymentPending: {
-            headTitle: "Completar pago | Vito Business OS",
+            headTitle: "Completar pago | Dovra AI",
             initialLiveMessage: "Tu pago esta pendiente de validacion.",
             updatedLiveMessage: "Pago pendiente. Envia el comprobante para continuar la validacion.",
             approvedLiveMessage: "Pago aprobado. Ya puedes continuar en el panel.",
@@ -105,7 +105,7 @@ const messages = {
         },
         account: {
             headTitle: "Mi cuenta",
-            headTitleFull: "Mi cuenta - Vito Business OS",
+            headTitleFull: "Mi cuenta - Dovra AI",
             eyebrow: "Cuenta personal",
             greeting: "Hola, {name}",
             summary:

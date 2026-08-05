@@ -43,10 +43,10 @@ export class TitaniumHttpAdapter {
             return this.performNetworkRequest<T>(config, meta, '', false);
         }
 
-        // � ARTEFACTO 2: GENERACIÓN DE IDENTIDAD CANÓNICA
+        // ARTEFACTO 2: GENERACIÓN DE IDENTIDAD CANÓNICA
         const cacheKey = this.generateCacheKey(config);
 
-        // �🛡️ Verificación de Caché (Read Operations)
+        // Verificación de caché (operaciones de lectura)
         const cachedData = this.getCache<T>(cacheKey);
 
         if (cachedData) {

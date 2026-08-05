@@ -10,5 +10,5 @@ export enum UserRole {
 export enum TenantPlan {
     SEMILLA = 'semilla',
     PRO = 'pro',
+    ENTERPRISE = 'enterprise',
 }
-
