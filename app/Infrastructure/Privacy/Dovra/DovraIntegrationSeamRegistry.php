@@ -91,6 +91,8 @@ final class DovraIntegrationSeamRegistry
             'private_ai_prompt' => ['ai_capability_policy', 'postgres_rls_runtime'],
             'knowledge_ingestion' => ['ai_capability_policy', 'postgres_rls_runtime'],
             'channel_message' => ['ai_capability_policy', 'sensitive_log_scrubber', 'postgres_rls_runtime'],
+            'directory_guide_chat' => ['ai_capability_policy', 'sensitive_log_scrubber', 'postgres_rls_runtime'],
+            'tenant_agent_chat' => ['ai_capability_policy', 'sensitive_log_scrubber', 'postgres_rls_runtime'],
             'audit' => ['sensitive_log_scrubber', 'audit_context', 'postgres_rls_runtime'],
             'log' => ['sensitive_log_scrubber', 'audit_context', 'postgres_rls_runtime'],
             'webhook' => ['sensitive_log_scrubber', 'audit_context', 'postgres_rls_runtime'],
@@ -115,6 +117,7 @@ final class DovraIntegrationSeamRegistry
             'private_ai_prompt',
             'knowledge_ingestion',
             'channel_message',
+            'tenant_agent_chat',
         ], true);
     }
 

@@ -11,6 +11,17 @@ use App\Infrastructure\Privacy\Dovra\DovraIntegrationSeamRegistry;
 
 final class DataClassificationPolicy
 {
+    /** @var list<string> */
+    private const CLINIC_SCALAR_FIELD_TOKENS = [
+        'treatment_plan',
+        'medical_history',
+        'case_record',
+        'clinical_notes',
+        'lab_result',
+        'vital_sign',
+        'procedure_record',
+    ];
+
     private const DISALLOWED_UPLOAD_MIME = [
         'image/svg+xml',
         'text/html',
@@ -256,6 +267,29 @@ final class DataClassificationPolicy
 
         foreach (array_keys($this->flattenValues($data->payload)) as $key) {
             if (preg_match('/(?:clinical|medical|treatment|medication|prescription|symptom|diagnosis|patient|lab|vital|procedure|medical_history|case_record)/i', (string) $key) === 1) {
+                return true;
+            }
+        }
+
+        foreach ($this->flattenValues($data->payload) as $value) {
+            if (is_string($value) && $this->containsStructuredClinicToken($value)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function containsStructuredClinicToken(string $value): bool
+    {
+        foreach (self::CLINIC_SCALAR_FIELD_TOKENS as $token) {
+            $escapedToken = preg_quote($token, '/');
+            $pattern = sprintf(
+                '/(?:^|[\{\[,;]|\r|\n)[ \t]*(?:"%1$s"|\'%1$s\'|%1$s)[ \t]*[:=]/i',
+                $escapedToken,
+            );
+
+            if (preg_match($pattern, $value) === 1) {
                 return true;
             }
         }
