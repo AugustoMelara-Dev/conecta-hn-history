@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\AI\Conversation;
 
 use App\Application\Ai\Conversation\AcceptConversationMessage;
+use App\Application\Ai\Conversation\ConversationContinuationContext;
 use App\Application\Ai\Conversation\ConversationEnvelope;
 use App\Application\Ai\Conversation\ConversationMessage;
 use App\Application\Ai\Conversation\ConversationMessageClaim;
@@ -188,6 +189,51 @@ final class EloquentConversationStore implements ConversationStore
                 $payloadHash,
             );
         }
+    }
+
+    public function findActiveTenantPrivate(
+        string $tenantId,
+        string $conversationId,
+    ): ?ConversationContinuationContext {
+        $tenantId = strtolower(trim($tenantId));
+        $this->assertTenantAccess($tenantId, 'tenant_private');
+        if (! Str::isUuid($conversationId)) {
+            $this->deny();
+        }
+
+        $conversation = DB::table('ai_conversations')
+            ->where('tenant_id', $tenantId)
+            ->where('id', $conversationId)
+            ->where('visibility', 'tenant_private')
+            ->where('status', 'active')
+            ->first([
+                'tenant_id',
+                'id',
+                'actor_id',
+                'origin_type',
+                'external_thread_hash',
+                'locale',
+                'market_country_code',
+                'currency',
+                'timezone',
+            ]);
+        if ($conversation === null || $conversation->actor_id === null) {
+            return null;
+        }
+
+        return new ConversationContinuationContext(
+            tenantId: (string) $conversation->tenant_id,
+            conversationId: (string) $conversation->id,
+            actorId: (string) $conversation->actor_id,
+            originType: (string) $conversation->origin_type,
+            externalThreadHash: $conversation->external_thread_hash === null
+                ? null
+                : (string) $conversation->external_thread_hash,
+            locale: (string) $conversation->locale,
+            marketCountryCode: (string) $conversation->market_country_code,
+            currency: (string) $conversation->currency,
+            timezone: (string) $conversation->timezone,
+        );
     }
 
     public function completeAssistantMessage(

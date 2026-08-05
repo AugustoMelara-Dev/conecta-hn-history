@@ -9,8 +9,8 @@ use App\Application\Ai\Handoff\AiHandoffService;
 use App\Application\Ai\Handoff\RequestAiHandoff;
 use App\Application\Ai\PrivateGroundedAgent;
 use App\Application\Ai\PublicGroundedDiscovery;
-use App\Application\Ai\Registry\AiRegistryResolver;
 use App\Application\Ai\Registry\AiRegistryQuery;
+use App\Application\Ai\Registry\AiRegistryResolver;
 use App\Application\Ai\Registry\AiRuntimeSelection;
 use App\Application\Ai\Workforce\WorkforceAgentResolver;
 use App\Application\Markets\TenantMarketResolver;
@@ -101,12 +101,12 @@ final readonly class ConversationRuntime
                     command: $command,
                     claim: $claim,
                     failure: ['code' => 'ai_handoff_required', 'retryable' => false],
-                    fallback: $this->publicEngine->fallback($input),
+                    fallback: $this->publicEngine->fallback($input, $market),
                     handoffTrigger: 'explicit_user',
                     agentVersionId: $selection->agentVersionId,
                 );
             }
-            $answer = $this->publicEngine->answer($input, $selection, $claim);
+            $answer = $this->publicEngine->answer($input, $market, $selection, $claim);
 
             return $this->completeOrFail(
                 tenantId: $tenantId,
@@ -132,7 +132,7 @@ final readonly class ConversationRuntime
                 command: $command,
                 claim: $claim,
                 failure: $this->failures->map($exception),
-                fallback: $this->publicEngine->fallback($input),
+                fallback: $this->publicEngine->fallback($input, $market),
                 handoffTrigger: $selection === null ? null : $this->exceptionHandoffTrigger($exception),
                 agentVersionId: $selection?->agentVersionId,
             );

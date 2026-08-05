@@ -11,6 +11,11 @@ interface ConversationStore
 {
     public function claim(AcceptConversationMessage $command): ConversationMessageClaim;
 
+    public function findActiveTenantPrivate(
+        string $tenantId,
+        string $conversationId,
+    ): ?ConversationContinuationContext;
+
     /**
      * @param  array<string, mixed>  $answer
      * @param  list<array<string, mixed>>  $evidence
