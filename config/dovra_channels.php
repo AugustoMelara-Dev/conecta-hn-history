@@ -20,6 +20,10 @@ return [
         ],
         'webhook_verification' => [
             'algorithm' => 'hmac-sha256',
+            'signature_version' => 'dovra-channel-webhook-v1',
+            'timestamp_format' => 'Y-m-d\\TH:i:s\\Z',
+            'max_age_seconds' => 300,
+            'future_tolerance_seconds' => 30,
             'required_for' => ['email', 'whatsapp', 'sms', 'voice'],
             'fail_closed_without_signature' => true,
             'replay_claim_table' => 'channel_webhook_claims',

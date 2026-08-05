@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Broadcasting;
 
 use Illuminate\Broadcasting\PrivateChannel;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 
 /**
@@ -22,7 +23,7 @@ use InvalidArgumentException;
  * use App\Broadcasting\ChannelRegistry;
  *
  * Broadcast::channel(ChannelRegistry::TENANT_CHANNEL_PATTERN, function ($user, $id) {
- *     return $user->tenant_id === (int) $id;
+ *     return (string) $user->tenant_id === (string) $id;
  * });
  * ```
  */
@@ -70,14 +71,14 @@ final class ChannelRegistry
     /**
      * Create a private channel for tenant-scoped events.
      *
-     * @param  int  $tenantId  The tenant identifier (must be > 0)
+     * @param  string  $tenantId  The tenant UUID
      * @return PrivateChannel Channel instance for WebSocket routing
      *
      * @throws InvalidArgumentException If tenantId is not positive
      */
-    public static function tenant(int $tenantId): PrivateChannel
+    public static function tenant(string $tenantId): PrivateChannel
     {
-        self::validatePositiveId($tenantId, 'tenantId');
+        $tenantId = self::normalizeTenantIdentifier($tenantId);
 
         return new PrivateChannel(self::TENANT_PREFIX.$tenantId);
     }
@@ -85,12 +86,12 @@ final class ChannelRegistry
     /**
      * Get the raw channel name for tenant.
      *
-     * @param  int  $tenantId  The tenant identifier (must be > 0)
+     * @param  string  $tenantId  The tenant UUID
      * @return string Raw channel name (e.g., 'tenant.42')
      */
-    public static function tenantName(int $tenantId): string
+    public static function tenantName(string $tenantId): string
     {
-        self::validatePositiveId($tenantId, 'tenantId');
+        $tenantId = self::normalizeTenantIdentifier($tenantId);
 
         return self::TENANT_PREFIX.$tenantId;
     }
@@ -98,12 +99,12 @@ final class ChannelRegistry
     /**
      * Create a private channel for tenant administrators (Sensitive).
      *
-     * @param  int  $tenantId  The tenant identifier (must be > 0)
+     * @param  string  $tenantId  The tenant UUID
      * @return PrivateChannel Channel instance for WebSocket routing
      */
-    public static function tenantAdmins(int $tenantId): PrivateChannel
+    public static function tenantAdmins(string $tenantId): PrivateChannel
     {
-        self::validatePositiveId($tenantId, 'tenantId');
+        $tenantId = self::normalizeTenantIdentifier($tenantId);
 
         return new PrivateChannel(self::TENANT_PREFIX.$tenantId.'.admins');
     }
@@ -114,9 +115,9 @@ final class ChannelRegistry
      * @param  int  $userId  The user identifier (must be > 0)
      * @return PrivateChannel Channel instance for WebSocket routing
      */
-    public static function user(int $userId): PrivateChannel
+    public static function user(int|string $userId): PrivateChannel
     {
-        self::validatePositiveId($userId, 'userId');
+        $userId = self::normalizeIdentifier($userId, 'userId');
 
         return new PrivateChannel(self::USER_PREFIX.$userId);
     }
@@ -127,9 +128,9 @@ final class ChannelRegistry
      * @param  int  $userId  The user identifier (must be > 0)
      * @return string Raw channel name (e.g., 'user.123')
      */
-    public static function userName(int $userId): string
+    public static function userName(int|string $userId): string
     {
-        self::validatePositiveId($userId, 'userId');
+        $userId = self::normalizeIdentifier($userId, 'userId');
 
         return self::USER_PREFIX.$userId;
     }
@@ -140,9 +141,9 @@ final class ChannelRegistry
      * @param  int  $orderId  The order identifier (must be > 0)
      * @return PrivateChannel Channel instance for WebSocket routing
      */
-    public static function order(int $orderId): PrivateChannel
+    public static function order(int|string $orderId): PrivateChannel
     {
-        self::validatePositiveId($orderId, 'orderId');
+        $orderId = self::normalizeIdentifier($orderId, 'orderId');
 
         return new PrivateChannel(self::ORDER_PREFIX.$orderId);
     }
@@ -153,9 +154,9 @@ final class ChannelRegistry
      * @param  int  $orderId  The order identifier (must be > 0)
      * @return string Raw channel name (e.g., 'order.456')
      */
-    public static function orderName(int $orderId): string
+    public static function orderName(int|string $orderId): string
     {
-        self::validatePositiveId($orderId, 'orderId');
+        $orderId = self::normalizeIdentifier($orderId, 'orderId');
 
         return self::ORDER_PREFIX.$orderId;
     }
@@ -165,12 +166,29 @@ final class ChannelRegistry
      *
      * @throws InvalidArgumentException If ID is not positive
      */
-    private static function validatePositiveId(int $id, string $paramName): void
+    private static function normalizeIdentifier(int|string $id, string $paramName): string
     {
-        if ($id <= 0) {
-            throw new InvalidArgumentException(
-                "{$paramName} must be a positive integer, got {$id}"
-            );
+        $value = (string) $id;
+
+        if ((ctype_digit($value) && (int) $value > 0) || Str::isUuid($value)) {
+            return $value;
         }
+
+        throw new InvalidArgumentException(
+            "{$paramName} must be a positive integer or UUID, got {$value}"
+        );
+    }
+
+    private static function normalizeTenantIdentifier(string $tenantId): string
+    {
+        $normalized = strtolower($tenantId);
+
+        if (Str::isUuid($normalized)) {
+            return $normalized;
+        }
+
+        throw new InvalidArgumentException(
+            "tenantId must be a UUID, got {$tenantId}"
+        );
     }
 }

@@ -27,6 +27,19 @@ return [
         array_map('trim', explode(',', env('APP_SUPER_ADMINS', '')))
     ),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Social Authentication
+    |--------------------------------------------------------------------------
+    |
+    | The legacy API payload accepts identity claims supplied by the caller and
+    | therefore must remain disabled. A future implementation may enable this
+    | flag only after exchanging/verifying a provider-issued authorization code
+    | server-side and binding the verified subject to the intended tenant.
+    |
+    */
+
+    'social_login_enabled' => (bool) env('SOCIAL_LOGIN_ENABLED', false),
     'defaults' => [
         'guard' => env('AUTH_GUARD', 'web'),
         'passwords' => env('AUTH_PASSWORD_BROKER', 'users'),

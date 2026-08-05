@@ -12,7 +12,7 @@ class EventServiceProvider extends ServiceProvider
     /**
      * The event processing subscribers for the application.
      *
-     * @var array
+     * @var array<int, class-string>
      */
     protected $subscribe = [
         ProjectionEventSubscriber::class,
@@ -23,30 +23,24 @@ class EventServiceProvider extends ServiceProvider
      *
      * Mapped for Zero Downtime Migration (V1 -> V2).
      *
-     * @var array
+     * @var array<string, array<int, string>>
      */
     protected $listen = [
+
         // Canonical (V2)
         \App\Domain\User\Events\UserProfileUpdated::NAME => [
             \App\Infrastructure\User\Listeners\SendProfileUpdateNotificationListener::class,
         ],
 
+        \App\Domain\Identity\Events\TenantRegistered::class => [
+            \App\Infrastructure\Listeners\Identity\BridgeLaravelAuthEvents::class,
+        ],
         // BILLING MODULE (Level 27 - Wired)
         \App\Domain\Billing\Events\PaymentReported::class => [
             \App\Application\Billing\Listeners\PromotePaymentEvidence::class,
         ],
         \App\Domain\Billing\Events\PaymentWebhookReceived::class => [
             \App\Application\Billing\Listeners\ProcessPaymentWebhookReceived::class,
-        ],
-
-        // APPOINTMENT NOTIFICATIONS
-        \App\Events\Appointment\AppointmentCreated::class => [
-            \App\Listeners\SendAppointmentConfirmation::class,
-        ],
-
-        // INTERACTIONS DOMAIN
-        \App\Domain\Interactions\Events\InteractionRecorded::class => [
-            \App\Listeners\Interactions\ProcessInteractionSideEffects::class,
         ],
 
         /**

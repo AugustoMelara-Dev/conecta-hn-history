@@ -48,8 +48,8 @@ export default defineConfig({
                 ],
             },
             manifest: {
-                name: "Vito Business OS",
-                short_name: "Vito",
+                name: "Conecta HN",
+                short_name: "Conecta HN",
                 description: "Publica tu negocio, atiende clientes y opera ventas, reservas y seguimiento en un solo lugar.",
                 theme_color: "#000000",
                 background_color: "#ffffff",

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Application\Security\SensitiveTelemetryGuard;
 use Illuminate\Support\Facades\Gate;
 use Laravel\Telescope\IncomingEntry;
 use Laravel\Telescope\Telescope;
@@ -50,6 +51,12 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
 
         // Filter entries to reduce noise and database size
         Telescope::filter(function (IncomingEntry $entry) {
+            // Livewire embeds form state in nested payloads that Telescope's
+            // top-level redaction cannot safely scrub (including admin secrets).
+            if (SensitiveTelemetryGuard::shouldExclude($entry)) {
+                return false;
+            }
+
             // Always record in local development
             if (config('app.env') === 'local') {
                 return true;
@@ -69,11 +76,7 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
      */
     protected function hideSensitiveRequestDetails(): void
     {
-        if (config('app.env') === 'local') {
-            return;
-        }
-
-        Telescope::hideRequestParameters(['_token', 'password', 'password_confirmation']);
+        Telescope::hideRequestParameters(['_token', 'password', 'password_confirmation', 'current_password']);
         Telescope::hideRequestHeaders([
             'cookie',
             'x-csrf-token',

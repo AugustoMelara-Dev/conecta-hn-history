@@ -1,127 +1,128 @@
 {
-    "$schema": "https://getcomposer.org/schema.json",
-    "name": "dovra-ai/platform",
-    "type": "project",
-    "description": "Dovra AI - Global Conversational Business OS",
-    "keywords": [
-        "laravel",
-        "framework"
-    ],
-    "license": "MIT",
-    "require": {
-        "php": "^8.4",
-        "barryvdh/laravel-dompdf": "^3.1.1",
-        "chillerlan/php-qrcode": "^5.0",
-        "darkaonline/l5-swagger": "^11.1",
-        "filament/filament": "^3.3.53",
-        "flowframe/laravel-trend": "^0.5.0",
-        "inertiajs/inertia-laravel": "^2.0",
-        "laravel-notification-channels/webpush": "^10.4",
-        "laravel/fortify": "^1.33",
-        "laravel/framework": "^13.0",
-        "laravel/horizon": "^5.48",
-        "laravel/reverb": "^1.7",
-        "laravel/sanctum": "^4.0",
-        "laravel/scout": "^10.23",
-        "laravel/socialite": "^5.0",
-        "laravel/tinker": "^3.0",
-        "league/flysystem-aws-s3-v3": "^3.0",
-        "maatwebsite/excel": "^3.1",
-        "open-telemetry/api": "^1.0",
-        "open-telemetry/exporter-otlp": "^1.0",
-        "open-telemetry/sdk": "^1.0",
-        "opis/json-schema": "^2.6",
-        "pgvector/pgvector": "^0.2.2",
-        "predis/predis": "^3.3",
-        "sentry/sentry-laravel": "^4.0",
-        "spatie/laravel-activitylog": "^4.8",
-        "spatie/laravel-health": "^1.29",
-        "spatie/laravel-medialibrary": "^11.0",
-        "spatie/laravel-permission": "^6.0",
-        "spatie/laravel-responsecache": "^8.4",
-        "spatie/laravel-settings": "^3.3",
-        "spatie/laravel-sitemap": "^7.2",
-        "spatie/opening-hours": "^4.0",
-        "tightenco/ziggy": "^2.0"
-    },
-    "require-dev": {
-        "cyclonedx/cyclonedx-php-composer": "^6.2",
-        "fakerphp/faker": "^1.23",
-        "larastan/larastan": "*",
-        "laravel-lang/common": "^6.7",
-        "laravel-lang/publisher": "^16.7",
-        "laravel/breeze": "^2.0",
-        "laravel/pail": "^1.1",
-        "laravel/pint": "^1.0",
-        "laravel/sail": "^1.26",
-        "laravel/telescope": "^5.16",
-        "mockery/mockery": "^1.6",
-        "nunomaduro/collision": "^8.1",
-        "pestphp/pest": "^4.0",
-        "pestphp/pest-plugin-arch": "^4.0",
-        "pestphp/pest-plugin-laravel": "^4.0",
-        "phpmyadmin/sql-parser": "*",
-        "phpunit/phpunit": "^12.0",
-        "spatie/laravel-typescript-transformer": "^2.5"
-    },
-    "autoload": {
-        "psr-4": {
-            "App\\": "app/",
-            "Database\\Factories\\": "database/factories/",
-            "Database\\Seeders\\": "database/seeders/"
-        }
-    },
-    "autoload-dev": {
-        "psr-4": {
-            "Tests\\": "tests/"
-        }
-    },
-    "scripts": {
-        "test:fast": [
-            "Composer\\Config::disableProcessTimeout",
-            "@php vendor/bin/pest --configuration=phpunit.sqlite.xml"
-        ],
-        "test:tenant-safety": "@php vendor/bin/pest --configuration=phpunit.tenant-safety.xml",
-        "test:mysql": "@php vendor/bin/pest --configuration=phpunit.xml",
-        "post-autoload-dump": [
-            "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
-            "@php artisan package:discover --ansi"
-        ],
-        "post-update-cmd": [
-            "@php artisan vendor:publish --tag=laravel-assets --ansi --force"
-        ],
-        "post-install-cmd": [
-            "@php artisan storage:link --quiet || true",
-            "@php artisan optimize --quiet || true"
-        ],
-        "post-root-package-install": [
-            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
-        ],
-        "post-create-project-cmd": [
-            "@php artisan key:generate --ansi",
-            "@php artisan storage:link --ansi"
-        ]
-    },
-    "extra": {
-        "laravel": {
-            "dont-discover": [
-                "pgvector/pgvector"
-            ]
-        }
-    },
-    "config": {
-        "optimize-autoloader": true,
-        "preferred-install": "dist",
-        "sort-packages": true,
-        "allow-plugins": {
-            "pestphp/pest-plugin": true,
-            "php-http/discovery": true,
-            "cyclonedx/cyclonedx-php-composer": true
-        },
-        "platform": {
-            "php": "8.4.0"
-        }
-    },
-    "minimum-stability": "stable",
-    "prefer-stable": true
+    "$schema":  "https://getcomposer.org/schema.json",
+    "name":  "dovra-ai/platform",
+    "type":  "project",
+    "description":  "Dovra AI - Global Conversational Business OS",
+    "keywords":  [
+                     "laravel",
+                     "framework"
+                 ],
+    "license":  "MIT",
+    "require":  {
+                    "php":  "^8.4",
+                    "barryvdh/laravel-dompdf":  "^3.1.1",
+                    "chillerlan/php-qrcode":  "^5.0",
+                    "darkaonline/l5-swagger":  "^11.1",
+                    "filament/filament":  "^3.3.53",
+                    "flowframe/laravel-trend":  "^0.5.0",
+                    "inertiajs/inertia-laravel":  "^2.0",
+                    "laravel-notification-channels/webpush":  "^10.4",
+                    "laravel/fortify":  "^1.33",
+                    "laravel/framework":  "^13.0",
+                    "laravel/horizon":  "^5.48",
+                    "laravel/reverb":  "^1.7",
+                    "laravel/sanctum":  "^4.0",
+                    "laravel/scout":  "^10.23",
+                    "laravel/socialite":  "^5.0",
+                    "laravel/tinker":  "^3.0",
+                    "league/flysystem-aws-s3-v3":  "^3.0",
+                    "maatwebsite/excel":  "^3.1",
+                    "open-telemetry/api":  "^1.0",
+                    "open-telemetry/exporter-otlp":  "^1.0",
+                    "open-telemetry/sdk":  "^1.0",
+                    "opis/json-schema":  "^2.6",
+                    "pgvector/pgvector":  "^0.2.2",
+                    "predis/predis":  "^3.3",
+                    "sentry/sentry-laravel":  "^4.0",
+                    "spatie/laravel-activitylog":  "^4.8",
+                    "spatie/laravel-health":  "^1.29",
+                    "spatie/laravel-medialibrary":  "^11.0",
+                    "spatie/laravel-permission":  "^6.0",
+                    "spatie/laravel-responsecache":  "^8.4",
+                    "spatie/laravel-settings":  "^3.3",
+                    "spatie/laravel-sitemap":  "^7.2",
+                    "spatie/opening-hours":  "^4.0",
+                    "tightenco/ziggy":  "^2.0"
+                },
+    "require-dev":  {
+                        "cyclonedx/cyclonedx-php-composer":  "^6.2",
+                        "larastan/larastan":  "*",
+                        "laravel-lang/common":  "^6.7",
+                        "laravel-lang/publisher":  "^16.7",
+                        "laravel/breeze":  "^2.0",
+                        "laravel/pail":  "^1.1",
+                        "laravel/pint":  "^1.0",
+                        "laravel/sail":  "^1.26",
+                        "laravel/telescope":  "^5.16",
+                        "mockery/mockery":  "^1.6",
+                        "nunomaduro/collision":  "^8.1",
+                        "pestphp/pest":  "^4.0",
+                        "pestphp/pest-plugin-arch":  "^4.0",
+                        "pestphp/pest-plugin-laravel":  "^4.0",
+                        "phpmyadmin/sql-parser":  "*",
+                        "phpunit/phpunit":  "^12.0",
+                        "spatie/laravel-typescript-transformer":  "^2.5",
+                        "fakerphp/faker":  "^1.23"
+                    },
+    "autoload":  {
+                     "psr-4":  {
+                                   "App\\":  "app/",
+                                   "Database\\Factories\\":  "database/factories/",
+                                   "Database\\Seeders\\":  "database/seeders/"
+                               }
+                 },
+    "autoload-dev":  {
+                         "psr-4":  {
+                                       "Tests\\":  "tests/"
+                                   }
+                     },
+    "scripts":  {
+                    "test:fast":  [
+                                      "Composer\\Config::disableProcessTimeout",
+                                      "@php vendor/bin/pest --configuration=phpunit.sqlite.xml"
+                                  ],
+                    "test:tenant-safety":  "@php vendor/bin/pest --configuration=phpunit.tenant-safety.xml",
+                    "test:mysql":  "@php vendor/bin/pest --configuration=phpunit.xml",
+                    "post-autoload-dump":  [
+                                               "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
+                                               "@php artisan package:discover --ansi",
+                                               "@php artisan filament:assets --ansi"
+                                           ],
+                    "post-update-cmd":  [
+                                            "@php artisan vendor:publish --tag=laravel-assets --ansi --force"
+                                        ],
+                    "post-install-cmd":  [
+                                             "@php artisan storage:link --quiet || true",
+                                             "@php artisan optimize --quiet || true"
+                                         ],
+                    "post-root-package-install":  [
+                                                      "@php -r \"file_exists(\u0027.env\u0027) || copy(\u0027.env.example\u0027, \u0027.env\u0027);\""
+                                                  ],
+                    "post-create-project-cmd":  [
+                                                    "@php artisan key:generate --ansi",
+                                                    "@php artisan storage:link --ansi"
+                                                ]
+                },
+    "extra":  {
+                  "laravel":  {
+                                  "dont-discover":  [
+                                                        "pgvector/pgvector"
+                                                    ]
+                              }
+              },
+    "config":  {
+                   "optimize-autoloader":  true,
+                   "preferred-install":  "dist",
+                   "sort-packages":  true,
+                   "allow-plugins":  {
+                                         "pestphp/pest-plugin":  true,
+                                         "php-http/discovery":  true,
+                                         "cyclonedx/cyclonedx-php-composer":  true
+                                     },
+                   "platform":  {
+                                    "php":  "8.4.0"
+                                }
+               },
+    "minimum-stability":  "stable",
+    "prefer-stable":  true
 }

@@ -32,6 +32,11 @@ class AuthDomainServiceProvider extends ServiceProvider
         // 2. Bind Persistent Repository
         $this->app->bind(OtpRepositoryInterface::class, EloquentOtpRepository::class);
 
+        $this->app->bind(
+            \App\Application\Shared\Contracts\SensitivePayloadCipherInterface::class,
+            \App\Infrastructure\Security\LaravelSensitivePayloadCipher::class
+        );
+
         // 3. Bind Password Hashing Service (Shared Infrastructure)
         $this->app->bind(
             \App\Domain\Shared\Services\PasswordHasherInterface::class,

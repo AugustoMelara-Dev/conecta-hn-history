@@ -4,11 +4,17 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+// @withoutGlobalScopes-safety INFRA_TENANT_FILTER: inventory mutations are constrained by the owning order and product tenant.
+
 use App\Enums\StockStatus;
 use App\Events\Inventory\LowStockThresholdReached;
+use App\Models\InventoryMovement;
+use App\Models\Order;
 use App\Models\Product;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -44,95 +50,122 @@ class InventoryManager
      * after this method returns, creating a race condition vulnerability.
      *
      * @param  array  $cartItems  Cart items with product_id and quantity
-     * @param  int  $tenantId  Tenant context for isolation
+     * @param  string  $tenantId  Tenant UUID context for isolation
      * @return Collection<int, Product> Products keyed by ID
      *
      * @throws ValidationException If product unavailable or deleted
      */
-    public function validateAndLock(array $cartItems, int $tenantId): Collection
+    public function validateAndLock(array $cartItems, string $tenantId, ?string $operationId = null, bool $requirePubliclySellable = false): Collection
     {
-        // ═══════════════════════════════════════════════════════════════════════
-        // STEP 1: Extract and sort product IDs (canonical lock order)
-        // ═══════════════════════════════════════════════════════════════════════
-        $productIds = collect($cartItems)
-            ->pluck('product_id')
-            ->filter()
-            ->unique()
-            ->sort()  // Canonical ordering prevents deadlocks
-            ->values()
-            ->toArray();
+        return DB::transaction(function () use ($cartItems, $tenantId, $operationId, $requirePubliclySellable): Collection {
+            // ═══════════════════════════════════════════════════════════════════════
+            // STEP 1: Extract and sort product IDs (canonical lock order)
+            // ═══════════════════════════════════════════════════════════════════════
+            $productIds = collect($cartItems)
+                ->pluck('product_id')
+                ->filter()
+                ->unique()
+                ->sort()  // Canonical ordering prevents deadlocks
+                ->values()
+                ->toArray();
 
-        if (empty($productIds)) {
-            return collect();
-        }
-
-        // Build quantity map per product
-        $quantityMap = collect($cartItems)
-            ->filter(fn ($item) => ! empty($item['product_id']))
-            ->groupBy('product_id')
-            ->map(fn ($items) => $items->sum('quantity'))
-            ->toArray();
-
-        // ═══════════════════════════════════════════════════════════════════════
-        // STEP 2: Acquire exclusive locks in sorted order
-        // ═══════════════════════════════════════════════════════════════════════
-        $rawProducts = DB::table('products')
-            ->whereIn('id', $productIds)
-            ->where('tenant_id', $tenantId)
-            ->whereNull('deleted_at')  // SECURITY: Block ghost purchases
-            ->orderBy('id')
-            ->lockForUpdate()
-            ->get();
-
-        $lockedProducts = Product::hydrate($rawProducts->toArray())->keyBy('id');
-
-        // ═══════════════════════════════════════════════════════════════════════
-        // STEP 3: Validate stock and perform atomic decrements
-        // ═══════════════════════════════════════════════════════════════════════
-        foreach ($quantityMap as $productId => $totalRequested) {
-            if (! isset($lockedProducts[$productId])) {
-                // Product not found or soft-deleted
-                throw ValidationException::withMessages([
-                    'items' => "Producto ID {$productId} no encontrado o no disponible.",
-                ]);
+            if (empty($productIds)) {
+                return collect();
             }
 
-            $product = $lockedProducts[$productId];
+            // Build quantity map per product
+            $quantityMap = collect($cartItems)
+                ->filter(fn ($item) => ! empty($item['product_id']))
+                ->groupBy('product_id')
+                ->map(fn ($items) => $items->sum('quantity'))
+                ->toArray();
 
-            if ($product->manage_stock) {
-                // BRANCH A: Managed/Finite Stock
-                $this->validateAndDecrementManagedStock($product, $totalRequested);
-            } else {
-                // BRANCH B: Unmanaged/Infinite Stock
-                $this->validateUnmanagedStock($product);
+            // ═══════════════════════════════════════════════════════════════════════
+            // STEP 2: Acquire exclusive locks in sorted order
+            // ═══════════════════════════════════════════════════════════════════════
+            $productQuery = DB::table('products')
+                ->whereIn('id', $productIds)
+                ->where('tenant_id', $tenantId)
+                ->whereNull('deleted_at'); // SECURITY: Block ghost purchases
+            if ($requirePubliclySellable) {
+                $productQuery->where('is_active', true)->where('is_visible', true);
             }
-        }
+            $rawProducts = $productQuery
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
 
-        return $lockedProducts;
+            $lockedProducts = Product::hydrate($rawProducts->toArray())->keyBy('id');
+
+            // ═══════════════════════════════════════════════════════════════════════
+            // STEP 3: Validate stock and perform atomic decrements
+            // ═══════════════════════════════════════════════════════════════════════
+            $operationId ??= (string) Str::uuid();
+
+            foreach ($quantityMap as $productId => $totalRequested) {
+                if (! isset($lockedProducts[$productId])) {
+                    // Product not found or soft-deleted
+                    throw ValidationException::withMessages([
+                        'items' => "Producto ID {$productId} no encontrado o no disponible.",
+                    ]);
+                }
+
+                $product = $lockedProducts[$productId];
+
+                if ($product->manage_stock) {
+                    // BRANCH A: Managed/Finite Stock
+                    $this->validateAndDecrementManagedStock(
+                        $product,
+                        (int) $totalRequested,
+                        'checkout:'.$operationId.':'.$product->getKey(),
+                    );
+                } else {
+                    // BRANCH B: Unmanaged/Infinite Stock
+                    $this->validateUnmanagedStock($product);
+                }
+            }
+
+            return $lockedProducts;
+        });
     }
 
     /**
      * Validate and decrement managed stock (finite inventory).
      */
-    protected function validateAndDecrementManagedStock(Product $product, int $quantity): void
+    protected function validateAndDecrementManagedStock(Product $product, int $quantity, string $idempotencyKey): void
     {
         $currentStock = (int) ($product->stock_quantity ?? 0);
+        $allowsBackorders = (bool) ($product->allow_backorders ?? false);
 
-        if ($currentStock < $quantity) {
+        if ($currentStock < $quantity && ! $allowsBackorders) {
             throw ValidationException::withMessages([
                 'items' => "Stock insuficiente para '{$product->name}'. Disponible: {$currentStock}, Solicitado: {$quantity}",
             ]);
         }
 
-        // Atomic decrement
-        $product->decrement('stock_quantity', $quantity);
         $newStock = $currentStock - $quantity;
 
         // State transition: mark out_of_stock if depleted
-        $allowsBackorders = $product->allow_backorders ?? false;
+        $updatePayload = ['stock_quantity' => $newStock];
         if ($newStock <= 0 && ! $allowsBackorders) {
-            $product->update(['stock_status' => StockStatus::OutOfStock]);
+            $updatePayload['stock_status'] = StockStatus::OutOfStock;
         }
+
+        if (! $this->appendMovementOrReplay(
+            product: $product,
+            delta: -$quantity,
+            previousQuantity: $currentStock,
+            resultingQuantity: $newStock,
+            reason: 'order_consumed',
+            idempotencyKey: $idempotencyKey,
+            referenceType: 'checkout',
+            referenceId: $idempotencyKey,
+            metadata: ['source' => 'checkout'],
+        )) {
+            return;
+        }
+
+        $product->update($updatePayload);
 
         // ═══════════════════════════════════════════════════════════════════════
         // TRANSACTIONAL EVENT DISPATCH: Prevent phantom alerts
@@ -145,12 +178,16 @@ class InventoryManager
         if ($threshold !== null && $newStock <= $threshold && $newStock > 0) {
             // Capture values for closure (product may change after this point)
             $productId = $product->id;
+            $tenantId = (string) $product->tenant_id;
             $finalNewStock = $newStock;
             $finalThreshold = $threshold;
 
-            DB::afterCommit(function () use ($productId, $finalNewStock, $finalThreshold) {
+            DB::afterCommit(function () use ($productId, $tenantId, $finalNewStock, $finalThreshold) {
                 // Re-fetch fresh product instance for event
-                $freshProduct = Product::find($productId);
+                $freshProduct = Product::query()
+                    ->withoutGlobalScopes()
+                    ->where('tenant_id', $tenantId)
+                    ->find($productId);
                 if ($freshProduct) {
                     LowStockThresholdReached::dispatch($freshProduct, $finalNewStock, $finalThreshold);
                 }
@@ -171,6 +208,137 @@ class InventoryManager
     }
 
     /**
+     * Appends an immutable movement, or treats a matching retry as a no-op.
+     * This method is called only while the product row is locked in a transaction.
+     *
+     * @param  array<string, scalar|null>  $metadata
+     */
+    private function appendMovementOrReplay(
+        Product $product,
+        int $delta,
+        int $previousQuantity,
+        int $resultingQuantity,
+        string $reason,
+        string $idempotencyKey,
+        ?string $referenceType,
+        ?string $referenceId,
+        array $metadata = [],
+    ): bool {
+        if ($delta === 0) {
+            throw new \LogicException('Inventory movement delta must not be zero.');
+        }
+
+        $tenantId = (string) $product->tenant_id;
+        if ($tenantId === '') {
+            throw new \LogicException('Inventory movement requires a product tenant.');
+        }
+
+        $payload = [
+            'tenant_id' => $tenantId,
+            'product_id' => (int) $product->getKey(),
+            'delta' => $delta,
+            'reason' => $reason,
+            'reference_type' => $referenceType,
+            'reference_id' => $referenceId,
+            'metadata' => $metadata,
+        ];
+        $payloadHash = hash('sha256', json_encode($payload, JSON_THROW_ON_ERROR));
+
+        $existing = InventoryMovement::query()
+            ->where('tenant_id', $tenantId)
+            ->where('idempotency_key', $idempotencyKey)
+            ->lockForUpdate()
+            ->first();
+
+        if ($existing instanceof InventoryMovement) {
+            if (! hash_equals((string) $existing->payload_hash, $payloadHash)) {
+                throw new \LogicException('Inventory idempotency key was reused with an incompatible payload.');
+            }
+
+            return false;
+        }
+
+        InventoryMovement::record([
+            'id' => (string) Str::uuid(),
+            'tenant_id' => $tenantId,
+            'product_id' => (int) $product->getKey(),
+            'delta' => $delta,
+            'previous_quantity' => $previousQuantity,
+            'resulting_quantity' => $resultingQuantity,
+            'reason' => $reason,
+            'actor_type' => null,
+            'actor_id' => null,
+            'reference_type' => $referenceType,
+            'reference_id' => $referenceId,
+            'idempotency_key' => $idempotencyKey,
+            'payload_hash' => $payloadHash,
+            'metadata' => json_encode($metadata, JSON_THROW_ON_ERROR),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return true;
+    }
+
+    /**
+     * Canonical non-order inventory operation. The product and movement key are
+     * locked in one transaction, so a retry either replays or applies exactly
+     * one signed movement and stock/status transition.
+     */
+    public function adjust(
+        string $tenantId,
+        int $productId,
+        int $delta,
+        string $reason,
+        string $idempotencyKey,
+        ?string $referenceType = null,
+        ?string $referenceId = null,
+    ): Product {
+        if ($delta === 0) {
+            throw new \InvalidArgumentException('Inventory adjustment delta must not be zero.');
+        }
+
+        return DB::transaction(function () use ($tenantId, $productId, $delta, $reason, $idempotencyKey, $referenceType, $referenceId): Product {
+            // INFRA_TENANT_FILTER: reviewed scope bypass; authority is constrained by the adjacent tenant/id predicate.
+            $product = Product::withoutGlobalScopes()
+                ->whereKey($productId)
+                ->where('tenant_id', $tenantId)
+                ->whereNull('deleted_at')
+                ->lockForUpdate()
+                ->firstOrFail();
+            $previous = (int) ($product->stock_quantity ?? 0);
+            $resulting = $previous + $delta;
+
+            if ($resulting < 0 && ! (bool) $product->allow_backorders) {
+                throw ValidationException::withMessages([
+                    'stock_quantity' => ['El ajuste deja el inventario por debajo de cero.'],
+                ]);
+            }
+
+            if (! $this->appendMovementOrReplay(
+                product: $product,
+                delta: $delta,
+                previousQuantity: $previous,
+                resultingQuantity: $resulting,
+                reason: $reason,
+                idempotencyKey: $idempotencyKey,
+                referenceType: $referenceType,
+                referenceId: $referenceId,
+                metadata: ['source' => 'catalog_write'],
+            )) {
+                return $product;
+            }
+
+            $product->forceFill([
+                'stock_quantity' => $resulting,
+                'stock_status' => $resulting > 0 ? StockStatus::InStock : StockStatus::OutOfStock,
+            ])->save();
+
+            return $product->fresh();
+        });
+    }
+
+    /**
      * Restock inventory from a cancelled/deleted order (Reverse Logistics).
      *
      * ╔══════════════════════════════════════════════════════════════════════════╗
@@ -188,9 +356,9 @@ class InventoryManager
      * - lockForUpdate() prevents "Lost Update" race condition
      * - Canonical ordering (sorted IDs) prevents deadlocks
      *
-     * @param  \App\Models\Order  $order  The order to restore inventory from
+     * @param  Order  $order  The order to restore inventory from
      */
-    public function restock(\App\Models\Order $order): void
+    public function restock(Order $order): void
     {
         // Load order items if not already loaded
         $order->loadMissing('items');
@@ -230,10 +398,10 @@ class InventoryManager
             // ═══════════════════════════════════════════════════════════════════
             // lockForUpdate() creates SELECT ... FOR UPDATE
             // Holds exclusive row locks until transaction commits
-            // 
+            //
             // CRITICAL: Use Eloquent query builder (not DB::table) to enable
             // proper enum casting. DB::table + hydrate fails with backed enums.
-            
+
             // VC-AUDIT-102: Prevent scope bypass if tenant_id is missing
             if ($order->tenant_id === null) {
                 throw new \LogicException('Cannot restock inventory: Order tenant_id is missing.');
@@ -282,6 +450,20 @@ class InventoryManager
                     $updatePayload['stock_status'] = StockStatus::InStock;
                 }
 
+                if (! $this->appendMovementOrReplay(
+                    product: $product,
+                    delta: (int) $restoreQty,
+                    previousQuantity: $currentStock,
+                    resultingQuantity: $newStock,
+                    reason: 'order_restocked',
+                    idempotencyKey: 'order-restock:'.$order->getKey().':product:'.$product->getKey(),
+                    referenceType: 'order',
+                    referenceId: (string) $order->getKey(),
+                    metadata: ['source' => 'order_cancellation'],
+                )) {
+                    continue;
+                }
+
                 $product->update($updatePayload);
 
                 // ═══════════════════════════════════════════════════════════════
@@ -302,12 +484,11 @@ class InventoryManager
             // ═══════════════════════════════════════════════════════════════════
             DB::afterCommit(function () use ($telemetryBuffer) {
                 foreach ($telemetryBuffer as $logEntry) {
-                    \Illuminate\Support\Facades\Log::debug('Inventory restored from cancelled order', $logEntry);
+                    Log::debug('Inventory restored from cancelled order', $logEntry);
                 }
             });
         });
     }
-
 
     /**
      * Consume inventory for a restored order (Reverse of restock).
@@ -327,13 +508,17 @@ class InventoryManager
      * - lockForUpdate() prevents "Check-Then-Act" race condition
      * - ValidationException triggers automatic ROLLBACK
      *
-     * @param  \App\Models\Order  $order  The order being restored
+     * @param  Order  $order  The order being restored
      *
      * @throws ValidationException If insufficient stock (triggers rollback)
      */
-    public function consume(\App\Models\Order $order): void
+    public function consume(Order $order): void
     {
         $order->loadMissing('items');
+
+        if (($order->getAttributes()['tenant_id'] ?? null) === null) {
+            throw new \LogicException('Cannot consume inventory: Order tenant_id is missing.');
+        }
 
         // ═══════════════════════════════════════════════════════════════════════
         // PHASE 1: EXTRACTION - Extract unique product IDs
@@ -412,7 +597,8 @@ class InventoryManager
                 // ═══════════════════════════════════════════════════════════
                 // STRICT AVAILABILITY GUARD
                 // ═══════════════════════════════════════════════════════════
-                if ($currentStock < $requiredQty) {
+                $allowsBackorders = (bool) ($product->allow_backorders ?? false);
+                if ($currentStock < $requiredQty && ! $allowsBackorders) {
                     throw ValidationException::withMessages([
                         'order' => "No se puede restaurar la orden: Stock insuficiente para '{$product->name}'. Disponible: {$currentStock}, Requerido: {$requiredQty}",
                     ]);
@@ -428,9 +614,22 @@ class InventoryManager
                 // ═══════════════════════════════════════════════════════════
                 $updatePayload = ['stock_quantity' => $newStock];
 
-                $allowsBackorders = $product->allow_backorders ?? false;
                 if ($newStock <= 0 && ! $allowsBackorders) {
                     $updatePayload['stock_status'] = StockStatus::OutOfStock;
+                }
+
+                if (! $this->appendMovementOrReplay(
+                    product: $product,
+                    delta: -(int) $requiredQty,
+                    previousQuantity: $currentStock,
+                    resultingQuantity: $newStock,
+                    reason: 'order_consumed',
+                    idempotencyKey: 'order-consume:'.$order->getKey().':product:'.$product->getKey(),
+                    referenceType: 'order',
+                    referenceId: (string) $order->getKey(),
+                    metadata: ['source' => 'order_restore'],
+                )) {
+                    continue;
                 }
 
                 $product->update($updatePayload);
@@ -449,6 +648,7 @@ class InventoryManager
                     // This prevents memory bloat and serialization issues
                     $eventBuffer[] = [
                         'product_id' => $product->id,
+                        'tenant_id' => (string) $product->tenant_id,
                         'new_stock' => $newStock,
                         'threshold' => $threshold,
                     ];
@@ -483,7 +683,10 @@ class InventoryManager
                 // Re-hydrate fresh product instances for Event Listeners.
                 // This decouples Event system from the locked transaction.
                 foreach ($eventBuffer as $eventData) {
-                    $freshProduct = Product::find($eventData['product_id']);
+                    $freshProduct = Product::query()
+                        ->withoutGlobalScopes()
+                        ->where('tenant_id', $eventData['tenant_id'])
+                        ->find($eventData['product_id']);
                     if ($freshProduct) {
                         LowStockThresholdReached::dispatch(
                             $freshProduct,
@@ -497,7 +700,7 @@ class InventoryManager
                 // FLUSH TELEMETRY (Observability Logs)
                 // ═══════════════════════════════════════════════════════════
                 foreach ($telemetryBuffer as $logEntry) {
-                    \Illuminate\Support\Facades\Log::debug('Inventory consumed for restored order', $logEntry);
+                    Log::debug('Inventory consumed for restored order', $logEntry);
                 }
             });
         });

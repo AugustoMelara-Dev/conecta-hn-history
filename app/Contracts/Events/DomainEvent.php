@@ -52,7 +52,7 @@ interface DomainEvent
     /**
      * Get the aggregate root ID that this event relates to.
      */
-    public function aggregateId(): int;
+    public function aggregateId(): string;
 
     /**
      * Get the exact moment this event occurred.

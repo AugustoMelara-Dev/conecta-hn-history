@@ -172,20 +172,26 @@ class HandleInertiaRequests extends Middleware
             return null;
         }
 
+        // Tenant resolvers may intentionally hydrate only the columns required
+        // for their route. Read optional shared attributes from the model's
+        // loaded attribute bag so strict Eloquent mode does not turn an absent
+        // legacy column into a 500 response.
+        $attributes = $tenant->getAttributes();
+
         return [
             'id' => (string) $tenant->id,
             'name' => (string) $tenant->name,
             'slug' => (string) $tenant->slug,
-            'logo_url' => $this->sanitizeLogoPath($tenant->logo_path),
-            'whatsapp' => $tenant->whatsapp ? (string) $tenant->whatsapp : null,
-            'whatsapp_number' => $tenant->whatsapp_number ? (string) $tenant->whatsapp_number : null,
-            'phone' => $tenant->phone ? (string) $tenant->phone : null,
-            'is_pro' => (bool) ($tenant->is_pro ?? false),
-            'primary_color' => $this->sanitizeHexColor($tenant->primary_color),
+            'logo_url' => $this->sanitizeLogoPath($attributes['logo_path'] ?? null),
+            'whatsapp' => ! empty($attributes['whatsapp']) ? (string) $attributes['whatsapp'] : null,
+            'whatsapp_number' => ! empty($attributes['whatsapp_number']) ? (string) $attributes['whatsapp_number'] : null,
+            'phone' => ! empty($attributes['phone']) ? (string) $attributes['phone'] : null,
+            'is_pro' => (bool) ($attributes['is_pro'] ?? false),
+            'primary_color' => $this->sanitizeHexColor($attributes['primary_color'] ?? null),
             'settings' => [
-                'delivery_enabled' => (bool) ($tenant->delivery_enabled ?? true),
-                'pickup_enabled' => (bool) ($tenant->pickup_enabled ?? true),
-                'minimum_order' => (float) ($tenant->minimum_order ?? 0),
+                'delivery_enabled' => (bool) ($attributes['delivery_enabled'] ?? true),
+                'pickup_enabled' => (bool) ($attributes['pickup_enabled'] ?? true),
+                'minimum_order' => (float) ($attributes['minimum_order'] ?? 0),
             ],
         ];
     }
@@ -285,7 +291,7 @@ class HandleInertiaRequests extends Middleware
     // CACHE INVALIDATION (STATIC HELPER)
     // ═══════════════════════════════════════════════════════════════════════
 
-    public static function invalidateAnnouncementsCache(int|string $tenantId): void
+    public static function invalidateAnnouncementsCache(string $tenantId): void
     {
         $version = config('app.version', date('Y.m.d.H'));
         $cacheKey = sprintf(

@@ -1,13 +1,37 @@
 <?php
 
 use App\Domain\TenantGovernance\Exceptions\TenantNotFoundException;
+use App\Http\Middleware\ApiLifecycleHeaders;
+use App\Http\Middleware\CheckMaintenanceMode;
+use App\Http\Middleware\CheckTenantStatus;
+use App\Http\Middleware\EnsureFeatureRolloutEnabled;
+use App\Http\Middleware\EnsureIdempotencyKey;
+use App\Http\Middleware\EnsureTenantOwnership;
+use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\HydrateLocationFromCookie;
+use App\Http\Middleware\IdentifyTenantBySubdomain;
+use App\Http\Middleware\InitializeAuthenticatedTenantContext;
+use App\Http\Middleware\InitializeFilamentLivewireTenantContext;
+use App\Http\Middleware\MeasureHttpPerformance;
+use App\Http\Middleware\NormalizeInternalRedirectLocation;
+use App\Http\Middleware\RedirectIfAuthenticated;
+use App\Http\Middleware\SecurityHeaders;
+use App\Http\Middleware\ShareObservabilityContext;
+use App\Http\Middleware\TrackAuthenticatedSession;
+use App\Http\Middleware\TrackTenantView;
+use App\Http\Middleware\TrackTenantVisit;
+use App\Http\Middleware\TrackVisits;
+use App\Http\Middleware\UseRequestHostSessionDomain;
+use App\Http\Middleware\ValidateImpersonationGrant;
 use App\Infrastructure\Jobs\Analytics\SyncAnalyticsJob;
-use App\Infrastructure\Jobs\Governance\AuditTenantLimits;
+use App\Infrastructure\Jobs\Governance\DispatchTenantLimitAudits;
+use App\Support\Http\ApiLifecycleHeaderFactory;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
 use Illuminate\Session\TokenMismatchException;
 use Inertia\Inertia;
@@ -36,24 +60,28 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->web(
             prepend: [
-                \App\Http\Middleware\UseRequestHostSessionDomain::class, // Prevent 419 when SESSION_DOMAIN mismatches runtime host
+                UseRequestHostSessionDomain::class, // Prevent 419 when SESSION_DOMAIN mismatches runtime host
             ],
             append: [
-                \App\Http\Middleware\IdentifyTenantBySubdomain::class, // FIRST: Tenant Context from Subdomain
-                \App\Http\Middleware\ShareObservabilityContext::class, // Trace + domain context for production observability
-                \App\Http\Middleware\MeasureHttpPerformance::class, // p95-ready structured HTTP metrics behind feature flag
-                \App\Http\Middleware\NormalizeInternalRedirectLocation::class, // Keep proxied redirects same-origin
-                \App\Http\Middleware\SecurityHeaders::class, // Zero-Trust Security Headers
-                \App\Http\Middleware\HandleInertiaRequests::class,
-                \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
-                \App\Http\Middleware\HydrateLocationFromCookie::class, // DIRECTIVE 2: Sticky persistence
-                \App\Http\Middleware\CheckMaintenanceMode::class, // Kill Switch Inteligente
+                IdentifyTenantBySubdomain::class, // FIRST: Tenant Context from Subdomain
+                ValidateImpersonationGrant::class,
+                TrackAuthenticatedSession::class,
+                ShareObservabilityContext::class, // Trace + domain context for production observability
+                MeasureHttpPerformance::class, // p95-ready structured HTTP metrics behind feature flag
+                NormalizeInternalRedirectLocation::class, // Keep proxied redirects same-origin
+                SecurityHeaders::class, // Zero-Trust Security Headers
+                HandleInertiaRequests::class,
+                AddLinkHeadersForPreloadedAssets::class,
+                HydrateLocationFromCookie::class, // DIRECTIVE 2: Sticky persistence
+                CheckMaintenanceMode::class, // Kill Switch Inteligente
+                InitializeFilamentLivewireTenantContext::class, // Rehydrate app-panel Livewire tenant from the authenticated session
             ]
         );
 
         $middleware->api(append: [
-            \App\Http\Middleware\ShareObservabilityContext::class,
-            \App\Http\Middleware\MeasureHttpPerformance::class,
+            ShareObservabilityContext::class,
+            MeasureHttpPerformance::class,
+            SecurityHeaders::class,
         ]);
 
         $middleware->encryptCookies(except: ['dovra_ai_subject']);
@@ -62,27 +90,27 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->statefulApi();
 
         $middleware->alias([
-            'tenant.status' => \App\Http\Middleware\CheckTenantStatus::class,
-            'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
-            'track.tenant' => \App\Http\Middleware\TrackTenantView::class,
-            'track.visits' => \App\Http\Middleware\TrackVisits::class, // Analytics con debouncing
-            'track.tenant.visit' => \App\Http\Middleware\TrackTenantVisit::class, // First-party analytics
-            'maintenance' => \App\Http\Middleware\CheckMaintenanceMode::class, // Alias para uso granular
-            'tenant.ownership' => \App\Http\Middleware\EnsureTenantOwnership::class, // Security: IDOR protection
-            'tenant.context' => \App\Http\Middleware\InitializeAuthenticatedTenantContext::class,
-            'idempotency' => \App\Http\Middleware\EnsureIdempotencyKey::class, // Metadata Transport
-            'api.lifecycle' => \App\Http\Middleware\ApiLifecycleHeaders::class,
-            'feature.rollout' => \App\Http\Middleware\EnsureFeatureRolloutEnabled::class,
+            'tenant.status' => CheckTenantStatus::class,
+            'guest' => RedirectIfAuthenticated::class,
+            'track.tenant' => TrackTenantView::class,
+            'track.visits' => TrackVisits::class, // Analytics con debouncing
+            'track.tenant.visit' => TrackTenantVisit::class, // First-party analytics
+            'maintenance' => CheckMaintenanceMode::class, // Alias para uso granular
+            'tenant.ownership' => EnsureTenantOwnership::class, // Security: IDOR protection
+            'tenant.context' => InitializeAuthenticatedTenantContext::class,
+            'idempotency' => EnsureIdempotencyKey::class, // Metadata Transport
+            'api.lifecycle' => ApiLifecycleHeaders::class,
+            'feature.rollout' => EnsureFeatureRolloutEnabled::class,
         ]);
 
         //
     })
     ->withSchedule(function (Schedule $schedule) {
         // Pilar 4: Audit tenant product limits daily at 2am
-        $schedule->job(new AuditTenantLimits)->daily()->at('02:00');
+        $schedule->job(new DispatchTenantLimitAudits)->daily()->at('02:00');
 
         // Pilar 6: Automation
-        // 1. Gestión de Suscripciones (Diario a medianoche)
+        // 1. GestiÃ³n de Suscripciones (Diario a medianoche)
         $schedule->command('subscriptions:expire')->daily();
 
         // 2. Limpieza de OTPs (Cada hora)
@@ -94,18 +122,18 @@ return Application::configure(basePath: dirname(__DIR__))
         // Pilar 8: Analytics Sync (Daily at 00:05 AM)
         $schedule->job(new SyncAnalyticsJob)->dailyAt('00:05');
 
-        // ═══════════════════════════════════════════════════════════════════
-        // PILAR SEO: Generación automática de sitemap (Diario a medianoche)
-        // ═══════════════════════════════════════════════════════════════════
-        $schedule->command('seo:generate-sitemap')->daily()->at('00:30');
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+        // PILAR SEO: GeneraciÃ³n automÃ¡tica de sitemap (Diario a medianoche)
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+        $schedule->command('sitemap:generate')->daily()->at('00:30');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         if (class_exists(SentryIntegration::class)) {
             SentryIntegration::handles($exceptions);
         }
 
-        $exceptions->respond(function (SymfonyResponse $response, \Throwable $exception, Request $request) {
-            $response = \App\Support\Http\ApiLifecycleHeaderFactory::apply($request, $response);
+        $exceptions->respond(function (SymfonyResponse $response, Throwable $exception, Request $request) {
+            $response = ApiLifecycleHeaderFactory::apply($request, $response);
 
             if ($response->isRedirection()) {
                 $location = $response->headers->get('Location');

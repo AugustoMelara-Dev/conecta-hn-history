@@ -190,7 +190,7 @@ class TenantRegistrationService
             if ($isPro) {
                 $payment = Payment::create([
                     'tenant_id' => $tenant->id,
-                    'amount' => $data['pro_plan_price'] ?? 500.00,
+                    'amount' => \App\Domain\TenantGovernance\Services\SubscriptionPricingService::canonicalProPriceInMajorUnits(),
                     'gateway' => 'bank_transfer',
                     'status' => 'pending',
                     'reference_number' => 'PAY-'.now()->timestamp.'-'.strtoupper(Str::random(6)),

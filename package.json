@@ -64,7 +64,10 @@
         "test:e2e:release:critical": "playwright test tests/e2e/accessibility-critical.spec.ts tests/e2e/onboarding-adaptive.spec.ts tests/e2e/vito-business-os-flow.spec.ts --reporter=list,html,junit",
         "test:e2e:release:critical:host": "powershell -ExecutionPolicy Bypass -File scripts/qa/playwright-smoke-host.ps1 -Spec \"tests/e2e/accessibility-critical.spec.ts tests/e2e/onboarding-adaptive.spec.ts tests/e2e/vito-business-os-flow.spec.ts\"",
         "test:e2e:headed": "playwright test --headed",
+        "test": "vitest",
+        "test:qa": "node --test \"tests/qa/*.test.mjs\"",
         "test:ui": "vitest run resources/js/__tests__ --passWithNoTests",
+        "typecheck": "tsc --noEmit",
         "type-check": "tsc --noEmit",
         "types:sync": "php artisan typescript:transform"
     },

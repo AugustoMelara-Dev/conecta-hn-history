@@ -4,21 +4,291 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+// Models
+use App\Actions\Authentication\ResetPasswordAction;
+use App\Application\Ai\Contracts\AiGateway;
 use App\Application\Ai\Contracts\AiProviderPool;
+use App\Application\Ai\Contracts\StructuredOutputValidator;
+use App\Application\Ai\Knowledge\EmbeddingProvider;
+use App\Application\Ai\Knowledge\KnowledgeRetriever;
+use App\Application\Ai\Knowledge\SemanticKnowledgeRetriever;
+use App\Application\Ai\PrivateAiTenantAccessReaderInterface;
+use App\Application\Analytics\Listeners\ProjectCommercialOutcomeFromOrderEvent;
+// Policies
+use App\Application\Auth\Commands\DeleteUserCommand;
+use App\Application\Auth\Commands\GenerateOtpCommand;
+use App\Application\Auth\Commands\LoginViaSocialProviderCommand;
+use App\Application\Auth\Commands\UpdateUserPasswordCommand;
+use App\Application\Auth\Commands\UpdateUserProfileCommand;
+use App\Application\Auth\Commands\VerifyOtpCommand;
+use App\Application\Auth\Contracts\GenerateOtpHandlerInterface;
+use App\Application\Auth\Decorators\IdempotentGenerateOtpHandler;
+use App\Application\Auth\Decorators\RateLimitedGenerateOtpHandler;
+use App\Application\Auth\Decorators\TransactionGenerateOtpHandler;
+use App\Application\Auth\Decorators\TransactionVerifyOtpHandler;
+// Event Bus Infrastructure
+use App\Application\Auth\Decorators\ValidationGenerateOtpHandler;
+use App\Application\Auth\Decorators\VerifyOtpRateLimitDecorator;
+use App\Application\Auth\Handlers\DeleteUserHandler;
+use App\Application\Auth\Handlers\DeleteUserHandlerInterface;
+use App\Application\Auth\Handlers\GenerateOtpHandler;
+use App\Application\Auth\Handlers\LoginViaSocialProviderHandler;
+use App\Application\Auth\Handlers\LoginViaSocialProviderHandlerInterface;
+use App\Application\Auth\Handlers\UpdateUserPasswordHandler;
+use App\Application\Auth\Handlers\UpdateUserPasswordHandlerInterface;
+use App\Application\Auth\Handlers\UpdateUserProfileHandler;
+use App\Application\Auth\Handlers\VerifyOtpHandler;
+use App\Application\Auth\Handlers\VerifyOtpHandlerInterface;
+use App\Application\Auth\Validators\DeleteUserCommandValidator;
+use App\Application\Auth\Validators\LoginViaSocialProviderCommandValidator;
+use App\Application\Auth\Validators\UpdateUserPasswordCommandValidator;
+use App\Application\Auth\Validators\VerifyOtpCommandValidator;
+use App\Application\Availability\AvailabilityQuery;
+use App\Application\Billing\Commands\ReportPaymentCommand;
+use App\Application\Billing\Commands\RequestUpgradeCommand;
+use App\Application\Billing\Contracts\PaymentWebhookSettlementInterface;
+use App\Application\Billing\Contracts\SubscriptionIntentStoreInterface;
+use App\Application\Billing\Handlers\ReportPaymentHandler;
+use App\Application\Billing\Handlers\ReportPaymentHandlerInterface;
+use App\Application\Billing\Handlers\RequestUpgradeHandler;
+use App\Application\Billing\Handlers\RequestUpgradeHandlerInterface;
+use App\Application\Billing\Validators\ReportPaymentCommandValidator;
+use App\Application\Billing\Validators\RequestUpgradeCommandValidator;
+use App\Application\Common\Contracts\AtomicIdempotencyInterface;
+use App\Application\Common\Contracts\CircuitBreakerInterface;
+use App\Application\Common\Contracts\IdempotencyServiceInterface;
+use App\Application\Common\Contracts\MetricsCollectorInterface;
+use App\Application\Common\Contracts\RateLimiterInterface;
+use App\Application\Common\Decorators\AtomicIdempotencyDecorator;
+use App\Application\Common\Decorators\TransactionDecorator;
+use App\Application\Common\Interfaces\ClientContextProviderInterface;
+use App\Application\Identity\Commands\RegisterUserCommand;
+use App\Application\Identity\Decorators\IdempotentRegisterUserHandler;
+use App\Application\Identity\Decorators\RateLimitedRegisterUserHandler;
+use App\Application\Identity\Decorators\TelemetryRegisterUserHandler;
+use App\Application\Identity\Handlers\RegisterUserHandler;
+use App\Application\Identity\Handlers\RegisterUserHandlerInterface;
+use App\Application\Interactions\Commands\RecordInteractionCommand;
+use App\Application\Interactions\Contracts\LeadFollowUpPlaybookInterface;
+use App\Application\Interactions\Handlers\RecordInteractionHandler;
+use App\Application\Payments\Commands\HandlePaymentWebhookCommand;
+use App\Application\Payments\Handlers\HandlePaymentWebhookHandler;
+use App\Application\Operations\OperationalCockpit;
+use App\Application\Operations\OperationalKnowledgeHealth;
+use App\Application\Products\ProductImageStorageInterface;
+use App\Application\Reviews\Commands\SubmitReviewCommand;
+use App\Application\Reviews\Handlers\SubmitReviewHandler;
+use App\Application\Reviews\Listeners\UpdateProductRating;
+use App\Application\Sales\Commands\CancelOrderCommand;
+use App\Application\Sales\Commands\CreateOrderCommand;
+use App\Application\Sales\Decorators\IdempotentCreateOrderHandler;
+use App\Application\Sales\Handlers\CancelOrderHandler;
+use App\Application\Sales\Handlers\CreateOrderHandler;
+use App\Application\Sales\Handlers\CreateOrderHandlerInterface;
+use App\Application\Sales\Listeners\RestoreStockOnCancellation;
+use App\Application\Shared\Contracts\CommandBusInterface;
+use App\Application\Shared\Contracts\DataScrubberInterface;
+use App\Application\Shared\Contracts\MetadataSanitizerInterface;
+use App\Application\Shared\Contracts\TenantRateLimiterInterface;
+use App\Application\Shared\Contracts\TraceContextInterface;
+use App\Application\Shared\Contracts\TransactionManagerInterface;
+use App\Application\Shared\Contracts\ValidationServiceInterface;
+use App\Application\Shared\Interfaces\EntropyGeneratorInterface;
+use App\Application\Tenant\Commands\RegisterTenantCommand;
+use App\Application\Tenant\Commands\UpdateLandingPageCommand;
+use App\Application\Tenant\Commands\UpdateTenantBrandingCommand;
+use App\Application\Tenant\Commands\UpdateTenantScheduleCommand;
+use App\Application\Tenant\Decorators\IdempotentRegisterTenantHandler;
+use App\Application\Tenant\Handlers\RegisterTenantHandler;
+use App\Application\Tenant\Handlers\RegisterTenantHandlerInterface;
+use App\Application\Tenant\Handlers\UpdateLandingPageHandler;
+use App\Application\Tenant\Handlers\UpdateTenantBrandingHandler;
+use App\Application\Tenant\Handlers\UpdateTenantScheduleHandler;
+use App\Application\TenantGovernance\Crm\CrmDefaultPipelineGatewayInterface;
+use App\Application\TenantGovernance\Crm\CrmPipelineSummaryGatewayInterface;
+use App\Contracts\DataExportInterface;
+use App\Contracts\Events\DomainEventBus;
+use App\Contracts\LoggerInterface;
+use App\Contracts\ReportGenerationInterface;
+use App\Domain\Analytics\Contracts\AnalyticsReader;
+use App\Domain\Analytics\Repositories\InteractionRepositoryInterface;
+use App\Domain\Api\Contracts\NotificationRepository;
+use App\Domain\Auth\Contracts\OtpNotifierInterface;
+use App\Domain\Auth\Repositories\OtpRepositoryInterface;
+use App\Domain\Auth\Services\OtpHasherInterface;
+use App\Domain\Billing\Contracts\BillingReader;
+use App\Domain\Billing\Gateways\SubscriptionCheckoutGatewayInterface;
+use App\Domain\Billing\Gateways\SubscriptionGatewayInterface;
+use App\Domain\Billing\Repositories\PaymentRepositoryInterface;
+use App\Domain\Billing\Repositories\PlanRepositoryInterface;
+use App\Domain\Billing\Repositories\SubscriptionIntentRepositoryInterface;
+use App\Domain\Billing\Services\DocumentStorageServiceInterface;
+use App\Domain\Catalog\Contracts\ProductCatalogReader;
+use App\Domain\Catalog\Contracts\PublicCatalogReader;
+use App\Domain\Common\Contracts\EventStoreRepositoryInterface;
+use App\Domain\Contracts\AdminNotifier;
+use App\Domain\Contracts\SearchRepository;
+use App\Domain\Directory\Contracts\DirectoryReader;
+use App\Domain\Identity\Repositories\SocialIdentityRepositoryInterface;
+use App\Domain\Identity\Repositories\UserRepositoryInterface;
+use App\Domain\Marketing\Contracts\CouponReader;
+use App\Domain\Orders\Contracts\ReceiptGeneratorInterface;
+use App\Domain\Payment\Repositories\WebhookLogRepositoryInterface;
+use App\Domain\Product\Contracts\ProductReader;
+use App\Domain\Product\Repositories\ProductBlurhashWriter;
+use App\Domain\Product\Repositories\ProductRatingMetricsWriter;
+use App\Domain\Public\Contracts\BuyerRepository;
+use App\Domain\Public\Contracts\LandingPageRepository;
+use App\Domain\Public\Contracts\TenantStorefrontRepository;
+use App\Domain\Reviews\Events\ReviewCreated;
+use App\Domain\Reviews\Repositories\ReviewRepositoryInterface;
+use App\Domain\Sales\Contracts\OrderReader;
+use App\Domain\Sales\Contracts\ReportReader;
+use App\Domain\Sales\Repositories\LeadRepositoryInterface;
+use App\Domain\Search\Contracts\GlobalSearchReader;
+use App\Domain\Shared\Contracts\AdminNotifierInterface;
+use App\Domain\Shared\Contracts\ClockInterface;
+use App\Domain\Shared\Contracts\EventDispatcherInterface;
+use App\Domain\Shared\Contracts\FailureNotifierInterface;
+use App\Domain\Shared\Contracts\MediaStorageServiceInterface;
+use App\Domain\Shared\Contracts\RateLimitServiceInterface;
+use App\Domain\Shared\Contracts\TenantContext;
+use App\Domain\Shared\Contracts\TenantReadRepository;
+use App\Domain\Shared\Contracts\UuidGeneratorInterface;
+use App\Domain\Shared\OutboxRepositoryInterface;
+use App\Domain\Shared\PasswordHasherInterface;
+use App\Domain\Tenant\Contracts\BillingRepository;
+use App\Domain\Tenant\Contracts\CouponRepository;
+use App\Domain\Tenant\Contracts\DashboardMetricsRepository;
+use App\Domain\Tenant\Contracts\OnboardingReader;
+use App\Domain\Tenant\Contracts\OrderRepository;
+use App\Domain\Tenant\Contracts\TenantProductRepository;
+use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
+use App\Events\Order\OrderCancelled;
+use App\Events\Order\OrderDelivered;
+use App\Events\Order\OrderPaid;
+use App\Http\Controllers\Webhook\PaymentWebhookController;
 use App\Infrastructure\AI\ConfiguredAiProviderPool;
 use App\Infrastructure\AI\DisabledAiProvider;
+use App\Infrastructure\AI\EloquentPrivateAiTenantAccessReader;
+use App\Infrastructure\AI\Knowledge\OpenAiEmbeddingProvider;
+use App\Infrastructure\AI\LaravelStructuredOutputValidator;
 use App\Infrastructure\AI\OpenAiStructuredTextProvider;
-// Models
-use App\Contracts\Events\DomainEventBus;
+use App\Infrastructure\AI\ResilientAiGateway;
+use App\Infrastructure\Analytics\EloquentAnalyticsReader;
+use App\Infrastructure\Api\EloquentNotificationRepository;
+use App\Infrastructure\Auth\Repositories\EloquentOtpRepository;
+use App\Infrastructure\Auth\Services\HmacOtpHasher;
+use App\Infrastructure\Availability\EloquentAvailabilityQuery;
+use App\Infrastructure\Billing\EloquentBillingReader;
+use App\Infrastructure\Billing\EloquentPaymentWebhookSettlement;
+use App\Infrastructure\Billing\EloquentSubscriptionIntentStore;
+use App\Infrastructure\Billing\Gateways\ManualSubscriptionCheckoutGateway;
+use App\Infrastructure\Billing\Gateways\ManualSubscriptionGateway;
+use App\Infrastructure\Billing\Persistence\ConfigPlanRepository;
+use App\Infrastructure\Billing\Persistence\EloquentSubscriptionIntentRepository;
+use App\Infrastructure\Bus\IlluminateCommandBus;
+use App\Infrastructure\Bus\Middleware\TransactionalMiddleware;
+use App\Infrastructure\Bus\TransactionalEventDispatcher;
+use App\Infrastructure\Catalog\CachedProductReader;
+use App\Infrastructure\Catalog\EloquentPublicCatalogReader;
+use App\Infrastructure\Common\EventStore\DatabaseEventStore;
+use App\Infrastructure\Common\Idempotency\AtomicIdempotencyService;
+use App\Infrastructure\Common\Outbox\LaravelEventMessagePublisher;
+use App\Infrastructure\Common\Outbox\MessagePublisherInterface;
+use App\Infrastructure\Common\RateLimiting\LaravelRateLimiterAdapter;
+use App\Infrastructure\Crm\EloquentCrmDefaultPipelineGateway;
+use App\Infrastructure\Crm\EloquentCrmPipelineSummaryGateway;
+use App\Infrastructure\Directory\EloquentDirectoryReader;
 use App\Infrastructure\Events\LaravelEventBus;
+use App\Infrastructure\Identity\Persistence\EloquentUserRepository;
+use App\Infrastructure\Identity\RamseyUuidGenerator;
+use App\Infrastructure\Interactions\EloquentLeadFollowUpPlaybook;
+use App\Infrastructure\Jobs\AI\EnhanceTenantProfileJob;
+use App\Infrastructure\Jobs\AI\GenerateBusinessProfile;
+use App\Infrastructure\Jobs\Analytics\RecordInteraction;
+use App\Infrastructure\Jobs\Analytics\SyncAnalyticsJob;
+use App\Infrastructure\Jobs\Analytics\SyncTenantAnalytics;
+use App\Infrastructure\Jobs\Exports\GenerateSalesExport;
+use App\Infrastructure\Jobs\Governance\AuditTenantLimits;
+use App\Infrastructure\Jobs\Governance\ReleaseStaleOrders;
+use App\Infrastructure\Jobs\Marketing\SendCampaignEmail;
+use App\Infrastructure\Jobs\Media\GenerateProductBlurhash;
+use App\Infrastructure\Jobs\Reporting\GeneratePdfReportJob;
+use App\Infrastructure\Logging\SensitiveDataScrubber;
+use App\Infrastructure\Marketing\EloquentCouponReader;
+use App\Infrastructure\Monitoring\DatadogMetricsAdapter;
+use App\Infrastructure\Notifications\EmailOtpNotifier;
+use App\Infrastructure\Notifications\FilamentAdminNotifier;
+use App\Infrastructure\Notifications\LogFailureNotifier;
+use App\Infrastructure\Payments\Stripe\StripeSubscriptionCheckoutGateway;
+use App\Infrastructure\Persistence\EloquentPaymentRepository;
+use App\Infrastructure\Persistence\EloquentSocialIdentityRepository;
+use App\Infrastructure\Product\EloquentProductReader;
+use App\Infrastructure\Public\CachedTenantStorefrontRepository;
+use App\Infrastructure\Public\EloquentBuyerRepository;
+use App\Infrastructure\Public\EloquentLandingPageRepository;
+use App\Infrastructure\Public\EloquentTenantStorefrontRepository;
+use App\Infrastructure\Reporting\DomPdfReceiptGenerator;
+use App\Infrastructure\Repositories\Analytics\EloquentInteractionRepository;
+use App\Infrastructure\Repositories\Payment\EloquentWebhookLogRepository;
+use App\Infrastructure\Repositories\Products\EloquentProductBlurhashWriter;
+use App\Infrastructure\Repositories\Products\EloquentProductRatingMetricsWriter;
+use App\Infrastructure\Repositories\Reviews\EloquentReviewRepository;
+use App\Infrastructure\Repositories\Sales\EloquentLeadRepository;
+use App\Infrastructure\Repositories\TenantGovernance\EloquentTenantRepository;
+use App\Infrastructure\Resilience\RedisCircuitBreaker;
+use App\Infrastructure\Sales\EloquentOrderReader;
+use App\Infrastructure\Sales\EloquentReportReader;
+use App\Infrastructure\Search\EloquentGlobalSearchReader;
+use App\Infrastructure\Search\EloquentSearchRepository;
+use App\Infrastructure\Operations\EloquentOperationalCockpit;
+use App\Infrastructure\Operations\EloquentOperationalKnowledgeHealth;
+use App\Infrastructure\Security\CacheTenantRateLimiter;
+use App\Infrastructure\Security\LaravelRateLimitService;
+use App\Infrastructure\Security\MetadataSanitizer;
+use App\Infrastructure\Shared\Bus\PipelineBuilder;
+use App\Infrastructure\Shared\ConsoleContextProvider;
+use App\Infrastructure\Shared\EloquentTenantReadRepository;
+use App\Infrastructure\Shared\Persistence\DatabaseTransactionManager;
+use App\Infrastructure\Shared\Persistence\Decorators\SchemaValidatingOutboxRepository;
+use App\Infrastructure\Shared\Persistence\EloquentOutboxRepository;
+use App\Infrastructure\Shared\RequestContextProvider;
+use App\Infrastructure\Shared\RequestTenantContext;
+use App\Infrastructure\Shared\Security\NativeEntropyGenerator;
+use App\Infrastructure\Shared\Services\LaravelPasswordHasher;
+use App\Infrastructure\Shared\Services\LaravelValidationService;
+use App\Infrastructure\Shared\Telemetry\TraceContext;
+use App\Infrastructure\Shared\Time\SystemClock;
+use App\Infrastructure\Storage\LaravelMediaStorageService;
+use App\Infrastructure\Storage\NormalizedProductImageStorage;
+use App\Infrastructure\Storage\S3DocumentStorageService;
+use App\Infrastructure\Tenant\CachedOnboardingReader;
+use App\Infrastructure\Tenant\EloquentBillingRepository;
+use App\Infrastructure\Tenant\EloquentCouponRepository;
+use App\Infrastructure\Tenant\EloquentDashboardMetricsRepository;
+use App\Infrastructure\Tenant\EloquentOrderRepository;
+use App\Infrastructure\Tenant\EloquentTenantProductRepository;
+use App\Models\Appointment;
 use App\Models\Campaign;
 use App\Models\Coupon;
+use App\Models\CrmDeal;
+use App\Models\CustomerNote;
+use App\Models\CustomerTask;
 use App\Models\Lead;
 use App\Models\MenuSection;
 use App\Models\Order;
-// Policies
 use App\Models\Product;
+use App\Models\Quote;
 use App\Models\Review;
+use App\Models\Service;
+use App\Models\ServiceProvider as ServiceProviderModel;
+use App\Models\Tenant;
+use App\Models\User;
+use App\Observers\CommercialOutcomeObserver;
+use App\Observers\KnowledgeIndexObserver;
+use App\Observers\ProductObserver;
+use App\Observers\TenantObserver;
 use App\Policies\CampaignPolicy;
 use App\Policies\CouponPolicy;
 use App\Policies\LeadPolicy;
@@ -28,9 +298,20 @@ use App\Policies\ProductPolicy;
 use App\Policies\ReviewPolicy;
 use App\Policies\TenantPolicy;
 use App\Policies\UserPolicy;
-// Event Bus Infrastructure
+use App\Services\ExcelExportService;
+use App\Services\LaravelLoggerAdapter;
+use App\Services\ReportGenerationService;
+use Carbon\Carbon;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Validation\Factory;
+use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Fortify\Contracts\ResetsUserPasswords;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -39,20 +320,34 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->bind(
+            OperationalKnowledgeHealth::class,
+            EloquentOperationalKnowledgeHealth::class,
+        );
+        $this->app->bind(
+            OperationalCockpit::class,
+            EloquentOperationalCockpit::class,
+        );
+
+        $this->app->bind(
+            AvailabilityQuery::class,
+            EloquentAvailabilityQuery::class,
+        );
+
         // ═══════════════════════════════════════════════════════════════════════
         // TITANIUM EVENT STORE: The One True Store (DB + Outbox)
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
-            \App\Domain\Common\Contracts\EventStoreRepositoryInterface::class,
-            \App\Infrastructure\Common\EventStore\DatabaseEventStore::class
+            EventStoreRepositoryInterface::class,
+            DatabaseEventStore::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════
         // OUTBOX PUBLISHER: Transport Adapter (Log, Redis, etc.)
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
-            \App\Infrastructure\Common\Outbox\MessagePublisherInterface::class,
-            \App\Infrastructure\Common\Outbox\LogMessagePublisher::class
+            MessagePublisherInterface::class,
+            LaravelEventMessagePublisher::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -64,28 +359,28 @@ class AppServiceProvider extends ServiceProvider
         // SERVICES & CONTRACTS BINDINGS
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
-            \App\Contracts\ReportGenerationInterface::class,
-            \App\Services\ReportGenerationService::class
+            ReportGenerationInterface::class,
+            ReportGenerationService::class
         );
         $this->app->bind(
-            \App\Contracts\LoggerInterface::class,
-            \App\Services\LaravelLoggerAdapter::class
+            LoggerInterface::class,
+            LaravelLoggerAdapter::class
         );
         $this->app->bind(
             \App\Application\Shared\Contracts\LoggerInterface::class,
             \App\Infrastructure\Logging\LaravelLoggerAdapter::class
         );
         $this->app->bind(
-            \App\Application\Billing\Contracts\PaymentWebhookSettlementInterface::class,
-            \App\Infrastructure\Billing\EloquentPaymentWebhookSettlement::class
+            PaymentWebhookSettlementInterface::class,
+            EloquentPaymentWebhookSettlement::class
         );
         $this->app->bind(
-            \App\Application\Billing\Contracts\SubscriptionIntentStoreInterface::class,
-            \App\Infrastructure\Billing\EloquentSubscriptionIntentStore::class
+            SubscriptionIntentStoreInterface::class,
+            EloquentSubscriptionIntentStore::class
         );
         $this->app->bind(
-            \App\Application\Ai\PrivateAiTenantAccessReaderInterface::class,
-            \App\Infrastructure\AI\EloquentPrivateAiTenantAccessReader::class
+            PrivateAiTenantAccessReaderInterface::class,
+            EloquentPrivateAiTenantAccessReader::class
         );
         $this->app->bind(
             \App\Application\Ai\Security\AiContentCipher::class,
@@ -96,117 +391,125 @@ class AppServiceProvider extends ServiceProvider
             \App\Infrastructure\AI\Conversation\EloquentConversationStore::class,
         );
         $this->app->bind(
-            \App\Application\Interactions\Contracts\LeadFollowUpPlaybookInterface::class,
-            \App\Infrastructure\Interactions\EloquentLeadFollowUpPlaybook::class
+            EmbeddingProvider::class,
+            OpenAiEmbeddingProvider::class,
         );
         $this->app->bind(
-            \App\Application\TenantGovernance\Crm\CrmDefaultPipelineGatewayInterface::class,
-            \App\Infrastructure\Crm\EloquentCrmDefaultPipelineGateway::class
+            KnowledgeRetriever::class,
+            SemanticKnowledgeRetriever::class,
         );
         $this->app->bind(
-            \App\Application\TenantGovernance\Crm\CrmPipelineSummaryGatewayInterface::class,
-            \App\Infrastructure\Crm\EloquentCrmPipelineSummaryGateway::class
+            LeadFollowUpPlaybookInterface::class,
+            EloquentLeadFollowUpPlaybook::class
         );
         $this->app->bind(
-            \App\Application\Shared\Contracts\DataScrubberInterface::class,
-            \App\Infrastructure\Logging\SensitiveDataScrubber::class
+            CrmDefaultPipelineGatewayInterface::class,
+            EloquentCrmDefaultPipelineGateway::class
         );
         $this->app->bind(
-            \App\Application\Shared\Contracts\MetadataSanitizerInterface::class,
-            \App\Infrastructure\Security\MetadataSanitizer::class
+            CrmPipelineSummaryGatewayInterface::class,
+            EloquentCrmPipelineSummaryGateway::class
         );
         $this->app->bind(
-            \App\Application\Shared\Contracts\TenantRateLimiterInterface::class,
-            \App\Infrastructure\Security\CacheTenantRateLimiter::class
+            DataScrubberInterface::class,
+            SensitiveDataScrubber::class
         );
         $this->app->bind(
-            \App\Contracts\DataExportInterface::class,
-            \App\Services\ExcelExportService::class
+            MetadataSanitizerInterface::class,
+            MetadataSanitizer::class
+        );
+        $this->app->bind(
+            TenantRateLimiterInterface::class,
+            CacheTenantRateLimiter::class
+        );
+        $this->app->bind(
+            DataExportInterface::class,
+            ExcelExportService::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════
         // NOTIFICATION ABSTRACTION: Decouples Filament from Business Logic
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
-            \App\Domain\Contracts\AdminNotifier::class,
-            \App\Infrastructure\Notifications\FilamentAdminNotifier::class
+            AdminNotifier::class,
+            FilamentAdminNotifier::class
         );
         $this->app->bind(
-            \App\Domain\Contracts\SearchRepository::class,
-            \App\Infrastructure\Search\EloquentSearchRepository::class
+            SearchRepository::class,
+            EloquentSearchRepository::class
         );
         $this->app->bind(
-            \App\Domain\Directory\Contracts\DirectoryReader::class,
-            \App\Infrastructure\Directory\EloquentDirectoryReader::class
+            DirectoryReader::class,
+            EloquentDirectoryReader::class
         );
         $this->app->bind(
-            \App\Domain\Catalog\Contracts\ProductCatalogReader::class,
-            \App\Infrastructure\Catalog\CachedProductReader::class
+            ProductCatalogReader::class,
+            CachedProductReader::class
         );
         $this->app->bind(
-            \App\Domain\Billing\Contracts\BillingReader::class,
-            \App\Infrastructure\Billing\EloquentBillingReader::class
+            BillingReader::class,
+            EloquentBillingReader::class
         );
         $this->app->bind(
-            \App\Domain\Tenant\Contracts\OnboardingReader::class,
-            \App\Infrastructure\Tenant\CachedOnboardingReader::class
+            OnboardingReader::class,
+            CachedOnboardingReader::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════
         // SALES DOMAIN: Order Query Abstraction
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
-            \App\Domain\Sales\Contracts\OrderReader::class,
-            \App\Infrastructure\Sales\EloquentOrderReader::class
+            OrderReader::class,
+            EloquentOrderReader::class
         );
         $this->app->bind(
-            \App\Domain\Sales\Contracts\ReportReader::class,
-            \App\Infrastructure\Sales\EloquentReportReader::class
+            ReportReader::class,
+            EloquentReportReader::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════
         // ANALYTICS DOMAIN: Metrics Query Abstraction
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
-            \App\Domain\Analytics\Contracts\AnalyticsReader::class,
-            \App\Infrastructure\Analytics\EloquentAnalyticsReader::class
+            AnalyticsReader::class,
+            EloquentAnalyticsReader::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════
         // PRODUCT DOMAIN: Inventory Query Abstraction
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
-            \App\Domain\Product\Contracts\ProductReader::class,
-            \App\Infrastructure\Product\EloquentProductReader::class
+            ProductReader::class,
+            EloquentProductReader::class
         );
         $this->app->bind(
-            \App\Domain\Tenant\Contracts\TenantProductRepository::class,
-            \App\Infrastructure\Tenant\EloquentTenantProductRepository::class
+            TenantProductRepository::class,
+            EloquentTenantProductRepository::class
         );
         // Shared Domains
         $this->app->singleton(
-            \App\Domain\Shared\Contracts\TenantContext::class,
-            \App\Infrastructure\Shared\RequestTenantContext::class
+            TenantContext::class,
+            RequestTenantContext::class
         );
         $this->app->bind(
-            \App\Domain\Shared\Contracts\TenantReadRepository::class,
-            \App\Infrastructure\Shared\EloquentTenantReadRepository::class
+            TenantReadRepository::class,
+            EloquentTenantReadRepository::class
         );
 
         // Public/Storefront Domains (Decorated with Cache)
         $this->app->bind(
-            \App\Domain\Public\Contracts\TenantStorefrontRepository::class,
+            TenantStorefrontRepository::class,
             function ($app) {
                 // Instantiate the inner Eloquent Implementation
-                $inner = $app->make(\App\Infrastructure\Public\EloquentTenantStorefrontRepository::class);
+                $inner = $app->make(EloquentTenantStorefrontRepository::class);
 
                 // Wrap it with the Cached Decorator
-                return new \App\Infrastructure\Public\CachedTenantStorefrontRepository($inner);
+                return new CachedTenantStorefrontRepository($inner);
             }
         );
         $this->app->bind(
-            \App\Domain\Public\Contracts\LandingPageRepository::class,
-            \App\Infrastructure\Public\EloquentLandingPageRepository::class
+            LandingPageRepository::class,
+            EloquentLandingPageRepository::class
         );
         $this->app->singleton(
             \App\Domain\Shared\Services\TenantContext::class,
@@ -214,159 +517,158 @@ class AppServiceProvider extends ServiceProvider
         );
 
         $this->app->bind(
-            \App\Domain\Public\Contracts\BuyerRepository::class,
-            \App\Infrastructure\Public\EloquentBuyerRepository::class
+            BuyerRepository::class,
+            EloquentBuyerRepository::class
         );
 
         // Tenant Domains (Metrics)
         $this->app->bind(
-            \App\Domain\Tenant\Contracts\DashboardMetricsRepository::class,
-            \App\Infrastructure\Tenant\EloquentDashboardMetricsRepository::class
+            DashboardMetricsRepository::class,
+            EloquentDashboardMetricsRepository::class
         );
 
         // Tenant Domains
         $this->app->bind(
-            \App\Domain\Tenant\Contracts\OrderRepository::class,
-            \App\Infrastructure\Tenant\EloquentOrderRepository::class
+            OrderRepository::class,
+            EloquentOrderRepository::class
         );
         $this->app->bind(
-            \App\Domain\Tenant\Contracts\TenantProductRepository::class,
-            \App\Infrastructure\Tenant\EloquentTenantProductRepository::class
+            TenantProductRepository::class,
+            EloquentTenantProductRepository::class
         );
         $this->app->bind(
-            \App\Domain\Tenant\Contracts\CouponRepository::class,
-            \App\Infrastructure\Tenant\EloquentCouponRepository::class
+            CouponRepository::class,
+            EloquentCouponRepository::class
         );
 
         // API Domains
         $this->app->bind(
-            \App\Domain\Api\Contracts\NotificationRepository::class,
-            \App\Infrastructure\Api\EloquentNotificationRepository::class
+            NotificationRepository::class,
+            EloquentNotificationRepository::class
         );
         $this->app->bind(
-            \App\Domain\Tenant\Contracts\BillingRepository::class,
-            \App\Infrastructure\Tenant\EloquentBillingRepository::class
+            BillingRepository::class,
+            EloquentBillingRepository::class
         );
         $this->app->bind(
-            \App\Domain\Billing\Repositories\PlanRepositoryInterface::class,
-            \App\Infrastructure\Billing\Persistence\ConfigPlanRepository::class
+            PlanRepositoryInterface::class,
+            ConfigPlanRepository::class
         );
         $this->app->bind(
-            \App\Domain\Billing\Repositories\SubscriptionIntentRepositoryInterface::class,
-            \App\Infrastructure\Billing\Persistence\EloquentSubscriptionIntentRepository::class
+            SubscriptionIntentRepositoryInterface::class,
+            EloquentSubscriptionIntentRepository::class
         );
         $this->app->bind(
-            \App\Domain\Marketing\Contracts\CouponReader::class,
-            \App\Infrastructure\Marketing\EloquentCouponReader::class
+            CouponReader::class,
+            EloquentCouponReader::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════
         // SECURITY DOMAIN
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
-            \App\Domain\Shared\PasswordHasherInterface::class,
-            \App\Infrastructure\Shared\Services\LaravelPasswordHasher::class
+            PasswordHasherInterface::class,
+            LaravelPasswordHasher::class
         );
         $this->app->bind(
             \App\Domain\Shared\Services\PasswordHasherInterface::class,
-            \App\Infrastructure\Shared\Services\LaravelPasswordHasher::class
+            LaravelPasswordHasher::class
         );
         $this->app->bind(
-            \App\Application\Shared\Contracts\ValidationServiceInterface::class,
-            \App\Infrastructure\Shared\Services\LaravelValidationService::class
+            ValidationServiceInterface::class,
+            LaravelValidationService::class
         );
 
         $this->app->bind(
-            \App\Domain\Shared\OutboxRepositoryInterface::class,
-            \App\Infrastructure\Shared\Persistence\EloquentOutboxRepository::class
+            OutboxRepositoryInterface::class,
+            EloquentOutboxRepository::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════
         // SEARCH & PUBLIC CATALOG
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
-            \App\Domain\Search\Contracts\GlobalSearchReader::class,
-            \App\Infrastructure\Search\EloquentGlobalSearchReader::class
+            GlobalSearchReader::class,
+            EloquentGlobalSearchReader::class
         );
         $this->app->bind(
-            \App\Domain\Catalog\Contracts\PublicCatalogReader::class,
-            \App\Infrastructure\Catalog\EloquentPublicCatalogReader::class
+            PublicCatalogReader::class,
+            EloquentPublicCatalogReader::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════
         // COMMAND BUS: Synchronous Execution Pipeline
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
-            \App\Application\Shared\Contracts\CommandBusInterface::class,
-            \App\Infrastructure\Bus\IlluminateCommandBus::class
+            CommandBusInterface::class,
+            IlluminateCommandBus::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════
         // REPOSITORY BINDINGS: DIP Compliance for Handlers
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
-            \App\Domain\Identity\Repositories\UserRepositoryInterface::class,
-            \App\Infrastructure\Identity\Persistence\EloquentUserRepository::class
+            UserRepositoryInterface::class,
+            EloquentUserRepository::class
         );
         $this->app->bind(
-            \App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface::class,
-            \App\Infrastructure\Repositories\TenantGovernance\EloquentTenantRepository::class
+            TenantRepositoryInterface::class,
+            EloquentTenantRepository::class
         );
         $this->app->bind(
-            \App\Domain\Billing\Repositories\PaymentRepositoryInterface::class,
-            \App\Infrastructure\Persistence\EloquentPaymentRepository::class
+            PaymentRepositoryInterface::class,
+            EloquentPaymentRepository::class
         );
-        $this->app->bind(
-            \App\Domain\Sales\Repositories\OrderRepositoryInterface::class,
-            \App\Infrastructure\Repositories\Sales\EloquentOrderRepository::class
-        );
-
         // ═══════════════════════════════════════════════════════════════════════
         // REVIEWS DOMAIN: Repository Bindings
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
-            \App\Domain\Reviews\Repositories\ReviewRepositoryInterface::class,
-            \App\Infrastructure\Repositories\Reviews\EloquentReviewRepository::class
+            ReviewRepositoryInterface::class,
+            EloquentReviewRepository::class
         );
         $this->app->bind(
-            \App\Domain\Product\Repositories\ProductRepositoryInterface::class,
-            \App\Infrastructure\Repositories\Products\EloquentProductRepository::class
+            ProductRatingMetricsWriter::class,
+            EloquentProductRatingMetricsWriter::class
+        );
+        $this->app->bind(
+            ProductBlurhashWriter::class,
+            EloquentProductBlurhashWriter::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════
         // PAYMENT DOMAIN: Repository Bindings
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
-            \App\Domain\Payment\Repositories\WebhookLogRepositoryInterface::class,
-            \App\Infrastructure\Repositories\Payment\EloquentWebhookLogRepository::class
+            WebhookLogRepositoryInterface::class,
+            EloquentWebhookLogRepository::class
         );
         $this->app->bind(
             \App\Domain\Billing\Repositories\WebhookLogRepositoryInterface::class,
-            \App\Infrastructure\Repositories\Payment\EloquentWebhookLogRepository::class
+            EloquentWebhookLogRepository::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════
         // IDENTITY DOMAIN: Social Identity Repository
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
-            \App\Domain\Identity\Repositories\SocialIdentityRepositoryInterface::class,
-            \App\Infrastructure\Persistence\EloquentSocialIdentityRepository::class
+            SocialIdentityRepositoryInterface::class,
+            EloquentSocialIdentityRepository::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════
         // DOCUMENT STORAGE: Abstraction for file handling in Billing Domain
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
-            \App\Domain\Billing\Services\DocumentStorageServiceInterface::class,
-            \App\Infrastructure\Storage\S3DocumentStorageService::class
+            DocumentStorageServiceInterface::class,
+            S3DocumentStorageService::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════
         // ANALYTICS DOMAIN: Interaction Repository
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
-            \App\Domain\Analytics\Repositories\InteractionRepositoryInterface::class,
-            \App\Infrastructure\Repositories\Analytics\EloquentInteractionRepository::class
+            InteractionRepositoryInterface::class,
+            EloquentInteractionRepository::class
         );
 
         $this->app->bind(
@@ -378,22 +680,22 @@ class AppServiceProvider extends ServiceProvider
         // SALES DOMAIN: Lead Repository
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
-            \App\Domain\Sales\Repositories\LeadRepositoryInterface::class,
-            \App\Infrastructure\Repositories\Sales\EloquentLeadRepository::class
+            LeadRepositoryInterface::class,
+            EloquentLeadRepository::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════
         // AUTH DOMAIN: OTP Notification and Repository Abstractions
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
-            \App\Domain\Auth\Contracts\OtpNotifierInterface::class,
-            \App\Infrastructure\Notifications\EmailOtpNotifier::class
+            OtpNotifierInterface::class,
+            EmailOtpNotifier::class
         );
 
         // OTP Repository - Tenant-Aware Implementation (CANONICAL)
         $this->app->bind(
-            \App\Domain\Auth\Repositories\OtpRepositoryInterface::class,
-            \App\Infrastructure\Auth\Repositories\EloquentOtpRepository::class
+            OtpRepositoryInterface::class,
+            EloquentOtpRepository::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -402,7 +704,7 @@ class AppServiceProvider extends ServiceProvider
         // ═══════════════════════════════════════════════════════════════════════
 
         // GenerateOtpHandler: OTP Expiry Minutes
-        $this->app->when(\App\Application\Auth\Handlers\GenerateOtpHandler::class)
+        $this->app->when(GenerateOtpHandler::class)
             ->needs('$otpExpiryMinutes')
             ->give(function () {
                 $value = config('auth.otp.expiry_minutes');
@@ -414,7 +716,7 @@ class AppServiceProvider extends ServiceProvider
             });
 
         // RateLimitedGenerateOtpHandler: Max Requests Per Hour
-        $this->app->when(\App\Application\Auth\Decorators\RateLimitedGenerateOtpHandler::class)
+        $this->app->when(RateLimitedGenerateOtpHandler::class)
             ->needs('$maxRequestsPerHour')
             ->give(function () {
                 $value = config('auth.otp.max_requests_per_hour');
@@ -426,7 +728,7 @@ class AppServiceProvider extends ServiceProvider
             });
 
         // GenerateOtpHandler: OTP Length
-        $this->app->when(\App\Application\Auth\Handlers\GenerateOtpHandler::class)
+        $this->app->when(GenerateOtpHandler::class)
             ->needs('$otpLength')
             ->give(function () {
                 $value = config('auth.otp.length');
@@ -438,7 +740,7 @@ class AppServiceProvider extends ServiceProvider
             });
 
         // RateLimitedGenerateOtpHandler: Rate Limit Decay Seconds
-        $this->app->when(\App\Application\Auth\Decorators\RateLimitedGenerateOtpHandler::class)
+        $this->app->when(RateLimitedGenerateOtpHandler::class)
             ->needs('$decaySeconds')
             ->give(function () {
                 $value = config('auth.otp.rate_limit_decay_seconds');
@@ -450,7 +752,7 @@ class AppServiceProvider extends ServiceProvider
             });
 
         // VerifyOtpHandler: Max Verification Attempts
-        $this->app->when(\App\Application\Auth\Handlers\VerifyOtpHandler::class)
+        $this->app->when(VerifyOtpHandler::class)
             ->needs('$maxOtpAttempts')
             ->give(function () {
                 $value = config('auth.otp.max_attempts');
@@ -462,11 +764,11 @@ class AppServiceProvider extends ServiceProvider
             });
 
         // VerifyOtpRateLimitDecorator: Rate Limit Config
-        $this->app->when(\App\Application\Auth\Decorators\VerifyOtpRateLimitDecorator::class)
+        $this->app->when(VerifyOtpRateLimitDecorator::class)
             ->needs('$maxAttempts')
             ->give((int) config('auth.otp.max_attempts', 5));
 
-        $this->app->when(\App\Application\Auth\Decorators\VerifyOtpRateLimitDecorator::class)
+        $this->app->when(VerifyOtpRateLimitDecorator::class)
             ->needs('$decaySeconds')
             ->give(60);
 
@@ -474,15 +776,14 @@ class AppServiceProvider extends ServiceProvider
         // AUTH DOMAIN: VERIFY OTP PIPELINE (Standardized)
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
-            \App\Application\Auth\Handlers\VerifyOtpHandlerInterface::class,
+            VerifyOtpHandlerInterface::class,
             function ($app) {
-                return \App\Infrastructure\Shared\Bus\PipelineBuilder::make(\App\Application\Auth\Handlers\VerifyOtpHandler::class)
+                return PipelineBuilder::make(VerifyOtpHandler::class)
                     ->through([
                         // Outermost (Runs First)
-                        \App\Application\Auth\Decorators\VerifyOtpRateLimitDecorator::class,
-                        \App\Application\Auth\Validators\VerifyOtpCommandValidator::class,
-                        \App\Application\Common\Decorators\AtomicIdempotencyDecorator::class,
-                        \App\Application\Common\Decorators\TransactionDecorator::class,
+                        VerifyOtpRateLimitDecorator::class,
+                        VerifyOtpCommandValidator::class,
+                        TransactionVerifyOtpHandler::class,
                     ])
                     ->build($app);
             }
@@ -490,14 +791,14 @@ class AppServiceProvider extends ServiceProvider
 
         // LoginViaSocialProvider Pipeline
         $this->app->bind(
-            \App\Application\Auth\Handlers\LoginViaSocialProviderHandlerInterface::class,
+            LoginViaSocialProviderHandlerInterface::class,
             function ($app) {
                 // IMPORTANT: Core is resolved by PipelineBuilder internally
-                return \App\Infrastructure\Shared\Bus\PipelineBuilder::make(\App\Application\Auth\Handlers\LoginViaSocialProviderHandler::class)
+                return PipelineBuilder::make(LoginViaSocialProviderHandler::class)
                     ->through([
-                        \App\Application\Auth\Validators\LoginViaSocialProviderCommandValidator::class,
-                        \App\Application\Common\Decorators\AtomicIdempotencyDecorator::class,
-                        \App\Application\Common\Decorators\TransactionDecorator::class,
+                        LoginViaSocialProviderCommandValidator::class,
+                        AtomicIdempotencyDecorator::class,
+                        TransactionDecorator::class,
                     ])
                     ->build($app);
             }
@@ -505,13 +806,13 @@ class AppServiceProvider extends ServiceProvider
 
         // DeleteUserHandler Pipeline
         $this->app->bind(
-            \App\Application\Auth\Handlers\DeleteUserHandlerInterface::class,
+            DeleteUserHandlerInterface::class,
             function ($app) {
-                return \App\Infrastructure\Shared\Bus\PipelineBuilder::make(\App\Application\Auth\Handlers\DeleteUserHandler::class)
+                return PipelineBuilder::make(DeleteUserHandler::class)
                     ->through([
-                        \App\Application\Auth\Validators\DeleteUserCommandValidator::class,
-                        \App\Application\Common\Decorators\AtomicIdempotencyDecorator::class,
-                        \App\Application\Common\Decorators\TransactionDecorator::class,
+                        DeleteUserCommandValidator::class,
+                        AtomicIdempotencyDecorator::class,
+                        TransactionDecorator::class,
                     ])
                     ->build($app);
             }
@@ -519,12 +820,12 @@ class AppServiceProvider extends ServiceProvider
 
         // UpdateUserPassword Pipeline (Standardized)
         $this->app->bind(
-            \App\Application\Auth\Handlers\UpdateUserPasswordHandlerInterface::class,
+            UpdateUserPasswordHandlerInterface::class,
             function ($app) {
-                return \App\Infrastructure\Shared\Bus\PipelineBuilder::make(\App\Application\Auth\Handlers\UpdateUserPasswordHandler::class)
+                return PipelineBuilder::make(UpdateUserPasswordHandler::class)
                     ->through([
-                        \App\Application\Common\Decorators\TransactionDecorator::class,
-                        \App\Application\Auth\Validators\UpdateUserPasswordCommandValidator::class,
+                        TransactionDecorator::class,
+                        UpdateUserPasswordCommandValidator::class,
                     ])
                     ->build($app);
             }
@@ -532,7 +833,7 @@ class AppServiceProvider extends ServiceProvider
 
         // GenerateOtp Pipeline (Consolidated & Standardized)
         $this->app->bind(
-            \App\Application\Auth\Contracts\GenerateOtpHandlerInterface::class,
+            GenerateOtpHandlerInterface::class,
             function ($app) {
                 // CORE: Pure Business Logic
                 // Resolved via Container to harness contextual bindings defined above
@@ -541,19 +842,19 @@ class AppServiceProvider extends ServiceProvider
                 // My PipelineBuilder::make takes string.
                 // Does it verify contextual bindings? Yes, $container->make($class) respects them.
 
-                return \App\Infrastructure\Shared\Bus\PipelineBuilder::make(\App\Application\Auth\Handlers\GenerateOtpHandler::class)
+                return PipelineBuilder::make(GenerateOtpHandler::class)
                     ->through([
-                        \App\Application\Auth\Decorators\RateLimitedGenerateOtpHandler::class, // Outer
-                        \App\Application\Auth\Decorators\ValidationGenerateOtpHandler::class,  // Gate
+                        RateLimitedGenerateOtpHandler::class, // Outer
+                        ValidationGenerateOtpHandler::class,  // Gate
                         \App\Application\Auth\Decorators\AtomicIdempotencyDecorator::class,    // Lock
-                        \App\Application\Auth\Decorators\TransactionGenerateOtpHandler::class, // ACID Transaction (Strict Typed)
+                        TransactionGenerateOtpHandler::class, // ACID Transaction (Strict Typed)
                     ])
                     ->build($app);
             }
         );
 
         // IdempotentGenerateOtpHandler: Idempotency TTL (Fail-Fast)
-        $this->app->when(\App\Application\Auth\Decorators\IdempotentGenerateOtpHandler::class)
+        $this->app->when(IdempotentGenerateOtpHandler::class)
             ->needs('$idempotencyTtlSeconds')
             ->give(function () {
                 $value = config('auth.otp.idempotency_ttl_seconds');
@@ -566,31 +867,31 @@ class AppServiceProvider extends ServiceProvider
 
         // Admin Notifier with pure domain entities
         $this->app->bind(
-            \App\Domain\Shared\Contracts\AdminNotifierInterface::class,
-            \App\Infrastructure\Notifications\FilamentAdminNotifier::class
+            AdminNotifierInterface::class,
+            FilamentAdminNotifier::class
         );
 
         // System Failure Notifier (SRE Hardening)
         $this->app->bind(
-            \App\Domain\Shared\Contracts\FailureNotifierInterface::class,
-            \App\Infrastructure\Notifications\LogFailureNotifier::class
+            FailureNotifierInterface::class,
+            LogFailureNotifier::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════
         // BILLING DOMAIN: Subscription Gateway Abstraction
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
-            \App\Domain\Billing\Gateways\SubscriptionGatewayInterface::class,
-            \App\Infrastructure\Billing\Gateways\ManualSubscriptionGateway::class
+            SubscriptionGatewayInterface::class,
+            ManualSubscriptionGateway::class
         );
         $this->app->bind(
-            \App\Domain\Billing\Gateways\SubscriptionCheckoutGatewayInterface::class,
+            SubscriptionCheckoutGatewayInterface::class,
             fn () => strtolower((string) config('services.payment.provider', 'generic')) === 'stripe'
-                ? new \App\Infrastructure\Payments\Stripe\StripeSubscriptionCheckoutGateway
-                : new \App\Infrastructure\Billing\Gateways\ManualSubscriptionCheckoutGateway
+                ? new StripeSubscriptionCheckoutGateway
+                : new ManualSubscriptionCheckoutGateway
         );
 
-        $this->app->when(\App\Http\Controllers\Webhook\PaymentWebhookController::class)
+        $this->app->when(PaymentWebhookController::class)
             ->needs('$webhookSecret')
             ->give(fn () => strtolower((string) config('services.payment.provider', 'generic')) === 'stripe'
                 ? (string) config('services.stripe.webhook_secret', '')
@@ -602,30 +903,30 @@ class AppServiceProvider extends ServiceProvider
 
         // ReportPayment Pipeline: Validator → Handler (Core)
         $this->app->bind(
-            \App\Application\Billing\Handlers\ReportPaymentHandlerInterface::class,
+            ReportPaymentHandlerInterface::class,
             function ($app) {
                 // CORE: Pure Business Logic
-                $core = $app->make(\App\Application\Billing\Handlers\ReportPaymentHandler::class);
+                $core = $app->make(ReportPaymentHandler::class);
 
                 // LAYER 1: Validation Decorator (Now Outermost)
-                return new \App\Application\Billing\Validators\ReportPaymentCommandValidator(
+                return new ReportPaymentCommandValidator(
                     inner: $core,
-                    validatorFactory: $app->make(\Illuminate\Contracts\Validation\Factory::class)
+                    validatorFactory: $app->make(Factory::class)
                 );
             }
         );
 
         // RequestUpgrade Pipeline: Validator → Handler (Core)
         $this->app->bind(
-            \App\Application\Billing\Handlers\RequestUpgradeHandlerInterface::class,
+            RequestUpgradeHandlerInterface::class,
             function ($app) {
                 // CORE: Pure Business Logic
-                $core = $app->make(\App\Application\Billing\Handlers\RequestUpgradeHandler::class);
+                $core = $app->make(RequestUpgradeHandler::class);
 
                 // LAYER 1: Validation Decorator (Outermost)
-                return new \App\Application\Billing\Validators\RequestUpgradeCommandValidator(
+                return new RequestUpgradeCommandValidator(
                     inner: $core,
-                    validatorFactory: $app->make(\Illuminate\Contracts\Validation\Factory::class)
+                    validatorFactory: $app->make(Factory::class)
                 );
             }
         );
@@ -634,10 +935,13 @@ class AppServiceProvider extends ServiceProvider
         // SHARED: Media Storage Abstraction
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
-            \App\Domain\Shared\Contracts\MediaStorageServiceInterface::class,
-            \App\Infrastructure\Storage\LaravelMediaStorageService::class
+            MediaStorageServiceInterface::class,
+            LaravelMediaStorageService::class
         );
-
+        $this->app->bind(
+            ProductImageStorageInterface::class,
+            NormalizedProductImageStorage::class
+        );
         // Shared AI execution boundary. Adapter keys are registry identifiers;
         // credential values stay inside deployment configuration.
         $this->app->bind(
@@ -658,36 +962,45 @@ class AppServiceProvider extends ServiceProvider
                 ]);
             }
         );
+        $this->app->bind(
+            StructuredOutputValidator::class,
+            LaravelStructuredOutputValidator::class
+        );
+        $this->app->bind(
+            AiGateway::class,
+            ResilientAiGateway::class
+        );
+
         // ═══════════════════════════════════════════════════════════════════════
         // ORDERS DOMAIN: Receipt PDF Generator
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
-            \App\Domain\Orders\Contracts\ReceiptGeneratorInterface::class,
-            \App\Infrastructure\Reporting\DomPdfReceiptGenerator::class
+            ReceiptGeneratorInterface::class,
+            DomPdfReceiptGenerator::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════
         // SECURITY: Rate Limiting Abstraction
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
-            \App\Domain\Shared\Contracts\RateLimitServiceInterface::class,
-            \App\Infrastructure\Security\LaravelRateLimitService::class
+            RateLimitServiceInterface::class,
+            LaravelRateLimitService::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════
         // TRANSACTIONAL OUTBOX: Event Dispatcher with At-Least-Once Delivery
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->singleton(
-            \App\Infrastructure\Bus\TransactionalEventDispatcher::class,
-            \App\Infrastructure\Bus\TransactionalEventDispatcher::class
+            TransactionalEventDispatcher::class,
+            TransactionalEventDispatcher::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════
         // FORTIFY ACTIONS: Password Reset & User Authentication
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
-            \Laravel\Fortify\Contracts\ResetsUserPasswords::class,
-            \App\Actions\Fortify\ResetPasswordAction::class
+            ResetsUserPasswords::class,
+            ResetPasswordAction::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -695,73 +1008,73 @@ class AppServiceProvider extends ServiceProvider
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
             \App\Application\Shared\Contracts\OutboxRepositoryInterface::class,
-            \App\Infrastructure\Shared\Persistence\Decorators\SchemaValidatingOutboxRepository::class
+            SchemaValidatingOutboxRepository::class
         );
         $this->app->bind(
-            \App\Domain\Shared\Contracts\ClockInterface::class,
-            \App\Infrastructure\Shared\Time\SystemClock::class
+            ClockInterface::class,
+            SystemClock::class
         );
         $this->app->bind(
-            \App\Application\Shared\Interfaces\EntropyGeneratorInterface::class,
-            \App\Infrastructure\Shared\Security\NativeEntropyGenerator::class
+            EntropyGeneratorInterface::class,
+            NativeEntropyGenerator::class
         );
         $this->app->bind(
-            \App\Domain\Auth\Services\OtpHasherInterface::class,
-            \App\Infrastructure\Auth\Services\HmacOtpHasher::class
+            OtpHasherInterface::class,
+            HmacOtpHasher::class
         );
         $this->app->bind(
-            \App\Application\Shared\Contracts\TransactionManagerInterface::class,
-            \App\Infrastructure\Shared\Persistence\DatabaseTransactionManager::class
-        );
-
-        $this->app->bind(
-            \App\Domain\Shared\Contracts\UuidGeneratorInterface::class,
-            \App\Infrastructure\Identity\RamseyUuidGenerator::class
+            TransactionManagerInterface::class,
+            DatabaseTransactionManager::class
         );
 
         $this->app->bind(
-            \App\Domain\Shared\Contracts\EventDispatcherInterface::class,
-            \App\Infrastructure\Bus\TransactionalEventDispatcher::class
+            UuidGeneratorInterface::class,
+            RamseyUuidGenerator::class
+        );
+
+        $this->app->bind(
+            EventDispatcherInterface::class,
+            TransactionalEventDispatcher::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════
         // INFRASTRUCTURE: Resilience & Observability
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->scoped(
-            \App\Infrastructure\Shared\Telemetry\TraceContext::class,
-            \App\Infrastructure\Shared\Telemetry\TraceContext::class
+            TraceContext::class,
+            TraceContext::class
         );
         $this->app->scoped(
-            \App\Application\Shared\Contracts\TraceContextInterface::class,
-            \App\Infrastructure\Shared\Telemetry\TraceContext::class
+            TraceContextInterface::class,
+            TraceContext::class
         );
 
         $this->app->bind(
-            \App\Application\Common\Contracts\MetricsCollectorInterface::class,
-            \App\Infrastructure\Monitoring\DatadogMetricsAdapter::class
+            MetricsCollectorInterface::class,
+            DatadogMetricsAdapter::class
         );
 
         $this->app->bind(
-            \App\Application\Common\Contracts\CircuitBreakerInterface::class,
+            CircuitBreakerInterface::class,
             function ($app) {
-                return new \App\Infrastructure\Resilience\RedisCircuitBreaker(
+                return new RedisCircuitBreaker(
                     redis: $app['redis']->connection(), // Explicit Connection Resolution
-                    metrics: $app->make(\App\Application\Common\Contracts\MetricsCollectorInterface::class)
+                    metrics: $app->make(MetricsCollectorInterface::class)
                 );
             }
         );
 
         $this->app->bind(
-            \App\Application\Common\Contracts\AtomicIdempotencyInterface::class,
-            \App\Infrastructure\Common\Idempotency\AtomicIdempotencyService::class
+            AtomicIdempotencyInterface::class,
+            AtomicIdempotencyService::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════
         // DOMAIN EVENTS: Infrastructure Bridge
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
-            \App\Contracts\Events\DomainEventBus::class,
-            \App\Infrastructure\Events\LaravelEventBus::class
+            DomainEventBus::class,
+            LaravelEventBus::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -770,73 +1083,73 @@ class AppServiceProvider extends ServiceProvider
 
         // 1. CONTEXT PROVIDER (Polymorphic Identity)
         $this->app->bind(
-            \App\Application\Common\Interfaces\ClientContextProviderInterface::class,
+            ClientContextProviderInterface::class,
             function ($app) {
                 return $app->runningInConsole()
-                    ? new \App\Infrastructure\Shared\ConsoleContextProvider
-                    : new \App\Infrastructure\Shared\RequestContextProvider($app['request']);
+                    ? new ConsoleContextProvider
+                    : new RequestContextProvider($app['request']);
             }
         );
 
         // 3. IDENTITY DOMAIN DECORATOR STACK (The Onion)
         // Order: Security -> Observability -> Consistency -> Core
         $this->app->bind(
-            \App\Application\Identity\Handlers\RegisterUserHandlerInterface::class,
+            RegisterUserHandlerInterface::class,
             function ($app) {
                 // CORE: The Business Logic (Pure)
-                $core = $app->make(\App\Application\Identity\Handlers\RegisterUserHandler::class);
+                $core = $app->make(RegisterUserHandler::class);
 
                 // LAYER 1: Idempotency (The Guard) - Protects Core from duplicates
                 // Uses the container-resolved IdempotencyService
-                $idempotent = new \App\Application\Identity\Decorators\IdempotentRegisterUserHandler(
+                $idempotent = new IdempotentRegisterUserHandler(
                     inner: $core,
-                    service: $app->make(\App\Application\Common\Contracts\AtomicIdempotencyInterface::class)
+                    service: $app->make(AtomicIdempotencyInterface::class)
                 );
 
                 // LAYER 2: Telemetry (The Watcher) - Measures Total Execution (including Idempotency check)
-                $telemetry = new \App\Application\Identity\Decorators\TelemetryRegisterUserHandler(
+                $telemetry = new TelemetryRegisterUserHandler(
                     inner: $idempotent,
                     logger: $app->make(\Psr\Log\LoggerInterface::class)
                 );
 
                 // LAYER 3: Security (The Shield) - OUTERMOST LAYER
                 // This runs first! (Fail Fast Principle)
-                return new \App\Application\Identity\Decorators\RateLimitedRegisterUserHandler(
+                return new RateLimitedRegisterUserHandler(
                     inner: $telemetry,
                     // Use Interface
-                    rateLimiter: $app->make(\App\Application\Common\Contracts\RateLimiterInterface::class),
-                    contextProvider: $app->make(\App\Application\Common\Interfaces\ClientContextProviderInterface::class)
+                    rateLimiter: $app->make(RateLimiterInterface::class),
+                    contextProvider: $app->make(ClientContextProviderInterface::class)
                 );
             }
         );
 
         $this->app->bind(
-            \App\Application\Common\Contracts\RateLimiterInterface::class,
-            \App\Infrastructure\Common\RateLimiting\LaravelRateLimiterAdapter::class
+            RateLimiterInterface::class,
+            LaravelRateLimiterAdapter::class
         );
 
         // 4. SALES DOMAIN: Idempotency Protection
         $this->app->bind(
-            \App\Application\Sales\Handlers\CreateOrderHandlerInterface::class,
+            CreateOrderHandlerInterface::class,
             function ($app) {
-                $core = $app->make(\App\Application\Sales\Handlers\CreateOrderHandler::class);
+                $core = $app->make(CreateOrderHandler::class);
 
-                return new \App\Application\Sales\Decorators\IdempotentCreateOrderHandler(
+                return new IdempotentCreateOrderHandler(
                     inner: $core,
-                    service: $app->make(\App\Application\Common\Contracts\IdempotencyServiceInterface::class)
+                    service: $app->make(IdempotencyServiceInterface::class)
                 );
             }
         );
 
         // 5. TENANCY DOMAIN: Idempotency Protection
         $this->app->bind(
-            \App\Application\Tenant\Handlers\RegisterTenantHandlerInterface::class,
+            RegisterTenantHandlerInterface::class,
             function ($app) {
-                $core = $app->make(\App\Application\Tenant\Handlers\RegisterTenantHandler::class);
+                $core = $app->make(RegisterTenantHandler::class);
 
-                return new \App\Application\Tenant\Decorators\IdempotentRegisterTenantHandler(
+                return new IdempotentRegisterTenantHandler(
                     inner: $core,
-                    service: $app->make(\App\Application\Common\Contracts\IdempotencyServiceInterface::class)
+                    service: $app->make(IdempotencyServiceInterface::class)
                 );
             }
         );
@@ -853,7 +1166,7 @@ class AppServiceProvider extends ServiceProvider
         // Carbon does NOT auto-sync with config('app.locale'). This ensures all
         // date formatting (diffForHumans, translatedFormat) respects the locale.
         // ═══════════════════════════════════════════════════════════════════════
-        \Carbon\Carbon::setLocale(config('app.locale'));
+        Carbon::setLocale(config('app.locale'));
 
         // ═══════════════════════════════════════════════════════════════════════
         // POLYMORPHIC INTEGRITY: Morph Map for Domain Migration
@@ -863,15 +1176,19 @@ class AppServiceProvider extends ServiceProvider
         // Without this, activity_log, media, comments and other polymorphic
         // tables would have orphaned records pointing to non-existent classes.
         // ═══════════════════════════════════════════════════════════════════════
-        \Illuminate\Database\Eloquent\Relations\Relation::enforceMorphMap([
-            'user' => \App\Models\User::class,
-            'tenant' => \App\Models\Tenant::class,
-            'product' => \App\Models\Product::class,
-            'order' => \App\Models\Order::class,
-            'coupon' => \App\Models\Coupon::class,
-            'crm_deal' => \App\Models\CrmDeal::class,
-            'customer_note' => \App\Models\CustomerNote::class,
-            'customer_task' => \App\Models\CustomerTask::class,
+        Relation::enforceMorphMap([
+            'user' => User::class,
+            'tenant' => Tenant::class,
+            'product' => Product::class,
+            'order' => Order::class,
+            'appointment' => Appointment::class,
+            'quote' => Quote::class,
+            'coupon' => Coupon::class,
+            'crm_deal' => CrmDeal::class,
+            'customer_note' => CustomerNote::class,
+            'customer_task' => CustomerTask::class,
+            'service' => Service::class,
+            'service_provider' => ServiceProviderModel::class,
         ]);
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -901,8 +1218,8 @@ class AppServiceProvider extends ServiceProvider
 
         // Policies for User and Tenant are auto-discovered via Domain structure
         // or explicitly bound here if needed.
-        Gate::policy(\App\Models\User::class, UserPolicy::class);
-        Gate::policy(\App\Models\Tenant::class, TenantPolicy::class);
+        Gate::policy(User::class, UserPolicy::class);
+        Gate::policy(Tenant::class, TenantPolicy::class);
 
         // Core Models Policies
         Gate::policy(Product::class, ProductPolicy::class);
@@ -914,81 +1231,99 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(MenuSection::class, MenuSectionPolicy::class);
 
         // Observers
-        Product::observe(\App\Observers\ProductObserver::class);
-        \App\Models\Tenant::observe(\App\Observers\TenantObserver::class);
+        Product::observe(ProductObserver::class);
+        Product::observe(KnowledgeIndexObserver::class);
+        Service::observe(KnowledgeIndexObserver::class);
+        Tenant::observe(TenantObserver::class);
+        Tenant::observe(KnowledgeIndexObserver::class);
+        Order::observe(CommercialOutcomeObserver::class);
+        Appointment::observe(CommercialOutcomeObserver::class);
 
         // ═══════════════════════════════════════════════════════════════════════
         // SECURITY: Rate Limiters
         // ═══════════════════════════════════════════════════════════════════════
-        \Illuminate\Support\Facades\RateLimiter::for('analytics-protection', function (\Illuminate\Http\Request $request) {
+        RateLimiter::for('analytics-protection', function (Request $request) {
             // Composite Key: IP + User Agent + Target Tenant
             // Prevents botnet distributed attacks against a specific tenant.
             $key = $request->ip().'|'.$request->userAgent().'|'.$request->input('tenant_id');
 
-            return \Illuminate\Cache\RateLimiting\Limit::perMinute(10)->by($key);
+            return Limit::perMinute(10)->by($key);
         });
 
         // TENANT-AWARE RATE LIMITING (Contextual Throttling)
-        \Illuminate\Support\Facades\RateLimiter::for('tenant-aware', function (\Illuminate\Http\Request $request) {
+        RateLimiter::for('tenant-aware', function (Request $request) {
             // Resolve Tenant ID securely from Context if available
             // If explicit 'tenant_id' input is missing, try to resolve from route or attributes
             // Fallback to IP if purely anonymous without context
 
-            /** @var \App\Domain\Shared\Contracts\TenantContext $context */
-            $context = app(\App\Domain\Shared\Contracts\TenantContext::class);
-            $tenantId = $context->getTenantId() ?? $request->input('tenant_id'); // Try context first
+            /** @var TenantContext $context */
+            $context = app(TenantContext::class);
+            try {
+                $tenantId = $context->getTenantId();
+            } catch (\Throwable) {
+                // Public analytics has no authenticated user context by design.
+                $tenantId = null;
+            }
+
+            $tenantId ??= $request->input('tenant_id');
 
             $key = $tenantId
                 ? "tenant_id:{$tenantId}|ip:".$request->ip()
                 : 'ip:'.$request->ip();
 
-            return \Illuminate\Cache\RateLimiting\Limit::perMinute(120)->by($key); // Increased to 120 as per prompt example
+            return Limit::perMinute(120)->by($key); // Increased to 120 as per prompt example
         });
 
         // ═══════════════════════════════════════════════════════════════════════
         // BUS CONFIGURATION: Middleware & Mappings
         // ═══════════════════════════════════════════════════════════════════════
-        \Illuminate\Support\Facades\Bus::pipeThrough([
-            \App\Infrastructure\Bus\Middleware\TransactionalMiddleware::class,
+        Bus::pipeThrough([
+            TransactionalMiddleware::class,
         ]);
 
-        \Illuminate\Support\Facades\Bus::map([
-            \App\Application\Identity\Commands\RegisterUserCommand::class => \App\Application\Identity\Handlers\RegisterUserHandlerInterface::class,
-            \App\Application\Sales\Commands\CreateOrderCommand::class => \App\Application\Sales\Handlers\CreateOrderHandler::class,
-            \App\Application\Tenant\Commands\RegisterTenantCommand::class => \App\Application\Tenant\Handlers\RegisterTenantHandler::class,
+        Bus::map([
+            RegisterUserCommand::class => RegisterUserHandlerInterface::class,
+            CreateOrderCommand::class => CreateOrderHandler::class,
+            RegisterTenantCommand::class => RegisterTenantHandler::class,
             // \App\Application\Identity\Commands\RegisterUserCommand::class => \App\Application\Identity\Handlers\RegisterUserHandler::class, (Replaced by Decorator Stack)
-            \App\Application\Billing\Commands\ReportPaymentCommand::class => \App\Application\Billing\Handlers\ReportPaymentHandlerInterface::class,
-            \App\Application\Reviews\Commands\SubmitReviewCommand::class => \App\Application\Reviews\Handlers\SubmitReviewHandler::class,
-            \App\Application\Products\Commands\CreateProductCommand::class => \App\Application\Products\Handlers\CreateProductHandler::class,
-            \App\Application\Products\Commands\UpdateProductCommand::class => \App\Application\Products\Handlers\UpdateProductHandler::class,
-            \App\Application\Products\Commands\DeleteProductCommand::class => \App\Application\Products\Handlers\DeleteProductHandler::class,
-            \App\Application\Products\Commands\ToggleProductVisibilityCommand::class => \App\Application\Products\Handlers\ToggleProductVisibilityHandler::class,
-            \App\Application\Sales\Commands\CancelOrderCommand::class => \App\Application\Sales\Handlers\CancelOrderHandler::class,
-            \App\Application\Payments\Commands\HandlePaymentWebhookCommand::class => \App\Application\Payments\Handlers\HandlePaymentWebhookHandler::class,
-            \App\Application\Billing\Commands\RequestUpgradeCommand::class => \App\Application\Billing\Handlers\RequestUpgradeHandlerInterface::class,
-            \App\Application\Auth\Commands\LoginViaSocialProviderCommand::class => \App\Application\Auth\Handlers\LoginViaSocialProviderHandlerInterface::class,
-            \App\Application\Auth\Commands\UpdateUserPasswordCommand::class => \App\Application\Auth\Handlers\UpdateUserPasswordHandlerInterface::class,
-            \App\Application\Auth\Commands\UpdateUserProfileCommand::class => \App\Application\Auth\Handlers\UpdateUserProfileHandler::class, // Left as is for now
-            \App\Application\Auth\Commands\DeleteUserCommand::class => \App\Application\Auth\Handlers\DeleteUserHandlerInterface::class,
-            \App\Application\Auth\Commands\GenerateOtpCommand::class => \App\Application\Auth\Contracts\GenerateOtpHandlerInterface::class,
-            \App\Application\Auth\Commands\VerifyOtpCommand::class => \App\Application\Auth\Handlers\VerifyOtpHandlerInterface::class,
-            \App\Application\Tenant\Commands\UpdateTenantScheduleCommand::class => \App\Application\Tenant\Handlers\UpdateTenantScheduleHandler::class,
-            \App\Application\Tenant\Commands\UpdateLandingPageCommand::class => \App\Application\Tenant\Handlers\UpdateLandingPageHandler::class,
-            \App\Application\Tenant\Commands\UpdateTenantBrandingCommand::class => \App\Application\Tenant\Handlers\UpdateTenantBrandingHandler::class,
-            \App\Application\Interactions\Commands\RecordInteractionCommand::class => \App\Application\Interactions\Handlers\RecordInteractionHandler::class,
+            ReportPaymentCommand::class => ReportPaymentHandlerInterface::class,
+            SubmitReviewCommand::class => SubmitReviewHandler::class,
+            CancelOrderCommand::class => CancelOrderHandler::class,
+            HandlePaymentWebhookCommand::class => HandlePaymentWebhookHandler::class,
+            RequestUpgradeCommand::class => RequestUpgradeHandlerInterface::class,
+            LoginViaSocialProviderCommand::class => LoginViaSocialProviderHandlerInterface::class,
+            UpdateUserPasswordCommand::class => UpdateUserPasswordHandlerInterface::class,
+            UpdateUserProfileCommand::class => UpdateUserProfileHandler::class, // Left as is for now
+            DeleteUserCommand::class => DeleteUserHandlerInterface::class,
+            GenerateOtpCommand::class => GenerateOtpHandlerInterface::class,
+            VerifyOtpCommand::class => VerifyOtpHandlerInterface::class,
+            UpdateTenantScheduleCommand::class => UpdateTenantScheduleHandler::class,
+            UpdateLandingPageCommand::class => UpdateLandingPageHandler::class,
+            UpdateTenantBrandingCommand::class => UpdateTenantBrandingHandler::class,
+            RecordInteractionCommand::class => RecordInteractionHandler::class,
         ]);
 
         // ═══════════════════════════════════════════════════════════════════════
         // EVENT LISTENERS: Eventual Consistency Handlers
         // ═══════════════════════════════════════════════════════════════════════
-        \Illuminate\Support\Facades\Event::listen(
-            \App\Domain\Reviews\Events\ReviewCreated::class,
-            \App\Application\Reviews\Listeners\UpdateProductRating::class
+        Event::listen(
+            ReviewCreated::class,
+            UpdateProductRating::class
         );
-        \Illuminate\Support\Facades\Event::listen(
-            \App\Events\Order\OrderCancelled::class,
-            \App\Application\Sales\Listeners\RestoreStockOnCancellation::class
+        Event::listen(
+            OrderCancelled::class,
+            RestoreStockOnCancellation::class
         );
+        foreach ([
+            OrderPaid::class,
+            OrderDelivered::class,
+            OrderCancelled::class,
+        ] as $commercialOutcomeEvent) {
+            Event::listen(
+                $commercialOutcomeEvent,
+                ProjectCommercialOutcomeFromOrderEvent::class,
+            );
+        }
     }
 
     /**
@@ -1003,31 +1338,31 @@ class AppServiceProvider extends ServiceProvider
     protected function registerJobAliases(): void
     {
         $aliases = [
-            'App\\Jobs\\GeneratePdfReportJob' => \App\Infrastructure\Jobs\Reporting\GeneratePdfReportJob::class,
-            'App\\Jobs\\GenerateSalesExport' => \App\Infrastructure\Jobs\Exports\GenerateSalesExport::class,
+            'App\\Jobs\\GeneratePdfReportJob' => GeneratePdfReportJob::class,
+            'App\\Jobs\\GenerateSalesExport' => GenerateSalesExport::class,
             // REMOVED: 'App\\Jobs\\GenerateSalesReportJob' - Legacy proxy deleted
             // Legacy Root to Application (Double Jump Protection)
-            'App\\Jobs\\SendCampaignEmail' => \App\Infrastructure\Jobs\Marketing\SendCampaignEmail::class,
-            'App\\Jobs\\GenerateProductBlurhash' => \App\Infrastructure\Jobs\Media\GenerateProductBlurhash::class,
-            'App\\Jobs\\EnhanceTenantProfileJob' => \App\Infrastructure\Jobs\AI\EnhanceTenantProfileJob::class,
-            'App\\Jobs\\GenerateBusinessProfile' => \App\Infrastructure\Jobs\AI\GenerateBusinessProfile::class,
-            'App\\Jobs\\RecordInteraction' => \App\Infrastructure\Jobs\Analytics\RecordInteraction::class,
-            'App\\Jobs\\SyncAnalyticsJob' => \App\Infrastructure\Jobs\Analytics\SyncAnalyticsJob::class,
-            'App\\Jobs\\ReleaseStaleOrders' => \App\Infrastructure\Jobs\Governance\ReleaseStaleOrders::class,
-            'App\\Jobs\\AuditTenantLimits' => \App\Infrastructure\Jobs\Governance\AuditTenantLimits::class,
+            'App\\Jobs\\SendCampaignEmail' => SendCampaignEmail::class,
+            'App\\Jobs\\GenerateProductBlurhash' => GenerateProductBlurhash::class,
+            'App\\Jobs\\EnhanceTenantProfileJob' => EnhanceTenantProfileJob::class,
+            'App\\Jobs\\GenerateBusinessProfile' => GenerateBusinessProfile::class,
+            'App\\Jobs\\RecordInteraction' => RecordInteraction::class,
+            'App\\Jobs\\SyncAnalyticsJob' => SyncAnalyticsJob::class,
+            'App\\Jobs\\ReleaseStaleOrders' => ReleaseStaleOrders::class,
+            'App\\Jobs\\AuditTenantLimits' => AuditTenantLimits::class,
 
             // Domain to Application/Infrastructure (The Great Migration)
-            'App\\Domain\\Marketing\\Jobs\\SendCampaignEmail' => \App\Infrastructure\Jobs\Marketing\SendCampaignEmail::class,
-            'App\\Domain\\Analytics\\Jobs\\RecordInteraction' => \App\Infrastructure\Jobs\Analytics\RecordInteraction::class,
-            'App\\Domain\\Analytics\\Jobs\\SyncAnalyticsJob' => \App\Infrastructure\Jobs\Analytics\SyncAnalyticsJob::class,
-            'App\\Domain\\Analytics\\Jobs\\SyncTenantAnalytics' => \App\Infrastructure\Jobs\Analytics\SyncTenantAnalytics::class,
-            'App\\Domain\\TenantGovernance\\Jobs\\AuditTenantLimits' => \App\Infrastructure\Jobs\Governance\AuditTenantLimits::class,
-            'App\\Domain\\TenantGovernance\\Jobs\\ReleaseStaleOrders' => \App\Infrastructure\Jobs\Governance\ReleaseStaleOrders::class,
-            'App\\Domain\\AIEnrichment\\Jobs\\EnhanceTenantProfileJob' => \App\Infrastructure\Jobs\AI\EnhanceTenantProfileJob::class,
-            'App\\Domain\\AIEnrichment\\Jobs\\GenerateBusinessProfile' => \App\Infrastructure\Jobs\AI\GenerateBusinessProfile::class,
-            'App\\Domain\\MediaProcessing\\Jobs\\GenerateProductBlurhash' => \App\Infrastructure\Jobs\Media\GenerateProductBlurhash::class,
-            'App\\Domain\\ReportingAndExports\\Jobs\\GeneratePdfReportJob' => \App\Infrastructure\Jobs\Reporting\GeneratePdfReportJob::class,
-            'App\\Domain\\ReportingAndExports\\Jobs\\GenerateSalesExport' => \App\Infrastructure\Jobs\Exports\GenerateSalesExport::class,
+            'App\\Domain\\Marketing\\Jobs\\SendCampaignEmail' => SendCampaignEmail::class,
+            'App\\Domain\\Analytics\\Jobs\\RecordInteraction' => RecordInteraction::class,
+            'App\\Domain\\Analytics\\Jobs\\SyncAnalyticsJob' => SyncAnalyticsJob::class,
+            'App\\Domain\\Analytics\\Jobs\\SyncTenantAnalytics' => SyncTenantAnalytics::class,
+            'App\\Domain\\TenantGovernance\\Jobs\\AuditTenantLimits' => AuditTenantLimits::class,
+            'App\\Domain\\TenantGovernance\\Jobs\\ReleaseStaleOrders' => ReleaseStaleOrders::class,
+            'App\\Domain\\AIEnrichment\\Jobs\\EnhanceTenantProfileJob' => EnhanceTenantProfileJob::class,
+            'App\\Domain\\AIEnrichment\\Jobs\\GenerateBusinessProfile' => GenerateBusinessProfile::class,
+            'App\\Domain\\MediaProcessing\\Jobs\\GenerateProductBlurhash' => GenerateProductBlurhash::class,
+            'App\\Domain\\ReportingAndExports\\Jobs\\GeneratePdfReportJob' => GeneratePdfReportJob::class,
+            'App\\Domain\\ReportingAndExports\\Jobs\\GenerateSalesExport' => GenerateSalesExport::class,
         ];
 
         foreach ($aliases as $oldClass => $newClass) {

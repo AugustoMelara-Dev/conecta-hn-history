@@ -49,7 +49,7 @@ final class ShareObservabilityContext
         ], static fn (mixed $value): bool => $value !== null && $value !== '');
     }
 
-    private function resolveTenantId(): string|int|null
+    private function resolveTenantId(): ?string
     {
         if (! $this->tenantContext->isInitialized() || $this->tenantContext->isRoot()) {
             return null;

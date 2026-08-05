@@ -4,18 +4,26 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Application\Markets\TenantMarketResolver;
 use App\Contracts\ReportGenerationInterface;
+use App\Domain\Analytics\Enums\CommercialOutcome;
 use App\Models\Order;
 use App\Models\Tenant;
+use App\Models\VerifiedCommercialOutcome;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 final class ReportGenerationService implements ReportGenerationInterface
 {
+    public function __construct(
+        private TenantMarketResolver $marketResolver,
+    ) {}
+
     /**
      * Generates a raw PDF string for the sales report.
      */
     public function generateSalesPdf(Tenant $tenant, array $filters): string
     {
+        $currency = $this->marketResolver->resolve($tenant)->currencyCode;
         $query = Order::where('tenant_id', $tenant->id)
             ->with(['items.product:id,name'])
             ->orderBy('created_at', 'desc');
@@ -35,11 +43,38 @@ final class ReportGenerationService implements ReportGenerationInterface
         // Limit for PDF (prevent huge documents)
         $orders = $query->limit(500)->get();
 
-        // Calculate summary
+        $orderIds = $orders->modelKeys();
+        $verifiedRevenueMinor = $orderIds === []
+            ? 0
+            : (int) VerifiedCommercialOutcome::query()
+                ->where('tenant_id', (string) $tenant->getKey())
+                ->where('aggregate_type', 'order')
+                ->whereIn('aggregate_id', array_map('strval', $orderIds))
+                ->whereIn('outcome', [
+                    CommercialOutcome::OrderPaid->value,
+                    CommercialOutcome::OrderRefunded->value,
+                ])
+                ->where('currency', $currency)
+                ->sum('amount_minor');
+        $verifiedPaidOrders = $orderIds === []
+            ? 0
+            : VerifiedCommercialOutcome::query()
+                ->where('tenant_id', (string) $tenant->getKey())
+                ->where('aggregate_type', 'order')
+                ->whereIn('aggregate_id', array_map('strval', $orderIds))
+                ->where('outcome', CommercialOutcome::OrderPaid->value)
+                ->where('currency', $currency)
+                ->distinct()
+                ->count('aggregate_id');
+
+        // Financial fields are derived from verified payment projections only.
         $summary = [
+            'currency' => $currency,
             'total_orders' => $orders->count(),
-            'total_revenue' => $orders->sum('total'),
-            'avg_order_value' => $orders->avg('total') ?? 0,
+            'total_revenue' => $verifiedRevenueMinor / 100,
+            'avg_order_value' => $verifiedPaidOrders > 0
+                ? ($verifiedRevenueMinor / 100) / $verifiedPaidOrders
+                : 0,
             'by_status' => $orders->groupBy('status')->map->count(),
             'by_payment' => $orders->groupBy(fn ($o) => $o->payment_method?->value ?? 'unknown')->map->count(),
         ];

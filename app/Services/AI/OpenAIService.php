@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\AI;
 
+use App\Domain\Billing\Services\AiCreditPricingService;
 use App\Exceptions\Ai\AiMalformedResponseException;
 use App\Exceptions\Ai\AiProviderUnavailableException;
 use App\Infrastructure\AI\BudgetEnforcer;
@@ -17,15 +18,6 @@ use Throwable;
 /**
  * OpenAIService - The Defensive Firewall + Budget Guardian
  *
- * ╔═══════════════════════════════════════════════════════════════════════════╗
- * ║  SECURITY ARCHITECTURE: DATA FIREWALL + EDoS PREVENTION                  ║
- * ╠═══════════════════════════════════════════════════════════════════════════╣
- * ║  1. Gatekeeper: Draconian Schema Validation via Validator facade.         ║
- * ║  2. Sanitizer: Surgical removal of XSS vectors (strip_tags whitelist).    ║
- * ║  3. Resilience: Configurable Exponential Backoff Strategy.                ║
- * ║  4. Audit: Atomic financial logging of every token consumed.              ║
- * ║  5. BUDGET: Reserve-Execute-Settle pattern prevents infinite billing.    ║
- * ╚═══════════════════════════════════════════════════════════════════════════╝
  *
  * EDoS PROTECTION (2026-02-05):
  * - Créditos se RESERVAN antes de cada API call
@@ -39,20 +31,27 @@ final class OpenAIService
 
     // Pricing Configuration (USD per 1M tokens) - GPT-4o
     private const PRICE_PER_1M_INPUT_TOKENS = 2.50;
+
     private const PRICE_PER_1M_OUTPUT_TOKENS = 10.00;
 
     // Estimación conservadora para reserva previa (margen de seguridad 20%)
     private const ESTIMATED_INPUT_TOKENS = 500;
+
     private const ESTIMATED_OUTPUT_TOKENS = 800;
+
     private const SAFETY_MARGIN = 1.2; // 20% buffer
 
     public function __construct(
-        ?BudgetEnforcer $budgetEnforcer = null
+        ?BudgetEnforcer $budgetEnforcer = null,
+        ?AiCreditPricingService $creditPricing = null,
     ) {
         $this->budgetEnforcer = $budgetEnforcer ?? app(BudgetEnforcer::class);
+        $this->creditPricing = $creditPricing ?? new AiCreditPricingService;
     }
 
     private readonly BudgetEnforcer $budgetEnforcer;
+
+    private readonly AiCreditPricingService $creditPricing;
 
     /**
      * Calcula costo estimado para reserva previa.
@@ -95,22 +94,21 @@ final class OpenAIService
         string $businessName,
         string $description,
         int|string $userId,
-        int|string $tenantId,
+        string $tenantId,
         ?string $targetAudience = null,
         ?string $tone = null,
         ?array $keywords = []
-    ): array
-    {
-        $estimatedCost = $this->estimateCost();
+    ): array {
+        $estimatedProviderCost = $this->estimateCost();
+        $estimatedCost = $this->creditPricing->fromProviderUsd($estimatedProviderCost);
 
-        // ═══════════════════════════════════════════════════════════════════════
         // PHASE 0: RESERVE CREDITS (EDoS Prevention)
-        // ═══════════════════════════════════════════════════════════════════════
         $reservationId = $this->budgetEnforcer->reserve(
             tenantId: $tenantId,
             estimatedCost: $estimatedCost,
             operation: 'profile_generation'
         );
+        $pricingSnapshot = $this->budgetEnforcer->pricingSnapshot($tenantId, $reservationId);
 
         try {
             $systemPrompt = 'Eres un experto en SEO y Marketing Digital. Tu salida es JSON estricto.';
@@ -127,9 +125,7 @@ Genera un objeto JSON con:
 - category_suggestion: Categoría de negocio.
 EOT;
 
-            // ═══════════════════════════════════════════════════════════════════════════
             // MARKETING CONTEXT INJECTION (Optional Parameters)
-            // ═══════════════════════════════════════════════════════════════════════════
             if ($targetAudience !== null) {
                 $userPrompt .= "\n\nPúblico objetivo: {$targetAudience}";
             }
@@ -141,9 +137,7 @@ EOT;
                 $userPrompt .= "\nPalabras clave a incluir: {$keywordsList}";
             }
 
-            // ═══════════════════════════════════════════════════════════════════
             // PHASE 1: HTTP Request with Resilient Backoff
-            // ═══════════════════════════════════════════════════════════════════
             $attempts = 0;
             $maxAttempts = 3;
             $response = null;
@@ -190,9 +184,7 @@ EOT;
                 }
             }
 
-            // ═══════════════════════════════════════════════════════════════════
             // PHASE 2: THE GATEKEEPER (Schema Enforcement)
-            // ═══════════════════════════════════════════════════════════════════
             $data = $response->json();
             $contentRaw = $data['choices'][0]['message']['content'] ?? '{}';
             $decoded = json_decode($contentRaw, true);
@@ -217,9 +209,7 @@ EOT;
                 throw new AiMalformedResponseException('AI returned invalid schema: '.implode(', ', $errors));
             }
 
-            // ═══════════════════════════════════════════════════════════════════
             // PHASE 3: THE CLEANER (XSS Sanitization)
-            // ═══════════════════════════════════════════════════════════════════
             $cleanDescription = strip_tags(
                 $decoded['description'],
                 ['p', 'b', 'strong', 'i', 'em', 'u', 'ul', 'ol', 'li', 'br']
@@ -227,13 +217,16 @@ EOT;
 
             $decoded['description'] = $cleanDescription;
 
-            // ═══════════════════════════════════════════════════════════════════
             // PHASE 4: SETTLE RESERVATION + FINANCIAL AUDIT (ATOMIC)
-            // ═══════════════════════════════════════════════════════════════════
             $usage = $data['usage'] ?? ['prompt_tokens' => 0, 'completion_tokens' => 0];
             $inputTokens = $usage['prompt_tokens'];
             $outputTokens = $usage['completion_tokens'];
-            $actualCost = $this->calculateActualCost($inputTokens, $outputTokens);
+            $actualProviderCost = $this->calculateActualCost($inputTokens, $outputTokens);
+            $actualCost = $this->creditPricing->fromProviderUsdAtSnapshot(
+                $actualProviderCost,
+                $pricingSnapshot['credits_per_provider_usd'],
+                $pricingSnapshot['minimum_charge'],
+            );
 
             // Liquidar reserva con costo real
             $this->budgetEnforcer->settle(
@@ -246,6 +239,10 @@ EOT;
                     'input_tokens' => $inputTokens,
                     'output_tokens' => $outputTokens,
                     'operation' => 'profile_generation',
+                    'provider_cost_usd' => $actualProviderCost,
+                    'credit_pricing_version' => $pricingSnapshot['version'],
+                    'credits_per_provider_usd' => $pricingSnapshot['credits_per_provider_usd'],
+                    'credit_minimum_charge' => $pricingSnapshot['minimum_charge'],
                 ]
             );
 
@@ -258,20 +255,18 @@ EOT;
                     'model' => 'gpt-4o',
                     'input_tokens' => $inputTokens,
                     'output_tokens' => $outputTokens,
-                    'cost' => $actualCost,
+                    'cost' => $actualProviderCost,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
             } catch (Throwable $e) {
-                Log::emergency('[OpenAIService] Failed to log usage cost!', ['user_id' => $userId, 'cost' => $actualCost]);
+                Log::emergency('[OpenAIService] Failed to log usage cost!', ['user_id' => $userId, 'cost' => $actualProviderCost]);
             }
 
             return $decoded;
 
         } catch (Throwable $e) {
-            // ═══════════════════════════════════════════════════════════════════
             // FAILURE RECOVERY: Refund the reservation
-            // ═══════════════════════════════════════════════════════════════════
             $this->budgetEnforcer->refund(
                 tenantId: $tenantId,
                 estimatedCost: $estimatedCost,

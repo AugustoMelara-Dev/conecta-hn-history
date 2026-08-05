@@ -15,7 +15,7 @@ use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
-use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
@@ -58,7 +58,7 @@ class AdminPanelProvider extends PanelProvider
             ->profile()         // User Self-Management enabled
             // BRANDING: Logo y Nombre
             // ═══════════════════════════════════════════════════════════════
-            ->brandName('Vito Business OS Admin')
+            ->brandName('Dovra AI Admin')
             ->brandLogo(fn () => view('filament.components.brand'))
             ->brandLogoHeight('2.5rem')
             ->favicon(asset('favicon.ico'))
@@ -159,18 +159,20 @@ class AdminPanelProvider extends PanelProvider
             // MIDDLEWARE STACK
             // ═══════════════════════════════════════════════════════════════
             ->middleware([
+                \App\Http\Middleware\UsePlatformDatabaseConnection::class,
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
                 StartSession::class,
                 AuthenticateSession::class,
                 ShareErrorsFromSession::class,
-                VerifyCsrfToken::class,
+                PreventRequestForgery::class,
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
             ])
             ->authMiddleware([
                 Authenticate::class,
+                \App\Http\Middleware\RequireTwoFactorSession::class,
             ]);
     }
 

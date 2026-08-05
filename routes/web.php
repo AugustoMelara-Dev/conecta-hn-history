@@ -1,9 +1,9 @@
 <?php
 
 use App\Http\Controllers\Auth\ProfileController;
+use App\Http\Controllers\Public\BookingController;
 use App\Http\Controllers\Public\DirectoryController;
 use App\Http\Controllers\Public\InteractionController;
-use App\Http\Controllers\Public\BookingController;
 use App\Http\Controllers\Public\LocationController;
 use App\Http\Controllers\Public\RedirectController;
 use App\Http\Controllers\Public\TenantMicrositeController;
@@ -30,7 +30,7 @@ Route::domain(config('conecta.directory_app_host', 'app.localhost'))->group(func
     Route::redirect('/', '/directorio', 302)->name('app.directory');
 });
 
-Route::domain('{tenant}.' . config('app.domain'))->group(function () {
+Route::domain('{tenant}.'.config('app.domain'))->group(function () {
     Route::get('/', [TenantMicrositeController::class, 'show'])
         ->name('tenant.microsite.show');
 
@@ -99,7 +99,8 @@ Route::get('/categoria/{category:slug}', [DirectoryController::class, 'byCategor
 
 // [MIGRATED TO REACT] Página de Pago Pendiente (PRO Post-Registro)
 // Route::get('/registro/pago-pendiente/{payment}', \App\Livewire\Pages\PaymentPending::class)->name('payment.pending');
-Route::get('/registro/pago-pendiente/{payment}', [\App\Http\Controllers\Web\BillingController::class, 'showPaymentPending'])->name('payment.pending');
+Route::get('/registro/pago-pendiente/{payment}', [\App\Http\Controllers\Web\BillingController::class, 'showPaymentPending'])->middleware('auth')
+    ->name('payment.pending');
 
 // ═══════════════════════════════════════════════════════════════════════
 // Location API Routes
@@ -118,10 +119,10 @@ Route::get('/api/check-slug', [\App\Http\Controllers\Web\RegistrationController:
 Route::prefix('track')
     ->middleware(['throttle:60,1']) // 60 requests per minute per IP
     ->group(function () {
-    Route::get('/wa/{tenant:slug}', [InteractionController::class, 'whatsapp'])->name('track.whatsapp');
-    Route::get('/call/{tenant:slug}', [InteractionController::class, 'call'])->name('track.call');
-    Route::get('/maps/{tenant:slug}', [InteractionController::class, 'maps'])->name('track.maps');
-});
+        Route::get('/wa/{tenant:slug}', [InteractionController::class, 'whatsapp'])->name('track.whatsapp');
+        Route::get('/call/{tenant:slug}', [InteractionController::class, 'call'])->name('track.call');
+        Route::get('/maps/{tenant:slug}', [InteractionController::class, 'maps'])->name('track.maps');
+    });
 
 // ═══════════════════════════════════════════════════════════════════════
 // PAYMENT STATUS - Consolidated
@@ -219,6 +220,7 @@ Route::middleware('auth')->group(function () {
     // Unified Profile/Account Route
     Route::get('/mi-cuenta', [ProfileController::class, 'edit'])->name('mi-cuenta.edit');
     Route::patch('/mi-cuenta', [ProfileController::class, 'update'])->name('mi-cuenta.update');
+    Route::get('/mi-cuenta/exportar', [ProfileController::class, 'export'])->middleware('password.confirm')->name('mi-cuenta.export');
     Route::delete('/mi-cuenta', [ProfileController::class, 'destroy'])->name('mi-cuenta.destroy');
 
     // Analytics API
@@ -233,8 +235,11 @@ Route::middleware('auth')->group(function () {
     // ═══════════════════════════════════════════════════════════════════
     // SHADOW LOGIN - Impersonation Exit Route (SECURED)
     // ═══════════════════════════════════════════════════════════════════
-    Route::get('/impersonate/leave', [\App\Http\Controllers\Auth\ImpersonationController::class, 'leave'])
+    Route::post('/impersonate/leave', [\App\Http\Controllers\Auth\ImpersonationController::class, 'leave'])
         ->name('impersonate.leave');
+    Route::post('/admin/impersonation-grants/{grant}/revoke', [\App\Http\Controllers\Auth\ImpersonationController::class, 'revoke'])
+        ->middleware('password.confirm')
+        ->name('impersonate.revoke');
 });
 
 require __DIR__.'/auth.php';

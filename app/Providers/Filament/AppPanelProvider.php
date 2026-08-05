@@ -18,7 +18,7 @@ use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
-use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
@@ -50,7 +50,7 @@ class AppPanelProvider extends PanelProvider
             // ═══════════════════════════════════════════════════════════════
             // BRANDING: Logo Vectorial y Nombre
             // ═══════════════════════════════════════════════════════════════
-            ->brandName('Vito Business OS')
+            ->brandName('Dovra AI')
             ->brandLogo(fn () => view('filament.components.brand'))
             ->brandLogoHeight('2.5rem')
             ->favicon(asset('favicon.ico'))
@@ -137,8 +137,8 @@ class AppPanelProvider extends PanelProvider
             // ═══════════════════════════════════════════════════════════════
             // RECURSOS Y PÁGINAS
             // ═══════════════════════════════════════════════════════════════
-            ->discoverResources(in: app_path('Filament/App/Resources'), for: 'App\\Filament\\App\\Resources')
-            ->discoverPages(in: app_path('Filament/App/Pages'), for: 'App\\Filament\\App\\Pages')
+            ->discoverResources(in: app_path('Filament/App/Resources'), for: 'App\\Filament\App\Resources')
+            ->discoverPages(in: app_path('Filament/App/Pages'), for: 'App\\Filament\App\Pages')
             ->pages([
                 Dashboard::class,
             ])
@@ -148,6 +148,8 @@ class AppPanelProvider extends PanelProvider
             // Ordenados por prioridad: Stats Bento > Límite > Completitud > Acciones
             // ═══════════════════════════════════════════════════════════════
             ->widgets([
+                \App\Filament\App\Widgets\OnboardingActivationWidget::class,
+                \App\Filament\App\Widgets\OperationalCockpitWidget::class,
                 \App\Filament\App\Widgets\TenantStatsWidget::class, // Nuevo: Bento Grid con Growth Hacking
                 \App\Filament\App\Widgets\RevenueChart::class, // 30-day revenue trend
                 \App\Filament\App\Widgets\OrdersChart::class, // 7-day appointment volume
@@ -180,7 +182,7 @@ class AppPanelProvider extends PanelProvider
                 StartSession::class,
                 AuthenticateSession::class,
                 ShareErrorsFromSession::class,
-                VerifyCsrfToken::class,
+                PreventRequestForgery::class,
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
@@ -190,6 +192,7 @@ class AppPanelProvider extends PanelProvider
             ], isPersistent: true)
             ->authMiddleware([
                 Authenticate::class,
+                \App\Http\Middleware\RequireTwoFactorSession::class,
             ]);
     }
 
@@ -214,7 +217,7 @@ class AppPanelProvider extends PanelProvider
         $tenant = Filament::getTenant();
         if ($tenant) {
             $url = route('tenant.microsite.show', ['tenant' => $tenant->slug]);
-            $text = "Mira mi negocio {$tenant->name} en Vito Business OS.";
+            $text = "Mira mi negocio {$tenant->name} en Dovra AI.";
 
             return 'https://wa.me/?text='.urlencode("{$text}\n\n{$url}");
         }

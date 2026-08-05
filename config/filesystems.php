@@ -31,20 +31,48 @@ return [
     'disks' => [
 
         'local' => [
-            'driver' => 'local',
+            'driver' => env('PRIVATE_DISK_DRIVER', 'local'),
+            'key' => env('PRIVATE_AWS_ACCESS_KEY_ID', env('AWS_ACCESS_KEY_ID')),
+            'secret' => env('PRIVATE_AWS_SECRET_ACCESS_KEY', env('AWS_SECRET_ACCESS_KEY')),
+            'region' => env('PRIVATE_AWS_REGION', env('AWS_DEFAULT_REGION')),
+            'bucket' => env('PRIVATE_AWS_BUCKET', env('AWS_BUCKET')),
+            'endpoint' => env('PRIVATE_AWS_ENDPOINT', env('AWS_ENDPOINT')),
+            'use_path_style_endpoint' => env('PRIVATE_AWS_USE_PATH_STYLE_ENDPOINT', env('AWS_USE_PATH_STYLE_ENDPOINT', false)),
+            'visibility' => env('PRIVATE_DISK_VISIBILITY', 'private'),
+            'root' => storage_path('app/private'),
+            'serve' => false,
+            'throw' => env('PRIVATE_DISK_THROW', true),
+            'report' => env('PRIVATE_DISK_REPORT', true),
+        ],
+
+        'private' => [
+            'driver' => env('PRIVATE_DISK_DRIVER', 'local'),
             'root' => storage_path('app/private'),
             'serve' => true,
-            'throw' => false,
-            'report' => false,
+            'key' => env('PRIVATE_AWS_ACCESS_KEY_ID', env('AWS_ACCESS_KEY_ID')),
+            'secret' => env('PRIVATE_AWS_SECRET_ACCESS_KEY', env('AWS_SECRET_ACCESS_KEY')),
+            'region' => env('PRIVATE_AWS_REGION', env('AWS_DEFAULT_REGION')),
+            'bucket' => env('PRIVATE_AWS_BUCKET', env('AWS_BUCKET')),
+            'endpoint' => env('PRIVATE_AWS_ENDPOINT', env('AWS_ENDPOINT')),
+            'use_path_style_endpoint' => env('PRIVATE_AWS_USE_PATH_STYLE_ENDPOINT', env('AWS_USE_PATH_STYLE_ENDPOINT', false)),
+            'visibility' => env('PRIVATE_DISK_VISIBILITY', 'private'),
+            'throw' => env('PRIVATE_DISK_THROW', true),
+            'report' => env('PRIVATE_DISK_REPORT', true),
         ],
 
         'public' => [
-            'driver' => 'local',
+            'driver' => env('PUBLIC_DISK_DRIVER', 'local'),
+            'key' => env('PUBLIC_AWS_ACCESS_KEY_ID', env('AWS_ACCESS_KEY_ID')),
+            'secret' => env('PUBLIC_AWS_SECRET_ACCESS_KEY', env('AWS_SECRET_ACCESS_KEY')),
+            'region' => env('PUBLIC_AWS_REGION', env('AWS_DEFAULT_REGION')),
+            'bucket' => env('PUBLIC_AWS_BUCKET', env('AWS_BUCKET')),
+            'endpoint' => env('PUBLIC_AWS_ENDPOINT', env('AWS_ENDPOINT')),
+            'use_path_style_endpoint' => env('PUBLIC_AWS_USE_PATH_STYLE_ENDPOINT', env('AWS_USE_PATH_STYLE_ENDPOINT', false)),
             'root' => storage_path('app/public'),
-            'url' => env('APP_URL').'/storage',
-            'visibility' => 'public',
-            'throw' => false,
-            'report' => false,
+            'url' => env('PUBLIC_DISK_URL', env('APP_URL').'/storage'),
+            'visibility' => env('PUBLIC_DISK_VISIBILITY', 'public'),
+            'throw' => env('PUBLIC_DISK_THROW', false),
+            'report' => env('PUBLIC_DISK_REPORT', false),
         ],
 
         's3' => [
@@ -62,7 +90,7 @@ return [
 
         /*
         |--------------------------------------------------------------------------
-        | Cloudflare R2 - Alternativa económica a S3 para Conecta HN
+        | Cloudflare R2 - Alternativa económica a S3 para Dovra AI
         |--------------------------------------------------------------------------
         | R2 es compatible con S3 API pero sin costos de egress.
         | Ideal para galerías ilimitadas del Plan PRO.
@@ -97,11 +125,17 @@ return [
         */
         'media' => [
             'driver' => env('MEDIA_DISK_DRIVER', 'local'),
+            'key' => env('MEDIA_ACCESS_KEY_ID', env('AWS_ACCESS_KEY_ID')),
+            'secret' => env('MEDIA_SECRET_ACCESS_KEY', env('AWS_SECRET_ACCESS_KEY')),
+            'region' => env('MEDIA_REGION', env('AWS_DEFAULT_REGION')),
+            'bucket' => env('MEDIA_BUCKET', env('AWS_BUCKET')),
+            'endpoint' => env('MEDIA_ENDPOINT', env('AWS_ENDPOINT')),
+            'use_path_style_endpoint' => env('MEDIA_USE_PATH_STYLE_ENDPOINT', env('AWS_USE_PATH_STYLE_ENDPOINT', false)),
             'root' => storage_path('app/public'),
             'url' => env('MEDIA_DISK_URL', env('APP_URL').'/storage'),
-            'visibility' => 'public',
-            'throw' => false,
-            'report' => false,
+            'visibility' => env('MEDIA_DISK_VISIBILITY', 'public'),
+            'throw' => env('MEDIA_DISK_THROW', false),
+            'report' => env('MEDIA_DISK_REPORT', false),
         ],
 
     ],

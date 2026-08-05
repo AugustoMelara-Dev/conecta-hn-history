@@ -10,5 +10,6 @@ export default defineConfig({
     baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:8000',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
+    serviceWorkers: 'block',
   },
 });

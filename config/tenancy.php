@@ -18,6 +18,10 @@ declare(strict_types=1);
 
 return [
 
+    'postgres_rls' => [
+        'enabled' => (bool) env('POSTGRES_RLS_ENABLED', false),
+        'verification_enabled' => (bool) env('RUN_POSTGRES_RLS_TESTS', false),
+    ],
     /*
     |--------------------------------------------------------------------------
     | Tenant Context Routes
@@ -39,6 +43,7 @@ return [
         'cart.*',
         'tienda.*',
         'productos.*',
+        'tenant.catalog-imports.*',
     ],
 
     /*

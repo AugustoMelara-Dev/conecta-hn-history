@@ -31,6 +31,11 @@ return [
     'openai' => [
         'api_key' => env('OPENAI_API_KEY'),
         'organization' => env('OPENAI_ORGANIZATION'),
+        'chat_completions_endpoint' => env('OPENAI_CHAT_COMPLETIONS_ENDPOINT', 'https://api.openai.com/v1/chat/completions'),
+        'embeddings_endpoint' => env('OPENAI_EMBEDDINGS_ENDPOINT', 'https://api.openai.com/v1/embeddings'),
+        'catalog_vision_model' => env('OPENAI_CATALOG_VISION_MODEL', 'gpt-4o-mini'),
+        'catalog_input_usd_per_million' => env('OPENAI_CATALOG_INPUT_USD_PER_MILLION', 0.15),
+        'catalog_output_usd_per_million' => env('OPENAI_CATALOG_OUTPUT_USD_PER_MILLION', 0.60),
     ],
 
     'slack' => [

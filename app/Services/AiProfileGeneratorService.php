@@ -6,10 +6,13 @@ namespace App\Services;
 
 use Exception;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * AiProfileGeneratorService - OpenAI Integration for Business Profile Enrichment
@@ -311,7 +314,7 @@ PROMPT;
     /**
      * @throws Exception
      */
-    private function executeApiRequest(string $apiKey, string $userPrompt): \Illuminate\Http\Client\Response
+    private function executeApiRequest(string $apiKey, string $userPrompt): Response
     {
         try {
             $response = Http::withHeaders([
@@ -319,7 +322,7 @@ PROMPT;
                 'Content-Type' => 'application/json',
             ])
                 ->timeout(self::TIMEOUT_SECONDS)
-                ->retry(self::RETRY_ATTEMPTS, self::RETRY_DELAY_MS, function (\Exception $exception) {
+                ->retry(self::RETRY_ATTEMPTS, self::RETRY_DELAY_MS, function (Throwable $exception, PendingRequest $request, ?string $key): bool {
                     if ($exception instanceof ConnectionException) {
                         return true;
                     }
@@ -354,7 +357,7 @@ PROMPT;
         return $response;
     }
 
-    private function handleApiErrors(\Illuminate\Http\Client\Response $response): void
+    private function handleApiErrors(Response $response): void
     {
         if ($response->successful()) {
             return;

@@ -4,8 +4,35 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Domain\Shared\Services\TenantContext;
+use App\Application\Auth\Contracts\AuthTokenServiceInterface;
+use App\Application\Shared\Contracts\ReferenceDataReaderInterface;
+use App\Application\Shared\Contracts\SchemaValidatorInterface;
+use App\Application\Shared\Contracts\SocialIdentityRepositoryInterface;
 use App\Contracts\Scope\TenantContextInterface;
+use App\Domain\Billing\Repositories\PaymentRepositoryInterface;
+use App\Domain\Common\Contracts\SnapshotRepositoryInterface;
+use App\Domain\Common\Contracts\SnapshotStrategyInterface;
+use App\Domain\Identity\Repositories\UserRepositoryInterface;
+use App\Domain\Payments\Gateways\PaymentGatewayInterface;
+use App\Domain\Security\Contracts\HasherInterface;
+use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
+use App\Infrastructure\Auth\SanctumAuthTokenService;
+use App\Infrastructure\Common\Snapshots\DatabaseSnapshotRepository;
+use App\Infrastructure\Common\Snapshots\Strategies\EventCountSnapshotStrategy;
+use App\Infrastructure\Identity\Persistence\EloquentUserRepository;
+use App\Infrastructure\Payments\FakePaymentGateway;
+use App\Infrastructure\Payments\Stripe\StripePaymentGateway;
+use App\Infrastructure\Persistence\EloquentPaymentRepository;
+use App\Infrastructure\Persistence\EloquentSocialIdentityRepository;
+use App\Infrastructure\Persistence\Readers\EloquentReferenceDataReader;
+use App\Infrastructure\Repositories\TenantGovernance\EloquentTenantRepository;
 use App\Infrastructure\Scope\FilamentTenantContext;
+use App\Infrastructure\Security\LaravelHasher;
+use App\Infrastructure\Shared\Context\IdempotencyContext;
+use App\Infrastructure\Shared\Services\JsonSchemaValidatorService;
+use App\Infrastructure\Shared\Services\Upcasting\UpcasterChain;
+use App\Infrastructure\Shared\Services\Upcasting\Upcasters\UserRegisteredV1toV2Upcaster;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -39,18 +66,18 @@ class InfrastructureServiceProvider extends ServiceProvider
         // Domain interfaces rather than Eloquent directly.
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
-            \App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface::class,
-            \App\Infrastructure\Repositories\TenantGovernance\EloquentTenantRepository::class
+            TenantRepositoryInterface::class,
+            EloquentTenantRepository::class
         );
 
         $this->app->bind(
-            \App\Domain\Identity\Repositories\UserRepositoryInterface::class,
-            \App\Infrastructure\Identity\Persistence\EloquentUserRepository::class
+            UserRepositoryInterface::class,
+            EloquentUserRepository::class
         );
 
         $this->app->bind(
-            \App\Application\Shared\Contracts\SocialIdentityRepositoryInterface::class,
-            \App\Infrastructure\Persistence\EloquentSocialIdentityRepository::class
+            SocialIdentityRepositoryInterface::class,
+            EloquentSocialIdentityRepository::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -61,17 +88,17 @@ class InfrastructureServiceProvider extends ServiceProvider
         // FakePaymentGateway for testing or PayPalPaymentGateway for migration.
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
-            \App\Domain\Payments\Gateways\PaymentGatewayInterface::class,
+            PaymentGatewayInterface::class,
             fn () => app()->environment('testing')
-                ? new \App\Infrastructure\Payments\FakePaymentGateway
-                : new \App\Infrastructure\Payments\Stripe\StripePaymentGateway
+                ? new FakePaymentGateway
+                : new StripePaymentGateway
         );
 
-        $this->app->singleton(\App\Infrastructure\Shared\Context\IdempotencyContext::class);
+        $this->app->singleton(IdempotencyContext::class);
 
         $this->app->bind(
-            \App\Application\Shared\Contracts\SchemaValidatorInterface::class,
-            \App\Infrastructure\Shared\Services\JsonSchemaValidatorService::class
+            SchemaValidatorInterface::class,
+            JsonSchemaValidatorService::class
         );
 
         // NOTE: OutboxRepositoryInterface binding is centralized in AppServiceProvider.
@@ -80,48 +107,48 @@ class InfrastructureServiceProvider extends ServiceProvider
         // CONTROLLER DECOUPLING BINDINGS (Hexagonal Architecture)
         // ═══════════════════════════════════════════════════════════════════════
         $this->app->bind(
-            \App\Application\Shared\Contracts\ReferenceDataReaderInterface::class,
-            \App\Infrastructure\Persistence\Readers\EloquentReferenceDataReader::class
+            ReferenceDataReaderInterface::class,
+            EloquentReferenceDataReader::class
         );
 
         // ═══════════════════════════════════════════════════════════════════════
         // UPCASTING INFRASTRUCTURE (Resilient Read)
         // ═══════════════════════════════════════════════════════════════════════
-        $this->app->singleton(\App\Infrastructure\Shared\Services\Upcasting\UpcasterChain::class);
+        $this->app->singleton(UpcasterChain::class);
 
         // Register Upcasters (Ideally this should be in a dedicated config or provider)
-        $this->app->resolving(\App\Infrastructure\Shared\Services\Upcasting\UpcasterChain::class, function ($chain) {
+        $this->app->resolving(UpcasterChain::class, function ($chain) {
             $chain->register(
                 'App\Domain\Identity\Events\UserRegistered',
                 '1.0',
-                new \App\Infrastructure\Shared\Services\Upcasting\Upcasters\UserRegisteredV1toV2Upcaster
+                new UserRegisteredV1toV2Upcaster
             );
         });
 
         $this->app->bind(
-            \App\Domain\Billing\Repositories\PaymentRepositoryInterface::class,
-            \App\Infrastructure\Persistence\EloquentPaymentRepository::class
+            PaymentRepositoryInterface::class,
+            EloquentPaymentRepository::class
         );
 
         $this->app->bind(
-            \App\Application\Auth\Contracts\AuthTokenServiceInterface::class,
-            \App\Infrastructure\Auth\SanctumAuthTokenService::class
+            AuthTokenServiceInterface::class,
+            SanctumAuthTokenService::class
         );
 
         // Tenant registration password hashing contract
         $this->app->bind(
-            \App\Domain\Security\Contracts\HasherInterface::class,
-            \App\Infrastructure\Security\LaravelHasher::class
+            HasherInterface::class,
+            LaravelHasher::class
         );
 
         // Event-sourcing snapshot infrastructure
         $this->app->bind(
-            \App\Domain\Common\Contracts\SnapshotRepositoryInterface::class,
-            \App\Infrastructure\Common\Snapshots\DatabaseSnapshotRepository::class
+            SnapshotRepositoryInterface::class,
+            DatabaseSnapshotRepository::class
         );
         $this->app->bind(
-            \App\Domain\Common\Contracts\SnapshotStrategyInterface::class,
-            fn () => new \App\Infrastructure\Common\Snapshots\Strategies\EventCountSnapshotStrategy(
+            SnapshotStrategyInterface::class,
+            fn () => new EventCountSnapshotStrategy(
                 (int) config('eventsourcing.snapshot_threshold', 50)
             )
         );
@@ -249,6 +276,19 @@ class InfrastructureServiceProvider extends ServiceProvider
 
         RateLimiter::for('api.transactions', function (Request $request) {
             return Limit::perMinute(20)->by($request->user()?->id ?: $request->ip());
+        });
+
+        RateLimiter::for('api.ai-tools', function (Request $request) {
+            $user = $request->user();
+            $tenantContext = app(TenantContext::class);
+            $tenantId = $tenantContext->isInitialized()
+                ? $tenantContext->id()
+                : ($user?->tenant_id === null ? 'no-tenant' : (string) $user->tenant_id);
+
+            return Limit::perMinute(max(
+                1,
+                (int) config('ai.tool_confirmations.requests_per_minute', 10),
+            ))->by(($user?->getAuthIdentifier() ?: 'guest').'|'.$tenantId.'|'.$request->ip());
         });
     }
 }

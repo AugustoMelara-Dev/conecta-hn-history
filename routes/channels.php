@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Broadcasting\ChannelRegistry;
+use App\Infrastructure\Broadcasting\TenantChannelAuthorizer;
+use App\Models\User;
 use Illuminate\Support\Facades\Broadcast;
 
 /*
@@ -29,8 +31,8 @@ use Illuminate\Support\Facades\Broadcast;
  *   - LowStockBroadcast
  *   - NewLoginDetectedBroadcast (also broadcasts here for admins)
  */
-Broadcast::channel(ChannelRegistry::TENANT_CHANNEL_PATTERN, function ($user, $id) {
-    return $user->tenant_id === (int) $id;
+Broadcast::channel(ChannelRegistry::TENANT_CHANNEL_PATTERN, function (User $user, string $id): bool {
+    return app(TenantChannelAuthorizer::class)->canAccessTenant($user, $id);
 });
 
 /**
@@ -39,15 +41,8 @@ Broadcast::channel(ChannelRegistry::TENANT_CHANNEL_PATTERN, function ($user, $id
  * SENSITIVE: Only for users with elevated privileges within the tenant.
  * Used for: NewLoginDetected, LowStock, Critical Alerts.
  */
-Broadcast::channel(ChannelRegistry::TENANT_ADMIN_CHANNEL_PATTERN, function ($user, $id) {
-    // 1. Must belong to the tenant
-    if ($user->tenant_id !== (int) $id) {
-        return false;
-    }
-
-    // 2. Must be an administrator or owner
-    // Assuming 'seller' is the tenant owner role or 'super_admin' is system god
-    return in_array($user->role, ['seller', 'super_admin'], true);
+Broadcast::channel(ChannelRegistry::TENANT_ADMIN_CHANNEL_PATTERN, function (User $user, string $id): bool {
+    return app(TenantChannelAuthorizer::class)->canAccessTenantAdmin($user, $id);
 });
 
 /**
@@ -56,8 +51,8 @@ Broadcast::channel(ChannelRegistry::TENANT_ADMIN_CHANNEL_PATTERN, function ($use
  * Events using this channel:
  *   - NewLoginDetectedBroadcast
  */
-Broadcast::channel(ChannelRegistry::USER_CHANNEL_PATTERN, function ($user, $id) {
-    return $user->id === (int) $id;
+Broadcast::channel(ChannelRegistry::USER_CHANNEL_PATTERN, function (User $user, string $id): bool {
+    return (string) $user->id === (string) $id;
 });
 
 /**
@@ -68,11 +63,6 @@ Broadcast::channel(ChannelRegistry::USER_CHANNEL_PATTERN, function ($user, $id) 
  * SECURITY: Multi-tenant isolation enforced - user can only access orders
  * belonging to their tenant AND owned by them.
  */
-Broadcast::channel(ChannelRegistry::ORDER_CHANNEL_PATTERN, function ($user, $id) {
-    // CRITICAL: Enforce tenant isolation to prevent cross-tenant order access
-    $customerId = \App\Models\Order::where('id', $id)
-        ->where('tenant_id', $user->tenant_id)  // Multi-tenant isolation
-        ->value('customer_id');
-
-    return $customerId !== null && $user->id === $customerId;
+Broadcast::channel(ChannelRegistry::ORDER_CHANNEL_PATTERN, function (User $user, string $id): bool {
+    return app(TenantChannelAuthorizer::class)->canAccessOrder($user, $id);
 });

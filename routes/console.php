@@ -1,5 +1,7 @@
 <?php
 
+use App\Infrastructure\Jobs\Governance\DispatchStaleOrderCleanup;
+use App\Jobs\DispatchAppointmentReminders;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -28,7 +30,7 @@ Schedule::command('subscriptions:check-expiry')
 // Cancels PENDING orders older than 30 minutes and restores stock_quantity.
 // Prevents "Inventory Hoarding" from zombie orders.
 // ═══════════════════════════════════════════════════════════════════════════════
-Schedule::job(new \App\Infrastructure\Jobs\Governance\ReleaseStaleOrders)
+Schedule::job(new DispatchStaleOrderCleanup)
     ->everyFifteenMinutes()
     ->withoutOverlapping();
 
@@ -44,6 +46,18 @@ Schedule::command('storage:cleanup-orphans --grace=60')
     ->withoutOverlapping()
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/orphan-cleanup.log'));
+
+Schedule::command('storage:cleanup-product-staging --grace=60')
+    ->hourly()
+    ->withoutOverlapping(10)
+    ->runInBackground()
+    ->appendOutputTo(storage_path('logs/product-staging-cleanup.log'));
+
+Schedule::command('storage:process-product-media-cleanup --limit=100')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path('logs/product-media-cleanup.log'));
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TRANSACTIONAL OUTBOX WORKER - Domain Event Relay
@@ -77,10 +91,41 @@ Schedule::command('auth:prune-idempotency', ['--days=30', '--chunk=1000'])
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/idempotency-pruner.log'));
 
+Schedule::command('ai:grant-monthly-credits')
+    ->dailyAt('00:05')
+    ->timezone('UTC')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/ai-monthly-credit-grants.log'));
+
+Schedule::command('ai:reconcile-reservations --older-than=60 --limit=500')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/ai-reservation-reconciler.log'));
+
 Schedule::command('dovra:ai-conversations-prune --limit=500')
     ->dailyAt('03:35')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/ai-conversation-pruner.log'));
+
+Schedule::command('ai:prune-executions --limit=1000')
+    ->dailyAt('03:40')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/ai-execution-pruner.log'));
+Schedule::command('ai:prune-tool-confirmations --days=30 --limit=1000')
+    ->dailyAt('03:45')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/ai-tool-confirmation-pruner.log'));
+
+Schedule::command('analytics:reconcile-commercial-outcomes')
+    ->hourly()
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path('logs/commercial-outcome-reconciler.log'));
+
+Schedule::command('dovra:discover-project')
+    ->hourly()
+    ->withoutOverlapping(30)
+    ->appendOutputTo(storage_path('logs/dovra-discovery-projector.log'));
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // APPOINTMENT REMINDERS - 24h Pre-Notification Engine
@@ -90,7 +135,6 @@ Schedule::command('dovra:ai-conversations-prune --limit=500')
 // Idempotent: Uses reminder_sent_at column to prevent duplicates.
 // NOTE: Schedule::job dispatches to queue (async). Do NOT use runInBackground().
 // ═══════════════════════════════════════════════════════════════════════════════
-Schedule::job(new \App\Jobs\SendAppointmentReminders)
+Schedule::job(new DispatchAppointmentReminders)
     ->hourly()
     ->withoutOverlapping();
-

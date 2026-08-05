@@ -19,10 +19,13 @@ export default defineConfig({
         setupFiles: ["resources/js/__tests__/vitest.setup.js"],
         exclude: [
             ...configDefaults.exclude,
+            "**/.worktrees/**",
             "**/wt-pr*/**",
             "wt-pr*/**",
             "**/tmp/**",
             "C:/tmp/**",
+            "tests/e2e/**",
+            "tests/qa/**",
         ],
     },
 });

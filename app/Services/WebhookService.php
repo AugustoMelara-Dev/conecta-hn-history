@@ -28,7 +28,7 @@ class WebhookService
         $orderNumber = $data['order_number'] ?? null;
         $transactionId = $data['transaction_id'] ?? null;
         $amountPaid = (float) ($data['amount'] ?? 0);
-        $currency = $data['currency'] ?? 'HNL';
+        $currency = isset($data['currency']) ? strtoupper(trim((string) $data['currency'])) : null;
 
         if (! $orderNumber) {
             Log::warning('PaymentWebhook: Missing order_number in payload');
@@ -72,6 +72,31 @@ class WebhookService
 
                 /** @var Order $order */
                 $order = Order::hydrate([$rawOrder])->first();
+                $recordedCurrency = strtoupper(trim((string) $order->currency));
+
+                if ($recordedCurrency === '') {
+                    Log::error('PaymentWebhook: Order has no recorded currency', [
+                        'order_id' => $order->id,
+                        'order_number' => $orderNumber,
+                    ]);
+
+                    return ['status' => 'error', 'reason' => 'missing_recorded_currency'];
+                }
+
+                if ($currency !== null && ! hash_equals($recordedCurrency, $currency)) {
+                    Log::error('PaymentWebhook: Currency mismatch', [
+                        'order_id' => $order->id,
+                        'order_number' => $orderNumber,
+                        'expected_currency' => $recordedCurrency,
+                        'received_currency' => $currency,
+                    ]);
+
+                    return ['status' => 'error', 'reason' => 'currency_mismatch'];
+                }
+
+                // Historical order currency is authoritative when providers omit
+                // it. Never reinterpret a transaction through a global default.
+                $currency = $recordedCurrency;
 
                 // ═══════════════════════════════════════════════════════════════════════
                 // IDEMPOTENCY GUARD: Check if already processed
@@ -128,12 +153,13 @@ class WebhookService
                 // ═══════════════════════════════════════════════════════════════════════
                 // UPDATE ORDER STATUS
                 // ═══════════════════════════════════════════════════════════════════════
-                $order->update([
+                $order->forceFill([
                     'status' => Order::STATUS_CONFIRMED,
-                    'transaction_id' => $transactionId,
+                    'payment_transaction_id' => $transactionId,
                     'payment_status' => 'paid',
+                    'payment_confirmed_at' => now(),
                     'paid_at' => now(),
-                ]);
+                ])->save();
 
                 // Log audit trail
                 Log::info('PaymentWebhook: Order confirmed', [

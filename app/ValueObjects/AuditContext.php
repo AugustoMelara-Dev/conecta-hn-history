@@ -32,13 +32,13 @@ use DateTimeImmutable;
 final readonly class AuditContext
 {
     /**
-     * @param  int|null  $actorId  The user ID who triggered the event (null for anonymous/system)
+     * @param  int|string|null  $actorId  The user ID who triggered the event (null for anonymous/system)
      * @param  IpAddress  $ipAddress  The origin IP address (should be anonymized for logging)
      * @param  string  $userAgent  The HTTP User-Agent header (browser fingerprint)
      * @param  DateTimeImmutable  $occurredAt  The exact moment the event occurred
      */
     public function __construct(
-        public ?int $actorId,
+        public int|string|null $actorId,
         public IpAddress $ipAddress,
         public string $userAgent,
         public DateTimeImmutable $occurredAt,
@@ -47,10 +47,10 @@ final readonly class AuditContext
     /**
      * Factory: Capture context from the current HTTP request.
      *
-     * @param  ?int  $actorId  The authenticated user ID (null if guest)
+     * @param  int|string|null  $actorId  The authenticated user ID (null if guest)
      * @param  bool  $anonymizeIp  Whether to anonymize the IP for GDPR compliance
      */
-    public static function capture(?int $actorId = null, bool $anonymizeIp = false): self
+    public static function capture(int|string|null $actorId = null, bool $anonymizeIp = false): self
     {
         $ip = new IpAddress(request()->ip() ?? '0.0.0.0');
 
@@ -123,7 +123,7 @@ final readonly class AuditContext
      * Factory: Create from explicit values (for testing or event reconstruction).
      */
     public static function fromValues(
-        ?int $actorId,
+        int|string|null $actorId,
         IpAddress $ipAddress,
         string $userAgent,
         DateTimeImmutable $occurredAt

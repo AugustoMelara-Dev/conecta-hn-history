@@ -42,10 +42,10 @@ class TenantCacheManager
      * If the version key doesn't exist (first run or cache cleared),
      * we generate a new timestamp and persist it forever.
      *
-     * @param  int|string  $tenantId  The tenant identifier
+     * @param  string  $tenantId  The tenant UUID
      * @return int The current version timestamp
      */
-    public function getTenantVersion(int|string $tenantId): int
+    public function getTenantVersion(string $tenantId): int
     {
         $key = self::VERSION_KEY_PREFIX.$tenantId;
 
@@ -69,13 +69,14 @@ class TenantCacheManager
      * USE CASE:
      * Called from Model Observers when products/coupons are saved/deleted.
      *
-     * @param  int|string  $tenantId  The tenant identifier
+     * @param  string  $tenantId  The tenant UUID
      * @return int The new version timestamp
      */
-    public function rotateTenantVersion(int|string $tenantId): int
+    public function rotateTenantVersion(string $tenantId): int
     {
         $key = self::VERSION_KEY_PREFIX.$tenantId;
-        $newVersion = now()->timestamp;
+        $currentVersion = (int) Cache::get($key, 0);
+        $newVersion = max(now()->timestamp, $currentVersion + 1);
 
         // Atomic overwrite - old version is immediately obsolete
         Cache::forever($key, $newVersion);
@@ -94,11 +95,11 @@ class TenantCacheManager
      *   - tenant_1_v1735150000_coupons_public
      *   - tenant_1_v1735150000_product_42
      *
-     * @param  int|string  $tenantId  The tenant identifier
+     * @param  string  $tenantId  The tenant UUID
      * @param  string  $context  Resource-specific context (e.g., "products_page_1")
      * @return string The composite cache key
      */
-    public function makeKey(int|string $tenantId, string $context): string
+    public function makeKey(string $tenantId, string $context): string
     {
         $version = $this->getTenantVersion($tenantId);
 
@@ -110,10 +111,10 @@ class TenantCacheManager
      *
      * Useful for debugging and health checks.
      *
-     * @param  int|string  $tenantId  The tenant identifier
+     * @param  string  $tenantId  The tenant UUID
      * @return bool Whether the version key exists
      */
-    public function hasVersion(int|string $tenantId): bool
+    public function hasVersion(string $tenantId): bool
     {
         return Cache::has(self::VERSION_KEY_PREFIX.$tenantId);
     }
@@ -124,10 +125,10 @@ class TenantCacheManager
      * WARNING: This will cause a version regeneration on next read,
      * effectively invalidating all cached data for this tenant.
      *
-     * @param  int|string  $tenantId  The tenant identifier
+     * @param  string  $tenantId  The tenant UUID
      * @return bool Whether the key was deleted
      */
-    public function forgetVersion(int|string $tenantId): bool
+    public function forgetVersion(string $tenantId): bool
     {
         return Cache::forget(self::VERSION_KEY_PREFIX.$tenantId);
     }

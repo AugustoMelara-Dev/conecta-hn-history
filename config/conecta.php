@@ -23,16 +23,6 @@ return [
          * or per-user coupon limits are not needed.
          */
         'coupon_user_tracking' => (bool) env('CONECTA_COUPON_USER_TRACKING', true),
-
-        /*
-         * Hybrid commercial mode stays off globally. Enable only for explicit
-         * tenant IDs/slugs while product + services + agenda behavior matures.
-         */
-        'hybrid_commercial_mode_tenants' => array_filter(array_map(
-            'trim',
-            explode(',', (string) env('CONECTA_HYBRID_COMMERCIAL_MODE_TENANTS', ''))
-        )),
-
         /*
          * Private tenant AI stays deny-by-default. A tenant must be listed here
          * before the deterministic v0 agent can answer from private data.

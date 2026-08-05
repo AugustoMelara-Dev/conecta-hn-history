@@ -10,6 +10,8 @@ export default {
         './storage/framework/views/*.php',
         './resources/views/**/*.blade.php',
         './resources/js/**/*.jsx',
+        './resources/js/**/*.ts',
+        './resources/js/**/*.tsx',
     ],
 
     theme: {
@@ -31,6 +33,14 @@ export default {
                 destructive: {
                     DEFAULT: 'hsl(var(--destructive))',
                     foreground: 'hsl(var(--destructive-foreground))',
+                },
+                success: {
+                    DEFAULT: 'hsl(var(--success))',
+                    foreground: 'hsl(var(--success-foreground))',
+                },
+                warning: {
+                    DEFAULT: 'hsl(var(--warning))',
+                    foreground: 'hsl(var(--warning-foreground))',
                 },
                 muted: {
                     DEFAULT: 'hsl(var(--muted))',
@@ -57,6 +67,14 @@ export default {
             fontFamily: {
                 sans: ['Manrope', ...defaultTheme.fontFamily.sans],
                 display: ['Epilogue', 'Manrope', ...defaultTheme.fontFamily.sans],
+            },
+            boxShadow: {
+                sm: 'var(--shadow-sm)',
+                md: 'var(--shadow-md)',
+            },
+            transitionDuration: {
+                fast: 'var(--motion-fast)',
+                normal: 'var(--motion-normal)',
             },
         },
     },

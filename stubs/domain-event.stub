@@ -6,7 +6,7 @@ namespace App\Events\{{ boundedContext }};
 
 use App\Contracts\Events\DomainEvent;
 use App\Traits\HasDomainMetadata;
-use App\ValueObjects\TenantId;
+use App\Domain\Shared\ValueObjects\TenantId;
 use DateTimeImmutable;
 
 /**
@@ -37,11 +37,11 @@ final readonly class {{ class }} implements DomainEvent
 
     /**
      * @param TenantId $tenantId Tenant context for queue middleware
-     * @param int ${{ aggregateNameLower }}Id The aggregate root ID
+     * @param string ${{ aggregateNameLower }}Id The aggregate root ID
      */
     public function __construct(
         private TenantId $tenantId,
-        private int ${{ aggregateNameLower }}Id,
+        private string ${{ aggregateNameLower }}Id,
         // TODO: Add your event-specific properties here
     ) {
         $this->initMetadata();
@@ -51,12 +51,12 @@ final readonly class {{ class }} implements DomainEvent
      * Factory: Create from data (snapshotted at creation time).
      */
     public static function create(
-        int $tenantId,
-        int ${{ aggregateNameLower }}Id,
+        string $tenantId,
+        string ${{ aggregateNameLower }}Id,
         // TODO: Add factory parameters
     ): self {
         return new self(
-            tenantId: TenantId::fromInt($tenantId),
+            tenantId: TenantId::fromString($tenantId),
             {{ aggregateNameLower }}Id: ${{ aggregateNameLower }}Id,
         );
     }
@@ -70,7 +70,7 @@ final readonly class {{ class }} implements DomainEvent
         return $this->tenantId;
     }
 
-    public function aggregateId(): int
+    public function aggregateId(): string
     {
         return $this->{{ aggregateNameLower }}Id;
     }
@@ -84,7 +84,7 @@ final readonly class {{ class }} implements DomainEvent
         return [
             'event_id' => $this->eventId,
             'correlation_id' => $this->correlationId,
-            'tenant_id' => $this->tenantId->toInt(),
+            'tenant_id' => $this->tenantId->toString(),
             '{{ aggregateNameLower }}_id' => $this->{{ aggregateNameLower }}Id,
             'occurred_at' => $this->occurredAt->format(DATE_ATOM),
             // TODO: Add your event-specific fields here
@@ -94,8 +94,8 @@ final readonly class {{ class }} implements DomainEvent
     public static function fromPrimitives(array $primitives): self
     {
         $event = new self(
-            tenantId: TenantId::fromInt($primitives['tenant_id']),
-            {{ aggregateNameLower }}Id: $primitives['{{ aggregateNameLower }}_id'],
+            tenantId: TenantId::fromString((string) $primitives['tenant_id']),
+            {{ aggregateNameLower }}Id: (string) $primitives['{{ aggregateNameLower }}_id'],
         );
 
         $event->initMetadataFrom(

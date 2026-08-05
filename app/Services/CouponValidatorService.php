@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+// @withoutGlobalScopes-safety INFRA_TENANT_FILTER: coupon lookups are constrained by canonical order tenant ownership.
+
+use App\Application\Markets\TenantMarketResolver;
 use App\Exceptions\InvalidCouponException;
 use App\Models\Coupon;
 use App\Models\Tenant;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Filament\Facades\Filament;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -19,7 +23,7 @@ use Illuminate\Support\Facades\Log;
  * ════════════════════════════════════════════════════════════════════════════
  * 1. PESSIMISTIC LOCKING: Uses lockForUpdate() to prevent overselling
  * 2. PER-USER LIMITS: Tracks individual user redemptions via coupon_user pivot
- * 3. TIMEZONE COMPLIANCE: All datetime checks use America/Tegucigalpa
+ * 3. TIMEZONE COMPLIANCE: All datetime checks use the tenant market timezone
  * 4. ATOMIC REDEMPTION: DB::transaction() ensures integrity
  * 5. DEFENSIVE CHECKS: Schema verification for optional columns
  * 6. GUEST SUPPORT: Null-safe user handling for anonymous checkout
@@ -31,9 +35,6 @@ use Illuminate\Support\Facades\Log;
  */
 final class CouponValidatorService
 {
-    /** @var string Honduras timezone for all datetime operations */
-    private const TIMEZONE = 'America/Tegucigalpa';
-
     /** @var int Default max uses per user if column doesn't exist (0 = guest-friendly) */
     private const DEFAULT_MAX_USES_PER_USER = 0;
 
@@ -42,6 +43,10 @@ final class CouponValidatorService
 
     /** @var bool Cache for coupon_user table existence */
     private static ?bool $hasCouponUserTable = null;
+
+    public function __construct(
+        private TenantMarketResolver $marketResolver,
+    ) {}
 
     // ═══════════════════════════════════════════════════════════════════════════════
     // VALIDATION - GUEST COMPATIBLE
@@ -66,9 +71,13 @@ final class CouponValidatorService
     {
         // Resolve tenant ID (defensive: from user or explicit tenant)
         $tenantId = $this->resolveTenantId($user, $tenant);
+        $marketTenant = $tenant ?? Tenant::query()->findOrFail($tenantId);
+        $timezone = $this->marketResolver->resolve($marketTenant)->timezone;
 
         // STEP 1: Find coupon by code (case-insensitive via model boot)
-        $coupon = Coupon::where('code', strtoupper(trim($code)))
+        $coupon = Coupon::query()
+            ->withoutGlobalScopes()
+            ->where('code', strtoupper(trim($code)))
             ->where('tenant_id', $tenantId)
             ->first();
 
@@ -82,7 +91,7 @@ final class CouponValidatorService
         }
 
         // STEP 3: Timezone-aware date validation
-        $this->validateDateRange($coupon);
+        $this->validateDateRange($coupon, $timezone);
 
         // STEP 4: Global usage limit check
         $this->validateGlobalUsage($coupon);
@@ -130,9 +139,16 @@ final class CouponValidatorService
      */
     public function redeem(Coupon $coupon, ?User $user = null, ?int $orderId = null): void
     {
-        DB::transaction(function () use ($coupon, $user, $orderId) {
+        $tenant = Tenant::query()->findOrFail($coupon->tenant_id);
+        $timezone = $this->marketResolver->resolve($tenant)->timezone;
+
+        DB::transaction(function () use ($coupon, $user, $orderId, $timezone) {
             // STEP 1: Acquire exclusive lock on coupon row
-            $lockedCoupon = Coupon::lockForUpdate()->find($coupon->id);
+            $lockedCoupon = Coupon::query()
+                ->withoutGlobalScopes()
+                ->where('tenant_id', $coupon->tenant_id)
+                ->lockForUpdate()
+                ->find($coupon->id);
 
             if ($lockedCoupon === null) {
                 throw InvalidCouponException::notFound($coupon->code);
@@ -148,13 +164,15 @@ final class CouponValidatorService
             if ($user !== null && $this->hasCouponUserTable()) {
                 $maxUsesPerUser = $this->getMaxUsesPerUser($lockedCoupon);
 
-                $userUsageCount = DB::table('coupon_user')
-                    ->where('coupon_id', $lockedCoupon->id)
-                    ->where('user_id', $user->id)
-                    ->count();
+                if ($maxUsesPerUser > 0) {
+                    $userUsageCount = DB::table('coupon_user')
+                        ->where('coupon_id', $lockedCoupon->id)
+                        ->where('user_id', $user->id)
+                        ->count();
 
-                if ($userUsageCount >= $maxUsesPerUser) {
-                    throw InvalidCouponException::userLimitReached($lockedCoupon->code);
+                    if ($userUsageCount >= $maxUsesPerUser) {
+                        throw InvalidCouponException::userLimitReached($lockedCoupon->code);
+                    }
                 }
 
                 // Record per-user redemption in pivot table
@@ -162,7 +180,7 @@ final class CouponValidatorService
                     'coupon_id' => $lockedCoupon->id,
                     'user_id' => $user->id,
                     'order_id' => $orderId,
-                    'redeemed_at' => CarbonImmutable::now(self::TIMEZONE),
+                    'redeemed_at' => CarbonImmutable::now($timezone),
                 ]);
             }
 
@@ -219,19 +237,19 @@ final class CouponValidatorService
      *
      * @throws InvalidCouponException If no tenant context can be determined
      */
-    private function resolveTenantId(?User $user, ?Tenant $tenant = null): int|string
+    private function resolveTenantId(?User $user, ?Tenant $tenant = null): string
     {
         // Strategy 0: Explicit tenant parameter (highest priority for guests)
         if ($tenant !== null) {
-            return $tenant->id;
+            return (string) $tenant->id;
         }
 
         // Strategy 1: Filament context (works regardless of user)
-        if (class_exists(\Filament\Facades\Filament::class)) {
+        if (class_exists(Filament::class)) {
             try {
-                $filamentTenant = \Filament\Facades\Filament::getTenant();
+                $filamentTenant = Filament::getTenant();
                 if ($filamentTenant !== null) {
-                    return $filamentTenant->id;
+                    return (string) $filamentTenant->id;
                 }
             } catch (\Throwable) {
                 // Filament not initialized
@@ -242,7 +260,7 @@ final class CouponValidatorService
         if (app()->has('currentTenant')) {
             $containerTenant = app('currentTenant');
             if ($containerTenant !== null) {
-                return $containerTenant->id;
+                return (string) $containerTenant->id;
             }
         }
 
@@ -251,7 +269,7 @@ final class CouponValidatorService
             // Direct tenant_id attribute on User
             $tenantId = $user->getAttribute('tenant_id');
             if ($tenantId !== null) {
-                return $tenantId;
+                return (string) $tenantId;
             }
 
             // User has tenants() relationship
@@ -322,13 +340,13 @@ final class CouponValidatorService
     // ═══════════════════════════════════════════════════════════════════════════════
 
     /**
-     * Validate coupon date range using Honduras timezone.
+     * Validate coupon date range using the tenant market timezone.
      *
      * @throws InvalidCouponException
      */
-    private function validateDateRange(Coupon $coupon): void
+    private function validateDateRange(Coupon $coupon, string $timezone): void
     {
-        $now = CarbonImmutable::now(self::TIMEZONE);
+        $now = CarbonImmutable::now($timezone);
 
         if ($coupon->starts_at !== null && $now->isBefore($coupon->starts_at)) {
             throw InvalidCouponException::notStarted($coupon->code);

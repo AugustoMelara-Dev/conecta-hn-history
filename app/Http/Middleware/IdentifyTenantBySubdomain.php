@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Domain\Shared\Services\TenantContext;
+use App\Infrastructure\Tenancy\PostgresTenantScope;
 use App\Models\Tenant;
 use Closure;
 use Illuminate\Http\Request;
@@ -19,9 +20,9 @@ use Symfony\Component\HttpFoundation\Response;
  * is available for shared Inertia data.
  *
  * Architecture: Subdomain-based Multi-Tenancy
- * - Root domain (vito.io) → Landing/Marketing
+ * - Root domain (conecta.hn) → Landing/Marketing
  * - Reserved subdomains (app, admin, api) → Central services
- * - Wildcard subdomains ({slug}.vito.io) → Tenant microsites
+ * - Wildcard subdomains ({slug}.conecta.hn) → Tenant microsites
  */
 final class IdentifyTenantBySubdomain
 {
@@ -42,8 +43,10 @@ final class IdentifyTenantBySubdomain
         'cdn',      // CDN subdomain
         'login',    // Auth flows
         'join',     // Onboarding
-        'vito',     // Brand protection
+        'vito',     // Legacy brand protection
     ];
+
+    public function __construct(private readonly PostgresTenantScope $postgresTenantScope) {}
 
     /**
      * Handle an incoming request.
@@ -91,16 +94,16 @@ final class IdentifyTenantBySubdomain
         app()->instance('current_tenant', $tenant);
         app(TenantContext::class)->setTenant((string) $tenant->id);
 
-        return $next($request);
+        return $this->postgresTenantScope->run(fn (): Response => $next($request));
     }
 
     /**
      * Extract subdomain from hostname.
      *
      * Examples:
-     * - "barberia.vito.io" with base "vito.io" → "barberia"
-     * - "vito.io" with base "vito.io" → null
-     * - "app.vito.io" with base "vito.io" → "app"
+     * - "barberia.conecta.hn" with base "conecta.hn" → "barberia"
+     * - "conecta.hn" with base "conecta.hn" → null
+     * - "app.conecta.hn" with base "conecta.hn" → "app"
      */
     private function extractSubdomain(string $host, string $baseDomain): ?string
     {
@@ -119,7 +122,7 @@ final class IdentifyTenantBySubdomain
         }
 
         // Extract subdomain (everything before .baseDomain)
-        $subdomain = str_replace('.' . $baseDomain, '', $host);
+        $subdomain = str_replace('.'.$baseDomain, '', $host);
 
         // Handle nested subdomains (e.g., "www.barberia" → take first segment only)
         if (str_contains($subdomain, '.')) {

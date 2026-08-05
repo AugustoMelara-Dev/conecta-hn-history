@@ -6,6 +6,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Vite;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -68,6 +69,7 @@ class SecurityHeaders
 
         // Store nonce in container for Blade/Inertia access
         app()->instance('csp-nonce', $nonce);
+        Vite::useCspNonce($nonce);
 
         $response = $next($request);
 
@@ -88,10 +90,12 @@ class SecurityHeaders
         $response->headers->set('X-Content-Type-Options', 'nosniff');
 
         // X-XSS-Protection: Legacy browser XSS filter (defense-in-depth)
-        $response->headers->set('X-XSS-Protection', '1; mode=block');
+        $response->headers->set('X-XSS-Protection', '0');
 
         // Referrer-Policy: Protect user privacy while maintaining analytics
-        $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
+        if (! $response->headers->has('Referrer-Policy')) {
+            $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
+        }
 
         // Permissions-Policy: Disable unused browser features
         $response->headers->set(
@@ -100,13 +104,26 @@ class SecurityHeaders
         );
 
         // ═══════════════════════════════════════════════════════════════════════
+        // MODULE 2.5: CROSS-ORIGIN ISOLATION (2024 baseline)
+        // COOP/COEP/CORP isolate the page from cross-origin windows, enable
+        // SharedArrayBuffer, and protect static asset fetches from being loaded
+        // by third-party origins. credentialless keeps Stripe iframes working.
+        $response->headers->set("Cross-Origin-Opener-Policy", "same-origin");
+        $response->headers->set("Cross-Origin-Embedder-Policy", "credentialless");
+        $response->headers->set("Cross-Origin-Resource-Policy", "same-origin");
+
+        // 
         // MODULE 3: TRANSPORT SECURITY (HSTS) - Production Only
         // ═══════════════════════════════════════════════════════════════════════
-        if (app()->environment('production')) {
-            $response->headers->set(
-                'Strict-Transport-Security',
-                'max-age=31536000; includeSubDomains; preload'
-            );
+        if (app()->environment('production') && $request->isSecure() && (bool) config('security.hsts.enabled', true)) {
+            $hsts = 'max-age='.max(0, (int) config('security.hsts.max_age', 31536000));
+            if ((bool) config('security.hsts.include_subdomains', false)) {
+                $hsts .= '; includeSubDomains';
+            }
+            if ((bool) config('security.hsts.preload', false)) {
+                $hsts .= '; preload';
+            }
+            $response->headers->set('Strict-Transport-Security', $hsts);
         }
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -179,6 +196,7 @@ class SecurityHeaders
             "form-action 'self'",
             "base-uri 'self'",
             "object-src 'none'",
+            $isProduction ? "require-trusted-types-for 'script; trusted-types dovra-policy 'allow-duplicates" : "trusted-types dovra-policy 'allow-duplicates",
         ];
 
         return implode('; ', $directives);
