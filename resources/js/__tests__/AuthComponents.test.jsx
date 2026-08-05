@@ -9,9 +9,19 @@ import { ForgotPasswordForm } from "@/Components/Auth/ForgotPasswordForm"
 import { LoginForm } from "@/Components/Auth/LoginForm"
 import GlobalLoginModal from "@/Components/Organisms/Auth/GlobalLoginModal"
 import AuthGate from "@/Components/Utils/AuthGate"
+import AcceptTenantInvitation from "@/Pages/Auth/AcceptTenantInvitation"
+import RegisterTenantInvitation from "@/Pages/Auth/RegisterTenantInvitation"
 import VerifyEmail from "@/Pages/Auth/VerifyEmail"
 import { useUIStore } from "@/Stores/useUIStore"
 import { t } from "@/lib/i18n"
+
+global.IntersectionObserver = class IntersectionObserver {
+    observe() {}
+
+    unobserve() {}
+
+    disconnect() {}
+}
 
 const inertiaMock = vi.hoisted(() => ({
     pageProps: {
@@ -97,7 +107,7 @@ describe("GlobalLoginModal Component", () => {
     it("renders with quick access active by default", () => {
         render(<GlobalLoginModal />)
 
-        expect(screen.getByText("Entrar a Vito Business OS")).toBeInTheDocument()
+        expect(screen.getByText("Entrar a Dovra AI")).toBeInTheDocument()
         expect(screen.getByRole("tab", { name: /acceso con correo/i })).toBeInTheDocument()
         expect(screen.getByRole("tab", { name: /acceso rápido/i })).toBeInTheDocument()
     })
@@ -160,6 +170,40 @@ describe("VerifyEmail Page", () => {
     })
 })
 
+describe("Tenant invitation pages", () => {
+    const invitation = {
+        tenantName: "Dovra Studio",
+        inviterName: "Ana Owner",
+        email: "member@example.test",
+        role: "operator",
+        expiresAt: "2026-08-04T12:00:00-06:00",
+    }
+
+    beforeEach(() => {
+        inertiaMock.post.mockClear()
+    })
+
+    it("renders an acceptance summary without exposing a token prop", () => {
+        render(<AcceptTenantInvitation invitation={invitation} />)
+
+        expect(screen.getByText("Dovra Studio")).toBeInTheDocument()
+        expect(screen.getByText(/Ana Owner te invitó como Operador/i)).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: "Aceptar invitación" })).toBeInTheDocument()
+        expect(invitation).not.toHaveProperty("token")
+    })
+
+    it("renders secure account creation for a new invited identity", () => {
+        render(<RegisterTenantInvitation invitation={invitation} />)
+
+        expect(screen.getByText("Crea tu acceso a Dovra AI")).toBeInTheDocument()
+        expect(screen.getByText(/member@example.test/i)).toBeInTheDocument()
+        expect(screen.getByLabelText("Nombre")).toBeInTheDocument()
+        expect(screen.getByLabelText("Contraseña")).toBeInTheDocument()
+        expect(screen.getByLabelText("Confirmar contraseña")).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: "Crear cuenta y aceptar" })).toBeInTheDocument()
+    })
+})
+
 describe("Auth catalog-backed forms", () => {
     beforeEach(() => {
         global.route = vi.fn((name) => `/${name}`)
@@ -170,7 +214,7 @@ describe("Auth catalog-backed forms", () => {
         render(<LoginForm />)
 
         expect(screen.getByText("Acceso seguro")).toBeInTheDocument()
-        expect(screen.getByText("Entra a Vito Business OS")).toBeInTheDocument()
+        expect(screen.getByText("Entra a Dovra AI")).toBeInTheDocument()
         expect(screen.getByText(/Usa contraseña para el panel de negocio/i)).toBeInTheDocument()
         expect(screen.getByLabelText("Contraseña")).toBeInTheDocument()
         expect(screen.getByRole("button", { name: /Iniciar sesión/i })).toBeInTheDocument()
