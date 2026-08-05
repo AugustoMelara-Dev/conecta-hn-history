@@ -13,19 +13,22 @@ uses(TestCase::class);
 
 function makeOpenAIService(): OpenAIService
 {
-    return new OpenAIService(new class extends BudgetEnforcer {
-        public function reserve(int|string $tenantId, float $estimatedCost, string $operation): string
+    return new OpenAIService(new class extends BudgetEnforcer
+    {
+        public function reserve(string $tenantId, float $estimatedCost, string $operation): string
         {
             return 'test-reservation';
         }
 
-        public function settle(int|string $tenantId, float $estimatedCost, float $actualCost, string $reservationId, array $usageMetadata = []): void
+        /** @return array{version:string,credits_per_provider_usd:float,minimum_charge:float} */
+        public function pricingSnapshot(string $tenantId, string $reservationId): array
         {
+            return ['version' => 'credits-v1-test', 'credits_per_provider_usd' => 20.0, 'minimum_charge' => 0.01];
         }
 
-        public function refund(int|string $tenantId, float $estimatedCost, string $reservationId, string $failureReason): void
-        {
-        }
+        public function settle(string $tenantId, float $estimatedCost, float $actualCost, string $reservationId, array $usageMetadata = []): void {}
+
+        public function refund(string $tenantId, float $estimatedCost, string $reservationId, string $failureReason): void {}
     });
 }
 
@@ -51,7 +54,7 @@ test('returns structured profile on valid response', function () {
         ], 200),
     ]);
 
-    $result = makeOpenAIService()->generateStructuredProfile('Biz', 'Desc', 1, 1);
+    $result = makeOpenAIService()->generateStructuredProfile('Biz', 'Desc', 1, '550e8400-e29b-41d4-a716-446655440000');
 
     expect($result['seo_title'])->toBe('Titulo SEO')
         ->and($result['tags'])->toBeArray();
@@ -62,7 +65,7 @@ test('throws provider unavailable after upstream failures', function () {
         'api.openai.com/*' => Http::response(['error' => 'down'], 503),
     ]);
 
-    expect(fn () => makeOpenAIService()->generateStructuredProfile('Biz', 'Desc', 1, 1))
+    expect(fn () => makeOpenAIService()->generateStructuredProfile('Biz', 'Desc', 1, '550e8400-e29b-41d4-a716-446655440000'))
         ->toThrow(AiProviderUnavailableException::class);
 });
 
@@ -78,7 +81,7 @@ test('throws malformed response when schema is invalid', function () {
         ], 200),
     ]);
 
-    expect(fn () => makeOpenAIService()->generateStructuredProfile('Biz', 'Desc', 1, 1))
+    expect(fn () => makeOpenAIService()->generateStructuredProfile('Biz', 'Desc', 1, '550e8400-e29b-41d4-a716-446655440000'))
         ->toThrow(AiMalformedResponseException::class);
 });
 
@@ -100,7 +103,7 @@ test('sanitizes script tags from description', function () {
         ], 200),
     ]);
 
-    $result = makeOpenAIService()->generateStructuredProfile('Biz', 'Desc', 1, 1);
+    $result = makeOpenAIService()->generateStructuredProfile('Biz', 'Desc', 1, '550e8400-e29b-41d4-a716-446655440000');
 
     expect($result['description'])->not->toContain('<script>')
         ->and($result['description'])->toContain('<p>Safe</p>');

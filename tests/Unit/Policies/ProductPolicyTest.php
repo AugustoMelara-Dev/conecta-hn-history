@@ -16,6 +16,12 @@ uses(Tests\TestCase::class);
 
 function makeUserForProduct(array $tenantIds, string $role = 'seller'): User
 {
+    $tenantIds = array_map(
+        static fn (int|string $id): string => is_int($id)
+            ? sprintf('00000000-0000-4000-8000-%012d', $id)
+            : $id,
+        $tenantIds,
+    );
     $user = Mockery::mock(User::class)->makePartial();
     $user->role = $role;
     $user->_memoized_tenant_ids = $tenantIds;
@@ -36,7 +42,7 @@ function makeUserForProduct(array $tenantIds, string $role = 'seller'): User
 function makeProduct(int $tenantId): Product
 {
     $product = Mockery::mock(Product::class)->makePartial();
-    $product->tenant_id = $tenantId;
+    $product->tenant_id = sprintf('00000000-0000-4000-8000-%012d', $tenantId);
 
     return $product;
 }
@@ -49,28 +55,28 @@ test('denies view for cross-tenant product', function () {
     $user = makeUserForProduct([1]);
     $product = makeProduct(tenantId: 2);
 
-    expect((new ProductPolicy())->view($user, $product))->toBeFalse();
+    expect((new ProductPolicy)->view($user, $product))->toBeFalse();
 });
 
 test('denies update for cross-tenant product', function () {
     $user = makeUserForProduct([1]);
     $product = makeProduct(tenantId: 2);
 
-    expect((new ProductPolicy())->update($user, $product))->toBeFalse();
+    expect((new ProductPolicy)->update($user, $product))->toBeFalse();
 });
 
 test('denies delete for cross-tenant product', function () {
     $user = makeUserForProduct([1]);
     $product = makeProduct(tenantId: 2);
 
-    expect((new ProductPolicy())->delete($user, $product))->toBeFalse();
+    expect((new ProductPolicy)->delete($user, $product))->toBeFalse();
 });
 
 test('denies restore for cross-tenant product', function () {
     $user = makeUserForProduct([1]);
     $product = makeProduct(tenantId: 2);
 
-    expect((new ProductPolicy())->restore($user, $product))->toBeFalse();
+    expect((new ProductPolicy)->restore($user, $product))->toBeFalse();
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -81,28 +87,28 @@ test('allows view for same-tenant product', function () {
     $user = makeUserForProduct([5]);
     $product = makeProduct(tenantId: 5);
 
-    expect((new ProductPolicy())->view($user, $product))->toBeTrue();
+    expect((new ProductPolicy)->view($user, $product))->toBeTrue();
 });
 
 test('allows update for same-tenant product', function () {
     $user = makeUserForProduct([5]);
     $product = makeProduct(tenantId: 5);
 
-    expect((new ProductPolicy())->update($user, $product))->toBeTrue();
+    expect((new ProductPolicy)->update($user, $product))->toBeTrue();
 });
 
 test('allows delete for same-tenant product', function () {
     $user = makeUserForProduct([5]);
     $product = makeProduct(tenantId: 5);
 
-    expect((new ProductPolicy())->delete($user, $product))->toBeTrue();
+    expect((new ProductPolicy)->delete($user, $product))->toBeTrue();
 });
 
 test('allows restore for same-tenant product', function () {
     $user = makeUserForProduct([5]);
     $product = makeProduct(tenantId: 5);
 
-    expect((new ProductPolicy())->restore($user, $product))->toBeTrue();
+    expect((new ProductPolicy)->restore($user, $product))->toBeTrue();
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -112,20 +118,20 @@ test('allows restore for same-tenant product', function () {
 test('denies viewAny when user has no tenants', function () {
     $user = makeUserForProduct([]);
 
-    expect((new ProductPolicy())->viewAny($user))->toBeFalse();
+    expect((new ProductPolicy)->viewAny($user))->toBeFalse();
 });
 
 test('allows viewAny when user has a tenant', function () {
     $user = makeUserForProduct([3]);
 
-    expect((new ProductPolicy())->viewAny($user))->toBeTrue();
+    expect((new ProductPolicy)->viewAny($user))->toBeTrue();
 });
 
 test('denies view when user has no tenants', function () {
     $user = makeUserForProduct([]);
     $product = makeProduct(tenantId: 1);
 
-    expect((new ProductPolicy())->view($user, $product))->toBeFalse();
+    expect((new ProductPolicy)->view($user, $product))->toBeFalse();
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -143,11 +149,16 @@ function makeUserForCreate(bool $isPro, int $productCount, array $tenantIds = [1
     $user->_memoized_tenant_ids = $tenantIds;
 
     // Build a tenant mock with is_pro and products() support
-    $productsRelation = Mockery::mock();
+    $productsRelation = Mockery::mock(\Illuminate\Database\Eloquent\Relations\HasMany::class);
     $productsRelation->shouldReceive('count')->andReturn($productCount);
 
-    $tenant = Mockery::mock();
-    $tenant->is_pro = $isPro;
+    /** @var \App\Models\Tenant&Mockery\MockInterface $tenant */
+    $tenant = Mockery::mock(\App\Models\Tenant::class)->makePartial();
+    $tenant->setRawAttributes([
+        'is_pro' => $isPro,
+        'subscription_status' => 'active',
+        'plan_type' => $isPro ? 'pro' : 'semilla',
+    ], true);
     $tenant->shouldReceive('products')->andReturn($productsRelation);
 
     $relation = Mockery::mock(\Illuminate\Database\Eloquent\Relations\HasMany::class);
@@ -161,19 +172,28 @@ function makeUserForCreate(bool $isPro, int $productCount, array $tenantIds = [1
     return $user;
 }
 
-test('create allows PRO tenant with unlimited products', function () {
-    $user = makeUserForCreate(isPro: true, productCount: 999);
+test('create allows PRO tenant below the canonical 100 product limit', function () {
+    $user = makeUserForCreate(isPro: true, productCount: 99);
 
-    $result = (new ProductPolicy())->create($user);
+    $result = (new ProductPolicy)->create($user);
 
     expect($result)->toBeInstanceOf(Response::class);
     expect($result->allowed())->toBeTrue();
 });
 
+test('create denies PRO tenant at the canonical 100 product limit', function () {
+    $user = makeUserForCreate(isPro: true, productCount: 100);
+
+    $result = (new ProductPolicy)->create($user);
+
+    expect($result->allowed())->toBeFalse();
+    expect($result->message())->toContain('100 productos');
+});
+
 test('create allows FREE tenant under 10 products', function () {
     $user = makeUserForCreate(isPro: false, productCount: 5);
 
-    $result = (new ProductPolicy())->create($user);
+    $result = (new ProductPolicy)->create($user);
 
     expect($result->allowed())->toBeTrue();
 });
@@ -181,7 +201,7 @@ test('create allows FREE tenant under 10 products', function () {
 test('create denies FREE tenant at 10 products', function () {
     $user = makeUserForCreate(isPro: false, productCount: 10);
 
-    $result = (new ProductPolicy())->create($user);
+    $result = (new ProductPolicy)->create($user);
 
     expect($result->allowed())->toBeFalse();
     expect($result->message())->toContain('límite de 10 productos');
@@ -190,12 +210,11 @@ test('create denies FREE tenant at 10 products', function () {
 test('create denies user with no tenant', function () {
     $user = makeUserForCreate(isPro: false, productCount: 0, tenantIds: []);
 
-    $result = (new ProductPolicy())->create($user);
+    $result = (new ProductPolicy)->create($user);
 
     expect($result->allowed())->toBeFalse();
     expect($result->message())->toContain('negocio');
 });
-
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FORCE DELETE: Requires admin + ownership
@@ -206,7 +225,7 @@ test('allows forceDelete for super_admin owning product', function () {
     $user->shouldReceive('hasRole')->with('super_admin')->andReturn(true);
     $product = makeProduct(tenantId: 10);
 
-    expect((new ProductPolicy())->forceDelete($user, $product))->toBeTrue();
+    expect((new ProductPolicy)->forceDelete($user, $product))->toBeTrue();
 });
 
 test('denies forceDelete for non-admin owning product', function () {
@@ -214,7 +233,7 @@ test('denies forceDelete for non-admin owning product', function () {
     $user->shouldReceive('hasRole')->with('super_admin')->andReturn(false);
     $product = makeProduct(tenantId: 10);
 
-    expect((new ProductPolicy())->forceDelete($user, $product))->toBeFalse();
+    expect((new ProductPolicy)->forceDelete($user, $product))->toBeFalse();
 });
 
 test('denies forceDelete for admin on cross-tenant product', function () {
@@ -222,5 +241,5 @@ test('denies forceDelete for admin on cross-tenant product', function () {
     $user->shouldReceive('hasRole')->with('super_admin')->andReturn(true);
     $product = makeProduct(tenantId: 2);
 
-    expect((new ProductPolicy())->forceDelete($user, $product))->toBeFalse();
+    expect((new ProductPolicy)->forceDelete($user, $product))->toBeFalse();
 });

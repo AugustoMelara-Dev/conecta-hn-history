@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use App\Models\Product;
 use App\Observers\ProductObserver;
-use Illuminate\Support\Facades\Cache;
+use App\Services\TenantCacheManager;
 use Tests\TestCase;
 
 uses(TestCase::class);
@@ -13,17 +13,13 @@ uses(TestCase::class);
 // SAVED EVENT: Cache Invalidation
 // ═══════════════════════════════════════════════════════════════════════════
 
-test('saved flushes tenant-scoped product cache tags', function () {
+test('saved rotates only the products tenant cache generation', function () {
     $product = Mockery::mock(Product::class)->makePartial();
     $product->tenant_id = 5;
+    $cacheKeys = Mockery::mock(TenantCacheManager::class);
+    $cacheKeys->shouldReceive('rotateTenantVersion')->once()->with('5');
 
-    Cache::shouldReceive('tags')
-        ->once()
-        ->with(['products', 'products_tenant_5'])
-        ->andReturnSelf();
-    Cache::shouldReceive('flush')->once();
-
-    $observer = new ProductObserver();
+    $observer = new ProductObserver($cacheKeys);
     $observer->saved($product);
 });
 
@@ -31,17 +27,13 @@ test('saved flushes tenant-scoped product cache tags', function () {
 // DELETED EVENT: Cache Invalidation
 // ═══════════════════════════════════════════════════════════════════════════
 
-test('deleted flushes tenant-scoped product cache tags', function () {
+test('deleted rotates only the products tenant cache generation', function () {
     $product = Mockery::mock(Product::class)->makePartial();
     $product->tenant_id = 12;
+    $cacheKeys = Mockery::mock(TenantCacheManager::class);
+    $cacheKeys->shouldReceive('rotateTenantVersion')->once()->with('12');
 
-    Cache::shouldReceive('tags')
-        ->once()
-        ->with(['products', 'products_tenant_12'])
-        ->andReturnSelf();
-    Cache::shouldReceive('flush')->once();
-
-    $observer = new ProductObserver();
+    $observer = new ProductObserver($cacheKeys);
     $observer->deleted($product);
 
     expect(true)->toBeTrue();
@@ -51,17 +43,13 @@ test('deleted flushes tenant-scoped product cache tags', function () {
 // RESTORED EVENT: Cache Invalidation
 // ═══════════════════════════════════════════════════════════════════════════
 
-test('restored flushes tenant-scoped product cache tags', function () {
+test('restored rotates only the products tenant cache generation', function () {
     $product = Mockery::mock(Product::class)->makePartial();
     $product->tenant_id = 3;
+    $cacheKeys = Mockery::mock(TenantCacheManager::class);
+    $cacheKeys->shouldReceive('rotateTenantVersion')->once()->with('3');
 
-    Cache::shouldReceive('tags')
-        ->once()
-        ->with(['products', 'products_tenant_3'])
-        ->andReturnSelf();
-    Cache::shouldReceive('flush')->once();
-
-    $observer = new ProductObserver();
+    $observer = new ProductObserver($cacheKeys);
     $observer->restored($product);
 
     expect(true)->toBeTrue();
@@ -71,11 +59,12 @@ test('restored flushes tenant-scoped product cache tags', function () {
 // STRUCTURAL: Cache tag key format
 // ═══════════════════════════════════════════════════════════════════════════
 
-test('cache tags include tenant-specific key format', function () {
+test('cache invalidation uses the canonical generational tenant cache manager', function () {
     $source = file_get_contents(
         (new ReflectionClass(ProductObserver::class))->getFileName()
     );
 
-    expect($source)->toContain("products_tenant_{\$product->tenant_id}");
-    expect($source)->toContain("'products'");
+    expect($source)->toContain('TenantCacheManager');
+    expect($source)->toContain('rotateTenantVersion');
+    expect($source)->not->toContain('Cache::tags');
 });

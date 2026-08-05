@@ -2,13 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Models\Order;
 use App\Notifications\NewOrderNotification;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Collection;
+use Tests\TestCase;
 
 // Bootstrap Laravel app — needed because NewOrderNotification::toMail() calls url()
-uses(Tests\TestCase::class);
-
+uses(TestCase::class);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPER: Build a test double that satisfies the Order type hint
@@ -20,13 +21,13 @@ uses(Tests\TestCase::class);
 // mock getAttribute to return the correct values.
 // ═══════════════════════════════════════════════════════════════════════════
 
-function makeNotificationOrder(array $overrides = []): \App\Models\Order
+function makeNotificationOrder(array $overrides = []): Order
 {
     $defaults = [
         'id' => 100,
         'order_number' => '#1042',
         'total' => 350.50,
-        'tenant_id' => 5,
+        'tenant_id' => '0196bfa9-3385-7a62-98b9-63021d9f6210',
         'customer_name' => 'María López',
         'customer_email' => 'maria@example.com',
         'formatted_total' => 'L. 350.50',
@@ -34,20 +35,20 @@ function makeNotificationOrder(array $overrides = []): \App\Models\Order
     ];
 
     $data = array_merge($defaults, $overrides);
-    $data['formatted_total'] = 'L. ' . number_format((float) $data['total'], 2);
+    $data['formatted_total'] = 'L. '.number_format((float) $data['total'], 2);
     $data['created_at'] = now();
-    $data['items'] = new Collection();
+    $data['items'] = new Collection;
 
     // Build tenant
     if (($overrides['_null_tenant'] ?? false) === false) {
-        $tenant = new \stdClass();
+        $tenant = new stdClass;
         $tenant->name = $overrides['tenant_name'] ?? 'Café Tegus';
         $data['tenant'] = $tenant;
     } else {
         $data['tenant'] = null;
     }
 
-    $order = Mockery::mock(\App\Models\Order::class);
+    $order = Mockery::mock(Order::class);
 
     // loadMissing (called in toMail + toArray) → no-op
     $order->shouldReceive('loadMissing')->andReturnSelf();
@@ -203,7 +204,7 @@ test('toBroadcast includes order_id and tenant_id', function () {
     $broadcast = $notification->toBroadcast((object) []);
 
     expect($broadcast->data['order_id'])->toBe(100);
-    expect($broadcast->data['tenant_id'])->toBe(5);
+    expect($broadcast->data['tenant_id'])->toBe('0196bfa9-3385-7a62-98b9-63021d9f6210');
     expect($broadcast->data['customer_name'])->toBe('María López');
 });
 
@@ -218,5 +219,5 @@ test('broadcasts on tenant-scoped private channel', function () {
     $channels = $notification->broadcastOn();
 
     expect($channels)->toHaveCount(1);
-    expect($channels[0]->name)->toBe('private-tenant.5.admins');
+    expect($channels[0]->name)->toBe('private-tenant.0196bfa9-3385-7a62-98b9-63021d9f6210.admins');
 });

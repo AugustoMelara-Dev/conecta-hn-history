@@ -69,11 +69,11 @@ final class BusinessTypeNavigationGatingTest extends TestCase
         $this->assertFalse(AppointmentResource::canViewAny());
     }
 
-    public function test_hybrid_navigation_requires_tenant_allowlist(): void
+    public function test_hybrid_navigation_exposes_both_sides_without_allowlist(): void
     {
         config()->set('conecta.features.hybrid_commercial_mode_tenants', []);
 
-        $tenant = (new Tenant())->forceFill([
+        $tenant = (new Tenant)->forceFill([
             'id' => 'tenant-hybrid-nav',
             'slug' => 'tenant-hybrid-nav',
             'business_type' => BusinessType::SERVICE->value,
@@ -81,17 +81,17 @@ final class BusinessTypeNavigationGatingTest extends TestCase
         ]);
         Filament::shouldReceive('getTenant')->andReturn($tenant);
 
-        $this->assertFalse(ProductResource::canViewAny());
-        $this->assertFalse(ServiceResource::canViewAny());
-        $this->assertFalse(ServiceProviderResource::canViewAny());
-        $this->assertFalse(AppointmentResource::canViewAny());
+        $this->assertTrue(ProductResource::canViewAny());
+        $this->assertTrue(ServiceResource::canViewAny());
+        $this->assertTrue(ServiceProviderResource::canViewAny());
+        $this->assertTrue(AppointmentResource::canViewAny());
     }
 
     public function test_hybrid_navigation_exposes_both_sides_for_allowlisted_tenant(): void
     {
         config()->set('conecta.features.hybrid_commercial_mode_tenants', ['tenant-hybrid-nav']);
 
-        $tenant = (new Tenant())->forceFill([
+        $tenant = (new Tenant)->forceFill([
             'id' => 'tenant-hybrid-nav',
             'slug' => 'tenant-hybrid-nav',
             'business_type' => BusinessType::SERVICE->value,

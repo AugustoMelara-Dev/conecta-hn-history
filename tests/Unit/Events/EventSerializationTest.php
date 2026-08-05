@@ -90,7 +90,7 @@ class EventSerializationTest extends TestCase
 
         $original = new FailedLoginAttempt(
             email: 'attacker@example.com',
-            tenantId: TenantId::fromInt(5),
+            tenantId: TenantId::fromString('00000000-0000-4000-8000-000000000005'),
             context: $context,
             failureReason: 'invalid_password',
         );
@@ -99,7 +99,7 @@ class EventSerializationTest extends TestCase
         $reconstituted = FailedLoginAttempt::fromPrimitives($primitives);
 
         $this->assertEquals($original->email, $reconstituted->email);
-        $this->assertEquals($original->tenantId->toInt(), $reconstituted->tenantId->toInt());
+        $this->assertSame($original->tenantId->toString(), $reconstituted->tenantId->toString());
         $this->assertEquals($original->failureReason, $reconstituted->failureReason);
     }
 
@@ -121,7 +121,7 @@ class EventSerializationTest extends TestCase
         $original = new SensitiveDataAccessed(
             actorId: 99,
             actorEmail: 'admin@conectahn.com',
-            tenantId: TenantId::fromInt(1),
+            tenantId: TenantId::fromString('00000000-0000-4000-8000-000000000001'),
             resource: 'customer_export',
             action: 'download',
             context: $context,
@@ -134,7 +134,7 @@ class EventSerializationTest extends TestCase
 
         $this->assertEquals($original->actorId, $reconstituted->actorId);
         $this->assertEquals($original->actorEmail, $reconstituted->actorEmail);
-        $this->assertEquals($original->tenantId->toInt(), $reconstituted->tenantId->toInt());
+        $this->assertSame($original->tenantId->toString(), $reconstituted->tenantId->toString());
         $this->assertEquals($original->resource, $reconstituted->resource);
         $this->assertEquals($original->action, $reconstituted->action);
         $this->assertEquals($original->reason, $reconstituted->reason);
@@ -158,7 +158,7 @@ class EventSerializationTest extends TestCase
         );
 
         $original = new TenantSuspended(
-            tenantId: TenantId::fromInt(77),
+            tenantId: TenantId::fromString('00000000-0000-4000-8000-000000000077'),
             tenantSlug: 'bad-tenant',
             tenantName: 'Bad Tenant Inc',
             reason: 'terms_violation',
@@ -170,7 +170,7 @@ class EventSerializationTest extends TestCase
         $primitives = $original->toPrimitives();
         $reconstituted = TenantSuspended::fromPrimitives($primitives);
 
-        $this->assertEquals($original->tenantId->toInt(), $reconstituted->tenantId->toInt());
+        $this->assertSame($original->tenantId->toString(), $reconstituted->tenantId->toString());
         $this->assertEquals($original->tenantSlug, $reconstituted->tenantSlug);
         $this->assertEquals($original->tenantName, $reconstituted->tenantName);
         $this->assertEquals($original->reason, $reconstituted->reason);
@@ -197,7 +197,7 @@ class EventSerializationTest extends TestCase
         );
 
         $original = new TenantSuspended(
-            tenantId: TenantId::fromInt(99),
+            tenantId: TenantId::fromString('00000000-0000-4000-8000-000000000099'),
             tenantSlug: 'fraud-tenant',
             tenantName: 'Fraudulent Business',
             reason: 'fraud_detected',
@@ -225,7 +225,7 @@ class EventSerializationTest extends TestCase
     {
         // OrderShipped no longer has trackingUrl() - it exposes raw data
         $event = OrderShipped::create(
-            tenantId: 1,
+            tenantId: '00000000-0000-4000-8000-000000000001',
             orderId: 123,
             orderNumber: 'ORD-2026-00001',
             carrier: 'fedex',
@@ -260,7 +260,7 @@ class EventSerializationTest extends TestCase
         $event = new SensitiveDataAccessed(
             actorId: 1,
             actorEmail: 'test@test.com',
-            tenantId: TenantId::fromInt(1),
+            tenantId: TenantId::fromString('00000000-0000-4000-8000-000000000001'),
             resource: 'test',
             action: 'view',
             context: $context,
@@ -433,7 +433,7 @@ class EventSerializationTest extends TestCase
     {
         // Signature: create(tenantId, orderId, orderNumber, itemCount, totalAmountCents, customerId, customerName, currency)
         $original = \App\Events\Order\NewOrderReceived::create(
-            tenantId: 10,
+            tenantId: '00000000-0000-4000-8000-000000000010',
             orderId: 500,
             orderNumber: 'ORD-2026-TEST',
             itemCount: 5,
@@ -452,7 +452,7 @@ class EventSerializationTest extends TestCase
         $reconstituted = \App\Events\Order\NewOrderReceived::fromPrimitives($primitives);
 
         // Verify critical data preserved
-        $this->assertEquals(10, $reconstituted->tenantId()->toInt());
+        $this->assertSame('00000000-0000-4000-8000-000000000010', $reconstituted->tenantId()->toString());
         $this->assertEquals(500, $reconstituted->aggregateId());
         $this->assertEquals('ORD-2026-TEST', $reconstituted->orderNumber->toString());
         $this->assertEquals('Test Customer', $reconstituted->customerName);
@@ -469,7 +469,7 @@ class EventSerializationTest extends TestCase
     {
         // Signature: create(tenantId, orderId, orderNumber, transactionId, gatewayName, amountCents, currency)
         $original = \App\Events\Payment\PaymentApproved::create(
-            tenantId: 15,
+            tenantId: '00000000-0000-4000-8000-000000000015',
             orderId: 600,
             orderNumber: 'ORD-PAY-TEST',
             transactionId: 'txn_abc123',
@@ -487,7 +487,7 @@ class EventSerializationTest extends TestCase
         $reconstituted = \App\Events\Payment\PaymentApproved::fromPrimitives($primitives);
 
         // Verify critical data preserved
-        $this->assertEquals(15, $reconstituted->tenantId()->toInt());
+        $this->assertSame('00000000-0000-4000-8000-000000000015', $reconstituted->tenantId()->toString());
         $this->assertEquals(600, $reconstituted->aggregateId());
         $this->assertEquals('txn_abc123', $reconstituted->transactionId);
         $this->assertEquals('stripe', $reconstituted->gatewayName);

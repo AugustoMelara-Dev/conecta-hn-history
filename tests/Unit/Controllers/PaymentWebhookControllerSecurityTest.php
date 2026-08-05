@@ -7,6 +7,7 @@ namespace Tests\Unit\Controllers;
 use App\Application\Billing\Actions\HandlePaymentWebhookAction;
 use App\Application\Shared\Contracts\EventBusInterface;
 use App\Application\Shared\Contracts\LoggerInterface as ApplicationLogger;
+use App\Domain\Billing\DTOs\WebhookEventClaim;
 use App\Domain\Billing\Repositories\WebhookLogRepositoryInterface;
 use App\Http\Controllers\Webhook\PaymentWebhookController;
 use Illuminate\Http\Request;
@@ -62,12 +63,29 @@ final class PaymentWebhookControllerSecurityTest extends TestCase
             $logger,
             new class implements WebhookLogRepositoryInterface
             {
+                public bool $claimUnavailable = false;
+
                 public function hasBeenProcessed(string $provider, string $externalEventId): bool
                 {
                     return false;
                 }
 
                 public function recordFirstSeen(string $provider, string $externalEventId, string $eventType, array $payload): bool
+                {
+                    return true;
+                }
+
+                public function claim(string $provider, string $externalEventId, string $eventType, array $payload, int $leaseSeconds = 300): ?WebhookEventClaim
+                {
+                    return $this->claimUnavailable ? null : new WebhookEventClaim($provider, $externalEventId, 'test-token');
+                }
+
+                public function markProcessed(WebhookEventClaim $claim): bool
+                {
+                    return true;
+                }
+
+                public function markFailed(WebhookEventClaim $claim, \Throwable $error): bool
                 {
                     return true;
                 }

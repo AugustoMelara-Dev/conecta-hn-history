@@ -19,6 +19,7 @@ it('Service model has correct casts', function () {
     $casts = (new Service)->getCasts();
     
     expect($casts)->toHaveKey('price');
+    expect($casts)->toHaveKey('price_minor');
     expect($casts)->toHaveKey('is_active');
     expect($casts)->toHaveKey('duration_minutes');
 });
@@ -56,9 +57,10 @@ it('Service has formatted duration accessor', function () {
 
 // TEST 6: Service has formatted price accessor
 it('Service has formatted price accessor', function () {
-    $service = new Service(['price' => 250.50]);
+    $service = new Service(['price' => 250.50, 'price_minor' => 25050, 'currency' => 'CAD']);
     
-    expect($service->formatted_price)->toBe('L. 250.50');
+    expect($service->formatted_price)->toBe('CAD 250.50');
+    expect((new Service(['price' => 250.50]))->formatted_price)->toBe('250.50');
 });
 
 // TEST 7: Appointment has status label accessor

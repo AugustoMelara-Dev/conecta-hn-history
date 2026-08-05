@@ -15,7 +15,7 @@ uses(Tests\TestCase::class);
 function makeLowStockBroadcast(array $overrides = []): LowStockBroadcast
 {
     $defaults = [
-        'tenantId' => 5,
+        'tenantId' => '00000000-0000-4000-8000-000000000005',
         'productId' => 42,
         'productName' => 'Tornillo Hexagonal',
         'productSku' => 'TH-001',
@@ -73,7 +73,7 @@ test('broadcastWith contains correct domain values', function () {
 
     $payload = $broadcast->broadcastWith();
 
-    expect($payload['tenant_id'])->toBe(5);
+    expect($payload['tenant_id'])->toBe('00000000-0000-4000-8000-000000000005');
     expect($payload['product_id'])->toBe(42);
     expect($payload['product_name'])->toBe('Tornillo Hexagonal');
     expect($payload['product_sku'])->toBe('TH-001');
@@ -156,13 +156,13 @@ test('Info severity does NOT require immediate action', function () {
 // ═══════════════════════════════════════════════════════════════════════════
 
 test('broadcasts on tenant-scoped admin channel', function () {
-    $broadcast = makeLowStockBroadcast(['tenantId' => 7]);
+    $broadcast = makeLowStockBroadcast(['tenantId' => '00000000-0000-4000-8000-000000000007']);
 
     $channels = $broadcast->broadcastOn();
 
     expect($channels)->toHaveCount(1);
     // ChannelRegistry::tenantAdmins() returns a private channel
-    expect((string) $channels[0])->toContain('7');
+    expect((string) $channels[0])->toContain('tenant.00000000-0000-4000-8000-000000000007.admins');
 });
 
 test('broadcastAs returns inventory.stock.low', function () {
@@ -197,7 +197,7 @@ test('broadcast title for Critical is Critical', function () {
 
 test('fromDomainData creates correct instance', function () {
     $broadcast = LowStockBroadcast::fromDomainData(
-        tenantId: 3,
+        tenantId: '00000000-0000-4000-8000-000000000003',
         productId: 99,
         productName: 'Café Molido',
         productSku: 'CM-500',
@@ -209,7 +209,7 @@ test('fromDomainData creates correct instance', function () {
 
     $payload = $broadcast->broadcastWith();
 
-    expect($payload['tenant_id'])->toBe(3);
+    expect($payload['tenant_id'])->toBe('00000000-0000-4000-8000-000000000003');
     expect($payload['product_id'])->toBe(99);
     expect($payload['product_name'])->toBe('Café Molido');
     expect($payload['severity'])->toBe('critical');

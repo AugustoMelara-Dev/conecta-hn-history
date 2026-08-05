@@ -2,9 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Infrastructure\Booking\HttpPublicBookingResponder;
 use App\Models\OpeningHour;
 use App\Models\ServiceProvider;
 use App\Models\Tenant;
+use Carbon\Carbon;
 use Spatie\OpeningHours\OpeningHours;
 use Tests\TestCase;
 
@@ -17,7 +19,7 @@ uses(TestCase::class);
 describe('Tenant Opening Hours', function () {
     it('returns Spatie OpeningHours object', function () {
         $tenant = new Tenant;
-        
+
         expect(method_exists($tenant, 'getOpeningHours'))->toBeTrue();
         expect(method_exists($tenant, 'openingHours'))->toBeTrue();
     });
@@ -32,13 +34,13 @@ describe('Tenant Opening Hours', function () {
         $openingHours = $tenant->getOpeningHours();
 
         expect($openingHours)->toBeInstanceOf(OpeningHours::class);
-        
+
         // Monday should have 09:00-17:00
         $mondayRanges = $openingHours->forDay('monday');
         expect($mondayRanges)->toHaveCount(1);
         expect($mondayRanges[0]->start()->format('H:i'))->toBe('09:00');
         expect($mondayRanges[0]->end()->format('H:i'))->toBe('17:00');
-        
+
         // Sunday should be closed (no ranges)
         $sundayRanges = $openingHours->forDay('sunday');
         expect($sundayRanges)->toBeEmpty();
@@ -74,7 +76,7 @@ describe('Tenant Opening Hours', function () {
 describe('ServiceProvider Opening Hours', function () {
     it('returns Spatie OpeningHours object', function () {
         $provider = new ServiceProvider;
-        
+
         expect(method_exists($provider, 'getOpeningHours'))->toBeTrue();
     });
 
@@ -90,7 +92,7 @@ describe('ServiceProvider Opening Hours', function () {
         $openingHours = $provider->getOpeningHours();
 
         expect($openingHours)->toBeInstanceOf(OpeningHours::class);
-        
+
         $mondayRanges = $openingHours->forDay('monday');
         expect($mondayRanges)->toHaveCount(1);
         expect($mondayRanges[0]->start()->format('H:i'))->toBe('12:00');
@@ -124,17 +126,15 @@ describe('ServiceProvider Opening Hours', function () {
 });
 
 describe('Booking Slot Generation', function () {
-    it('BookingController has generateAvailableSlots method', function () {
-        $reflection = new ReflectionClass(\App\Infrastructure\Booking\HttpPublicBookingResponder::class);
-        
-        expect($reflection->hasMethod('generateAvailableSlots'))->toBeTrue();
-        
-        $method = $reflection->getMethod('generateAvailableSlots');
-        
-        // Should accept Tenant as first parameter
-        $params = $method->getParameters();
-        expect($params[0]->getName())->toBe('tenant');
-        expect($params[0]->getType()->getName())->toBe('App\Models\Tenant');
+    it('public booking delegates slot generation to the canonical query', function () {
+        $reflection = new ReflectionClass(HttpPublicBookingResponder::class);
+        $source = (string) file_get_contents($reflection->getFileName());
+
+        expect($reflection->hasMethod('generateAvailableSlots'))->toBeFalse();
+        expect($source)->toContain('AvailabilityQuery $availability');
+        expect($source)->toContain('$this->availability->slots(');
+        expect($source)->not->toContain('getOpeningHours()');
+        expect($source)->not->toContain('isAvailableAt(');
     });
 
     it('closed days return empty slots (sunday default)', function () {
@@ -144,7 +144,7 @@ describe('Booking Slot Generation', function () {
             // Sunday is not defined = closed
         ]);
 
-        $sunday = \Carbon\Carbon::create(2026, 2, 15); // A Sunday
+        $sunday = Carbon::create(2026, 2, 15); // A Sunday
         $ranges = $openingHours->forDate($sunday);
 
         expect($ranges)->toBeEmpty();

@@ -27,10 +27,9 @@ class JobIdempotencyTest extends TestCase
      */
     public function sync_analytics_job_implements_should_be_unique(): void
     {
-        $job = new SyncAnalyticsJob();
+        $job = new SyncAnalyticsJob;
 
         $this->assertInstanceOf(ShouldBeUnique::class, $job);
-        $this->assertIsString($job->uniqueId());
         $this->assertStringStartsWith('sync_analytics_', $job->uniqueId());
     }
 
@@ -39,10 +38,11 @@ class JobIdempotencyTest extends TestCase
      */
     public function generate_product_blurhash_job_implements_should_be_unique(): void
     {
-        $job = new GenerateProductBlurhash(productId: 100, tenantId: 1);
+        $tenantId = '00000000-0000-4000-8000-000000000001';
+        $job = new GenerateProductBlurhash(productId: 100, tenantId: $tenantId);
 
         $this->assertInstanceOf(ShouldBeUnique::class, $job);
-        $this->assertEquals('blurhash_1_100', $job->uniqueId());
+        $this->assertEquals('blurhash_'.$tenantId.'_100', $job->uniqueId());
     }
 
     /**
@@ -50,16 +50,17 @@ class JobIdempotencyTest extends TestCase
      */
     public function generate_pdf_report_job_implements_should_be_unique(): void
     {
+        $tenantId = '00000000-0000-4000-8000-000000000001';
         $data = new ReportRequestData(
-            tenantId: 1,
+            tenantId: $tenantId,
             reportType: 'sales',
             startDate: new \DateTimeImmutable('2026-01-01'),
             endDate: new \DateTimeImmutable('2026-01-31')
         );
-        $job = new GeneratePdfReportJob($data, requestorId: 1);
+        $job = new GeneratePdfReportJob($data, requestorId: '00000000-0000-4000-8000-000000000101');
 
         $this->assertInstanceOf(ShouldBeUnique::class, $job);
-        $this->assertEquals('pdf_1_sales_2026-01-01', $job->uniqueId());
+        $this->assertEquals('pdf_'.$tenantId.'_sales_2026-01-01', $job->uniqueId());
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -71,8 +72,8 @@ class JobIdempotencyTest extends TestCase
      */
     public function blurhash_unique_keys_are_tenant_scoped(): void
     {
-        $tenant1Job = new GenerateProductBlurhash(productId: 100, tenantId: 1);
-        $tenant2Job = new GenerateProductBlurhash(productId: 100, tenantId: 2);
+        $tenant1Job = new GenerateProductBlurhash(productId: 100, tenantId: '00000000-0000-4000-8000-000000000001');
+        $tenant2Job = new GenerateProductBlurhash(productId: 100, tenantId: '00000000-0000-4000-8000-000000000002');
 
         // Same product ID but different tenants = different unique keys
         $this->assertNotEquals($tenant1Job->uniqueId(), $tenant2Job->uniqueId());
@@ -84,20 +85,21 @@ class JobIdempotencyTest extends TestCase
     public function pdf_unique_keys_are_tenant_scoped(): void
     {
         $tenant1Data = new ReportRequestData(
-            tenantId: 1,
+            tenantId: '00000000-0000-4000-8000-000000000001',
             reportType: 'sales',
             startDate: new \DateTimeImmutable('2026-01-01'),
             endDate: new \DateTimeImmutable('2026-01-31')
         );
         $tenant2Data = new ReportRequestData(
-            tenantId: 2,
+            tenantId: '00000000-0000-4000-8000-000000000002',
             reportType: 'sales',
             startDate: new \DateTimeImmutable('2026-01-01'),
             endDate: new \DateTimeImmutable('2026-01-31')
         );
 
-        $tenant1Job = new GeneratePdfReportJob($tenant1Data, requestorId: 1);
-        $tenant2Job = new GeneratePdfReportJob($tenant2Data, requestorId: 1);
+        $requestorId = '00000000-0000-4000-8000-000000000101';
+        $tenant1Job = new GeneratePdfReportJob($tenant1Data, requestorId: $requestorId);
+        $tenant2Job = new GeneratePdfReportJob($tenant2Data, requestorId: $requestorId);
 
         // Same report params but different tenants = different unique keys
         $this->assertNotEquals($tenant1Job->uniqueId(), $tenant2Job->uniqueId());

@@ -25,10 +25,10 @@ test('TenantContext setAsSystemRoot has HTTP context guard', function () {
     $methodBody = implode("\n", array_slice($lines, $methodStart - 1, $methodEnd - $methodStart + 1));
 
     // Verify the guard exists with required conditions
-    expect($methodBody)->toContain("app()->runningInConsole()");
+    expect($methodBody)->toContain('app()->runningInConsole()');
     expect($methodBody)->toContain("app()->environment('testing')");
-    expect($methodBody)->toContain("RuntimeException");
-    expect($methodBody)->toContain("Security Violation");
+    expect($methodBody)->toContain('RuntimeException');
+    expect($methodBody)->toContain('Security Violation');
 });
 
 test('TenantContext guard prevents HTTP privilege escalation', function () {
@@ -37,7 +37,19 @@ test('TenantContext guard prevents HTTP privilege escalation', function () {
     $source = file_get_contents($reflection->getFileName());
 
     // Verify the guard logic: throws exception if NOT console AND NOT testing
-    expect($source)->toContain("! app()->runningInConsole()");
+    expect($source)->toContain('! app()->runningInConsole()');
     expect($source)->toContain("! app()->environment('testing')");
-    expect($source)->toContain("cannot be invoked from HTTP context");
+    expect($source)->toContain('cannot be invoked from HTTP context');
+});
+
+test('TenantContext rejects numeric and malformed tenant identities', function (string $tenantId) {
+    expect(fn () => (new TenantContext)->setTenant($tenantId))
+        ->toThrow(\InvalidArgumentException::class);
+})->with(['42', '', 'tenant-one']);
+
+test('TenantContext normalizes a valid UUID before storing it', function () {
+    $context = new TenantContext;
+    $context->setTenant('A25122C0-A33E-4A07-91C2-8B00F4D2859E');
+
+    expect($context->id())->toBe('a25122c0-a33e-4a07-91c2-8b00f4d2859e');
 });

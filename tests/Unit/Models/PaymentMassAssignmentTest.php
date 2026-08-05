@@ -7,8 +7,8 @@ namespace Tests\Unit\Models;
 use App\Domain\Shared\Services\TenantContext;
 use App\Models\Payment;
 use App\Models\Tenant;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Database\Eloquent\MassAssignmentException;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 uses(TestCase::class, RefreshDatabase::class);
@@ -25,7 +25,7 @@ test('payment model guards tenant_id against mass assignment', function () {
     $tenant2 = Tenant::factory()->create();
 
     // Act: Set tenant context to tenant1 and attempt to create payment for tenant2
-    app(TenantContext::class)->setTenant($tenant1->id);
+    app(TenantContext::class)->setTenant((string) $tenant1->id);
 
     expect(fn () => Payment::create([
         'tenant_id' => $tenant2->id,  // Malicious: attempt cross-tenant
@@ -37,14 +37,14 @@ test('payment model guards tenant_id against mass assignment', function () {
 });
 
 test('payment tenant_id is in guarded array', function () {
-    $payment = new Payment();
+    $payment = new Payment;
     $guarded = $payment->getGuarded();
 
     expect($guarded)->toContain('tenant_id');
 });
 
 test('payment tenant_id is not in fillable array', function () {
-    $payment = new Payment();
+    $payment = new Payment;
     $fillable = $payment->getFillable();
 
     expect($fillable)->not->toContain('tenant_id');

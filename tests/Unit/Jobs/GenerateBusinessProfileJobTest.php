@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Jobs\GenerateBusinessProfileJob;
-use App\Services\AI\OpenAIService;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
@@ -14,18 +13,21 @@ describe('GenerateBusinessProfileJob', function () {
     it('can be dispatched to the queue', function () {
         Queue::fake();
 
+        $userId = '00000000-0000-4000-8000-000000000001';
+        $tenantId = '00000000-0000-4000-8000-000000000100';
+
         GenerateBusinessProfileJob::dispatch(
             businessName: 'Test Business',
             description: 'A sample business description',
-            userId: 1,
-            tenantId: 100
+            userId: $userId,
+            tenantId: $tenantId
         );
 
-        Queue::assertPushed(GenerateBusinessProfileJob::class, function ($job) {
+        Queue::assertPushed(GenerateBusinessProfileJob::class, function ($job) use ($userId, $tenantId) {
             return $job->businessName === 'Test Business'
                 && $job->description === 'A sample business description'
-                && $job->userId === 1
-                && $job->tenantId === 100;
+                && $job->userId === $userId
+                && $job->tenantId === $tenantId;
         });
     });
 
@@ -33,8 +35,8 @@ describe('GenerateBusinessProfileJob', function () {
         $job = new GenerateBusinessProfileJob(
             businessName: 'Test',
             description: 'Desc',
-            userId: 1,
-            tenantId: 1
+            userId: '00000000-0000-4000-8000-000000000001',
+            tenantId: '00000000-0000-4000-8000-000000000100'
         );
 
         expect($job->timeout)->toBe(60);
@@ -45,24 +47,24 @@ describe('GenerateBusinessProfileJob', function () {
         $job = new GenerateBusinessProfileJob(
             businessName: 'My Business',
             description: 'My Description',
-            userId: 999,
-            tenantId: 888
+            userId: '00000000-0000-4000-8000-000000000999',
+            tenantId: '00000000-0000-4000-8000-000000000888'
         );
 
         // Verify all properties are scalars (safe for Redis/DB queue)
         expect($job->businessName)->toBeString();
         expect($job->description)->toBeString();
-        expect($job->userId)->toBeInt();
-        expect($job->tenantId)->toBeInt();
+        expect($job->userId)->toBeString();
+        expect($job->tenantId)->toBeString();
     });
 
     it('preserves tenant ID for isolation', function () {
-        $tenantId = 12345;
-        
+        $tenantId = '00000000-0000-4000-8000-000000012345';
+
         $job = new GenerateBusinessProfileJob(
             businessName: 'Tenant Business',
             description: 'Description',
-            userId: 1,
+            userId: '00000000-0000-4000-8000-000000000001',
             tenantId: $tenantId
         );
 
