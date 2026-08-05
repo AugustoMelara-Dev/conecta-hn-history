@@ -1,5 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Vito">
-  <rect width="64" height="64" rx="14" fill="#020617"/>
-  <path d="M18 17h10l6 25 6-25h9L39 48H28L18 17Z" fill="#38bdf8"/>
-  <path d="M18 17h10l6 25 6-25h9" fill="none" stroke="#f8fafc" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Dovra AI">
+    <rect width="64" height="64" rx="14" fill="#020617"/>
+    <path d="M14 14h8.5c5.523 0 10 4.477 10 10v0c0 5.523-4.477 10-10 10H14Zm5 5v10h3.5a5 5 0 0 0 0-10Z" fill="#38bdf8"/>
+    <path d="M14 14h8.5c5.523 0 10 4.477 10 10v0c0 5.523-4.477 10-10 10H14" fill="none" stroke="#f8fafc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

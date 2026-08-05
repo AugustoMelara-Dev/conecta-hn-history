@@ -1,12 +1,24 @@
-<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#3b82f6"/>
-      <stop offset="50%" style="stop-color:#6366f1"/>
-      <stop offset="100%" style="stop-color:#8b5cf6"/>
+      <stop offset="0%" style="stop-color:#020617"/>
+      <stop offset="50%" style="stop-color:#0c4a6e"/>
+      <stop offset="100%" style="stop-color:#0e7490"/>
+    </linearGradient>
+    <linearGradient id="mark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#38bdf8"/>
+      <stop offset="100%" style="stop-color:#0ea5e9"/>
     </linearGradient>
   </defs>
   <rect width="1200" height="630" fill="url(#bg)"/>
-  <text x="600" y="290" text-anchor="middle" font-family="system-ui, sans-serif" font-size="48" font-weight="bold" fill="white">Conecta HN</text>
-  <text x="600" y="360" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" fill="rgba(255,255,255,0.8)">Plataforma de Comercio Electrónico</text>
+  <g transform="translate(80,200)">
+    <rect width="160" height="160" rx="36" fill="url(#mark)"/>
+    <path d="M36 36h22.5c14.6 0 26.5 11.9 26.5 26.5v0c0 14.6-11.9 26.5-26.5 26.5H36Zm13 13v27h9.5a13.5 13.5 0 0 0 0-27Z" fill="#020617"/>
+  </g>
+  <text x="280" y="260" font-family="system-ui, -apple-system, sans-serif" font-size="84" font-weight="800" fill="#f8fafc">Dovra AI</text>
+  <text x="280" y="330" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="500" fill="#94a3b8">Global Conversational Business OS</text>
+  <text x="280" y="430" font-family="system-ui, -apple-system, sans-serif" font-size="22" fill="#cbd5e1">AI employees that know a business, work through its channels,</text>
+  <text x="280" y="462" font-family="system-ui, -apple-system, sans-serif" font-size="22" fill="#cbd5e1">and turn conversations into measurable results.</text>
+  <text x="280" y="560" font-family="system-ui, -apple-system, sans-serif" font-size="18" font-weight="500" fill="#38bdf8">dovra.ai</text>
 </svg>

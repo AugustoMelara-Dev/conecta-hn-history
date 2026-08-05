@@ -1,2 +1,19 @@
+# Dovra AI production robots policy
 User-agent: *
-Disallow:
+Disallow: /admin
+Disallow: /filament
+Disallow: /api/
+Disallow: /up
+Allow: /
+
+# Block aggressive scrapers
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+Sitemap: https://dovra.ai/sitemap.xml

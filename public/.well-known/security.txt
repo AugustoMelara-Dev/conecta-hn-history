@@ -1,0 +1,7 @@
+# Dovra AI security contact (RFC 9116)
+Contact: mailto:security@dovra.ai
+Contact: https://dovra.ai/.well-known/security.txt
+Expires: 2027-08-04T00:00:00Z
+Preferred-Languages: es-HN;en
+Canonical: https://dovra.ai/.well-known/security.txt
+Policy: https://dovra.ai/security
