@@ -1,5 +1,5 @@
 {{-- Impersonation Banner - Shadow Login Indicator --}}
-@if(session('impersonator_id'))
+@if(session('impersonation_grant_id'))
 <div style="
     position: fixed;
     top: 0;
@@ -25,14 +25,19 @@
             <strong>MODO SOPORTE:</strong> 
             Estas viendo el panel como <strong>{{ Auth::user()->name }}</strong>. 
             (Sesion iniciada por: {{ session('impersonator_name', 'Admin') }})
+            @if(session('impersonation_expires_at'))
+                · Expira {{ \Illuminate\Support\Carbon::parse(session('impersonation_expires_at'))->diffForHumans() }}
+            @endif
         </span>
     </div>
-    <a href="{{ route('impersonate.leave') }}" style="
+    <form method="POST" action="{{ route('impersonate.leave') }}">
+        @csrf
+    <button type="submit" style="
         background: rgba(255,255,255,0.2);
         color: white;
         padding: 6px 16px;
+        border: 0;
         border-radius: 6px;
-        text-decoration: none;
         font-weight: 600;
         display: flex;
         align-items: center;
@@ -43,7 +48,8 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
         </svg>
         Regresar a mi sesion
-    </a>
+    </button>
+    </form>
 </div>
 <div style="height: 50px;"></div> {{-- Spacer to push content down --}}
 @endif

@@ -39,7 +39,7 @@
                     <div class="flex w-full max-w-sm flex-col gap-4 rounded-2xl bg-gray-50 p-6 ring-1 ring-gray-200 dark:bg-white/5 dark:ring-white/10">
                         <div>
                             <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Desde</p>
-                            <p class="mt-1 text-3xl font-semibold text-gray-950 dark:text-white">L. 99/mes</p>
+                            <p class="mt-1 text-3xl font-semibold text-gray-950 dark:text-white">{{ $formattedProPrice }}/mes</p>
                         </div>
 
                         <x-filament::button

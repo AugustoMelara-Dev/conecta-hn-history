@@ -9,7 +9,7 @@
                         <p class="biz-kicker">Torre de control multi-negocio</p>
                         <h1 class="biz-title">Colas, SLA, churn y seguimiento entre tenants</h1>
                         <p class="biz-copy">
-                            Opera Vito Business OS como una consola de ejecución real: pagos, altas,
+                            Opera Dovra AI como una consola de ejecución real: pagos, altas,
                             playbooks comerciales, renovaciones y riesgo de churn en un solo frente.
                         </p>
                     </div>

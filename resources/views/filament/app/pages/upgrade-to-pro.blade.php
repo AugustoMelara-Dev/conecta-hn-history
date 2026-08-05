@@ -21,7 +21,7 @@
 
                 <div class="biz-button-row">
                     <a
-                        href="https://wa.me/50495000000?text={{ urlencode('Hola, quiero actualizar mi negocio ' . ($tenant->name ?? '') . ' a PRO en Vito Business OS') }}"
+                        href="https://wa.me/50495000000?text={{ urlencode('Hola, quiero actualizar mi negocio ' . ($tenant->name ?? '') . ' a PRO en Dovra AI') }}"
                         target="_blank"
                         rel="noopener noreferrer"
                         class="biz-button"

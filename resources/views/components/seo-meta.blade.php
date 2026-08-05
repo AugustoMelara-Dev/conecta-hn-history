@@ -4,8 +4,8 @@
     Usage:
     @include('components.seo-meta', ['model' => $tenant])
     @include('components.seo-meta', [
-        'title' => 'Conecta HN',
-        'description' => 'Directorio de negocios locales en Honduras',
+        'title' => 'Dovra AI',
+        'description' => 'AI employees that turn business conversations into measurable results.',
         'image' => asset('images/og-default.png'),
     ])
 --}}
@@ -13,8 +13,19 @@
 @php
     use Illuminate\Support\Str;
 
-    $siteName = config('app.name', 'Conecta HN');
-    $siteUrl = rtrim((string) config('app.url', 'https://conecta.hn'), '/');
+    $siteName = (string) config('dovra.identity.name');
+    $siteUrl = rtrim((string) config('app.url'), '/');
+    $marketCode = strtoupper((string) (
+        $marketCode
+        ?? data_get($model ?? null, 'country.code')
+        ?? data_get($model ?? null, 'country_code')
+        ?? ''
+    ));
+    $presentationLocale = str_replace('-', '_', (string) ($ogLocale ?? 'en_US'));
+    $alternateLocales = array_values(array_unique(array_filter([
+        ...((array) ($ogAlternateLocales ?? [])),
+        $marketCode === 'HN' && $presentationLocale !== 'es_HN' ? 'es_HN' : null,
+    ])));
 
     $cleanText = static fn (mixed $value, int $limit = 160): string => Str::limit(
         trim(preg_replace('/\s+/', ' ', strip_tags((string) $value)) ?: ''),
@@ -29,7 +40,7 @@
     } elseif (isset($model) && ! empty($model->name)) {
         $seoTitle = "{$model->name} | {$siteName}";
     } else {
-        $seoTitle = "{$siteName} - Directorio de negocios en Honduras";
+        $seoTitle = "{$siteName} - ".config('dovra.identity.category');
     }
 
     if (isset($model) && method_exists($model, 'getSeoDescription')) {
@@ -39,7 +50,7 @@
     } elseif (isset($model) && ! empty($model->description)) {
         $seoDescription = $cleanText($model->description);
     } else {
-        $seoDescription = 'Descubre negocios locales, restaurantes, tiendas y servicios en Honduras. Conecta HN ayuda a comprar, reservar y contactar comercios cerca de ti.';
+        $seoDescription = (string) config('dovra.identity.commercial_promise');
     }
 
     if (isset($model) && method_exists($model, 'getSeoKeywords')) {
@@ -99,8 +110,8 @@
             'address' => ! empty($model->address) ? array_filter([
                 '@type' => 'PostalAddress',
                 'streetAddress' => (string) $model->address,
-                'addressLocality' => (string) ($model->city->name ?? 'Honduras'),
-                'addressCountry' => 'HN',
+                'addressLocality' => data_get($model, 'city.name'),
+                'addressCountry' => $marketCode !== '' ? $marketCode : null,
             ]) : null,
             'telephone' => ! empty($model->whatsapp_number) ? (string) $model->whatsapp_number : null,
         ]);
@@ -123,7 +134,10 @@
 <meta property="og:image:height" content="630">
 <meta property="og:url" content="{{ $canonicalUrl }}">
 <meta property="og:site_name" content="{{ $siteName }}">
-<meta property="og:locale" content="es_HN">
+<meta property="og:locale" content="{{ $presentationLocale }}">
+@foreach($alternateLocales as $alternateLocale)
+<meta property="og:locale:alternate" content="{{ $alternateLocale }}">
+@endforeach
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="{{ $seoTitle }}">

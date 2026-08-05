@@ -1,5 +1,5 @@
 {{--
-    HOME - Pagina principal de Vito Business OS
+    HOME - Pagina principal de Dovra AI
     
     Arquitectura Mobile-First con máximo SEO y velocidad.
     Stack: Livewire + Alpine.js + Tailwind CSS
@@ -33,7 +33,7 @@
                 Conecta<span class="text-blue-600">HN</span>
             </h1>
             <p class="text-lg md:text-xl text-gray-600 mb-8">
-                El directorio de negocios más completo de Honduras
+                El Business OS conversacional global para convertir conversaciones en resultados medibles
             </p>
             
             {{-- Estadísticas Rápidas --}}
@@ -247,7 +247,7 @@
     </section>
 
     {{-- ═══════════════════════════════════════════════════════════════════════ --}}
-    {{-- SECCIÓN 4: NUEVOS EN CONECTA HN (PRUEBA SOCIAL) --}}
+    {{-- SECCIÓN 4: NUEVOS EN DOVRA AI (PRUEBA SOCIAL) --}}
     {{-- ═══════════════════════════════════════════════════════════════════════ --}}
     <section class="py-12 md:py-16 bg-white">
         <div class="max-w-7xl mx-auto px-4">
@@ -255,7 +255,7 @@
             <div class="flex items-center justify-between mb-8">
                 <div>
                     <h2 class="text-2xl md:text-3xl font-bold text-gray-900">
-                        Nuevos en Vito App
+                        Nuevos en Dovra AI
                     </h2>
                     <p class="text-gray-500 mt-1">Los negocios recién llegados a la plataforma</p>
                 </div>

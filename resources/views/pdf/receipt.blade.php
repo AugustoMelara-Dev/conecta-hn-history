@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Recibo de Pago - Vito Business OS</title>
+    <title>Recibo de Pago - Dovra AI</title>
     <style>
         * {
             margin: 0;
@@ -263,7 +263,7 @@
             <div class="logo-section">
                 <div class="logo">C</div>
                 <div>
-                    <div class="company-name">Vito Business OS</div>
+                    <div class="company-name">Dovra AI</div>
                     <div class="company-tagline">La vitrina digital de Honduras</div>
                 </div>
             </div>

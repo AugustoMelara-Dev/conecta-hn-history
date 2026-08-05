@@ -13,10 +13,12 @@
     {{-- Favicon --}}
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
     
-    {{-- Fonts --}}
+    {{-- Fonts: preconnect + preload critical typefaces used by the design system --}}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Epilogue:wght@400;500;600;700;800&display=swap" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Epilogue:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
     {{-- Styles --}}
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -113,7 +115,7 @@
             
             {{-- Copyright --}}
             <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-500 text-sm">
-                <p>&copy; {{ date('Y') }} Conecta HN. Todos los derechos reservados.</p>
+                <p>&copy; {{ date('Y') }} Dovra AI. Todos los derechos reservados.</p>
             </div>
         </div>
     </footer>

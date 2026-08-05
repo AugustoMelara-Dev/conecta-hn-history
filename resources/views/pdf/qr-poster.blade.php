@@ -193,7 +193,7 @@
 
         {{-- Footer con branding --}}
         <div class="footer">
-            <p>Powered by <span class="brand">Vito Business OS</span> - La vitrina digital de Honduras</p>
+            <p>Powered by <span class="brand">Dovra AI</span> - La vitrina digital de Honduras</p>
         </div>
     </div>
 </body>

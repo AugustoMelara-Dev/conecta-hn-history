@@ -1,5 +1,5 @@
 {{--
-    LANDING PAGE - Pagina de ventas B2B para Vito Business OS
+    LANDING PAGE - Pagina de ventas B2B para Dovra AI
     
     Objetivo: Convencer a dueños de negocios de registrarse
     Transmite: Confianza, modernidad, "cero fricción"
@@ -499,7 +499,7 @@
                 ¿Listo para vender más?
             </h2>
             <p class="mt-6 text-xl text-slate-400 max-w-2xl mx-auto">
-                Unete a los negocios que estan ordenando su presencia digital con Vito Business OS.
+                Unete a los negocios que estan ordenando su presencia digital con Dovra AI.
             </p>
             
             <a 
@@ -528,7 +528,7 @@
                     <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
                         <span class="text-white font-bold text-lg">V</span>
                     </div>
-                    <span class="font-bold text-xl text-white">Vito Business OS</span>
+                    <span class="font-bold text-xl text-white">Dovra AI</span>
                 </div>
                 
                 <div class="flex items-center gap-6 text-sm text-slate-400">
@@ -538,7 +538,7 @@
                 </div>
 
                 <p class="text-sm text-slate-500">
-                    © {{ date('Y') }} Vito Business OS. La vitrina digital para negocios locales.
+                    © {{ date('Y') }} Dovra AI. La vitrina digital para negocios locales.
                 </p>
             </div>
         </div>

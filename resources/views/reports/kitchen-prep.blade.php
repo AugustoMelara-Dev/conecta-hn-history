@@ -78,7 +78,7 @@
     @endforelse
 
     <div class="footer">
-        <p>Vito Business OS &bull; Impreso: {{ $generated_at->format('d/m/Y H:i:s') }}</p>
+        <p>Dovra AI &bull; Impreso: {{ $generated_at->format('d/m/Y H:i:s') }}</p>
     </div>
 </body>
 </html>

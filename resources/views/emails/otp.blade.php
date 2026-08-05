@@ -69,7 +69,7 @@
 <body>
     <div class="container">
         <div class="logo">
-            <h1>🇭🇳 Vito Business OS</h1>
+            <h1>🇭🇳 Dovra AI</h1>
             <p style="color: #6c757d; margin: 0;">La Plataforma Digital de Honduras</p>
         </div>
 
@@ -90,7 +90,7 @@
         </div>
 
         <div class="footer">
-            <p>© 2025 Vito Business OS - Todos los derechos reservados</p>
+            <p>© 2025 Dovra AI - Todos los derechos reservados</p>
             <p>Este es un correo automático, por favor no respondas.</p>
         </div>
     </div>

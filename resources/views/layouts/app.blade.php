@@ -8,14 +8,17 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     {{-- SEO Meta --}}
-    <title>{{ $title ?? 'Vito Business OS - Dashboard' }}</title>
+    <title>{{ $title ?? 'Dovra AI - Dashboard' }}</title>
     
     {{-- Favicon --}}
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
 
-    {{-- Fonts: Inter (preconnect for performance) --}}
-    <link rel="preconnect" href="https://fonts.bunny.net">
+    {{-- Fonts: preconnect + preload critical typefaces used by the design system --}}
+    <link rel="preconnect" href="https://fonts.bunny.net" crossorigin>
+    <link rel="preload" as="style" href="https://fonts.bunny.net/css?family=inter:400,500,600,700,800" />
+    <link rel="preload" as="style" href="https://fonts.bunny.net/css?family=manrope:400,500,600,700&family=epilogue:400,500,600,700;800&display=swap" />
     <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700,800" rel="stylesheet" />
+    <link href="https://fonts.bunny.net/css?family=manrope:400,500,600,700&family=epilogue:400,500,600,700;800&display=swap" rel="stylesheet" />
 
     {{-- Styles & Scripts --}}
     @vite(['resources/css/app.css', 'resources/js/app.js'])

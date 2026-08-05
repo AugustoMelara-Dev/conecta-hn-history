@@ -5,7 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title inertia>{{ config('app.name', 'Vito Business OS') }}</title>
+        <title inertia>{{ config('app.name', 'Dovra AI') }}</title>
 
         <!-- Fonts: product typography -->
         <link rel="preconnect" href="https://fonts.bunny.net">
@@ -24,7 +24,7 @@
         @inertiaHead
 
         <!-- Ziggy Routes -->
-        @routes
+        @routes(null, Vite::cspNonce())
 
         <!-- React Fast Refresh -->
         @viteReactRefresh

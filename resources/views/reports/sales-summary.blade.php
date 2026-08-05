@@ -96,7 +96,7 @@
     </table>
 
     <div class="footer">
-        <p>Generado por Vito Business OS &bull; {{ $generated_at->format('d/m/Y H:i:s') }}</p>
+        <p>Generado por Dovra AI &bull; {{ $generated_at->format('d/m/Y H:i:s') }}</p>
     </div>
 </body>
 </html>

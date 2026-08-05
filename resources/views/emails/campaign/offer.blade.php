@@ -37,8 +37,8 @@
         </div>
         
         <div class="footer">
-            <p>Recibiste este correo porque sigues a {{ $campaign->tenant->name }} en Vito Business OS.</p>
-            <p>&copy; {{ date('Y') }} Vito Business OS. Todos los derechos reservados.</p>
+            <p>Recibiste este correo porque sigues a {{ $campaign->tenant->name }} en Dovra AI.</p>
+            <p>&copy; {{ date('Y') }} Dovra AI. Todos los derechos reservados.</p>
         </div>
     </div>
 </body>

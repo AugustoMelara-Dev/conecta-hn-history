@@ -29,7 +29,7 @@
 
             <div class="alert">
                 <h3>Que significa esto</h3>
-                <p>Tu negocio sigue visible en Vito Business OS, pero ahora opera con el plan gratuito:</p>
+                <p>Tu negocio sigue visible en Dovra AI, pero ahora opera con el plan gratuito:</p>
                 <ul style="margin: 10px 0 0 0; color: #6b7280;">
                     <li>Limite de 10 productos visibles</li>
                     <li>Sin personalizacion de colores</li>
@@ -50,7 +50,7 @@
         </div>
 
         <div class="footer">
-            <p>&copy; {{ date('Y') }} Vito Business OS. Todos los derechos reservados.</p>
+            <p>&copy; {{ date('Y') }} Dovra AI. Todos los derechos reservados.</p>
         </div>
     </div>
 </body>

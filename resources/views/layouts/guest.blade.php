@@ -8,8 +8,8 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     {{-- SEO Meta --}}
-    <title>{{ $title ?? 'Vito Business OS' }}</title>
-    <meta name="description" content="{{ $description ?? 'Vito Business OS - El directorio más completo de Honduras' }}">
+    <title>{{ $title ?? 'Dovra AI' }}</title>
+    <meta name="description" content="{{ $description ?? config('dovra.identity.commercial_promise') }}">
     
     {{-- Favicon --}}
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">

@@ -32,7 +32,7 @@
 
             <div class="highlight">
                 <h3>Tu Plan PRO esta activo</h3>
-                <p>Ahora tienes acceso a las funcionalidades premium de Vito Business OS.</p>
+                <p>Ahora tienes acceso a las funcionalidades premium de Dovra AI.</p>
             </div>
 
             <div class="details">
@@ -56,8 +56,8 @@
         </div>
 
         <div class="footer">
-            <p>Gracias por confiar en Vito Business OS</p>
-            <p>&copy; {{ date('Y') }} Vito Business OS. Todos los derechos reservados.</p>
+            <p>Gracias por confiar en Dovra AI</p>
+            <p>&copy; {{ date('Y') }} Dovra AI. Todos los derechos reservados.</p>
         </div>
     </div>
 </body>

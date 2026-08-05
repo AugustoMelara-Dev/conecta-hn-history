@@ -87,7 +87,7 @@
     </div>
 
     <div class="footer">
-        <p>Vito Business OS &bull; {{ $generated_at->format('d/m/Y') }}</p>
+        <p>Dovra AI &bull; {{ $generated_at->format('d/m/Y') }}</p>
     </div>
 </body>
 </html>

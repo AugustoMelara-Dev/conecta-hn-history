@@ -149,7 +149,7 @@
                                         </a>
                                     @endif
                                     
-                                    @if(auth()->user()->hasRole('super_admin') || auth()->user()->email === 'admin@conectahn.com')
+                                    @if(auth()->user()->hasRole('super_admin'))
                                         <a 
                                             href="/admin" 
                                             class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
