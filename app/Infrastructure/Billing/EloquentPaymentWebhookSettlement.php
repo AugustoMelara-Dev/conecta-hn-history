@@ -6,6 +6,8 @@ namespace App\Infrastructure\Billing;
 
 use App\Application\Billing\Contracts\PaymentWebhookSettlementInterface;
 use App\Application\Shared\Contracts\LoggerInterface;
+use App\Domain\Billing\Enums\CanonicalPaymentState;
+use App\Domain\Billing\Mappers\CanonicalPaymentStateMapper;
 use App\Domain\Billing\Repositories\PlanRepositoryInterface;
 use App\Domain\ValueObjects\Payment\PaymentWebhook;
 use Illuminate\Database\QueryException;
@@ -16,10 +18,6 @@ use Throwable;
 
 final readonly class EloquentPaymentWebhookSettlement implements PaymentWebhookSettlementInterface
 {
-    private const STATUS_PENDING = 'pending';
-
-    private const STATUS_APPROVED = 'approved';
-
     public function __construct(
         private LoggerInterface $logger,
         private PlanRepositoryInterface $planRepository,
@@ -52,8 +50,9 @@ final readonly class EloquentPaymentWebhookSettlement implements PaymentWebhookS
             return;
         }
 
-        $payment = DB::transaction(function () use ($webhook) {
-            if ($webhook->isStripe() && ! $this->stripeWebhookMatchesLocalIntent($webhook)) {
+        /** @var array{payment_id: string, tenant_id: string, reference_number: string, idempotency_key: string, recovered: bool}|null $settlement */
+        $settlement = DB::transaction(function () use ($webhook): ?array {
+            if (! $this->webhookMatchesLocalIntent($webhook)) {
                 return null;
             }
 
@@ -63,56 +62,55 @@ final readonly class EloquentPaymentWebhookSettlement implements PaymentWebhookS
                 $payment = $this->createPayment($webhook);
             }
 
-            return $payment;
+            if (property_exists($payment, 'subscription_extended_at') && $payment->subscription_extended_at !== null) {
+                return null;
+            }
+
+            $paymentState = CanonicalPaymentStateMapper::fromManualEvidence((string) $payment->status);
+            if ($paymentState === CanonicalPaymentState::Pending) {
+                if (! $this->approveWebhookPayment($payment)) {
+                    throw new \RuntimeException("Payment {$payment->id} could not be atomically approved.");
+                }
+            } elseif (! $paymentState->canGrantEntitlement()) {
+                $this->logger->warning('Payment webhook found payment in non-billable state; skipping.', [
+                    'payment_id' => $payment->id,
+                    'tenant_id' => $payment->tenant_id,
+                    'status' => $payment->status,
+                ]);
+
+                return null;
+            }
+
+            $this->extendTenantSubscription($webhook->tenantId);
+            if (! $this->markLocalIntentCompleted($webhook)) {
+                throw new \RuntimeException('Local subscription intent could not be atomically completed.');
+            }
+
+            if (! $this->markPaymentExtended((string) $payment->id)) {
+                throw new \RuntimeException("Payment {$payment->id} could not be atomically marked as extended.");
+            }
+
+            $this->persistStripeTenantReferences($webhook);
+
+            return [
+                'payment_id' => (string) $payment->id,
+                'tenant_id' => (string) $payment->tenant_id,
+                'reference_number' => (string) $payment->reference_number,
+                'idempotency_key' => (string) $payment->idempotency_key,
+                'recovered' => $paymentState->canGrantEntitlement(),
+            ];
         }, 3);
 
-        if (! is_object($payment)) {
+        if ($settlement === null) {
             return;
         }
 
-        if (property_exists($payment, 'subscription_extended_at') && $payment->subscription_extended_at !== null) {
-            $this->logger->info('Payment webhook replay recovered an already-settled payment.', [
-                'payment_id' => $payment->id,
-                'tenant_id' => $payment->tenant_id,
-                'idempotency_key' => $payment->idempotency_key,
-            ]);
-
-            return;
-        }
-
-        if ((string) $payment->status === self::STATUS_PENDING) {
-            $this->approveWebhookPayment($webhook);
-            $this->extendTenantSubscription($webhook->tenantId);
-            $this->markStripeIntentCompleted($webhook);
-            $this->persistStripeTenantReferences($webhook);
-
-            $this->logger->info('Payment webhook materialized and approved subscription payment.', [
-                'payment_id' => $payment->id,
-                'tenant_id' => $payment->tenant_id,
-                'reference_number' => $payment->reference_number,
-                'idempotency_key' => $payment->idempotency_key,
-            ]);
-
-            return;
-        }
-
-        if ((string) $payment->status === self::STATUS_APPROVED) {
-            $this->extendTenantSubscription($webhook->tenantId, $payment);
-            $this->markStripeIntentCompleted($webhook);
-            $this->persistStripeTenantReferences($webhook);
-
-            $this->logger->warning('Payment webhook recovered an approved payment that was not yet settled.', [
-                'payment_id' => $payment->id,
-                'tenant_id' => $payment->tenant_id,
-            ]);
-
-            return;
-        }
-
-        $this->logger->warning('Payment webhook found payment in non-billable state; skipping.', [
-            'payment_id' => $payment->id,
-            'tenant_id' => $payment->tenant_id,
-            'status' => $payment->status,
+        $this->logger->info('Payment webhook atomically settled subscription payment.', [
+            'payment_id' => $settlement['payment_id'],
+            'tenant_id' => $settlement['tenant_id'],
+            'reference_number' => $settlement['reference_number'],
+            'idempotency_key' => $settlement['idempotency_key'],
+            'recovered' => $settlement['recovered'],
         ]);
     }
 
@@ -126,7 +124,7 @@ final readonly class EloquentPaymentWebhookSettlement implements PaymentWebhookS
                 'bank' => $webhook->providerName(),
                 'reference_number' => $webhook->paymentReference(),
                 'proof_path' => '',
-                'status' => self::STATUS_PENDING,
+                'status' => 'pending',
                 'idempotency_key' => $webhook->providerId,
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -179,25 +177,21 @@ final readonly class EloquentPaymentWebhookSettlement implements PaymentWebhookS
             ->first();
     }
 
-    private function approveWebhookPayment(PaymentWebhook $webhook): void
+    private function approveWebhookPayment(object $payment): bool
     {
         $values = [
-            'status' => self::STATUS_APPROVED,
+            'status' => 'approved',
             'reviewed_at' => now(),
             'updated_at' => now(),
         ];
 
-        if (Schema::hasColumn('subscription_payments', 'subscription_extended_at')) {
-            $values['subscription_extended_at'] = now();
-        }
-
-        DB::table('subscription_payments')
-            ->where('tenant_id', $webhook->tenantId)
-            ->where('idempotency_key', $webhook->providerId)
-            ->update($values);
+        return DB::table('subscription_payments')
+            ->where('id', $payment->id)
+            ->where('status', 'pending')
+            ->update($values) === 1;
     }
 
-    private function extendTenantSubscription(string $tenantId, ?object $payment = null): void
+    private function extendTenantSubscription(string $tenantId): void
     {
         $tenant = DB::table('tenants')
             ->where('id', $tenantId)
@@ -237,12 +231,18 @@ final readonly class EloquentPaymentWebhookSettlement implements PaymentWebhookS
             ->where('id', $tenantId)
             ->update($values);
 
-        if (is_object($payment) && Schema::hasColumn('subscription_payments', 'subscription_extended_at')) {
-            DB::table('subscription_payments')
-                ->where('id', $payment->id)
-                ->whereNull('subscription_extended_at')
-                ->update(['subscription_extended_at' => now()]);
+    }
+
+    private function markPaymentExtended(string $paymentId): bool
+    {
+        if (! Schema::hasColumn('subscription_payments', 'subscription_extended_at')) {
+            return true;
         }
+
+        return DB::table('subscription_payments')
+            ->where('id', $paymentId)
+            ->whereNull('subscription_extended_at')
+            ->update(['subscription_extended_at' => now()]) === 1;
     }
 
     private function isUniqueConstraintViolation(Throwable $e): bool
@@ -256,12 +256,12 @@ final readonly class EloquentPaymentWebhookSettlement implements PaymentWebhookS
             || ($e->errorInfo[1] ?? null) === 1062;
     }
 
-    private function stripeWebhookMatchesLocalIntent(PaymentWebhook $webhook): bool
+    private function webhookMatchesLocalIntent(PaymentWebhook $webhook): bool
     {
         $intent = $this->findLocalIntentForWebhook($webhook);
 
         if ($intent === null) {
-            $this->logger->warning('Stripe webhook ignored: no matching local subscription intent.', [
+            $this->logger->warning('Payment webhook ignored: no matching local subscription intent.', [
                 'tenant_id' => $webhook->tenantId,
                 'provider_id' => $webhook->providerId,
                 'payment_reference' => $webhook->paymentReference(),
@@ -273,7 +273,7 @@ final readonly class EloquentPaymentWebhookSettlement implements PaymentWebhookS
         }
 
         if ((string) $intent->tenant_id !== $webhook->tenantId) {
-            $this->logger->warning('Stripe webhook ignored: tenant mismatch against local intent.', [
+            $this->logger->warning('Payment webhook ignored: tenant mismatch against local intent.', [
                 'webhook_tenant_id' => $webhook->tenantId,
                 'intent_tenant_id' => (string) $intent->tenant_id,
                 'intent_id' => (string) $intent->id,
@@ -282,8 +282,10 @@ final readonly class EloquentPaymentWebhookSettlement implements PaymentWebhookS
             return false;
         }
 
-        if (! in_array((string) $intent->status, ['PENDING', 'PROCESSING'], true)) {
-            $this->logger->info('Stripe webhook ignored: local subscription intent is already terminal.', [
+        $intentState = CanonicalPaymentStateMapper::fromSubscriptionIntent((string) $intent->status);
+
+        if (! $intentState->isInProgress()) {
+            $this->logger->info('Payment webhook ignored: local subscription intent is already terminal.', [
                 'tenant_id' => $webhook->tenantId,
                 'intent_id' => (string) $intent->id,
                 'status' => (string) $intent->status,
@@ -292,11 +294,12 @@ final readonly class EloquentPaymentWebhookSettlement implements PaymentWebhookS
             return false;
         }
 
-        if ((string) $intent->gateway_provider !== 'stripe') {
-            $this->logger->warning('Stripe webhook ignored: local intent provider mismatch.', [
+        if (strtolower((string) $intent->gateway_provider) !== strtolower($webhook->providerName())) {
+            $this->logger->warning('Payment webhook ignored: local intent provider mismatch.', [
                 'tenant_id' => $webhook->tenantId,
                 'intent_id' => (string) $intent->id,
                 'gateway_provider' => (string) $intent->gateway_provider,
+                'webhook_provider' => $webhook->providerName(),
             ]);
 
             return false;
@@ -304,7 +307,7 @@ final readonly class EloquentPaymentWebhookSettlement implements PaymentWebhookS
 
         $plan = $this->planRepository->findByIdentifier((string) $intent->plan_identifier);
         if ($plan === null) {
-            $this->logger->warning('Stripe webhook ignored: local intent references unknown plan.', [
+            $this->logger->warning('Payment webhook ignored: local intent references unknown plan.', [
                 'tenant_id' => $webhook->tenantId,
                 'intent_id' => (string) $intent->id,
                 'plan_identifier' => (string) $intent->plan_identifier,
@@ -315,7 +318,7 @@ final readonly class EloquentPaymentWebhookSettlement implements PaymentWebhookS
 
         $metadataPlan = $webhook->planIdentifier();
         if ($metadataPlan !== null && $metadataPlan !== (string) $intent->plan_identifier) {
-            $this->logger->warning('Stripe webhook ignored: plan metadata mismatch.', [
+            $this->logger->warning('Payment webhook ignored: plan metadata mismatch.', [
                 'tenant_id' => $webhook->tenantId,
                 'intent_id' => (string) $intent->id,
                 'expected_plan' => (string) $intent->plan_identifier,
@@ -326,7 +329,7 @@ final readonly class EloquentPaymentWebhookSettlement implements PaymentWebhookS
         }
 
         if (strtolower($webhook->currency()) !== strtolower($plan->price->currency)) {
-            $this->logger->warning('Stripe webhook ignored: currency mismatch.', [
+            $this->logger->warning('Payment webhook ignored: currency mismatch.', [
                 'tenant_id' => $webhook->tenantId,
                 'intent_id' => (string) $intent->id,
                 'expected_currency' => $plan->price->currency,
@@ -337,7 +340,7 @@ final readonly class EloquentPaymentWebhookSettlement implements PaymentWebhookS
         }
 
         if ($webhook->amountInCents() !== $plan->price->amount) {
-            $this->logger->warning('Stripe webhook ignored: amount mismatch.', [
+            $this->logger->warning('Payment webhook ignored: amount mismatch.', [
                 'tenant_id' => $webhook->tenantId,
                 'intent_id' => (string) $intent->id,
                 'expected_amount_cents' => $plan->price->amount,
@@ -354,7 +357,7 @@ final readonly class EloquentPaymentWebhookSettlement implements PaymentWebhookS
             && $gatewayTransactionId !== $webhook->paymentReference()
             && ! str_starts_with($webhook->eventType, 'invoice.')
         ) {
-            $this->logger->warning('Stripe webhook ignored: payment intent mismatch.', [
+            $this->logger->warning('Payment webhook ignored: payment intent mismatch.', [
                 'tenant_id' => $webhook->tenantId,
                 'intent_id' => (string) $intent->id,
                 'expected_payment_reference' => $gatewayTransactionId,
@@ -364,15 +367,31 @@ final readonly class EloquentPaymentWebhookSettlement implements PaymentWebhookS
             return false;
         }
 
-        DB::table('subscription_intents')
+        $claimed = DB::table('subscription_intents')
             ->where('id', (string) $intent->id)
+            ->whereIn('status', ['PENDING', 'PROCESSING'])
             ->update([
                 'status' => 'PROCESSING',
                 'gateway_transaction_id' => $webhook->paymentReference(),
                 'updated_at' => now(),
             ]);
 
-        return true;
+        if ($claimed === 1) {
+            return true;
+        }
+
+        // MySQL reports zero affected rows when an already-PROCESSING intent is
+        // written with the same reference within the same timestamp second.
+        // Re-read the authoritative state so a semantic no-op is not mistaken
+        // for a rejected claim, while a concurrent terminal transition remains
+        // fail-closed.
+        return DB::table('subscription_intents')
+            ->where('id', (string) $intent->id)
+            ->where('tenant_id', $webhook->tenantId)
+            ->where('status', 'PROCESSING')
+            ->where('gateway_provider', $webhook->providerName())
+            ->where('gateway_transaction_id', $webhook->paymentReference())
+            ->exists();
     }
 
     private function handleStripeNonSuccessfulEvent(PaymentWebhook $webhook): void
@@ -381,46 +400,71 @@ final readonly class EloquentPaymentWebhookSettlement implements PaymentWebhookS
             return;
         }
 
-        $intent = $this->findLocalIntentForWebhook($webhook);
+        DB::transaction(function () use ($webhook): void {
+            $intent = $this->findLocalIntentForWebhook($webhook);
 
-        if ($intent === null) {
-            $this->logger->warning('Stripe non-success webhook ignored: no matching local subscription intent.', [
-                'tenant_id' => $webhook->tenantId,
-                'provider_id' => $webhook->providerId,
-                'subscription_intent_id' => $webhook->subscriptionIntentId(),
-            ]);
+            if ($intent === null) {
+                $this->logger->warning('Stripe non-success webhook ignored: no matching local subscription intent.', [
+                    'tenant_id' => $webhook->tenantId,
+                    'provider_id' => $webhook->providerId,
+                    'subscription_intent_id' => $webhook->subscriptionIntentId(),
+                ]);
 
-            return;
-        }
+                return;
+            }
 
-        DB::table('subscription_intents')
-            ->where('id', (string) $intent->id)
-            ->update([
-                'status' => 'FAILED',
-                'error_reason' => 'invoice.payment_failed',
-                'gateway_transaction_id' => $webhook->paymentReference(),
-                'updated_at' => now(),
-            ]);
+            if (strtolower((string) $intent->gateway_provider) !== strtolower($webhook->providerName())) {
+                $this->logger->warning('Stripe non-success webhook ignored: local intent provider mismatch.', [
+                    'tenant_id' => $webhook->tenantId,
+                    'intent_id' => (string) $intent->id,
+                    'gateway_provider' => (string) $intent->gateway_provider,
+                    'webhook_provider' => $webhook->providerName(),
+                ]);
 
-        DB::table('tenants')
-            ->where('id', $webhook->tenantId)
-            ->update([
-                'subscription_status' => 'past_due',
-                'updated_at' => now(),
-            ]);
+                return;
+            }
+
+            $intentState = CanonicalPaymentStateMapper::fromSubscriptionIntent((string) $intent->status);
+            if (! $intentState->isInProgress()) {
+                $this->logger->info('Stripe non-success webhook ignored: local subscription intent is already terminal.', [
+                    'tenant_id' => $webhook->tenantId,
+                    'intent_id' => (string) $intent->id,
+                    'status' => (string) $intent->status,
+                ]);
+
+                return;
+            }
+
+            $failed = DB::table('subscription_intents')
+                ->where('id', (string) $intent->id)
+                ->whereIn('status', ['PENDING', 'PROCESSING'])
+                ->update([
+                    'status' => 'FAILED',
+                    'error_reason' => 'invoice.payment_failed',
+                    'gateway_transaction_id' => $webhook->paymentReference(),
+                    'updated_at' => now(),
+                ]);
+
+            if ($failed !== 1) {
+                return;
+            }
+
+            DB::table('tenants')
+                ->where('id', $webhook->tenantId)
+                ->update([
+                    'subscription_status' => 'past_due',
+                    'updated_at' => now(),
+                ]);
+        }, 3);
     }
 
-    private function markStripeIntentCompleted(PaymentWebhook $webhook): void
+    private function markLocalIntentCompleted(PaymentWebhook $webhook): bool
     {
-        if (! $webhook->isStripe()) {
-            return;
-        }
-
         $intentId = $webhook->subscriptionIntentId();
         $clientKey = $webhook->clientIdempotencyKey();
 
         if ($intentId === null && $clientKey === null) {
-            return;
+            return false;
         }
 
         $query = DB::table('subscription_intents')
@@ -432,11 +476,11 @@ final readonly class EloquentPaymentWebhookSettlement implements PaymentWebhookS
             $query->where('client_idempotency_key', $clientKey);
         }
 
-        $query->update([
+        return $query->whereIn('status', ['PENDING', 'PROCESSING'])->update([
             'status' => 'COMPLETED',
             'gateway_transaction_id' => $webhook->paymentReference(),
             'updated_at' => now(),
-        ]);
+        ]) === 1;
     }
 
     private function persistStripeTenantReferences(PaymentWebhook $webhook): void

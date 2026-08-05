@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Billing\Repositories;
 
+use App\Domain\Billing\DTOs\WebhookEventClaim;
+
 /**
  * WebhookLogRepositoryInterface - Domain Port for Webhook Audit & Idempotency
  *
@@ -27,6 +29,17 @@ interface WebhookLogRepositoryInterface
      * @param  array<string, mixed>  $payload
      */
     public function recordFirstSeen(string $provider, string $externalEventId, string $eventType, array $payload): bool;
+
+    /**
+     * Claim an event before side effects, or reclaim it after a failure/stale lease.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public function claim(string $provider, string $externalEventId, string $eventType, array $payload, int $leaseSeconds = 300): ?WebhookEventClaim;
+
+    public function markProcessed(WebhookEventClaim $claim): bool;
+
+    public function markFailed(WebhookEventClaim $claim, \Throwable $error): bool;
 
     /**
      * Log a webhook event for audit trail.

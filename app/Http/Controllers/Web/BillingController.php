@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Web;
 
-use App\Domain\Billing\Repositories\PaymentRepositoryInterface;
 use App\Domain\Billing\Enums\PaymentStatus;
+use App\Domain\Billing\Repositories\PaymentRepositoryInterface;
 use App\Http\Controllers\Controller;
 use App\Settings\GeneralSettings;
 use Inertia\Inertia;
@@ -40,7 +40,7 @@ final class BillingController extends Controller
 
         // Security: Verify ownership
         $user = auth()->user();
-        if ($user && $tenantUserId !== $user->id) {
+        if ($user === null || $tenantUserId === null || (string) $tenantUserId !== (string) $user->id) {
             abort(403, 'No tienes permiso para ver esta pagina.');
         }
 
@@ -96,7 +96,7 @@ final class BillingController extends Controller
             $phone = '504'.$phone;
         }
 
-        $message = "Hola, acabo de registrar mi negocio *{$tenantName}* en Vito Business OS.\n\n";
+        $message = "Hola, acabo de registrar mi negocio *{$tenantName}* en Dovra AI.\n\n";
         $message .= "Adjunto el comprobante de pago:\n";
         $message .= "Referencia: *{$reference}*\n";
         $message .= "Monto: *{$formattedAmount}*";

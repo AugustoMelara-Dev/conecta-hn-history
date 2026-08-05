@@ -9,8 +9,9 @@ use App\Application\Billing\Results\BillingCheckoutResult;
 use App\Application\Billing\Services\BillingCheckoutService;
 use App\Domain\Access\Enums\Permission;
 use App\Domain\Billing\Gateways\SubscriptionCheckoutGatewayInterface;
+use App\Domain\Billing\Services\AiCreditUsageService;
+use App\Domain\Billing\Services\PlanEntitlementService;
 use App\Domain\TenantGovernance\Enums\Capability;
-use App\Domain\TenantGovernance\Enums\TenantFeature;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
 use App\Models\User;
@@ -20,8 +21,8 @@ use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Components\Section;
+use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
@@ -32,7 +33,6 @@ use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Str;
 use Illuminate\Support\HtmlString;
 
 /**
@@ -64,9 +64,9 @@ class ManageBilling extends Page implements HasForms, HasTable
 
     public bool $paymentsTableAvailable = true;
 
-    public float $subscriptionAmount = 99.00;
+    public float $subscriptionAmount = 0.0;
 
-    public string $formattedPrice = 'L. 99.00';
+    public string $formattedPrice = '';
 
     public string $bankInstructions = '';
 
@@ -74,6 +74,23 @@ class ManageBilling extends Page implements HasForms, HasTable
 
     /** @var array<string, mixed> */
     public array $planPresentation = [];
+
+    /** @var array<string, mixed> */
+    public array $planEntitlements = [];
+
+    /** @var array<string, mixed> */
+    public array $aiUsage = [
+        'allowance' => 0.0,
+        'daily_limit' => 0.0,
+        'spent' => 0.0,
+        'reserved' => 0.0,
+        'available' => 0.0,
+        'percentage' => 0,
+        'threshold' => 0,
+        'status' => 'healthy',
+        'resets_at' => null,
+        'reset_label' => null,
+    ];
 
     public static function canAccess(): bool
     {
@@ -87,7 +104,7 @@ class ManageBilling extends Page implements HasForms, HasTable
         return app(\App\Application\Access\Contracts\TenantPermissionGuardInterface::class)->allows(
             $user,
             $tenant,
-            \App\Domain\TenantGovernance\Enums\Capability::CATALOG_BASIC,
+            \App\Domain\TenantGovernance\Enums\Capability::BILLING_PORTAL,
             \App\Domain\Access\Enums\Permission::BILLING_VIEW
         );
     }
@@ -129,7 +146,15 @@ class ManageBilling extends Page implements HasForms, HasTable
 
         $this->loadSettings();
         $this->planPresentation = $this->resolvePlanPresentation($tenant);
-        $this->paymentsTableAvailable = Schema::hasTable((new SubscriptionPayment())->getTable());
+        $this->planEntitlements = app(PlanEntitlementService::class)->forTenant($tenant)->toArray();
+        $this->paymentsTableAvailable = Schema::hasTable((new SubscriptionPayment)->getTable());
+
+        if (Schema::hasTable('ai_credit_reservations')) {
+            $this->aiUsage = app(AiCreditUsageService::class)->forTenant($tenant);
+            $this->aiUsage['reset_label'] = Carbon::parse((string) $this->aiUsage['resets_at'])
+                ->timezone(config('app.timezone'))
+                ->format('d/m/Y');
+        }
 
         $this->pendingPayment = $this->paymentsTableAvailable
             ? SubscriptionPayment::query()
@@ -140,7 +165,7 @@ class ManageBilling extends Page implements HasForms, HasTable
             : null;
 
         $this->isPending = $this->pendingPayment instanceof SubscriptionPayment;
-        $this->isPro = ! $tenant->hasFeature(TenantFeature::UPGRADE_PROMPT) && ! $this->isPending;
+        $this->isPro = in_array((string) ($this->planEntitlements['id'] ?? ''), ['pro', 'enterprise'], true) && ! $this->isPending;
         $this->isFree = ! $this->isPending && ! $this->isPro;
 
         $subscriptionEndsAt = $tenant->getRawOriginal('subscription_ends_at');
@@ -217,7 +242,7 @@ class ManageBilling extends Page implements HasForms, HasTable
                         </div>
                         <div class="biz-split-item">
                             <span class="biz-muted">Beneficiario</span>
-                            <strong>Vito Business OS</strong>
+                            <strong>Dovra AI</strong>
                         </div>
                         <div class="biz-split-item">
                             <span class="biz-muted">Cuenta</span>
@@ -255,7 +280,7 @@ class ManageBilling extends Page implements HasForms, HasTable
             return;
         }
 
-        if (! $user instanceof User || ! app(TenantPermissionGuardInterface::class)->allows($user, $tenant, Capability::CATALOG_BASIC, Permission::BILLING_MANAGE)) {
+        if (! $user instanceof User || ! app(TenantPermissionGuardInterface::class)->allows($user, $tenant, Capability::BILLING_PORTAL, Permission::BILLING_MANAGE)) {
             Notification::make()
                 ->warning()
                 ->title('No tienes permisos para reportar pagos')
@@ -322,7 +347,7 @@ class ManageBilling extends Page implements HasForms, HasTable
             return null;
         }
 
-        if (! $user instanceof User || ! app(TenantPermissionGuardInterface::class)->allows($user, $tenant, Capability::CATALOG_BASIC, Permission::BILLING_MANAGE)) {
+        if (! $user instanceof User || ! app(TenantPermissionGuardInterface::class)->allows($user, $tenant, Capability::BILLING_PORTAL, Permission::BILLING_MANAGE)) {
             Notification::make()
                 ->warning()
                 ->title('No tienes permisos para gestionar pagos')
@@ -331,10 +356,20 @@ class ManageBilling extends Page implements HasForms, HasTable
             return null;
         }
 
+        if ($this->stripeSubscriptionIdFor($tenant) !== null) {
+            Notification::make()
+                ->warning()
+                ->title('La suscripcion ya existe')
+                ->body('Usa el portal de Stripe para renovar o administrar la suscripcion existente sin crear un cobro recurrente duplicado.')
+                ->send();
+
+            return null;
+        }
+
         $result = $billingCheckoutService->start(
             tenantId: (string) $tenant->getKey(),
             planIdentifier: 'pro',
-            clientIdempotencyKey: 'filament-upgrade-'.$tenant->getKey().'-'.Str::uuid(),
+            clientIdempotencyKey: 'filament-upgrade-'.$tenant->getKey().'-pro-'.now()->utc()->format('Y-m'),
         );
 
         if ($result->status === BillingCheckoutResult::STATUS_REQUIRES_PAYMENT && filled($result->checkoutUrl)) {
@@ -376,7 +411,7 @@ class ManageBilling extends Page implements HasForms, HasTable
             return null;
         }
 
-        if (! $user instanceof User || ! app(TenantPermissionGuardInterface::class)->allows($user, $tenant, Capability::CATALOG_BASIC, Permission::BILLING_MANAGE)) {
+        if (! $user instanceof User || ! app(TenantPermissionGuardInterface::class)->allows($user, $tenant, Capability::BILLING_PORTAL, Permission::BILLING_MANAGE)) {
             Notification::make()
                 ->warning()
                 ->title('No tienes permisos para gestionar pagos')
@@ -497,12 +532,16 @@ class ManageBilling extends Page implements HasForms, HasTable
             }
         }
 
-        if ($this->isPro && $this->daysRemaining <= 7) {
+        if ($this->isPro && $this->daysRemaining <= 7 && ! $this->isPending) {
+            $stripeEnabled = strtolower((string) config('services.payment.provider', 'generic')) === 'stripe';
+            $tenant = $this->getTenantRecord();
+            $hasStripeSubscription = $tenant instanceof Tenant
+                && $this->stripeSubscriptionIdFor($tenant) !== null;
             $actions[] = Action::make('renew')
                 ->label('Renovar suscripcion')
                 ->icon('heroicon-o-arrow-path')
                 ->color('warning')
-                ->url(self::getUrl());
+                ->action($stripeEnabled && $hasStripeSubscription ? 'openCustomerPortal' : ($stripeEnabled ? 'startStripeCheckout' : 'submitPayment'));
         }
 
         $tenant = $this->getTenantRecord();
@@ -540,19 +579,29 @@ class ManageBilling extends Page implements HasForms, HasTable
         return is_string($customerId) && $customerId !== '' ? $customerId : null;
     }
 
+    private function stripeSubscriptionIdFor(Tenant $tenant): ?string
+    {
+        $subscriptionId = DB::table('tenant_billing_references')
+            ->where('tenant_id', $tenant->getKey())
+            ->where('provider', 'stripe')
+            ->value('provider_subscription_id');
+
+        return is_string($subscriptionId) && $subscriptionId !== '' ? $subscriptionId : null;
+    }
+
     private function loadSettings(): void
     {
+        $this->subscriptionAmount = \App\Domain\TenantGovernance\Services\SubscriptionPricingService::canonicalProPriceInMajorUnits();
+        $this->formattedPrice = 'L. '.number_format($this->subscriptionAmount, 2);
+        $this->bankInstructions = '';
+        $this->supportWhatsApp = '';
+
         try {
             $settings = app(GeneralSettings::class);
-            $this->subscriptionAmount = (float) ($settings->pro_plan_price ?? 99.00);
-            $this->formattedPrice = 'L. '.number_format($this->subscriptionAmount, 2);
             $this->bankInstructions = (string) ($settings->bank_transfer_instructions ?? '');
             $this->supportWhatsApp = (string) ($settings->support_whatsapp_number ?? '');
         } catch (\Throwable) {
-            $this->subscriptionAmount = 99.00;
-            $this->formattedPrice = 'L. 99.00';
-            $this->bankInstructions = '';
-            $this->supportWhatsApp = '';
+            // Canonical plan price remains available even when optional settings storage is unavailable.
         }
     }
 
@@ -620,7 +669,7 @@ class ManageBilling extends Page implements HasForms, HasTable
             $digits = '504'.$digits;
         }
 
-        $message = rawurlencode('Hola, necesito ayuda con la suscripcion de mi negocio en Vito Business OS.');
+        $message = rawurlencode('Hola, necesito ayuda con la suscripcion de mi negocio en Dovra AI.');
 
         return "https://wa.me/{$digits}?text={$message}";
     }

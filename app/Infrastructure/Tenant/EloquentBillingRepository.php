@@ -14,7 +14,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
  */
 final class EloquentBillingRepository implements BillingRepository
 {
-    public function getInvoices(int $tenantId, int $perPage = 10): LengthAwarePaginator
+    public function getInvoices(string $tenantId, int $perPage = 10): LengthAwarePaginator
     {
         return Payment::query()
             ->where('tenant_id', $tenantId)
@@ -22,7 +22,7 @@ final class EloquentBillingRepository implements BillingRepository
             ->paginate($perPage);
     }
 
-    public function getSubscriptionStatus(int $tenantId): array
+    public function getSubscriptionStatus(string $tenantId): array
     {
         $tenant = Tenant::find($tenantId);
 

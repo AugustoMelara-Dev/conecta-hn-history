@@ -11,5 +11,5 @@ interface BillingReader
     /**
      * Get payment history for a specific tenant.
      */
-    public function getPaymentHistory(int $tenantId, int $limit = 20): Collection;
+    public function getPaymentHistory(string $tenantId, int $limit = 20): Collection;
 }

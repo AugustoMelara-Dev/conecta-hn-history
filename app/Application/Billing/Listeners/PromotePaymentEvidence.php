@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace App\Application\Billing\Listeners;
 
+use App\Application\Shared\Contracts\LoggerInterface;
 use App\Domain\Billing\Entities\PaymentEntity;
 use App\Domain\Billing\Events\PaymentReported;
 use App\Domain\Billing\Repositories\PaymentRepositoryInterface;
 use App\Domain\Billing\Services\DocumentStorageServiceInterface;
 use App\Domain\Shared\Exceptions\StaleObjectException;
+use App\Infrastructure\Shared\Middleware\TenantQueueMiddleware;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
-use App\Application\Shared\Contracts\LoggerInterface;
 use RuntimeException;
 use Throwable;
 
@@ -42,6 +43,11 @@ class PromotePaymentEvidence implements ShouldQueue
         private DocumentStorageServiceInterface $documentStorage,
         private readonly LoggerInterface $logger,
     ) {}
+
+    public function middleware(PaymentReported $event): array
+    {
+        return [new TenantQueueMiddleware($event->tenantId)];
+    }
 
     public function handle(PaymentReported $event): void
     {
@@ -126,7 +132,7 @@ class PromotePaymentEvidence implements ShouldQueue
                 throw $e;
             }
 
-        } while ($attempts < self::MAX_ATTEMPTS);
+        } while (true);
     }
 
     /**

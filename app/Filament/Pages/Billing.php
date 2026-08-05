@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Pages;
 
 use App\Models\Tenant;
+use App\Support\Product\ProductIdentity;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Auth;
 
@@ -83,7 +84,7 @@ class Billing extends Page
             'bank_name' => 'Banco Atlántida',
             'account_type' => 'Cuenta de Ahorro',
             'account_number' => '2060-1234567-8',
-            'account_holder' => 'CONECTA HN S.A. de C.V.',
+            'account_holder' => ProductIdentity::legalEntityName(),
             'email' => 'Contacta soporte desde tu panel',
         ];
     }

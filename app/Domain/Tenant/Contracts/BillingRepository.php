@@ -11,7 +11,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
  */
 interface BillingRepository
 {
-    public function getInvoices(int $tenantId, int $perPage = 10): LengthAwarePaginator;
+    public function getInvoices(string $tenantId, int $perPage = 10): LengthAwarePaginator;
 
-    public function getSubscriptionStatus(int $tenantId): array;
+    public function getSubscriptionStatus(string $tenantId): array;
 }

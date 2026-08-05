@@ -26,24 +26,20 @@ final class ConfigPlanRepository implements PlanRepositoryInterface
             return null;
         }
 
-        return $this->mapEnumToEntity($planEnum);
+        return $this->isActive($planEnum) ? $this->mapEnumToEntity($planEnum) : null;
     }
 
     public function getAllActive(): array
     {
         return array_map(
             fn (TenantPlan $plan) => $this->mapEnumToEntity($plan),
-            TenantPlan::cases()
+            array_values(array_filter(TenantPlan::cases(), $this->isActive(...)))
         );
     }
 
     private function mapEnumToEntity(TenantPlan $plan): PlanEntity
     {
-        /** @var array<string, mixed> $configuredPlan */
-        $configuredPlan = config('subscriptions.plans.'.$plan->value, []);
-        if ($configuredPlan === [] && $plan === TenantPlan::SEMILLA) {
-            $configuredPlan = config('subscriptions.plans.free', []);
-        }
+        $configuredPlan = $this->configuredPlan($plan);
 
         $amount = (int) ($configuredPlan['price'] ?? 0);
         $currency = strtoupper((string) ($configuredPlan['currency'] ?? 'HNL'));
@@ -62,5 +58,23 @@ final class ConfigPlanRepository implements PlanRepositoryInterface
             ),
             externalGatewayId: $externalGatewayId !== '' ? $externalGatewayId : 'plan_'.$plan->value
         );
+    }
+
+    /** @return array<string, mixed> */
+    private function configuredPlan(TenantPlan $plan): array
+    {
+        /** @var array<string, mixed> $configuredPlan */
+        $configuredPlan = config('subscriptions.plans.'.$plan->value, []);
+        if ($configuredPlan === [] && $plan === TenantPlan::SEMILLA) {
+            /** @var array<string, mixed> $configuredPlan */
+            $configuredPlan = config('subscriptions.plans.free', []);
+        }
+
+        return $configuredPlan;
+    }
+
+    private function isActive(TenantPlan $plan): bool
+    {
+        return ($this->configuredPlan($plan)['is_active'] ?? false) === true;
     }
 }

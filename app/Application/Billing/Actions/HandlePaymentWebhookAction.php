@@ -7,8 +7,8 @@ namespace App\Application\Billing\Actions;
 use App\Application\Shared\Contracts\EventBusInterface;
 use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Contracts\Payment\PaymentWebhookHandlerInterface;
-use App\Domain\Billing\Repositories\WebhookLogRepositoryInterface;
 use App\Domain\Billing\Events\PaymentWebhookReceived;
+use App\Domain\Billing\Repositories\WebhookLogRepositoryInterface;
 use App\Domain\ValueObjects\Payment\PaymentWebhook;
 
 /**
@@ -32,14 +32,14 @@ final readonly class HandlePaymentWebhookAction implements PaymentWebhookHandler
             'provider_event_id' => $webhook->providerId,
         ]);
 
-        $firstSeen = $this->webhookLogs->recordFirstSeen(
+        $claimed = $this->webhookLogs->claim(
             $webhook->providerName(),
             $webhook->providerId,
             $webhook->eventType,
             $webhook->payload,
         );
 
-        if (! $firstSeen) {
+        if ($claimed === null) {
             $this->logger->info('Payment webhook replay ignored before side effects', [
                 'tenant_id' => $webhook->tenantId,
                 'event' => $webhook->eventType,
@@ -56,9 +56,30 @@ final readonly class HandlePaymentWebhookAction implements PaymentWebhookHandler
             ];
         }
 
-        // 1. Risk Mitigation: Dispatch Event to Ledger/System
-        // This ensures the transaction is recorded asynchronously.
-        $this->eventBus->dispatch(new PaymentWebhookReceived($webhook));
+        try {
+            // Dispatch is synchronous at this boundary: the durable ledger reaches
+            // processed only after its side effects have completed.
+            $this->eventBus->dispatch(new PaymentWebhookReceived($webhook));
+            if (! $this->webhookLogs->markProcessed($claimed)) {
+                throw new \RuntimeException('Webhook processing lease was lost before it could be marked processed.');
+            }
+        } catch (\Throwable $error) {
+            try {
+                $this->webhookLogs->markFailed($claimed, $error);
+            } catch (\Throwable $markFailedError) {
+                try {
+                    $this->logger->error('Payment webhook failed and its durable failure marker could not be written.', [
+                        'provider' => $webhook->providerName(),
+                        'provider_event_id' => $webhook->providerId,
+                        'mark_failed_exception' => $markFailedError::class,
+                    ]);
+                } catch (\Throwable) {
+                    // The original dispatch error remains authoritative.
+                }
+            }
+
+            throw $error;
+        }
 
         // 2. Acknowledge Receipt
         return [

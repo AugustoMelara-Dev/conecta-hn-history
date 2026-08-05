@@ -28,7 +28,7 @@ final readonly class PaymentFailed implements ShouldDispatchAfterCommit
         public ?string $failureCode = null,
 
         /** Tenant ID for multi-tenant context */
-        public ?int $tenantId = null,
+        public ?string $tenantId = null,
     ) {}
 
     /**
