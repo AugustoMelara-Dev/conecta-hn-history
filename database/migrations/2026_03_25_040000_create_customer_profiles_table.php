@@ -11,7 +11,7 @@ return new class extends Migration
         if (! Schema::hasTable('customer_profiles')) {
             Schema::create('customer_profiles', function (Blueprint $table): void {
                 $table->id();
-                $table->char('tenant_id', 36);
+                $table->uuid('tenant_id');
                 $table->foreign('tenant_id')->references('id')->on('tenants')->cascadeOnDelete();
                 $table->string('normalized_email')->nullable();
                 $table->string('normalized_phone', 32)->nullable();

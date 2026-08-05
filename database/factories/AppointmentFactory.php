@@ -22,8 +22,15 @@ class AppointmentFactory extends Factory
 
         return [
             'tenant_id' => Tenant::factory(),
-            'service_id' => Service::factory(),
-            'service_provider_id' => ServiceProvider::factory(),
+            // These deferred resolvers receive the already-expanded tenant_id.
+            // Keeping all three rows in the same tenant makes the factory valid
+            // under the composite tenant foreign keys used in production.
+            'service_id' => fn (array $attributes): mixed => Service::factory()->create([
+                'tenant_id' => $attributes['tenant_id'],
+            ])->getKey(),
+            'service_provider_id' => fn (array $attributes): mixed => ServiceProvider::factory()->create([
+                'tenant_id' => $attributes['tenant_id'],
+            ])->getKey(),
             'user_id' => null,
             'scheduled_at' => $scheduledAt,
             'end_at' => (clone $scheduledAt)->modify("+{$durationMinutes} minutes"),

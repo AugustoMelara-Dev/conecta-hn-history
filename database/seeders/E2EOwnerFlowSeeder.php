@@ -7,11 +7,12 @@ namespace Database\Seeders;
 use App\Domain\Identity\Enums\UserRole;
 use App\Models\Category;
 use App\Models\City;
+use App\Models\Product;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 final class E2EOwnerFlowSeeder extends Seeder
 {
@@ -37,7 +38,7 @@ final class E2EOwnerFlowSeeder extends Seeder
         }
 
         $owner = User::query()->firstOrCreate(
-            ['email' => 'owner-demo-ai-guide-hn@vitobusinessos.app'],
+            ['email' => 'owner-demo-ai-guide-hn@conectahn.test'],
             [
                 'name' => 'Owner Demo AI Guide',
                 'password' => Hash::make('ChangeMe123!'),
@@ -47,18 +48,18 @@ final class E2EOwnerFlowSeeder extends Seeder
         );
 
         $customer = User::query()->firstOrCreate(
-            ['email' => 'customer-demo-ai-guide-hn@vitobusinessos.app'],
+            ['email' => 'customer-demo-ai-guide-hn@conectahn.test'],
             [
                 'name' => 'Customer Demo AI Guide',
                 'password' => Hash::make('ChangeMe123!'),
-                'role' => UserRole::USER->value,
+                'role' => UserRole::CUSTOMER->value,
                 'email_verified_at' => now(),
             ]
         );
 
         $tenant = Tenant::query()->firstOrNew(['slug' => 'demo-ai-guide-hn']);
         if (! $tenant->exists) {
-            $tenant->id = (string) Str::uuid();
+            $tenant->forceFill(['id' => '019d0000-0000-7000-8000-000000000003']);
         }
 
         $tenant->fill([
@@ -70,8 +71,7 @@ final class E2EOwnerFlowSeeder extends Seeder
             'plan_type' => 'pro',
             'subscription_status' => 'active',
             'is_active' => true,
-            'is_visible' => true,
-            'business_type' => 'service',
+            'business_type' => 'retail',
             'email' => $owner->email,
             'phone' => '+50499997777',
             'website_url' => 'https://demo-ai-guide-hn.local',
@@ -80,5 +80,32 @@ final class E2EOwnerFlowSeeder extends Seeder
 
         $owner->forceFill(['tenant_id' => $tenant->id])->save();
         $customer->forceFill(['tenant_id' => null])->save();
+
+        DB::table('personal_access_tokens')->updateOrInsert(['id' => 900001], [
+            'tokenable_type' => User::class,
+            'tokenable_id' => $owner->getKey(),
+            'name' => 'critical-e2e-owner',
+            'token' => hash('sha256', 'e2e-owner-economic-token'),
+            'abilities' => '["tenant:019d0000-0000-7000-8000-000000000003"]',
+            'last_used_at' => null,
+            'expires_at' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        // INFRA_TENANT_FILTER: deterministic E2E fixture lookup is constrained to the seeded tenant and exact product name.
+        if (! Product::query()->withoutGlobalScopes()
+            ->where('tenant_id', $tenant->id)
+            ->where('name', 'Producto E2E confirmado')
+            ->exists()) {
+            Product::withoutEvents(static fn (): Product => Product::factory()
+                ->forTenant($tenant)
+                ->withStock(100)
+                ->create([
+                    'name' => 'Producto E2E confirmado',
+                    'price' => 125.50,
+                    'is_active' => true,
+                    'is_visible' => true,
+                ]));
+        }
     }
 }

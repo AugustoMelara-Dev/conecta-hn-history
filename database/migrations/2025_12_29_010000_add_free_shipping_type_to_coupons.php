@@ -42,9 +42,13 @@ return new class extends Migration
             Schema::table('coupons', function (Blueprint $table) {
                 $table->renameColumn('type_new', 'type');
             });
-        } else {
-            // MySQL/PostgreSQL
+        } elseif ($driver === 'mysql') {
             DB::statement("ALTER TABLE coupons MODIFY COLUMN type ENUM('fixed', 'percent', 'free_shipping') NOT NULL");
+        } elseif ($driver === 'pgsql') {
+            DB::statement('ALTER TABLE coupons DROP CONSTRAINT IF EXISTS coupons_type_check');
+            DB::statement("ALTER TABLE coupons ADD CONSTRAINT coupons_type_check CHECK (type IN ('fixed', 'percent', 'free_shipping'))");
+        } else {
+            throw new RuntimeException("Unsupported database driver: {$driver}");
         }
     }
 
@@ -60,13 +64,21 @@ return new class extends Migration
             DB::table('coupons')
                 ->where('type', 'free_shipping')
                 ->update(['type' => 'fixed']);
-        } else {
-            // MySQL/PostgreSQL
+        } elseif ($driver === 'mysql') {
             DB::table('coupons')
                 ->where('type', 'free_shipping')
                 ->update(['type' => 'fixed']);
 
             DB::statement("ALTER TABLE coupons MODIFY COLUMN type ENUM('fixed', 'percent') NOT NULL");
+        } elseif ($driver === 'pgsql') {
+            DB::table('coupons')
+                ->where('type', 'free_shipping')
+                ->update(['type' => 'fixed']);
+
+            DB::statement('ALTER TABLE coupons DROP CONSTRAINT IF EXISTS coupons_type_check');
+            DB::statement("ALTER TABLE coupons ADD CONSTRAINT coupons_type_check CHECK (type IN ('fixed', 'percent'))");
+        } else {
+            throw new RuntimeException("Unsupported database driver: {$driver}");
         }
     }
 };

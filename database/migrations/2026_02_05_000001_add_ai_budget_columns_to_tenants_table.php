@@ -34,13 +34,13 @@ return new class extends Migration
             $table->decimal('ai_balance', 10, 6)
                 ->default(0.000000)
                 ->after('plan')
-                ->comment('Créditos IA confirmados disponibles (USD)');
+                ->comment('Créditos comerciales IA confirmados disponibles');
 
             // Balance reservado - créditos bloqueados en solicitudes activas
             $table->decimal('ai_reserved_balance', 10, 6)
                 ->default(0.000000)
                 ->after('ai_balance')
-                ->comment('Créditos IA bloqueados en solicitudes pendientes (USD)');
+                ->comment('Créditos comerciales IA bloqueados en solicitudes pendientes');
 
             // Índice para consultas de auditoría de saldos
             $table->index(['ai_balance', 'ai_reserved_balance'], 'idx_tenants_ai_budget');
