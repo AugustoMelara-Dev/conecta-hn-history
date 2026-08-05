@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Auth;
 
+use App\Domain\Billing\Repositories\PaymentRepositoryInterface;
 use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Domain\TenantGovernance\Enums\CommercialMode;
 use App\Models\Category;
@@ -13,6 +14,7 @@ use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 final class OwnerRegistrationContractTest extends TestCase
@@ -97,6 +99,8 @@ final class OwnerRegistrationContractTest extends TestCase
 
     public function test_pro_registration_creates_pending_payment_without_pro_entitlement(): void
     {
+        config()->set('subscriptions.plans.pro.price', 63900);
+
         [$city, $category] = $this->referenceData();
 
         $this->postWithCsrf(route('tenant.register.store'), $this->validPayload([
@@ -124,7 +128,20 @@ final class OwnerRegistrationContractTest extends TestCase
         $this->assertSame('pending', $payment->status);
         $this->assertSame('pending_activation', $payment->bank);
         $this->assertSame('pending', $payment->proof_path);
-        $this->assertSame(500.0, (float) $payment->amount);
+        $this->assertSame(639.0, (float) $payment->amount);
+
+        $paymentResult = $this->app->make(PaymentRepositoryInterface::class)
+            ->findByIdWithTenant((string) $payment->id);
+
+        $this->assertNotNull($paymentResult);
+        $this->assertSame(63900, $paymentResult['payment']->amount->amount);
+        $this->assertSame('L639.00', $paymentResult['payment']->amount->format());
+
+        $this->get(route('payment.pending', $payment->id))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Billing/PaymentPending')
+                ->where('payment.amount', 639));
     }
 
     public function test_appointments_registration_persists_derived_service_contract(): void
@@ -189,16 +206,42 @@ final class OwnerRegistrationContractTest extends TestCase
         $this->assertSame(CommercialMode::CONSULTING_LEADS, $tenant->commercial_mode);
     }
 
-    public function test_hybrid_registration_is_rejected_without_pilot_gate(): void
+    public function test_registration_screen_exposes_launch_ready_hybrid_and_canonical_pro_price(): void
+    {
+        config()->set('subscriptions.plans.pro.price', 63900);
+
+        $this->get(route('tenant.register'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Auth/RegisterTenant')
+                ->where('settings.proPlanPrice', 639)
+                ->where('businessTypes.3.value', CommercialMode::HYBRID->value)
+                ->where('businessTypes.3.disabled', false)
+                ->missing('businessTypes.3.badge')
+                ->where('segmentProfiles.3.key', 'hybrid-core')
+                ->where('segmentProfiles.3.modules', ['Productos', 'Pedidos', 'Servicios', 'Agenda']));
+    }
+
+    public function test_hybrid_registration_is_launch_ready_without_an_allowlist(): void
     {
         [$city, $category] = $this->referenceData();
+        config()->set('conecta.features.hybrid_commercial_mode_tenants', []);
 
         $this->postWithCsrf(route('tenant.register.store'), $this->validPayload([
+            'business_name' => 'Mercado y Taller Hibrido',
+            'slug' => 'mercado-taller-hibrido',
             'email' => 'hybrid.contract@example.com',
             'city_id' => $city->id,
             'category_id' => $category->id,
             'commercial_mode' => CommercialMode::HYBRID->value,
-        ]))->assertSessionHasErrors(['commercial_mode']);
+            'rubro_key' => 'hybrid-core',
+        ]))->assertRedirect('/app/mercado-taller-hibrido');
+
+        $tenant = Tenant::query()->where('slug', 'mercado-taller-hibrido')->firstOrFail();
+
+        self::assertSame(CommercialMode::HYBRID, $tenant->commercial_mode);
+        self::assertSame(BusinessType::SERVICE, $tenant->business_type);
+        self::assertSame('hybrid-core', $tenant->rubro_key);
     }
 
     /**

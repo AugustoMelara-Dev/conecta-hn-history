@@ -6,7 +6,10 @@ namespace Tests\Feature\Auth;
 
 use App\Application\Auth\Commands\GenerateOtpCommand;
 use App\Application\Auth\Contracts\GenerateOtpHandlerInterface;
+use App\Infrastructure\Shared\Context\IdempotencyContext;
 use App\Infrastructure\Shared\Telemetry\TraceContext;
+use App\Models\Tenant;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Ramsey\Uuid\Uuid;
@@ -14,7 +17,7 @@ use Tests\TestCase;
 
 class TelemetryIntegrationTest extends TestCase
 {
-    use \Illuminate\Foundation\Testing\RefreshDatabase;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -28,6 +31,7 @@ class TelemetryIntegrationTest extends TestCase
         $traceId = Uuid::uuid7()->toString();
         $tenantId = Uuid::uuid7()->toString();
         $idempotencyKey = Uuid::uuid7()->toString();
+        Tenant::factory()->create(['id' => $tenantId]);
 
         /** @var TraceContext $context */
         $context = $this->app->make(TraceContext::class);
@@ -43,7 +47,7 @@ class TelemetryIntegrationTest extends TestCase
         );
 
         // Inject Idempotency Key via Context (simulating Middleware)
-        $this->app->make(\App\Infrastructure\Shared\Context\IdempotencyContext::class)
+        $this->app->make(IdempotencyContext::class)
             ->setKey($idempotencyKey);
 
         // 2. Act: Execute via Real Pipeline
@@ -87,7 +91,7 @@ class TelemetryIntegrationTest extends TestCase
 
         // Even for invalid commands, we need the context key IF the decorator/middleware runs before validation.
         // In the real world, middleware runs first.
-        $this->app->make(\App\Infrastructure\Shared\Context\IdempotencyContext::class)
+        $this->app->make(IdempotencyContext::class)
             ->setKey(Uuid::uuid7()->toString());
 
         // 2. Act & Assert: Expect Pipeline Validation Exception
