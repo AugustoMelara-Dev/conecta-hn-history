@@ -14,5 +14,7 @@ final readonly class DiscoveryQuery
         public ?string $desiredLocalDate = null,
         public ?string $offerType = null,
         public int $limit = 6,
+        public ?string $localitySlug = null,
+        public ?string $businessCategorySlug = null,
     ) {}
 }

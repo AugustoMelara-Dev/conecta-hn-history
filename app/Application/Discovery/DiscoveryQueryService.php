@@ -20,7 +20,7 @@ final class DiscoveryQueryService
         private readonly ComparableOfferService $comparables,
         ?SemanticRetrievalAdapter $semanticRetrieval = null,
     ) {
-        $this->semanticRetrieval = $semanticRetrieval ?? new NullSemanticRetrievalAdapter();
+        $this->semanticRetrieval = $semanticRetrieval ?? new NullSemanticRetrievalAdapter;
     }
 
     private readonly SemanticRetrievalAdapter $semanticRetrieval;
@@ -33,19 +33,40 @@ final class DiscoveryQueryService
             currencyCode: $query->currencyCode,
             budgetMinor: $query->budgetMinor,
             offerType: $query->offerType,
+            localitySlug: $query->localitySlug,
+            businessCategorySlug: $query->businessCategorySlug,
         );
         $semanticScores = $this->semanticRetrieval->score($query->searchText, $rows);
 
         $scored = [];
         foreach ($rows as $row) {
             if ($query->desiredLocalDate !== null && $row['source_type'] === 'service') {
-                $status = $this->availability->statusForDate(
-                    tenantId: (string) $row['source_tenant_id'],
-                    locationId: $row['location_id'] !== null ? (string) $row['location_id'] : null,
-                    serviceId: (int) $row['source_record_id'],
-                    localDate: $query->desiredLocalDate,
-                );
+                $projectedLocations = is_array($row['projected_locations'] ?? null)
+                    ? $row['projected_locations']
+                    : [];
+                $locationsForDate = $projectedLocations;
+                if ($locationsForDate === []) {
+                    if ($query->localitySlug !== null) {
+                        continue;
+                    }
 
+                    $locationsForDate = [[
+                        'location_id' => $row['location_id'] ?? null,
+                    ]];
+                }
+
+                $statuses = [];
+                foreach ($locationsForDate as $location) {
+                    $locationId = $location['location_id'] ?? null;
+                    $statuses[] = $this->availability->statusForDate(
+                        tenantId: (string) $row['source_tenant_id'],
+                        locationId: $locationId !== null ? (string) $locationId : null,
+                        serviceId: (int) $row['source_record_id'],
+                        localDate: $query->desiredLocalDate,
+                    );
+                }
+
+                $status = $this->aggregateAvailability($statuses);
                 if (! in_array($status, ['available', 'limited'], true)) {
                     continue;
                 }
@@ -86,8 +107,11 @@ final class DiscoveryQueryService
         $results = array_map(function (array $row) use ($evidenceKeys): array {
             return [
                 'projection_id' => $row['projection_id'],
+                'source_type' => $row['source_type'],
                 'offer_name' => $row['offer_name'],
+                'offer_description' => $this->publicDescription($row['offer_description']),
                 'business_name' => $row['business_name'],
+                'business_url' => $row['business_url'],
                 'country_code' => $row['country_code'],
                 'currency_code' => $row['currency_code'],
                 'availability_status' => $row['availability_status'],
@@ -186,5 +210,35 @@ final class DiscoveryQueryService
             ->unique()
             ->values()
             ->all();
+    }
+
+    private function publicDescription(mixed $description): string
+    {
+        $value = is_string($description) ? strip_tags($description) : '';
+        $value = preg_replace('/[\p{Cc}\p{Cf}]+/u', ' ', $value) ?? '';
+        $value = preg_replace('/\s+/u', ' ', trim($value)) ?? '';
+        $terms = array_map(
+            static fn (mixed $term): string => trim((string) $term),
+            config('dovra_discovery.search.injection_terms', []),
+        );
+        foreach ($terms as $term) {
+            if ($term !== '' && str_contains(mb_strtolower($value), mb_strtolower($term))) {
+                return '';
+            }
+        }
+
+        return trim(mb_substr($value, 0, 500));
+    }
+
+    /** @param list<string> $statuses */
+    private function aggregateAvailability(array $statuses): string
+    {
+        foreach (['available', 'limited', 'unavailable', 'unknown'] as $status) {
+            if (in_array($status, $statuses, true)) {
+                return $status;
+            }
+        }
+
+        return 'unknown';
     }
 }

@@ -26,6 +26,8 @@ final class DiscoveryProjectionStore
                 'source_type' => $projection['source_type'],
                 'source_record_id' => $projection['source_record_id'],
                 'source_tenant_id' => $projection['source_tenant_id'],
+                'business_category_id' => $projection['business_category_id'] ?? null,
+                'business_category_slug' => $projection['business_category_slug'] ?? null,
                 'tenant_market_id' => $projection['tenant_market_id'],
                 'location_id' => $projection['location_id'],
                 'country_code' => $projection['country_code'],
@@ -94,6 +96,12 @@ final class DiscoveryProjectionStore
                     $evidence,
                 ));
             }
+
+            $this->replaceOfferLocations(
+                $projectionId,
+                (string) ($projection['source_tenant_id'] ?? ''),
+                is_array($projection['locations'] ?? null) ? $projection['locations'] : [],
+            );
 
             DB::table('discovery_marketplace_integrity_records')
                 ->where('projection_id', $projectionId)
@@ -172,6 +180,10 @@ final class DiscoveryProjectionStore
                     'updated_at' => $now,
                 ]);
 
+            DB::table('discovery_offer_locations')
+                ->whereIn('projection_id', $projectionIds)
+                ->delete();
+
             DB::table('discovery_marketplace_integrity_records')->insert(
                 $revoked->map(static fn (object $row): array => [
                     'id' => (string) Str::uuid(),
@@ -203,8 +215,14 @@ final class DiscoveryProjectionStore
     }
 
     /** @return list<array<string, mixed>> */
-    public function searchEligible(string $countryCode, ?string $currencyCode, ?int $budgetMinor, ?string $offerType): array
-    {
+    public function searchEligible(
+        string $countryCode,
+        ?string $currencyCode,
+        ?int $budgetMinor,
+        ?string $offerType,
+        ?string $localitySlug = null,
+        ?string $businessCategorySlug = null,
+    ): array {
         $query = DB::table('discovery_published_offers')
             ->where('country_code', $countryCode)
             ->where('is_published', true)
@@ -224,7 +242,57 @@ final class DiscoveryProjectionStore
             $query->where('source_type', $offerType);
         }
 
-        return $query->get()->map(static fn (object $row): array => (array) $row)->all();
+        if ($businessCategorySlug !== null) {
+            $query
+                ->whereNotNull('business_category_id')
+                ->where('business_category_slug', $businessCategorySlug);
+        }
+
+        if ($localitySlug !== null) {
+            $query->whereExists(function ($subquery) use ($countryCode, $localitySlug): void {
+                $subquery
+                    ->selectRaw('1')
+                    ->from('discovery_offer_locations as dol')
+                    ->whereColumn('dol.projection_id', 'discovery_published_offers.id')
+                    ->where('dol.country_code', $countryCode)
+                    ->whereNotNull('dol.locality_id')
+                    ->where('dol.locality_slug', $localitySlug)
+                    ->whereNotIn('dol.availability_status', ['unknown', 'unavailable']);
+            });
+        }
+
+        $rows = $query->get();
+        if ($rows->isEmpty()) {
+            return [];
+        }
+
+        $locations = DB::table('discovery_offer_locations')
+            ->whereIn('projection_id', $rows->pluck('id')->all())
+            ->where('country_code', $countryCode)
+            ->when($localitySlug !== null, function ($q) use ($localitySlug): void {
+                $q->whereNotNull('locality_id')
+                    ->where('locality_slug', $localitySlug)
+                    ->whereNotIn('availability_status', ['unknown', 'unavailable']);
+            })
+            ->orderBy('location_id')
+            ->get()
+            ->groupBy('projection_id');
+
+        $hydrated = $rows->map(static function (object $row) use ($locations): array {
+            $value = (array) $row;
+            $value['projected_locations'] = $locations->get($row->id, collect())
+                ->map(static fn (object $location): array => (array) $location)
+                ->values()
+                ->all();
+
+            return $value;
+        });
+
+        if ($localitySlug !== null) {
+            $hydrated = $hydrated->filter(static fn (array $row): bool => $row['projected_locations'] !== []);
+        }
+
+        return $hydrated->values()->all();
     }
 
     /** @param list<string> $projectionIds @return array<string, list<string>> */
@@ -239,8 +307,48 @@ final class DiscoveryProjectionStore
             ->orderBy('evidence_key')
             ->get()
             ->groupBy('projection_id')
-            ->map(static fn (Collection $rows): array => $rows->pluck('evidence_key')->all())
+            ->map(static fn (Collection $rows): array => $rows->pluck('evidence_key')->unique()->values()->all())
             ->all();
+    }
+
+    /** @param list<array<string, mixed>> $locations */
+    private function replaceOfferLocations(string $projectionId, string $projectionTenantId, array $locations): void
+    {
+        DB::table('discovery_offer_locations')
+            ->where('projection_id', $projectionId)
+            ->delete();
+
+        if ($locations === []) {
+            return;
+        }
+
+        $rows = [];
+        $seen = [];
+        foreach ($locations as $location) {
+            $locationId = (string) ($location['location_id'] ?? '');
+            if ($locationId === '' || isset($seen[$locationId])) {
+                continue;
+            }
+
+            $seen[$locationId] = true;
+            $rows[] = [
+                'id' => (string) Str::uuid(),
+                'projection_id' => $projectionId,
+                'source_tenant_id' => (string) ($location['source_tenant_id'] ?? $projectionTenantId),
+                'location_id' => $locationId,
+                'country_code' => strtoupper((string) ($location['country_code'] ?? '')),
+                'locality_id' => $location['locality_id'] ?? null,
+                'locality_slug' => $location['locality_slug'] ?? null,
+                'availability_status' => (string) ($location['availability_status'] ?? 'unknown'),
+                'is_primary' => (bool) ($location['is_primary'] ?? false),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+
+        if ($rows !== []) {
+            DB::table('discovery_offer_locations')->insert($rows);
+        }
     }
 
     public function updateModeration(string $projectionId, string $status, ?string $reason): void

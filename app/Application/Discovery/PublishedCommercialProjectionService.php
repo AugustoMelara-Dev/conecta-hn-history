@@ -32,6 +32,13 @@ final class PublishedCommercialProjectionService
             $prohibited = $this->containsProhibitedTerms($candidate, $prohibitedTerms);
             $moderationStatus = $prohibited ? 'rejected' : 'approved';
             $moderationScore = $prohibited ? 0 : 100;
+            $locations = array_map(
+                static fn (array $location): array => array_merge($location, [
+                    'source_tenant_id' => (string) $candidate['source_tenant_id'],
+                ]),
+                is_array($candidate['locations'] ?? null) ? $candidate['locations'] : [],
+            );
+            $evidence = $this->uniqueEvidence(is_array($candidate['evidence'] ?? null) ? $candidate['evidence'] : []);
             $isPublished = (bool) ($candidate['market_context_explicit'] ?? ($candidate['tenant_market_id'] !== null))
                 && (bool) ($candidate['market_currency_compatible'] ?? true)
                 && $candidate['country_code'] !== null
@@ -49,7 +56,8 @@ final class PublishedCommercialProjectionService
                 'verification_score' => $verificationScore,
                 'moderation_status' => $moderationStatus,
                 'moderation_score' => $moderationScore,
-                'evidence_snapshot' => array_column($candidate['evidence'], 'evidence_key'),
+                'locations' => $locations,
+                'evidence_snapshot' => array_column($evidence, 'evidence_key'),
                 'published_at' => now(),
                 'projected_at' => now(),
                 'is_published' => $isPublished,
@@ -86,7 +94,7 @@ final class PublishedCommercialProjectionService
                 ],
             ];
 
-            $this->store->upsertProjection($projection, $candidate['evidence'], $integrity);
+            $this->store->upsertProjection($projection, $evidence, $integrity);
         }
 
         $this->store->reconcileMissingProjections($sourceProjectionKeys);
@@ -125,5 +133,23 @@ final class PublishedCommercialProjectionService
         }
 
         return false;
+    }
+
+    /** @param list<array<string, mixed>> $evidence @return list<array<string, mixed>> */
+    private function uniqueEvidence(array $evidence): array
+    {
+        $seen = [];
+        $unique = [];
+        foreach ($evidence as $record) {
+            $key = (string) ($record['evidence_key'] ?? '');
+            if ($key === '' || isset($seen[$key])) {
+                continue;
+            }
+
+            $seen[$key] = true;
+            $unique[] = $record;
+        }
+
+        return $unique;
     }
 }
