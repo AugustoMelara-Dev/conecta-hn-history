@@ -3,8 +3,6 @@
 declare(strict_types=1);
 
 use App\Filament\App\Widgets\AppointmentCalendarWidget;
-use App\Models\Appointment;
-use Livewire\Livewire;
 
 // ═══════════════════════════════════════════════════════════════════════
 // CALENDAR WIDGET TESTS - Filament FullCalendar Integration
@@ -15,11 +13,13 @@ describe('AppointmentCalendarWidget', function () {
         expect(class_exists(AppointmentCalendarWidget::class))->toBeTrue();
     });
 
-    it('extends FullCalendarWidget', function () {
+    it('uses the framework widget boundary instead of an incompatible calendar package', function () {
         $reflection = new ReflectionClass(AppointmentCalendarWidget::class);
-        
+
         expect($reflection->getParentClass()->getName())
-            ->toBe('Saade\FilamentFullCalendar\Widgets\FullCalendarWidget');
+            ->toBe('Filament\Widgets\Widget');
+        expect(file_get_contents(base_path('composer.json')))
+            ->not->toContain('saade/filament-fullcalendar');
     });
 
     it('has fetchEvents method', function () {
@@ -28,6 +28,12 @@ describe('AppointmentCalendarWidget', function () {
 
     it('has config method', function () {
         expect(method_exists(AppointmentCalendarWidget::class, 'config'))->toBeTrue();
+    });
+
+    it('provides week navigation without third party runtime code', function () {
+        expect(method_exists(AppointmentCalendarWidget::class, 'previousWeek'))->toBeTrue();
+        expect(method_exists(AppointmentCalendarWidget::class, 'nextWeek'))->toBeTrue();
+        expect(method_exists(AppointmentCalendarWidget::class, 'currentWeek'))->toBeTrue();
     });
 
     it('has status color mapping', function () {
@@ -52,7 +58,7 @@ describe('Appointment Status Colors', function () {
         $widget = new AppointmentCalendarWidget;
         $reflection = new ReflectionMethod($widget, 'getStatusColor');
         $reflection->setAccessible(true);
-        
+
         expect($reflection->invoke($widget, 'pending'))->toBe('#f59e0b');
     });
 
@@ -60,7 +66,7 @@ describe('Appointment Status Colors', function () {
         $widget = new AppointmentCalendarWidget;
         $reflection = new ReflectionMethod($widget, 'getStatusColor');
         $reflection->setAccessible(true);
-        
+
         expect($reflection->invoke($widget, 'confirmed'))->toBe('#3b82f6');
     });
 
@@ -68,7 +74,7 @@ describe('Appointment Status Colors', function () {
         $widget = new AppointmentCalendarWidget;
         $reflection = new ReflectionMethod($widget, 'getStatusColor');
         $reflection->setAccessible(true);
-        
+
         expect($reflection->invoke($widget, 'completed'))->toBe('#22c55e');
     });
 
@@ -76,7 +82,7 @@ describe('Appointment Status Colors', function () {
         $widget = new AppointmentCalendarWidget;
         $reflection = new ReflectionMethod($widget, 'getStatusColor');
         $reflection->setAccessible(true);
-        
+
         expect($reflection->invoke($widget, 'cancelled'))->toBe('#ef4444');
     });
 });

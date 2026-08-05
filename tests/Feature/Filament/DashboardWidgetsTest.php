@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Filament\App\Widgets\OrdersChart;
+use App\Filament\App\Widgets\OperationalCockpitWidget;
 use App\Filament\App\Widgets\RevenueChart;
 use App\Filament\Pages\Dashboard as SuperAdminDashboard;
 use App\Filament\Widgets\FinancialStatsOverview;
@@ -23,7 +24,7 @@ describe('RevenueChart Widget', function () {
         $reflection = new ReflectionClass(RevenueChart::class);
         $heading = $reflection->getProperty('heading');
 
-        expect($heading->getDefaultValue())->toBe('Ingresos por Ordenes (Ultimos 30 dias)');
+        expect($heading->getDefaultValue())->toBe('Ingresos verificados (ultimos 30 dias)');
     });
 
     it('is configured as line chart', function () {
@@ -71,6 +72,15 @@ describe('OrdersChart Widget', function () {
 });
 
 describe('Widget Registration', function () {
+    it('merchant dashboard registers the action-oriented operational cockpit', function () {
+        $providerPath = dirname(__DIR__, 3).'/app/Providers/Filament/AppPanelProvider.php';
+        $content = file_get_contents($providerPath);
+
+        expect(class_exists(OperationalCockpitWidget::class))->toBeTrue()
+            ->and($content)->toContain(OperationalCockpitWidget::class)
+            ->and(view()->exists('filament.app.widgets.operational-cockpit-widget'))->toBeTrue();
+    });
+
     it('custom dashboard page is available to the admin panel discovery path', function () {
         $providerPath = dirname(__DIR__, 3).'/app/Providers/Filament/AdminPanelProvider.php';
         $content = file_get_contents($providerPath);

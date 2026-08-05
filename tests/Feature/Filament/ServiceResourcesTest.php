@@ -3,8 +3,17 @@
 declare(strict_types=1);
 
 use App\Filament\App\Resources\AppointmentResource;
+use App\Filament\App\Resources\AppointmentResource\Pages\CreateAppointment;
+use App\Filament\App\Resources\AppointmentResource\Pages\EditAppointment;
+use App\Filament\App\Resources\AppointmentResource\Pages\ListAppointments;
 use App\Filament\App\Resources\ServiceProviderResource;
+use App\Filament\App\Resources\ServiceProviderResource\Pages\CreateServiceProvider;
+use App\Filament\App\Resources\ServiceProviderResource\Pages\EditServiceProvider;
+use App\Filament\App\Resources\ServiceProviderResource\Pages\ListServiceProviders;
 use App\Filament\App\Resources\ServiceResource;
+use App\Filament\App\Resources\ServiceResource\Pages\CreateService;
+use App\Filament\App\Resources\ServiceResource\Pages\EditService;
+use App\Filament\App\Resources\ServiceResource\Pages\ListServices;
 use App\Models\Appointment;
 use App\Models\Service;
 use App\Models\ServiceProvider;
@@ -46,29 +55,31 @@ it('ServiceProviderResource has required pages', function () {
     expect($pages)->toHaveKeys(['index', 'create', 'edit']);
 });
 
-// TEST 6: AppointmentResource has required pages
-it('AppointmentResource has required pages', function () {
+// TEST 6: AppointmentResource exposes only canonical write pages
+it('AppointmentResource excludes the unsafe legacy edit route', function () {
     $pages = AppointmentResource::getPages();
-    expect($pages)->toHaveKeys(['index', 'create', 'edit']);
+    expect($pages)
+        ->toHaveKeys(['index', 'create'])
+        ->not->toHaveKey('edit');
 });
 
 // TEST 7: Service page classes exist
 it('Service page classes exist', function () {
-    expect(class_exists(\App\Filament\App\Resources\ServiceResource\Pages\ListServices::class))->toBeTrue();
-    expect(class_exists(\App\Filament\App\Resources\ServiceResource\Pages\CreateService::class))->toBeTrue();
-    expect(class_exists(\App\Filament\App\Resources\ServiceResource\Pages\EditService::class))->toBeTrue();
+    expect(class_exists(ListServices::class))->toBeTrue();
+    expect(class_exists(CreateService::class))->toBeTrue();
+    expect(class_exists(EditService::class))->toBeTrue();
 });
 
 // TEST 8: ServiceProvider page classes exist
 it('ServiceProvider page classes exist', function () {
-    expect(class_exists(\App\Filament\App\Resources\ServiceProviderResource\Pages\ListServiceProviders::class))->toBeTrue();
-    expect(class_exists(\App\Filament\App\Resources\ServiceProviderResource\Pages\CreateServiceProvider::class))->toBeTrue();
-    expect(class_exists(\App\Filament\App\Resources\ServiceProviderResource\Pages\EditServiceProvider::class))->toBeTrue();
+    expect(class_exists(ListServiceProviders::class))->toBeTrue();
+    expect(class_exists(CreateServiceProvider::class))->toBeTrue();
+    expect(class_exists(EditServiceProvider::class))->toBeTrue();
 });
 
-// TEST 9: Appointment page classes exist
-it('Appointment page classes exist', function () {
-    expect(class_exists(\App\Filament\App\Resources\AppointmentResource\Pages\ListAppointments::class))->toBeTrue();
-    expect(class_exists(\App\Filament\App\Resources\AppointmentResource\Pages\CreateAppointment::class))->toBeTrue();
-    expect(class_exists(\App\Filament\App\Resources\AppointmentResource\Pages\EditAppointment::class))->toBeTrue();
+// TEST 9: Appointment canonical pages exist and the legacy class remains loadable
+it('Appointment page compatibility classes exist', function () {
+    expect(class_exists(ListAppointments::class))->toBeTrue();
+    expect(class_exists(CreateAppointment::class))->toBeTrue();
+    expect(class_exists(EditAppointment::class))->toBeTrue();
 });

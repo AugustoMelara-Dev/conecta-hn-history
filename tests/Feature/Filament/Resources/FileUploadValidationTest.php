@@ -18,7 +18,8 @@ test('tenant resource logo_path has security validation', function () {
 
     // Find logo_path section
     expect($content)->toContain("::make('logo_path')");
-    expect($content)->toContain("->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'])");
+    expect($content)->toContain("->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])");
+    expect($content)->not->toContain("->acceptedFileTypes(['image/svg+xml'])");
 });
 
 test('tenant resource banner_path has security validation', function () {

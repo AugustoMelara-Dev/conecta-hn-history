@@ -6,6 +6,7 @@ namespace Tests\Feature\Filament;
 
 use App\Application\TenantGovernance\Crm\CrmDefaultPipelineService;
 use App\Domain\Access\Enums\Role;
+use App\Domain\Shared\Services\TenantContext;
 use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Filament\App\Resources\CrmDealResource;
 use App\Filament\App\Resources\CrmPipelineResource;
@@ -218,6 +219,7 @@ final class CrmDealResourceGatingTest extends TestCase
 
         [$manager, $tenant] = $this->tenantUser(Role::MANAGER);
         $deal = $this->deal($tenant);
+        $this->setAppPanelTenantContext($manager, $tenant);
         $proposal = $deal->pipeline->stages()->where('key', 'proposal')->firstOrFail();
 
         $deal->forceFill([
@@ -256,6 +258,7 @@ final class CrmDealResourceGatingTest extends TestCase
 
     protected function tearDown(): void
     {
+        app(TenantContext::class)->reset();
         Filament::setTenant(null, isQuiet: true);
         Filament::setCurrentPanel(null);
 
@@ -296,7 +299,12 @@ final class CrmDealResourceGatingTest extends TestCase
     private function deal(Tenant $tenant): CrmDeal
     {
         $pipeline = app(CrmDefaultPipelineService::class)->ensureForTenant($tenant);
-        $stage = $pipeline->stages()->where('key', 'new')->firstOrFail();
+        $stage = CrmStage::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', (string) $tenant->getKey())
+            ->where('crm_pipeline_id', $pipeline->getKey())
+            ->where('key', 'new')
+            ->firstOrFail();
         $customer = CustomerProfile::query()->withoutGlobalScopes()->forceCreate([
             'tenant_id' => (string) $tenant->getKey(),
             'name' => 'Cliente de prueba',
@@ -321,6 +329,10 @@ final class CrmDealResourceGatingTest extends TestCase
     private function setAppPanelTenantContext(User $user, Tenant $tenant): void
     {
         $this->actingAs($user);
+
+        $context = app(TenantContext::class);
+        $context->reset();
+        $context->setTenant((string) $tenant->getKey());
 
         if (method_exists($this, 'actingAsTenant')) {
             $this->actingAsTenant((string) $tenant->getKey());
