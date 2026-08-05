@@ -1,9 +1,10 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, usePage } from '@inertiajs/react';
-import { Mail, ShieldCheck, Trash2, UserRound } from 'lucide-react';
+import { Head, Link, usePage } from '@inertiajs/react';
+import { Download, Mail, MonitorSmartphone, ShieldCheck, Trash2, UserRound } from 'lucide-react';
 
 import { Alert, AlertDescription, AlertTitle } from '@/Components/ui/alert';
 import { Badge } from '@/Components/ui/badge';
+import { Button } from '@/Components/ui/button';
 import {
     Card,
     CardContent,
@@ -24,7 +25,7 @@ function SectionIcon({ children }) {
     );
 }
 
-export default function Edit({ mustVerifyEmail, status }) {
+export default function Edit({ mustVerifyEmail, status, twoFactorEnabled = false, twoFactorRequired = false }) {
     const user = usePage().props.auth.user;
     const emailVerified = Boolean(user.email_verified_at);
 
@@ -138,8 +139,37 @@ export default function Edit({ mustVerifyEmail, status }) {
                                         </div>
                                     </div>
                                 </CardHeader>
-                                <CardContent>
+                                <CardContent className="grid gap-6">
                                     <UpdatePasswordForm />
+                                    <Separator />
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <div>
+                                            <p className="text-sm font-medium text-foreground">Verificacion en dos pasos</p>
+                                            <p className="text-sm text-muted-foreground">
+                                                {twoFactorEnabled ? 'Activa: tu cuenta pide un codigo adicional al iniciar sesion.' : 'Agrega una aplicacion autenticadora y codigos de recuperacion.'}
+                                            </p>
+                                        </div>
+                                        <Button asChild variant={twoFactorEnabled ? 'outline' : 'default'}>
+                                            <Link href={route('profile.two-factor.show')}>
+                                                {twoFactorEnabled ? 'Administrar' : twoFactorRequired ? 'Activar ahora' : 'Configurar'}
+                                            </Link>
+                                        </Button>
+                                    </div>
+                                    <Separator />
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <div>
+                                            <p className="text-sm font-medium text-foreground">Sesiones y dispositivos</p>
+                                            <p className="text-sm text-muted-foreground">
+                                                Revisa accesos activos y cierra los que no reconozcas.
+                                            </p>
+                                        </div>
+                                        <Button asChild variant="outline">
+                                            <Link href={route('profile.sessions.index')}>
+                                                <MonitorSmartphone data-icon="inline-start" aria-hidden="true" />
+                                                Revisar
+                                            </Link>
+                                        </Button>
+                                    </div>
                                 </CardContent>
                             </Card>
                         </div>
@@ -168,6 +198,13 @@ export default function Edit({ mustVerifyEmail, status }) {
                                     </div>
                                     <Separator />
                                     <div className="flex items-center justify-between gap-4">
+                                        <span className="text-sm text-muted-foreground">Segundo factor</span>
+                                        <Badge variant={twoFactorEnabled ? 'default' : twoFactorRequired ? 'destructive' : 'outline'}>
+                                            {twoFactorEnabled ? 'Activo' : twoFactorRequired ? 'Requerido' : 'Opcional'}
+                                        </Badge>
+                                    </div>
+                                    <Separator />
+                                    <div className="flex items-center justify-between gap-4">
                                         <span className="text-sm text-muted-foreground">Sesion</span>
                                         <Badge variant="outline">Activa</Badge>
                                     </div>
@@ -178,12 +215,35 @@ export default function Edit({ mustVerifyEmail, status }) {
                                 <CardHeader>
                                     <div className="flex items-start gap-3">
                                         <SectionIcon>
+                                            <Download aria-hidden="true" />
+                                        </SectionIcon>
+                                        <div className="flex flex-col gap-1">
+                                            <CardTitle>Tus datos</CardTitle>
+                                            <CardDescription>
+                                                Descarga una copia portable de tu perfil, actividad y relaciones con negocios.
+                                            </CardDescription>
+                                        </div>
+                                    </div>
+                                </CardHeader>
+                                <CardContent>
+                                    <Button asChild variant="outline">
+                                        <a href={route('mi-cuenta.export')}>
+                                            <Download data-icon="inline-start" aria-hidden="true" />
+                                            Descargar mis datos
+                                        </a>
+                                    </Button>
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardHeader>
+                                    <div className="flex items-start gap-3">
+                                        <SectionIcon>
                                             <Trash2 aria-hidden="true" />
                                         </SectionIcon>
                                         <div className="flex flex-col gap-1">
                                             <CardTitle>Eliminar cuenta</CardTitle>
                                             <CardDescription>
-                                                Esta accion cierra la cuenta y elimina los datos asociados de forma permanente.
+                                                La cuenta se elimina tras revocar accesos. Si administras un negocio, primero debes transferirlo o cerrarlo.
                                             </CardDescription>
                                         </div>
                                     </div>

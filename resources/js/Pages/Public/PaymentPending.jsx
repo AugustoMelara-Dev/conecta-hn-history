@@ -249,7 +249,7 @@ export default function PaymentPending({ payment, tenant, checkUrl }) {
     return (
         <PublicLayout>
             <Head>
-                <title>Procesando pago | Vito Business OS</title>
+                <title>Procesando pago | Dovra AI</title>
                 <meta name="robots" content="noindex" />
             </Head>
 

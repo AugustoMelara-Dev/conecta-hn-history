@@ -98,16 +98,16 @@ export default function Register() {
     return (
         <>
             <Head>
-                <title>Registrar negocio | Vito Business OS</title>
+                <title>Registrar negocio | Dovra AI</title>
                 <meta
                     name="description"
-                    content="Crea una cuenta de negocio en Vito Business OS con URL publica, datos de acceso y validaciones claras."
+                    content="Crea una cuenta de negocio en Dovra AI con URL publica, datos de acceso y validaciones claras."
                 />
                 <link rel="canonical" href={route("register")} />
             </Head>
 
             <AuthShadcnShell
-                imageAlt="Acceso para registrar un negocio en Vito Business OS"
+                imageAlt="Acceso para registrar un negocio en Dovra AI"
                 maxWidthClassName="max-w-xl"
                 eyebrow="Registro de negocio"
                 title="Crea una cuenta lista para operar"

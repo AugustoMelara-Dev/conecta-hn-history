@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Separator } from '@/Components/ui/separator';
+import { SkipLink } from '@/Components/ui/skip-link';
 import {
     Sheet,
     SheetContent,
@@ -38,7 +39,7 @@ function BrandLink() {
                 <Store aria-hidden="true" className="size-4" />
             </span>
             <span className="font-display text-base font-bold tracking-normal text-foreground sm:text-lg">
-                Vito
+                Dovra AI
             </span>
         </Link>
     );
@@ -244,7 +245,7 @@ function Footer() {
             </div>
 
             <div className="border-t px-4 py-5 text-center text-xs text-muted-foreground">
-                &copy; {new Date().getFullYear()} Vito Business OS. Todos los derechos reservados.
+                &copy; {new Date().getFullYear()} Dovra AI. Todos los derechos reservados.
             </div>
         </footer>
     );
@@ -265,8 +266,9 @@ export default function PublicLayout({ children }) {
 
     return (
         <div className="flex min-h-screen flex-col bg-background">
+            <SkipLink />
             <Navbar />
-            <main className="flex-1">{children}</main>
+            <main id="main-content" tabIndex={-1} className="flex-1 outline-none">{children}</main>
             <Footer />
         </div>
     );

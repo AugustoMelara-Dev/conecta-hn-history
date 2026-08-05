@@ -142,6 +142,7 @@ export default function BookingWizard({ tenant, services = [], providers = [] })
         service_provider_id: null,
         date: '',
         time: '',
+        starts_at_utc: '',
         customer_name: '',
         customer_email: '',
         customer_phone: '',
@@ -191,6 +192,7 @@ export default function BookingWizard({ tenant, services = [], providers = [] })
             service_provider_id: null,
             date: '',
             time: '',
+            starts_at_utc: '',
         });
         setStep(2);
     };
@@ -209,11 +211,16 @@ export default function BookingWizard({ tenant, services = [], providers = [] })
             ...data,
             date,
             time: '',
+            starts_at_utc: '',
         });
     };
 
     const handleTimeSelect = (slot) => {
-        setData('time', slot.time);
+        setData({
+            ...data,
+            time: slot.time,
+            starts_at_utc: slot.starts_at_utc,
+        });
         setStep(4);
     };
 

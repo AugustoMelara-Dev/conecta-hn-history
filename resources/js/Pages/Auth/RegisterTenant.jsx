@@ -9,14 +9,12 @@ export default function RegisterTenant(props) {
                 <title>Registrar negocio</title>
                 <meta
                     name="description"
-                    content="Registra tu negocio en Vito Business OS y arranca con el flujo correcto para tiendas, restaurantes, servicios o modelos mixtos."
+                    content="Registra tu negocio en Dovra AI y arranca con el flujo correcto para tiendas, restaurantes, servicios o modelos mixtos."
                 />
                 <link rel="canonical" href={route("tenant.register")} />
             </Head>
 
-            <main role="main">
-                <RegisterTenantWizard {...props} />
-            </main>
+            <RegisterTenantWizard {...props} />
         </>
     )
 }

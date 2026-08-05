@@ -17,7 +17,7 @@ export default function Login({ canResetPassword = true, status = null }) {
             </Head>
 
             <AuthShadcnShell
-                imageAlt="Acceso seguro para negocios en Vito Business OS"
+                imageAlt="Acceso seguro para negocios en Dovra AI"
                 eyebrow={t("auth.login.eyebrow")}
                 title={t("auth.login.heroTitle")}
                 description={t("auth.login.heroDescription")}

@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
 import {
     ArrowRight,
@@ -17,10 +17,12 @@ import {
     X,
     Zap,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
 import { SkipLink } from '@/Components/ui/skip-link';
 import { PUBLIC_BRAND } from '@/lib/publicBrand';
+import DovraMonogram from '@/Components/Brand/DovraMonogram';
+import SeoHead from '@/Components/Seo/SeoHead';
 
 const reveal = {
     initial: { opacity: 0, y: 20 },
@@ -152,8 +154,13 @@ function appRoute(name, params, fallback = '/') {
 
 function Brand() {
     return (
-        <Link href={appRoute('home', undefined, '/')} className="font-light tracking-tighter transition-opacity hover:opacity-75">
-            <span className="text-xl sm:text-2xl">{PUBLIC_BRAND.name}</span>
+        <Link
+            href={appRoute('home', undefined, '/')}
+            className="inline-flex items-center gap-2 transition-opacity hover:opacity-75"
+            aria-label={PUBLIC_BRAND.name}
+        >
+            <DovraMonogram variant="mark" className="size-7 text-zinc-950 dark:text-zinc-100" aria-hidden="true" />
+            <span className="text-xl font-light tracking-tighter sm:text-2xl">{PUBLIC_BRAND.name}</span>
         </Link>
     );
 }
@@ -161,6 +168,68 @@ function Brand() {
 function Navbar({ auth, canRegister, dark, onThemeChange }) {
     const [open, setOpen] = useState(false);
     const [productOpen, setProductOpen] = useState(false);
+    const productMenuId = useId();
+    const productTriggerRef = useRef(null);
+    const productMenuRef = useRef(null);
+
+    useEffect(() => {
+        if (!productOpen) return undefined;
+
+        const handleKeyDown = (event) => {
+            if (event.key === 'Escape') {
+                setProductOpen(false);
+                productTriggerRef.current?.focus();
+            }
+        };
+        const handlePointerDown = (event) => {
+            const target = event.target;
+            if (!(target instanceof Node)) return;
+            if (
+                productMenuRef.current?.contains(target) ||
+                productTriggerRef.current?.contains(target)
+            ) {
+                return;
+            }
+            setProductOpen(false);
+        };
+        document.addEventListener('keydown', handleKeyDown);
+        document.addEventListener('pointerdown', handlePointerDown);
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+            document.removeEventListener('pointerdown', handlePointerDown);
+        };
+    }, [productOpen]);
+    const mobileMenuId = useId();
+    const mobileTriggerRef = useRef(null);
+    const mobileMenuRef = useRef(null);
+
+    useEffect(() => {
+        if (!open) return undefined;
+
+        const handleKeyDown = (event) => {
+            if (event.key === 'Escape') {
+                setOpen(false);
+                mobileTriggerRef.current?.focus();
+            }
+        };
+        const handlePointerDown = (event) => {
+            const target = event.target;
+            if (!(target instanceof Node)) return;
+            if (
+                mobileMenuRef.current?.contains(target) ||
+                mobileTriggerRef.current?.contains(target)
+            ) {
+                return;
+            }
+            setOpen(false);
+        };
+        document.addEventListener('keydown', handleKeyDown);
+        document.addEventListener('pointerdown', handlePointerDown);
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+            document.removeEventListener('pointerdown', handlePointerDown);
+        };
+    }, [open]);
     const panelUrl = auth?.panel_url || auth?.user?.panel_url || '/registrar-negocio';
     const primaryHref = auth?.user ? panelUrl : appRoute('tenant.register', undefined, '/registrar-negocio');
     const primaryLabel = auth?.user ? 'Ir a mi panel' : 'Registrar negocio';
@@ -184,13 +253,30 @@ function Navbar({ auth, canRegister, dark, onThemeChange }) {
                         </a>
                     ))}
                     <div className="relative">
-                        <button type="button" onClick={() => setProductOpen((value) => !value)} className="flex items-center gap-1 rounded-md px-3 py-2 text-sm text-zinc-600 transition-colors hover:bg-black/5 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-zinc-50" aria-expanded={productOpen}>
+                        <button
+                            ref={productTriggerRef}
+                            type="button"
+                            onClick={() => setProductOpen((value) => !value)}
+                            className="flex items-center gap-1 rounded-md px-3 py-2 text-sm text-zinc-600 transition-colors hover:bg-black/5 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-zinc-50"
+                            aria-haspopup="menu"
+                            aria-expanded={productOpen}
+                            aria-controls={productOpen ? productMenuId : undefined}
+                        >
                             Producto
                             <ChevronDown className={`size-3.5 transition-transform ${productOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
                         </button>
                         <AnimatePresence>
                             {productOpen ? (
-                                <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} className="absolute left-0 top-11 w-80 rounded-xl border border-zinc-300 bg-[#eeeeec] p-2 shadow-xl dark:border-zinc-800 dark:bg-[#1c1c1c]">
+                                <motion.div
+                                    ref={productMenuRef}
+                                    id={productMenuId}
+                                    role="menu"
+                                    aria-label="Motores de producto"
+                                    initial={{ opacity: 0, y: -6 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -6 }}
+                                    className="absolute left-0 top-11 w-80 rounded-xl border border-zinc-300 bg-[#eeeeec] p-2 shadow-xl dark:border-zinc-800 dark:bg-[#1c1c1c]"
+                                >
                                     {productEngines.map(({ icon: Icon, name, role }) => (
                                         <a key={name} href="#producto" onClick={() => setProductOpen(false)} className="flex gap-3 rounded-lg p-3 text-left transition-colors hover:bg-black/5 dark:hover:bg-white/5">
                                             <Icon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
@@ -220,10 +306,18 @@ function Navbar({ auth, canRegister, dark, onThemeChange }) {
                             <ArrowRight className="size-3.5" aria-hidden="true" />
                         </Link>
                     )}
-                    <button type="button" onClick={onThemeChange} className="flex size-10 items-center justify-center rounded-md text-zinc-700 transition-colors hover:bg-black/5 dark:text-zinc-300 dark:hover:bg-white/5" aria-label={dark ? 'Usar tema claro' : 'Usar tema oscuro'}>
+                    <button type="button" onClick={onThemeChange} className="flex size-10 items-center justify-center rounded-md text-zinc-700 transition-colors hover:bg-black/5 dark:text-zinc-300 dark:hover:bg-white/5" aria-label={dark ? 'Usar tema claro' : 'Usar tema oscuro'} aria-pressed={dark}>
                         {dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
                     </button>
-                    <button type="button" onClick={() => setOpen((value) => !value)} className="flex size-10 items-center justify-center rounded-md text-zinc-700 hover:bg-black/5 dark:text-zinc-300 dark:hover:bg-white/5 sm:hidden" aria-label={open ? 'Cerrar menú' : 'Abrir menú'} aria-expanded={open}>
+                    <button
+                        ref={mobileTriggerRef}
+                        type="button"
+                        onClick={() => setOpen((value) => !value)}
+                        className="flex size-10 items-center justify-center rounded-md text-zinc-700 hover:bg-black/5 dark:text-zinc-300 dark:hover:bg-white/5 sm:hidden"
+                        aria-label={open ? 'Cerrar menú' : 'Abrir menú'}
+                        aria-expanded={open}
+                        aria-controls={open ? mobileMenuId : undefined}
+                    >
                         {open ? <X className="size-5" /> : <Menu className="size-5" />}
                     </button>
                 </div>
@@ -231,7 +325,16 @@ function Navbar({ auth, canRegister, dark, onThemeChange }) {
 
             <AnimatePresence>
                 {open && (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden border-t border-zinc-300/70 px-4 pb-4 dark:border-zinc-800 sm:hidden">
+                    <motion.div
+                        ref={mobileMenuRef}
+                        id={mobileMenuId}
+                        role="menu"
+                        aria-label="Menú principal"
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden border-t border-zinc-300/70 px-4 pb-4 dark:border-zinc-800 sm:hidden"
+                    >
                         <div className="flex flex-col gap-1 pt-3">
                             {navLinks.map((item) => (
                                 <a key={item.label} href={item.href} onClick={() => setOpen(false)} className="rounded-lg px-3 py-2.5 text-sm text-zinc-700 hover:bg-black/5 dark:text-zinc-300 dark:hover:bg-white/5">
@@ -430,6 +533,9 @@ function Pricing({ auth, canRegister, proPlanPrice }) {
 function FAQ() {
     const [open, setOpen] = useState(0);
 
+    const panelId = (index) => `faq-${index}-panel`;
+    const triggerId = (index) => `faq-${index}-trigger`;
+
     return (
         <motion.section id="preguntas" data-testid="landing-faq" {...reveal} className="mx-auto flex w-full max-w-7xl flex-col items-center gap-8 px-4 py-24 sm:py-28 md:px-8">
             <div className="flex flex-col items-center gap-3 text-center">
@@ -441,12 +547,31 @@ function FAQ() {
                     const active = open === index;
                     return (
                         <div key={item.question}>
-                            <button type="button" onClick={() => setOpen(active ? -1 : index)} className="flex w-full items-center justify-between gap-4 py-5 text-left text-sm font-medium text-zinc-800 dark:text-zinc-200" aria-expanded={active}>
+                            <button
+                                id={triggerId(index)}
+                                type="button"
+                                onClick={() => setOpen(active ? -1 : index)}
+                                className="flex w-full items-center justify-between gap-4 py-5 text-left text-sm font-medium text-zinc-800 dark:text-zinc-200"
+                                aria-expanded={active}
+                                aria-controls={panelId(index)}
+                            >
                                 {item.question}
                                 <ChevronDown className={`size-4 shrink-0 transition-transform ${active ? 'rotate-180' : ''}`} aria-hidden="true" />
                             </button>
                             <AnimatePresence initial={false}>
-                                {active && <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden"><p className="pb-5 text-sm leading-6 text-zinc-600 dark:text-zinc-400">{item.answer}</p></motion.div>}
+                                {active && (
+                                    <motion.div
+                                        id={panelId(index)}
+                                        role="region"
+                                        aria-labelledby={triggerId(index)}
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: 'auto', opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        className="overflow-hidden"
+                                    >
+                                        <p className="pb-5 text-sm leading-6 text-zinc-600 dark:text-zinc-400">{item.answer}</p>
+                                    </motion.div>
+                                )}
                             </AnimatePresence>
                         </div>
                     );
@@ -494,14 +619,40 @@ function Footer({ auth, canRegister }) {
 }
 
 export default function Welcome({ auth, canRegister = true, proPlanPrice }) {
-    const [dark, setDark] = useState(false);
+    const [dark, setDark] = useState(() => {
+        if (typeof window === 'undefined') return false;
+        try {
+            const stored = window.localStorage.getItem('dovra-theme');
+            if (stored === 'dark') return true;
+            if (stored === 'light') return false;
+        } catch (_error) {
+            // localStorage may be unavailable (private mode, restricted contexts)
+        }
+        return typeof window.matchMedia === 'function'
+            && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    });
+
+    useEffect(() => {
+        if (typeof document === 'undefined') return;
+        const root = document.documentElement;
+        root.classList.toggle('dark', dark);
+        root.style.colorScheme = dark ? 'dark' : 'light';
+        try {
+            window.localStorage.setItem('dovra-theme', dark ? 'dark' : 'light');
+        } catch (_error) {
+            // localStorage may be unavailable
+        }
+    }, [dark]);
 
     return (
         <MotionConfig reducedMotion="user">
             <>
-                <Head title={`${PUBLIC_BRAND.name} — ${PUBLIC_BRAND.category}`}>
-                <meta name="description" content={PUBLIC_BRAND.commercialPromise} />
-            </Head>
+                <SeoHead
+                    title={`${PUBLIC_BRAND.name} — ${PUBLIC_BRAND.category}`}
+                    description={PUBLIC_BRAND.commercialPromise}
+                    url={appRoute('home', undefined, '/')}
+                    type="website"
+                />
             <div className={dark ? 'dark' : ''}>
                 <div className="min-h-screen overflow-x-hidden bg-[#eeeeec] font-sans text-zinc-950 selection:bg-sky-300/70 dark:bg-[#131316] dark:text-[#eeeeec] dark:selection:bg-sky-700/70">
                     <SkipLink />

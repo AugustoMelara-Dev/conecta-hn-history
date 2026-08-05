@@ -11,7 +11,7 @@ export default function ForgotPassword({ status = null }) {
                 <title>{t("auth.forgotPassword.headTitle")}</title>
                 <meta
                     name="description"
-                    content="Recupera el acceso a tu cuenta de negocio en Vito Business OS desde un flujo seguro y claro."
+                    content="Recupera el acceso a tu cuenta de negocio en Dovra AI desde un flujo seguro y claro."
                 />
                 <link rel="canonical" href={route("password.request")} />
             </Head>

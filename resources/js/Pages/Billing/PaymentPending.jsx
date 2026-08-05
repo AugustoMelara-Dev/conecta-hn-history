@@ -23,9 +23,9 @@ function money(value) {
 
 function DetailRow({ label, value, valueClassName = "" }) {
     return (
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex min-w-0 items-start justify-between gap-4">
             <span className="text-sm text-muted-foreground">{label}</span>
-            <div className={`text-right text-sm font-semibold text-foreground ${valueClassName}`}>
+            <div className={`min-w-0 break-words text-right text-sm font-semibold text-foreground [overflow-wrap:anywhere] ${valueClassName}`}>
                 {value}
             </div>
         </div>
@@ -55,14 +55,14 @@ export default function PaymentPending({ payment, bankInstructions, whatsappUrl 
     return (
         <>
             <Head>
-                <title>Completar pago | Vito Business OS</title>
+                <title>Completar pago | Dovra AI</title>
                 <meta
                     name="description"
-                    content="Instrucciones para completar el pago PRO de un negocio registrado en Vito Business OS."
+                    content="Instrucciones para completar el pago PRO de un negocio registrado en Dovra AI."
                 />
             </Head>
 
-            <AuthShadcnShell imageAlt="Estado de pago pendiente de Vito Business OS" maxWidthClassName="max-w-lg">
+            <AuthShadcnShell imageAlt="Estado de pago pendiente de Dovra AI" maxWidthClassName="max-w-lg">
                 <Card data-testid="payment-pending-card">
                     <CardHeader className="gap-4 text-center">
                         <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
@@ -117,7 +117,7 @@ export default function PaymentPending({ payment, bankInstructions, whatsappUrl 
                         ) : null}
 
                         {whatsappUrl ? (
-                            <Button asChild size="lg" data-testid="payment-pending-whatsapp">
+                            <Button asChild size="lg" className="h-auto min-h-11 w-full whitespace-normal px-4 py-3 text-center sm:whitespace-nowrap" data-testid="payment-pending-whatsapp">
                                 <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
                                     <MessageCircle data-icon="inline-start" aria-hidden="true" />
                                     Enviar comprobante por WhatsApp

@@ -12,7 +12,7 @@ const documents = {
         title: 'Términos de servicio',
         eyebrow: 'Condiciones de uso',
         description:
-            'Reglas básicas para usar Vito Business OS como visitante, usuario o negocio registrado.',
+            'Reglas básicas para usar Dovra AI como visitante, usuario o negocio registrado.',
         icon: FileText,
         sections: [
             {
@@ -74,7 +74,7 @@ export default function LegalShow({ kind = 'terms' }) {
 
     return (
         <PublicLayout>
-            <Head title={`${document.title} | Vito Business OS`} />
+            <Head title={`${document.title} | Dovra AI`} />
 
             <section className="border-b bg-muted/30">
                 <div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-12 sm:px-6 lg:px-8">

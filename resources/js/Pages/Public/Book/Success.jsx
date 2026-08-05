@@ -16,7 +16,7 @@ import { Separator } from '@/Components/ui/separator';
 export default function BookingSuccess({ tenant, appointment }) {
     return (
         <PublicLayout>
-            <Head title={`Reserva confirmada - ${tenant.name}`} />
+            <Head title={`Solicitud de reserva recibida - ${tenant.name}`} />
 
             <div className="min-h-screen bg-background px-4 py-12 sm:px-6 lg:px-8">
                 <div className="mx-auto flex max-w-xl flex-col gap-6">
@@ -27,9 +27,9 @@ export default function BookingSuccess({ tenant, appointment }) {
                             </div>
                             <div className="flex flex-col gap-2">
                                 <Badge variant="secondary" className="mx-auto w-fit">
-                                    Reserva recibida
+                                    Solicitud de reserva recibida
                                 </Badge>
-                                <CardTitle>Reserva confirmada</CardTitle>
+                                <CardTitle>Pendiente de confirmación</CardTitle>
                                 <CardDescription>
                                     Hemos recibido tu solicitud. El negocio te contactara pronto para confirmar.
                                 </CardDescription>
@@ -45,20 +45,48 @@ export default function BookingSuccess({ tenant, appointment }) {
                                     <Separator className="my-3" />
                                     <dl className="grid gap-3 text-sm">
                                         <div className="flex items-center justify-between gap-4">
+                                            <dt className="text-muted-foreground">Estado</dt>
+                                            <dd className="font-medium text-foreground" data-testid="booking-success-status">
+                                                {appointment.status === 'pending'
+                                                    ? 'Pendiente de confirmación'
+                                                    : appointment.status}
+                                            </dd>
+                                        </div>
+                                        <div className="flex items-center justify-between gap-4">
                                             <dt className="text-muted-foreground">Servicio</dt>
-                                            <dd className="font-medium text-foreground">{appointment.service_name}</dd>
+                                            <dd className="font-medium text-foreground" data-testid="booking-success-service">
+                                                {appointment.service_name}
+                                            </dd>
                                         </div>
                                         <div className="flex items-center justify-between gap-4">
                                             <dt className="text-muted-foreground">Profesional</dt>
-                                            <dd className="font-medium text-foreground">{appointment.provider_name}</dd>
+                                            <dd className="font-medium text-foreground" data-testid="booking-success-provider">
+                                                {appointment.provider_name}
+                                            </dd>
                                         </div>
                                         <div className="flex items-center justify-between gap-4">
                                             <dt className="text-muted-foreground">Fecha</dt>
-                                            <dd className="font-medium text-foreground">{appointment.scheduled_at}</dd>
+                                            <dd className="font-medium text-foreground" data-testid="booking-success-date">
+                                                {appointment.scheduled_at}
+                                            </dd>
+                                        </div>
+                                        <div className="flex items-center justify-between gap-4">
+                                            <dt className="text-muted-foreground">Fecha local</dt>
+                                            <dd className="font-medium text-foreground" data-testid="booking-success-local-date">
+                                                {appointment.local_date}
+                                            </dd>
                                         </div>
                                         <div className="flex items-center justify-between gap-4">
                                             <dt className="text-muted-foreground">Hora</dt>
-                                            <dd className="font-medium text-foreground">{appointment.time}</dd>
+                                            <dd className="font-medium text-foreground" data-testid="booking-success-time">
+                                                {appointment.time}
+                                            </dd>
+                                        </div>
+                                        <div className="flex items-center justify-between gap-4">
+                                            <dt className="text-muted-foreground">Zona horaria</dt>
+                                            <dd className="font-medium text-foreground" data-testid="booking-success-timezone">
+                                                {appointment.timezone}
+                                            </dd>
                                         </div>
                                     </dl>
                                 </div>

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 
 import PublicLayout from '@/Layouts/PublicLayout';
+import EmptyState from '@/Components/Marketing/EmptyState';
 import { Badge } from '@/Components/ui/badge';
 import { Button } from '@/Components/ui/button';
 import {
@@ -96,7 +97,7 @@ function DirectoryCard({ tenant }) {
     const categoryName = typeof tenant.category === 'string' ? tenant.category : tenant.category?.name;
 
     return (
-        <Card className="flex h-full flex-col overflow-hidden transition-shadow hover:shadow-md" data-testid="tenant-card">
+        <Card className="flex h-full flex-col overflow-hidden transition-shadow motion-reduce:transition-none hover:shadow-md" data-testid="tenant-card">
             <Link href={getTenantHref(tenant)} className="flex h-full flex-col" data-testid="primary-tenant-cta">
                 <div className="grid aspect-video place-items-center bg-muted">
                     {imageUrl ? (
@@ -249,37 +250,6 @@ function ActiveFilters({ categories, cities, filters, onFilterChange }) {
     );
 }
 
-function EmptyState({ filters, onClear }) {
-    return (
-        <Card className="border-dashed bg-muted/35 shadow-none" data-testid="directory-empty-state">
-            <CardContent className="flex flex-col items-center gap-5 py-16 text-center">
-                <span className="grid h-16 w-16 place-items-center rounded-md bg-muted text-muted-foreground">
-                    <Search className="size-7" aria-hidden="true" />
-                </span>
-                <div className="max-w-md">
-                    <h2 className="text-xl font-semibold">
-                        {filters.search ? `No encontramos "${filters.search}"` : 'No hay negocios disponibles'}
-                    </h2>
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                        Prueba con otra búsqueda, cambia ciudad o limpia los filtros para ver más negocios.
-                    </p>
-                </div>
-                <div className="flex flex-col gap-3 sm:flex-row">
-                    <Button variant="outline" onClick={onClear}>
-                        <X data-icon="inline-start" aria-hidden="true" />
-                        Limpiar filtros
-                    </Button>
-                    <Button asChild>
-                        <Link href="/registrar-negocio">
-                            <Building2 data-icon="inline-start" aria-hidden="true" />
-                            Registrar mi negocio
-                        </Link>
-                    </Button>
-                </div>
-            </CardContent>
-        </Card>
-    );
-}
 
 function Pagination({ links }) {
     if (!links?.length) {
@@ -371,7 +341,7 @@ function DirectoryGuide({ instance = 'desktop' }) {
                 <Badge variant="secondary" className="w-fit rounded-full">
                     Guía pública con IA
                 </Badge>
-                <CardTitle className="font-display text-2xl">Pregunta con datos públicos</CardTitle>
+                <h2 className="font-display text-2xl font-semibold leading-none tracking-tight">Pregunta con datos públicos</h2>
                 <CardDescription className="text-background/70">
                     Responde desde negocios, catálogo y servicios visibles. No usa ventas privadas ni datos internos.
                 </CardDescription>
@@ -500,7 +470,7 @@ export default function DirectoryIndex({
 
     return (
         <PublicLayout>
-            <Head title={`${pageTitle} - Vito Business OS`} />
+            <Head title={`${pageTitle} - Dovra AI`} />
 
             <section className="border-b bg-[radial-gradient(circle_at_top_right,hsl(var(--secondary))_0,transparent_32%),linear-gradient(180deg,#fff_0%,#f8fafc_100%)]" data-testid="directory-page">
                 <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
@@ -620,8 +590,17 @@ export default function DirectoryIndex({
                             </>
                         ) : (
                             <EmptyState
-                                filters={filters}
-                                onClear={() => handleFilterChange('clear', null)}
+                                icon={Search}
+                                title={filters.search ? `No encontramos "${filters.search}"` : 'No hay negocios disponibles'}
+                                description="Prueba con otra búsqueda, cambia ciudad o limpia los filtros para ver más negocios."
+                                action={{
+                                    label: 'Limpiar filtros',
+                                    onClick: () => handleFilterChange('clear', null),
+                                }}
+                                secondaryAction={{
+                                    label: 'Registrar mi negocio',
+                                    onClick: () => router.visit('/registrar-negocio'),
+                                }}
                             />
                         )}
                     </div>

@@ -6,7 +6,7 @@ import { ConfirmPasswordForm } from "@/Components/Auth/ConfirmPasswordForm"
 export default function ConfirmPassword() {
     return (
         <>
-            <Head title="Confirmar contraseña | Vito Business OS" />
+            <Head title="Confirmar contraseña | Dovra AI" />
 
             <AuthShadcnShell
                 imageAlt="Panel para confirmar contraseña"

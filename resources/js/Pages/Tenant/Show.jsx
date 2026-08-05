@@ -115,7 +115,10 @@ function getCityName(tenant) {
         return tenant.city;
     }
 
-    return tenant?.city?.name || 'Honduras';
+    return tenant?.location?.locality
+        || tenant?.city?.name
+        || tenant?.market?.country_code
+        || 'Ubicación no configurada';
 }
 
 function isRestaurantCategory(categoryName) {
@@ -124,28 +127,46 @@ function isRestaurantCategory(categoryName) {
     );
 }
 
+function isBookingCommercialMode(mode) {
+    return ['appointments', 'hybrid'].includes(String(mode || '').toLowerCase());
+}
+
 function formatPrice(product) {
     if (product?.formatted_price) {
         return product.formatted_price;
     }
 
     const price = Number(product?.price || 0);
+    const currency = product?.currency;
+    const locale = product?.locale;
 
-    return `L. ${price.toFixed(2)}`;
+    if (!currency || !locale) {
+        return price.toFixed(2);
+    }
+
+    return new Intl.NumberFormat(locale, {
+        style: 'currency',
+        currency,
+        maximumFractionDigits: 2,
+    }).format(price);
 }
 
-function formatMoney(value, currency = 'HNL') {
+function formatMoney(value, currency, locale = 'en') {
     const amount = Number(value || 0);
-    const normalizedCurrency = String(currency || 'HNL').toUpperCase();
+    const normalizedCurrency = String(currency || '').toUpperCase();
+
+    if (!normalizedCurrency) {
+        return amount.toFixed(2);
+    }
 
     try {
-        return new Intl.NumberFormat('es-HN', {
+        return new Intl.NumberFormat(locale, {
             style: 'currency',
             currency: normalizedCurrency,
             maximumFractionDigits: 2,
         }).format(amount);
     } catch {
-        return `L. ${amount.toFixed(2)}`;
+        return `${normalizedCurrency} ${amount.toFixed(2)}`;
     }
 }
 
@@ -209,7 +230,7 @@ function TenantHero({ tenant, isOpen, totalProductsCount, productsCount, categor
                         </Link>
                     </Button>
                     <Button variant="secondary" size="sm" asChild>
-                        <Link href={safeRoute('home', '/')}>Vito App</Link>
+                        <Link href={safeRoute('home', '/')}>Dovra AI</Link>
                     </Button>
                 </nav>
 
@@ -233,7 +254,7 @@ function TenantHero({ tenant, isOpen, totalProductsCount, productsCount, categor
                                     {tenant.name}
                                 </h1>
                                 <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
-                                    {tenant.slogan || tenant.description || 'Negocio local disponible en Vito App.'}
+                                    {tenant.slogan || tenant.description || 'Negocio local disponible en Dovra AI.'}
                                 </p>
                             </div>
 
@@ -268,6 +289,24 @@ function TenantHero({ tenant, isOpen, totalProductsCount, productsCount, categor
                                     Ver {isRestaurantCategory(categoryName) ? 'menu' : 'catalogo'}
                                 </a>
                             </Button>
+                            {isBookingCommercialMode(tenant.commercial_mode) && (
+                                <Button
+                                    asChild
+                                    className="justify-start"
+                                    data-testid="microsite-booking-cta"
+                                >
+                                    <a
+                                        href={safeRoute(
+                                            'public.booking.index',
+                                            '/book',
+                                            { tenant: tenant.slug },
+                                        )}
+                                    >
+                                        <CalendarClock data-icon="inline-start" aria-hidden="true" />
+                                        {tenant.conversion_profile?.cta || 'Reservar cita'}
+                                    </a>
+                                </Button>
+                            )}
                             {whatsappUrl ? (
                                 <Button asChild className="justify-start">
                                     <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
@@ -599,7 +638,7 @@ function CrmSection({ crmMicrosite }) {
                                 <p className="text-xs text-muted-foreground">
                                     {deal.pipeline || 'Pipeline'} - {deal.stage || 'Etapa'}
                                 </p>
-                                <p className="mt-1 text-sm">{formatMoney(deal.value, deal.currency)}</p>
+                                <p className="mt-1 text-sm">{formatMoney(deal.value, deal.currency, tenant?.market?.locale)}</p>
                             </div>
                         )) : (
                             <p className="text-sm text-muted-foreground">Sin deals visibles.</p>
@@ -720,11 +759,11 @@ export default function TenantShow({
     const whatsappNumber = tenant.whatsapp || tenant.whatsapp_number || '';
     const whatsappUrl = getWhatsappUrl(whatsappNumber, tenant.name);
     const catalogLabel = isRestaurantCategory(categoryName) ? 'Menu' : 'Catalogo';
-    const pageTitle = `${tenant.name || 'Tienda'} | ${categoryName} en ${cityName} | Vito`;
+    const pageTitle = `${tenant.name || 'Tienda'} | ${categoryName} en ${cityName} | Dovra AI`;
     const pageDescription = String(
         tenant.description ||
         tenant.slogan ||
-        `Descubre ${tenant.name} en Vito. Negocios locales de Honduras.`
+        `Descubre ${tenant.name} en Dovra AI. Consulta su oferta publicada y sus condiciones vigentes.`
     ).substring(0, 160);
     const pageImage = getAbsoluteMediaUrl(tenant.hero_image || tenant.cover || tenant.banner_path) || getAbsoluteMediaUrl('/images/og-default.svg');
     const showCrmTab = Boolean(isOwner && crmMicrosite?.enabled);
@@ -813,7 +852,7 @@ export default function TenantShow({
             <Separator />
 
             <footer className="mx-auto hidden max-w-7xl items-center justify-between gap-4 px-4 py-6 text-sm text-muted-foreground sm:px-6 md:flex lg:px-8">
-                <span>Powered by Vito Business OS</span>
+                <span>Powered by Dovra AI</span>
                 <Button variant="link" asChild className="px-0">
                     <Link href={safeRoute('home', '/')}>Crear mi micrositio</Link>
                 </Button>
