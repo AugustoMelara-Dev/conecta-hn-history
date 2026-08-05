@@ -3,7 +3,7 @@
   "$id": "https://conecta-hn.com/schemas/otp.generated.v1.json",
   "title": "OtpGenerated payload v1",
   "type": "object",
-  "required": ["otp_id", "tenant_id", "occurred_at", "plain_text_code", "identifier", "expiry_minutes"],
+  "required": ["otp_id", "user_id", "tenant_id", "occurred_at", "encrypted_code", "identifier", "recipient_name", "expiry_minutes"],
   "additionalProperties": false,
   "properties": {
     "otp_id": {
@@ -18,11 +18,14 @@
     "occurred_at": {
       "type": "string"
     },
-    "plain_text_code": {
-      "type": "string"
+    "encrypted_code": {
+      "type": ["string", "null"]
     },
     "identifier": {
-      "type": "string"
+      "type": ["string", "null"]
+    },
+    "recipient_name": {
+      "type": ["string", "null"]
     },
     "expiry_minutes": {
       "type": "integer"
