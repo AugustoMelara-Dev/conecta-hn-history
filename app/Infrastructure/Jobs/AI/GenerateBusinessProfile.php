@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Jobs\AI;
 
-use App\Domain\Shared\Middleware\TenantQueueMiddleware;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
+use App\Infrastructure\Shared\Middleware\TenantQueueMiddleware;
 use App\Services\AiProfileGeneratorService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -27,7 +27,7 @@ final class GenerateBusinessProfile implements ShouldQueue
     public int $timeout = 120;
 
     public function __construct(
-        public readonly int $tenantId
+        public readonly string $tenantId
     ) {}
 
     public function handle(

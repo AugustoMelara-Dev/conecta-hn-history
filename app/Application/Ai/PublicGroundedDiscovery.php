@@ -13,19 +13,18 @@ use App\Application\Ai\DTOs\AiExecutionRequest;
 use App\Application\Ai\Grounding\GroundingEvidenceProjector;
 use App\Application\Ai\Grounding\GroundingPolicy;
 use App\Application\Ai\Grounding\GroundingValidator;
-use App\Application\Ai\Knowledge\KnowledgeRetriever;
 use App\Application\Ai\Registry\AiRuntimeSelection;
+use App\Application\Discovery\PublishedDiscoveryGuideService;
+use App\Application\Markets\MarketContext;
 use App\Exceptions\Ai\AiExecutionDeniedException;
 use App\Exceptions\Ai\AiMalformedResponseException;
-use App\Infrastructure\Directory\DirectoryGuideService;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Log;
 
 final class PublicGroundedDiscovery
 {
     public function __construct(
-        private readonly DirectoryGuideService $directory,
-        private readonly KnowledgeRetriever $knowledge,
+        private readonly PublishedDiscoveryGuideService $guide,
         private readonly AiExecutionContextFactory $contexts,
         private readonly AiGateway $gateway,
         private readonly GroundingEvidenceProjector $evidenceProjector,
@@ -34,10 +33,11 @@ final class PublicGroundedDiscovery
 
     public function answer(
         PublicConversationInput $input,
+        MarketContext $market,
         AiRuntimeSelection $selection,
         ConversationMessageClaim $claim,
     ): ConversationEngineResult {
-        $fallback = $this->deterministicFallback($input);
+        $fallback = $this->deterministicFallback($input, $market);
         $items = $fallback['items'];
 
         if ($items === []) {
@@ -72,7 +72,7 @@ final class PublicGroundedDiscovery
             );
         }
         $fallback['items'] = $items;
-        $fallback['answer'] = $this->canonicalAnswer($items, $input->budget);
+        $fallback['answer'] = $this->canonicalAnswer($items, $input->budget, $market);
         $fallback['suggestions'] = $this->suggestions($items);
 
         $context = $this->contexts->create(
@@ -110,7 +110,7 @@ final class PublicGroundedDiscovery
                 new GroundingPolicy(
                     tenantId: (string) config('ai.public.billing_tenant_id'),
                     visibility: 'public',
-                    currency: $authorizedEvidence[0]->currency ?? 'HNL',
+                    currency: strtoupper($market->currencyCode),
                     freshnessCutoff: CarbonImmutable::now()->subDays(
                         max(1, (int) config('ai.knowledge.freshness_days', 30)),
                     ),
@@ -122,7 +122,7 @@ final class PublicGroundedDiscovery
         }
         $grounded = $validated === null
             ? null
-            : $this->ground($result->data, $items, $visibleEvidenceIds, $input->budget);
+            : $this->ground($result->data, $items, $visibleEvidenceIds, $input->budget, $market);
         if ($grounded === null) {
             Log::warning('Public discovery grounding rejected provider output.', [
                 'correlation_id' => $context->correlationId,
@@ -162,31 +162,15 @@ final class PublicGroundedDiscovery
     }
 
     /** @return array<string, mixed> */
-    public function fallback(PublicConversationInput $input): array
+    public function fallback(PublicConversationInput $input, MarketContext $market): array
     {
-        return $this->asFallback($this->deterministicFallback($input), null);
+        return $this->asFallback($this->deterministicFallback($input, $market), null);
     }
 
     /** @return array<string, mixed> */
-    private function deterministicFallback(PublicConversationInput $input): array
+    private function deterministicFallback(PublicConversationInput $input, MarketContext $market): array
     {
-        $fallback = $this->directory->answer(
-            $input->message,
-            $input->budget,
-            $input->city,
-            $input->category,
-        );
-        if ($fallback['items'] === []) {
-            $fallback = $this->directory->answer(
-                $input->message,
-                $input->budget,
-                $input->city,
-                $input->category,
-                $this->knowledge->searchPublic($input->message),
-            );
-        }
-
-        return $fallback;
+        return $this->guide->answer($input, $market);
     }
 
     /**
@@ -268,8 +252,13 @@ final class PublicGroundedDiscovery
      * @param  list<string>  $visibleEvidenceIds
      * @return array{answer:string,items:array<int,array<string,mixed>>,evidence:array<int,array{type:string,id:string,reason:string}>}|null
      */
-    private function ground(array $data, array $items, array $visibleEvidenceIds, ?float $budget): ?array
-    {
+    private function ground(
+        array $data,
+        array $items,
+        array $visibleEvidenceIds,
+        ?float $budget,
+        MarketContext $market,
+    ): ?array {
         $answer = $data['answer'] ?? null;
         $evidence = $data['evidence'] ?? null;
 
@@ -313,18 +302,20 @@ final class PublicGroundedDiscovery
         $selectedItems = array_values($selected);
 
         return [
-            'answer' => $this->canonicalAnswer($selectedItems, $budget),
+            'answer' => $this->canonicalAnswer($selectedItems, $budget, $market),
             'items' => $selectedItems,
             'evidence' => $validatedEvidence,
         ];
     }
 
     /** @param array<int, array<string, mixed>> $items */
-    private function canonicalAnswer(array $items, ?float $budget): string
+    private function canonicalAnswer(array $items, ?float $budget, MarketContext $market): string
     {
+        $currency = strtoupper($market->currencyCode);
+        $currencyLabel = $currency === 'HNL' ? 'L.' : $currency;
         $prefix = $budget === null
             ? 'Encontre estas opciones publicadas y verificables:'
-            : 'Encontre estas opciones publicadas dentro de tu presupuesto de L. '.number_format($budget, 2).':';
+            : 'Encontre estas opciones publicadas dentro de tu presupuesto de '.$currencyLabel.' '.number_format($budget, 2).':';
         $options = collect($items)->take(3)->map(static fn (array $item): string => sprintf(
             '%s en %s por %s',
             (string) ($item['name'] ?? 'Opcion publicada'),
@@ -359,7 +350,7 @@ final class PublicGroundedDiscovery
         $fallback['source'] = 'public_directory';
         $fallback['fallback'] = true;
         $meta = is_array($fallback['meta'] ?? null) ? $fallback['meta'] : [];
-        $meta['mode'] = 'deterministic_public_directory';
+        $meta['mode'] = $meta['mode'] ?? 'deterministic_public_projection';
         $meta['llm_used'] = false;
         $meta['privacy_scope'] = 'public_directory_only';
 

@@ -6,5 +6,5 @@ namespace App\Application\Ai;
 
 interface PrivateAiTenantAccessReaderInterface
 {
-    public function findAllowlistedTenant(int|string $tenantId): ?object;
+    public function findAllowlistedTenant(string $tenantId): ?object;
 }

@@ -15,7 +15,7 @@ class PrivateAiAccessGate
         private PrivateAiTenantAccessReaderInterface $tenantReader,
     ) {}
 
-    public function allows(?object $user, int|string $tenantId): bool
+    public function allows(?object $user, string $tenantId): bool
     {
         if (! is_object($user)) {
             return false;

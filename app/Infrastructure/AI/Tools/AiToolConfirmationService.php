@@ -269,6 +269,7 @@ final readonly class AiToolConfirmationService
      */
     public function authorizeAgentAction(
         string $tenantId,
+        string $conversationId,
         string $actionKey,
         string $payloadHash,
         ?string $confirmationId,
@@ -297,6 +298,23 @@ final readonly class AiToolConfirmationService
         }
         if ($confirmation->status !== AiToolConfirmation::STATUS_COMPLETED) {
             return ToolAuthorizationDecision::deny('confirmation_pending');
+        }
+
+        if (! Str::isUuid($conversationId)) {
+            return ToolAuthorizationDecision::deny('confirmation_binding_mismatch');
+        }
+
+        $conversationActorId = DB::table('ai_conversations')
+            ->where('tenant_id', $tenantId)
+            ->where('id', $conversationId)
+            ->where('visibility', 'tenant_private')
+            ->where('status', 'active')
+            ->value('actor_id');
+        if (! is_string($conversationActorId) || trim($conversationActorId) === '') {
+            return ToolAuthorizationDecision::deny('confirmation_binding_mismatch');
+        }
+        if (! hash_equals((string) $confirmation->actor_id, $conversationActorId)) {
+            return ToolAuthorizationDecision::deny('confirmation_binding_mismatch');
         }
 
         return ToolAuthorizationDecision::allow('confirmation_authorized', [

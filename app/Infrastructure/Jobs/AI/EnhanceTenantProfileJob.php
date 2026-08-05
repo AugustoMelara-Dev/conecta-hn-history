@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Jobs\AI;
 
-use App\Domain\Shared\Middleware\TenantQueueMiddleware;
 use App\Application\Tenant\Commands\EnhanceTenantProfileCommand;
+use App\Infrastructure\Shared\Middleware\TenantQueueMiddleware;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;

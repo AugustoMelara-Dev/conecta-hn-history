@@ -9,7 +9,7 @@ use App\Models\Tenant;
 
 final class EloquentPrivateAiTenantAccessReader implements PrivateAiTenantAccessReaderInterface
 {
-    public function findAllowlistedTenant(int|string $tenantId): ?object
+    public function findAllowlistedTenant(string $tenantId): ?object
     {
         // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
         $tenant = Tenant::withoutGlobalScopes()->find((string) $tenantId);
@@ -32,8 +32,7 @@ final class EloquentPrivateAiTenantAccessReader implements PrivateAiTenantAccess
             return null;
         }
 
-        $allowed = in_array(strtolower((string) $tenant->id), $allowlist, true)
-            || in_array(strtolower((string) $tenant->slug), $allowlist, true);
+        $allowed = in_array(strtolower((string) $tenant->id), $allowlist, true);
 
         return $allowed ? $tenant : null;
     }
