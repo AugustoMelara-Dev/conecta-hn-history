@@ -24,7 +24,7 @@ final class EloquentOrderRepository implements OrderRepository
     /**
      * {@inheritDoc}
      */
-    public function getDashboardKanban(int $tenantId, array $filters = []): Collection
+    public function getDashboardKanban(string $tenantId, array $filters = []): Collection
     {
         $query = Order::query()
             ->where('tenant_id', $tenantId)
@@ -49,7 +49,7 @@ final class EloquentOrderRepository implements OrderRepository
     /**
      * {@inheritDoc}
      */
-    public function getDashboardList(int $tenantId, array $filters = [], int $perPage = 15): LengthAwarePaginator
+    public function getDashboardList(string $tenantId, array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
         $query = Order::query()
             ->where('tenant_id', $tenantId)
@@ -66,22 +66,11 @@ final class EloquentOrderRepository implements OrderRepository
     /**
      * {@inheritDoc}
      */
-    public function findForDetails(int $tenantId, int $orderId): mixed
+    public function findForDetails(string $tenantId, int $orderId): mixed
     {
         return Order::query()
             ->where('tenant_id', $tenantId)
             ->with(['items.product:id,name,price,image_path'])
             ->find($orderId);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function updateStatus(int $tenantId, int $orderId, string $status): bool
-    {
-        return Order::query()
-            ->where('tenant_id', $tenantId)
-            ->where('id', $orderId)
-            ->update(['status' => $status]) > 0;
     }
 }

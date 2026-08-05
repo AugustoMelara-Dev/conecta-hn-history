@@ -6,6 +6,7 @@ namespace App\Filament\App\Pages;
 
 use App\Models\Category;
 use App\Models\City;
+use App\Models\Tenant;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms;
@@ -36,7 +37,7 @@ class EditTenantProfile extends BaseEditTenantProfile
     public function form(Form $form): Form
     {
         $tenant = Filament::getTenant();
-        $isPro = (bool) ($tenant?->is_pro ?? false);
+        $isPro = $tenant instanceof Tenant && (bool) $tenant->is_pro;
         $tenantAttributes = $this->tenant?->getAttributes() ?? [];
         $hasCategoryColumn = Schema::hasTable('categories')
             && Schema::hasColumn('tenants', 'category_id')
@@ -333,7 +334,7 @@ class EditTenantProfile extends BaseEditTenantProfile
     protected function getHeaderActions(): array
     {
         $tenant = $this->tenant;
-        $isPro = (bool) ($tenant?->is_pro ?? false);
+        $isPro = $tenant instanceof Tenant && (bool) $tenant->is_pro;
 
         return [
             Action::make('view_site')

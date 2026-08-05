@@ -8,14 +8,17 @@ use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Domain\TenantGovernance\Enums\CommercialMode;
 use App\Models\Tenant;
 use Filament\Facades\Filament;
-use Illuminate\Support\Facades\Schema;
 
 final class TenantAccessMatrix
 {
     public const MODULE_PRODUCTS = 'products';
+
     public const MODULE_MENU_SECTIONS = 'menu_sections';
+
     public const MODULE_SERVICES = 'services';
+
     public const MODULE_SERVICE_PROVIDERS = 'service_providers';
+
     public const MODULE_APPOINTMENTS = 'appointments';
 
     public static function currentTenantCanAccess(string $module): bool
@@ -42,7 +45,7 @@ final class TenantAccessMatrix
         $mode = self::commercialMode($tenant);
 
         if ($mode === CommercialMode::HYBRID) {
-            return self::hybridIsAllowed($tenant);
+            return true;
         }
 
         if ($mode === CommercialMode::PRODUCTS) {
@@ -58,7 +61,7 @@ final class TenantAccessMatrix
         $mode = self::commercialMode($tenant);
 
         if ($mode === CommercialMode::HYBRID) {
-            return self::hybridIsAllowed($tenant);
+            return true;
         }
 
         if ($mode === CommercialMode::APPOINTMENTS) {
@@ -96,48 +99,8 @@ final class TenantAccessMatrix
         return $raw instanceof BusinessType ? $raw : BusinessType::tryFrom((string) $raw);
     }
 
-    private static function hybridIsAllowed(Tenant $tenant): bool
-    {
-        $allowed = config('conecta.features.hybrid_commercial_mode_tenants', []);
-
-        if (! is_array($allowed) || $allowed === []) {
-            return false;
-        }
-
-        return in_array((string) $tenant->getKey(), $allowed, true)
-            || in_array((string) ($tenant->slug ?? ''), $allowed, true);
-    }
-
     private static function isPro(Tenant $tenant): bool
     {
-        try {
-            $rawPlanType = $tenant->getRawOriginal('plan_type') ?? $tenant->getAttribute('plan_type');
-            $rawSubscriptionStatus = $tenant->getRawOriginal('subscription_status') ?? $tenant->getAttribute('subscription_status');
-        } catch (\Throwable) {
-            $rawPlanType = null;
-            $rawSubscriptionStatus = null;
-        }
-
-        if ($rawPlanType !== null) {
-            $plan = $rawPlanType instanceof \BackedEnum ? (string) $rawPlanType->value : (string) $rawPlanType;
-            $status = $rawSubscriptionStatus instanceof \BackedEnum ? (string) $rawSubscriptionStatus->value : (string) ($rawSubscriptionStatus ?? Tenant::DEFAULT_SUBSCRIPTION_STATUS);
-
-            return in_array($plan, ['pro', 'enterprise'], true)
-                && in_array($status, ['active', 'trial'], true);
-        }
-
-        try {
-            $hasIsPro = Schema::hasColumn('tenants', 'is_pro');
-            $hasPlanType = Schema::hasColumn('tenants', 'plan_type');
-        } catch (\Throwable) {
-            $hasIsPro = true;
-            $hasPlanType = true;
-        }
-
-        if (! $hasIsPro && ! $hasPlanType) {
-            return true;
-        }
-
-        return (bool) ($tenant->is_pro ?? false);
+        return (bool) $tenant->is_pro;
     }
 }

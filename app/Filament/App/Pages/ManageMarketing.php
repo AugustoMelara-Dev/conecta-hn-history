@@ -32,6 +32,8 @@ class ManageMarketing extends Page implements HasForms, HasTable
 
     public bool $isPro = false;
 
+    public string $formattedProPrice = '';
+
     public ?array $data = [];
 
     public string $messagePreview = '';
@@ -57,6 +59,10 @@ class ManageMarketing extends Page implements HasForms, HasTable
 
     public function mount(): void
     {
+        $this->formattedProPrice = 'L. '.number_format(
+            \App\Domain\TenantGovernance\Services\SubscriptionPricingService::canonicalProPriceInMajorUnits(),
+            2
+        );
         $tenant = Filament::getTenant();
 
         if (! $tenant) {

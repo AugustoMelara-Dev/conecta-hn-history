@@ -8,8 +8,8 @@ use App\Application\Shared\Contracts\CommandBusInterface;
 use App\Application\Shared\Contracts\ReferenceDataReaderInterface;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Http\Controllers\Controller;
-use App\Infrastructure\Registration\EloquentRegistrationPostProcessor;
 use App\Http\Requests\Auth\RegisterTenantRequest;
+use App\Infrastructure\Registration\EloquentRegistrationPostProcessor;
 use App\Services\TenantRegistrationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -48,7 +48,7 @@ final class RegistrationController extends Controller
             'settings' => [
                 'freeProductLimit' => config('conecta.free_plan_product_limit', 10),
                 'proProductLimit' => config('conecta.pro_plan_product_limit', 100),
-                'proPlanPrice' => config('conecta.pro_plan_price', 500.00),
+                'proPlanPrice' => \App\Domain\TenantGovernance\Services\SubscriptionPricingService::canonicalProPriceInMajorUnits(),
             ],
         ]);
     }
@@ -122,6 +122,6 @@ final class RegistrationController extends Controller
 
         return redirect()
             ->route('dashboard')
-            ->with('success', '¡Bienvenido a Conecta HN! Tu negocio está activo.');
+            ->with('success', '¡Bienvenido a Dovra AI! Tu negocio está activo.');
     }
 }

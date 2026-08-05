@@ -35,6 +35,9 @@ final class StandardTenantPermissionGuard implements TenantPermissionGuardInterf
 
         $membership = $tenant->memberships()
             ->whereNotNull('accepted_at')
+            ->where('status', 'active')
+            ->whereNull('suspended_at')
+            ->whereNull('revoked_at')
             ->where('user_id', $user->id)
             ->first();
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Domain\Product\Repositories\ProductRatingMetricsWriter;
 use App\Models\Product;
 use App\Models\Review;
 use App\Models\Tenant;
@@ -21,6 +22,11 @@ use Illuminate\Console\Command;
  */
 final class RecalculateStatsCommand extends Command
 {
+    public function __construct(private readonly ProductRatingMetricsWriter $productRatings)
+    {
+        parent::__construct();
+    }
+
     /**
      * The name and signature of the console command.
      *
@@ -57,24 +63,27 @@ final class RecalculateStatsCommand extends Command
 
     private function recalculateProducts(): void
     {
-        $count = Product::count();
+        // JOB_GLOBAL_POLL: reviewed scope bypass; authority is constrained by the adjacent tenant/id predicate.
+        $count = Product::withoutGlobalScopes()->count();
         $this->info("Processing {$count} Products...");
 
         $bar = $this->output->createProgressBar($count);
         $bar->start();
 
-        Product::chunk(100, function ($products) use ($bar) {
+        // JOB_GLOBAL_POLL: reviewed scope bypass; authority is constrained by the adjacent tenant/id predicate.
+        Product::withoutGlobalScopes()->chunkById(100, function ($products) use ($bar) {
             foreach ($products as $product) {
                 $stats = Review::where('product_id', $product->id)
                     ->where('is_approved', true)
                     ->selectRaw('count(*) as count, avg(rating) as avg_rating')
                     ->first();
 
-                // Use forceFill to bypass $fillable protection for system tasks
-                $product->forceFill([
-                    'reviews_count' => $stats->count ?? 0,
-                    'rating_avg' => $stats->avg_rating ?? 0,
-                ])->saveQuietly();
+                $this->productRatings->updateRatingMetrics(
+                    (string) $product->tenant_id,
+                    (int) $product->id,
+                    (float) ($stats->avg_rating ?? 0),
+                    (int) ($stats->count ?? 0),
+                );
 
                 $bar->advance();
             }

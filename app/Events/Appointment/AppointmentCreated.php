@@ -20,19 +20,19 @@ final readonly class AppointmentCreated implements DomainEvent, ShouldDispatchAf
 
     public function __construct(
         mixed $appointment,
-        int|string|null $tenantKey = null,
+        ?string $tenantKey = null,
         ?string $eventId = null,
         ?DateTimeImmutable $occurredAt = null,
     ) {
         $this->appointmentId = $appointment->id ?? $appointment;
-        $this->tenantKey = $tenantKey ?? ($appointment->tenant_id ?? 0);
+        $this->tenantKey = (string) ($tenantKey ?? ($appointment->tenant_id ?? 0));
         $this->eventId = $eventId ?? (string) \Illuminate\Support\Str::uuid();
-        $this->occurredAt = $occurredAt ?? new DateTimeImmutable();
+        $this->occurredAt = $occurredAt ?? new DateTimeImmutable;
     }
 
     public int|string $appointmentId;
 
-    public int|string $tenantKey;
+    public string $tenantKey;
 
     public static function fromAppointment(mixed $appointment): self
     {
@@ -49,9 +49,9 @@ final readonly class AppointmentCreated implements DomainEvent, ShouldDispatchAf
         return TenantId::fromString((string) $this->tenantKey);
     }
 
-    public function aggregateId(): int
+    public function aggregateId(): string
     {
-        return (int) $this->appointmentId;
+        return (string) $this->appointmentId;
     }
 
     public function occurredAt(): DateTimeImmutable

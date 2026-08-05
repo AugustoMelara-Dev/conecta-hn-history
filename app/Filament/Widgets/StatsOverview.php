@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\Filament\Widgets;
 
-use App\Models\Order;
+use App\Domain\Analytics\Enums\CommercialOutcome;
+use App\Models\VerifiedCommercialOutcome;
 use Filament\Facades\Filament;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -41,14 +42,19 @@ class StatsOverview extends BaseWidget
 
         $financialStats = Cache::remember("stats_financial_overview_{$tenant->id}", 60, function () use ($tenant) {
 
-            // --- KPI 1: FINANCIAL - Gross Revenue ---
-            $revenue = Order::query()
+            // --- KPI 1: FINANCIAL - Verified net revenue ---
+            $revenueMinor = VerifiedCommercialOutcome::query()
                 ->where('tenant_id', $tenant->id)
-                ->where('status', '!=', 'cancelled')
-                ->sum('total');
+                ->whereIn('outcome', [
+                    CommercialOutcome::OrderPaid->value,
+                    CommercialOutcome::OrderRefunded->value,
+                ])
+                ->where('currency', 'HNL')
+                ->sum('amount_minor');
+            $revenue = ((int) $revenueMinor) / 100;
 
-            $revenueStat = Stat::make('Volumen de Ingresos Brutos', 'L. '.number_format($revenue ?? 0, 2))
-                ->description('Ingresos acumulados (real + proyectado)')
+            $revenueStat = Stat::make('Ingresos netos verificados', 'L. '.number_format($revenue, 2))
+                ->description('Pagos confirmados menos reembolsos')
                 ->descriptionIcon('heroicon-m-currency-dollar')
                 ->color($revenue > 0 ? 'success' : 'gray');
 

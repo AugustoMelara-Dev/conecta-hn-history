@@ -63,7 +63,7 @@ abstract class TenantAwarePolicy
         }
 
         // Verify ownership
-        return in_array($resource->tenant_id, $userTenantIds);
+        return in_array((string) $resource->tenant_id, $userTenantIds, true);
     }
 
     /**
@@ -72,15 +72,24 @@ abstract class TenantAwarePolicy
     protected function getUserTenantIds(User $user): array
     {
         // PERFORMANCE FIX (VC-AUDIT-005): Memoize to prevent N+1 queries during multiple policy checks
-        return $user->_memoized_tenant_ids ??= $user->tenants()->pluck('id')->toArray();
+        if (isset($user->_memoized_tenant_ids)) {
+            return array_map('strval', $user->_memoized_tenant_ids);
+        }
+
+        return $user->_memoized_tenant_ids = $user->tenants()
+            ->pluck('id')
+            ->map(static fn (mixed $id): string => (string) $id)
+            ->all();
     }
 
     /**
      * Get the primary (first) tenant ID for the user.
      */
-    protected function getUserPrimaryTenantId(User $user): ?int
+    protected function getUserPrimaryTenantId(User $user): ?string
     {
-        return $user->tenants()->first()?->id;
+        $tenantId = $user->tenants()->first()?->id;
+
+        return $tenantId === null ? null : (string) $tenantId;
     }
 
     /**
@@ -127,12 +136,12 @@ abstract class TenantAwarePolicy
      * Verify resource belongs to a specific tenant ID.
      * Useful when tenant_id comes from request parameter.
      */
-    protected function resourceBelongsToTenant(Model $resource, int $tenantId): bool
+    protected function resourceBelongsToTenant(Model $resource, string $tenantId): bool
     {
         if (! isset($resource->tenant_id)) {
             return false;
         }
 
-        return $resource->tenant_id === $tenantId;
+        return (string) $resource->tenant_id === $tenantId;
     }
 }

@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Events\Order;
 
 use App\Contracts\Events\DomainEvent;
+use App\Domain\Shared\ValueObjects\TenantId;
 use App\Traits\HasDomainMetadata;
 use App\ValueObjects\OrderNumber;
-use App\Domain\Shared\ValueObjects\TenantId;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**
@@ -53,7 +53,7 @@ final readonly class OrderCancelled implements DomainEvent, ShouldDispatchAfterC
 
     /**
      * @param  TenantId  $tenantId  Tenant context for queue middleware
-     * @param  int  $orderId  The order aggregate root ID
+     * @param  string  $orderId  The order aggregate root ID
      * @param  OrderNumber  $orderNumber  Human-readable order reference
      * @param  string  $reason  Machine or human-readable cancellation reason
      * @param  int|null  $cancelledById  User ID who initiated cancellation (null for system)
@@ -61,7 +61,7 @@ final readonly class OrderCancelled implements DomainEvent, ShouldDispatchAfterC
      */
     public function __construct(
         private TenantId $tenantId,
-        private int $orderId,
+        private string $orderId,
         public OrderNumber $orderNumber,
         public string $reason,
         public ?int $cancelledById,
@@ -82,16 +82,16 @@ final readonly class OrderCancelled implements DomainEvent, ShouldDispatchAfterC
      * Factory: Create from order data (snapshotted at creation time).
      */
     public static function create(
-        int $tenantId,
-        int $orderId,
+        string $tenantId,
+        int|string $orderId,
         string $orderNumber,
         string $reason,
         ?int $cancelledById = null,
         bool $wasPaid = false
     ): self {
         return new self(
-            tenantId: TenantId::fromInt($tenantId),
-            orderId: $orderId,
+            tenantId: TenantId::fromString((string) $tenantId),
+            orderId: (string) $orderId,
             orderNumber: OrderNumber::fromString($orderNumber),
             reason: $reason,
             cancelledById: $cancelledById,
@@ -124,9 +124,9 @@ final readonly class OrderCancelled implements DomainEvent, ShouldDispatchAfterC
         return $this->tenantId;
     }
 
-    public function aggregateId(): int
+    public function aggregateId(): string
     {
-        return $this->orderId;
+        return (string) $this->orderId;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -179,8 +179,8 @@ final readonly class OrderCancelled implements DomainEvent, ShouldDispatchAfterC
         }
 
         return new self(
-            tenantId: TenantId::fromInt($primitives['tenant_id']),
-            orderId: $primitives['order_id'],
+            tenantId: TenantId::fromSerialized($primitives['tenant_id']),
+            orderId: (string) $primitives['order_id'],
             orderNumber: OrderNumber::fromString($primitives['order_number']),
             reason: $primitives['reason'],
             cancelledById: $primitives['cancelled_by_id'] ?? null, // nullable by design

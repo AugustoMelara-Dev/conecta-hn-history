@@ -26,17 +26,24 @@ class TenantMembership extends Model
         'role',
         'preset_key',
         'granted_permissions',
+        'status',
+        'invited_at',
         'accepted_at',
+        'suspended_at',
+        'revoked_at',
     ];
 
-    protected $guarded = ['tenant_id'];
+    protected $guarded = ['tenant_id', 'revoked_by_user_id'];
 
     protected function casts(): array
     {
         return [
             'role' => Role::class,
             'granted_permissions' => 'array',
+            'invited_at' => 'datetime',
             'accepted_at' => 'datetime',
+            'suspended_at' => 'datetime',
+            'revoked_at' => 'datetime',
         ];
     }
 
@@ -52,7 +59,11 @@ class TenantMembership extends Model
 
     public function scopeAccepted($query)
     {
-        return $query->whereNotNull('accepted_at');
+        return $query
+            ->whereNotNull('accepted_at')
+            ->where('status', 'active')
+            ->whereNull('suspended_at')
+            ->whereNull('revoked_at');
     }
 
     public function scopePending($query)

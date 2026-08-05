@@ -6,6 +6,8 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Infrastructure\Auth\AuthenticatedSessionRegistry;
+use App\Models\User;
 use App\Support\Panel\CanonicalPanelUrlResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,7 +20,8 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 final class AuthenticatedSessionController extends Controller
 {
     public function __construct(
-        private readonly CanonicalPanelUrlResolver $panelUrlResolver
+        private readonly CanonicalPanelUrlResolver $panelUrlResolver,
+        private readonly AuthenticatedSessionRegistry $sessions,
     ) {}
 
     /**
@@ -39,7 +42,16 @@ final class AuthenticatedSessionController extends Controller
     {
         $request->authenticate();
 
+        if ($request->session()->has('login.id')) {
+            $request->session()->regenerate();
+
+            return redirect()->route('two-factor.login');
+        }
+
         $request->session()->regenerate();
+        if ($request->user() instanceof User) {
+            $this->sessions->start($request, $request->user());
+        }
 
         if (! $request->user()?->hasVerifiedEmail()) {
             return redirect()->route('verification.notice');
@@ -59,6 +71,11 @@ final class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        $user = $request->user();
+        if ($user instanceof User) {
+            $this->sessions->markCurrentRevoked($request, $user, 'user_logout');
+        }
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();

@@ -108,10 +108,10 @@ class CategoryResource extends Resource
                             ->helperText('Nombre del icono para renderizado dinamico. Ver: heroicons.com o lucide.dev/icons'),
 
                         FileUpload::make('icon_svg')
-                            ->label('Icono SVG Personalizado (Opcional)')
-                            ->acceptedFileTypes(['image/svg+xml'])
+                            ->label('Icono personalizado (opcional)')
+                            ->acceptedFileTypes(['image/png', 'image/webp'])
                             ->directory('categories/icons')
-                            ->helperText('Alternativa al icono de texto. Sube un SVG para maxima personalizacion.'),
+                            ->helperText('Alternativa al icono de texto. Usa PNG o WebP; los SVG subidos se bloquean por seguridad.'),
                     ])->columns(3),
 
                 // ═══════════════════════════════════════════════════════════

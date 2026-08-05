@@ -34,6 +34,15 @@ final readonly class OtpGenerated
 
         /** When the OTP was generated */
         public DateTimeImmutable $occurredAt,
+
+        /** Encrypted delivery secret; never plaintext in outbox storage. */
+        public ?string $encryptedCode = null,
+
+        public ?string $identifier = null,
+
+        public ?string $recipientName = null,
+
+        public int $expiryMinutes = 10,
     ) {}
 
     /**
@@ -43,12 +52,20 @@ final readonly class OtpGenerated
         string $otpId,
         ?string $userId,
         string $tenantId,
+        ?string $encryptedCode = null,
+        ?string $identifier = null,
+        ?string $recipientName = null,
+        int $expiryMinutes = 10,
     ): self {
         return new self(
             otpId: $otpId,
             userId: $userId,
             tenantId: $tenantId,
             occurredAt: new DateTimeImmutable,
+            encryptedCode: $encryptedCode,
+            identifier: $identifier,
+            recipientName: $recipientName,
+            expiryMinutes: $expiryMinutes,
         );
     }
 
@@ -80,6 +97,10 @@ final readonly class OtpGenerated
             'user_id' => $this->userId,
             'tenant_id' => $this->tenantId,
             'occurred_at' => $this->occurredAt->format(DateTimeImmutable::ATOM),
+            'encrypted_code' => $this->encryptedCode,
+            'identifier' => $this->identifier,
+            'recipient_name' => $this->recipientName,
+            'expiry_minutes' => $this->expiryMinutes,
         ];
     }
 
@@ -91,10 +112,14 @@ final readonly class OtpGenerated
     public static function fromPayload(array $payload): self
     {
         return new self(
-            otpId: $payload['otp_id'],
-            userId: $payload['user_id'],
-            tenantId: $payload['tenant_id'],
-            occurredAt: new DateTimeImmutable($payload['occurred_at']),
+            otpId: (string) $payload['otp_id'],
+            userId: isset($payload['user_id']) ? (string) $payload['user_id'] : null,
+            tenantId: (string) $payload['tenant_id'],
+            occurredAt: new DateTimeImmutable((string) $payload['occurred_at']),
+            encryptedCode: isset($payload['encrypted_code']) ? (string) $payload['encrypted_code'] : null,
+            identifier: isset($payload['identifier']) ? (string) $payload['identifier'] : null,
+            recipientName: isset($payload['recipient_name']) ? (string) $payload['recipient_name'] : null,
+            expiryMinutes: isset($payload['expiry_minutes']) ? (int) $payload['expiry_minutes'] : 10,
         );
     }
 }

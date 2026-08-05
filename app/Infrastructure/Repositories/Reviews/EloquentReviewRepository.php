@@ -20,7 +20,9 @@ final class EloquentReviewRepository implements ReviewRepositoryInterface
      */
     public function create(array $data): object
     {
-        return Review::create($data);
+        // Ownership fields are guarded on the model and originate from the
+        // validated command boundary, so the persistence adapter sets them explicitly.
+        return Review::query()->forceCreate($data);
     }
 
     /**

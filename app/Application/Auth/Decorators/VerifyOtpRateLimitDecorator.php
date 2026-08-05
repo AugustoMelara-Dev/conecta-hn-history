@@ -21,14 +21,23 @@ final class VerifyOtpRateLimitDecorator implements VerifyOtpHandlerInterface
 
     public function handle(VerifyOtpCommand $command): VerifyOtpResult
     {
-        // Key: verify_otp:{tenant}:{ip}
-        $key = sprintf('verify_otp:%s:%s', $command->tenantId, $command->ipAddress);
+        $prefix = 'verify_otp:'.$command->tenantId;
+        $identifierKey = $prefix.':identifier:'.hash('sha256', mb_strtolower(trim($command->identifier)));
+        $ipKey = 'verify_otp:ip:'.hash('sha256', $command->ipAddress);
+        $identifierLimited = $this->rateLimiter->hitAndCheck(
+            $identifierKey,
+            $this->maxAttempts,
+            $this->decaySeconds,
+        );
+        $ipLimited = $this->rateLimiter->hitAndCheck(
+            $ipKey,
+            $this->maxAttempts * 4,
+            $this->decaySeconds,
+        );
 
-        if ($this->rateLimiter->tooManyAttempts($key, $this->maxAttempts)) {
+        if ($identifierLimited || $ipLimited) {
             throw new ThrottleRequestsException('Demasiados intentos. Intente más tarde.');
         }
-
-        $this->rateLimiter->hit($key, $this->decaySeconds);
 
         return $this->inner->handle($command);
     }

@@ -28,21 +28,18 @@ final class TenantResolver
      * SECURITY: Only returns active, publicly visible tenants.
      * Returns null for inactive or non-existent tenants (no information leak).
      */
-    public function findPublicById(int $tenantId): ?object
+    public function findPublicById(string $tenantId): ?object
     {
         // Cache responsibility delegated to Infrastructure (Repository Decorator)
-        $tenant = $this->repository->findById($tenantId);
+        $tenant = $this->repository->findById((string) $tenantId);
 
         if (! $tenant) {
             return null;
         }
 
-        // Domain Logic: Validate Status
-        // We assume the entity has these properties/methods.
-        // In a pure domain, these would be methods like $tenant->isActive().
-        // For now, accessing properties dynamically or via the interface contract.
+        // Domain logic: validate public availability through entity methods.
 
-        if ($tenant->is_active === true && in_array($tenant->subscription_status, ['active', 'trial'])) {
+        if ($tenant->isActive() && in_array($tenant->subscriptionStatus(), ['active', 'trial'], true)) {
             return $tenant;
         }
 
@@ -61,7 +58,7 @@ final class TenantResolver
             return null;
         }
 
-        if ($tenant->is_active === true && in_array($tenant->subscription_status, ['active', 'trial'])) {
+        if ($tenant->isActive() && in_array($tenant->subscriptionStatus(), ['active', 'trial'], true)) {
             return $tenant;
         }
 
@@ -79,7 +76,7 @@ final class TenantResolver
             return null;
         }
 
-        if ($tenant->is_active === true && in_array($tenant->subscription_status, ['active', 'trial'])) {
+        if ($tenant->isActive() && in_array($tenant->subscriptionStatus(), ['active', 'trial'], true)) {
             return $tenant;
         }
 
@@ -89,7 +86,7 @@ final class TenantResolver
     /**
      * Verify a tenant exists and is public.
      */
-    public function isPublic(int $tenantId): bool
+    public function isPublic(string $tenantId): bool
     {
         return $this->findPublicById($tenantId) !== null;
     }

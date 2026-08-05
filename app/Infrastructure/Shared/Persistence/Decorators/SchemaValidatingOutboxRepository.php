@@ -45,7 +45,7 @@ final readonly class SchemaValidatingOutboxRepository implements OutboxRepositor
         }
 
         OutboxMessage::query()->create([
-            'id' => $message->eventId ?: (string) Str::ulid(),
+            'id' => $message->eventId ?: (string) Str::uuid(),
             'type' => $message->type,
             'aggregate_id' => $message->aggregateId,
             'partition_key' => abs(crc32((string) $message->aggregateId)) % OutboxMessage::PARTITION_COUNT,

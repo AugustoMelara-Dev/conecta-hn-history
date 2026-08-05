@@ -4,8 +4,14 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
+use App\Application\Identity\TenantInvitationService;
+use App\Application\Identity\TenantMembershipService;
+use App\Domain\Access\Enums\Permission;
+use App\Domain\Access\Enums\Role;
 use App\Filament\App\Resources\TenantUserResource\Pages;
-use App\Models\TenantUser;
+use App\Models\Tenant;
+use App\Models\TenantMembership;
+use App\Models\User;
 use BackedEnum;
 use Filament\Facades\Filament;
 use Filament\Forms;
@@ -13,16 +19,12 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables;
-use Filament\Tables\Actions\BulkActionGroup;
-use Filament\Tables\Actions\DeleteAction;
-use Filament\Tables\Actions\DeleteBulkAction;
-use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
 class TenantUserResource extends Resource
 {
-    protected static ?string $model = TenantUser::class;
+    protected static ?string $model = TenantMembership::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
 
@@ -51,115 +53,99 @@ class TenantUserResource extends Resource
         return 50;
     }
 
+    public static function canViewAny(): bool
+    {
+        $tenant = Filament::getTenant();
+        $user = auth()->user();
+
+        return $tenant instanceof Tenant
+            && $user instanceof User
+            && app(TenantInvitationService::class)->canManageTeam(
+                (string) $tenant->getKey(),
+                (string) $user->getKey(),
+            );
+    }
+
+    public static function canCreate(): bool
+    {
+        return static::canViewAny();
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $tenant = Filament::getTenant();
+
+        return parent::getEloquentQuery()
+            ->when(
+                $tenant instanceof Tenant,
+                fn (Builder $query): Builder => $query->where('tenant_id', $tenant->getKey()),
+                fn (Builder $query): Builder => $query->whereRaw('1 = 0'),
+            );
+    }
+
     public static function form(Form $form): Form
     {
-        return $form
-            ->schema([
-                Forms\Components\Section::make('Informacion del miembro')
-                    ->description('Elige la cuenta del usuario y define su nivel de acceso al negocio.')
-                    ->icon('heroicon-o-user')
-                    ->columns(2)
-                    ->schema([
-                        Forms\Components\Select::make('user_id')
-                            ->label('Usuario')
-                            ->relationship('user', 'name')
-                            ->searchable(['name', 'email'])
-                            ->preload()
-                            ->required()
-                            ->helperText('Busca por nombre o correo electronico.')
-                            ->createOptionForm([
-                                Forms\Components\TextInput::make('name')
-                                    ->label('Nombre')
-                                    ->required(),
-                                Forms\Components\TextInput::make('email')
-                                    ->label('Correo electronico')
-                                    ->email()
-                                    ->required()
-                                    ->unique('users', 'email'),
-                                Forms\Components\TextInput::make('password')
-                                    ->label('Contrasena')
-                                    ->password()
-                                    ->required()
-                                    ->minLength(8),
-                            ])
-                            ->createOptionAction(function (Forms\Components\Actions\Action $action) {
-                                return $action
-                                    ->modalHeading('Crear usuario')
-                                    ->modalDescription('Crea una cuenta para agregarla al equipo de este negocio.')
-                                    ->modalWidth('md');
-                            })
-                            ->columnSpan(1)
-                            ->disabled(fn (?TenantUser $record) => $record !== null),
+        return $form->schema([
+            Forms\Components\Section::make('Identidad y rol')
+                ->description('Dovra enviará una invitación de acceso. La persona no obtiene acceso hasta aceptarla con este mismo correo.')
+                ->icon('heroicon-o-user')
+                ->columns(2)
+                ->schema([
+                    Forms\Components\TextInput::make('email')
+                        ->label('Correo')
+                        ->email()
+                        ->maxLength(254)
+                        ->autocomplete('email')
+                        ->required()
+                        ->visible(fn (?TenantMembership $record): bool => $record === null),
 
-                        Forms\Components\Select::make('role')
-                            ->label('Rol')
-                            ->options([
-                                'owner' => 'Propietario',
-                                'manager' => 'Gerente',
-                                'employee' => 'Empleado',
-                            ])
-                            ->default('employee')
-                            ->required()
-                            ->helperText('Define el nivel de acceso general. Los permisos detallados aplican para gerente y empleado.')
-                            ->live()
-                            ->columnSpan(1),
-                    ]),
+                    Forms\Components\Placeholder::make('member_identity')
+                        ->label('Cuenta')
+                        ->content(fn (?TenantMembership $record): string => $record?->user === null
+                            ? 'Cuenta no disponible'
+                            : "{$record->user->name} · {$record->user->email}")
+                        ->visible(fn (?TenantMembership $record): bool => $record !== null),
 
-                Forms\Components\Section::make('Permisos de acceso')
-                    ->icon('heroicon-o-shield-check')
-                    ->description('Activa solo lo que esta persona necesita para hacer su trabajo.')
-                    ->columns(2)
-                    ->visible(fn (Forms\Get $get): bool => $get('role') !== 'owner')
-                    ->schema([
-                        Forms\Components\Toggle::make('can_manage_products')
-                            ->label('Gestionar productos')
-                            ->helperText('Crear, editar y eliminar productos.')
-                            ->default(true),
+                    Forms\Components\Select::make('role')
+                        ->label('Rol')
+                        ->options(self::roleOptions())
+                        ->default(Role::OPERATOR->value)
+                        ->required(),
 
-                        Forms\Components\Toggle::make('can_manage_orders')
-                            ->label('Gestionar pedidos')
-                            ->helperText('Ver pedidos y actualizar sus estados.')
-                            ->default(true),
+                    Forms\Components\TextInput::make('preset_key')
+                        ->label('Preset')
+                        ->maxLength(64)
+                        ->placeholder('operations')
+                        ->helperText('Identificador opcional de un preset de permisos.'),
+                ]),
 
-                        Forms\Components\Toggle::make('can_view_analytics')
-                            ->label('Ver estadisticas')
-                            ->helperText('Acceso al dashboard y metricas del negocio.')
-                            ->default(false),
+            Forms\Components\Section::make('Permisos adicionales')
+                ->description('Solo se pueden delegar permisos que la persona que invita ya posee.')
+                ->icon('heroicon-o-shield-check')
+                ->schema([
+                    Forms\Components\CheckboxList::make('granted_permissions')
+                        ->label('Permisos')
+                        ->options(self::permissionOptions())
+                        ->columns(2)
+                        ->bulkToggleable(),
+                ]),
 
-                        Forms\Components\Toggle::make('can_manage_settings')
-                            ->label('Editar configuracion')
-                            ->helperText('Editar perfil, ajustes y datos operativos del negocio.')
-                            ->default(false),
-
-                        Forms\Components\Toggle::make('can_manage_team')
-                            ->label('Gestionar equipo')
-                            ->helperText('Invitar, editar y administrar miembros del equipo.')
-                            ->default(false),
-
-                        Forms\Components\Toggle::make('can_manage_billing')
-                            ->label('Gestionar facturacion')
-                            ->helperText('Acceso a pagos, plan y suscripcion.')
-                            ->default(false),
-                    ]),
-
-                Forms\Components\Section::make('Informacion de acceso')
-                    ->icon('heroicon-o-information-circle')
-                    ->visible(fn (?TenantUser $record) => $record !== null)
-                    ->columns(2)
-                    ->schema([
-                        Forms\Components\Placeholder::make('invited_at_display')
-                            ->label('Invitado')
-                            ->content(fn (?TenantUser $record): string => $record?->invited_at?->format('d/m/Y H:i') ?? 'No registrado'),
-
-                        Forms\Components\Placeholder::make('accepted_at_display')
-                            ->label('Aceptado')
-                            ->content(fn (?TenantUser $record): string => $record?->accepted_at?->format('d/m/Y H:i') ?? 'Pendiente'),
-
-                        Forms\Components\Placeholder::make('last_access_display')
-                            ->label('Ultimo acceso')
-                            ->content(fn (?TenantUser $record): string => $record?->last_access_at?->diffForHumans() ?? 'Nunca'),
-                    ]),
-            ]);
+            Forms\Components\Section::make('Estado')
+                ->icon('heroicon-o-information-circle')
+                ->visible(fn (?TenantMembership $record): bool => $record !== null)
+                ->columns(3)
+                ->schema([
+                    Forms\Components\Placeholder::make('status_display')
+                        ->label('Estado')
+                        ->content(fn (?TenantMembership $record): string => self::statusLabel($record?->status)),
+                    Forms\Components\Placeholder::make('invited_at_display')
+                        ->label('Invitado')
+                        ->content(fn (?TenantMembership $record): string => $record?->invited_at?->format('d/m/Y H:i') ?? 'No registrado'),
+                    Forms\Components\Placeholder::make('accepted_at_display')
+                        ->label('Aceptado')
+                        ->content(fn (?TenantMembership $record): string => $record?->accepted_at?->format('d/m/Y H:i') ?? 'Pendiente'),
+                ]),
+        ]);
     }
 
     public static function table(Table $table): Table
@@ -187,63 +173,94 @@ class TenantUserResource extends Resource
                     ->formatStateUsing(fn (mixed $state): string => self::roleLabel($state))
                     ->color(fn (mixed $state): string => match (self::roleValue($state)) {
                         'owner' => 'warning',
+                        'admin' => 'danger',
                         'manager' => 'info',
-                        'employee' => 'gray',
+                        'operator' => 'primary',
+                        default => 'gray',
+                    }),
+
+                Tables\Columns\TextColumn::make('status')
+                    ->label('Estado')
+                    ->badge()
+                    ->formatStateUsing(fn (mixed $state): string => self::statusLabel($state))
+                    ->color(fn (mixed $state): string => match ((string) $state) {
+                        'active' => 'success',
+                        'pending' => 'warning',
+                        'suspended' => 'info',
+                        'revoked' => 'danger',
                         default => 'gray',
                     }),
 
                 Tables\Columns\TextColumn::make('accepted_at')
-                    ->label('Estado')
-                    ->badge()
-                    ->formatStateUsing(fn ($state): string => $state ? 'Activo' : 'Pendiente')
-                    ->color(fn ($state): string => $state ? 'success' : 'warning'),
-
-                Tables\Columns\TextColumn::make('last_access_at')
-                    ->label('Ultimo acceso')
-                    ->since()
-                    ->placeholder('Nunca'),
+                    ->label('Aceptado')
+                    ->dateTime('d/m/Y H:i')
+                    ->placeholder('Pendiente'),
 
                 Tables\Columns\TextColumn::make('permissions_summary')
-                    ->label('Permisos')
-                    ->state(fn (TenantUser $record): string => self::permissionsSummary($record))
-                    ->tooltip('Productos, pedidos, estadisticas, configuracion, equipo y facturacion.'),
+                    ->label('Permisos adicionales')
+                    ->state(fn (TenantMembership $record): string => self::permissionsSummary($record)),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('role')
                     ->label('Rol')
+                    ->options(self::roleOptions()),
+                Tables\Filters\SelectFilter::make('status')
+                    ->label('Estado')
                     ->options([
-                        'owner' => 'Propietario',
-                        'manager' => 'Gerente',
-                        'employee' => 'Empleado',
+                        'active' => 'Activo',
+                        'pending' => 'Pendiente',
+                        'suspended' => 'Suspendido',
+                        'revoked' => 'Revocado',
                     ]),
             ])
             ->actions([
-                EditAction::make()
-                    ->label('Editar')
-                    ->iconButton(),
-                DeleteAction::make()
-                    ->label('Eliminar')
-                    ->iconButton()
-                    ->modalHeading('Eliminar miembro del equipo')
-                    ->modalDescription('Esta accion quitara el acceso de esta persona al negocio. La cuenta de usuario no se elimina.')
-                    ->modalSubmitActionLabel('Eliminar acceso')
-                    ->visible(fn (TenantUser $record): bool => self::roleValue($record->role) !== 'owner'),
+                Tables\Actions\EditAction::make()
+                    ->visible(fn (TenantMembership $record): bool => ! $record->isOwner() && $record->status === 'active'),
+                Tables\Actions\Action::make('suspend')
+                    ->label('Suspender')
+                    ->icon('heroicon-o-pause-circle')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->visible(fn (TenantMembership $record): bool => ! $record->isOwner() && $record->status === 'active')
+                    ->action(function (TenantMembership $record): void {
+                        app(TenantMembershipService::class)->suspend(
+                            (string) $record->getKey(),
+                            (string) auth()->id(),
+                        );
+                    }),
+                Tables\Actions\Action::make('reactivate')
+                    ->label('Reactivar')
+                    ->icon('heroicon-o-play-circle')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->visible(fn (TenantMembership $record): bool => ! $record->isOwner() && $record->status === 'suspended')
+                    ->action(function (TenantMembership $record): void {
+                        app(TenantMembershipService::class)->reactivate(
+                            (string) $record->getKey(),
+                            (string) auth()->id(),
+                        );
+                    }),
+                Tables\Actions\Action::make('revoke')
+                    ->label('Revocar')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->visible(fn (TenantMembership $record): bool => ! $record->isOwner()
+                        && in_array($record->status, ['active', 'suspended'], true))
+                    ->action(function (TenantMembership $record): void {
+                        app(TenantMembershipService::class)->revoke(
+                            (string) $record->getKey(),
+                            (string) auth()->id(),
+                        );
+                    }),
             ])
-            ->bulkActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make()
-                        ->label('Eliminar seleccionados')
-                        ->modalHeading('Eliminar miembros seleccionados')
-                        ->modalDescription('Esta accion quita el acceso de los miembros seleccionados. Las cuentas de usuario no se eliminan.')
-                        ->modalSubmitActionLabel('Eliminar accesos'),
-                ]),
-            ])
-            ->emptyStateHeading('Aun no hay miembros del equipo')
-            ->emptyStateDescription('Agrega empleados o gerentes para delegar la operacion del negocio con permisos controlados.')
+            ->bulkActions([])
+            ->emptyStateHeading('Aún no hay miembros del equipo')
+            ->emptyStateDescription('Invita miembros con un rol y permisos explícitos.')
             ->emptyStateIcon('heroicon-o-user-group')
             ->emptyStateActions([
                 Tables\Actions\CreateAction::make()
-                    ->label('Agregar miembro'),
+                    ->label('Invitar miembro'),
             ]);
     }
 
@@ -261,57 +278,67 @@ class TenantUserResource extends Resource
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
+    private static function roleOptions(): array
+    {
+        return [
+            Role::ADMIN->value => 'Administrador',
+            Role::MANAGER->value => 'Gerente',
+            Role::OPERATOR->value => 'Operador',
+            Role::VIEWER->value => 'Solo lectura',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function permissionOptions(): array
+    {
+        return collect(Permission::cases())
+            ->mapWithKeys(fn (Permission $permission): array => [
+                $permission->value => str($permission->value)
+                    ->replace('.', ' · ')
+                    ->replace('_', ' ')
+                    ->title()
+                    ->value(),
+            ])
+            ->all();
+    }
+
     private static function roleValue(mixed $role): string
     {
-        if ($role instanceof BackedEnum) {
-            return (string) $role->value;
-        }
-
-        return (string) $role;
+        return $role instanceof BackedEnum ? (string) $role->value : (string) $role;
     }
 
     private static function roleLabel(mixed $role): string
     {
         return match (self::roleValue($role)) {
             'owner' => 'Propietario',
+            'admin' => 'Administrador',
             'manager' => 'Gerente',
-            'employee' => 'Empleado',
+            'operator' => 'Operador',
+            'viewer' => 'Solo lectura',
             default => 'Miembro',
         };
     }
 
-    private static function permissionsSummary(TenantUser $record): string
+    private static function statusLabel(mixed $status): string
     {
-        if (self::roleValue($record->role) === 'owner') {
-            return 'Acceso total';
-        }
+        return match ((string) $status) {
+            'active' => 'Activo',
+            'pending' => 'Pendiente',
+            'suspended' => 'Suspendido',
+            'revoked' => 'Revocado',
+            default => 'Desconocido',
+        };
+    }
 
-        $permissions = [];
+    private static function permissionsSummary(TenantMembership $record): string
+    {
+        $permissions = $record->extraPermissions();
 
-        if ($record->can_manage_products) {
-            $permissions[] = 'Productos';
-        }
-
-        if ($record->can_manage_orders) {
-            $permissions[] = 'Pedidos';
-        }
-
-        if ($record->can_view_analytics) {
-            $permissions[] = 'Estadisticas';
-        }
-
-        if ($record->can_manage_settings) {
-            $permissions[] = 'Configuracion';
-        }
-
-        if ($record->can_manage_team) {
-            $permissions[] = 'Equipo';
-        }
-
-        if ($record->can_manage_billing) {
-            $permissions[] = 'Facturacion';
-        }
-
-        return $permissions === [] ? 'Sin permisos activos' : implode(', ', $permissions);
+        return $permissions === [] ? 'Ninguno' : implode(', ', $permissions);
     }
 }

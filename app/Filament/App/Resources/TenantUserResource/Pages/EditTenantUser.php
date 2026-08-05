@@ -4,24 +4,26 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources\TenantUserResource\Pages;
 
+use App\Application\Identity\TenantMembershipService;
 use App\Filament\App\Resources\TenantUserResource;
-use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Database\Eloquent\Model;
 
-class EditTenantUser extends EditRecord
+final class EditTenantUser extends EditRecord
 {
     protected static string $resource = TenantUserResource::class;
 
-    protected function getHeaderActions(): array
+    protected function handleRecordUpdate(Model $record, array $data): Model
     {
-        return [
-            Actions\DeleteAction::make()
-                ->label('Eliminar acceso')
-                ->modalHeading('Eliminar miembro del equipo')
-                ->modalDescription('Esta accion quitara el acceso de esta persona al negocio. La cuenta de usuario no se elimina.')
-                ->modalSubmitActionLabel('Eliminar acceso')
-                ->visible(fn () => (string) ($this->record->role->value ?? $this->record->role) !== 'owner'),
-        ];
+        app(TenantMembershipService::class)->update(
+            membershipId: (string) $record->getKey(),
+            actorUserId: (string) auth()->id(),
+            role: (string) $data['role'],
+            presetKey: filled($data['preset_key'] ?? null) ? (string) $data['preset_key'] : null,
+            grantedPermissions: array_values((array) ($data['granted_permissions'] ?? [])),
+        );
+
+        return $record->refresh();
     }
 
     protected function getRedirectUrl(): string

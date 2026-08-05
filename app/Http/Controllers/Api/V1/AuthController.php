@@ -14,6 +14,7 @@ use App\Http\Resources\V1\AuthResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Laravel\Sanctum\PersonalAccessToken;
 
 /**
  * AuthController - API Authentication
@@ -35,7 +36,7 @@ final class AuthController extends Controller
         $result = $handler->handle($command);
 
         // Create token via service (no direct model access)
-        $tokenData = $this->tokenService->createTokenForUser($result->id, 'api-token');
+        $tokenData = $this->tokenService->createTokenForUser($result->id, 'api-token', $result->tenantId);
 
         $responsePayload = (object) [
             'user' => $tokenData['user'],
@@ -75,7 +76,11 @@ final class AuthController extends Controller
         );
 
         $result = $handler->handle($command);
-        $tokenData = $this->tokenService->createTokenForUser($result->userId, 'social-api-token');
+        $tokenData = $this->tokenService->createTokenForUser(
+            $result->userId,
+            'social-api-token',
+            (string) $validated['tenant_id'],
+        );
 
         $responsePayload = (object) [
             'user' => $tokenData['user'],
@@ -84,5 +89,16 @@ final class AuthController extends Controller
         ];
 
         return response()->json(new AuthResource($responsePayload), 200);
+    }
+
+    public function logout(Request $request): JsonResponse
+    {
+        $accessToken = $request->user()?->currentAccessToken();
+
+        if ($accessToken instanceof PersonalAccessToken) {
+            $accessToken->delete();
+        }
+
+        return response()->json(null, 204);
     }
 }

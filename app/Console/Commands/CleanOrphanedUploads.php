@@ -81,7 +81,7 @@ class CleanOrphanedUploads extends Command
                 continue;
             }
 
-            $files = $disk->files($productDir);
+            $files = $disk->allFiles($productDir);
 
             foreach ($files as $file) {
                 // Check if file is older than grace period

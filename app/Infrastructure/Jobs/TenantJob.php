@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Jobs;
 
 use App\Domain\Shared\Services\TenantContext;
-use App\Infrastructure\Jobs\Middleware\TenantAwareMiddleware;
+use App\Infrastructure\Shared\Middleware\TenantQueueMiddleware;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -22,12 +22,12 @@ abstract class TenantJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tenantId;
+    public string $tenantId;
 
     public function __construct()
     {
         // Capture Context at Dispatch Time
-        $this->tenantId = app(TenantContext::class)->id();
+        $this->tenantId = (string) app(TenantContext::class)->id();
     }
 
     /**
@@ -35,6 +35,6 @@ abstract class TenantJob implements ShouldQueue
      */
     public function middleware(): array
     {
-        return [new TenantAwareMiddleware];
+        return [new TenantQueueMiddleware($this->tenantId)];
     }
 }

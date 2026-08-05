@@ -4,17 +4,22 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Repositories\Payment;
 
+use App\Domain\Billing\DTOs\WebhookEventClaim;
 use App\Domain\Billing\Repositories\WebhookLogRepositoryInterface as BillingWebhookLogRepositoryInterface;
 use App\Domain\Payment\Repositories\WebhookLogRepositoryInterface;
 use App\Models\WebhookLog;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use UnexpectedValueException;
 
 /**
  * EloquentWebhookLogRepository - Infrastructure Adapter for Webhook Audit Trail
  *
  * Provides idempotency guard via unique compound index (provider, external_event_id).
  */
-final class EloquentWebhookLogRepository implements WebhookLogRepositoryInterface, BillingWebhookLogRepositoryInterface
+final class EloquentWebhookLogRepository implements BillingWebhookLogRepositoryInterface, WebhookLogRepositoryInterface
 {
     /**
      * {@inheritDoc}
@@ -23,6 +28,7 @@ final class EloquentWebhookLogRepository implements WebhookLogRepositoryInterfac
     {
         return WebhookLog::where('provider', $provider)
             ->where('external_event_id', $externalEventId)
+            ->where('status', 'processed')
             ->exists();
     }
 
@@ -32,9 +38,9 @@ final class EloquentWebhookLogRepository implements WebhookLogRepositoryInterfac
     public function recordFirstSeen(string $provider, string $externalEventId, string $eventType, array $payload): bool
     {
         try {
-            $this->log($provider, $externalEventId, $eventType, $payload);
+            $claim = $this->claim($provider, $externalEventId, $eventType, $payload);
 
-            return true;
+            return $claim !== null && $this->markProcessed($claim);
         } catch (QueryException $exception) {
             if ($this->isUniqueConstraintViolation($exception)) {
                 return false;
@@ -54,7 +60,150 @@ final class EloquentWebhookLogRepository implements WebhookLogRepositoryInterfac
             'external_event_id' => $externalEventId,
             'event_type' => $eventType,
             'payload' => $payload,
+            'status' => 'processed',
+            'attempts' => 1,
+            'processing_started_at' => now(),
+            'processed_at' => now(),
+            'payload_hash' => $this->payloadHash($payload),
         ]);
+    }
+
+    public function claim(string $provider, string $externalEventId, string $eventType, array $payload, int $leaseSeconds = 300): ?WebhookEventClaim
+    {
+        $payloadHash = $this->payloadHash($payload);
+        $processingToken = (string) Str::uuid();
+
+        try {
+            return DB::transaction(function () use ($provider, $externalEventId, $eventType, $payload, $payloadHash, $processingToken): WebhookEventClaim {
+                WebhookLog::create([
+                    'provider' => $provider,
+                    'external_event_id' => $externalEventId,
+                    'event_type' => $eventType,
+                    'payload' => $payload,
+                    'status' => 'processing',
+                    'attempts' => 1,
+                    'processing_started_at' => now(),
+                    'payload_hash' => $payloadHash,
+                    'processing_token' => $processingToken,
+                ]);
+
+                return new WebhookEventClaim($provider, $externalEventId, $processingToken);
+            });
+        } catch (QueryException $exception) {
+            if (! $this->isUniqueConstraintViolation($exception)) {
+                throw $exception;
+            }
+        }
+
+        return DB::transaction(function () use ($provider, $externalEventId, $eventType, $payloadHash, $leaseSeconds, $processingToken): ?WebhookEventClaim {
+            /** @var WebhookLog|null $webhookLog */
+            $webhookLog = WebhookLog::query()
+                ->where('provider', $provider)
+                ->where('external_event_id', $externalEventId)
+                ->lockForUpdate()
+                ->first();
+
+            if ($webhookLog === null) {
+                return null;
+            }
+
+            if ($webhookLog->status === 'processed') {
+                $this->assertEventIsCompatible($webhookLog, $eventType, $payloadHash);
+
+                return null;
+            }
+
+            $this->assertEventIsCompatible($webhookLog, $eventType, $payloadHash);
+
+            $reclaimBefore = now()->subSeconds($leaseSeconds);
+            $claimable = $webhookLog->status === 'failed'
+                || ($webhookLog->status === 'processing'
+                    && ($webhookLog->processing_started_at === null || $webhookLog->processing_started_at->lte($reclaimBefore)));
+
+            if (! $claimable) {
+                return null;
+            }
+
+            $claimed = WebhookLog::query()
+                ->whereKey($webhookLog->getKey())
+                ->where(function (Builder $query) use ($reclaimBefore): void {
+                    $query->where('status', 'failed')
+                        ->orWhere(function (Builder $processing) use ($reclaimBefore): void {
+                            $processing->where('status', 'processing')
+                                ->where(function (Builder $lease) use ($reclaimBefore): void {
+                                    $lease->whereNull('processing_started_at')
+                                        ->orWhere('processing_started_at', '<=', $reclaimBefore);
+                                });
+                        });
+                })
+                ->update([
+                    'status' => 'processing',
+                    'attempts' => DB::raw('attempts + 1'),
+                    'processing_started_at' => now(),
+                    'failed_at' => null,
+                    'last_error' => null,
+                    'processing_token' => $processingToken,
+                ]);
+
+            return $claimed === 1
+                ? new WebhookEventClaim($provider, $externalEventId, $processingToken)
+                : null;
+        }, 3);
+    }
+
+    public function markProcessed(WebhookEventClaim $claim): bool
+    {
+        return WebhookLog::query()
+            ->where('provider', $claim->provider)
+            ->where('external_event_id', $claim->externalEventId)
+            ->where('status', 'processing')
+            ->where('processing_token', $claim->processingToken)
+            ->update([
+                'status' => 'processed',
+                'processed_at' => now(),
+                'failed_at' => null,
+                'last_error' => null,
+            ]) === 1;
+    }
+
+    public function markFailed(WebhookEventClaim $claim, \Throwable $error): bool
+    {
+        return WebhookLog::query()
+            ->where('provider', $claim->provider)
+            ->where('external_event_id', $claim->externalEventId)
+            ->where('status', 'processing')
+            ->where('processing_token', $claim->processingToken)
+            ->update([
+                'status' => 'failed',
+                'failed_at' => now(),
+                'last_error' => $this->sanitizeError($error),
+            ]) === 1;
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function payloadHash(array $payload): string
+    {
+        return hash('sha256', json_encode($payload, JSON_THROW_ON_ERROR));
+    }
+
+    private function assertEventIsCompatible(WebhookLog $webhookLog, string $eventType, string $payloadHash): void
+    {
+        if ($webhookLog->event_type !== $eventType) {
+            throw new UnexpectedValueException('Webhook event ID was reused with an incompatible event type or payload.');
+        }
+
+        if ($webhookLog->payload_hash !== null && ! hash_equals($webhookLog->payload_hash, $payloadHash)) {
+            throw new UnexpectedValueException('Webhook event ID was reused with an incompatible event type or payload.');
+        }
+    }
+
+    private function sanitizeError(\Throwable $error): string
+    {
+        $message = preg_replace('/[\r\n\t]+/', ' ', $error->getMessage()) ?? 'Webhook processing failed.';
+        $message = preg_replace('/(?i)(authorization)\s*:\s*bearer\s+[^\s,;]+/', '$1=[REDACTED]', $message) ?? $message;
+        $message = preg_replace('/(?i)(secret|token|password|authorization|api[_-]?key)\s*["\']?\s*[:=]\s*[^\s,;]+/', '$1=[REDACTED]', $message) ?? $message;
+
+        return substr(trim($message), 0, 1000);
     }
 
     private function isUniqueConstraintViolation(QueryException $exception): bool

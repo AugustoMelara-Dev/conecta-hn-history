@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Domain\TenantGovernance\Services\PlanFeatureFlagService;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
@@ -52,20 +53,14 @@ class ProductPolicy extends TenantAwarePolicy
             return Response::deny('Debes tener un negocio para crear productos.');
         }
 
-        // PRO tenants have unlimited products
-        if ($tenant->is_pro) {
+        $limit = app(PlanFeatureFlagService::class)->getMaxProductLimit($tenant);
+        $currentCount = $tenant->products()->count();
+
+        if ($currentCount < $limit) {
             return Response::allow();
         }
 
-        // Free tenants limited to 10 products
-        if ($tenant->products()->count() < 10) {
-            return Response::allow();
-        }
-
-        return Response::deny(
-            'Has alcanzado el límite de 10 productos de tu Plan Gratuito. '.
-            'Actualiza a PRO para ilimitados.'
-        );
+        return Response::deny("Has alcanzado el límite de {$limit} productos de tu plan.");
     }
 
     /**

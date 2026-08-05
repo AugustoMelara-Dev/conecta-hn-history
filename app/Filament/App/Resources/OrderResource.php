@@ -4,17 +4,20 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
+use App\Application\Orders\CanonicalOrderWriter;
+use App\Application\Orders\Commands\TransitionOrderCommand;
 use App\Filament\App\Resources\OrderResource\Pages;
 use App\Models\Order;
+use App\Models\Tenant;
+use App\Models\User;
 use Filament\Facades\Filament;
 use Filament\Forms\Form;
 use Filament\Infolists;
 use Filament\Infolists\Infolist;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\BulkActionGroup;
-use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -125,7 +128,7 @@ class OrderResource extends Resource
                 // ═══ TOTAL ═══
                 Tables\Columns\TextColumn::make('total')
                     ->label('Total')
-                    ->money('HNL')
+                    ->money(fn (Order $record): string => (string) $record->currency)
                     ->sortable()
                     ->weight('bold')
                     ->color('success'),
@@ -188,13 +191,13 @@ class OrderResource extends Resource
                     ->visible(fn (Order $record): bool => $record->status === 'pending')
                     ->action(function (Order $record) {
                         try {
-                            app(\App\Services\OrderStateService::class)->transition($record, 'confirmed');
-                            \Filament\Notifications\Notification::make()
+                            static::canonicalTransition($record, Order::STATUS_CONFIRMED);
+                            Notification::make()
                                 ->title('Pedido confirmado')
                                 ->success()
                                 ->send();
                         } catch (\Exception $e) {
-                            \Filament\Notifications\Notification::make()
+                            Notification::make()
                                 ->title('Error')
                                 ->body($e->getMessage())
                                 ->danger()
@@ -209,13 +212,13 @@ class OrderResource extends Resource
                     ->visible(fn (Order $record): bool => $record->status === 'confirmed')
                     ->action(function (Order $record) {
                         try {
-                            app(\App\Services\OrderStateService::class)->transition($record, 'processing');
-                            \Filament\Notifications\Notification::make()
+                            static::canonicalTransition($record, Order::STATUS_PROCESSING);
+                            Notification::make()
                                 ->title('En cocina')
                                 ->success()
                                 ->send();
                         } catch (\Exception $e) {
-                            \Filament\Notifications\Notification::make()
+                            Notification::make()
                                 ->title('Error')
                                 ->body($e->getMessage())
                                 ->danger()
@@ -230,13 +233,13 @@ class OrderResource extends Resource
                     ->visible(fn (Order $record): bool => $record->status === 'processing')
                     ->action(function (Order $record) {
                         try {
-                            app(\App\Services\OrderStateService::class)->transition($record, 'ready');
-                            \Filament\Notifications\Notification::make()
+                            static::canonicalTransition($record, Order::STATUS_READY);
+                            Notification::make()
                                 ->title('Pedido listo')
                                 ->success()
                                 ->send();
                         } catch (\Exception $e) {
-                            \Filament\Notifications\Notification::make()
+                            Notification::make()
                                 ->title('Error')
                                 ->body($e->getMessage())
                                 ->danger()
@@ -252,13 +255,13 @@ class OrderResource extends Resource
                     ->visible(fn (Order $record): bool => $record->status === 'ready')
                     ->action(function (Order $record) {
                         try {
-                            app(\App\Services\OrderStateService::class)->transition($record, 'delivered');
-                            \Filament\Notifications\Notification::make()
+                            static::canonicalTransition($record, Order::STATUS_DELIVERED);
+                            Notification::make()
                                 ->title('Pedido entregado')
                                 ->success()
                                 ->send();
                         } catch (\Exception $e) {
-                            \Filament\Notifications\Notification::make()
+                            Notification::make()
                                 ->title('Error')
                                 ->body($e->getMessage())
                                 ->danger()
@@ -269,17 +272,28 @@ class OrderResource extends Resource
                 ViewAction::make()
                     ->iconButton(),
             ])
-            ->bulkActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
-            ])
+            ->bulkActions([])
             // ->poll('30s') // Auto-refresh
             ->striped()
             ->defaultSort('created_at', 'desc')
             ->emptyStateHeading('Sin pedidos')
             ->emptyStateDescription('Los pedidos de tus clientes apareceran aqui.')
             ->emptyStateIcon('heroicon-o-clipboard-document-list');
+    }
+
+    private static function canonicalTransition(Order $order, string $status): void
+    {
+        $tenant = Filament::getTenant();
+        $actor = Filament::auth()->user();
+        if (! $tenant instanceof Tenant || ! $actor instanceof User) {
+            throw new \RuntimeException('Order transition requires tenant and actor context.');
+        }
+        app(CanonicalOrderWriter::class)->transition(new TransitionOrderCommand(
+            tenantId: (string) $tenant->getKey(),
+            actorId: (string) $actor->getKey(),
+            orderId: (int) $order->getKey(),
+            targetStatus: $status,
+        ));
     }
 
     // ═══ VISTA DETALLADA CON INFOLIST ═══
@@ -409,7 +423,7 @@ class OrderResource extends Resource
 
                                         Infolists\Components\TextEntry::make('total_price')
                                             ->label('')
-                                            ->money('HNL')
+                                            ->money(fn ($record): string => self::recordCurrency($record))
                                             ->weight('bold'),
 
                                         // ═══ OPCIONES SELECCIONADAS (JSON) ═══
@@ -446,18 +460,18 @@ class OrderResource extends Resource
                                     ->schema([
                                         Infolists\Components\TextEntry::make('subtotal')
                                             ->label('Subtotal')
-                                            ->money('HNL'),
+                                            ->money(fn ($record): string => self::recordCurrency($record)),
                                         Infolists\Components\TextEntry::make('discount')
                                             ->label('Descuento')
-                                            ->money('HNL')
+                                            ->money(fn ($record): string => self::recordCurrency($record))
                                             ->visible(fn ($state) => $state > 0),
                                         Infolists\Components\TextEntry::make('delivery_fee')
                                             ->label('Envio')
-                                            ->money('HNL')
+                                            ->money(fn ($record): string => self::recordCurrency($record))
                                             ->visible(fn ($state) => $state > 0),
                                         Infolists\Components\TextEntry::make('total')
                                             ->label('TOTAL')
-                                            ->money('HNL')
+                                            ->money(fn ($record): string => self::recordCurrency($record))
                                             ->weight('bold')
                                             ->size('lg')
                                             ->color('success'),
@@ -471,6 +485,19 @@ class OrderResource extends Resource
     {
         // No usamos form para edición, solo infolist para vista
         return $form->schema([]);
+    }
+
+    private static function recordCurrency(mixed $record): string
+    {
+        $currency = $record instanceof Order
+            ? $record->currency
+            : data_get($record, 'order.currency');
+
+        if (! is_string($currency) || trim($currency) === '') {
+            throw new \RuntimeException('Order currency snapshot is required for money display.');
+        }
+
+        return strtoupper($currency);
     }
 
     public static function getRelations(): array

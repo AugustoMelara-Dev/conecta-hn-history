@@ -14,17 +14,17 @@ interface ProductCatalogReader
      *
      * @return Collection<int, object>
      */
-    public function getFeaturedProducts(int $tenantId, int $limit = 10): Collection;
+    public function getFeaturedProducts(string $tenantId, int $limit = 10): Collection;
 
     /**
      * Get a single product by slug and tenant.
      */
-    public function getProductBySlug(int $tenantId, string $slug): ?object;
+    public function getProductBySlug(string $tenantId, string $slug): ?object;
 
     /**
      * Search products with filters.
      *
      * @param  array  $filters  ['category_id', 'search', 'min_price', 'max_price', 'sort']
      */
-    public function searchProducts(int $tenantId, array $filters, int $perPage = 20): LengthAwarePaginator;
+    public function searchProducts(string $tenantId, array $filters, int $perPage = 20): LengthAwarePaginator;
 }

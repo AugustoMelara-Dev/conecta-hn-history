@@ -15,11 +15,11 @@ namespace App\Domain\Sales\Entities;
 final readonly class LeadEntity
 {
     /**
-     * @param  array{name: string, phone: string, message: ?string, status: string, product_id: ?int}  $contactData
+     * @param  array{name: ?string, phone: ?string, message: ?string, status: string, product_id: ?int}  $contactData
      */
     public function __construct(
         public int $id,
-        public int $tenantId,
+        public string $tenantId,
         public string $source,
         public array $contactData,
     ) {}

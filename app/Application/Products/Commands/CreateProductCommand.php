@@ -16,7 +16,7 @@ final readonly class CreateProductCommand
 {
     public function __construct(
         /** Tenant ID for multi-tenant isolation */
-        public int $tenantId,
+        public string $tenantId,
 
         /** Product SKU (Unique) */
         public string $sku,

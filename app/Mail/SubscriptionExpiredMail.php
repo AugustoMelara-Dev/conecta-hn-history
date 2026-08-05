@@ -27,7 +27,7 @@ class SubscriptionExpiredMail extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Tu Plan PRO ha sido suspendido | Vito Business OS',
+            subject: 'Tu Plan PRO ha sido suspendido | Dovra AI',
         );
     }
 

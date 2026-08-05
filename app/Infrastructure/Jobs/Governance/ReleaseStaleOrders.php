@@ -4,26 +4,24 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Jobs\Governance;
 
+use App\Application\Orders\CanonicalOrderWriter;
+use App\Application\Orders\Commands\TransitionOrderCommand;
+use App\Infrastructure\Shared\Middleware\TenantQueueMiddleware;
 use App\Models\Order;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 /**
- * ReleaseStaleOrders - Garbage Collector for Abandoned Checkouts
+ * Cancels abandoned pending orders for exactly one tenant.
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  INFRASTRUCTURE JOB: Direct ORM Access is PERMITTED here                 ║
- * ╠══════════════════════════════════════════════════════════════════════════╣
- * ║  This job performs batch database operations that require direct         ║
- * ║  Eloquent access for performance. It's located in Infrastructure/Jobs   ║
- * ║  to signal this is a maintenance workload, not a use case orchestrator. ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
- *
- * Releases inventory locked by PENDING orders older than configured threshold.
- * Can run globally (all tenants) or scoped to a single tenant.
+ * The global scheduler delegates fan-out to DispatchStaleOrderCleanup. This
+ * worker restores tenant context and still applies an explicit tenant filter.
+ * Each cancellation flows through the canonical order state machine so audit
+ * history and OrderCancelled side effects remain connected.
  */
 final class ReleaseStaleOrders implements ShouldQueue
 {
@@ -33,42 +31,65 @@ final class ReleaseStaleOrders implements ShouldQueue
 
     public int $timeout = 300;
 
-    /**
-     * @param  int|null  $tenantId  If null, processes ALL tenants (global cleanup)
-     */
-    public function __construct(
-        public readonly ?int $tenantId = null
-    ) {}
+    public function __construct(public readonly string $tenantId) {}
 
-    public function handle(): void
+    /** @return array<int, TenantQueueMiddleware> */
+    public function middleware(): array
     {
-        $query = Order::query()
-            ->where('status', 'pending')
-            ->where('created_at', '<', now()->subMinutes(30)); // 30 min threshold
+        return [new TenantQueueMiddleware($this->tenantId)];
+    }
 
-        if ($this->tenantId !== null) {
-            $query->where('tenant_id', $this->tenantId);
-        }
+    public function handle(CanonicalOrderWriter $writer): void
+    {
+        $threshold = now()->subMinutes(30);
+        $cancelled = 0;
 
-        $affected = $query->update([
-            'status' => 'cancelled',
-            'cancelled_reason' => 'stale_order',
-        ]);
+        Order::query()
+            ->where('tenant_id', $this->tenantId)
+            ->where('status', Order::STATUS_PENDING)
+            ->where('created_at', '<', $threshold)
+            ->select('id')
+            ->chunkById(100, function ($orders) use ($writer, $threshold, &$cancelled): void {
+                foreach ($orders as $candidate) {
+                    $lockKey = "stale-order:{$this->tenantId}:{$candidate->getKey()}";
 
-        Log::info("ReleaseStaleOrders: Cancelled {$affected} stale orders", [
-            'tenant_id' => $this->tenantId ?? 'all',
+                    Cache::lock($lockKey, 60)->get(function () use ($candidate, $writer, $threshold, &$cancelled): void {
+                        $order = Order::query()
+                            ->where('tenant_id', $this->tenantId)
+                            ->whereKey($candidate->getKey())
+                            ->first();
+
+                        if (
+                            $order === null
+                            || $order->status !== Order::STATUS_PENDING
+                            || $order->created_at === null
+                            || ! $order->created_at->lt($threshold)
+                        ) {
+                            return;
+                        }
+
+                        $writer->cancel(new TransitionOrderCommand(
+                            tenantId: $this->tenantId,
+                            actorId: null,
+                            orderId: (int) $order->getKey(),
+                            targetStatus: Order::STATUS_CANCELLED,
+                            reason: 'stale_order',
+                            systemInitiated: true,
+                        ));
+                        $cancelled++;
+                    });
+                }
+            });
+
+        Log::info("ReleaseStaleOrders: Cancelled {$cancelled} stale orders", [
+            'tenant_id' => $this->tenantId,
             'threshold' => '30 minutes',
         ]);
     }
 
+    /** @return array<int, string> */
     public function tags(): array
     {
-        $tags = ['governance', 'orders', 'cleanup'];
-
-        if ($this->tenantId !== null) {
-            $tags[] = 'tenant:'.$this->tenantId;
-        }
-
-        return $tags;
+        return ['governance', 'orders', 'cleanup', 'tenant:'.$this->tenantId];
     }
 }

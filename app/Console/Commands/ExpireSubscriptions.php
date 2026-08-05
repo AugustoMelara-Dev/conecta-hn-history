@@ -42,9 +42,7 @@ class ExpireSubscriptions extends Command
      */
     public function handle()
     {
-        // ═══════════════════════════════════════════════════════════════════
         // INYECCION DE CONFIGURACION DESDE "TORRE DE CONTROL"
-        // ═══════════════════════════════════════════════════════════════════
         $settings = app(GeneralSettings::class);
 
         // Prioridad: Argumento manual > Configuracion global
@@ -56,9 +54,7 @@ class ExpireSubscriptions extends Command
         $freeProductLimit = $settings->free_plan_product_limit;
         $dryRun = $this->option('dry-run');
 
-        $this->info('═══════════════════════════════════════════════════════════');
         $this->info('   AUTOMATA DE SUSCRIPCIONES - '.now()->format('Y-m-d H:i:s'));
-        $this->info('═══════════════════════════════════════════════════════════');
 
         if ($optionGraceDays !== null) {
             $this->warn("   Dias de gracia: {$graceDays} (SOBREESCRITURA MANUAL)");
@@ -71,16 +67,11 @@ class ExpireSubscriptions extends Command
         if ($dryRun) {
             $this->warn('   MODO SIMULACION - No se realizaran cambios');
         }
-        $this->info('═══════════════════════════════════════════════════════════');
 
-        // ═══════════════════════════════════════════════════════════════════
         // FASE 1: SISTEMA DE ALERTAS PREVENTIVAS
-        // ═══════════════════════════════════════════════════════════════════
         $this->sendExpiringAlerts([5, 1], $dryRun);
 
-        // ═══════════════════════════════════════════════════════════════════
         // FASE 2: REAPER - DEGRADACION AUTOMATICA
-        // ═══════════════════════════════════════════════════════════════════
         $this->processExpiredSubscriptions($graceDays, $freeProductLimit, $dryRun);
 
         $this->newLine();
@@ -171,12 +162,16 @@ class ExpireSubscriptions extends Command
                 // Soft Downgrade con limite dinamico
                 $tenant->update([
                     'is_pro' => false,
+                    'subscription_status' => 'expired',
+                    'plan_type' => 'semilla',
                     'product_limit' => $freeProductLimit, // Limite desde GeneralSettings
                 ]);
 
+                app(\App\Domain\Billing\Services\MonthlyAiCreditGrantService::class)->grant($tenant->refresh());
+
                 // Disparar auditoria de limites
                 if (class_exists(AuditTenantLimits::class)) {
-                    AuditTenantLimits::dispatch($tenant);
+                    AuditTenantLimits::dispatch((string) $tenant->getKey());
                 }
 
                 // Enviar notificacion de suspension
@@ -200,8 +195,6 @@ class ExpireSubscriptions extends Command
             $this->newLine();
         }
 
-        $this->info('═══════════════════════════════════════════════════════════');
         $this->info("  RESUMEN: {$downgraded} degradados, {$errors} errores");
-        $this->info('═══════════════════════════════════════════════════════════');
     }
 }

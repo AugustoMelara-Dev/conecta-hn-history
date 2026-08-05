@@ -29,7 +29,7 @@ class PaymentConfirmedMail extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Pago confirmado - Tu Plan PRO esta activo | Vito Business OS',
+            subject: 'Pago confirmado - Tu Plan PRO esta activo | Dovra AI',
         );
     }
 

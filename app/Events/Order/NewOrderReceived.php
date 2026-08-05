@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Events\Order;
 
 use App\Contracts\Events\DomainEvent;
+use App\Domain\Shared\ValueObjects\TenantId;
 use App\Traits\HasDomainMetadata;
 use App\ValueObjects\Money;
 use App\ValueObjects\OrderNumber;
-use App\Domain\Shared\ValueObjects\TenantId;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**
@@ -49,7 +49,7 @@ final readonly class NewOrderReceived implements DomainEvent, ShouldDispatchAfte
 
     /**
      * @param  TenantId  $tenantId  Tenant context for queue middleware
-     * @param  int  $orderId  The order aggregate root ID
+     * @param  string  $orderId  The order aggregate root ID
      * @param  OrderNumber  $orderNumber  Human-readable order reference
      * @param  int  $itemCount  Total number of items in order (snapshot)
      * @param  Money  $totalAmount  Order total amount (Value Object)
@@ -58,7 +58,7 @@ final readonly class NewOrderReceived implements DomainEvent, ShouldDispatchAfte
      */
     public function __construct(
         private TenantId $tenantId,
-        private int $orderId,
+        private string $orderId,
         public OrderNumber $orderNumber,
         public int $itemCount,
         public Money $totalAmount,
@@ -80,8 +80,8 @@ final readonly class NewOrderReceived implements DomainEvent, ShouldDispatchAfte
      * Factory: Create from order data (snapshotted at creation time).
      */
     public static function create(
-        int $tenantId,
-        int $orderId,
+        string $tenantId,
+        int|string $orderId,
         string $orderNumber,
         int $itemCount,
         int $totalAmountCents,
@@ -90,8 +90,8 @@ final readonly class NewOrderReceived implements DomainEvent, ShouldDispatchAfte
         string $currency = 'HNL'
     ): self {
         return new self(
-            tenantId: TenantId::fromInt($tenantId),
-            orderId: $orderId,
+            tenantId: TenantId::fromString((string) $tenantId),
+            orderId: (string) $orderId,
             orderNumber: OrderNumber::fromString($orderNumber),
             itemCount: $itemCount,
             totalAmount: Money::fromCents($totalAmountCents, $currency),
@@ -117,9 +117,9 @@ final readonly class NewOrderReceived implements DomainEvent, ShouldDispatchAfte
         return $this->tenantId;
     }
 
-    public function aggregateId(): int
+    public function aggregateId(): string
     {
-        return $this->orderId;
+        return (string) $this->orderId;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -168,8 +168,8 @@ final readonly class NewOrderReceived implements DomainEvent, ShouldDispatchAfte
         }
 
         return new self(
-            tenantId: TenantId::fromInt($primitives['tenant_id']),
-            orderId: $primitives['order_id'],
+            tenantId: TenantId::fromSerialized($primitives['tenant_id']),
+            orderId: (string) $primitives['order_id'],
             orderNumber: OrderNumber::fromString($primitives['order_number']),
             itemCount: $primitives['item_count'],
             totalAmount: Money::fromCents(

@@ -49,9 +49,14 @@ final readonly class VerifyOtpHandler implements VerifyOtpHandlerInterface
             throw new InvalidOtpException;
         }
 
-        if ($otp->isExpired($this->clock->immutablenow())) {
+        if ($otp->isExpired($this->clock->now())) {
             $this->otpRepository->invalidateByIdentifier($command->identifier, $command->tenantId);
             throw new OtpExpiredException;
+        }
+
+        if ($otp->maxAttemptsExceeded($this->maxOtpAttempts)) {
+            $this->otpRepository->delete($otp);
+            throw new \App\Domain\Auth\Exceptions\MaxOtpAttemptsExceededException;
         }
 
         // REMOVED LEGACY CHECK: if ($otp->maxAttemptsExceeded($this->maxOtpAttempts)) ...
@@ -98,7 +103,7 @@ final readonly class VerifyOtpHandler implements VerifyOtpHandlerInterface
         return $result;
     }
 
-    private function resolveUserOrNew(?int $userId, string $identifier, string $tenantId): VerifyOtpResult
+    private function resolveUserOrNew(?string $userId, string $identifier, string $tenantId): VerifyOtpResult
     {
         if ($userId === null) {
             return VerifyOtpResult::forNewUser($identifier);
@@ -111,10 +116,5 @@ final readonly class VerifyOtpHandler implements VerifyOtpHandlerInterface
         }
 
         return VerifyOtpResult::forNewUser($identifier);
-    }
-
-    private function maskIdentifier(string $identifier): string
-    {
-        return substr($identifier, 0, 3).'***';
     }
 }

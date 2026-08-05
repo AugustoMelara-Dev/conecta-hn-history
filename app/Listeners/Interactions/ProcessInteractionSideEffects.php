@@ -6,6 +6,7 @@ namespace App\Listeners\Interactions;
 
 use App\Domain\Contracts\AdminNotifier;
 use App\Domain\Interactions\Events\InteractionRecorded;
+use App\Infrastructure\Shared\Middleware\TenantQueueMiddleware;
 use App\Models\Interaction;
 use App\Models\Lead;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -18,6 +19,11 @@ class ProcessInteractionSideEffects implements ShouldQueue
     public function __construct(
         private readonly AdminNotifier $notifier
     ) {}
+
+    public function middleware(InteractionRecorded $event): array
+    {
+        return [new TenantQueueMiddleware($event->tenantId)];
+    }
 
     public function handle(InteractionRecorded $event): void
     {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\User;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -52,6 +53,16 @@ final class LoginRequest extends FormRequest
         }
 
         RateLimiter::clear($this->throttleKey());
+        $this->session()->put('auth.password_confirmed_at', time());
+
+        $user = Auth::user();
+        if ($user instanceof User && $user->hasEnabledTwoFactorAuthentication()) {
+            $this->session()->put([
+                'login.id' => $user->getAuthIdentifier(),
+                'login.remember' => $this->boolean('remember'),
+            ]);
+            Auth::guard('web')->logout();
+        }
     }
 
     /**

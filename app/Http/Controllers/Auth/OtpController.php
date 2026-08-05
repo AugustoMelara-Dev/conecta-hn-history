@@ -4,116 +4,116 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Auth;
 
-use App\Application\Actions\Auth\GenerateOtpAction;
-use App\Application\Actions\Auth\VerifyOtpAction;
+use App\Application\Auth\Commands\GenerateOtpCommand;
+use App\Application\Auth\Commands\VerifyOtpCommand;
+use App\Application\Auth\Contracts\AuthTokenServiceInterface;
+use App\Application\Auth\Contracts\GenerateOtpHandlerInterface;
+use App\Application\Auth\Handlers\VerifyOtpHandlerInterface;
 use App\Domain\Auth\Exceptions\InvalidOtpException;
+use App\Domain\Auth\Exceptions\MaxOtpAttemptsExceededException;
 use App\Domain\Auth\Exceptions\OtpExpiredException;
+use App\Domain\Auth\Exceptions\TooManyOtpRequestsException;
+use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\GenerateOtpRequest;
 use App\Http\Requests\Auth\VerifyOtpRequest;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Validation\ValidationException;
 
-/**
- * OtpController - HTTP Adapter for OTP Authentication (Clean Controller)
- *
- * ARCHITECTURAL COMPLIANCE:
- * - Zero inline validation (delegated to FormRequests)
- * - Zero business logic (delegated to Actions)
- * - Single Responsibility: HTTP translation only
- *
- * PROHIBITED: Mail::, Eloquent queries, direct model instantiation.
- */
+/** HTTP adapter for the current command/handler OTP pipelines. */
 final class OtpController extends Controller
 {
-    public function __construct(
-        private readonly GenerateOtpAction $generateAction,
-        private readonly VerifyOtpAction $verifyAction
-    ) {}
-
-    /**
-     * Generate and send OTP.
-     *
-     * POST /auth/otp/generate
-     */
-    public function generate(GenerateOtpRequest $request): JsonResponse
-    {
+    public function generate(
+        GenerateOtpRequest $request,
+        GenerateOtpHandlerInterface $generateHandler,
+        TenantRepositoryInterface $tenantRepository,
+    ): JsonResponse {
         $validated = $request->validated();
+        $tenant = $tenantRepository->findById((string) $validated['tenant_id']);
 
-        $this->enforceRateLimit($request, 'generate', 3);
+        if ($tenant === null || ! $tenant->isActive()) {
+            return $this->genericGenerationResponse();
+        }
 
-        $result = $this->generateAction->execute(
-            identifier: $validated['identifier'],
-            ipAddress: $request->ip() ?? '127.0.0.1',
-            userAgent: $request->userAgent() ?? 'Unknown'
-        );
+        try {
+            $generateHandler->handle(new GenerateOtpCommand(
+                tenantId: (string) $validated['tenant_id'],
+                identifier: (string) $validated['identifier'],
+                type: filter_var($validated['identifier'], FILTER_VALIDATE_EMAIL) !== false ? 'email' : 'sms',
+                ipAddress: $request->ip() ?? '127.0.0.1',
+                userAgent: $request->userAgent() ?? 'Unknown',
+                idempotencyKey: (string) $validated['idempotency_key'],
+            ));
+        } catch (TooManyOtpRequestsException $exception) {
+            return response()->json([
+                'message' => 'Demasiadas solicitudes. Intenta de nuevo más tarde.',
+            ], 429, ['Retry-After' => (string) $exception->retryAfterSeconds]);
+        }
+
+        return $this->genericGenerationResponse();
+    }
+
+    public function verify(
+        VerifyOtpRequest $request,
+        VerifyOtpHandlerInterface $verifyHandler,
+        AuthTokenServiceInterface $tokenService,
+        TenantRepositoryInterface $tenantRepository,
+    ): JsonResponse {
+        $validated = $request->validated();
+        $tenant = $tenantRepository->findById((string) $validated['tenant_id']);
+
+        if ($tenant === null || ! $tenant->isActive()) {
+            return $this->genericInvalidCodeResponse();
+        }
+
+        try {
+            $result = $verifyHandler->handle(new VerifyOtpCommand(
+                tenantId: (string) $validated['tenant_id'],
+                identifier: (string) $validated['identifier'],
+                code: (string) $validated['otp_code'],
+                ipAddress: $request->ip() ?? '127.0.0.1',
+                idempotencyKey: (string) $validated['idempotency_key'],
+            ));
+        } catch (InvalidOtpException|OtpExpiredException $exception) {
+            return $this->genericInvalidCodeResponse();
+        } catch (MaxOtpAttemptsExceededException) {
+            return response()->json([
+                'message' => 'Demasiados intentos. Solicita un código nuevo.',
+            ], 429);
+        }
+
+        $tokenData = $result->hasUser()
+            ? $tokenService->createTokenForUser(
+                $result->user->id(),
+                'otp-api-token',
+                (string) $validated['tenant_id'],
+            )
+            : null;
 
         return response()->json([
-            'message' => 'Código enviado exitosamente.',
-            'expires_at' => $result['expires_at'],
+            'message' => $result->requiresRegistration
+                ? 'Verificación exitosa. Completa tu registro.'
+                : 'Autenticación exitosa.',
+            'user' => $tokenData['user'] ?? null,
+            'access_token' => $tokenData['token'] ?? null,
+            'token_type' => $tokenData === null ? null : 'Bearer',
+            'requires_registration' => $result->requiresRegistration,
+            'redirect' => $result->requiresRegistration ? '/register' : '/app',
         ]);
     }
 
-    /**
-     * Verify OTP and authenticate user.
-     *
-     * POST /auth/otp/verify
-     */
-    public function verify(VerifyOtpRequest $request): JsonResponse
+    private function genericGenerationResponse(): JsonResponse
     {
-        $validated = $request->validated();
-
-        $this->enforceRateLimit($request, 'verify', 5);
-
-        try {
-            // MAP: uuid -> identifier, otp_code -> code for internal Action compatibility
-            $result = $this->verifyAction->execute(
-                identifier: $validated['uuid'],
-                code: $validated['otp_code'],
-                ipAddress: $request->ip() ?? '127.0.0.1'
-            );
-
-            RateLimiter::clear($this->rateLimitKey($request, 'verify'));
-
-            return response()->json([
-                'message' => $result['requires_registration']
-                    ? 'Verificación exitosa. Completa tu registro.'
-                    : 'Autenticación exitosa.',
-                'user' => $result['user'],
-                'requires_registration' => $result['requires_registration'],
-                'redirect' => $result['redirect'],
-            ]);
-        } catch (InvalidOtpException|OtpExpiredException $e) {
-            throw ValidationException::withMessages(['otp_code' => [$e->getMessage()]]);
-        }
+        return response()->json([
+            'message' => 'Si los datos son válidos, recibirás un código.',
+            'expires_in' => (int) config('auth.otp.expiry_minutes', 10) * 60,
+        ], 202);
     }
 
-    /**
-     * Enforce rate limiting for OTP operations.
-     */
-    private function enforceRateLimit(Request $request, string $action, int $maxAttempts): void
+    private function genericInvalidCodeResponse(): JsonResponse
     {
-        $key = $this->rateLimitKey($request, $action);
-
-        if (RateLimiter::tooManyAttempts($key, $maxAttempts)) {
-            $seconds = RateLimiter::availableIn($key);
-            throw ValidationException::withMessages([
-                'identifier' => ['Demasiados intentos. Intenta en '.ceil($seconds / 60).' minutos.'],
-            ]);
-        }
-
-        RateLimiter::hit($key, 3600);
-    }
-
-    /**
-     * Generate rate limit key.
-     */
-    private function rateLimitKey(Request $request, string $action): string
-    {
-        $identifier = $request->input('identifier') ?? $request->input('uuid');
-
-        return "otp-{$action}:{$request->ip()}:{$identifier}";
+        return response()->json([
+            'message' => 'El código no es válido o ya expiró.',
+            'errors' => ['otp_code' => ['El código no es válido o ya expiró.']],
+        ], 422);
     }
 }

@@ -4,12 +4,17 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Domain\Sales\Exceptions\OrderCannotBeCancelledException;
 use App\Infrastructure\Persistence\Eloquent\Traits\BelongsToTenant;
+use App\Notifications\OrderStatusChangedNotification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -102,6 +107,8 @@ class Order extends Model
         'user_id',
         'order_number',
         'tracking_uuid', // Real-time tracking token (UUID v4)
+        'idempotency_key',
+        'idempotency_hash',
         // PII fields
         'customer_name',
         'customer_phone',
@@ -113,11 +120,18 @@ class Order extends Model
         'discount',
         'delivery_fee',
         'total',
+        'currency',
         // Payment (matching migration)
         'payment_method',
         'payment_status',
         'payment_reference',
+        'payment_transaction_id',
+        'payment_confirmed_at',
+        'refund_transaction_id',
+        'refund_idempotency_key',
+        'refund_attempted_at',
         'paid_at',
+        'refunded_at',
         // Source & Status
         'source',
         'status',
@@ -148,6 +162,9 @@ class Order extends Model
         'delivered_at' => 'datetime',
         'cancelled_at' => 'datetime',
         'paid_at' => 'datetime',
+        'payment_confirmed_at' => 'datetime',
+        'refund_attempted_at' => 'datetime',
+        'refunded_at' => 'datetime',
         // NOTE: Encryption removed - column VARCHAR sizes in migration
         // are too small for encrypted values. To enable encryption,
         // first run migration to change columns to TEXT type.
@@ -167,7 +184,8 @@ class Order extends Model
      * The user who placed this order (for authenticated orders).
      * Nullable - guest orders have no user.
      */
-    public function user(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    /** @return BelongsTo<User, $this> */
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
@@ -266,14 +284,14 @@ class Order extends Model
      * 2. Order table could have millions of rows (scanning would be slow)
      * 3. Tenant is always loaded anyway during order creation
      *
-     * @param  int  $tenantId  The tenant to generate order number for
+     * @param  string  $tenantId  The tenant UUID to generate order number for
      * @return string The next order number (e.g., "#1001")
      */
-    public static function generateOrderNumber(int $tenantId): string
+    public static function generateOrderNumber(string $tenantId): string
     {
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($tenantId) {
+        return DB::transaction(function () use ($tenantId) {
             // Acquire exclusive lock on tenant row to serialize order creation
-            $tenant = \App\Models\Tenant::lockForUpdate()->find($tenantId);
+            $tenant = Tenant::lockForUpdate()->find($tenantId);
 
             if (! $tenant) {
                 throw new \RuntimeException("Tenant {$tenantId} not found during order number generation");
@@ -323,7 +341,7 @@ class Order extends Model
                 $options = collect($item->options)->pluck('option')->implode(', ');
                 $line .= " ({$options})";
             }
-            $line .= ' - L. '.number_format($item->line_total, 2);
+            $line .= ' - L. '.number_format((float) $item->line_total, 2);
             $lines[] = $line;
         }
 
@@ -412,7 +430,7 @@ class Order extends Model
      * @param  string  $reason  Mandatory cancellation reason (audited)
      * @param  int  $cancelledByUserId  User who initiated the cancellation
      *
-     * @throws \App\Domain\Sales\Exceptions\OrderCannotBeCancelledException
+     * @throws OrderCannotBeCancelledException
      */
     public function cancel(string $reason, int $cancelledByUserId): void
     {
@@ -424,7 +442,7 @@ class Order extends Model
         // INVARIANT: Cannot cancel orders that have progressed past Ready
         $terminalStatuses = [self::STATUS_DELIVERED];
         if (in_array($this->status, $terminalStatuses, true)) {
-            throw new \App\Domain\Sales\Exceptions\OrderCannotBeCancelledException(
+            throw new OrderCannotBeCancelledException(
                 "Order #{$this->order_number} cannot be cancelled: already {$this->status}"
             );
         }
@@ -458,7 +476,7 @@ class Order extends Model
     /**
      * Transition to a new status.
      *
-     * @deprecated Use OrderStateService::transition() instead.
+     * @deprecated Use CanonicalOrderWriter::transition() instead.
      *             This method bypasses FSM validation and is retained
      *             only for backward compatibility during migration.
      *
@@ -467,7 +485,7 @@ class Order extends Model
     public function transitionTo(string $status): bool
     {
         throw new \RuntimeException(
-            'DEPRECATED: Use app(OrderStateService::class)->transition($order, $status) instead. '
+            'DEPRECATED: Dispatch TransitionOrderCommand to CanonicalOrderWriter instead. '
             .'Direct model transitions bypass FSM validation and side-effects.'
         );
     }
@@ -485,7 +503,7 @@ class Order extends Model
         }
 
         // Use anonymous notifiable to send to customer email
-        \Illuminate\Support\Facades\Notification::route('mail', $this->customer_email)
-            ->notify(new \App\Notifications\OrderStatusChangedNotification($this, $previousStatus, $newStatus));
+        Notification::route('mail', $this->customer_email)
+            ->notify(new OrderStatusChangedNotification($this, $previousStatus, $newStatus));
     }
 }

@@ -64,7 +64,8 @@ class CheckPaymentStatusCommand extends Command
 
         $expectedTempPath = "temp/{$paymentId}.pdf";
 
-        $existsStored = $currentPath && $storage->exists($currentPath);
+        $hasCurrentPath = is_string($currentPath) && $currentPath !== '';
+        $existsStored = $hasCurrentPath && $storage->exists($currentPath);
         $existsTempCandidate = $storage->exists($expectedTempPath);
 
         $this->info("\n💾 Storage State Analysis (Disk: {$disk}):");
@@ -72,7 +73,7 @@ class CheckPaymentStatusCommand extends Command
         $rows = [];
         $rows[] = ['Stored Path Reconciled?', $existsStored ? '✅ YES' : '❌ NO (Broken Link)'];
 
-        $isPointingToTemp = $currentPath && str_starts_with($currentPath, 'temp');
+        $isPointingToTemp = $hasCurrentPath && str_starts_with($currentPath, 'temp');
         $rows[] = ['DB Points to Temp?', $isPointingToTemp ? '⚠️ YES' : 'NO'];
 
         $rows[] = ["Orphan in {$expectedTempPath}?", $existsTempCandidate ? '⚠️ YES' : 'NO'];
@@ -88,9 +89,9 @@ class CheckPaymentStatusCommand extends Command
         } elseif ($isPointingToTemp && ! $existsStored) {
             $this->error('► STATUS: DATA LOSS / EXPIRED.');
             $this->warn("ACTION: Check if {$expectedTempPath} or permanent backup exists manually.");
-        } elseif (! $isPointingToTemp && ! $existsStored && $currentPath) {
+        } elseif (! $existsStored && $hasCurrentPath) {
             $this->error('► STATUS: BROKEN PERMANENT LINK.');
-        } elseif (! $isPointingToTemp && $existsStored) {
+        } elseif ($existsStored) {
             $this->info('► STATUS: HEALTHY.');
         } else {
             $this->warn('► STATUS: INDETERMINATE.');

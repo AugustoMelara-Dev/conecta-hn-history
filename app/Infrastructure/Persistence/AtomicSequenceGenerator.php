@@ -23,10 +23,8 @@ final class AtomicSequenceGenerator
     /**
      * Get the next sequence number for an aggregate atomically.
      *
-     * Uses INSERT ... ON DUPLICATE KEY UPDATE pattern for O(1) performance.
-     * This is lock-free for new aggregates and minimal-lock for existing ones.
-     *
-     * PREREQUISITE: Must be called within an active database transaction.
+     * Uses a portable upsert inside a transaction for O(1) performance. The
+     * counter row stays locked through the read that returns the reserved value.
      *
      * @param  string|null  $aggregateId  The aggregate root identifier
      * @return int The next sequence number (1-indexed)
@@ -37,31 +35,38 @@ final class AtomicSequenceGenerator
             return 0;
         }
 
-        // LEVEL 46: ATOMIC SEQUENCE GENERATION
-        // Uses MySQL's INSERT ON DUPLICATE KEY UPDATE for atomic increment.
-        // This is O(1) and does not require scanning existing messages.
-        $now = now()->toDateTimeString();
+        return DB::transaction(function () use ($aggregateId): int {
+            $now = now();
 
-        // Attempt atomic upsert
-        DB::statement(
-            'INSERT INTO '.self::TABLE.' (aggregate_id, last_sequence, created_at, updated_at) 
-             VALUES (?, 1, ?, ?)
-             ON DUPLICATE KEY UPDATE last_sequence = last_sequence + 1, updated_at = ?',
-            [$aggregateId, $now, $now, $now]
-        );
-
-        // Fetch the current value (it was just incremented)
-        $sequence = DB::table(self::TABLE)
-            ->where('aggregate_id', $aggregateId)
-            ->value('last_sequence');
-
-        if ($sequence === null) {
-            throw new RuntimeException(
-                "AtomicSequenceGenerator: Failed to retrieve sequence for aggregate {$aggregateId}"
+            // The upsert locks the counter row until this transaction reads its
+            // own reserved value, preventing another worker from advancing the
+            // row between the increment and the read.
+            DB::table(self::TABLE)->upsert(
+                [[
+                    'aggregate_id' => $aggregateId,
+                    'last_sequence' => 1,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]],
+                ['aggregate_id'],
+                [
+                    'last_sequence' => DB::raw(self::TABLE.'.last_sequence + 1'),
+                    'updated_at' => $now,
+                ],
             );
-        }
 
-        return (int) $sequence;
+            $sequence = DB::table(self::TABLE)
+                ->where('aggregate_id', $aggregateId)
+                ->value('last_sequence');
+
+            if ($sequence === null) {
+                throw new RuntimeException(
+                    "AtomicSequenceGenerator: Failed to retrieve sequence for aggregate {$aggregateId}"
+                );
+            }
+
+            return (int) $sequence;
+        }, 3);
     }
 
     /**

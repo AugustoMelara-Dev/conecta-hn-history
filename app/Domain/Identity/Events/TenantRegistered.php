@@ -7,8 +7,8 @@ namespace App\Domain\Identity\Events;
 use App\Contracts\Events\DomainEvent;
 // use App\Models\Tenant; // REMOVED
 // use App\Models\User; // REMOVED
-use App\Traits\HasDomainMetadata;
 use App\Domain\Shared\ValueObjects\TenantId;
+use App\Traits\HasDomainMetadata;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**
@@ -41,9 +41,9 @@ final readonly class TenantRegistered implements DomainEvent, ShouldDispatchAfte
         return TenantId::fromString($this->tenantId);
     }
 
-    public function aggregateId(): int
+    public function aggregateId(): string
     {
-        return abs(crc32($this->tenantId));
+        return $this->tenantId;
     }
 
     public function toPrimitives(): array

@@ -51,12 +51,12 @@ final readonly class RegisterUserHandler implements RegisterUserHandlerInterface
                 // Verify tenant exists first
                 $tenant = $this->tenantRepository->findById($command->tenantId);
                 if (! $tenant) {
-                     // Should throw DomainException, using generic for now as per project style might vary
-                     throw new \InvalidArgumentException("Tenant not found: {$command->tenantId}");
+                    // Should throw DomainException, using generic for now as per project style might vary
+                    throw new \InvalidArgumentException("Tenant not found: {$command->tenantId}");
                 }
-                
+
                 $tenantId = $command->tenantId;
-                // Default to STAFF if not specified, but never OWNER allowed here for safety? 
+                // Default to STAFF if not specified, but never OWNER allowed here for safety?
                 // We trust the command input for role, but default to STAFF if null.
                 $userRole = $command->role ? UserRole::from($command->role) : UserRole::STAFF;
 
@@ -69,7 +69,7 @@ final readonly class RegisterUserHandler implements RegisterUserHandlerInterface
                     role: $userRole,
                     tenantId: $tenantId
                 );
-                
+
                 // Persist User (Tenant already exists)
                 $this->userRepository->save($user);
 
@@ -102,8 +102,8 @@ final readonly class RegisterUserHandler implements RegisterUserHandlerInterface
             // 5. Atomic Event Dispatch (Outbox)
             // Constructing strictly matching the UserRegistered signature
             // Ensure we use the BACKING VALUE of the Enum (string)
-            $finalRole = $command->tenantId 
-                ? ($command->role ?? UserRole::STAFF->value) 
+            $finalRole = $command->tenantId
+                ? ($command->role ?? UserRole::STAFF->value)
                 : UserRole::TENANT_OWNER->value;
 
             $event = new UserRegistered(

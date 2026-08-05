@@ -77,9 +77,15 @@ final class EloquentCrmPipelineSummaryGateway implements CrmPipelineSummaryGatew
     {
         return [
             'open_count' => $deals->where('status', CrmDeal::STATUS_OPEN)->count(),
-            'open_value' => number_format((float) $deals->where('status', CrmDeal::STATUS_OPEN)->sum('value'), 2, '.', ''),
-            'won_value' => number_format((float) $deals->where('status', CrmDeal::STATUS_WON)->sum('value'), 2, '.', ''),
-            'lost_value' => number_format((float) $deals->where('status', CrmDeal::STATUS_LOST)->sum('value'), 2, '.', ''),
+            'open_value' => number_format($deals->where('status', CrmDeal::STATUS_OPEN)->sum(
+                fn (CrmDeal $deal): float => (float) $deal->value,
+            ), 2, '.', ''),
+            'won_value' => number_format($deals->where('status', CrmDeal::STATUS_WON)->sum(
+                fn (CrmDeal $deal): float => (float) $deal->value,
+            ), 2, '.', ''),
+            'lost_value' => number_format($deals->where('status', CrmDeal::STATUS_LOST)->sum(
+                fn (CrmDeal $deal): float => (float) $deal->value,
+            ), 2, '.', ''),
             'overdue_count' => $deals
                 ->where('status', CrmDeal::STATUS_OPEN)
                 ->filter(fn (CrmDeal $deal): bool => $deal->expected_close_at !== null && $deal->expected_close_at->isPast())
@@ -111,7 +117,9 @@ final class EloquentCrmPipelineSummaryGateway implements CrmPipelineSummaryGatew
                     'type' => $stage->type,
                     'probability' => $stage->probability,
                     'deal_count' => $stageDeals->count(),
-                    'deal_value' => number_format((float) $stageDeals->sum('value'), 2, '.', ''),
+                    'deal_value' => number_format($stageDeals->sum(
+                        fn (CrmDeal $deal): float => (float) $deal->value,
+                    ), 2, '.', ''),
                 ];
             })
             ->values()
@@ -139,7 +147,9 @@ final class EloquentCrmPipelineSummaryGateway implements CrmPipelineSummaryGatew
             'win_rate' => $closedCount === 0 ? '0.00' : number_format(($wonDeals->count() / $closedCount) * 100, 2, '.', ''),
             'average_won_value' => $wonDeals->count() === 0
                 ? '0.00'
-                : number_format((float) $wonDeals->avg('value'), 2, '.', ''),
+                : number_format((float) $wonDeals->avg(
+                    fn (CrmDeal $deal): float => (float) $deal->value,
+                ), 2, '.', ''),
             'average_velocity_days' => $velocityDays->count() === 0
                 ? '0.00'
                 : number_format((float) $velocityDays->avg(), 2, '.', ''),

@@ -7,10 +7,9 @@ namespace App\Filament\Widgets;
 use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
-use App\Settings\GeneralSettings;
-use Illuminate\Support\Facades\DB;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use Illuminate\Support\Facades\DB;
 
 class FinancialStatsOverview extends BaseWidget
 {
@@ -127,18 +126,7 @@ class FinancialStatsOverview extends BaseWidget
 
     private function monthlyPlanPrice(): float
     {
-        try {
-            $settings = app(GeneralSettings::class);
-            $configured = (float) ($settings->pro_plan_price ?? 0);
-
-            if ($configured > 0) {
-                return $configured;
-            }
-        } catch (\Throwable) {
-            // Fall back to static subscription config when settings are unavailable.
-        }
-
-        return ((float) config('subscriptions.plans.pro.price', 49900)) / 100;
+        return \App\Domain\TenantGovernance\Services\SubscriptionPricingService::canonicalProPriceInMajorUnits();
     }
 
     private function money(float $amount): string

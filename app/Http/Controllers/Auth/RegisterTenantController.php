@@ -4,20 +4,24 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Auth;
 
+use App\Application\Markets\AvailableMarketCatalog;
+use App\Application\Shared\Contracts\CommandBusInterface;
+use App\Application\Tenant\Commands\RegisterTenantCommand;
 use App\Domain\Tenant\Contracts\OnboardingReader;
 use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Domain\TenantGovernance\Enums\CommercialMode;
+use App\Domain\TenantGovernance\Services\SubscriptionPricingService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\RegisterTenantRequest;
 use App\Infrastructure\Registration\EloquentRegistrationPostProcessor;
 use App\Support\Panel\CanonicalPanelUrlResolver;
 use Illuminate\Http\RedirectResponse;
-use Symfony\Component\HttpFoundation\Response as HttpResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 /**
  * RegisterTenantController - Thin HTTP Gateway
@@ -31,7 +35,7 @@ final class RegisterTenantController extends Controller
     /**
      * Display the tenant registration form.
      */
-    public function create(OnboardingReader $reader): Response
+    public function create(OnboardingReader $reader, AvailableMarketCatalog $marketCatalog): Response
     {
         $businessTypes = [
             [
@@ -68,18 +72,18 @@ final class RegisterTenantController extends Controller
                 'value' => 'hybrid',
                 'business_type' => BusinessType::SERVICE->value,
                 'label' => 'Combinar flujos',
-                'description' => 'Para negocios que venden productos y también reservan servicios. Se activa por revisión.',
-                'capabilities' => ['Productos', 'Servicios', 'Agenda bajo allowlist'],
+                'description' => 'Para negocios que venden productos y también reservan servicios desde una sola operación.',
+                'capabilities' => ['Productos y pedidos', 'Servicios y reservas', 'Agenda y clientes compartidos'],
                 'examples' => ['Clinicas con tienda', 'Academias', 'Talleres'],
                 'rubro_key' => 'hybrid-core',
-                'disabled' => true,
-                'badge' => 'Piloto controlado',
+                'disabled' => false,
             ],
         ];
 
         return Inertia::render('Auth/RegisterTenant', [
             'categories' => $reader->getBusinessCategories(),
             'cities' => $reader->getAvailableCities(),
+            'markets' => $marketCatalog->all(),
             'businessTypes' => $businessTypes,
             'businessTypeSuggestions' => [
                 'restaurantes' => 'products',
@@ -123,12 +127,23 @@ final class RegisterTenantController extends Controller
                     'onboardingCopy' => 'Explica propuesta, activa CTA principal y opera seguimiento comercial sin parecer tienda.',
                     'modules' => ['Landing', 'Leads', 'CRM', 'WhatsApp'],
                 ],
+                [
+                    'key' => 'hybrid-core',
+                    'label' => 'Productos y reservas',
+                    'commercialMode' => 'hybrid',
+                    'businessType' => BusinessType::SERVICE->value,
+                    'categories' => ['restaurantes', 'tiendas', 'servicios', 'salud'],
+                    'teaser' => 'Opera catálogo, pedidos, servicios y agenda desde una sola cuenta.',
+                    'onboardingTitle' => 'Inicio híbrido: una sola operación para toda tu oferta',
+                    'onboardingCopy' => 'Publica primero tu oferta principal y completa productos, servicios y disponibilidad desde el panel.',
+                    'modules' => ['Productos', 'Pedidos', 'Servicios', 'Agenda'],
+                ],
             ],
             'settings' => [
                 'freeProductLimit' => (int) config('conecta.free_plan_product_limit', 10),
                 'proProductLimit' => (int) config('conecta.pro_plan_product_limit', 100),
                 'freePlanPrice' => 0,
-                'proPlanPrice' => (float) config('conecta.pro_plan_price', 500.00),
+                'proPlanPrice' => SubscriptionPricingService::canonicalProPriceInMajorUnits(),
                 'directoryHost' => config('app.domain'),
                 'registrationHost' => request()->getHost(),
                 'requestHost' => request()->getHost(),
@@ -149,7 +164,7 @@ final class RegisterTenantController extends Controller
      */
     public function store(
         RegisterTenantRequest $request,
-        \App\Application\Shared\Contracts\CommandBusInterface $bus,
+        CommandBusInterface $bus,
         CanonicalPanelUrlResolver $panelUrlResolver
     ): RedirectResponse|HttpResponse {
         try {
@@ -158,27 +173,27 @@ final class RegisterTenantController extends Controller
             $commercialMode = CommercialMode::from((string) $request->validated('commercial_mode'));
             $businessType = $commercialMode->businessType();
 
-            if ($commercialMode === CommercialMode::HYBRID && ! (bool) config('conecta.hybrid_commercial_mode_enabled', false)) {
-                return back()
-                    ->withInput($request->except('password', 'password_confirmation'))
-                    ->withErrors(['commercial_mode' => 'El modo mixto está disponible solo por piloto controlado.']);
-            }
-
             // DELEGATION: Command Bus
-            $command = new \App\Application\Tenant\Commands\RegisterTenantCommand(
+            $command = new RegisterTenantCommand(
                 businessName: (string) $request->validated('business_name'),
-                slug: \Illuminate\Support\Str::slug((string) $request->validated('slug')),
+                slug: Str::slug((string) $request->validated('slug')),
                 ownerName: (string) $request->validated('name'),
                 email: (string) $request->validated('email'),
                 password: (string) $request->validated('password'),
-                cityId: (int) $request->validated('city_id'),
+                cityId: $request->filled('city_id') ? (int) $request->validated('city_id') : null,
                 categoryId: $request->filled('category_id') ? (int) $request->validated('category_id') : null,
                 whatsapp: $request->validated('whatsapp'),
                 selectedPlan: (string) $request->validated('selected_plan'),
                 logoPath: $logoPath,
                 businessType: $businessType->value,
                 commercialMode: $commercialMode->value,
-                rubroKey: $request->input('rubro_key')
+                rubroKey: $request->input('rubro_key'),
+                countryCode: $request->filled('country_code') ? strtoupper((string) $request->validated('country_code')) : null,
+                localityId: $request->filled('locality_id') ? (int) $request->validated('locality_id') : null,
+                localeCode: $request->filled('locale_code') ? (string) $request->validated('locale_code') : null,
+                currencyCode: $request->filled('currency_code') ? strtoupper((string) $request->validated('currency_code')) : null,
+                timezone: $request->filled('timezone') ? (string) $request->validated('timezone') : null,
+                address: $request->filled('address') ? (string) $request->validated('address') : null,
             );
 
             // EXECUTE
@@ -240,5 +255,4 @@ final class RegisterTenantController extends Controller
                 ->withErrors(['email' => 'Error: '.$e->getMessage()]);
         }
     }
-
 }

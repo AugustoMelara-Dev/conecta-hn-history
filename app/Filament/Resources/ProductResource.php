@@ -33,6 +33,27 @@ class ProductResource extends Resource
         return 'Producto';
     }
 
+    /** Platform support can inspect catalog records but cannot mutate them. */
+    public static function canCreate(): bool
+    {
+        return false;
+    }
+
+    public static function canEdit($record): bool
+    {
+        return false;
+    }
+
+    public static function canDelete($record): bool
+    {
+        return false;
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return false;
+    }
+
     public static function form(Form $form): Form
     {
         // Feature Gating: Check Plan
@@ -176,15 +197,8 @@ class ProductResource extends Resource
                 Tables\Filters\TernaryFilter::make('is_visible')
                     ->label('Visibilidad'),
             ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
+            ->actions([])
+            ->bulkActions([]);
     }
 
     use \App\Filament\Traits\ScopesToTenant;
@@ -200,8 +214,6 @@ class ProductResource extends Resource
     {
         return [
             'index' => Pages\ListProducts::route('/'),
-            'create' => Pages\CreateProduct::route('/create'),
-            'edit' => Pages\EditProduct::route('/{record}/edit'),
         ];
     }
 }

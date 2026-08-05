@@ -9,11 +9,10 @@ use App\Domain\Directory\DTOs\DirectorySearchData;
 use App\Models\Category;
 use App\Models\City;
 use App\Models\Tenant;
-use Illuminate\Pagination\LengthAwarePaginator as LaravelLengthAwarePaginator;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\LengthAwarePaginator as LaravelLengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 final class EloquentDirectoryReader implements DirectoryReader
@@ -89,7 +88,7 @@ final class EloquentDirectoryReader implements DirectoryReader
 
     public function getCitiesWithTenants(): Collection
     {
-        return Cache::remember("v".config('app.version')."_directory_cities", now()->addHours(self::LONG_CACHE_TTL_HOURS), function () {
+        return Cache::remember('v'.config('app.version').'_directory_cities', now()->addHours(self::LONG_CACHE_TTL_HOURS), function () {
             if (! Schema::hasTable('cities')) {
                 return collect();
             }
@@ -103,7 +102,7 @@ final class EloquentDirectoryReader implements DirectoryReader
 
     public function getCategoriesWithTenants(): Collection
     {
-        return Cache::remember("v".config('app.version')."_directory_categories", now()->addHours(self::LONG_CACHE_TTL_HOURS), function () {
+        return Cache::remember('v'.config('app.version').'_directory_categories', now()->addHours(self::LONG_CACHE_TTL_HOURS), function () {
             if (! Schema::hasTable('categories')) {
                 return collect();
             }
@@ -245,12 +244,6 @@ final class EloquentDirectoryReader implements DirectoryReader
     private function applyPriorityOrder($query): void
     {
         if (Schema::hasColumn('tenants', 'plan_type')) {
-            if (DB::connection()->getDriverName() === 'mysql') {
-                $query->orderByRaw("FIELD(plan_type, 'enterprise', 'pro', 'semilla')");
-
-                return;
-            }
-
             $query->orderByRaw("case plan_type when 'enterprise' then 0 when 'pro' then 1 when 'semilla' then 2 else 3 end");
         }
     }

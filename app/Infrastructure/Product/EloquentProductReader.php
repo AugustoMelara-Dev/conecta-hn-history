@@ -18,29 +18,29 @@ use Illuminate\Support\Collection;
  */
 final class EloquentProductReader implements ProductReader
 {
-    public function getInventory(int $tenantId): Collection
+    public function getInventory(string $tenantId): Collection
     {
         // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
         return Product::withoutGlobalScopes()
-            ->where('tenant_id', (int) $tenantId)
+            ->where('tenant_id', $tenantId)
             ->orderBy('name')
             ->get();
     }
 
-    public function getLowStockProducts(int $tenantId): Collection
+    public function getLowStockProducts(string $tenantId): Collection
     {
         // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
         return Product::withoutGlobalScopes()
-            ->where('tenant_id', (int) $tenantId)
+            ->where('tenant_id', $tenantId)
             ->whereIn('stock_status', ['low_stock', 'out_of_stock'])
             ->orderBy('name')
             ->get();
     }
 
-    public function search(int $tenantId, array $filters, int $perPage = 20): LengthAwarePaginator
+    public function search(string $tenantId, array $filters, int $perPage = 20): LengthAwarePaginator
     {
         return Product::query()
-            ->where('tenant_id', (int) $tenantId)
+            ->where('tenant_id', $tenantId)
             ->where('is_active', true)
             ->when($filters['search'] ?? null, function (Builder $query, string $term) {
                 $query->where(function (Builder $q) use ($term) {
@@ -58,9 +58,9 @@ final class EloquentProductReader implements ProductReader
             ->paginate($perPage);
     }
 
-    public function find(int $tenantId, int $productId): ?object
+    public function find(string $tenantId, int $productId): ?object
     {
-        return Product::where('tenant_id', (int) $tenantId)
+        return Product::where('tenant_id', $tenantId)
             ->where('id', $productId)
             ->where('is_active', true)
             ->with(['category', 'images'])

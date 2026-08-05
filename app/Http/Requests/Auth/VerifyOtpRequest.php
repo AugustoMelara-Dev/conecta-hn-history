@@ -34,9 +34,19 @@ final class VerifyOtpRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'uuid' => ['required', 'uuid'],
+            'tenant_id' => ['required', 'uuid'],
+            'idempotency_key' => ['required', 'uuid'],
+            'identifier' => ['required', 'string', 'max:255'],
             'otp_code' => ['required', 'numeric', 'digits:6'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'tenant_id' => $this->header('X-Tenant-ID'),
+            'idempotency_key' => $this->header('Idempotency-Key'),
+        ]);
     }
 
     /**
@@ -47,8 +57,11 @@ final class VerifyOtpRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'uuid.required' => 'El identificador UUID es obligatorio.',
-            'uuid.uuid' => 'El identificador debe ser un UUID válido.',
+            'tenant_id.required' => 'Debes indicar el negocio.',
+            'tenant_id.uuid' => 'El identificador del negocio no es válido.',
+            'idempotency_key.required' => 'Debes enviar una clave de idempotencia.',
+            'idempotency_key.uuid' => 'La clave de idempotencia debe ser un UUID.',
+            'identifier.required' => 'El email o teléfono es obligatorio.',
             'otp_code.required' => 'El código OTP es obligatorio.',
             'otp_code.numeric' => 'El código OTP debe ser numérico.',
             'otp_code.digits' => 'El código OTP debe tener exactamente 6 dígitos.',

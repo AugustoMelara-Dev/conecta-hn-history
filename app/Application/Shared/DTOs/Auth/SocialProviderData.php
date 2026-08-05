@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Application\DTOs\Auth;
+namespace App\Application\Shared\DTOs\Auth;
 
 use Laravel\Socialite\Contracts\User as SocialiteUser;
 

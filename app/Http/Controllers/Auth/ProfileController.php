@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Auth;
 
+use App\Application\Privacy\AccountPrivacyService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ProfileUpdateRequest;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -21,6 +23,8 @@ final class ProfileController extends Controller
         return Inertia::render('Profile/Edit', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => session('status'),
+            'twoFactorEnabled' => $request->user()->hasEnabledTwoFactorAuthentication(),
+            'twoFactorRequired' => $request->user()->isSuperAdmin() && (bool) config('security.admin_mfa_required', false),
         ]);
     }
 
@@ -37,7 +41,17 @@ final class ProfileController extends Controller
         return Redirect::route('profile.edit');
     }
 
-    public function destroy(Request $request): RedirectResponse
+    public function export(Request $request, AccountPrivacyService $privacy): JsonResponse
+    {
+        $payload = $privacy->export($request->user());
+
+        return response()->json($payload, 200, [
+            'Content-Disposition' => 'attachment; filename=dovra-datos-'.now()->format('Y-m-d').'.json',
+            'Cache-Control' => 'no-store, private',
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    public function destroy(Request $request, AccountPrivacyService $privacy): RedirectResponse
     {
         $request->validate([
             'password' => ['required', 'current_password'],
@@ -45,9 +59,9 @@ final class ProfileController extends Controller
 
         $user = $request->user();
 
-        Auth::logout();
+        $privacy->delete($user);
 
-        $user->delete();
+        Auth::logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

@@ -31,8 +31,18 @@ final class GenerateOtpRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'tenant_id' => ['required', 'uuid'],
+            'idempotency_key' => ['required', 'uuid'],
             'identifier' => ['required', 'string', 'max:255', $this->identifierFormatRule()],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'tenant_id' => $this->header('X-Tenant-ID'),
+            'idempotency_key' => $this->header('Idempotency-Key'),
+        ]);
     }
 
     /**
@@ -59,6 +69,10 @@ final class GenerateOtpRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'tenant_id.required' => 'Debes indicar el negocio.',
+            'tenant_id.uuid' => 'El identificador del negocio no es válido.',
+            'idempotency_key.required' => 'Debes enviar una clave de idempotencia.',
+            'idempotency_key.uuid' => 'La clave de idempotencia debe ser un UUID.',
             'identifier.required' => 'El identificador (email o teléfono) es obligatorio.',
             'identifier.max' => 'El identificador no puede exceder 255 caracteres.',
         ];

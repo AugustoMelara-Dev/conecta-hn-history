@@ -20,7 +20,7 @@ final class EloquentGlobalSearchReader implements GlobalSearchReader
     /**
      * {@inheritdoc}
      */
-    public function search(int $tenantId, string $query): Collection
+    public function search(string $tenantId, string $query): Collection
     {
         // TODO: Implement internal search if needed. For now focusing on Public Platform Search as per Controller.
         // The Controller uses searchTenants.

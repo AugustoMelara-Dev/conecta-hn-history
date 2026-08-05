@@ -74,6 +74,8 @@ class GenerateSitemapCommand extends Command
 
     protected string $currentTenantSlug = '';
 
+    protected string $currentSitemapFilename = '';
+
     public function handle(): int
     {
         $this->dryRun = (bool) $this->option('dry-run');
@@ -272,15 +274,13 @@ XML;
     protected function startNewSitemapFile(string $tenantSlug): void
     {
         $filename = $this->getSitemapFilename($tenantSlug, $this->currentSitemapIndex);
-        $path = Storage::disk('public')->path($filename);
+        $this->fileHandle = tmpfile();
 
-        // Ensure directory exists
-        $dir = dirname($path);
-        if (! is_dir($dir)) {
-            mkdir($dir, 0755, true);
+        if ($this->fileHandle === false) {
+            throw new \RuntimeException('Unable to allocate a temporary sitemap stream.');
         }
 
-        $this->fileHandle = fopen($path, 'w');
+        $this->currentSitemapFilename = $filename;
         $this->sitemapsCreated++;
 
         // Write XML header
@@ -300,9 +300,17 @@ XML;
     {
         if ($this->fileHandle) {
             fwrite($this->fileHandle, "</urlset>\n");
+            rewind($this->fileHandle);
+
+            if (! Storage::disk('public')->put($this->currentSitemapFilename, $this->fileHandle)) {
+                throw new \RuntimeException('Unable to publish the generated sitemap.');
+            }
+
             fclose($this->fileHandle);
             $this->fileHandle = null;
+            $this->currentSitemapFilename = '';
         }
+
     }
 
     /**
@@ -310,10 +318,10 @@ XML;
      */
     protected function generateSitemapIndex(string $tenantSlug, int $totalFiles): void
     {
-        $baseUrl = config('app.url');
-        $indexPath = Storage::disk('public')->path("sitemaps/sitemap-{$tenantSlug}-index.xml");
-
-        $handle = fopen($indexPath, 'w');
+        $handle = tmpfile();
+        if ($handle === false) {
+            throw new \RuntimeException('Unable to allocate a temporary sitemap index stream.');
+        }
 
         $header = <<<'XML'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -323,7 +331,7 @@ XML;
         fwrite($handle, $header);
 
         for ($i = 1; $i <= $totalFiles; $i++) {
-            $sitemapUrl = "{$baseUrl}/storage/sitemaps/sitemap-{$tenantSlug}-{$i}.xml";
+            $sitemapUrl = Storage::disk('public')->url($this->getSitemapFilename($tenantSlug, $i));
             $entry = <<<XML
     <sitemap>
         <loc>{$sitemapUrl}</loc>
@@ -335,6 +343,13 @@ XML;
         }
 
         fwrite($handle, "</sitemapindex>\n");
+        rewind($handle);
+
+        $indexFilename = "sitemaps/sitemap-{$tenantSlug}-index.xml";
+        if (! Storage::disk('public')->put($indexFilename, $handle)) {
+            throw new \RuntimeException('Unable to publish the generated sitemap index.');
+        }
+
         fclose($handle);
 
         $this->line("    → Generated sitemap index with {$totalFiles} files");

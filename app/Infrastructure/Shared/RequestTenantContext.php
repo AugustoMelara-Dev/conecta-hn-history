@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Shared;
 
 use App\Domain\Shared\Contracts\TenantContext;
+use App\Domain\Shared\ValueObjects\TenantId;
 use Illuminate\Http\Request;
 
 /**
@@ -22,7 +23,7 @@ final class RequestTenantContext implements TenantContext
     /**
      * {@inheritDoc}
      */
-    public function getTenantId(): int|string
+    public function getTenantId(): string
     {
         // Try resolving from authenticated user
         // We use dynamic property access to avoid hard import of User model class
@@ -42,21 +43,21 @@ final class RequestTenantContext implements TenantContext
 
         if (is_object($tenantId)) {
             if (method_exists($tenantId, 'toString')) {
-                return $tenantId->toString();
+                return TenantId::fromString(strtolower($tenantId->toString()))->toString();
             }
 
             if (property_exists($tenantId, 'value') && is_string($tenantId->value)) {
-                return $tenantId->value;
+                return TenantId::fromString(strtolower($tenantId->value))->toString();
             }
 
             if (method_exists($tenantId, '__toString')) {
-                return (string) $tenantId;
+                return TenantId::fromString(strtolower((string) $tenantId))->toString();
             }
 
             throw new \RuntimeException('Tenant Context Error: Tenant identifier object cannot be converted.');
         }
 
-        return is_numeric($tenantId) ? (int) $tenantId : (string) $tenantId;
+        return TenantId::fromString(strtolower((string) $tenantId))->toString();
     }
 
     /**
@@ -89,7 +90,7 @@ final class RequestTenantContext implements TenantContext
             $subscriptionStatus = $attributes['subscription_status'] ?? 'active';
 
             return collect($only)
-                ->mapWithKeys(function (string $key) use ($sourceTenant, $attributes, $plan, $subscriptionStatus): array {
+                ->mapWithKeys(function (string $key) use ($attributes, $plan, $subscriptionStatus): array {
                     if (array_key_exists($key, $attributes)) {
                         return [$key => $attributes[$key]];
                     }

@@ -16,10 +16,10 @@ final readonly class SubmitReviewCommand
 {
     public function __construct(
         /** Tenant ID for multi-tenant isolation */
-        public int $tenantId,
+        public string $tenantId,
 
         /** Author's User ID */
-        public int $userId,
+        public string $userId,
 
         /** Target Product ID */
         public int $productId,

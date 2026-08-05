@@ -7,7 +7,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Application\DTOs\ReportRequestData;
 use App\Domain\ReportingAndExports\Jobs\GeneratePdfReportJob;
 use App\Domain\ReportingAndExports\Jobs\GenerateSalesExport;
-use App\Domain\Shared\Contracts\TenantContext;
+use App\Domain\Shared\Services\TenantContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Reports\InventoryReportRequest;
 use App\Http\Requests\Api\V1\Reports\KitchenReportRequest;
@@ -49,7 +49,7 @@ final class ReportController extends Controller
      */
     public function salesExcel(SalesReportRequest $request): JsonResponse
     {
-        $tenantId = $this->tenantContext->getTenantId();
+        $tenantId = (string) $this->tenantContext->id();
 
         // ═══════════════════════════════════════════════════════════════════════
         // ASYNC DISPATCH: Fire-and-Forget Pattern
@@ -57,7 +57,7 @@ final class ReportController extends Controller
         // Job runs in background worker, freeing this HTTP request immediately.
         // User is notified via email/database when report is ready.
         GenerateSalesExport::dispatch(
-            userId: $request->user()->id,
+            userId: (string) $request->user()->getAuthIdentifier(),
             tenantId: $tenantId,
             criteriaData: [
                 'start_date' => $request->getStartDate(),
@@ -87,7 +87,7 @@ final class ReportController extends Controller
      */
     public function salesPdf(SalesReportRequest $request): JsonResponse
     {
-        $tenantId = $this->tenantContext->getTenantId();
+        $tenantId = (string) $this->tenantContext->id();
 
         // ═══════════════════════════════════════════════════════════════════════
         // ASYNC DISPATCH: Fire-and-Forget Pattern
@@ -101,7 +101,7 @@ final class ReportController extends Controller
 
         GeneratePdfReportJob::dispatch(
             data: $dto,
-            requestorId: $request->user()->id
+            requestorId: (string) $request->user()->getAuthIdentifier()
         )->onQueue('reports');
 
         return response()->json([
@@ -121,7 +121,7 @@ final class ReportController extends Controller
      */
     public function inventoryPdf(InventoryReportRequest $request): JsonResponse
     {
-        $tenantId = $this->tenantContext->getTenantId();
+        $tenantId = (string) $this->tenantContext->id();
 
         // ═══════════════════════════════════════════════════════════════════════
         // ASYNC DISPATCH: Fire-and-Forget Pattern
@@ -135,7 +135,7 @@ final class ReportController extends Controller
 
         GeneratePdfReportJob::dispatch(
             data: $dto,
-            requestorId: $request->user()->id
+            requestorId: (string) $request->user()->getAuthIdentifier()
         )->onQueue('reports');
 
         return response()->json([
@@ -155,7 +155,7 @@ final class ReportController extends Controller
      */
     public function kitchenPdf(KitchenReportRequest $request): JsonResponse
     {
-        $tenantId = $this->tenantContext->getTenantId();
+        $tenantId = (string) $this->tenantContext->id();
 
         // ═══════════════════════════════════════════════════════════════════════
         // ASYNC DISPATCH: Fire-and-Forget Pattern
@@ -169,7 +169,7 @@ final class ReportController extends Controller
 
         GeneratePdfReportJob::dispatch(
             data: $dto,
-            requestorId: $request->user()->id
+            requestorId: (string) $request->user()->getAuthIdentifier()
         )->onQueue('reports');
 
         return response()->json([

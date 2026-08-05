@@ -6,9 +6,9 @@ namespace App\Infrastructure\Jobs\Reporting;
 
 use App\Contracts\LoggerInterface;
 use App\Contracts\ReportGenerationInterface;
-use App\Domain\Identity\Repositories\UserRepositoryInterface;
-use App\Domain\Shared\Middleware\TenantQueueMiddleware;
-use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
+use App\Infrastructure\Shared\Middleware\TenantQueueMiddleware;
+use App\Models\Tenant;
+use App\Models\User;
 use App\Notifications\ReportReadyNotification;
 use App\Traits\GeneratesSignedDownloadUrls;
 use Illuminate\Bus\Queueable;
@@ -26,7 +26,7 @@ use Illuminate\Support\Str;
  * APPLICATION JOB: Uses Repository pattern for entity hydration.
  * IDEMPOTENCY: Uses ShouldBeUnique with tenant-type-date composite key.
  */
-final class GeneratePdfReportJob implements ShouldQueue, ShouldBeUnique
+final class GeneratePdfReportJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable;
     use GeneratesSignedDownloadUrls;
@@ -39,7 +39,7 @@ final class GeneratePdfReportJob implements ShouldQueue, ShouldBeUnique
 
     public function __construct(
         public readonly \App\Application\DTOs\ReportRequestData $data,
-        public readonly int $requestorId
+        public readonly string $requestorId
     ) {}
 
     /**
@@ -47,7 +47,7 @@ final class GeneratePdfReportJob implements ShouldQueue, ShouldBeUnique
      */
     public function uniqueId(): string
     {
-        return sprintf('pdf_%d_%s_%s',
+        return sprintf('pdf_%s_%s_%s',
             $this->data->tenantId,
             $this->data->reportType,
             $this->data->startDate->format('Y-m-d')
@@ -55,20 +55,18 @@ final class GeneratePdfReportJob implements ShouldQueue, ShouldBeUnique
     }
 
     public function handle(
-        TenantRepositoryInterface $tenantRepository,
-        UserRepositoryInterface $userRepository,
         ReportGenerationInterface $reportService,
         LoggerInterface $logger,
         FilesystemFactory $storage
     ): void {
         try {
             // Access tenantId from DTO
-            $tenant = $tenantRepository->findById($this->data->tenantId);
+            $tenant = Tenant::query()->find($this->data->tenantId);
             if ($tenant === null) {
                 throw new ModelNotFoundException("Tenant {$this->data->tenantId} not found");
             }
 
-            $requestor = $userRepository->findById($this->requestorId);
+            $requestor = User::query()->find($this->requestorId);
             if ($requestor === null) {
                 throw new ModelNotFoundException("User {$this->requestorId} not found");
             }

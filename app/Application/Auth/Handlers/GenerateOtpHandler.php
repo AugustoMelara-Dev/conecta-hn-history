@@ -7,6 +7,7 @@ namespace App\Application\Auth\Handlers;
 use App\Application\Auth\Commands\GenerateOtpCommand;
 use App\Application\Auth\Contracts\GenerateOtpHandlerInterface;
 use App\Application\Shared\Contracts\OutboxRepositoryInterface;
+use App\Application\Shared\Contracts\SensitivePayloadCipherInterface;
 use App\Application\Shared\Interfaces\EntropyGeneratorInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Auth\Events\OtpGenerated;
@@ -41,6 +42,7 @@ final readonly class GenerateOtpHandler implements GenerateOtpHandlerInterface
         private LoggerInterface $logger,
         private EntropyGeneratorInterface $entropyGenerator,
         private OtpHasherInterface $hasher,
+        private SensitivePayloadCipherInterface $payloadCipher,
         private TraceContext $traceContext,
         private \App\Infrastructure\Shared\Context\IdempotencyContext $idempotencyContext,
         private int $otpExpiryMinutes,
@@ -54,8 +56,8 @@ final readonly class GenerateOtpHandler implements GenerateOtpHandlerInterface
         // ═══════════════════════════════════════════════════════════════════
         $user = $this->userRepository->findByEmail($command->identifier, $command->tenantId);
 
-        if ($user !== null && $user->tenantId !== $command->tenantId) {
-            throw SecurityException::crossTenantAccess($user->id ?? 'unknown', $command->tenantId);
+        if ($user !== null && $user->tenantId() !== $command->tenantId) {
+            throw SecurityException::crossTenantAccess($user->id(), $command->tenantId);
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -64,12 +66,9 @@ final readonly class GenerateOtpHandler implements GenerateOtpHandlerInterface
         $plainCode = $this->entropyGenerator->generateNumeric($this->otpLength);
         $hashedCode = $this->hasher->hash($plainCode);
 
-        // Invalidate previous OTPs for this identifier
-        $this->otpRepository->invalidateByIdentifier($command->identifier, $command->tenantId);
-
-        // Create new OTP
+        // Atomically replace the single OTP slot for tenant + identifier.
         $otpEntity = $this->otpRepository->create(
-            userId: $user?->id,
+            userId: $user?->id(),
             identifier: $command->identifier,
             tenantId: $command->tenantId,
             hashedCode: $hashedCode,
@@ -84,22 +83,19 @@ final readonly class GenerateOtpHandler implements GenerateOtpHandlerInterface
         // ═══════════════════════════════════════════════════════════════════
         $event = OtpGenerated::now(
             otpId: $otpEntity->id,
-            userId: $user?->id,
+            userId: $user?->id(),
             tenantId: $command->tenantId,
+            encryptedCode: $this->payloadCipher->encrypt($plainCode),
+            identifier: $command->identifier,
+            recipientName: $user?->name() ?? 'Usuario',
+            expiryMinutes: $this->otpExpiryMinutes,
         );
-
-        // Enriched payload for the Notifier (Relay will pick this up)
-        $outboxPayload = array_merge($event->toPayload(), [
-            'plain_text_code' => $plainCode, // REQUIRED for delivery
-            'identifier' => $command->identifier,
-            'expiry_minutes' => $this->otpExpiryMinutes,
-        ]);
 
         $message = new DomainEventMessage(
             eventId: Uuid::uuid7()->toString(),
             type: OtpGenerated::class,
             aggregateId: $otpEntity->id,
-            payload: json_encode($outboxPayload),
+            payload: json_encode($event->toPayload()),
             occurredAt: $this->clock->now(),
             metadata: [
                 'tenant_id' => $command->tenantId,

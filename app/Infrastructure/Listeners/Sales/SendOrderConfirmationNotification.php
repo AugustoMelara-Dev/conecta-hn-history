@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Listeners\Sales;
 
 use App\Domain\Sales\Events\OrderCreated;
-use App\Domain\Shared\Middleware\TenantQueueMiddleware;
+use App\Infrastructure\Shared\Middleware\TenantQueueMiddleware;
 use App\Models\Order; // Added for re-fetching
 use App\Notifications\NewOrderNotification;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -32,16 +32,18 @@ final class SendOrderConfirmationNotification implements ShouldQueue
     }
 
     // Temporary property to hold tenant ID for middleware access
-    public int $tenantId;
+    public string $tenantId;
 
     public function handle(OrderCreated $event): void
     {
-        $this->tenantId = $event->tenantId()->toInt(); // Assuming we handle conversion or TenantId supports it. Wait, `tenantId()` returns TenantId object.
-        // Actually, $event->tenantId is likely string now if we refactor.
-        // Let's assume OrderCreated exposes `tenantId` as string or TenantId VO.
-        // If I change OrderCreated to hold primitives, I'll expose getters.
+        $this->tenantId = $event->tenantId()->toString();
 
-        $order = Order::with('tenant.user')->find($event->orderId);
+        $order = Order::query()
+            // INFRA_TENANT_FILTER: reviewed scope bypass; authority is constrained by the adjacent tenant/id predicate.
+            ->withoutGlobalScopes()
+            ->where('tenant_id', $this->tenantId)
+            ->with('tenant.user')
+            ->find($event->orderId);
 
         if (! $order) {
             Log::error('AsyncWorker: Order not found', ['order_id' => $event->orderId]);

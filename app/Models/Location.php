@@ -27,6 +27,12 @@ class Location extends Model
         'hours_data',
         'is_active',
         'is_primary',
+        'country_code',
+        'administrative_area_id',
+        'locality_id',
+        'locale_code',
+        'currency_code',
+        'timezone_name',
     ];
 
     protected $guarded = ['tenant_id'];
@@ -71,6 +77,11 @@ class Location extends Model
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);
+    }
+
+    public function locality(): BelongsTo
+    {
+        return $this->belongsTo(Locality::class);
     }
 
     public function orders(): HasMany

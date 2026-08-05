@@ -23,7 +23,7 @@ final class EloquentOrderReader implements OrderReader
      * {@inheritdoc}
      */
     public function search(
-        int|string $tenantId,
+        string $tenantId,
         ?string $status = null,
         int $perPage = 20
     ): LengthAwarePaginator {
@@ -39,7 +39,7 @@ final class EloquentOrderReader implements OrderReader
     /**
      * {@inheritdoc}
      */
-    public function find(int|string $tenantId, int $orderId): ?object
+    public function find(string $tenantId, int $orderId): ?object
     {
         // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
         return Order::withoutGlobalScopes()
@@ -51,7 +51,7 @@ final class EloquentOrderReader implements OrderReader
     /**
      * {@inheritdoc}
      */
-    public function findByStatus(int|string $tenantId, string $status, int $limit = 50): iterable
+    public function findByStatus(string $tenantId, string $status, int $limit = 50): iterable
     {
         // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
         return Order::withoutGlobalScopes()

@@ -22,7 +22,7 @@ use Illuminate\Foundation\Events\Dispatchable;
  * ║    - Queue worker: SELECT * FROM tenants WHERE id = ? (N+1 on scale)    ║
  * ║                                                                          ║
  * ║  AFTER (Optimized):                                                      ║
- * ║    - Constructor accepts primitives only (int $tenantId, array $payload)║
+ * ║    - Constructor accepts primitives only (UUID tenant, array payload)   ║
  * ║    - No SerializesModels = No DB queries on broadcast                   ║
  * ║    - Payload is pre-computed at dispatch time, not at broadcast time    ║
  * ║                                                                          ║
@@ -35,13 +35,13 @@ final class BusinessProfileUpdated implements ShouldBroadcast
     // NOTE: SerializesModels REMOVED intentionally - we use primitives only
 
     /**
-     * @param  int  $tenantId  The tenant ID for channel routing
+     * @param  string  $tenantId  The tenant UUID for channel routing
      * @param  int  $userId  The user ID for private channel targeting
      * @param  array  $payload  Pre-computed data to broadcast (no lazy loading)
      */
     public function __construct(
-        public readonly int $tenantId,
-        public readonly int $userId,
+        public readonly string $tenantId,
+        public readonly int|string $userId,
         public readonly array $payload
     ) {}
 
@@ -90,7 +90,7 @@ final class BusinessProfileUpdated implements ShouldBroadcast
     public static function fromTenant(\App\Models\Tenant $tenant): self
     {
         return new self(
-            tenantId: $tenant->id,
+            tenantId: (string) $tenant->id,
             userId: $tenant->user_id,
             payload: [
                 'id' => $tenant->id,

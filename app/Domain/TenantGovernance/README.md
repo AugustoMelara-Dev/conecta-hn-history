@@ -24,7 +24,7 @@ El contexto de **TenantGovernance** constituye el **Core Domain** del sistema mu
 - Eventos de dominio pueden ser emitidos desde este contexto
 
 ### ❌ PROHIBIDO
-- TenantGovernance **NO debe** contener Application Services (mover a `App\Application\Services\`)
+- TenantGovernance **NO debe** contener Application Services (mover al módulo correspondiente, por ejemplo `App\Application\ServiceCatalog\`)
 - TenantGovernance **NO debe** importar Filament ni Laravel HTTP
 - TenantGovernance **NO debe** acceder a Session/Request
 

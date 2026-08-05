@@ -4,8 +4,15 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
+// @withoutGlobalScopes-safety INFRA_TENANT_FILTER: Filament resolves and checks the active tenant before querying.
+
+use App\Application\Markets\TenantMarketResolver;
+use App\Application\ServiceCatalog\MerchantServiceCatalogAdapter;
 use App\Filament\App\Resources\ServiceResource\Pages;
+use App\Models\Location;
 use App\Models\Service;
+use App\Models\Tenant;
+use App\Models\User;
 use App\Support\Product\TenantAccessMatrix;
 use Filament\Facades\Filament;
 use Filament\Forms;
@@ -47,6 +54,31 @@ class ServiceResource extends Resource
         return static::canViewAny();
     }
 
+    public static function trustedTenant(): Tenant
+    {
+        $tenant = Filament::getTenant();
+        if (! $tenant instanceof Tenant) {
+            throw new \LogicException('Service catalog writes require a trusted Filament tenant.');
+        }
+
+        return $tenant;
+    }
+
+    public static function trustedActor(): User
+    {
+        $actor = auth()->user();
+        if (! $actor instanceof User) {
+            throw new \LogicException('Service catalog writes require an authenticated actor.');
+        }
+
+        return $actor;
+    }
+
+    public static function currencyCode(): string
+    {
+        return app(TenantMarketResolver::class)->resolve(static::trustedTenant())->currencyCode;
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -71,8 +103,8 @@ class ServiceResource extends Resource
                                 Forms\Components\TextInput::make('price')
                                     ->label('Precio')
                                     ->numeric()
-                                    ->prefix('L.')
-                                    ->helperText('Monto en lempiras que se mostrará al cliente.')
+                                    ->prefix(fn (): string => static::currencyCode())
+                                    ->helperText('Monto en la moneda del mercado configurado para el negocio.')
                                     ->required(),
 
                                 Forms\Components\TextInput::make('duration_minutes')
@@ -89,6 +121,18 @@ class ServiceResource extends Resource
                             ->label('Disponible para reservas')
                             ->helperText('Desactívalo si no quieres que aparezca como opción reservable.')
                             ->default(true),
+
+                        Forms\Components\Select::make('location_ids')
+                            ->label('Ubicaciones')
+                            ->multiple()
+                            ->options(fn (): array => Location::query()
+                                ->withoutGlobalScopes()
+                                ->where('tenant_id', static::trustedTenant()->getKey())
+                                ->where('is_active', true)
+                                ->orderBy('name')
+                                ->pluck('name', 'id')
+                                ->all())
+                            ->helperText('Selecciona dónde puede reservarse este servicio.'),
                     ]),
             ]);
     }
@@ -130,17 +174,18 @@ class ServiceResource extends Resource
                     ->label('Eliminar')
                     ->modalHeading('Eliminar servicio')
                     ->modalDescription('Esta acción quitará el servicio del catálogo de reservas. Las citas existentes no se modifican.')
-                    ->modalSubmitActionLabel('Eliminar servicio'),
+                    ->modalSubmitActionLabel('Eliminar servicio')
+                    ->using(function (Service $record): bool {
+                        app(MerchantServiceCatalogAdapter::class)->archiveService(
+                            static::trustedTenant(),
+                            static::trustedActor(),
+                            $record,
+                        );
+
+                        return true;
+                    }),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make()
-                        ->label('Eliminar seleccionados')
-                        ->modalHeading('Eliminar servicios seleccionados')
-                        ->modalDescription('Esta acción quita los servicios seleccionados del catálogo. Verifica que no los necesites para nuevas reservas.')
-                        ->modalSubmitActionLabel('Eliminar servicios'),
-                ]),
-            ])
+            ->bulkActions([])
             ->emptyStateIcon('heroicon-o-scissors')
             ->emptyStateHeading('Aún no hay servicios')
             ->emptyStateDescription('Crea el primer servicio para que tus clientes puedan reservar desde el sitio público.')

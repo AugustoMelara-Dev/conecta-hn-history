@@ -19,7 +19,7 @@ final class LeadMapper
     {
         return new LeadEntity(
             id: $model->id,
-            tenantId: $model->tenant_id,
+            tenantId: (string) $model->tenant_id,
             source: $model->source,
             contactData: [
                 'name' => $model->customer_name,

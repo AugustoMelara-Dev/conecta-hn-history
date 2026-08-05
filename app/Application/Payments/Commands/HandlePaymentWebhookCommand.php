@@ -28,6 +28,6 @@ final readonly class HandlePaymentWebhookCommand
         public array $payload,
 
         /** Optional tenant ID if webhook is tenant-contextualized */
-        public ?int $tenantId = null,
+        public ?string $tenantId = null,
     ) {}
 }

@@ -86,7 +86,7 @@ final readonly class CreateOrderResult
             totalAmount: (float) $order->total,
             status: $order->status,
             itemsCount: method_exists($order, 'items') ? $order->items()->count() : 0,
-            currency: $order->currency ?? 'HNL',
+            currency: (string) $order->currency,
             // Ideally map items here too
             items: []
         );

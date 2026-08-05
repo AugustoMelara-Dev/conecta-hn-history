@@ -41,8 +41,8 @@ final class StripeSubscriptionCheckoutGateway implements SubscriptionCheckoutGat
                     'tenant_id' => $tenantId,
                     'plan_identifier' => $planIdentifier,
                 ]), [
-                'idempotency_key' => $idempotencyKey,
-            ]);
+                    'idempotency_key' => $idempotencyKey,
+                ]);
 
             if (! is_string($session['url'] ?? null) || $session['url'] === '') {
                 return SubscriptionCheckoutSessionResult::failure('Stripe did not return a Checkout URL.');

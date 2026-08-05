@@ -15,7 +15,7 @@ final readonly class UpdateTenantScheduleCommand
 {
     public function __construct(
         /** Tenant ID to update */
-        public int $tenantId,
+        public string $tenantId,
 
         /**
          * Weekly schedule data structure.

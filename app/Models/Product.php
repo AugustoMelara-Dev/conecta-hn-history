@@ -98,6 +98,14 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
         'name',
         'slug',
         'description',
+        'short_description',
+        'tags',
+        'colors',
+        'material',
+        'dimensions',
+        'condition',
+        'warnings',
+        'unit',
         'price',
         // Inventory Management
         'manage_stock',
@@ -122,6 +130,10 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
     protected $casts = [
         'price' => 'decimal:2',
         'variants' => 'array',
+        'tags' => 'array',
+        'colors' => 'array',
+        'dimensions' => 'array',
+        'warnings' => 'array',
         // Inventory
         'manage_stock' => 'boolean',
         'stock_quantity' => 'integer',
@@ -268,9 +280,9 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
      * 1. Fetch only IDs from DB (lightweight query, no full rows)
      * 2. Shuffle IDs in PHP memory (O(k) where k = desired count)
      * 3. Fetch full models only for the random subset
-     * 4. Use FIELD() to preserve shuffled order from MySQL
+     * 4. Use a portable CASE expression to preserve shuffled order
      *
-     * @param  int  $businessId  Tenant/Business ID for isolation
+     * @param  string  $businessId  Tenant UUID for isolation
      * @param  array<int>  $excludeIds  IDs already in cart
      * @param  int  $count  Number of suggestions to return (default 3)
      * @return \Illuminate\Database\Eloquent\Collection<static>
@@ -284,14 +296,14 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
      * 1. Fetch only IDs from DB (lightweight query, no full rows)
      * 2. Shuffle IDs in PHP memory (O(k) where k = desired count)
      * 3. Fetch full models only for the random subset
-     * 4. Use FIELD() to preserve shuffled order from MySQL
+     * 4. Use a portable CASE expression to preserve shuffled order
      *
-     * @param  int  $businessId  Tenant/Business ID for isolation
+     * @param  string  $businessId  Tenant UUID for isolation
      * @param  array<int>  $excludeIds  IDs already in cart
      * @param  int  $count  Number of suggestions to return (default 3)
      * @return \Illuminate\Database\Eloquent\Collection<static>
      */
-    public static function getRandomImpulseCandidates(int $businessId, array $excludeIds = [], int $count = 3): \Illuminate\Database\Eloquent\Collection
+    public static function getRandomImpulseCandidates(string $businessId, array $excludeIds = [], int $count = 3): \Illuminate\Database\Eloquent\Collection
     {
         // Step 1: Fetch only IDs (uses idx_products_impulse index)
         // REFACTOR: Use DB Facade to avoid "Scope Evasion" architecture violation
@@ -318,13 +330,15 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
             return new \Illuminate\Database\Eloquent\Collection;
         }
 
-        // Step 3: Sanitize IDs for FIELD() clause (SQL injection prevention)
-        $sanitizedIds = $randomIds->map(fn ($id) => (int) $id)->implode(',');
+        $orderedIds = $randomIds->map(fn ($id): int => (int) $id)->all();
+        $orderCases = collect($orderedIds)
+            ->map(fn (int $id, int $position): string => "when ? then {$position}")
+            ->implode(' ');
 
-        // Step 4: Fetch full models with FIELD() to preserve random order
+        // Step 4: Fetch full models with a bound, cross-database order expression.
         $rows = \Illuminate\Support\Facades\DB::table('products')
-            ->whereIn('id', $randomIds)
-            ->orderByRaw('FIELD(id, '.$sanitizedIds.')')
+            ->whereIn('id', $orderedIds)
+            ->orderByRaw("case id {$orderCases} else ".count($orderedIds).' end', $orderedIds)
             ->get();
 
         return static::hydrate($rows->toArray());
@@ -365,7 +379,7 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
             return null;
         }
 
-        return \Illuminate\Support\Facades\Storage::url($this->image_path);
+        return \Illuminate\Support\Facades\Storage::disk('public')->url($this->image_path);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -416,7 +430,7 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
      *
      * DO NOT use in public-facing code.
      */
-    public static function getAdminList(int $tenantId, string $search = '')
+    public static function getAdminList(string $tenantId, string $search = '')
     {
         $query = \Illuminate\Support\Facades\DB::table('products')
             ->where('tenant_id', $tenantId)
@@ -443,7 +457,7 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
      *
      * DO NOT use in public-facing code.
      */
-    public static function countAllForTenant(int $tenantId): int
+    public static function countAllForTenant(string $tenantId): int
     {
         return \Illuminate\Support\Facades\DB::table('products')
             ->where('tenant_id', $tenantId)
@@ -460,7 +474,7 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
      *
      * DO NOT use in public-facing code.
      */
-    public static function findInTenant(int $id, int $tenantId): ?self
+    public static function findInTenant(int $id, string $tenantId): ?self
     {
         $row = \Illuminate\Support\Facades\DB::table('products')
             ->where('id', $id)
@@ -480,7 +494,7 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
      *
      * Safe for public use (applies visibility filter).
      */
-    public static function searchForPos(int $tenantId, string $term)
+    public static function searchForPos(string $tenantId, string $term)
     {
         return \Illuminate\Support\Facades\DB::table('products')
             ->where('tenant_id', $tenantId)

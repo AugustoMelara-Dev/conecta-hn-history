@@ -85,7 +85,7 @@ class SubscriptionExpiringNotification extends Notification implements ShouldQue
             ->line('• Prioridad en el directorio')
             ->action('🔄 Renovar Ahora', $billingUrl)
             ->line('Si tienes alguna pregunta sobre tu suscripción, contáctanos.')
-            ->salutation('- El equipo de Vito Business OS');
+            ->salutation('- El equipo de Dovra AI');
     }
 
     /**

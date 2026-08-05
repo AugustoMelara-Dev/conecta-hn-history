@@ -4,8 +4,14 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
+// @withoutGlobalScopes-safety INFRA_TENANT_FILTER: Filament resolves and checks the active tenant before querying.
+
+use App\Application\ServiceCatalog\MerchantServiceCatalogAdapter;
 use App\Filament\App\Resources\ServiceProviderResource\Pages;
+use App\Models\Location;
 use App\Models\ServiceProvider;
+use App\Models\Tenant;
+use App\Models\User;
 use App\Support\Product\TenantAccessMatrix;
 use Filament\Facades\Filament;
 use Filament\Forms;
@@ -47,6 +53,26 @@ class ServiceProviderResource extends Resource
         return static::canViewAny();
     }
 
+    public static function trustedTenant(): Tenant
+    {
+        $tenant = Filament::getTenant();
+        if (! $tenant instanceof Tenant) {
+            throw new \LogicException('Provider catalog writes require a trusted Filament tenant.');
+        }
+
+        return $tenant;
+    }
+
+    public static function trustedActor(): User
+    {
+        $actor = auth()->user();
+        if (! $actor instanceof User) {
+            throw new \LogicException('Provider catalog writes require an authenticated actor.');
+        }
+
+        return $actor;
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -75,25 +101,20 @@ class ServiceProviderResource extends Resource
                             ->label('Disponible para reservas')
                             ->helperText('Desactivalo si esta persona no debe aparecer como opcion al reservar.')
                             ->default(true),
+
+                        Forms\Components\Select::make('location_ids')
+                            ->label('Ubicaciones')
+                            ->multiple()
+                            ->options(fn (): array => Location::query()
+                                ->withoutGlobalScopes()
+                                ->where('tenant_id', static::trustedTenant()->getKey())
+                                ->where('is_active', true)
+                                ->orderBy('name')
+                                ->pluck('name', 'id')
+                                ->all())
+                            ->helperText('Selecciona dónde puede atender esta persona.'),
                     ])
                     ->columns(2),
-
-                Forms\Components\Section::make('Horario personalizado')
-                    ->description('Opcional. Define un horario especifico para esta persona. Si queda vacio, se usa el horario general del negocio.')
-                    ->icon('heroicon-o-clock')
-                    ->schema([
-                        Forms\Components\KeyValue::make('schedule_config')
-                            ->label('Disponibilidad por dia')
-                            ->keyLabel('Dia en ingles')
-                            ->valueLabel('Horario')
-                            ->keyPlaceholder('monday')
-                            ->valuePlaceholder('09:00-17:00')
-                            ->reorderable()
-                            ->addActionLabel('Agregar dia')
-                            ->helperText('Dias validos: monday, tuesday, wednesday, thursday, friday, saturday, sunday. Formato: HH:MM-HH:MM.'),
-                    ])
-                    ->collapsed()
-                    ->collapsible(),
             ]);
     }
 
@@ -140,17 +161,18 @@ class ServiceProviderResource extends Resource
                     ->label('Eliminar')
                     ->modalHeading('Eliminar miembro del equipo')
                     ->modalDescription('Esta accion quita a la persona de las opciones de atencion. Las citas existentes no se modifican.')
-                    ->modalSubmitActionLabel('Eliminar miembro'),
+                    ->modalSubmitActionLabel('Eliminar miembro')
+                    ->using(function (ServiceProvider $record): bool {
+                        app(MerchantServiceCatalogAdapter::class)->archiveProvider(
+                            static::trustedTenant(),
+                            static::trustedActor(),
+                            $record,
+                        );
+
+                        return true;
+                    }),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make()
-                        ->label('Eliminar seleccionados')
-                        ->modalHeading('Eliminar miembros seleccionados')
-                        ->modalDescription('Esta accion quita a estas personas de las opciones de atencion para nuevas reservas.')
-                        ->modalSubmitActionLabel('Eliminar miembros'),
-                ]),
-            ])
+            ->bulkActions([])
             ->emptyStateIcon('heroicon-o-user-group')
             ->emptyStateHeading('Aun no hay equipo disponible')
             ->emptyStateDescription('Agrega a la primera persona que atendera reservas y citas del negocio.')

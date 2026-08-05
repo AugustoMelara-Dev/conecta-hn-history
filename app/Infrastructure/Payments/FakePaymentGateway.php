@@ -18,6 +18,9 @@ final class FakePaymentGateway implements PaymentGatewayInterface
     /** @var array<string, ChargeResult> */
     private array $chargeResults = [];
 
+    /** @var array<string, ChargeResult> */
+    private array $refundResults = [];
+
     /**
      * Pre-configure a charge result for testing.
      */
@@ -60,10 +63,15 @@ final class FakePaymentGateway implements PaymentGatewayInterface
     /**
      * {@inheritDoc}
      */
-    public function refund(string $transactionId, ?int $amountInCents = null): ChargeResult
-    {
-        return ChargeResult::success(
-            transactionId: 'refund_'.uniqid(),
+    public function refund(
+        string $transactionId,
+        ?int $amountInCents = null,
+        ?string $idempotencyKey = null,
+    ): ChargeResult {
+        $key = $idempotencyKey ?? 'non_idempotent_'.uniqid();
+
+        return $this->refundResults[$key] ??= ChargeResult::success(
+            transactionId: 'refund_'.hash('sha256', $key),
         );
     }
 }

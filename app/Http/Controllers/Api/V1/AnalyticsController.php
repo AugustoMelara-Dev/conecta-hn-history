@@ -37,9 +37,15 @@ final class AnalyticsController extends Controller
     public function track(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'tenant_id' => ['required', 'string'],
-            'type' => ['required', 'string', Rule::in(InteractionType::values())],
-            'product_id' => ['nullable', 'integer', 'exists:products,id'],
+            'tenant_id' => ['required', 'uuid'],
+            'type' => ['required', 'string', Rule::in(InteractionType::publicSignalValues())],
+            'product_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('products', 'id')->where(
+                    fn ($query) => $query->where('tenant_id', $request->input('tenant_id'))
+                ),
+            ],
             'metadata' => ['nullable', 'array'],
             'url' => ['nullable', 'string', 'max:1024'],
             'referrer' => ['nullable', 'string', 'max:1024'],
@@ -88,73 +94,24 @@ final class AnalyticsController extends Controller
 
     #[OA\Post(
         path: '/api/analytics/conversion',
-        summary: 'Track conversion/purchase event',
+        summary: 'Deprecated public conversion beacon (server outcomes only)',
         tags: ['Analytics'],
         requestBody: new OA\RequestBody(required: true, description: 'Conversion payload'),
         responses: [
-            new OA\Response(response: 200, description: 'Status OK'),
+            new OA\Response(response: 410, description: 'Gone: commercial outcomes are server-authoritative'),
         ]
     )]
     public function conversion(Request $request): JsonResponse
     {
-        try {
-            $data = $request->json()->all();
-            $tenantSlug = isset($data['tenant_slug']) && is_string($data['tenant_slug']) ? $data['tenant_slug'] : null;
-            $transactionId = isset($data['transaction_id']) && is_string($data['transaction_id']) ? $data['transaction_id'] : null;
-            $value = isset($data['value']) ? (float) $data['value'] : 0.0;
-            $currency = isset($data['currency']) && is_string($data['currency']) ? $data['currency'] : 'HNL';
-            $event = isset($data['event']) && is_string($data['event']) ? $data['event'] : InteractionType::PURCHASE->value;
-            $timestamp = isset($data['timestamp']) && is_string($data['timestamp']) ? $data['timestamp'] : now()->toISOString();
-            $attribution = $this->attributionFromArray($data);
+        $this->log->notice('Deprecated public conversion beacon rejected', [
+            'route' => 'analytics/conversion',
+        ]);
 
-            if ($tenantSlug === null || $tenantSlug === '') {
-                return response()->json(['status' => 'skipped', 'reason' => 'no_tenant']);
-            }
-
-            $tenant = $this->tenantResolver->findPublicBySlug($tenantSlug);
-            if ($tenant === null) {
-                return response()->json(['status' => 'skipped', 'reason' => 'tenant_not_found']);
-            }
-
-            $this->recordInteractionAction->execute(new InteractionData(
-                tenantId: $tenant->id(),
-                type: $event,
-                ipAddress: $request->ip(),
-                userAgent: $request->userAgent(),
-                sessionId: $this->resolveVisitorId($request),
-                productId: null,
-                referrer: $this->stringFromArray($data, 'referrer') ?? $request->headers->get('referer'),
-                url: $this->stringFromArray($data, 'url'),
-                utmSource: $attribution['utm_source'] ?? null,
-                utmMedium: $attribution['utm_medium'] ?? null,
-                utmCampaign: $attribution['utm_campaign'] ?? null,
-                utmTerm: $attribution['utm_term'] ?? null,
-                utmContent: $attribution['utm_content'] ?? null,
-                metadata: [
-                    'event' => $event,
-                    'transaction_id' => $transactionId,
-                    'value' => $value,
-                    'currency' => $currency,
-                    'source' => 'beacon',
-                    'original_timestamp' => $timestamp,
-                ],
-            ));
-
-            $this->log->info('Conversion tracked', [
-                'tenant' => $tenantSlug,
-                'transaction_id' => $transactionId,
-                'value' => $value,
-            ]);
-
-            return response()->json([
-                'status' => 'ok',
-                'transaction_id' => $transactionId,
-            ]);
-        } catch (\Throwable $e) {
-            $this->log->warning('Analytics conversion error', ['error' => $e->getMessage()]);
-
-            return response()->json(['status' => 'error']);
-        }
+        return response()->json([
+            'status' => 'gone',
+            'reason' => 'server_authoritative_outcomes_only',
+            'message' => 'Paid, purchase and revenue outcomes are derived from server records.',
+        ], 410);
     }
 
     private function resolveVisitorId(Request $request): string
@@ -174,30 +131,5 @@ final class AnalyticsController extends Controller
         $value = $validated[$key] ?? null;
 
         return is_string($value) && $value !== '' ? $value : null;
-    }
-
-    /**
-     * @param  array<string, mixed>  $data
-     */
-    private function stringFromArray(array $data, string $key): ?string
-    {
-        $value = $data[$key] ?? null;
-
-        return is_string($value) && $value !== '' ? $value : null;
-    }
-
-    /**
-     * @param  array<string, mixed>  $data
-     * @return array<string, string>
-     */
-    private function attributionFromArray(array $data): array
-    {
-        return array_filter([
-            'utm_source' => $this->stringFromArray($data, 'utm_source'),
-            'utm_medium' => $this->stringFromArray($data, 'utm_medium'),
-            'utm_campaign' => $this->stringFromArray($data, 'utm_campaign'),
-            'utm_term' => $this->stringFromArray($data, 'utm_term'),
-            'utm_content' => $this->stringFromArray($data, 'utm_content'),
-        ], static fn (?string $value): bool => $value !== null && $value !== '');
     }
 }

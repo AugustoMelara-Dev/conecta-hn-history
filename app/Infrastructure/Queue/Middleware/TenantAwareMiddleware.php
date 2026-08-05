@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Queue\Middleware;
 
-use App\Domain\Shared\Services\TenantContext;
+use App\Infrastructure\Shared\Middleware\TenantQueueMiddleware;
 use Closure;
 
 /**
@@ -16,23 +16,10 @@ use Closure;
  * Checks if the Job has a $tenantId property and restores context.
  * Ensures strict cleanup after execution.
  */
-class TenantAwareMiddleware
+final class TenantAwareMiddleware
 {
-    public function handle(object $job, Closure $next): void
+    public function handle(object $job, Closure $next): mixed
     {
-        /** @var TenantContext $context */
-        $context = app(TenantContext::class);
-
-        try {
-            if (property_exists($job, 'tenantId') && $job->tenantId !== null) {
-                // Restore Context
-                $context->setTenant((string) $job->tenantId);
-            }
-
-            $next($job);
-        } finally {
-            // HYGIENE: Always clean up the worker process
-            $context->reset();
-        }
+        return (new TenantQueueMiddleware)->handle($job, $next);
     }
 }

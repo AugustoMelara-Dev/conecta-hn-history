@@ -4,21 +4,31 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\TenantResource\Pages;
+use App\Domain\TenantGovernance\Enums\BusinessType;
 // MIGRATION: Updated to Domain namespace (2026-01-05)
+use App\Filament\Resources\TenantResource\Pages;
+use App\Infrastructure\Identity\ImpersonationGrantService;
 use App\Models\Tenant;
+use App\Models\User;
+use App\Policies\TenantPolicy;
 use Filament\Forms;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 
 class TenantResource extends Resource
 {
     protected static ?string $model = Tenant::class;
 
-    protected static ?string $modelPolicy = \App\Policies\TenantPolicy::class;
+    protected static ?string $modelPolicy = TenantPolicy::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-building-storefront';
 
@@ -43,55 +53,55 @@ class TenantResource extends Resource
             ->schema([
                 Forms\Components\Section::make('Informacion Principal')
                     ->schema([
-                        Forms\Components\TextInput::make('name')
+                        TextInput::make('name')
                             ->label('Nombre del Negocio')
                             ->required()
                             ->maxLength(255)
                             ->live(onBlur: true)
                             ->afterStateUpdated(fn (string $operation, $state, Forms\Set $set) => $operation === 'create' ? $set('slug', Str::slug($state)) : null),
 
-                        Forms\Components\TextInput::make('slug')
+                        TextInput::make('slug')
                             ->required()
                             ->maxLength(255)
                             ->unique(Tenant::class, 'slug', ignoreRecord: true),
 
-                        Forms\Components\Select::make('user_id')
+                        Select::make('user_id')
                             ->label('Propietario')
                             ->relationship('user', 'name')
                             ->searchable()
                             ->preload()
                             ->required(),
 
-                        Forms\Components\Select::make('category_id')
+                        Select::make('category_id')
                             ->label('Categoria')
                             ->relationship('category', 'name')
                             ->searchable()
                             ->preload()
                             ->required(),
 
-                        Forms\Components\Select::make('business_type')
+                        Select::make('business_type')
                             ->label('Modelo de Negocio')
-                            ->options(\App\Domain\TenantGovernance\Enums\BusinessType::class)
+                            ->options(BusinessType::class)
                             ->required()
-                            ->default(\App\Domain\TenantGovernance\Enums\BusinessType::RETAIL)
+                            ->default(BusinessType::RETAIL)
                             ->native(false),
 
-                        Forms\Components\Select::make('city_id')
+                        Select::make('city_id')
                             ->label('Ciudad')
                             ->relationship('city', 'name')
                             ->searchable()
                             ->preload()
                             ->required(),
 
-                        Forms\Components\TextInput::make('address')
+                        TextInput::make('address')
                             ->label('Direccion')
                             ->maxLength(255),
 
-                        Forms\Components\TextInput::make('phone')
+                        TextInput::make('phone')
                             ->label('Telefono')
                             ->tel(),
 
-                        Forms\Components\TextInput::make('website')
+                        TextInput::make('website')
                             ->label('Sitio Web')
                             ->url(),
                     ])->columns(2),
@@ -103,7 +113,7 @@ class TenantResource extends Resource
                             ->default(false)
                             ->live(),
 
-                        Forms\Components\TextInput::make('product_limit')
+                        TextInput::make('product_limit')
                             ->label('Limite de Productos')
                             ->numeric()
                             ->default(10)
@@ -122,7 +132,7 @@ class TenantResource extends Resource
                     ->schema([
                         Forms\Components\FileUpload::make('logo_path')
                             ->label('Logo')
-                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'])
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                             ->maxSize(2048)
                             ->image()
                             ->directory('tenants/logos')
@@ -143,7 +153,7 @@ class TenantResource extends Resource
                             ->disabled(fn (Forms\Get $get) => ! $get('is_pro'))
                             ->helperText(fn (Forms\Get $get) => ! $get('is_pro') ? 'Activa el Plan PRO para habilitar.' : null),
 
-                        Forms\Components\TextInput::make('whatsapp_number')
+                        TextInput::make('whatsapp_number')
                             ->label('WhatsApp Business')
                             ->tel()
                             ->disabled(fn (Forms\Get $get) => ! $get('is_pro'))
@@ -181,7 +191,7 @@ class TenantResource extends Resource
                             ->imagePreviewHeight('200')
                             ->helperText('Máximo 2MB. Formatos: JPG, PNG, WebP. Recomendado: 1920x600px.'),
 
-                        Forms\Components\TextInput::make('slogan')
+                        TextInput::make('slogan')
                             ->label('Eslogan / Frase de Marca')
                             ->maxLength(100)
                             ->placeholder('Tu frase comercial aquí...')
@@ -216,7 +226,7 @@ class TenantResource extends Resource
                             ->default(true)
                             ->helperText('Permite a los clientes recoger su pedido.'),
 
-                        Forms\Components\TextInput::make('minimum_order')
+                        TextInput::make('minimum_order')
                             ->label('Pedido Mínimo')
                             ->numeric()
                             ->default(0)
@@ -408,7 +418,7 @@ class TenantResource extends Resource
                             'is_active' => true,
                         ]);
 
-                        \Filament\Notifications\Notification::make()
+                        Notification::make()
                             ->success()
                             ->title('Negocio Aprobado')
                             ->send();
@@ -421,7 +431,7 @@ class TenantResource extends Resource
                     ->visible(fn ($record) => $record->status === 'pending')
                     ->requiresConfirmation()
                     ->form([
-                        \Filament\Forms\Components\Textarea::make('rejection_reason')
+                        Textarea::make('rejection_reason')
                             ->label('Motivo del rechazo')
                             ->required(),
                     ])
@@ -431,7 +441,7 @@ class TenantResource extends Resource
                             'is_active' => false,
                         ]);
 
-                        \Filament\Notifications\Notification::make()
+                        Notification::make()
                             ->danger()
                             ->title('Negocio Rechazado')
                             ->send();
@@ -445,30 +455,70 @@ class TenantResource extends Resource
                     ->modalHeading('Shadow Login - Soporte Tecnico')
                     ->modalDescription(fn ($record) => "Seras autenticado como '{$record->user->name}' ({$record->user->email}). Podras ver su panel exactamente como el lo ve. Usa el banner superior para regresar.")
                     ->modalSubmitActionLabel('Iniciar Sesion como Cliente')
-                    ->action(function ($record) {
-                        // VC-AUDIT-107: Rate limit impersonation (max 5/hour per admin)
-                        $rateLimitKey = 'impersonate:' . auth()->id();
-                        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($rateLimitKey, 5)) {
-                            \Filament\Notifications\Notification::make()
+                    ->visible(fn (): bool => auth()->user()?->isSuperAdmin() ?? false)
+                    ->form([
+                        TextInput::make('current_password')
+                            ->label('Contraseña actual')
+                            ->password()
+                            ->revealable(false)
+                            ->required()
+                            ->autocomplete('current-password'),
+                        Textarea::make('impersonation_reason')
+                            ->label('Motivo de soporte')
+                            ->helperText('Describe el caso que requiere acceder a la cuenta. Quedará registrado en auditoría.')
+                            ->required()
+                            ->minLength(10)
+                            ->maxLength(500),
+                    ])
+                    ->action(function ($record, array $data) {
+                        $operator = auth()->user();
+
+                        // VC-AUDIT-107: Rate limit impersonation
+                        // Count every attempt before checking credentials so a stolen
+                        // administrator session cannot brute-force the reauthentication.
+                        $operatorId = (string) ($operator?->getKey() ?? 'anonymous');
+                        $operatorRateLimitKey = 'impersonate:operator:'.$operatorId;
+                        $operatorIpRateLimitKey = $operatorRateLimitKey.':ip:'.sha1((string) request()->ip());
+                        $operatorLimited = RateLimiter::tooManyAttempts($operatorRateLimitKey, 5);
+                        $operatorIpLimited = RateLimiter::tooManyAttempts($operatorIpRateLimitKey, 3);
+
+                        if ($operatorLimited || $operatorIpLimited) {
+                            Log::channel('security')->critical(
+                                'security.impersonation.rate_limited',
+                                [
+                                    'operator_id' => $operatorId,
+                                    'tenant_id' => (string) $record->id,
+                                    'ip_address' => request()->ip(),
+                                    'operator_limit_reached' => $operatorLimited,
+                                    'operator_ip_limit_reached' => $operatorIpLimited,
+                                ],
+                            );
+                            Notification::make()
                                 ->title('Límite de seguridad alcanzado')
                                 ->body('Demasiados intentos de suplantación. Espere 1 hora.')
                                 ->danger()
                                 ->send();
+
                             return;
                         }
-                        \Illuminate\Support\Facades\RateLimiter::hit($rateLimitKey, 3600);
+                        RateLimiter::hit($operatorRateLimitKey, 3600);
+                        RateLimiter::hit($operatorIpRateLimitKey, 3600);
 
-                        // Audit Log: Non-repudiation for administrative actions
-                        activity('security')
-                            ->causedBy(auth()->user())
-                            ->performedOn($record->user)
-                            ->withProperties(['tenant_id' => $record->id])
-                            ->log('admin_impersonation_started');
+                        abort_unless(
+                            $operator instanceof User
+                                && $record instanceof Tenant
+                                && $record->user instanceof User,
+                            403,
+                        );
 
-                        session(['impersonator_id' => auth()->id()]);
-                        session(['impersonator_name' => auth()->user()->name]);
-                        \Illuminate\Support\Facades\Auth::login($record->user);
-                        session()->regenerate(); // Session Fixation Prevention
+                        app(ImpersonationGrantService::class)->start(
+                            request(),
+                            $operator,
+                            $record,
+                            $record->user,
+                            (string) ($data['current_password'] ?? ''),
+                            (string) ($data['impersonation_reason'] ?? ''),
+                        );
 
                         return redirect('/app');
                     }),
@@ -487,7 +537,7 @@ class TenantResource extends Resource
                         $wasActive = $record->is_active;
                         $record->update(['is_active' => ! $record->is_active]);
 
-                        \Filament\Notifications\Notification::make()
+                        Notification::make()
                             ->title($wasActive ? 'Kill Switch Activado' : 'Negocio Reactivado')
                             ->body($wasActive
                                 ? "El negocio '{$record->name}' ha sido suspendido."
@@ -505,7 +555,7 @@ class TenantResource extends Resource
                     ->modalHeading('Activar Plan PRO Manualmente')
                     ->modalDescription('Esto activara el Plan PRO sin registro de pago. Usar solo para regalos o pruebas.')
                     ->form([
-                        \Filament\Forms\Components\Select::make('duration')
+                        Select::make('duration')
                             ->label('Duracion')
                             ->options([
                                 '1' => '1 Mes',
@@ -525,7 +575,7 @@ class TenantResource extends Resource
                             'plan_expires_at' => now()->addMonths($months),
                         ]);
 
-                        \Filament\Notifications\Notification::make()
+                        Notification::make()
                             ->success()
                             ->title('Plan PRO Activado')
                             ->body("Vigencia: {$months} meses")

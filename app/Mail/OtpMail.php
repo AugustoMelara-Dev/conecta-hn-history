@@ -32,7 +32,7 @@ class OtpMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Tu codigo de verificacion - Vito Business OS',
+            subject: 'Tu codigo de verificacion - Dovra AI',
         );
     }
 

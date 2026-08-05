@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Infrastructure\Persistence\Eloquent\Traits\BelongsToTenant;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Prunable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
@@ -21,13 +23,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class Interaction extends Model
 {
-    use BelongsToTenant;
+    use BelongsToTenant, Prunable;
 
     protected $fillable = [
         'visitor_id',
         'session_id',
         'product_id',
         'type',
+        'signal_class',
+        'source_authority',
+        'is_verified',
         'ip_address',
         'user_agent',
         'referrer',
@@ -48,7 +53,16 @@ class Interaction extends Model
 
     protected $casts = [
         'metadata' => 'array',
+        'is_verified' => 'boolean',
     ];
+
+    public function prunable(): Builder
+    {
+        $days = max(1, (int) config('analytics.interaction_retention_days', 90));
+
+        // JOB_GLOBAL_POLL: reviewed scope bypass; authority is constrained by the adjacent tenant/id predicate.
+        return static::query()->withoutGlobalScopes()->where('created_at', '<=', now()->subDays($days));
+    }
 
     /**
      * Available interaction types.
@@ -150,31 +164,5 @@ class Interaction extends Model
     {
         return $query->whereMonth('created_at', now()->month)
             ->whereYear('created_at', now()->year);
-    }
-
-    /**
-     * Record a new interaction (trusted internal factory method).
-     *
-     * SECURITY NOTE: Uses forceFill() to bypass $guarded protection because
-     * this is an internal method, not exposed to HTTP input.
-     * The BelongsToTenant trait does NOT auto-inject here because we need
-     * explicit tenant context for analytics (visitor may not be authenticated).
-     */
-    public static function record(
-        int $tenantId,
-        string $type,
-        ?int $productId = null,
-        array $metadata = []
-    ): self {
-        $interaction = new self;
-        $interaction->forceFill([
-            'tenant_id' => $tenantId,
-            'product_id' => $productId,
-            'type' => $type,
-            'metadata' => $metadata,
-        ]);
-        $interaction->save();
-
-        return $interaction;
     }
 }

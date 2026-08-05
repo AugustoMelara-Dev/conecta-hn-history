@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Jobs\Marketing;
 
-use App\Domain\Shared\Middleware\TenantQueueMiddleware;
+use App\Application\Shared\DTOs\Mail\CampaignMailData;
+use App\Application\Shared\DTOs\Mail\UserMailData;
+use App\Infrastructure\Shared\Middleware\TenantQueueMiddleware;
 use App\Mail\CampaignOfferMail;
 use App\Models\Campaign;
 use App\Models\User;
@@ -13,6 +15,7 @@ use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 
 /**
@@ -29,14 +32,14 @@ final class SendCampaignEmail implements ShouldBeUnique, ShouldQueue
     public int $uniqueFor = 300;
 
     public function __construct(
-        public readonly int $tenantId,
+        public readonly string $tenantId,
         public readonly int $campaignId,
-        public readonly int $userId
+        public readonly string $userId
     ) {}
 
     public function uniqueId(): string
     {
-        return "campaign_{$this->campaignId}_user_{$this->userId}";
+        return "campaign_{$this->tenantId}_{$this->campaignId}_user_{$this->userId}";
     }
 
     public function handle(): void
@@ -46,12 +49,20 @@ final class SendCampaignEmail implements ShouldBeUnique, ShouldQueue
 
         // 2. Hydration with Fail Fast/Silent Pattern
         // SECURITY: Verify resources belong to this tenant (VC-AUDIT-004 fix)
-        $campaign = Campaign::where('id', $this->campaignId)
+        $campaign = Campaign::query()
+            ->with('tenant')
+            ->where('id', $this->campaignId)
             ->where('tenant_id', $this->tenantId)
             ->first();
-        $user = User::where('id', $this->userId)
+        $user = User::query()->find($this->userId);
+        $isCurrentFollower = $user !== null && DB::table('follows')
+            ->where('user_id', $this->userId)
             ->where('tenant_id', $this->tenantId)
-            ->first();
+            ->exists();
+
+        if (! $isCurrentFollower) {
+            $user = null;
+        }
 
         // 3. Guard Clause: Fail Silently if resources are gone (prevent retry spirals)
         if (! $campaign || ! $user) {
@@ -66,7 +77,10 @@ final class SendCampaignEmail implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        Mail::to($user->email)->send(new CampaignOfferMail($campaign, $user));
+        Mail::to($user->email)->send(new CampaignOfferMail(
+            CampaignMailData::fromCampaign($campaign),
+            UserMailData::fromUser($user),
+        ));
     }
 
     public function middleware(): array

@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\ReportingAndExports\Jobs\GenerateSalesExport;
+use App\Domain\Shared\Services\TenantContext;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -30,6 +31,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 final class SalesExportController extends Controller
 {
+    public function __construct(
+        private readonly TenantContext $tenantContext,
+    ) {}
+
     /**
      * Request a new sales export (async).
      *
@@ -51,15 +56,8 @@ final class SalesExportController extends Controller
             'status' => ['nullable', 'string', 'in:pending,confirmed,preparing,ready,delivered,cancelled'],
         ]);
 
-        $user = Auth::user();
-        $tenant = $user->tenant ?? $user->currentTenant;
-
-        if (! $tenant) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No tienes un negocio asociado.',
-            ], 403);
-        }
+        $user = $request->user();
+        $tenantId = (string) $this->tenantContext->id();
 
         // ═══════════════════════════════════════════════════════════════════════
         // STEP 2: Build Criteria (as array for Job serialization)
@@ -75,8 +73,8 @@ final class SalesExportController extends Controller
         // This returns IMMEDIATELY - no waiting for Excel generation
         // ═══════════════════════════════════════════════════════════════════════
         GenerateSalesExport::dispatch(
-            userId: $user->id,
-            tenantId: $tenant->id,
+            userId: (string) $user->getAuthIdentifier(),
+            tenantId: $tenantId,
             criteriaData: $criteriaData,
             ipAddress: $request->ip() ?? '127.0.0.1',
             userAgent: $request->userAgent() ?? 'Unknown',
@@ -84,7 +82,7 @@ final class SalesExportController extends Controller
 
         Log::info('SalesExport job dispatched', [
             'user_id' => $user->id,
-            'tenant_id' => $tenant->id,
+            'tenant_id' => $tenantId,
             'criteria' => $criteriaData,
         ]);
 
@@ -114,14 +112,16 @@ final class SalesExportController extends Controller
         // Path is base64 encoded to prevent path traversal attacks
         // ═══════════════════════════════════════════════════════════════════════
         $encodedPath = $request->query('path');
-        $requestedTenantId = (int) $request->query('tenant');
+        $tenantParameter = $request->query('tenant');
 
-        if (! $encodedPath || ! $requestedTenantId) {
+        if (! is_string($encodedPath) || $encodedPath === '' || ! is_string($tenantParameter) || ! Str::isUuid($tenantParameter)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Parámetros de descarga inválidos.',
             ], 400);
         }
+
+        $requestedTenantId = $tenantParameter;
 
         $filePath = base64_decode($encodedPath, true);
 
@@ -132,12 +132,20 @@ final class SalesExportController extends Controller
             ], 400);
         }
 
+        $expectedPrefix = 'exports/tenant_'.$requestedTenantId.'/';
+        if (str_contains($filePath, '..') || ! str_starts_with($filePath, $expectedPrefix)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ruta de archivo inválida.',
+            ], 400);
+        }
+
         // ═══════════════════════════════════════════════════════════════════════
         // STEP 2: Authorization - Verify Tenant Ownership
         // User must belong to the tenant that owns the file
         // ═══════════════════════════════════════════════════════════════════════
-        $user = Auth::user();
-        $userTenantId = $user->tenant_id ?? $user->currentTenant?->id;
+        $user = $request->user();
+        $userTenantId = (string) $this->tenantContext->id();
 
         if ($userTenantId !== $requestedTenantId) {
             Log::warning('Unauthorized export download attempt', [

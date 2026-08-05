@@ -65,7 +65,7 @@ class Announcement extends Model
             }
 
             \App\Http\Middleware\HandleInertiaRequests::invalidateAnnouncementsCache(
-                $announcement->business_id
+                (string) $announcement->business_id
             );
         };
 

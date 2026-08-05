@@ -25,6 +25,8 @@ final class AtomicIdempotencyService implements AtomicIdempotencyInterface
 
     public function execute(string $idempotencyKey, string $tenantId, string $commandHash, Closure $operation): mixed
     {
+        $claimInserted = false;
+
         // 1. Start Transaction - The atomic boundary
         $this->db->beginTransaction();
 
@@ -39,6 +41,7 @@ final class AtomicIdempotencyService implements AtomicIdempotencyInterface
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+            $claimInserted = true;
 
             // 3. If we are here, we WON the race. Execute Domain Logic.
             $result = $operation();
@@ -69,7 +72,7 @@ final class AtomicIdempotencyService implements AtomicIdempotencyInterface
 
         } catch (QueryException $e) {
             // 5. Handle Collision (Unique Constraint Violation)
-            if ($e->getCode() === '23000' || $e->errorInfo[1] === 1062) {
+            if (! $claimInserted && ($e->getCode() === '23000' || ($e->errorInfo[1] ?? null) === 1062)) {
                 // Another process has this key.
                 // Rolling back cleans up the 'PROCESSING' row if this transaction created it
                 // (though in collision case, it failed to create it).

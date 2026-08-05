@@ -40,15 +40,15 @@ trait TenantAwareEvent
     /**
      * Tenant ID for Queue Worker context switching.
      *
-     * @notice This MUST be a primitive (int/string), NOT a model.
+     * @notice This MUST be a UUID string, NOT a model.
      *         It's read by TenantQueueMiddleware BEFORE model deserialization.
      */
-    public int $tenantId;
+    public string $tenantId;
 
     /**
      * Set tenant context during event construction.
      */
-    protected function setTenantContext(int $tenantId): void
+    protected function setTenantContext(string $tenantId): void
     {
         $this->tenantId = $tenantId;
     }
@@ -56,7 +56,7 @@ trait TenantAwareEvent
     /**
      * Get tenant ID for Queue Middleware.
      */
-    public function getTenantId(): int
+    public function getTenantId(): string
     {
         return $this->tenantId;
     }
@@ -64,7 +64,7 @@ trait TenantAwareEvent
     /**
      * Restore tenant context (called by Queue Middleware before deserialization).
      */
-    public static function restoreTenantContext(int $tenantId): void
+    public static function restoreTenantContext(string $tenantId): void
     {
         // Find and activate tenant
         $tenant = Tenant::find($tenantId);

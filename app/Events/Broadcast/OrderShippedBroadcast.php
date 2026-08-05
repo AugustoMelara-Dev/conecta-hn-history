@@ -26,8 +26,8 @@ final class OrderShippedBroadcast implements BroadcastableNotificationInterface
     public $timeout = 30;
 
     public function __construct(
-        public int $tenantId,
-        public int $orderId,
+        public string $tenantId,
+        public int|string $orderId,
         public string $orderNumber,
         public string $carrier,
         public string $trackingNumber,
@@ -36,8 +36,8 @@ final class OrderShippedBroadcast implements BroadcastableNotificationInterface
     ) {}
 
     public static function fromDomainData(
-        int $tenantId,
-        int $orderId,
+        string $tenantId,
+        int|string $orderId,
         string $orderNumber,
         string $carrier,
         string $trackingNumber,
@@ -81,19 +81,7 @@ final class OrderShippedBroadcast implements BroadcastableNotificationInterface
     /**
      * Get the data to broadcast.
      *
-     * @return array{
-     *   _version: int,
-     *   _timestamp: string,
-     *   title: string,
-     *   message: string,
-     *   status: string,
-     *   icon: string,
-     *   order_id: int,
-     *   order_number: string,
-     *   carrier: string,
-     *   tracking_number: string,
-     *   tenant_id: int
-     * }
+     * @return array<string, int|string>
      */
     public function broadcastWith(): array
     {

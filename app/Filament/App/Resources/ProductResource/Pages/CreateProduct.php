@@ -4,64 +4,32 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources\ProductResource\Pages;
 
+use App\Application\Products\MerchantProductCatalogAdapter;
 use App\Filament\App\Resources\ProductResource;
-use App\Settings\GeneralSettings;
-use Filament\Facades\Filament;
-use Filament\Notifications\Notification;
+use App\Models\Product;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Support\Str;
 
 class CreateProduct extends CreateRecord
 {
     protected static string $resource = ProductResource::class;
 
-    /**
-     * SAFETY NET: Validación del lado del servidor
-     * Previene creación de productos si se supera el límite del plan
-     */
-    protected function beforeCreate(): void
+    public string $createAttemptId;
+
+    public function mount(): void
     {
-        $tenant = Filament::getTenant();
-
-        // PRO usa capacidad de catalogo ampliada.
-        if ($tenant?->is_pro) {
-            return;
-        }
-
-        // Obtener límite dinámico desde settings o tenant
-        $settings = app(GeneralSettings::class);
-        $limit = $tenant?->product_limit ?? $settings->free_plan_product_limit ?? 10;
-
-        $currentCount = $tenant->products()->count();
-
-        if ($currentCount >= $limit) {
-            Notification::make()
-                ->danger()
-                ->title('Límite del Plan Alcanzado')
-                ->body("Has alcanzado el limite Free de {$limit} productos. Actualiza a PRO para ampliar tu catalogo y funciones operativas.")
-                ->persistent()
-                ->actions([
-                    \Filament\Notifications\Actions\Action::make('upgrade')
-                        ->label('Ver Plan PRO')
-                        ->url(route('filament.app.pages.manage-billing', ['tenant' => $tenant->slug]))
-                        ->color('warning'),
-                ])
-                ->send();
-
-            $this->halt();
-        }
+        parent::mount();
+        $this->createAttemptId = (string) Str::uuid();
     }
 
-    /**
-     * Automáticamente asignar tenant_id al crear
-     */
-    protected function mutateFormDataBeforeCreate(array $data): array
+    /** @param array<string, mixed> $data */
+    protected function handleRecordCreation(array $data): Product
     {
-        $tenant = Filament::getTenant();
-
-        $data['tenant_id'] = $tenant?->id;
-        $data['city_id'] = $tenant?->city_id;
-
-        return $data;
+        return app(MerchantProductCatalogAdapter::class)->create(
+            ProductResource::trustedTenant(),
+            $data,
+            $this->createAttemptId,
+        );
     }
 
     protected function getRedirectUrl(): string

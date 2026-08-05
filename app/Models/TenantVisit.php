@@ -46,13 +46,13 @@ class TenantVisit extends Model
      *
      * @param  string  $ip  Visitor IP address
      * @param  string  $userAgent  Browser user agent
-     * @param  int  $tenantId  Tenant being visited
+     * @param  string  $tenantId  Tenant UUID being visited
      * @return string SHA-256 hash for session fingerprinting
      */
     public static function generateSessionHash(
         string $ip,
         string $userAgent,
-        int $tenantId
+        string $tenantId
     ): string {
         // DETERMINISM: Use UTC timezone explicitly to prevent DST/timezone issues
         $utcDate = now('UTC')->format('Y-m-d');

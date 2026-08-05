@@ -61,6 +61,7 @@ class TenantProfileResource extends Resource
                             ->image()
                             ->imageEditor()
                             ->directory('tenants/logos')
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                             ->helperText('Formato recomendado: PNG o JPG cuadrado.'),
 
                         Forms\Components\FileUpload::make('cover_path')
@@ -68,6 +69,7 @@ class TenantProfileResource extends Resource
                             ->image()
                             ->imageEditor()
                             ->directory('tenants/covers')
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                             ->columnSpanFull()
                             ->helperText('Resolucion recomendada: 1200 x 400 px.'),
 

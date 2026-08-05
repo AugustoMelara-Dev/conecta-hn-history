@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Application\Reviews\Listeners;
 
-use App\Domain\Product\Repositories\ProductRepositoryInterface;
+use App\Application\Shared\Contracts\LoggerInterface;
+use App\Domain\Product\Repositories\ProductRatingMetricsWriter;
 use App\Domain\Reviews\Events\ReviewCreated;
 use App\Domain\Reviews\Repositories\ReviewRepositoryInterface;
-use App\Domain\Shared\Middleware\TenantQueueMiddleware;
+use App\Infrastructure\Shared\Middleware\TenantQueueMiddleware;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use App\Application\Shared\Contracts\LoggerInterface;
 
 /**
  * UpdateProductRating - Async Listener for Product Aggregate Recalculation
@@ -29,7 +29,7 @@ final class UpdateProductRating implements ShouldQueue
     public int $timeout = 60;
 
     public function __construct(
-        private readonly ProductRepositoryInterface $productRepository,
+        private readonly ProductRatingMetricsWriter $ratingMetrics,
         private readonly ReviewRepositoryInterface $reviewRepository,
         private readonly LoggerInterface $logger,
     ) {}
@@ -42,10 +42,13 @@ final class UpdateProductRating implements ShouldQueue
         // 1. Fetch Aggregate Metrics (Heavy SQL Query)
         $metrics = $this->reviewRepository->getAggregateMetrics($event->productId);
 
-        // 2. Load Product Aggregate Root
-        $product = $this->productRepository->findById($event->productId);
-
-        if ($product === null) {
+        // The narrow port owns only derived review metrics, never catalog CRUD.
+        if (! $this->ratingMetrics->updateRatingMetrics(
+            $event->tenantId,
+            $event->productId,
+            $metrics['average_rating'] ?? 0,
+            $metrics['total_reviews'] ?? 0,
+        )) {
             $this->logger->warning('UpdateProductRating: Product not found', [
                 'product_id' => $event->productId,
                 'review_id' => $event->reviewId,
@@ -53,13 +56,6 @@ final class UpdateProductRating implements ShouldQueue
 
             return;
         }
-
-        // 3. Update Product with New Metrics
-        $this->productRepository->updateRatingMetrics(
-            $event->productId,
-            $metrics['average_rating'] ?? 0,
-            $metrics['total_reviews'] ?? 0
-        );
 
         $this->logger->info('Product rating updated via eventual consistency', [
             'product_id' => $event->productId,

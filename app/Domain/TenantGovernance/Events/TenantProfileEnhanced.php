@@ -20,7 +20,7 @@ final class TenantProfileEnhanced implements ShouldDispatchAfterCommit
 {
     public function __construct(
         public readonly string $tenant_id,
-        public readonly int $user_id, // IDs as scalar
+        public readonly string $user_id, // UUID-safe scalar
         public readonly string $occurred_at, // ISO8601 String
         public readonly array $enhanced_fields // Array is scalar-ish enough for JSON
     ) {}
@@ -43,7 +43,7 @@ final class TenantProfileEnhanced implements ShouldDispatchAfterCommit
     {
         return new self(
             tenant_id: (string) ($payload['tenant_id'] ?? ''),
-            user_id: (int) ($payload['user_id'] ?? 0),
+            user_id: (string) ($payload['user_id'] ?? ''),
             occurred_at: (string) ($payload['occurred_at'] ?? now()->toIso8601String()),
             enhanced_fields: (array) ($payload['enhanced_fields'] ?? [])
         );

@@ -12,7 +12,7 @@ namespace App\Application\Shared\DTOs\Mail;
 final readonly class TenantMailData
 {
     public function __construct(
-        public int $id,
+        public string $id,
         public string $name,
         public string $email,
         public string $planType,
@@ -25,7 +25,7 @@ final readonly class TenantMailData
     public static function fromTenant(object $tenant): self
     {
         return new self(
-            id: (int) $tenant->id,
+            id: (string) $tenant->id,
             name: (string) $tenant->name,
             email: (string) ($tenant->email ?? ''),
             planType: (string) ($tenant->plan_type ?? 'semilla'),

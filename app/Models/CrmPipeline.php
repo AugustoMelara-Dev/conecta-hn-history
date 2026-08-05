@@ -37,13 +37,11 @@ class CrmPipeline extends Model
 
     public function stages(): HasMany
     {
-        // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
-        return $this->hasMany(CrmStage::class)->withoutGlobalScopes()->orderBy('sort_order')->orderBy('id');
+        return $this->hasMany(CrmStage::class)->orderBy('sort_order')->orderBy('id');
     }
 
     public function deals(): HasMany
     {
-        // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
-        return $this->hasMany(CrmDeal::class)->withoutGlobalScopes();
+        return $this->hasMany(CrmDeal::class);
     }
 }

@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Events\Order;
 
 use App\Contracts\Events\DomainEvent;
+use App\Domain\Shared\ValueObjects\TenantId;
 use App\Traits\HasDomainMetadata;
 use App\ValueObjects\Money;
 use App\ValueObjects\OrderNumber;
-use App\Domain\Shared\ValueObjects\TenantId;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**
@@ -47,7 +47,7 @@ final readonly class OrderRefunded implements DomainEvent, ShouldDispatchAfterCo
 
     /**
      * @param  TenantId  $tenantId  Tenant context for queue middleware
-     * @param  int  $orderId  The order aggregate root ID
+     * @param  string  $orderId  The order aggregate root ID
      * @param  OrderNumber  $orderNumber  Human-readable order reference
      * @param  Money  $refundAmount  The exact refund amount (Value Object)
      * @param  string  $transactionId  Gateway refund transaction ID
@@ -56,7 +56,7 @@ final readonly class OrderRefunded implements DomainEvent, ShouldDispatchAfterCo
      */
     public function __construct(
         private TenantId $tenantId,
-        private int $orderId,
+        private string $orderId,
         public OrderNumber $orderNumber,
         public Money $refundAmount,
         public string $transactionId,
@@ -78,8 +78,8 @@ final readonly class OrderRefunded implements DomainEvent, ShouldDispatchAfterCo
      * Factory: Create from refund data (snapshotted at creation time).
      */
     public static function create(
-        int $tenantId,
-        int $orderId,
+        string $tenantId,
+        int|string $orderId,
         string $orderNumber,
         int $refundAmountCents,
         string $transactionId,
@@ -88,8 +88,8 @@ final readonly class OrderRefunded implements DomainEvent, ShouldDispatchAfterCo
         string $currency = 'HNL'
     ): self {
         return new self(
-            tenantId: TenantId::fromInt($tenantId),
-            orderId: $orderId,
+            tenantId: TenantId::fromString((string) $tenantId),
+            orderId: (string) $orderId,
             orderNumber: OrderNumber::fromString($orderNumber),
             refundAmount: Money::fromCents($refundAmountCents, $currency),
             transactionId: $transactionId,
@@ -123,9 +123,9 @@ final readonly class OrderRefunded implements DomainEvent, ShouldDispatchAfterCo
         return $this->tenantId;
     }
 
-    public function aggregateId(): int
+    public function aggregateId(): string
     {
-        return $this->orderId;
+        return (string) $this->orderId;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -182,8 +182,8 @@ final readonly class OrderRefunded implements DomainEvent, ShouldDispatchAfterCo
         }
 
         return new self(
-            tenantId: TenantId::fromInt($primitives['tenant_id']),
-            orderId: $primitives['order_id'],
+            tenantId: TenantId::fromSerialized($primitives['tenant_id']),
+            orderId: (string) $primitives['order_id'],
             orderNumber: OrderNumber::fromString($primitives['order_number']),
             refundAmount: Money::fromCents(
                 $primitives['refund_amount_cents'],

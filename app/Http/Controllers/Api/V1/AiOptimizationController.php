@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Application\Ai\PrivateAiAccessGate;
-use App\Domain\Shared\Contracts\TenantContext;
+use App\Domain\Shared\Services\TenantContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\OptimizeProfileRequest;
 use App\Jobs\GenerateBusinessProfileJob;
@@ -29,7 +29,7 @@ final class AiOptimizationController extends Controller
 
     public function optimizeProfile(OptimizeProfileRequest $request): JsonResponse
     {
-        $tenantId = $this->tenantContext->getTenantId();
+        $tenantId = (string) $this->tenantContext->id();
 
         if (! $this->privateAiAccess->allows($request->user(), $tenantId)) {
             return response()->json([
@@ -40,7 +40,7 @@ final class AiOptimizationController extends Controller
         GenerateBusinessProfileJob::dispatch(
             businessName: $request->validated('business_name'),
             description: $request->validated('description'),
-            userId: $request->user()?->id ?? 0,
+            userId: (string) $request->user()->getAuthIdentifier(),
             tenantId: $tenantId,
             targetAudience: $request->validated('target_audience'),
             tone: $request->validated('tone'),

@@ -11,13 +11,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Service Model - Bookable Service Definition
- * 
+ *
  * Represents a service that can be booked (time-based inventory).
  * Examples: "Men's Haircut - 30min - L.200", "Dental Cleaning - 60min - L.500"
- * 
+ *
  * PRICING: Stored as decimal(10,2) for currency precision.
  * DURATION: Stored in minutes to avoid timezone issues.
- * 
+ *
  * SECURITY: Uses BelongsToTenant for automatic tenant isolation.
  */
 class Service extends Model
@@ -29,12 +29,15 @@ class Service extends Model
         'description',
         'duration_minutes',
         'price',
+        'price_minor',
+        'currency',
         'is_active',
     ];
 
     protected $casts = [
         'duration_minutes' => 'integer',
         'price' => 'decimal:2',
+        'price_minor' => 'integer',
         'is_active' => 'boolean',
     ];
 
@@ -79,7 +82,7 @@ class Service extends Model
         } elseif ($hours > 0) {
             return "{$hours}h";
         }
-        
+
         return "{$minutes} min";
     }
 
@@ -88,6 +91,9 @@ class Service extends Model
      */
     public function getFormattedPriceAttribute(): string
     {
-        return 'L. ' . number_format((float) $this->price, 2);
+        $amount = number_format((float) $this->price, 2);
+        $currency = strtoupper((string) ($this->currency ?? ''));
+
+        return $currency === '' ? $amount : "{$currency} {$amount}";
     }
 }

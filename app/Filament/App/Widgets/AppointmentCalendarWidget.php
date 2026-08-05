@@ -6,7 +6,8 @@ namespace App\Filament\App\Widgets;
 
 use App\Filament\App\Resources\AppointmentResource;
 use App\Models\Appointment;
-use Saade\FilamentFullCalendar\Widgets\FullCalendarWidget;
+use Carbon\CarbonImmutable;
+use Filament\Widgets\Widget;
 
 /**
  * AppointmentCalendarWidget - Visual Schedule Display
@@ -16,12 +17,33 @@ use Saade\FilamentFullCalendar\Widgets\FullCalendarWidget;
  *
  * SECURITY: Queries are automatically tenant-scoped via BelongsToTenant trait.
  */
-class AppointmentCalendarWidget extends FullCalendarWidget
+class AppointmentCalendarWidget extends Widget
 {
+    protected static string $view = 'filament.app.widgets.appointment-calendar-widget';
+
+    protected int|string|array $columnSpan = 'full';
+
+    public int $weekOffset = 0;
+
+    public function previousWeek(): void
+    {
+        $this->weekOffset--;
+    }
+
+    public function nextWeek(): void
+    {
+        $this->weekOffset++;
+    }
+
+    public function currentWeek(): void
+    {
+        $this->weekOffset = 0;
+    }
+
     /**
      * Fetch appointments for the calendar view.
      *
-     * @param array $fetchInfo Contains 'start' and 'end' dates from FullCalendar
+     * @param  array  $fetchInfo  Contains 'start' and 'end' dates from FullCalendar
      * @return array Events formatted for FullCalendar
      */
     public function fetchEvents(array $fetchInfo): array
@@ -78,6 +100,44 @@ class AppointmentCalendarWidget extends FullCalendarWidget
             'nowIndicator' => true,
             'selectable' => false,
             'eventClick' => 'function(info) { if(info.event.url) { window.location = info.event.url; info.jsEvent.preventDefault(); } }',
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function getViewData(): array
+    {
+        $start = CarbonImmutable::now(config('app.timezone'))
+            ->startOfWeek()
+            ->addWeeks($this->weekOffset);
+        $end = $start->endOfWeek();
+        $events = collect($this->fetchEvents([
+            'start' => $start->startOfDay(),
+            'end' => $end->endOfDay(),
+        ]));
+
+        return [
+            'weekLabel' => sprintf(
+                '%s — %s',
+                $start->translatedFormat('j M'),
+                $end->translatedFormat('j M Y'),
+            ),
+            'days' => collect(range(0, 6))
+                ->map(function (int $offset) use ($events, $start): array {
+                    $date = $start->addDays($offset);
+
+                    return [
+                        'date' => $date->toDateString(),
+                        'label' => $date->translatedFormat('D j M'),
+                        'events' => $events
+                            ->filter(fn (array $event): bool => CarbonImmutable::parse($event['start'])
+                                ->isSameDay($date))
+                            ->values()
+                            ->all(),
+                    ];
+                })
+                ->all(),
         ];
     }
 }

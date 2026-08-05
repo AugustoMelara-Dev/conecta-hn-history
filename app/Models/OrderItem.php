@@ -21,11 +21,15 @@ class OrderItem extends Model
         'order_id',
         'product_id',
         'product_name',
+        'product_sku',
         'product_price', // Snapshot price at order time
         'quantity',
         'unit_price',    // Price with modifiers applied
         'total_price',   // unit_price * quantity
+        'line_total',
         'selected_options', // JSON with variant/addon selections
+        'options',
+        'options_total',
         'notes',
     ];
 
@@ -33,8 +37,11 @@ class OrderItem extends Model
         'product_price' => 'decimal:2',
         'unit_price' => 'decimal:2',
         'total_price' => 'decimal:2',
+        'line_total' => 'decimal:2',
         'quantity' => 'integer',
         'selected_options' => 'array',
+        'options' => 'array',
+        'options_total' => 'decimal:2',
     ];
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -57,12 +64,12 @@ class OrderItem extends Model
 
     public function getFormattedUnitPriceAttribute(): string
     {
-        return 'L. '.number_format($this->unit_price, 2);
+        return 'L. '.number_format((float) $this->unit_price, 2);
     }
 
     public function getFormattedTotalPriceAttribute(): string
     {
-        return 'L. '.number_format($this->total_price, 2);
+        return 'L. '.number_format((float) $this->total_price, 2);
     }
 
     public function getOptionsDescriptionAttribute(): string

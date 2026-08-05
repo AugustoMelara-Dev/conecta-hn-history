@@ -22,7 +22,7 @@ final class RecordInteraction implements ShouldQueue
     public int $tries = 3;
 
     public function __construct(
-        public readonly int $tenantId,
+        public readonly string $tenantId,
         public readonly string $eventType,
         public readonly array $metadata = []
     ) {}

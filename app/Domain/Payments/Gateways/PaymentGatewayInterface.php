@@ -43,5 +43,9 @@ interface PaymentGatewayInterface
      * @param  string  $transactionId  The original transaction identifier
      * @param  int|null  $amountInCents  Amount to refund (null = full refund)
      */
-    public function refund(string $transactionId, ?int $amountInCents = null): ChargeResult;
+    public function refund(
+        string $transactionId,
+        ?int $amountInCents = null,
+        ?string $idempotencyKey = null,
+    ): ChargeResult;
 }

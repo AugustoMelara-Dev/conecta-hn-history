@@ -196,7 +196,7 @@ class MenuSectionObserver implements ShouldHandleEventsAfterCommit
     /**
      * Rotate the cache version for a tenant with contextual logging.
      */
-    private function rotateTenantVersion(int $tenantId, string $trigger, array $context = []): void
+    private function rotateTenantVersion(string $tenantId, string $trigger, array $context = []): void
     {
         try {
             $newVersion = $this->cacheManager->rotateTenantVersion($tenantId);

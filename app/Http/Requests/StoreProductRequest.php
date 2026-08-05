@@ -32,10 +32,9 @@ final class StoreProductRequest extends FormRequest
         // ═══════════════════════════════════════════════════════════════════════
         // TENANT CONTEXT INJECTION (Strictly Typed)
         // ═══════════════════════════════════════════════════════════════════════
-        // Capture the authenticated tenant ID for scoped validation.
-        // DEFENSE IN DEPTH: Explicit (int) cast prevents type coercion issues
-        // and ensures Rule::exists receives a primitive integer for SQL generation.
-        $tenantId = (int) $this->user()->tenant_id;
+        // Tenant IDs are UUIDs. Keep the authenticated value as a string rather
+        // than coercing the TenantId value object to an integer.
+        $tenantId = (string) $this->user()->tenant_id;
 
         return [
             // ═══════════════════════════════════════════════════════════════════════
@@ -43,7 +42,11 @@ final class StoreProductRequest extends FormRequest
             // ═══════════════════════════════════════════════════════════════════════
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:2000',
-            'price' => 'required|numeric|min:0|max:999999.99',
+            'price' => ['required', 'string', 'regex:/^\d{1,8}(?:\.\d{1,2})?$/', 'max:11'],
+            'sku' => ['prohibited'],
+            'stock_status' => ['prohibited'],
+            'image' => ['prohibited'],
+            'remove_image' => ['prohibited'],
 
             // ═══════════════════════════════════════════════════════════════════════
             // SCOPED FOREIGN KEYS (IDOR Prevention)
@@ -52,11 +55,11 @@ final class StoreProductRequest extends FormRequest
             // A malicious user cannot reference another tenant's categories.
             'category_id' => [
                 'nullable',
-                Rule::exists('categories', 'id')->where('tenant_id', $tenantId),
+                Rule::exists('categories', 'id')->where('is_active', true),
             ],
             'menu_section_id' => [
                 'nullable',
-                Rule::exists('menu_sections', 'id')->where('tenant_id', $tenantId),
+                Rule::exists('menu_sections', 'id')->where('tenant_id', $tenantId)->where('is_active', true),
             ],
 
             // ═══════════════════════════════════════════════════════════════════════
@@ -72,19 +75,12 @@ final class StoreProductRequest extends FormRequest
             // ═══════════════════════════════════════════════════════════════════════
             // Maximum 2MB to prevent disk exhaustion attacks.
             // Standard web formats only for browser compatibility.
-            'image' => [
-                'nullable',
-                'image',
-                'mimes:jpeg,png,jpg,webp',
-                'max:2048', // 2MB in KB
-            ],
 
             // ═══════════════════════════════════════════════════════════════════════
             // EXPLICIT IMAGE REMOVAL (Nullification Signal)
             // ═══════════════════════════════════════════════════════════════════════
             // When true, removes current image without replacement.
             // Allows users to revert to "No Image" state.
-            'remove_image' => 'nullable|boolean',
 
             // ═══════════════════════════════════════════════════════════════════════
             // DISPLAY OPTIONS
@@ -115,15 +111,11 @@ final class StoreProductRequest extends FormRequest
         $validated = $this->validated();
 
         return new \App\Application\Products\Commands\CreateProductCommand(
-            tenantId: (int) $this->user()->tenant_id,
-            sku: $validated['sku'],
-            name: $validated['name'],
-            description: $validated['description'] ?? '',
-            price: (float) $validated['price'],
-            stock: isset($validated['stock']) ? (int) $validated['stock'] : 0,
-            categoryId: (int) $validated['category_id'],
-            imagePath: null, // Image upload handled separately or via another field? Assuming simple field for now
-            isVisible: $validated['is_visible'] ?? true,
+            tenantId: (string) $this->user()->tenant_id,
+            sku: (string) ($validated['sku'] ?? ''), name: (string) $validated['name'],
+            description: (string) ($validated['description'] ?? ''), price: 0,
+            stock: (int) ($validated['stock_quantity'] ?? 0), categoryId: $validated['category_id'] ?? null,
+            imagePath: null, isVisible: (bool) ($validated['is_visible'] ?? true),
         );
     }
 }

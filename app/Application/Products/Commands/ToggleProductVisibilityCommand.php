@@ -16,7 +16,7 @@ final readonly class ToggleProductVisibilityCommand
 {
     public function __construct(
         /** Tenant ID for ownership verification */
-        public int $tenantId,
+        public string $tenantId,
 
         /** Product ID to toggle */
         public int $productId,

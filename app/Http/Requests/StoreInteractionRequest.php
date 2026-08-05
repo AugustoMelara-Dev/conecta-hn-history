@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * StoreInteractionRequest - Security Gate for Analytics
@@ -34,10 +35,14 @@ final class StoreInteractionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'tenant_id' => ['required', 'integer'],
+            'tenant_id' => ['required', 'uuid'],
             // Allowlist for event types to prevent Garbage Injection
             'type' => ['required', 'string', 'in:view,whatsapp_click,call_click,maps_click'],
-            'product_id' => ['nullable', 'integer'],
+            'product_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('products', 'id')->where('tenant_id', (string) $this->input('tenant_id')),
+            ],
             'metadata' => ['nullable', 'array'],
         ];
     }

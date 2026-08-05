@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Application\Tenant\Handlers;
 
+use App\Application\Markets\TenantMarketAssignmentService;
+use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Contracts\TransactionManagerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Application\Tenant\Commands\RegisterTenantCommand;
 use App\Application\Tenant\Results\RegisterTenantResult;
 use App\Domain\Billing\Repositories\PaymentRepositoryInterface;
+use App\Domain\Identity\Events\TenantRegistered;
 use App\Domain\Identity\Factories\UserFactory;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\Security\Contracts\HasherInterface;
@@ -16,7 +19,6 @@ use App\Domain\TenantGovernance\Factories\TenantFactory;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Domain\TenantGovernance\Services\SubscriptionPricingService;
 use App\Infrastructure\Bus\TransactionalEventDispatcher;
-use App\Application\Shared\Contracts\LoggerInterface;
 
 /**
  * RegisterTenantHandler - Command Handler for Tenant Registration
@@ -44,6 +46,7 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
         private HasherInterface $hasher,
         private TransactionManagerInterface $transactionManager,
         private readonly LoggerInterface $logger,
+        private TenantMarketAssignmentService $marketAssignment,
     ) {}
 
     public function handle(RegisterTenantCommand $command): RegisterTenantResult
@@ -102,6 +105,24 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
         // 5. Persist Tenant & Capture Hydrated Entity
         $tenantEntity = $this->tenantRepository->save($tenantEntity);
 
+        if (
+            $command->countryCode !== null
+            && $command->localeCode !== null
+            && $command->currencyCode !== null
+            && $command->timezone !== null
+        ) {
+            $this->marketAssignment->assign(
+                tenantId: $tenantEntity->id(),
+                countryCode: $command->countryCode,
+                localeCode: $command->localeCode,
+                currencyCode: $command->currencyCode,
+                timezone: $command->timezone,
+                localityId: $command->localityId,
+                locationName: $command->businessName,
+                address: $command->address,
+            );
+        }
+
         // 6. Handle Payment
         if ($requiresPayment) {
             $this->paymentRepository->create([
@@ -116,7 +137,7 @@ final readonly class RegisterTenantHandler implements RegisterTenantHandlerInter
         }
 
         // 7. Dispatch Event
-        $this->eventDispatcher->dispatch(new \App\Domain\Identity\Events\TenantRegistered(
+        $this->eventDispatcher->dispatch(new TenantRegistered(
             tenantId: $tenantEntity->id(),
             userId: $userEntity->id(),
         ));

@@ -41,6 +41,37 @@ enum InteractionType: string
     }
 
     /**
+     * Signals a public client is allowed to report. These are intent/traffic
+     * observations only; none of them grants revenue or conversion authority.
+     *
+     * @return list<string>
+     */
+    public static function publicSignalValues(): array
+    {
+        return [
+            self::WHATSAPP_CLICK->value,
+            self::CALL->value,
+            self::LOCATION_VIEW->value,
+            self::CART_ADD->value,
+            self::SOCIAL_SHARE->value,
+            self::MICROSITE_VIEW->value,
+            self::CHECKOUT_STARTED->value,
+            self::UPGRADE_STARTED->value,
+        ];
+    }
+
+    public function isServerAuthoritative(): bool
+    {
+        return in_array($this, [
+            self::CONVERSION,
+            self::PURCHASE,
+            self::CHECKOUT_PAID,
+            self::UPGRADE_PAID,
+            self::LEAD_CREATED,
+        ], true);
+    }
+
+    /**
      * Get human-readable labels for display.
      *
      * @return array<string, string>

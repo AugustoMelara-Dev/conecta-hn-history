@@ -8,6 +8,7 @@ use App\Domain\Identity\Enums\UserRole;
 use App\Models\Tenant;
 use App\Services\TenantCacheManager;
 use Illuminate\Support\Facades\Log;
+use kornrunner\Blurhash\Blurhash;
 
 /**
  * TenantObserver - Lifecycle Management & Cache Orchestration
@@ -30,9 +31,9 @@ class TenantObserver
         $user = $tenant->user;
 
         // Type-safe comparison using Enum
-        if ($user && $user->role !== UserRole::TENANT_OWNER) {
-            // Use Enum value for DB compatibility
-            $user->update(['role' => UserRole::TENANT_OWNER]);
+        if ($user && ! $user->hasRole(UserRole::TENANT_OWNER->value)) {
+            // Use the persisted enum value for DB compatibility.
+            $user->update(['role' => UserRole::TENANT_OWNER->value]);
         }
     }
 
@@ -48,7 +49,7 @@ class TenantObserver
     public function updated(Tenant $tenant): void
     {
         try {
-            $this->getCacheManager()->rotateTenantVersion($tenant->id);
+            $this->getCacheManager()->rotateTenantVersion((string) $tenant->id);
         } catch (\Exception $e) {
             Log::warning("Cache invalidation failed for tenant {$tenant->id}: ".$e->getMessage());
         }
@@ -69,7 +70,7 @@ class TenantObserver
                     $image = imagecreatefromstring(file_get_contents($fullPath));
 
                     if ($image !== false) {
-                        $hash = \kornrunner\Blurhash\Blurhash::encode($image, 4, 3);
+                        $hash = Blurhash::encode($image, 4, 3);
                         $tenant->updateQuietly(['blur_hash' => $hash]);
                         imagedestroy($image);
                     }
@@ -88,7 +89,7 @@ class TenantObserver
     public function deleted(Tenant $tenant): void
     {
         try {
-            $this->getCacheManager()->forgetVersion($tenant->id);
+            $this->getCacheManager()->forgetVersion((string) $tenant->id);
         } catch (\Exception $e) {
             Log::warning("Cache cleanup failed for deleted tenant {$tenant->id}: ".$e->getMessage());
         }
@@ -100,7 +101,7 @@ class TenantObserver
     public function restored(Tenant $tenant): void
     {
         try {
-            $this->getCacheManager()->rotateTenantVersion($tenant->id);
+            $this->getCacheManager()->rotateTenantVersion((string) $tenant->id);
         } catch (\Exception $e) {
             Log::warning("Cache rotation failed for restored tenant {$tenant->id}: ".$e->getMessage());
         }
@@ -112,7 +113,7 @@ class TenantObserver
     public function forceDeleted(Tenant $tenant): void
     {
         try {
-            $this->getCacheManager()->forgetVersion($tenant->id);
+            $this->getCacheManager()->forgetVersion((string) $tenant->id);
         } catch (\Exception $e) {
             Log::warning("Cache cleanup failed for force-deleted tenant {$tenant->id}: ".$e->getMessage());
         }

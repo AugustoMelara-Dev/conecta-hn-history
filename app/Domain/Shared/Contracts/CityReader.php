@@ -21,7 +21,7 @@ interface CityReader
     /**
      * Get all cities with their geographic hierarchy.
      *
-     * @return Collection<int, object> Collection of city DTOs or stdClass objects
+     * @return Collection<int, \stdClass> Collection of transport-safe city DTOs
      */
     public function getAllCities(): Collection;
 }

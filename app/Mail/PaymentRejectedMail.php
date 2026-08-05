@@ -28,7 +28,7 @@ class PaymentRejectedMail extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Pago no aprobado - Accion requerida | Vito Business OS',
+            subject: 'Pago no aprobado - Accion requerida | Dovra AI',
         );
     }
 

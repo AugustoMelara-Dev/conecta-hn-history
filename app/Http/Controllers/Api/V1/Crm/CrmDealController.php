@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Crm;
 
-use App\Application\TenantGovernance\Crm\CrmDefaultPipelineService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Crm\ConvertLeadToCrmDealRequest;
 use App\Http\Requests\Api\V1\Crm\DeleteCrmDealRequest;
@@ -43,9 +42,9 @@ final class CrmDealController extends Controller
         return $this->responder->export($request);
     }
 
-    public function convertLead(ConvertLeadToCrmDealRequest $request, int $lead, CrmDefaultPipelineService $defaults): JsonResponse
+    public function convertLead(ConvertLeadToCrmDealRequest $request, int $lead): JsonResponse
     {
-        return $this->responder->convertLead($request, $lead, $defaults);
+        return $this->responder->convertLead($request, $lead);
     }
 
     public function update(UpdateCrmDealRequest $request, int $deal): mixed

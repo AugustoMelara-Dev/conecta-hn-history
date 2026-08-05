@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
-use App\Events\PaymentApproved;
+use App\Domain\Billing\Events\SubscriptionPaymentApproved;
+use App\Infrastructure\Shared\Middleware\TenantQueueMiddleware;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -42,15 +43,23 @@ class UpdateTenantSubscription implements ShouldQueue
      * @throws \RuntimeException If payment state is invalid
      * @throws \Exception If transaction fails
      */
-    public function handle(PaymentApproved $event): void
+    public function middleware(SubscriptionPaymentApproved $event): array
+    {
+        return [new TenantQueueMiddleware($event->tenantId)];
+    }
+
+    public function handle(SubscriptionPaymentApproved $event): void
     {
         DB::transaction(function () use ($event) {
             // ═══════════════════════════════════════════════════════════════
             // STEP 1: FETCH PAYMENT WITH LOCK AND VALIDATE STATE
             // Fail-fast: No silent failures, throw on invalid state
             // ═══════════════════════════════════════════════════════════════
-            $payment = SubscriptionPayment::lockForUpdate()
-                ->find($event->paymentId);
+            $payment = SubscriptionPayment::query()
+                ->whereKey($event->paymentId)
+                ->where('tenant_id', $event->tenantId)
+                ->lockForUpdate()
+                ->first();
 
             if (! $payment) {
                 throw new \RuntimeException(
@@ -82,7 +91,10 @@ class UpdateTenantSubscription implements ShouldQueue
             // Pessimistic Locking: Concurrent processes will WAIT here
             // This mathematically eliminates race conditions
             // ═══════════════════════════════════════════════════════════════
-            $tenant = Tenant::lockForUpdate()->find($event->tenantId);
+            $tenant = Tenant::query()
+                ->whereKey($event->tenantId)
+                ->lockForUpdate()
+                ->first();
 
             if (! $tenant) {
                 throw new \RuntimeException(
@@ -103,20 +115,22 @@ class UpdateTenantSubscription implements ShouldQueue
 
             $newEndDate = $baseDate->copy()->addDays($event->daysToAdd);
 
-            $tenant->update([
+            $tenant->forceFill([
                 'is_pro' => true,
                 'subscription_status' => 'active',
                 'subscription_ends_at' => $newEndDate,
                 'plan_type' => 'pro',
-            ]);
+                'product_limit' => (int) app(\App\Domain\Billing\Services\PlanEntitlementService::class)->forPlan('pro')->limit('products'),
+            ])->save();
+            app(\App\Domain\Billing\Services\MonthlyAiCreditGrantService::class)->grant($tenant);
 
             // ═══════════════════════════════════════════════════════════════
             // STEP 4: MARK PAYMENT AS CONSUMED (Idempotency Flag)
             // This is our "exactly-once" guarantee
             // ═══════════════════════════════════════════════════════════════
-            $payment->update([
+            $payment->forceFill([
                 'subscription_extended_at' => now(),
-            ]);
+            ])->save();
 
             Log::info('PaymentApproved: Subscription extended successfully', [
                 'payment_id' => $event->paymentId,
@@ -132,7 +146,7 @@ class UpdateTenantSubscription implements ShouldQueue
     /**
      * Handle a job failure.
      */
-    public function failed(PaymentApproved $event, \Throwable $exception): void
+    public function failed(SubscriptionPaymentApproved $event, \Throwable $exception): void
     {
         Log::critical('PaymentApproved: Listener FAILED - manual intervention required', [
             'payment_id' => $event->paymentId,

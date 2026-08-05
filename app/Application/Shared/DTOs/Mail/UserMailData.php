@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Application\Shared\DTOs\Mail;
 
+use App\Domain\Identity\Entities\UserEntity;
+
 /**
  * UserMailData - Immutable DTO for User Email Context
  *
@@ -22,10 +24,10 @@ namespace App\Application\Shared\DTOs\Mail;
 final readonly class UserMailData
 {
     public function __construct(
-        public int $id,
+        public string $id,
         public string $name,
         public string $email,
-        public ?int $tenantId = null,
+        public ?string $tenantId = null,
     ) {}
 
     /**
@@ -34,10 +36,20 @@ final readonly class UserMailData
     public static function fromUser(object $user): self
     {
         return new self(
-            id: (int) $user->id,
+            id: (string) $user->id,
             name: (string) $user->name,
             email: (string) $user->email,
-            tenantId: isset($user->tenant_id) ? (int) $user->tenant_id : null,
+            tenantId: isset($user->tenant_id) ? (string) $user->tenant_id : null,
+        );
+    }
+
+    public static function fromIdentityEntity(UserEntity $user): self
+    {
+        return new self(
+            id: $user->id(),
+            name: $user->name(),
+            email: $user->email(),
+            tenantId: $user->tenantId(),
         );
     }
 }

@@ -21,38 +21,28 @@ interface OrderRepository
     /**
      * Get orders for dashboard Kanban view, grouped by status.
      *
-     * @param  int  $tenantId  The tenant identifier
+     * @param  string  $tenantId  The tenant UUID
      * @param  array<string, mixed>  $filters  Optional filters (date, status, etc.)
      * @return Collection<string, Collection> Orders grouped by status
      */
-    public function getDashboardKanban(int $tenantId, array $filters = []): Collection;
+    public function getDashboardKanban(string $tenantId, array $filters = []): Collection;
 
     /**
      * Get paginated order list.
      *
-     * @param  int  $tenantId  The tenant identifier
+     * @param  string  $tenantId  The tenant UUID
      * @param  array<string, mixed>  $filters  Optional filters
      * @param  int  $perPage  Items per page
      * @return mixed Paginator Contract or Array (Infrastructure dependent)
      */
-    public function getDashboardList(int $tenantId, array $filters = [], int $perPage = 15): mixed;
+    public function getDashboardList(string $tenantId, array $filters = [], int $perPage = 15): mixed;
 
     /**
      * Find a specific order with details for display.
      *
-     * @param  int  $tenantId  The tenant identifier (for scope/security)
+     * @param  string  $tenantId  The tenant UUID (for scope/security)
      * @param  int  $orderId  The order identifier
      * @return mixed Order with eager-loaded relations or null
      */
-    public function findForDetails(int $tenantId, int $orderId): mixed;
-
-    /**
-     * Update order status.
-     *
-     * @param  int  $tenantId  The tenant identifier
-     * @param  int  $orderId  The order identifier
-     * @param  string  $status  New status value
-     * @return bool Success flag
-     */
-    public function updateStatus(int $tenantId, int $orderId, string $status): bool;
+    public function findForDetails(string $tenantId, int $orderId): mixed;
 }

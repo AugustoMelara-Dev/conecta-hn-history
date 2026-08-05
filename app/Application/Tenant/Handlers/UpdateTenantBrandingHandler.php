@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Application\Tenant\Handlers;
 
+use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Application\Tenant\Commands\UpdateTenantBrandingCommand;
 use App\Domain\Identity\Repositories\TenantRepositoryInterface;
 use App\Domain\Shared\Contracts\MediaStorageServiceInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use App\Application\Shared\Contracts\LoggerInterface;
 
 /**
  * UpdateTenantBrandingHandler - Branding Assets Update Handler
@@ -48,7 +48,7 @@ final class UpdateTenantBrandingHandler
         if ($command->logo !== null) {
             // Delete old logo if exists
             if ($tenant->logo_path) {
-                $this->mediaStorage->delete($tenant->logo_path);
+                $this->mediaStorage->delete($command->tenantId, $tenant->logo_path);
             }
             $tenant->logo_path = $this->mediaStorage->storeLogo($command->tenantId, $command->logo);
         }
@@ -57,7 +57,7 @@ final class UpdateTenantBrandingHandler
         if ($command->banner !== null) {
             // Delete old banner if exists
             if ($tenant->cover_path) {
-                $this->mediaStorage->delete($tenant->cover_path);
+                $this->mediaStorage->delete($command->tenantId, $tenant->cover_path);
             }
             $tenant->cover_path = $this->mediaStorage->storeBanner($command->tenantId, $command->banner);
         }

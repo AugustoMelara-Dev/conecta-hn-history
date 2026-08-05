@@ -108,5 +108,4 @@ final class TenantMicrositeController extends Controller
             && $directoryHost !== ''
             && strcasecmp($request->getHost(), $directoryHost) === 0;
     }
-
 }

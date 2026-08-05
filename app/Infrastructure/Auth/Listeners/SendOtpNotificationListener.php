@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Infrastructure\Auth\Listeners;
 
 use App\Application\Common\Contracts\CircuitBreakerInterface;
+use App\Application\Shared\Contracts\SensitivePayloadCipherInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Auth\Contracts\OtpNotifierInterface;
 use App\Domain\Auth\Events\OtpGenerated;
+use App\Infrastructure\Shared\Middleware\TenantQueueMiddleware;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
@@ -31,7 +33,14 @@ final class SendOtpNotificationListener implements ShouldQueue
     public function __construct(
         private OtpNotifierInterface $notifier,
         private CircuitBreakerInterface $circuitBreaker,
+        private SensitivePayloadCipherInterface $payloadCipher,
     ) {}
+
+    /** @return array<int, TenantQueueMiddleware> */
+    public function middleware(OtpGenerated $event): array
+    {
+        return [new TenantQueueMiddleware($event->tenantId)];
+    }
 
     /**
      * Handle the event with resilience patterns.
@@ -40,6 +49,10 @@ final class SendOtpNotificationListener implements ShouldQueue
      */
     public function handle(OtpGenerated $event): void
     {
+        if ($event->encryptedCode === null || $event->identifier === null) {
+            throw new \RuntimeException('OtpGenerated delivery payload is incomplete.');
+        }
+
         $serviceName = 'sms_provider';
         $maskedIdentifier = $this->maskIdentifier($event->identifier);
 
@@ -56,9 +69,9 @@ final class SendOtpNotificationListener implements ShouldQueue
         try {
             // 2. ATTEMPT OPERATION (Now with tenant context for branding/routing)
             $this->notifier->send(
-                otpCode: $event->code,
-                recipientIdentifier: $event->identifier,
-                recipientName: $event->recipientName,
+                recipient: null,
+                plainTextCode: $this->payloadCipher->decrypt($event->encryptedCode),
+                identifier: $event->identifier,
                 tenantId: $event->tenantId,
                 expiryMinutes: $event->expiryMinutes
             );

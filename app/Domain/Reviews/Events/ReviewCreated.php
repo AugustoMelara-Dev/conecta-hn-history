@@ -17,7 +17,7 @@ final readonly class ReviewCreated implements ShouldDispatchAfterCommit
     public function __construct(
         public int $reviewId,
         public int $productId,
-        public int $tenantId,
+        public string $tenantId,
         public int $rating,
     ) {}
 

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Filament\App\Resources;
 
 use App\Application\Access\Contracts\TenantPermissionGuardInterface;
+use App\Application\Crm\CanonicalOpportunityWriter;
+use App\Application\Markets\TenantMarketResolver;
 use App\Application\TenantGovernance\Crm\CrmDefaultPipelineService;
 use App\Domain\Access\Enums\Permission;
 use App\Domain\TenantGovernance\Enums\Capability;
@@ -26,12 +28,11 @@ use Filament\Forms\Components\Section;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
-use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Actions\DeleteAction;
-use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class CrmDealResource extends Resource
@@ -154,12 +155,12 @@ class CrmDealResource extends Resource
                                 Forms\Components\TextInput::make('value')
                                     ->label('Valor')
                                     ->numeric()
-                                    ->prefix('L.')
+                                    ->prefix(fn (): string => static::currencySymbol())
                                     ->default(0),
                                 Forms\Components\Select::make('currency')
                                     ->label('Moneda')
-                                    ->options(['HNL' => 'HNL', 'USD' => 'USD'])
-                                    ->default('HNL')
+                                    ->options(fn (): array => static::currencyOptions())
+                                    ->default(fn (): ?string => static::marketCurrency())
                                     ->native(false)
                                     ->required(),
                                 Forms\Components\DatePicker::make('expected_close_at')
@@ -238,7 +239,7 @@ class CrmDealResource extends Resource
                     }),
                 Tables\Columns\TextColumn::make('value')
                     ->label('Valor')
-                    ->money('HNL')
+                    ->money(fn (CrmDeal $record): string => (string) $record->currency)
                     ->sortable(),
                 Tables\Columns\TextColumn::make('customerProfile.name')
                     ->label('Cliente')
@@ -273,13 +274,19 @@ class CrmDealResource extends Resource
                 EditAction::make()
                     ->visible(fn (CrmDeal $record): bool => static::canEdit($record)),
                 DeleteAction::make()
-                    ->visible(fn (CrmDeal $record): bool => static::canDelete($record)),
-            ])
-            ->bulkActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make()
-                        ->visible(fn (): bool => static::canDeleteAny()),
-                ]),
+                    ->visible(fn (CrmDeal $record): bool => static::canDelete($record))
+                    ->action(function (CrmDeal $record): void {
+                        $tenant = static::currentTenant();
+                        $actor = Filament::auth()->user();
+                        if (! $tenant instanceof Tenant || ! $actor instanceof User) {
+                            throw new \RuntimeException('CRM deletion requires tenant and actor context.');
+                        }
+                        app(CanonicalOpportunityWriter::class)->archive(
+                            (string) $tenant->getKey(),
+                            (string) $actor->getKey(),
+                            (int) $record->getKey(),
+                        );
+                    }),
             ])
             ->emptyState(fn () => view('filament.app.components.table-empty-state', [
                 'badge' => 'CRM gated',
@@ -312,6 +319,39 @@ class CrmDealResource extends Resource
         $tenant = Filament::getTenant();
 
         return $tenant instanceof Tenant ? $tenant : null;
+    }
+
+    public static function marketCurrency(): ?string
+    {
+        $tenant = static::currentTenant();
+
+        return $tenant instanceof Tenant
+            ? app(TenantMarketResolver::class)->resolveOrNull($tenant)?->currencyCode
+            : null;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function currencyOptions(): array
+    {
+        $currency = static::marketCurrency();
+
+        return $currency === null ? [] : [$currency => $currency];
+    }
+
+    public static function currencySymbol(): string
+    {
+        $currency = static::marketCurrency();
+        if ($currency === null) {
+            return '';
+        }
+
+        return (string) (
+            DB::table('currencies')
+                ->where('code', $currency)
+                ->value('symbol') ?: $currency
+        );
     }
 
     public static function getEloquentQuery(): Builder

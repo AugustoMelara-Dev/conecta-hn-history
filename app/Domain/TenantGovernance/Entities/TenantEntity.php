@@ -40,6 +40,8 @@ final class TenantEntity
 
     private ?string $subscriptionReference = null;
 
+    private ?string $subscriptionStatus = null;
+
     private ?string $planType = null;
 
     private bool $isPro = false;
@@ -131,7 +133,7 @@ final class TenantEntity
         int $productLimit,
         ?string $logoPath,
         ?int $categoryId,
-        int $cityId,
+        ?int $cityId,
         ?string $whatsapp,
         BusinessType $businessType,
         CommercialMode $commercialMode,
@@ -252,6 +254,11 @@ final class TenantEntity
         return $this->subscriptionReference ?? null;
     }
 
+    public function subscriptionStatus(): ?string
+    {
+        return $this->subscriptionStatus;
+    }
+
     // -- SNAPSHOT COMPATIBILITY (Memento Pattern) --
 
     /**
@@ -279,6 +286,7 @@ final class TenantEntity
             'plan_id' => $this->planId,
             'subscription_ends_at' => $this->subscriptionEndsAt?->format(\DateTimeInterface::ATOM),
             'subscription_reference' => $this->subscriptionReference,
+            'subscription_status' => $this->subscriptionStatus,
             'plan_type' => $this->planType,
             'is_pro' => $this->isPro,
             'product_limit' => $this->productLimit,
@@ -321,11 +329,14 @@ final class TenantEntity
 
         // Subscription State (CRITICAL - prevents Premium Amnesia)
         $tenant->planId = isset($state['plan_id']) ? (string) $state['plan_id'] : null;
-        $tenant->subscriptionEndsAt = isset($state['subscription_ends_at']) && $state['subscription_ends_at'] !== null
+        $tenant->subscriptionEndsAt = isset($state['subscription_ends_at'])
             ? new DateTimeImmutable($state['subscription_ends_at'])
             : null;
         $tenant->subscriptionReference = isset($state['subscription_reference'])
             ? (string) $state['subscription_reference']
+            : null;
+        $tenant->subscriptionStatus = isset($state['subscription_status'])
+            ? (string) $state['subscription_status']
             : null;
         $tenant->planType = isset($state['plan_type']) ? (string) $state['plan_type'] : null;
         $tenant->isPro = (bool) ($state['is_pro'] ?? false);

@@ -31,7 +31,7 @@ final readonly class MicrositeViewed implements DomainEvent, ShouldDispatchAfter
         $this->visitorHash = $ip ? hash('sha256', $tenantKey.'|'.$ip) : null;
         $this->agentHash = $userAgent ? hash('sha256', $userAgent) : null;
         $this->eventId = $eventId ?? (string) \Illuminate\Support\Str::uuid();
-        $this->occurredAt = $occurredAt ?? new DateTimeImmutable();
+        $this->occurredAt = $occurredAt ?? new DateTimeImmutable;
     }
 
     public string $tenantKey;
@@ -57,9 +57,9 @@ final readonly class MicrositeViewed implements DomainEvent, ShouldDispatchAfter
         return TenantId::fromString($this->tenantKey);
     }
 
-    public function aggregateId(): int
+    public function aggregateId(): string
     {
-        return ctype_digit($this->tenantKey) ? (int) $this->tenantKey : 0;
+        return $this->tenantKey;
     }
 
     public function occurredAt(): DateTimeImmutable

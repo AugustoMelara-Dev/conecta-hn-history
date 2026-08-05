@@ -5,15 +5,14 @@ declare(strict_types=1);
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\OrderResource\Pages;
+use App\Filament\Traits\ScopesToTenant;
 use App\Models\Order;
-use App\Services\OrderStateService;
 use Filament\Forms\Form;
 use Filament\Infolists\Components\Grid;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\Section;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Infolist;
-use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Support\Enums\FontFamily;
 use Filament\Tables;
@@ -112,7 +111,7 @@ class OrderResource extends Resource
                 // TOTAL: Right-aligned monetary format
                 Tables\Columns\TextColumn::make('total')
                     ->label('Total')
-                    ->money('HNL')
+                    ->money(fn (Order $record): string => (string) $record->currency)
                     ->alignEnd()
                     ->weight('bold'),
 
@@ -159,35 +158,6 @@ class OrderResource extends Resource
                 // ═══════════════════════════════════════════════════════════════
                 // ACTION: COMPLETE (Workflow Transition)
                 // ═══════════════════════════════════════════════════════════════
-                Tables\Actions\Action::make('complete')
-                    ->label('Completar')
-                    ->icon('heroicon-o-check-circle')
-                    ->color('success')
-                    // VISIBILITY: Only for pending items
-                    ->visible(fn (Order $record) => $record->status === 'pending')
-                    ->requiresConfirmation()
-                    ->modalHeading('¿Completar Pedido?')
-                    ->modalDescription('El pedido pasará a estado completado/entregado. Esta acción registrará el cambio en el historial.')
-                    ->action(function (Order $record) {
-                        // LOGIC: Delegate to Service for side-effects (inventory, logs)
-                        try {
-                            // Mapping 'Complete' requirement to 'delivered' status to maintain system integrity.
-                            // If strict 'completed' status is needed, Order::STATUS_COMPLETED must be defined.
-                            // Assuming 'delivered' is the logical equivalent in current architecture.
-                            app(OrderStateService::class)->transition($record, 'delivered');
-
-                            Notification::make()
-                                ->title('Pedido Completado')
-                                ->success()
-                                ->send();
-                        } catch (\Exception $e) {
-                            Notification::make()
-                                ->title('Error al completar')
-                                ->body($e->getMessage())
-                                ->danger()
-                                ->send();
-                        }
-                    }),
             ])
             // IMMUTABILITY: NO BULK ACTIONS
             ->bulkActions([]);
@@ -242,7 +212,7 @@ class OrderResource extends Resource
                                     // COLUMN 4: Unit Price
                                     TextEntry::make('price')
                                         ->label('Precio Unit.')
-                                        ->money('HNL')
+                                        ->money(fn ($record): string => (string) $record->order->currency)
                                         ->alignEnd(),
                                 ]),
                             ])
@@ -254,9 +224,9 @@ class OrderResource extends Resource
                 Section::make('Resumen Financiero')
                     ->columns(3)
                     ->schema([
-                        TextEntry::make('subtotal')->money('HNL'),
-                        TextEntry::make('delivery_fee')->label('Envío')->money('HNL'),
-                        TextEntry::make('total')->money('HNL')->weight('bold')->size(TextEntry\TextEntrySize::Large),
+                        TextEntry::make('subtotal')->money(fn (Order $record): string => (string) $record->currency),
+                        TextEntry::make('delivery_fee')->label('Envío')->money(fn (Order $record): string => (string) $record->currency),
+                        TextEntry::make('total')->money(fn (Order $record): string => (string) $record->currency)->weight('bold')->size(TextEntry\TextEntrySize::Large),
                     ]),
 
                 // Customer Section
@@ -271,7 +241,7 @@ class OrderResource extends Resource
             ]);
     }
 
-    use \App\Filament\Traits\ScopesToTenant;
+    use ScopesToTenant;
 
     public static function getRelations(): array
     {

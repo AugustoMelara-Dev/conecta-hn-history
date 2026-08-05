@@ -6,6 +6,7 @@ namespace App\Domain\Shared\Services;
 
 use App\Domain\Shared\Exceptions\TenantContextMissingException;
 use App\Domain\Shared\Exceptions\TenantContextMutationException;
+use App\Domain\Shared\ValueObjects\TenantId;
 use LogicException;
 
 /**
@@ -19,7 +20,7 @@ use LogicException;
  */
 final class TenantContext
 {
-    private int|string|null $tenantId = null;
+    private ?string $tenantId = null;
 
     private bool $isSystemRoot = false;
 
@@ -30,21 +31,24 @@ final class TenantContext
      *
      * @throws TenantContextMutationException If attempting to switch tenants.
      */
-    public function setTenant(int|string $id): void
+    public function setTenant(string $id): void
     {
-        if ($this->isInitialized && $this->tenantId !== null && $this->tenantId !== $id) {
-            throw TenantContextMutationException::tenantHopping($this->tenantId, $id);
+        $normalizedId = strtolower($id);
+        TenantId::fromString($normalizedId);
+
+        if ($this->isInitialized && $this->tenantId !== null && $this->tenantId !== $normalizedId) {
+            throw TenantContextMutationException::tenantHopping($this->tenantId, $normalizedId);
         }
 
         if ($this->isInitialized && $this->isSystemRoot) {
             throw TenantContextMutationException::alreadyInitialized();
         }
 
-        $this->tenantId = $id;
+        $this->tenantId = $normalizedId;
         $this->isInitialized = true;
     }
 
-    public function set(int|string $id): void
+    public function set(string $id): void
     {
         $this->setTenant($id);
     }
@@ -75,7 +79,7 @@ final class TenantContext
      * @throws LogicException If called in System Root mode (no ID exists).
      * @throws TenantContextMissingException If context is not initialized.
      */
-    public function id(): int|string
+    public function id(): string
     {
         if ($this->isSystemRoot) {
             throw new LogicException('Root context has no specific ID. Use isRoot() to check mode.');

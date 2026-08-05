@@ -24,6 +24,9 @@ class ValidationMiddleware
         // Target:  App\Application\Identity\Validators\RegisterUserValidator
 
         $commandClass = get_class($command);
+        if (! str_contains($commandClass, '\\Commands\\') || ! str_ends_with($commandClass, 'Command')) {
+            return $next($command);
+        }
         $validatorClass = str_replace(
             ['\\Commands\\', 'Command'],
             ['\\Validators\\', 'Validator'],

@@ -16,14 +16,14 @@ use Illuminate\Support\Collection;
  */
 interface ProductReader
 {
-    public function getInventory(int $tenantId): Collection;
+    public function getInventory(string $tenantId): Collection;
 
-    public function getLowStockProducts(int $tenantId): Collection;
+    public function getLowStockProducts(string $tenantId): Collection;
 
-    public function search(int $tenantId, array $filters, int $perPage = 20): LengthAwarePaginator;
+    public function search(string $tenantId, array $filters, int $perPage = 20): LengthAwarePaginator;
 
     /**
      * Find a product by ID, ensuring tenant scope.
      */
-    public function find(int $tenantId, int $productId): ?object;
+    public function find(string $tenantId, int $productId): ?object;
 }

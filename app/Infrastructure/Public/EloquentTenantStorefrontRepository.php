@@ -55,7 +55,7 @@ final class EloquentTenantStorefrontRepository implements TenantStorefrontReposi
                     ->limit($productLimit);
             };
         } else {
-            $tenant->setRelation('products', new EloquentCollection());
+            $tenant->setRelation('products', new EloquentCollection);
         }
 
         if (Schema::hasColumn('tenants', 'city_id')) {

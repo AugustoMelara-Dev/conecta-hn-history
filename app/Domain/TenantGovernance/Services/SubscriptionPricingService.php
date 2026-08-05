@@ -22,8 +22,24 @@ final readonly class SubscriptionPricingService
     public function getPlanPrice(string $plan): float
     {
         return $plan === 'pro'
-            ? ($this->settings->pro_plan_price ?? 500.00)
+            ? self::canonicalProPriceInMajorUnits()
             : 0.00;
+    }
+
+    public static function canonicalProPriceInMinorUnits(): int
+    {
+        $price = config('subscriptions.plans.pro.price');
+
+        if (! is_int($price) || $price <= 0) {
+            throw new \LogicException('subscriptions.plans.pro.price must be a positive integer in minor currency units.');
+        }
+
+        return $price;
+    }
+
+    public static function canonicalProPriceInMajorUnits(): float
+    {
+        return self::canonicalProPriceInMinorUnits() / 100;
     }
 
     public function getPlanType(string $plan): string

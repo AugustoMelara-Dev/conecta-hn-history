@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Notifications;
 
+use App\Broadcasting\ChannelRegistry;
 use App\Models\Order;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Bus\Queueable;
@@ -28,7 +29,7 @@ use Illuminate\Notifications\Notification;
  *
  * TRIGGER: Dispatched after Order::create() transaction commits in OrderController::store()
  */
-class NewOrderNotification extends Notification implements ShouldQueue, ShouldBroadcast
+class NewOrderNotification extends Notification implements ShouldBroadcast, ShouldQueue
 {
     use Queueable;
 
@@ -66,7 +67,7 @@ class NewOrderNotification extends Notification implements ShouldQueue, ShouldBr
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('tenant.' . $this->order->tenant_id . '.admins'),
+            ChannelRegistry::tenantAdmins((string) $this->order->tenant_id),
         ];
     }
 
@@ -118,7 +119,7 @@ class NewOrderNotification extends Notification implements ShouldQueue, ShouldBr
             ->line("**Total:** {$formattedTotal}")
             ->action('Ver Pedido', $orderUrl)
             ->line('Revisa tu panel de administración para gestionar este pedido.')
-            ->salutation('- Vito Business OS');
+            ->salutation('- Dovra AI');
     }
 
     /**

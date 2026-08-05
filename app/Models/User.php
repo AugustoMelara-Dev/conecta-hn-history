@@ -12,6 +12,8 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Domain\Identity\Enums\UserRole;
+use App\Infrastructure\Persistence\Eloquent\Casts\TenantIdCast;
+use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser as FilamentUserContract;
 use Filament\Models\Contracts\HasTenants;
 use Filament\Panel;
@@ -27,6 +29,8 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
+use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Sanctum\HasApiTokens;
 use NotificationChannels\WebPush\HasPushSubscriptions;
 
@@ -40,6 +44,9 @@ use NotificationChannels\WebPush\HasPushSubscriptions;
 class User extends Authenticatable implements FilamentUserContract, HasTenants, MustVerifyEmail
 {
     use HasApiTokens, HasFactory, HasPushSubscriptions, HasUuids, Notifiable;
+    use TwoFactorAuthenticatable {
+        hasEnabledTwoFactorAuthentication as private fortifyHasEnabledTwoFactorAuthentication;
+    }
 
     /**
      * UUID Configuration: Disable Auto-Increment
@@ -87,6 +94,8 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
     protected $hidden = [
         'password',
         'remember_token',
+        'two_factor_secret',
+        'two_factor_recovery_codes',
     ];
 
     /**
@@ -119,9 +128,23 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
         return [
             'email_verified_at' => 'datetime',
             'banned_at' => 'datetime',
+            'two_factor_confirmed_at' => 'datetime',
             'role' => UserRole::class,
-            'tenant_id' => \App\Infrastructure\Persistence\Eloquent\Casts\TenantIdCast::class,
+            'tenant_id' => TenantIdCast::class,
         ];
+    }
+
+    public function hasEnabledTwoFactorAuthentication(): bool
+    {
+        $attributes = $this->getAttributes();
+
+        if ($this->exists
+            && (! array_key_exists('two_factor_secret', $attributes)
+                || ! array_key_exists('two_factor_confirmed_at', $attributes))) {
+            $this->refresh();
+        }
+
+        return $this->fortifyHasEnabledTwoFactorAuthentication();
     }
 
     /**
@@ -129,7 +152,7 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
      */
     protected static function newFactory()
     {
-        return \Database\Factories\UserFactory::new();
+        return UserFactory::new();
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -212,7 +235,7 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
      * Accepts a PRE-HASHED password string. Hashing policy is owned
      * by the Application Layer, NOT this model.
      *
-     * @param string $hashedPassword The already-hashed password string.
+     * @param  string  $hashedPassword  The already-hashed password string.
      *
      * @see App\Application\Identity\Handlers\RegisterUserHandler
      * @see App\Domain\Shared\PasswordHasherInterface
@@ -221,7 +244,7 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
     {
         $this->forceFill([
             'password' => $hashedPassword,
-            'remember_token' => \Illuminate\Support\Str::random(60),
+            'remember_token' => Str::random(60),
         ])->save();
     }
 
@@ -272,6 +295,9 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
         return $this->tenantMemberships()
             ->where('tenant_id', $tenant->id)
             ->whereNotNull('accepted_at')
+            ->where('status', 'active')
+            ->whereNull('suspended_at')
+            ->whereNull('revoked_at')
             ->exists();
     }
 
@@ -304,7 +330,8 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
     public function canAccessPanel(Panel $panel): bool
     {
         return match ($panel->getId()) {
-            self::PANEL_ADMIN => $this->isSuperAdmin(),
+            self::PANEL_ADMIN => $this->isSuperAdmin()
+                && (! (bool) config('security.admin_mfa_required', false) || $this->hasEnabledTwoFactorAuthentication()),
             self::PANEL_APP => $this->tenants()->exists()
                 || (Schema::hasTable('tenant_memberships') && $this->tenantMemberships()->whereNotNull('accepted_at')->exists())
                 || $this->isSuperAdmin(),
@@ -372,17 +399,17 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
 
     /**
      * Get loyalty points balance for a specific tenant.
-     * 
+     *
      * O(1) complexity via Sum Aggregation.
      * Balance = SUM(amount) for this user at this tenant.
-     * 
+     *
      * INVARIANT: Points are tenant-isolated. Points from Tenant A
      * cannot be used at Tenant B.
-     * 
-     * @param int $tenantId The tenant to check balance for
+     *
+     * @param  string  $tenantId  The tenant UUID to check balance for
      * @return int Current point balance (can be negative if over-redeemed)
      */
-    public function loyaltyBalance(int $tenantId): int
+    public function loyaltyBalance(string $tenantId): int
     {
         return (int) $this->loyaltyLedger()
             ->where('tenant_id', $tenantId)
@@ -391,17 +418,17 @@ class User extends Authenticatable implements FilamentUserContract, HasTenants, 
 
     /**
      * Get active (non-expired) loyalty points balance for a tenant.
-     * 
-     * @param int $tenantId The tenant to check balance for
+     *
+     * @param  string  $tenantId  The tenant UUID to check balance for
      * @return int Active point balance
      */
-    public function activeLoyaltyBalance(int $tenantId): int
+    public function activeLoyaltyBalance(string $tenantId): int
     {
         return (int) $this->loyaltyLedger()
             ->where('tenant_id', $tenantId)
             ->where(function ($query) {
                 $query->whereNull('expires_at')
-                      ->orWhere('expires_at', '>', now());
+                    ->orWhere('expires_at', '>', now());
             })
             ->sum('amount');
     }

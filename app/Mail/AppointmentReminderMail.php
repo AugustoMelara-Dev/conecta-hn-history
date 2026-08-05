@@ -4,34 +4,22 @@ declare(strict_types=1);
 
 namespace App\Mail;
 
-use App\Models\Appointment;
+use App\Application\Booking\DTOs\AppointmentReminderData;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\URL;
 
-/**
- * Appointment Reminder Email (24h Before)
- *
- * Sent to customer_email 24 hours before the scheduled appointment.
- * Uses tenant branding and includes rebooking/cancellation links.
- * 
- * INVARIANT: Must include tenant->name in subject for multi-tenant isolation.
- */
-class AppointmentReminderMail extends Mailable
+final class AppointmentReminderMail extends Mailable
 {
-    use Queueable, SerializesModels;
+    use Queueable;
 
-    public function __construct(public Appointment $appointment)
-    {
-    }
+    public function __construct(public readonly AppointmentReminderData $reminder) {}
 
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Recordatorio de Cita - ' . $this->appointment->tenant->name,
+            subject: 'Recordatorio de Cita - '.$this->reminder->tenantName,
         );
     }
 
@@ -40,15 +28,12 @@ class AppointmentReminderMail extends Mailable
         return new Content(
             markdown: 'emails.appointment.reminder',
             with: [
-                'tenantName' => $this->appointment->tenant->name,
-                'serviceName' => $this->appointment->service->name,
-                'date' => $this->appointment->scheduled_at->translatedFormat('l, d \d\e F \d\e Y'),
-                'time' => $this->appointment->scheduled_at->format('h:i A'),
-                'providerName' => $this->appointment->provider->name,
-                'managementUrl' => URL::signedRoute(
-                    'public.appointment.manage',
-                    ['appointment' => $this->appointment->id]
-                ),
+                'tenantName' => $this->reminder->tenantName,
+                'serviceName' => $this->reminder->serviceName,
+                'date' => $this->reminder->date,
+                'time' => $this->reminder->time,
+                'providerName' => $this->reminder->providerName,
+                'managementUrl' => $this->reminder->managementUrl,
             ],
         );
     }

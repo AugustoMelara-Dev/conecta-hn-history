@@ -27,32 +27,32 @@ interface AdminNotifier
     /**
      * Notify tenant owner about a new lead.
      *
-     * @param  Lead  $lead  The newly created lead
+     * @param  object  $lead  The newly created lead
      */
     public function notifyNewLead(object $lead): void;
 
     /**
      * Notify tenant owner about a new review.
      *
-     * @param  Review  $review  The newly submitted review
+     * @param  object  $review  The newly submitted review
      */
     public function notifyNewReview(object $review): void;
 
     /**
      * Notify tenant owner about a new order.
      *
-     * @param  int  $tenantId  The tenant ID
+     * @param  string  $tenantId  The tenant UUID
      * @param  int  $orderId  The order ID
      * @param  float  $total  The order total
      */
-    public function notifyNewOrder(int $tenantId, int $orderId, float $total): void;
+    public function notifyNewOrder(string $tenantId, int $orderId, float $total): void;
 
     /**
      * Notify tenant owner about payment status update.
      *
-     * @param  int  $tenantId  The tenant ID
+     * @param  string  $tenantId  The tenant UUID
      * @param  string  $status  The payment status
      * @param  float  $amount  The payment amount
      */
-    public function notifyPaymentUpdate(int $tenantId, string $status, float $amount): void;
+    public function notifyPaymentUpdate(string $tenantId, string $status, float $amount): void;
 }

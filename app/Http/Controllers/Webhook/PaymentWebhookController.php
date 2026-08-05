@@ -105,9 +105,9 @@ final class PaymentWebhookController extends Controller
             return null;
         }
 
-        $payload = $request->json()->all();
 
-        return is_array($payload) ? $payload : null;
+        return $request->json()->all();
+
     }
 
     private function isStripeWebhook(Request $request): bool

@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Application\Tenant\Handlers;
 
+use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Application\Tenant\Commands\UpdateTenantScheduleCommand;
 use App\Domain\Identity\Repositories\TenantRepositoryInterface;
 use DomainException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use App\Application\Shared\Contracts\LoggerInterface;
 
 /**
  * UpdateTenantScheduleHandler - Business Hours Update Handler

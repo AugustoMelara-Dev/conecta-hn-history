@@ -30,7 +30,7 @@ final class ExportReadyNotification extends Notification implements ShouldQueue
      */
     public function __construct(
         private readonly string $filePath,
-        private readonly int $tenantId,
+        private readonly string $tenantId,
         private readonly string $exportType = 'sales',
     ) {
         $this->onQueue('notifications');

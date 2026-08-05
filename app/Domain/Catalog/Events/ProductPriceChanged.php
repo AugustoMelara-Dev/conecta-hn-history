@@ -6,8 +6,8 @@ namespace App\Domain\Catalog\Events;
 
 use App\Contracts\Events\DomainEvent;
 use App\Domain\Shared\Contracts\TenantAwareEvent;
-use App\Traits\HasDomainMetadata;
 use App\Domain\Shared\ValueObjects\TenantId;
+use App\Traits\HasDomainMetadata;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**
@@ -39,9 +39,9 @@ final readonly class ProductPriceChanged implements DomainEvent, ShouldDispatchA
         return $this->tenantId;
     }
 
-    public function aggregateId(): int
+    public function aggregateId(): string
     {
-        return $this->productId;
+        return (string) $this->productId;
     }
 
     public function toPrimitives(): array
@@ -59,7 +59,7 @@ final readonly class ProductPriceChanged implements DomainEvent, ShouldDispatchA
     public static function fromPrimitives(array $primitives): self
     {
         return new self(
-            tenantId: TenantId::fromInt($primitives['tenant_id']),
+            tenantId: TenantId::fromSerialized($primitives['tenant_id']),
             productId: $primitives['product_id'],
             oldPrice: $primitives['old_price'],
             newPrice: $primitives['new_price'],

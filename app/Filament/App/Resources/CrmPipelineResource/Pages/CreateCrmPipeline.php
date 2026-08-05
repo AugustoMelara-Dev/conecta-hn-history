@@ -14,7 +14,7 @@ class CreateCrmPipeline extends CreateTenantRecord
     protected static string $resource = CrmPipelineResource::class;
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
     protected function mutateFormDataBeforeCreate(array $data): array

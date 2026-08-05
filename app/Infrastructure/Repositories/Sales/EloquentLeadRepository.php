@@ -22,7 +22,8 @@ final class EloquentLeadRepository implements LeadRepositoryInterface
         ?string $sessionId = null,
         array $attribution = [],
     ): LeadEntity {
-        $model = Lead::create([
+        $model = new Lead;
+        $model->forceFill([
             'tenant_id' => $tenantId,
             'name' => $source === 'whatsapp_click' ? 'Lead desde WhatsApp' : 'Lead web',
             'product_id' => $productId,
@@ -36,6 +37,7 @@ final class EloquentLeadRepository implements LeadRepositoryInterface
             'message' => $message ?? 'Clic en WhatsApp desde el catalogo',
             'status' => 'new',
         ]);
+        $model->save();
 
         return LeadMapper::toDomain($model);
     }

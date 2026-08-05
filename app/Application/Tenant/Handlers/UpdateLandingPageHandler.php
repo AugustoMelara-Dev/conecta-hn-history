@@ -9,7 +9,6 @@ use App\Application\Tenant\Commands\UpdateLandingPageCommand;
 use App\Domain\Tenant\Exceptions\FeatureRequiresProException;
 use App\Models\Tenant;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use App\Application\Shared\Contracts\LoggerInterface;
 use Illuminate\Support\Facades\Schema;
 
 /**

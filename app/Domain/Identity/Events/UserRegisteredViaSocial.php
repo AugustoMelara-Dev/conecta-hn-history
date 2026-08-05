@@ -61,4 +61,16 @@ final readonly class UserRegisteredViaSocial
             'occurred_at' => $this->occurredAt->format(DateTimeImmutable::ATOM),
         ];
     }
+
+    /** @param array<string, mixed> $payload */
+    public static function fromPayload(array $payload): self
+    {
+        return new self(
+            userId: (string) $payload['user_id'],
+            tenantId: (string) $payload['tenant_id'],
+            email: (string) $payload['email'],
+            provider: (string) $payload['provider'],
+            occurredAt: new DateTimeImmutable((string) $payload['occurred_at']),
+        );
+    }
 }

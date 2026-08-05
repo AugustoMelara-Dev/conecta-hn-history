@@ -20,7 +20,7 @@ final readonly class ProductEntity
 {
     public function __construct(
         public ?int $id,
-        public int $tenantId,
+        public string $tenantId,
         public string $sku,
         public string $name,
         public string $description,

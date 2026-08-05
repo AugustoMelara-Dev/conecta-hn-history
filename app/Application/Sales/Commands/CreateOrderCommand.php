@@ -31,11 +31,11 @@ final readonly class CreateOrderCommand implements IdempotentCommandInterface
      * @param  array<int, array{product_id: int, quantity: int, options?: array, notes?: string}>  $items
      */
     public function __construct(
-        #[OA\Property(property: 'tenant_id', type: 'integer', example: 1)]
-        public int $tenantId,
+        #[OA\Property(property: 'tenant_id', type: 'string', format: 'uuid', example: '019f8c00-0000-7000-8000-000000000001')]
+        public string $tenantId,
 
         #[OA\Property(property: 'customer_id', type: 'integer', example: 101, description: 'Registered User ID')]
-        public int $customerId,
+        public string|int $customerId,
 
         #[OA\Property(property: 'currency', type: 'string', example: 'HNL', minLength: 3, maxLength: 3)]
         public string $currency,
@@ -79,7 +79,7 @@ final readonly class CreateOrderCommand implements IdempotentCommandInterface
         public ?string $couponCode = null,
 
         // Context - Strict Scalar ID only.
-        public ?int $requestorId = null,
+        public string|int|null $requestorId = null,
 
         // Explicit Idempotency
         public ?string $idempotencyKey = null

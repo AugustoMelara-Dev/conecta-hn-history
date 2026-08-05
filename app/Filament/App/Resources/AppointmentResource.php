@@ -4,9 +4,15 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
+use App\Application\Reservations\CanonicalReservationWriter;
+use App\Application\Reservations\Commands\TransitionReservationCommand;
 use App\Filament\App\Resources\AppointmentResource\Pages;
 use App\Models\Appointment;
+use App\Models\Service;
+use App\Models\Tenant;
+use App\Models\User;
 use App\Support\Product\TenantAccessMatrix;
+use Carbon\Carbon;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -64,13 +70,20 @@ class AppointmentResource extends Resource
                             ->schema([
                                 Forms\Components\TextInput::make('customer_name')
                                     ->label('Nombre del cliente')
+                                    ->required()
                                     ->placeholder('Ej. María López')
                                     ->maxLength(255),
 
                                 Forms\Components\TextInput::make('customer_phone')
+                                    ->required()
                                     ->label('Teléfono')
                                     ->tel()
                                     ->placeholder('Ej. 50499999999'),
+
+                                Forms\Components\TextInput::make('customer_email')
+                                    ->label('Correo')
+                                    ->required()
+                                    ->email(),
                             ]),
 
                         Forms\Components\Select::make('service_id')
@@ -81,9 +94,9 @@ class AppointmentResource extends Resource
                             ->reactive()
                             ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
                                 if ($state && $get('scheduled_at')) {
-                                    $service = \App\Models\Service::find($state);
+                                    $service = Service::find($state);
                                     if ($service) {
-                                        $start = \Carbon\Carbon::parse($get('scheduled_at'));
+                                        $start = Carbon::parse($get('scheduled_at'));
                                         $set('end_at', $start->copy()->addMinutes($service->duration_minutes)->format('Y-m-d H:i:s'));
                                     }
                                 }
@@ -96,6 +109,12 @@ class AppointmentResource extends Resource
                             ->preload()
                             ->helperText('Selecciona quién prestará el servicio.'),
 
+                        Forms\Components\Select::make('location_id')
+                            ->label('Ubicación')
+                            ->relationship('location', 'name')
+                            ->required()
+                            ->preload(),
+
                         Forms\Components\Grid::make(2)
                             ->schema([
                                 Forms\Components\DateTimePicker::make('scheduled_at')
@@ -105,9 +124,9 @@ class AppointmentResource extends Resource
                                     ->reactive()
                                     ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
                                         if ($state && $get('service_id')) {
-                                            $service = \App\Models\Service::find($get('service_id'));
+                                            $service = Service::find($get('service_id'));
                                             if ($service) {
-                                                $start = \Carbon\Carbon::parse($state);
+                                                $start = Carbon::parse($state);
                                                 $set('end_at', $start->copy()->addMinutes($service->duration_minutes)->format('Y-m-d H:i:s'));
                                             }
                                         }
@@ -124,8 +143,6 @@ class AppointmentResource extends Resource
                             ->options([
                                 'pending' => 'Pendiente',
                                 'confirmed' => 'Confirmada',
-                                'completed' => 'Completada',
-                                'cancelled' => 'Cancelada',
                             ])
                             ->default('confirmed')
                             ->required()
@@ -183,6 +200,7 @@ class AppointmentResource extends Resource
                         'confirmed' => 'Confirmada',
                         'completed' => 'Completada',
                         'cancelled' => 'Cancelada',
+                        'no_show' => 'No se presentó',
                     ]),
 
                 Tables\Filters\SelectFilter::make('service_provider_id')
@@ -198,7 +216,10 @@ class AppointmentResource extends Resource
                     ->requiresConfirmation()
                     ->modalHeading('Confirmar cita')
                     ->modalDescription('La cita pasará a estado confirmada.')
-                    ->action(fn ($record) => $record->confirm()),
+                    ->action(fn (Appointment $record) => self::transition(
+                        $record,
+                        Appointment::STATUS_CONFIRMED,
+                    )),
 
                 Tables\Actions\Action::make('complete')
                     ->label('Completar')
@@ -208,17 +229,41 @@ class AppointmentResource extends Resource
                     ->requiresConfirmation()
                     ->modalHeading('Marcar cita como completada')
                     ->modalDescription('Usa esta acción solo cuando el servicio ya fue atendido.')
-                    ->action(fn ($record) => $record->complete()),
+                    ->action(fn (Appointment $record) => self::transition(
+                        $record,
+                        Appointment::STATUS_COMPLETED,
+                    )),
 
-                Tables\Actions\EditAction::make()
-                    ->label('Editar'),
+                Tables\Actions\Action::make('no_show')
+                    ->label('No se presentó')
+                    ->visible(fn (Appointment $record): bool => $record->status === Appointment::STATUS_CONFIRMED)
+                    ->requiresConfirmation()
+                    ->action(fn (Appointment $record) => self::transition(
+                        $record,
+                        Appointment::STATUS_NO_SHOW,
+                        'Customer did not arrive',
+                    )),
+
+                Tables\Actions\Action::make('cancel')
+                    ->label('Cancelar')
+                    ->color('danger')
+                    ->visible(fn (Appointment $record): bool => in_array(
+                        $record->status,
+                        [Appointment::STATUS_PENDING, Appointment::STATUS_CONFIRMED],
+                        true,
+                    ))
+                    ->form([
+                        Forms\Components\Textarea::make('reason')
+                            ->label('Motivo')
+                            ->required(),
+                    ])
+                    ->action(fn (Appointment $record, array $data) => self::transition(
+                        $record,
+                        Appointment::STATUS_CANCELLED,
+                        (string) $data['reason'],
+                    )),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make()
-                        ->label('Eliminar seleccionadas'),
-                ]),
-            ]);
+            ->bulkActions([]);
     }
 
     public static function getRelations(): array
@@ -231,7 +276,32 @@ class AppointmentResource extends Resource
         return [
             'index' => Pages\ListAppointments::route('/'),
             'create' => Pages\CreateAppointment::route('/create'),
-            'edit' => Pages\EditAppointment::route('/{record}/edit'),
         ];
+    }
+
+    private static function transition(
+        Appointment $appointment,
+        string $targetStatus,
+        ?string $reason = null,
+    ): void {
+        $tenant = Filament::getTenant();
+        $actor = auth()->user();
+        if (! $tenant instanceof Tenant || ! $actor instanceof User) {
+            throw new \RuntimeException('Authenticated tenant context is required.');
+        }
+        $command = new TransitionReservationCommand(
+            tenantId: (string) $tenant->getKey(),
+            actorId: (string) $actor->getKey(),
+            appointmentId: (int) $appointment->getKey(),
+            targetStatus: $targetStatus,
+            reason: $reason,
+        );
+        $writer = app(CanonicalReservationWriter::class);
+        if ($targetStatus === Appointment::STATUS_CANCELLED) {
+            $writer->cancel($command);
+
+            return;
+        }
+        $writer->transition($command);
     }
 }

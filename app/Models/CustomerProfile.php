@@ -14,6 +14,7 @@ class CustomerProfile extends Model
     use BelongsToTenant;
 
     public const LIFECYCLE_PROSPECT = 'prospect';
+
     public const SEGMENT_PROSPECT = 'prospect';
 
     protected $fillable = [

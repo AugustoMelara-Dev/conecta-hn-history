@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Public;
 
+use App\Domain\Public\Contracts\LandingPageRepository;
+use App\Domain\TenantGovernance\Services\SubscriptionPricingService;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
@@ -13,7 +15,7 @@ use Inertia\Response;
 final class WelcomeController extends Controller
 {
     public function __construct(
-        private readonly \App\Domain\Public\Contracts\LandingPageRepository $repository
+        private readonly LandingPageRepository $repository
     ) {}
 
     /**
@@ -28,7 +30,7 @@ final class WelcomeController extends Controller
      */
     public function __invoke(): Response
     {
-        $data = Cache::remember("v".config('app.version')."_homepage_data", 3600, function () {
+        $data = Cache::remember('v'.config('app.version').'_homepage_data', 3600, function () {
             return [
                 // ═══════════════════════════════════════════════════════════
                 // CATEGORIES: For navigation pills (sorted by sort_order)
@@ -48,9 +50,7 @@ final class WelcomeController extends Controller
                 // ═══════════════════════════════════════════════════════════
                 // HERO IMAGE: Random city background
                 // ═══════════════════════════════════════════════════════════
-                'heroImage' => file_exists(public_path('images/vito-business-panel-preview.png'))
-                    ? asset('images/vito-business-panel-preview.png')
-                    : $this->repository->getRandomHeroImage(),
+                'heroImage' => $this->repository->getRandomHeroImage(),
 
                 // ═══════════════════════════════════════════════════════════
                 // STATS: Aggregate counts for trust badges
@@ -62,6 +62,7 @@ final class WelcomeController extends Controller
         return Inertia::render('Welcome', array_merge($data, [
             'canLogin' => Route::has('login'),
             'canRegister' => Route::has('register'),
+            'proPlanPrice' => SubscriptionPricingService::canonicalProPriceInMajorUnits(),
         ]));
     }
 }

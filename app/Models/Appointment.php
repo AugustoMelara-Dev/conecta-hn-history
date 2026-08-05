@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Application\Reservations\CanonicalReservationWriter;
+use App\Application\Reservations\Commands\TransitionReservationCommand;
+use App\Events\Appointment\AppointmentCreated;
 use App\Infrastructure\Persistence\Eloquent\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,17 +14,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Appointment Model - Service Booking Record
- * 
+ *
  * Represents a scheduled appointment linking:
  * - A Customer (User or guest via customer_name/phone)
  * - A Service (what is being performed)
  * - A ServiceProvider (who performs it)
  * - A Time Slot (when it happens)
- * 
+ *
  * STATUS LIFECYCLE:
  * pending → confirmed → completed
  *        ↘ cancelled
- * 
+ *
  * SECURITY: Uses BelongsToTenant for automatic tenant isolation.
  */
 class Appointment extends Model
@@ -32,9 +35,14 @@ class Appointment extends Model
     // STATUS CONSTANTS
     // ═══════════════════════════════════════════════════════════════════════════
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_CONFIRMED = 'confirmed';
+
     public const STATUS_CANCELLED = 'cancelled';
+
     public const STATUS_COMPLETED = 'completed';
+
+    public const STATUS_NO_SHOW = 'no_show';
 
     protected $fillable = [
         'user_id',
@@ -49,18 +57,40 @@ class Appointment extends Model
         'customer_notes',
         'staff_notes',
         'reminder_sent_at',
+        'location_id',
+        'currency',
+        'price_minor',
+        'service_name_snapshot',
+        'duration_minutes',
+        'timezone',
+        'local_date',
+        'idempotency_key',
+        'idempotency_hash',
+        'source',
+        'status_reason',
+        'confirmed_at',
+        'completed_at',
+        'cancelled_at',
+        'no_show_at',
     ];
 
     protected $casts = [
         'scheduled_at' => 'datetime',
         'end_at' => 'datetime',
+        'local_date' => 'date',
+        'price_minor' => 'integer',
+        'duration_minutes' => 'integer',
+        'confirmed_at' => 'datetime',
+        'completed_at' => 'datetime',
+        'cancelled_at' => 'datetime',
+        'no_show_at' => 'datetime',
     ];
 
     /**
      * Eloquent event -> custom event mapping for notifications.
      */
     protected $dispatchesEvents = [
-        'created' => \App\Events\Appointment\AppointmentCreated::class,
+        'created' => AppointmentCreated::class,
     ];
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -69,6 +99,8 @@ class Appointment extends Model
 
     /**
      * The customer who booked (nullable for walk-ins).
+     *
+     * @return BelongsTo<User, $this>
      */
     public function user(): BelongsTo
     {
@@ -91,6 +123,11 @@ class Appointment extends Model
         return $this->belongsTo(ServiceProvider::class, 'service_provider_id');
     }
 
+    public function location(): BelongsTo
+    {
+        return $this->belongsTo(Location::class);
+    }
+
     // ═══════════════════════════════════════════════════════════════════════════
     // SCOPES
     // ═══════════════════════════════════════════════════════════════════════════
@@ -109,8 +146,8 @@ class Appointment extends Model
     public function scopeUpcoming($query)
     {
         return $query->where('scheduled_at', '>=', now())
-                     ->whereIn('status', [self::STATUS_PENDING, self::STATUS_CONFIRMED])
-                     ->orderBy('scheduled_at');
+            ->whereIn('status', [self::STATUS_PENDING, self::STATUS_CONFIRMED])
+            ->orderBy('scheduled_at');
     }
 
     /**
@@ -151,6 +188,7 @@ class Appointment extends Model
             self::STATUS_CONFIRMED => 'Confirmada',
             self::STATUS_CANCELLED => 'Cancelada',
             self::STATUS_COMPLETED => 'Completada',
+            self::STATUS_NO_SHOW => 'No se presentó',
             default => $this->status,
         };
     }
@@ -165,6 +203,7 @@ class Appointment extends Model
             self::STATUS_CONFIRMED => 'info',
             self::STATUS_CANCELLED => 'danger',
             self::STATUS_COMPLETED => 'success',
+            self::STATUS_NO_SHOW => 'gray',
             default => 'secondary',
         };
     }
@@ -182,8 +221,7 @@ class Appointment extends Model
             return false;
         }
 
-        $this->status = self::STATUS_CONFIRMED;
-        return $this->save();
+        return $this->canonicalTransition(self::STATUS_CONFIRMED);
     }
 
     /**
@@ -191,12 +229,14 @@ class Appointment extends Model
      */
     public function cancel(): bool
     {
-        if (in_array($this->status, [self::STATUS_CANCELLED, self::STATUS_COMPLETED])) {
+        if (! in_array($this->status, [self::STATUS_PENDING, self::STATUS_CONFIRMED], true)) {
             return false;
         }
 
-        $this->status = self::STATUS_CANCELLED;
-        return $this->save();
+        return $this->canonicalTransition(
+            self::STATUS_CANCELLED,
+            'Cancellation through deprecated model adapter',
+        );
     }
 
     /**
@@ -208,8 +248,7 @@ class Appointment extends Model
             return false;
         }
 
-        $this->status = self::STATUS_COMPLETED;
-        return $this->save();
+        return $this->canonicalTransition(self::STATUS_COMPLETED);
     }
 
     /**
@@ -218,5 +257,32 @@ class Appointment extends Model
     public function canBeCancelled(): bool
     {
         return in_array($this->status, [self::STATUS_PENDING, self::STATUS_CONFIRMED]);
+    }
+
+    /**
+     * @deprecated Dispatch TransitionReservationCommand to CanonicalReservationWriter directly.
+     */
+    private function canonicalTransition(string $targetStatus, ?string $reason = null): bool
+    {
+        $actor = auth()->user();
+        if (! $actor instanceof User) {
+            throw new \RuntimeException('Authenticated actor is required for appointment transitions.');
+        }
+        $command = new TransitionReservationCommand(
+            tenantId: (string) $this->tenant_id,
+            actorId: (string) $actor->getKey(),
+            appointmentId: (int) $this->getKey(),
+            targetStatus: $targetStatus,
+            reason: $reason,
+        );
+        $writer = app(CanonicalReservationWriter::class);
+        if ($targetStatus === self::STATUS_CANCELLED) {
+            $writer->cancel($command);
+        } else {
+            $writer->transition($command);
+        }
+        $this->refresh();
+
+        return true;
     }
 }

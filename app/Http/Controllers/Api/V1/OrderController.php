@@ -4,13 +4,17 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Application\Actions\Orders\CancelOrderAction;
+use App\Application\Orders\CanonicalOrderWriter;
+use App\Application\Orders\Commands\TransitionOrderCommand;
+use App\Application\Sales\Contracts\PublicOrderCreator;
 use App\Domain\Sales\Contracts\OrderReader;
+use App\Domain\Shared\Services\TenantContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreOrderRequest;
 use App\Http\Requests\UpdateOrderStatusRequest;
 use App\Http\Resources\OrderResource;
-use App\Services\OrderStateService;
+use App\Models\Order;
+use App\Models\Tenant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -22,9 +26,8 @@ final class OrderController extends Controller
 {
     public function __construct(
         private readonly OrderReader $reader,
-        private readonly \App\Application\Shared\Contracts\CommandBusInterface $bus,
-        private readonly OrderStateService $orderStateService,
-        private readonly CancelOrderAction $cancelOrderAction
+        private readonly CanonicalOrderWriter $writer,
+        private readonly TenantContext $tenantContext,
     ) {}
 
     // ... (Other methods: index, store, show, updateStatus kept same or omitted for brevity, focusing on destroy)
@@ -32,10 +35,7 @@ final class OrderController extends Controller
 
     public function index(Request $request): AnonymousResourceCollection
     {
-        $tenantId = (int) $request->user()?->tenant_id;
-        if (! $tenantId) {
-            abort(403);
-        }
+        $tenantId = $this->tenantId();
 
         return OrderResource::collection(
             $this->reader->search(
@@ -46,24 +46,30 @@ final class OrderController extends Controller
         );
     }
 
-    public function store(StoreOrderRequest $request): JsonResponse
+    public function store(StoreOrderRequest $request, PublicOrderCreator $creator): JsonResponse
     {
-        // 1. Transform (Factory in Request)
-        $command = $request->toCommand();
+        $data = $request->toData();
+        $tenant = Tenant::query()
+            ->whereKey($data->tenantId)
+            ->where('is_active', true)
+            ->whereNull('publication_paused_at')
+            ->firstOrFail();
 
-        // 2. Execution (Business Logic via Bus)
-        $order = $this->bus->dispatch($command);
+        $this->tenantContext->setTenant($data->tenantId);
+        app()->instance('currentTenant', $tenant);
+        app()->instance('current_tenant', $tenant);
 
-        // 3. Response (Presentation Logic via Resource)
-        return response()->json(new OrderResource($order->load('items')), 201);
+        $result = $creator->create($data);
+
+        return response()->json([
+            'success' => true,
+            'data' => $result->toArray(),
+        ], $result->replayed ? 200 : 201);
     }
 
     public function show(Request $request, int $id): OrderResource
     {
-        $tenantId = (int) $request->user()?->tenant_id;
-        if (! $tenantId) {
-            abort(403, 'Tenant context required');
-        }
+        $tenantId = $this->tenantId();
 
         $order = $this->reader->find($tenantId, $id);
         if (! $order) {
@@ -75,33 +81,45 @@ final class OrderController extends Controller
 
     public function updateStatus(UpdateOrderStatusRequest $request, int $orderId): OrderResource
     {
-        $tenantId = (int) $request->user()?->tenant_id;
-        if (! $tenantId) {
-            abort(403, 'Tenant context required');
-        }
+        $tenantId = $this->tenantId();
 
         $order = $this->reader->find($tenantId, $orderId);
         if (! $order) {
             abort(404);
         }
 
-        $this->orderStateService->transition(
-            $order,
-            $request->validated('status'),
-            $request->user()->id
-        );
+        $this->writer->transition(new TransitionOrderCommand(
+            tenantId: $tenantId,
+            actorId: (string) $request->user()->getKey(),
+            orderId: $orderId,
+            targetStatus: (string) $request->validated('status'),
+        ));
 
         return new OrderResource($this->reader->find($tenantId, $orderId));
     }
 
     public function destroy(Request $request, int $orderId): JsonResponse
     {
-        // DELEGATED: Action handles lookup and deletion
-        // We use request->user()->tenant_id to authorize ownership in action
-        $tenantId = (int) $request->user()?->tenant_id;
+        $tenantId = $this->tenantId();
+        $order = $this->reader->find($tenantId, $orderId);
 
-        $this->cancelOrderAction->execute($orderId, $tenantId);
+        if (! $order) {
+            abort(404, 'Order not found');
+        }
+
+        $this->writer->cancel(new TransitionOrderCommand(
+            tenantId: $tenantId,
+            actorId: (string) $request->user()->getKey(),
+            orderId: $orderId,
+            targetStatus: Order::STATUS_CANCELLED,
+            reason: 'Cancelled through the order API.',
+        ));
 
         return response()->json(null, 204);
+    }
+
+    private function tenantId(): string
+    {
+        return (string) $this->tenantContext->id();
     }
 }

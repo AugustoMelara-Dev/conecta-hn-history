@@ -6,10 +6,10 @@ namespace App\Application\Reviews\Handlers;
 
 use App\Application\Reviews\Commands\SubmitReviewCommand;
 use App\Application\Reviews\Results\SubmitReviewResult;
+use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Reviews\Repositories\ReviewRepositoryInterface;
 use App\Infrastructure\Bus\TransactionalEventDispatcher;
-use App\Application\Shared\Contracts\LoggerInterface;
 
 /**
  * SubmitReviewHandler - Minimalist Command Handler for Review Submission

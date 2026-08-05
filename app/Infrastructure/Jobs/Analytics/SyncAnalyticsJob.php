@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Log;
  * INFRASTRUCTURE JOB: Coordinates batch analytics sync across all tenants.
  * IDEMPOTENCY: Uses ShouldBeUnique with daily date key to prevent duplicate runs.
  */
-final class SyncAnalyticsJob implements ShouldQueue, ShouldBeUnique
+final class SyncAnalyticsJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable;
 
@@ -29,7 +29,7 @@ final class SyncAnalyticsJob implements ShouldQueue, ShouldBeUnique
      */
     public function uniqueId(): string
     {
-        return 'sync_analytics_' . now()->subDay()->format('Y-m-d');
+        return 'sync_analytics_'.now()->subDay()->format('Y-m-d');
     }
 
     public function handle(): void
@@ -42,17 +42,15 @@ final class SyncAnalyticsJob implements ShouldQueue, ShouldBeUnique
         Tenant::where('status', 'approved')
             ->chunkById(500, function ($tenants) use ($date, &$processedCount) {
                 foreach ($tenants as $tenant) {
-                    SyncTenantAnalytics::dispatch($tenant->id, $date);
+                    SyncTenantAnalytics::dispatch((string) $tenant->id, $date);
                     $processedCount++;
                 }
             });
 
-        // T-103: Instrument Process
-        event(new \App\Domain\Analytics\Events\AnalyticsSynced(
-            tenantId: 0, // System context or aggregate 0
-            processedRecords: $processedCount,
-            occurredOn: new \DateTimeImmutable
-        ));
+        Log::info("SyncAnalyticsJob: Queued {$processedCount} tenant aggregates", [
+            'date' => $date,
+            'processed_tenants' => $processedCount,
+        ]);
     }
 
     public function tags(): array

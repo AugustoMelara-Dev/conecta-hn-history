@@ -117,7 +117,7 @@ class StagesRelationManager extends RelationManager
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
     private function stampStageData(array $data): array

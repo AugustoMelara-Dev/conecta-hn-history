@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Loyalty Reward Model - Redeemable Catalog
- * 
+ *
  * Defines rewards that customers can redeem with their points.
  * Each reward belongs to a specific tenant.
  */
@@ -45,7 +45,7 @@ class LoyaltyReward extends Model
      */
     public function isAvailable(): bool
     {
-        if (!$this->is_active) {
+        if (! $this->is_active) {
             return false;
         }
 
@@ -73,9 +73,9 @@ class LoyaltyReward extends Model
     public function scopeAvailable($query)
     {
         return $query->where('is_active', true)
-                     ->where(function ($q) {
-                         $q->where('stock', -1)
-                           ->orWhere('stock', '>', 0);
-                     });
+            ->where(function ($q) {
+                $q->where('stock', -1)
+                    ->orWhere('stock', '>', 0);
+            });
     }
 }

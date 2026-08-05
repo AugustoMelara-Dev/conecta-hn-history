@@ -6,6 +6,7 @@ namespace App\Actions\Authentication;
 
 use App\Application\Auth\Commands\UpdateUserPasswordCommand;
 use App\Application\Shared\Contracts\CommandBusInterface;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
@@ -42,15 +43,22 @@ final readonly class UpdateUserPassword implements UpdatesUserPasswords
             'current_password.current_password' => __('The provided password does not match your current password.'),
         ])->validate();
 
-        $this->commandBus->dispatch(
-            new UpdateUserPasswordCommand(
-                userId: (string) $user->id,
-                requestingTenantId: (string) ($user->tenant_id ?? $user->id),
-                currentPassword: $input['current_password'],
-                newPassword: $input['password'],
-                refreshRememberToken: true,
-                idempotencyKey: (string) Str::uuid(),
-            )
-        );
+        DB::transaction(function () use ($user, $input): void {
+            $this->commandBus->dispatch(
+                new UpdateUserPasswordCommand(
+                    userId: (string) $user->id,
+                    requestingTenantId: (string) ($user->tenant_id ?? $user->id),
+                    currentPassword: $input['current_password'],
+                    newPassword: $input['password'],
+                    refreshRememberToken: true,
+                    idempotencyKey: (string) Str::uuid(),
+                )
+            );
+
+            $user->tokens()->delete();
+            DB::table((string) config('session.table', 'sessions'))
+                ->where('user_id', (string) $user->getAuthIdentifier())
+                ->delete();
+        });
     }
 }

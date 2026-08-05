@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Console\Commands;
 
-use App\Infrastructure\Common\Models\OutboxMessage;
+use App\Infrastructure\Models\OutboxMessage;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -25,7 +25,7 @@ class ReplayOutboxCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Safely re-queue failed or published events for processing';
+    protected $description = 'Safely re-queue only failed or quarantined events for processing';
 
     public function handle(): int
     {
@@ -50,28 +50,48 @@ class ReplayOutboxCommand extends Command
         $query->when($type, fn ($q) => $q->where('type', 'LIKE', "%{$type}%"));
         $query->when($hours, fn ($q) => $q->where('created_at', '>=', now()->subHours((int) $hours)));
 
-        $count = $query->count();
+        $eligibleStatuses = [
+            OutboxMessage::STATUS_FAILED,
+            OutboxMessage::STATUS_QUARANTINED,
+        ];
+
+        $count = DB::transaction(function () use ($query, $eligibleStatuses): int {
+            $ids = (clone $query)
+                ->whereIn('status', $eligibleStatuses)
+                ->lockForUpdate()
+                ->pluck('id');
+
+            if ($ids->isEmpty()) {
+                return 0;
+            }
+
+            // The status predicate is a compare-and-set guard. Even on a database
+            // without effective row locks, an active worker state is never reset.
+            return OutboxMessage::query()
+                ->whereIn('id', $ids)
+                ->whereIn('status', $eligibleStatuses)
+                ->update([
+                    'status' => OutboxMessage::STATUS_PENDING,
+                    'attempts' => 0,
+                    'recovery_count' => 0,
+                    'locked_at' => null,
+                    'worker_id' => null,
+                    'batch_correlation_id' => null,
+                    'failed_at' => null,
+                    'quarantined_at' => null,
+                    'published_at' => null,
+                    'last_error' => null,
+                    'updated_at' => now(),
+                ]);
+        });
 
         if ($count === 0) {
-            $this->info('No messages found matching criteria.');
+            $this->info('No failed or quarantined messages found matching criteria.');
 
             return Command::SUCCESS;
         }
 
-        $this->info("Found {$count} messages to replay.");
-
-        // Transactional Update
-        DB::transaction(function () use ($query) {
-            // We reset them to PENDING so the standard Worker picks them up.
-            // We verify the Worker handles Idempotency or the Receivers do.
-            $query->update([
-                'status' => 'PENDING',
-                'error' => null, // Clear previous error logs
-                'updated_at' => now(),
-            ]);
-        });
-
-        $this->success("Successfully queued {$count} events for replay.");
+        $this->info("Successfully queued {$count} events for replay.");
 
         return Command::SUCCESS;
     }

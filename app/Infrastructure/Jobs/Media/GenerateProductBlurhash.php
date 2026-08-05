@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Jobs\Media;
 
-use App\Domain\Shared\Middleware\TenantQueueMiddleware;
-use App\Models\Product;
+use App\Domain\Product\Repositories\ProductBlurhashWriter;
+use App\Infrastructure\Shared\Middleware\TenantQueueMiddleware;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Support\Str;
 
 /**
  * GenerateProductBlurhash - Media Processing Job
@@ -20,7 +21,7 @@ use Illuminate\Queue\InteractsWithQueue;
  * Uses withoutGlobalScopes() for cross-tenant product access in queue context.
  * IDEMPOTENCY: Uses ShouldBeUnique with tenant-product composite key.
  */
-final class GenerateProductBlurhash implements ShouldQueue, ShouldBeUnique
+final class GenerateProductBlurhash implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable;
 
@@ -30,30 +31,28 @@ final class GenerateProductBlurhash implements ShouldQueue, ShouldBeUnique
 
     public function __construct(
         public readonly int $productId,
-        public readonly int $tenantId
-    ) {}
+        public readonly string $tenantId
+    ) {
+        if (! Str::isUuid($tenantId)) {
+            throw new \InvalidArgumentException('GenerateProductBlurhash requires a UUID tenant.');
+        }
+    }
 
     /**
      * Unique job identifier (tenant + product composite).
      */
     public function uniqueId(): string
     {
-        return 'blurhash_' . $this->tenantId . '_' . $this->productId;
+        return 'blurhash_'.$this->tenantId.'_'.$this->productId;
     }
 
-    public function handle(): void
+    public function handle(ProductBlurhashWriter $writer): void
     {
-        // SECURITY: Verify product belongs to this tenant (VC-AUDIT-003 fix)
-        $product = Product::where('id', $this->productId)
-            ->where('tenant_id', $this->tenantId)
-            ->firstOrFail();
-
-        if (! $product->image_path) {
-            return;
-        }
-
-        $blurhash = 'LEHV6nWB2yk8pyo0adR*.7kCMdnj';
-        $product->update(['blurhash' => $blurhash]);
+        $writer->updateBlurhash(
+            (string) $this->tenantId,
+            $this->productId,
+            'LEHV6nWB2yk8pyo0adR*.7kCMdnj',
+        );
     }
 
     public function middleware(): array

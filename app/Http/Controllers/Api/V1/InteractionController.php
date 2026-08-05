@@ -42,8 +42,10 @@ final class InteractionController extends Controller
             return response()->json(['status' => 'success'], 201);
         } catch (\Throwable $e) {
             Log::error('Interaction Error', [
-                'error' => $e->getMessage(),
-                'payload' => $request->all(),
+                'exception' => $e::class,
+                'tenant_hash' => hash('sha256', (string) $request->input('tenant_id')),
+                'interaction_type' => (string) $request->input('type'),
+                'has_product_id' => $request->filled('product_id'),
             ]);
 
             return response()->json(['status' => 'accepted'], 202);

@@ -21,13 +21,13 @@ interface OrderReader
     /**
      * Search orders for a specific tenant with optional filtering.
      *
-     * @param  int  $tenantId  The tenant context (REQUIRED for multi-tenancy)
+     * @param  string  $tenantId  The tenant UUID (REQUIRED for multi-tenancy)
      * @param  string|null  $status  Optional status filter
      * @param  int  $perPage  Pagination limit
      * @return LengthAwarePaginator Paginated order results with eager-loaded relations
      */
     public function search(
-        int|string $tenantId,
+        string $tenantId,
         ?string $status = null,
         int $perPage = 20
     ): LengthAwarePaginator;
@@ -37,14 +37,14 @@ interface OrderReader
      *
      * SECURITY: Requires explicit tenant context to prevent IDOR.
      *
-     * @param  int|string  $tenantId  The tenant context (REQUIRED for multi-tenancy)
-     * @param  int  $orderId   The order identifier
+     * @param  string  $tenantId  The tenant UUID (REQUIRED for multi-tenancy)
+     * @param  int  $orderId  The order identifier
      * @return object|null Order entity or null
      */
-    public function find(int|string $tenantId, int $orderId): ?object;
+    public function find(string $tenantId, int $orderId): ?object;
 
     /**
      * Get orders by status for a tenant.
      */
-    public function findByStatus(int|string $tenantId, string $status, int $limit = 50): iterable;
+    public function findByStatus(string $tenantId, string $status, int $limit = 50): iterable;
 }

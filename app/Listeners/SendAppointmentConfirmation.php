@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Listeners;
 
 use App\Events\Appointment\AppointmentCreated;
+use App\Infrastructure\Shared\Middleware\TenantQueueMiddleware;
 use App\Mail\AppointmentConfirmationMail;
 use App\Models\Appointment;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -20,6 +21,11 @@ use Illuminate\Support\Facades\Mail;
  */
 final class SendAppointmentConfirmation implements ShouldQueue
 {
+    public function middleware(AppointmentCreated $event): array
+    {
+        return [new TenantQueueMiddleware((string) $event->tenantKey)];
+    }
+
     public function handle(AppointmentCreated $event): void
     {
         $appointment = Appointment::query()

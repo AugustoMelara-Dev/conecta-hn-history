@@ -23,5 +23,9 @@ interface AuthTokenServiceInterface
      *
      * @throws \RuntimeException If user not found
      */
-    public function createTokenForUser(int|string $userId, string $tokenName = 'api-token'): array;
+    public function createTokenForUser(
+        int|string $userId,
+        string $tokenName = 'api-token',
+        ?string $tenantId = null,
+    ): array;
 }

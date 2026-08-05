@@ -21,7 +21,7 @@ use RuntimeException;
  * ║  ZERO NATIVE SERIALIZATION: Only json_encode is used                     ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final class EloquentOutboxRepository implements OutboxRepositoryInterface, \App\Application\Shared\Contracts\OutboxRepositoryInterface
+final class EloquentOutboxRepository implements \App\Application\Shared\Contracts\OutboxRepositoryInterface, OutboxRepositoryInterface
 {
     public function __construct(
         private readonly \App\Infrastructure\Shared\Telemetry\TraceContext $traceContext
@@ -88,7 +88,7 @@ final class EloquentOutboxRepository implements OutboxRepositoryInterface, \App\
 
         // 4. Persistence (Atomic with Business Entity)
         OutboxMessage::create([
-            'id' => (string) Str::ulid(), // ULID for sortable, distributed IDs
+            'id' => (string) Str::uuid(),
             'type' => $eventType,
             'aggregate_id' => $aggregateId,
             'partition_key' => $partitionKey,

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\ValueObjects\Payment;
 
-use InvalidArgumentException;
 use Illuminate\Support\Carbon;
+use InvalidArgumentException;
 
 final readonly class PaymentWebhook
 {
@@ -85,12 +85,18 @@ final readonly class PaymentWebhook
 
     public function currency(): string
     {
-        return (string) (
+        $currency = (
             $this->payload['currency']
             ?? $this->payload['data']['currency']
             ?? $this->payload['data']['object']['currency']
-            ?? 'HNL'
+            ?? null
         );
+
+        if (! is_string($currency) || trim($currency) === '') {
+            throw new InvalidArgumentException('Payment Webhook rejected: Missing currency.');
+        }
+
+        return strtoupper(trim($currency));
     }
 
     public function providerName(): string

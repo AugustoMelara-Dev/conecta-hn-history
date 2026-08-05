@@ -8,21 +8,22 @@ use App\Models\Category;
 use App\Models\City;
 use App\Models\Tenant;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Sitemap\Sitemap;
 use Spatie\Sitemap\Tags\Url;
 
 /**
- * GenerateSitemap - Automatización de Rastreo para Google
+ * GenerateSitemap - Automatizaci�n de Rastreo para Google
  *
- * Este comando construye el sitemap.xml iterando explícitamente
+ * Este comando construye el sitemap.xml iterando expl�citamente
  * sobre la base de datos en lugar de rastrear URLs locales.
  *
  * Ventajas:
- * - No falla en producción por URLs inaccesibles
- * - Control total sobre qué incluir
- * - Más rápido que crawling
+ * - No falla en producci�n por URLs inaccesibles
+ * - Control total sobre qu� incluir
+ * - M�s r�pido que crawling
  *
- * Programación: Laravel Scheduler diariamente a medianoche
+ * Programaci�n: Laravel Scheduler diariamente a medianoche
  */
 class GenerateSitemap extends Command
 {
@@ -32,7 +33,7 @@ class GenerateSitemap extends Command
     protected $description = 'Genera el sitemap.xml iterando sobre entidades activas de la base de datos';
 
     /**
-     * Contadores para estadísticas
+     * Contadores para estad�sticas
      */
     private int $citiesCount = 0;
 
@@ -44,17 +45,17 @@ class GenerateSitemap extends Command
     {
         $dryRun = $this->option('dry-run');
 
-        $this->info('═══════════════════════════════════════════════════════════');
+        $this->info('�"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�');
         $this->info('   GENERADOR DE SITEMAP - '.now()->format('Y-m-d H:i:s'));
-        $this->info('═══════════════════════════════════════════════════════════');
+        $this->info('�"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�');
         $this->newLine();
 
         $sitemap = Sitemap::create();
 
-        // ═══════════════════════════════════════════════════════════════════
-        // PÁGINA PRINCIPAL
-        // ═══════════════════════════════════════════════════════════════════
-        $this->info('Agregando página principal...');
+        // �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
+        // P�GINA PRINCIPAL
+        // �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
+        $this->info('Agregando p�gina principal...');
         $sitemap->add(
             Url::create(url('/'))
                 ->setLastModificationDate(now())
@@ -62,47 +63,46 @@ class GenerateSitemap extends Command
                 ->setPriority(1.0)
         );
 
-        // ═══════════════════════════════════════════════════════════════════
+        // �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
         // CIUDADES ACTIVAS
-        // ═══════════════════════════════════════════════════════════════════
+        // �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
         $this->info('Procesando ciudades...');
         $this->addCities($sitemap, $dryRun);
 
-        // ═══════════════════════════════════════════════════════════════════
-        // CATEGORÍAS ACTIVAS
-        // ═══════════════════════════════════════════════════════════════════
-        $this->info('Procesando categorías...');
+        // �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
+        // CATEGOR�AS ACTIVAS
+        // �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
+        $this->info('Procesando categor�as...');
         $this->addCategories($sitemap, $dryRun);
 
-        // ═══════════════════════════════════════════════════════════════════
+        // �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
         // NEGOCIOS (TENANTS) ACTIVOS
-        // ═══════════════════════════════════════════════════════════════════
+        // �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
         $this->info('Procesando negocios...');
         $this->addTenants($sitemap, $dryRun);
 
-        // ═══════════════════════════════════════════════════════════════════
+        // �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
         // ESCRIBIR ARCHIVO
-        // ═══════════════════════════════════════════════════════════════════
+        // �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
         if (! $dryRun) {
-            $path = public_path('sitemap.xml');
-            $sitemap->writeToFile($path);
-            $this->info("Sitemap escrito en: {$path}");
+            Storage::disk('public')->put('sitemap.xml', $sitemap->render());
+            $this->info('Sitemap escrito en el disco p�blico configurado: sitemap.xml');
         } else {
-            $this->warn('MODO SIMULACIÓN - No se escribió archivo');
+            $this->warn('MODO SIMULACI�N - No se escribi� archivo');
         }
 
-        // ═══════════════════════════════════════════════════════════════════
+        // �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
         // RESUMEN
-        // ═══════════════════════════════════════════════════════════════════
+        // �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
         $this->newLine();
-        $this->info('═══════════════════════════════════════════════════════════');
+        $this->info('�"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�');
         $this->info('   RESUMEN');
-        $this->info('═══════════════════════════════════════════════════════════');
+        $this->info('�"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�');
         $this->table(
             ['Entidad', 'Cantidad'],
             [
                 ['Ciudades', $this->citiesCount],
-                ['Categorías', $this->categoriesCount],
+                ['Categor�as', $this->categoriesCount],
                 ['Negocios', $this->tenantsCount],
                 ['TOTAL URLs', 1 + $this->citiesCount + $this->categoriesCount + $this->tenantsCount],
             ]
@@ -122,7 +122,7 @@ class GenerateSitemap extends Command
             $url = url("/ciudad/{$city->slug}");
 
             if ($dryRun) {
-                $this->line("  → {$url}");
+                $this->line("  �  {$url}");
             }
 
             $sitemap->add(
@@ -139,7 +139,7 @@ class GenerateSitemap extends Command
     }
 
     /**
-     * Agrega categorías al sitemap
+     * Agrega categor�as al sitemap
      */
     private function addCategories(Sitemap $sitemap, bool $dryRun): void
     {
@@ -149,7 +149,7 @@ class GenerateSitemap extends Command
             $url = url("/categoria/{$category->slug}");
 
             if ($dryRun) {
-                $this->line("  → {$url}");
+                $this->line("  �  {$url}");
             }
 
             $sitemap->add(
@@ -162,7 +162,7 @@ class GenerateSitemap extends Command
             $this->categoriesCount++;
         }
 
-        $this->info("  {$this->categoriesCount} categorías agregadas");
+        $this->info("  {$this->categoriesCount} categor�as agregadas");
     }
 
     /**
@@ -179,7 +179,7 @@ class GenerateSitemap extends Command
             $url = url("/{$tenant->slug}");
 
             if ($dryRun) {
-                $this->line("  → {$url}");
+                $this->line("  �  {$url}");
             }
 
             // Los negocios PRO tienen mayor prioridad

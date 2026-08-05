@@ -55,14 +55,24 @@ final class IdentifyTenantMiddleware
 
         // 3. Set Context or Fail
         if ($tenantId) {
-            $this->context->setTenant((string) $tenantId);
+            $tenant = Tenant::query()
+                ->whereKey((string) $tenantId)
+                ->where('is_active', true)
+                ->firstOrFail();
+            $this->context->setTenant((string) $tenant->getKey());
+            app()->instance('currentTenant', $tenant);
         } else {
             // STRICT MODE: Tenant-aware routes MUST have resolved context.
             // Public routes (landing page, directory) should NOT use this middleware.
             abort(404, 'Tenant not found.');
         }
 
-        return $next($request);
+        try {
+            return $next($request);
+        } finally {
+            $this->context->reset();
+            app()->forgetInstance('currentTenant');
+        }
     }
 
     private function resolveAuthenticatedTenantId($user): ?string

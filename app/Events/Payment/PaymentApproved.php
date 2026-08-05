@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Events\Payment;
 
 use App\Contracts\Events\DomainEvent;
+use App\Domain\Shared\ValueObjects\TenantId;
 use App\Traits\HasDomainMetadata;
 use App\ValueObjects\Money;
 use App\ValueObjects\OrderNumber;
-use App\Domain\Shared\ValueObjects\TenantId;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**
@@ -50,7 +50,7 @@ final readonly class PaymentApproved implements DomainEvent, ShouldDispatchAfter
 
     /**
      * @param  TenantId  $tenantId  Tenant context for queue middleware
-     * @param  int  $orderId  The order aggregate root ID
+     * @param  string  $orderId  The order aggregate root ID
      * @param  OrderNumber  $orderNumber  Human-readable order reference
      * @param  string  $transactionId  Gateway's transaction token (NOT card data)
      * @param  string  $gatewayName  Payment processor (e.g., 'stripe', 'bac')
@@ -58,7 +58,7 @@ final readonly class PaymentApproved implements DomainEvent, ShouldDispatchAfter
      */
     public function __construct(
         private TenantId $tenantId,
-        private int $orderId,
+        private string $orderId,
         public OrderNumber $orderNumber,
         public string $transactionId,
         public string $gatewayName,
@@ -79,8 +79,8 @@ final readonly class PaymentApproved implements DomainEvent, ShouldDispatchAfter
      * Factory: Create from payment data (snapshotted at creation time).
      */
     public static function create(
-        int $tenantId,
-        int $orderId,
+        string $tenantId,
+        int|string $orderId,
         string $orderNumber,
         string $transactionId,
         string $gatewayName,
@@ -88,8 +88,8 @@ final readonly class PaymentApproved implements DomainEvent, ShouldDispatchAfter
         string $currency = 'HNL'
     ): self {
         return new self(
-            tenantId: TenantId::fromInt($tenantId),
-            orderId: $orderId,
+            tenantId: TenantId::fromString((string) $tenantId),
+            orderId: (string) $orderId,
             orderNumber: OrderNumber::fromString($orderNumber),
             transactionId: $transactionId,
             gatewayName: $gatewayName,
@@ -106,9 +106,9 @@ final readonly class PaymentApproved implements DomainEvent, ShouldDispatchAfter
         return $this->tenantId;
     }
 
-    public function aggregateId(): int
+    public function aggregateId(): string
     {
-        return $this->orderId;
+        return (string) $this->orderId;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -163,8 +163,8 @@ final readonly class PaymentApproved implements DomainEvent, ShouldDispatchAfter
         }
 
         return new self(
-            tenantId: TenantId::fromInt($primitives['tenant_id']),
-            orderId: $primitives['order_id'],
+            tenantId: TenantId::fromSerialized($primitives['tenant_id']),
+            orderId: (string) $primitives['order_id'],
             orderNumber: OrderNumber::fromString($primitives['order_number']),
             transactionId: $primitives['transaction_id'],
             gatewayName: $primitives['gateway_name'],

@@ -8,10 +8,10 @@ use Filament\Support\Contracts\HasLabel;
 
 /**
  * Business Type Enum - Structural Discriminator
- * 
+ *
  * Distinguishes between commerce (retail/inventory) and service (appointments/calendar)
  * business models to enable feature toggling at the tenant level.
- * 
+ *
  * RETAIL: Traditional commerce with products, inventory, POS
  * SERVICE: Appointment-based businesses (salons, clinics, consultants)
  */

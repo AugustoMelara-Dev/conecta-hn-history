@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Analytics\Entities;
 
-use Carbon\Carbon;
+use DateTimeImmutable;
 
 /**
  * InteractionEntity - Pure Domain Entity for Interaction
@@ -17,7 +17,7 @@ final readonly class InteractionEntity
 {
     public function __construct(
         public int $id,
-        public int $tenantId,
+        public string $tenantId,
         public string $type,
         public ?int $productId,
         public ?string $ipAddress,
@@ -25,6 +25,6 @@ final readonly class InteractionEntity
         public ?string $referrer,
         public ?string $url,
         public array $metadata,
-        public Carbon $createdAt,
+        public DateTimeImmutable $createdAt,
     ) {}
 }

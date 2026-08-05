@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Infrastructure\Repositories\TenantGovernance;
 
 use App\Domain\TenantGovernance\Entities\TenantEntity;
-use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Models\Tenant;
 
@@ -101,22 +100,14 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
 
     public function delete(TenantEntity $tenant): void
     {
-        if ($tenant->id) {
-            Tenant::destroy($tenant->id);
+        if ($tenant->id() !== '') {
+            Tenant::destroy($tenant->id());
         }
     }
 
     private function toEntity(Tenant $model): TenantEntity
     {
-        // LIFTING TO DOMAIN
-        // We rely on Eloquent Casting ($casts) for 'plan_type'.
-        // However, for defense in depth, we verify or fallback safely.
-
         $plan = $model->plan_type;
-        if (! $plan instanceof TenantPlan) {
-            // Should not happen if Model casts are correct, but handling legacy strings:
-            $plan = TenantPlan::from((string) ($plan ?? 'semilla'));
-        }
 
         return TenantEntity::fromStateArray([
             'id' => $model->id,
@@ -133,14 +124,13 @@ final class EloquentTenantRepository implements TenantRepositoryInterface
             'category_id' => $model->category_id,
             'city_id' => $model->city_id,
             'whatsapp_number' => $model->whatsapp_number,
-            'business_type' => $model->business_type?->value ?? $model->business_type,
-            'commercial_mode' => $model->commercial_mode?->value ?? $model->commercial_mode,
+            'business_type' => $model->business_type->value,
+            'commercial_mode' => $model->commercial_mode->value,
             'rubro_key' => $model->rubro_key ?? null,
             'user_id' => $model->user_id,
             'subscription_ends_at' => $model->subscription_ends_at?->toIso8601String(),
             'subscription_reference' => null,
-            // 'user_id' is NOT present in Domain Entity? 
-            // If it were, we'd add it here. For now, we omit to prevent crash.
+            'subscription_status' => $model->subscription_status,
         ]);
     }
 }

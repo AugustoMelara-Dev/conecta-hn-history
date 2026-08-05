@@ -86,23 +86,27 @@ final class BufferedSequenceGenerator
      */
     private function reserveBlock(string $aggregateId): void
     {
-        $now = now()->toDateTimeString();
+        $maxSequence = DB::transaction(function () use ($aggregateId): mixed {
+            $now = now();
 
-        // Atomic block reservation
-        // This increments by BUFFER_SIZE in a single operation
-        DB::statement(
-            'INSERT INTO '.self::TABLE.' (aggregate_id, last_sequence, created_at, updated_at) 
-             VALUES (?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE 
-                last_sequence = last_sequence + ?, 
-                updated_at = ?',
-            [$aggregateId, self::BUFFER_SIZE, $now, $now, self::BUFFER_SIZE, $now]
-        );
+            DB::table(self::TABLE)->upsert(
+                [[
+                    'aggregate_id' => $aggregateId,
+                    'last_sequence' => self::BUFFER_SIZE,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]],
+                ['aggregate_id'],
+                [
+                    'last_sequence' => DB::raw(self::TABLE.'.last_sequence + '.self::BUFFER_SIZE),
+                    'updated_at' => $now,
+                ],
+            );
 
-        // Fetch the new max value
-        $maxSequence = DB::table(self::TABLE)
-            ->where('aggregate_id', $aggregateId)
-            ->value('last_sequence');
+            return DB::table(self::TABLE)
+                ->where('aggregate_id', $aggregateId)
+                ->value('last_sequence');
+        }, 3);
 
         if ($maxSequence === null) {
             throw new RuntimeException(

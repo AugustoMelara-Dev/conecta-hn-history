@@ -8,6 +8,7 @@ use App\Application\Auth\Contracts\AuthTokenServiceInterface;
 use App\Contracts\Scope\TenantContextInterface;
 use App\Exceptions\TenantMismatchException;
 use App\Models\User;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -26,9 +27,12 @@ final class SanctumAuthTokenService implements AuthTokenServiceInterface
         private readonly TenantContextInterface $tenantContext
     ) {}
 
-    public function createTokenForUser(int|string $userId, string $tokenName = 'api-token'): array
-    {
-        $currentTenantId = $this->tenantContext->getTenantId();
+    public function createTokenForUser(
+        int|string $userId,
+        string $tokenName = 'api-token',
+        ?string $tenantId = null,
+    ): array {
+        $currentTenantId = $tenantId ?? $this->tenantContext->getTenantId();
 
         if ($currentTenantId === null) {
             throw new TenantMismatchException(
@@ -45,9 +49,14 @@ final class SanctumAuthTokenService implements AuthTokenServiceInterface
         $user = User::query()
             ->where('id', $userId)
             ->where(function ($query) use ($currentTenantId) {
-                // User is the OWNER of this tenant (via user_id FK)
                 $query->whereHas('tenants', function ($q) use ($currentTenantId) {
                     $q->where('tenants.id', $currentTenantId);
+                })->orWhereHas('tenantMemberships', function ($q) use ($currentTenantId) {
+                    $q->where('tenant_id', $currentTenantId)
+                        ->whereNotNull('accepted_at')
+                        ->where('status', 'active')
+                        ->whereNull('suspended_at')
+                        ->whereNull('revoked_at');
                 });
             })
             ->first();
@@ -71,12 +80,17 @@ final class SanctumAuthTokenService implements AuthTokenServiceInterface
             }
 
             // User genuinely doesn't exist
-            throw new \Illuminate\Database\Eloquent\ModelNotFoundException(
+            throw new ModelNotFoundException(
                 "User {$userId} not found"
             );
         }
 
-        $token = $user->createToken($tokenName)->plainTextToken;
+        $expiresAt = now()->addDays((int) config('security.personal_access_token_ttl_days', 30));
+        $token = $user->createToken(
+            $tokenName,
+            ['tenant:'.$currentTenantId],
+            $expiresAt,
+        )->plainTextToken;
 
         return [
             'user' => $user,

@@ -16,7 +16,9 @@ class CrmDeal extends Model
     use BelongsToTenant, LogsActivity;
 
     public const STATUS_OPEN = 'open';
+
     public const STATUS_WON = 'won';
+
     public const STATUS_LOST = 'lost';
 
     protected $fillable = [
@@ -52,26 +54,22 @@ class CrmDeal extends Model
 
     public function pipeline(): BelongsTo
     {
-        // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
-        return $this->belongsTo(CrmPipeline::class, 'crm_pipeline_id')->withoutGlobalScopes();
+        return $this->belongsTo(CrmPipeline::class, 'crm_pipeline_id');
     }
 
     public function stage(): BelongsTo
     {
-        // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
-        return $this->belongsTo(CrmStage::class, 'crm_stage_id')->withoutGlobalScopes();
+        return $this->belongsTo(CrmStage::class, 'crm_stage_id');
     }
 
     public function customerProfile(): BelongsTo
     {
-        // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
-        return $this->belongsTo(CustomerProfile::class)->withoutGlobalScopes();
+        return $this->belongsTo(CustomerProfile::class);
     }
 
     public function lead(): BelongsTo
     {
-        // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
-        return $this->belongsTo(Lead::class)->withoutGlobalScopes();
+        return $this->belongsTo(Lead::class);
     }
 
     public function owner(): BelongsTo
@@ -86,14 +84,12 @@ class CrmDeal extends Model
 
     public function notes(): HasMany
     {
-        // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
-        return $this->hasMany(CustomerNote::class)->withoutGlobalScopes()->latest('pinned_at')->latest('created_at');
+        return $this->hasMany(CustomerNote::class)->latest('pinned_at')->latest('created_at');
     }
 
     public function tasks(): HasMany
     {
-        // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
-        return $this->hasMany(CustomerTask::class)->withoutGlobalScopes()->latest('sla_due_at')->latest('created_at');
+        return $this->hasMany(CustomerTask::class)->latest('sla_due_at')->latest('created_at');
     }
 
     public function getActivitylogOptions(): LogOptions

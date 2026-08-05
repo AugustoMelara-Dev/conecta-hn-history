@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Jobs\Analytics;
 
-use App\Domain\Shared\Middleware\TenantQueueMiddleware;
+use App\Infrastructure\Shared\Middleware\TenantQueueMiddleware;
+use App\Models\Interaction;
 use App\Models\TenantAnalytic;
+use App\Models\TenantVisit;
+use Carbon\CarbonImmutable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -25,16 +28,44 @@ final class SyncTenantAnalytics implements ShouldQueue
     public int $timeout = 300;
 
     public function __construct(
-        public readonly int $tenantId,
+        public readonly string $tenantId,
         public readonly string $date
     ) {}
 
     public function handle(): void
     {
-        TenantAnalytic::updateOrCreate(
-            ['tenant_id' => $this->tenantId, 'date' => $this->date],
-            ['synced_at' => now()]
-        );
+        $day = CarbonImmutable::createFromFormat('!Y-m-d', $this->date);
+        if ($day === null || $day->format('Y-m-d') !== $this->date) {
+            throw new \InvalidArgumentException('Analytics date must use Y-m-d format.');
+        }
+
+        $start = $day->startOfDay();
+        $end = $day->endOfDay();
+
+        $visits = TenantVisit::query()
+            ->where('tenant_id', $this->tenantId)
+            ->whereBetween('created_at', [$start, $end]);
+
+        $views = (clone $visits)->count();
+        $uniqueVisitors = (clone $visits)->distinct()->count('session_hash');
+        $whatsappClicks = Interaction::query()
+            ->where('tenant_id', $this->tenantId)
+            ->where('type', Interaction::TYPE_WHATSAPP_CLICK)
+            ->whereBetween('created_at', [$start, $end])
+            ->count();
+
+        $aggregate = TenantAnalytic::query()
+            ->where('tenant_id', $this->tenantId)
+            ->whereDate('date', $this->date)
+            ->first() ?? new TenantAnalytic;
+
+        $aggregate->forceFill([
+            'tenant_id' => $this->tenantId,
+            'date' => $this->date,
+            'views' => $views,
+            'unique_visitors' => $uniqueVisitors,
+            'whatsapp_clicks' => $whatsappClicks,
+        ])->save();
     }
 
     public function middleware(): array

@@ -5,12 +5,21 @@ declare(strict_types=1);
 namespace App\Infrastructure\Console\Commands;
 
 use App\Infrastructure\Models\OutboxMessage;
+use App\Infrastructure\Monitoring\ConsensusHealthGovernor;
+use App\Infrastructure\Monitoring\ResilientHealthProbe;
+use App\Infrastructure\Persistence\AtomicOwnershipTransfer;
+use App\Infrastructure\Persistence\OutboxLeaseManager;
+use App\Infrastructure\Shared\OutboxTenantContextRunner;
+use App\Infrastructure\Shared\Persistence\EloquentOutboxRepository;
+use App\Infrastructure\Telemetry\OutboxTracer;
 use DateTimeInterface;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Events\Dispatcher;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Throwable;
 
 /**
@@ -36,12 +45,12 @@ final class ProcessOutboxCommand extends Command
     /**
      * Lease manager for dynamic shard acquisition.
      */
-    private ?\App\Infrastructure\Persistence\OutboxLeaseManager $leaseManager = null;
+    private ?OutboxLeaseManager $leaseManager = null;
 
     /**
      * LEVEL 51: Atomic ownership transfer service.
      */
-    private ?\App\Infrastructure\Persistence\AtomicOwnershipTransfer $atomicOwnership = null;
+    private ?AtomicOwnershipTransfer $atomicOwnership = null;
 
     /**
      * Last heartbeat time for lease renewal.
@@ -51,21 +60,19 @@ final class ProcessOutboxCommand extends Command
     /**
      * LEVEL 51: Resilient health probe with multi-layer fallback.
      */
-    private ?\App\Infrastructure\Monitoring\ResilientHealthProbe $healthProbe = null;
+    private ?ResilientHealthProbe $healthProbe = null;
 
     /**
      * LEVEL 54: Global Consensus Governor.
      */
-    private ?\App\Infrastructure\Monitoring\ConsensusHealthGovernor $governor = null;
+    private ?ConsensusHealthGovernor $governor = null;
 
     /**
      * LEVEL 50: Tracer for distributed context propagation.
      */
-    private ?\App\Infrastructure\Telemetry\OutboxTracer $tracer = null;
+    private ?OutboxTracer $tracer = null;
 
     private const HYDRAULIC_LIMIT = 5000;
-
-    private const HYDRAULIC_RESUME = 2500;
 
     // Level 64: Hydraulic Pressure Counter
     private int $pendingDispatches = 0;
@@ -155,21 +162,21 @@ final class ProcessOutboxCommand extends Command
 
                 // STEP 1: INFRASTRUCTURE HANDSHAKE (Lazy Init)
                 if ($this->healthProbe === null) {
-                    $this->healthProbe = app(\App\Infrastructure\Monitoring\ResilientHealthProbe::class);
+                    $this->healthProbe = app(ResilientHealthProbe::class);
                 }
                 if ($this->governor === null) {
-                    $this->governor = new \App\Infrastructure\Monitoring\ConsensusHealthGovernor(
+                    $this->governor = new ConsensusHealthGovernor(
                         gethostname().':'.getmypid()
                     );
                 }
                 if ($this->tracer === null) {
-                    $this->tracer = app(\App\Infrastructure\Telemetry\OutboxTracer::class);
+                    $this->tracer = app(OutboxTracer::class);
                 }
                 if ($this->atomicOwnership === null) {
-                    $this->atomicOwnership = app(\App\Infrastructure\Persistence\AtomicOwnershipTransfer::class);
+                    $this->atomicOwnership = app(AtomicOwnershipTransfer::class);
                 }
                 if ($this->leaseManager === null) {
-                    $this->leaseManager = app(\App\Infrastructure\Persistence\OutboxLeaseManager::class);
+                    $this->leaseManager = app(OutboxLeaseManager::class);
                 }
 
                 // STEP 2: LEASE ACQUISITION
@@ -248,12 +255,12 @@ final class ProcessOutboxCommand extends Command
                     if ($this->pendingDispatches > self::HYDRAULIC_LIMIT) {
                         $this->warn("HYDRAULIC BRAKE ENGAGED: Pending ({$this->pendingDispatches})");
 
-                        while ($this->pendingDispatches > self::HYDRAULIC_RESUME && $this->keepRunning) {
-                            usleep(100000);
-                            if (function_exists('pcntl_signal_dispatch')) {
-                                pcntl_signal_dispatch();
-                            }
-                        }
+                        Log::critical('outbox.hydraulic_limit_exceeded', [
+                            'pending_dispatches' => $this->pendingDispatches,
+                            'limit' => self::HYDRAULIC_LIMIT,
+                        ]);
+                        $this->keepRunning = false;
+                        break;
                     }
 
                     // LEVEL 54: GLOBAL CONSENSUS CHECK
@@ -377,7 +384,7 @@ final class ProcessOutboxCommand extends Command
                                 $this->leaseManager->forceClearLocalState();
                                 try {
                                     $this->leaseManager->releaseShards();
-                                } catch (\Throwable $i) {
+                                } catch (Throwable $i) {
                                 }
                                 $this->leaseManager = null;
                                 $acquiredShards = []; // Clear local cache
@@ -419,7 +426,7 @@ final class ProcessOutboxCommand extends Command
                     gc_collect_cycles();
                 }
 
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 // =========================================================
                 // PHASE 3: CATASTROPHE HANDLING (obsidian Monolith)
                 // =========================================================
@@ -446,7 +453,7 @@ final class ProcessOutboxCommand extends Command
                 try {
                     DB::purge();      // Disconnect PDO
                     DB::reconnect();  // Fresh connection for next attempt
-                } catch (\Throwable $dbe) {
+                } catch (Throwable $dbe) {
                     // Ignore purge failures, we are crashing anyway
                 }
 
@@ -457,7 +464,7 @@ final class ProcessOutboxCommand extends Command
                     // Attempt to release shards if possible (Best Effort)
                     try {
                         $this->leaseManager->releaseShards();
-                    } catch (\Throwable $ex) {
+                    } catch (Throwable $ex) {
                         // Connection is likely dead, ignore release failure
                     }
                     $this->leaseManager = null; // Force complete re-initialization
@@ -633,8 +640,8 @@ final class ProcessOutboxCommand extends Command
             // This ensures we respect the Head-of-Line integrity even during recovery.
             // We use a dedicated repository method that implements the complex self-join query.
 
-            /** @var \App\Infrastructure\Shared\Persistence\EloquentOutboxRepository */
-            $repository = app(\App\Infrastructure\Shared\Persistence\EloquentOutboxRepository::class);
+            /** @var EloquentOutboxRepository */
+            $repository = app(EloquentOutboxRepository::class);
 
             // Note: We use 5 minutes as stale threshold (hardcoded here or could be constant)
             // LEVEL 70: SQL PREDICATE PUSHDOWN
@@ -715,7 +722,7 @@ final class ProcessOutboxCommand extends Command
         } finally {
             // LEVEL 49: End span in finally to prevent leaks
             if ($span !== null) {
-                $this->tracer?->endSpan($span);
+                $this->tracer->endSpan($span);
             }
         }
     }
@@ -728,7 +735,7 @@ final class ProcessOutboxCommand extends Command
      *
      * Transitions messages to PROCESSING state with locked_at timestamp.
      */
-    private function claimBatch(int $batchSize): \Illuminate\Support\Collection
+    private function claimBatch(int $batchSize): Collection
     {
         // LEVEL 43: Recover stale locks before claiming new messages
         $this->recoverStaleLocks();
@@ -768,7 +775,7 @@ final class ProcessOutboxCommand extends Command
 
             // LEVEL 50.1: ATOMIC GRAB PATTERN
             // Generate batch correlation ID for telemetric proof of ownership
-            $batchCorrelationId = (string) \Illuminate\Support\Str::uuid();
+            $batchCorrelationId = (string) Str::uuid();
 
             // PHASE 3: THE CLAIM EXECUTION (Conditional Writing)
             // Only proceeded if validLeaseCount confirmed sovereignty.
@@ -845,7 +852,7 @@ final class ProcessOutboxCommand extends Command
 
                         $pipelinedMessages->push($message);
 
-                    } catch (\Throwable $e) {
+                    } catch (Throwable $e) {
                         Log::error('PIPELINE BROKEN: Aborting aggregate sequence', [
                             'aggregate_id' => $aggregateId,
                             'error' => $e->getMessage(),
@@ -956,7 +963,7 @@ final class ProcessOutboxCommand extends Command
                     $event = $this->hydrate($message);
 
                     // Deterministic Re-Dispatch
-                    $dispatcher->dispatch($event);
+                    $this->dispatchWithTenantContext($message, $event, $dispatcher);
 
                     // Mark complete effectively
                     $message->update([
@@ -967,7 +974,7 @@ final class ProcessOutboxCommand extends Command
 
                     $ghostCount++;
 
-                } catch (\Throwable $e) {
+                } catch (Throwable $e) {
                     // LEVEL 75: THE POISON FILTER (Strike-Based Exorcism)
                     // Every exception is a Strike. We must actively penalize failure.
 
@@ -1054,7 +1061,7 @@ final class ProcessOutboxCommand extends Command
 
                 DB::afterCommit(function () use ($dispatcher, $event, $message) {
                     try {
-                        $dispatcher->dispatch($event);
+                        $this->dispatchWithTenantContext($message, $event, $dispatcher);
 
                         // LEVEL 74: THE FINAL BREATH (Optimistic State Assertion)
                         // We must NOT blindly update. We must prove sovereignty at the exact moment of completion.
@@ -1144,6 +1151,20 @@ final class ProcessOutboxCommand extends Command
         }
 
         return $this->hydrateFromArray($class, $eventData);
+    }
+
+    private function dispatchWithTenantContext(
+        OutboxMessage $message,
+        object $event,
+        Dispatcher $dispatcher,
+    ): mixed {
+        $envelope = is_array($message->payload) ? $message->payload : [];
+
+        return app(OutboxTenantContextRunner::class)->run(
+            $envelope,
+            $event,
+            fn (): ?array => $dispatcher->dispatch($event),
+        );
     }
 
     /**

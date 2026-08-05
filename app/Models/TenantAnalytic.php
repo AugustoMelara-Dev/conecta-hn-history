@@ -19,8 +19,9 @@ class TenantAnalytic extends Model
 
     protected $fillable = [
         'date',
-        'unique_visits',
-        'total_visits',
+        'views',
+        'whatsapp_clicks',
+        'unique_visitors',
     ];
 
     /**
@@ -31,8 +32,9 @@ class TenantAnalytic extends Model
 
     protected $casts = [
         'date' => 'date',
-        'unique_visits' => 'integer',
-        'total_visits' => 'integer',
+        'views' => 'integer',
+        'whatsapp_clicks' => 'integer',
+        'unique_visitors' => 'integer',
     ];
 
     // ═══════════════════════════════════════════════════════════════════════

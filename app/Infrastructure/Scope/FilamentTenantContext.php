@@ -33,7 +33,7 @@ final class FilamentTenantContext implements TenantContextInterface
      * 2. Authenticated User's Primary Tenant (fallback)
      * 3. null (no context available)
      */
-    public function getTenantId(): int|string|null
+    public function getTenantId(): ?string
     {
         // ═══════════════════════════════════════════════════════════════════
         // METHOD 1: Filament Panel Context (Primary)
@@ -42,7 +42,7 @@ final class FilamentTenantContext implements TenantContextInterface
             try {
                 $tenant = \Filament\Facades\Filament::getTenant();
                 if ($tenant !== null) {
-                    return $tenant->id;
+                    return (string) $tenant->id;
                 }
             } catch (\Throwable) {
                 // Filament not initialized (CLI, Queue, etc.)
@@ -59,7 +59,7 @@ final class FilamentTenantContext implements TenantContextInterface
             // User->tenants() returns HasMany (user owns tenants)
             $primaryTenant = $user->tenants()->first();
             if ($primaryTenant !== null) {
-                return $primaryTenant->id;
+                return (string) $primaryTenant->id;
             }
         }
 

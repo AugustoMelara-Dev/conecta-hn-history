@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Public;
 
-use App\Domain\TenantGovernance\Services\TenantResolver;
+use App\Application\Directory\Contracts\PublicTenantEngagementGatewayInterface;
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
@@ -21,7 +22,7 @@ use Symfony\Component\HttpFoundation\Response;
 final class ToggleFavoriteController extends Controller
 {
     public function __construct(
-        private readonly TenantResolver $tenantResolver
+        private readonly PublicTenantEngagementGatewayInterface $engagement
     ) {}
 
     /**
@@ -32,29 +33,34 @@ final class ToggleFavoriteController extends Controller
     public function __invoke(Request $request): Response
     {
         $validated = $request->validate([
-            'tenant_id' => ['required', 'integer'],
+            'tenant_id' => ['required', 'uuid'],
         ]);
 
-        // SECURE: Use TenantResolver - only returns public, active tenants
-        $tenant = $this->tenantResolver->findPublicById($validated['tenant_id']);
+        $user = $request->user();
 
-        if (! $tenant) {
+        if (! $user instanceof User) {
+            abort(401);
+        }
+
+        $result = $this->engagement->toggleFavorite(
+            (string) $user->getKey(),
+            (string) $validated['tenant_id'],
+        );
+
+        if ($result === null) {
             return back()
                 ->setStatusCode(303)
                 ->withErrors(['tenant_id' => 'Negocio no encontrado o no disponible.']);
         }
 
-        $user = $request->user();
-        $isFavorited = $user->toggleFavorite($tenant);
-
         Log::info('Favorite toggled', [
             'user_id' => $user->id,
-            'tenant_id' => $tenant->id,
-            'is_favorited' => $isFavorited,
+            'tenant_id' => $result->tenantId,
+            'is_favorited' => $result->engaged,
         ]);
 
         return back()
             ->setStatusCode(303)
-            ->with('success', $isFavorited ? 'Guardado en favoritos' : 'Eliminado de favoritos');
+            ->with('success', $result->engaged ? 'Guardado en favoritos' : 'Eliminado de favoritos');
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Shared\Services\TenantContext;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -17,6 +18,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 final class ReportDownloadController extends Controller
 {
+    public function __construct(
+        private readonly TenantContext $tenantContext,
+    ) {}
+
     /**
      * Download a report file via signed URL.
      */
@@ -73,8 +78,8 @@ final class ReportDownloadController extends Controller
             return null;
         }
 
-        // Ensure reports directory
-        if (! str_starts_with($path, 'reports/')) {
+        $tenantPrefix = 'tenants/'.(string) $this->tenantContext->id().'/reports/';
+        if (! str_starts_with($path, $tenantPrefix)) {
             return null;
         }
 

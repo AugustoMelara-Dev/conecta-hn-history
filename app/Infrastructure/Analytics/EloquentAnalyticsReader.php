@@ -20,23 +20,24 @@ final class EloquentAnalyticsReader implements AnalyticsReader
     /**
      * {@inheritdoc}
      */
-    public function getAnalyticsData(int $tenantId, Carbon $startDate, Carbon $endDate): Collection
+    public function getAnalyticsData(string $tenantId, Carbon $startDate, Carbon $endDate): Collection
     {
         return TenantAnalytic::where('tenant_id', $tenantId)
-            ->whereBetween('date', [$startDate, $endDate])
+            ->whereBetween('date', [$startDate->toDateString(), $endDate->toDateString()])
             ->orderBy('date', 'asc')
             ->get()
             ->map(fn ($record) => [
                 'date' => $record->date->format('Y-m-d'),
-                'visits' => $record->unique_visits,
-                'total' => $record->total_visits,
+                'visits' => $record->unique_visitors,
+                'total' => $record->views,
+                'whatsapp_clicks' => $record->whatsapp_clicks,
             ]);
     }
 
     /**
      * {@inheritdoc}
      */
-    public function getFilledAnalytics(int $tenantId, int $days): array
+    public function getFilledAnalytics(string $tenantId, int $days): array
     {
         $startDate = now()->subDays($days)->startOfDay();
         $endDate = now()->endOfDay();

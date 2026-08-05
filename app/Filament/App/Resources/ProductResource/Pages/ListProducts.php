@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources\ProductResource\Pages;
 
+use App\Domain\TenantGovernance\Services\SubscriptionPricingService;
 use App\Filament\App\Resources\ProductResource;
-use App\Settings\GeneralSettings;
+use App\Filament\App\Widgets\ProductLimitWarning;
 use Filament\Actions;
-use Filament\Facades\Filament;
+use Filament\Notifications\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 
@@ -55,12 +56,19 @@ class ListProducts extends ListRecords
         $limitInfo = ProductResource::getProductLimitInfo();
 
         return [
+            Actions\Action::make('digitalize_catalog')
+                ->label('Digitalizar con IA')
+                ->icon('heroicon-o-camera')
+                ->color('gray')
+                ->url('/workspace/catalog-imports')
+                ->visible((bool) (ProductResource::trustedTenant()->is_pro)),
+
             // Botón de upgrade si alcanzó el límite
             Actions\Action::make('upgrade')
                 ->label('Ampliar catalogo con PRO')
                 ->color('warning')
                 ->icon('heroicon-o-sparkles')
-                ->url(fn () => route('filament.app.pages.manage-billing', ['tenant' => Filament::getTenant()?->slug]))
+                ->url(fn () => route('filament.app.pages.manage-billing', ['tenant' => ProductResource::trustedTenant()->slug]))
                 ->visible(! $limitInfo['canCreate'] && ! ($limitInfo['isPro'] ?? false)),
 
             // Botón de crear
@@ -68,8 +76,7 @@ class ListProducts extends ListRecords
                 ->disabled(! $limitInfo['canCreate'])
                 ->before(function ($action) use ($limitInfo) {
                     if (! $limitInfo['canCreate']) {
-                        $settings = app(GeneralSettings::class);
-                        $price = number_format($settings->pro_plan_price ?? 500, 2);
+                        $price = number_format(SubscriptionPricingService::canonicalProPriceInMajorUnits(), 2);
 
                         Notification::make()
                             ->danger()
@@ -77,10 +84,10 @@ class ListProducts extends ListRecords
                             ->body("Has alcanzado el limite de {$limitInfo['limit']} productos del Plan Semilla. Mejora a PRO para ampliar catalogo, reservas/reportes, campanas e IA activable.")
                             ->persistent()
                             ->actions([
-                                \Filament\Notifications\Actions\Action::make('upgrade')
+                                Action::make('upgrade')
                                     ->button()
                                     ->label("Mejorar a PRO - L. {$price}/mes")
-                                    ->url(route('filament.app.pages.manage-billing', ['tenant' => Filament::getTenant()?->slug]))
+                                    ->url(route('filament.app.pages.manage-billing', ['tenant' => ProductResource::trustedTenant()->slug]))
                                     ->markAsRead(),
                             ])
                             ->send();
@@ -101,7 +108,7 @@ class ListProducts extends ListRecords
         // Mostrar banner si está al 80% o más del límite
         if (! ($limitInfo['isPro'] ?? false) && $limitInfo['percentage'] >= 80) {
             return [
-                \App\Filament\App\Widgets\ProductLimitWarning::class,
+                ProductLimitWarning::class,
             ];
         }
 

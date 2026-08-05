@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Events\Security;
 
 use App\Contracts\Events\AuditEvent;
+use App\Domain\Shared\ValueObjects\TenantId;
 use App\Enums\Severity;
 use App\ValueObjects\AuditContext;
-use App\Domain\Shared\ValueObjects\TenantId;
 use DateTimeImmutable;
 
 /**
@@ -60,7 +60,7 @@ final readonly class TenantSuspended implements AuditEvent
      * Factory: Create from tenant data (snapshotted at creation time).
      */
     public static function create(
-        int $tenantId,
+        string $tenantId,
         string $tenantSlug,
         string $tenantName,
         string $reason,
@@ -68,7 +68,7 @@ final readonly class TenantSuspended implements AuditEvent
         ?DateTimeImmutable $suspendedUntil = null
     ): self {
         return new self(
-            tenantId: TenantId::fromInt($tenantId),
+            tenantId: TenantId::fromString($tenantId),
             tenantSlug: $tenantSlug,
             tenantName: $tenantName,
             reason: $reason,
@@ -161,7 +161,7 @@ final readonly class TenantSuspended implements AuditEvent
         }
 
         return new self(
-            tenantId: TenantId::fromInt($tenantId),
+            tenantId: TenantId::fromSerialized($tenantId),
             tenantSlug: $data['tenant_slug'] ?? 'unknown',
             tenantName: $data['tenant_name'] ?? 'Unknown Tenant',
             reason: $data['reason'] ?? 'unknown',

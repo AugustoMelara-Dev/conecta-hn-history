@@ -12,6 +12,7 @@ namespace App\Domain\TenantGovernance\Enums;
  */
 enum Capability: string
 {
+    case BILLING_PORTAL = 'billing_portal';
     case CATALOG_BASIC = 'catalog_basic';
     case CHECKOUT_BASIC = 'checkout_basic';
     case CUSTOMER_DIRECTORY = 'customer_directory';

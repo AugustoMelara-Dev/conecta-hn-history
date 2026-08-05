@@ -21,18 +21,18 @@ interface TenantProductRepository
     /**
      * Get paginated product list for tenant dashboard.
      *
-     * @param  int|string  $tenantId  The tenant identifier
+     * @param  string  $tenantId  The tenant UUID
      * @param  string  $search  Optional search term for name/sku filtering
      * @param  int  $perPage  Number of items per page
      * @return LengthAwarePaginator Paginated product collection
      */
-    public function getDashboardList(int|string $tenantId, string $search = '', int $perPage = 12): LengthAwarePaginator;
+    public function getDashboardList(string $tenantId, string $search = '', int $perPage = 12): LengthAwarePaginator;
 
     /**
      * Count total products for a tenant.
      *
-     * @param  int|string  $tenantId  The tenant identifier
+     * @param  string  $tenantId  The tenant UUID
      * @return int Total product count
      */
-    public function countByTenant(int|string $tenantId): int;
+    public function countByTenant(string $tenantId): int;
 }

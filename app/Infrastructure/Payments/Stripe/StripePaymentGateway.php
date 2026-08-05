@@ -153,8 +153,11 @@ final class StripePaymentGateway implements PaymentGatewayInterface
     /**
      * {@inheritDoc}
      */
-    public function refund(string $transactionId, ?int $amountInCents = null): ChargeResult
-    {
+    public function refund(
+        string $transactionId,
+        ?int $amountInCents = null,
+        ?string $idempotencyKey = null,
+    ): ChargeResult {
         try {
             $params = ['payment_intent' => $transactionId];
 
@@ -162,7 +165,8 @@ final class StripePaymentGateway implements PaymentGatewayInterface
                 $params['amount'] = $amountInCents;
             }
 
-            $refund = Refund::create($params);
+            $options = $idempotencyKey === null ? [] : ['idempotency_key' => $idempotencyKey];
+            $refund = Refund::create($params, $options);
 
             if ($refund->status === 'succeeded') {
                 return ChargeResult::success(transactionId: $refund->id);

@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
+use App\Application\Shared\DTOs\Mail\UserMailData;
 use App\Domain\Identity\Events\UserRegisteredViaSocial;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
+use App\Infrastructure\Shared\Middleware\TenantQueueMiddleware;
 use App\Mail\WelcomeUserMail;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
@@ -25,6 +27,12 @@ final readonly class SendWelcomeEmail implements ShouldQueue
     public function __construct(
         private UserRepositoryInterface $userRepository
     ) {}
+
+    /** @return array<int, TenantQueueMiddleware> */
+    public function middleware(UserRegisteredViaSocial $event): array
+    {
+        return [new TenantQueueMiddleware($event->tenantId)];
+    }
 
     /**
      * Handle the UserRegisteredViaSocial domain event.
@@ -57,7 +65,9 @@ final readonly class SendWelcomeEmail implements ShouldQueue
         // ─────────────────────────────────────────────────────────────────────
         // STEP 4: Send Email Using Fresh Data
         // ─────────────────────────────────────────────────────────────────────
-        Mail::to($user->email())->send(new WelcomeUserMail($user));
+        Mail::to($user->email())->send(new WelcomeUserMail(
+            UserMailData::fromIdentityEntity($user)
+        ));
 
         Log::info('Welcome email dispatched', [
             'user_id' => $userId,

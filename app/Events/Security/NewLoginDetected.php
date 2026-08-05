@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Events\Security;
 
 use App\Contracts\Events\AuditEvent;
+use App\Domain\Shared\ValueObjects\TenantId;
 use App\Enums\Severity;
 use App\Traits\HasDomainMetadata;
 use App\ValueObjects\AuditContext;
 use App\ValueObjects\IpAddress;
-use App\Domain\Shared\ValueObjects\TenantId;
 use DateTimeImmutable;
 
 /**
@@ -82,7 +82,7 @@ final readonly class NewLoginDetected implements AuditEvent
      * IP is automatically anonymized for GDPR compliance.
      */
     public static function create(
-        ?int $tenantId,
+        ?string $tenantId,
         int $userId,
         string $userEmail,
         string $ipAddress,
@@ -90,7 +90,7 @@ final readonly class NewLoginDetected implements AuditEvent
         Severity $severity = Severity::INFO
     ): self {
         return new self(
-            tenantId: $tenantId !== null ? TenantId::fromInt($tenantId) : null,
+            tenantId: $tenantId !== null ? TenantId::fromString((string) $tenantId) : null,
             userId: $userId,
             userEmail: $userEmail,
             ipAddress: IpAddress::fromString($ipAddress)->anonymize(), // ✅ GDPR
@@ -222,7 +222,7 @@ final readonly class NewLoginDetected implements AuditEvent
 
         return new self(
             tenantId: isset($primitives['tenant_id'])
-                ? TenantId::fromInt($primitives['tenant_id'])
+                ? TenantId::fromSerialized($primitives['tenant_id'])
                 : null,
             userId: $userId,
             userEmail: $primitives['user_email'] ?? 'unknown@unknown.com',

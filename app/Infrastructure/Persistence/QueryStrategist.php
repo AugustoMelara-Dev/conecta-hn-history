@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Persistence;
 
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -60,6 +61,10 @@ final class QueryStrategist
 
     public function getOptimizationHint(string $contextIdentifier, array $contextMetrics = []): string
     {
+        if (DB::connection()->getDriverName() !== 'mysql') {
+            return '';
+        }
+
         // 1. Calculate Derivative-Based Epsilon
         // If dL/dt exceeds critical threshold (The Wall), we force epsilon=0 globally or per resource
         $velocityState = $this->analyzeLatencyVelocity();

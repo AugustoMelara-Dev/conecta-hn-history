@@ -14,7 +14,9 @@ class CrmStage extends Model
     use BelongsToTenant;
 
     public const TYPE_OPEN = 'open';
+
     public const TYPE_WON = 'won';
+
     public const TYPE_LOST = 'lost';
 
     protected $fillable = [
@@ -42,13 +44,11 @@ class CrmStage extends Model
 
     public function pipeline(): BelongsTo
     {
-        // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
-        return $this->belongsTo(CrmPipeline::class, 'crm_pipeline_id')->withoutGlobalScopes();
+        return $this->belongsTo(CrmPipeline::class, 'crm_pipeline_id');
     }
 
     public function deals(): HasMany
     {
-        // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
-        return $this->hasMany(CrmDeal::class)->withoutGlobalScopes();
+        return $this->hasMany(CrmDeal::class);
     }
 }

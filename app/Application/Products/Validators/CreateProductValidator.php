@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Application\Validators\Products;
+namespace App\Application\Products\Validators;
 
 use App\Application\Products\Commands\CreateProductCommand;
 
@@ -24,7 +24,7 @@ class CreateProductValidator
     public function rules(CreateProductCommand $command): array
     {
         return [
-            'tenantId' => ['required', 'integer', 'exists:tenants,id'],
+            'tenantId' => ['required', 'uuid', 'exists:tenants,id'],
             'name' => ['required', 'string', 'max:255'],
             'sku' => ['required', 'string', 'max:100', 'unique:products,sku'],
             'description' => ['nullable', 'string'],

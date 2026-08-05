@@ -6,13 +6,14 @@ namespace App\Application\Payments\Handlers;
 
 use App\Application\Payments\Commands\HandlePaymentWebhookCommand;
 use App\Application\Payments\Results\PaymentWebhookResult;
+use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Domain\Billing\Events\PaymentFailed;
 use App\Domain\Billing\Events\PaymentReceived;
 use App\Domain\Payment\Repositories\WebhookLogRepositoryInterface;
 use App\Infrastructure\Bus\TransactionalEventDispatcher;
-use App\Application\Shared\Contracts\LoggerInterface;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 
 /**
  * HandlePaymentWebhookHandler - Gateway for External Payment Webhooks
@@ -52,7 +53,7 @@ final class HandlePaymentWebhookHandler
                 transactionId: $transactionId,
                 providerReference: $payload['id'] ?? $command->externalEventId,
                 amount: (int) ($payload['amount'] ?? $payload['data']['object']['amount'] ?? 0),
-                currency: $payload['currency'] ?? $payload['data']['object']['currency'] ?? 'HNL',
+                currency: $this->requiredCurrency($payload),
                 payerEmail: $payload['receipt_email'] ?? $payload['data']['object']['receipt_email'] ?? null,
                 tenantId: $command->tenantId,
             ),
@@ -75,6 +76,20 @@ final class HandlePaymentWebhookHandler
             // Unhandled events - log but don't fail
             default => null,
         };
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function requiredCurrency(array $payload): string
+    {
+        $currency = $payload['currency'] ?? $payload['data']['object']['currency'] ?? null;
+
+        if (! is_string($currency) || trim($currency) === '') {
+            throw new InvalidArgumentException('Payment webhook rejected: Missing currency.');
+        }
+
+        return strtoupper(trim($currency));
     }
 
     /**

@@ -30,29 +30,26 @@ final class UpdateProductRequest extends FormRequest
      */
     public function rules(): array
     {
-        $tenantId = $this->user()?->tenant?->id;
-        $productId = $this->route('product'); // Product ID from route
+        $tenantId = (string) $this->user()->tenant_id;
 
         return [
             'name' => ['required', 'string', 'min:2', 'max:255'],
-            'price' => ['required', 'numeric', 'min:0', 'max:999999.99'],
+            'price' => ['required', 'string', 'regex:/^\d{1,8}(?:\.\d{1,2})?$/', 'max:11'],
             'description' => ['nullable', 'string', 'max:2000'],
-            'sku' => [
-                'nullable',
-                'string',
-                'max:100',
-                // Tenant-scoped uniqueness, ignoring current product
-                Rule::unique('products', 'sku')
-                    ->where('tenant_id', $tenantId)
-                    ->whereNull('deleted_at')
-                    ->ignore($productId),
-            ],
+            'category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')->where('is_active', true)],
+            'allow_backorders' => ['sometimes', 'boolean'],
+            'low_stock_threshold' => ['sometimes', 'integer', 'min:0'],
             'is_visible' => ['nullable', 'boolean'],
-            'stock_status' => ['nullable', 'string', Rule::in(['in_stock', 'low_stock', 'out_of_stock'])],
-            'menu_section_id' => ['nullable', 'integer', 'exists:menu_sections,id'],
+            'menu_section_id' => ['nullable', 'integer', Rule::exists('menu_sections', 'id')->where('tenant_id', $tenantId)->where('is_active', true)],
+            'stock_quantity' => ['sometimes', 'integer', 'min:0'],
+            'manage_stock' => ['sometimes', 'boolean'],
+            'variants' => ['sometimes', 'array'],
+            'sku' => ['prohibited'],
+            'stock_status' => ['prohibited'],
+            'image' => ['prohibited'],
+            'remove_image' => ['prohibited'],
             'is_featured' => ['nullable', 'boolean'],
             'is_new' => ['nullable', 'boolean'],
-            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:1024'],
         ];
     }
 
@@ -87,15 +84,10 @@ final class UpdateProductRequest extends FormRequest
         $validated = $this->validated();
 
         return new \App\Application\Products\Commands\UpdateProductCommand(
-            id: $productId,
-            tenantId: (int) $this->user()->tenant_id,
-            sku: $validated['sku'], // Now strictly required by DTO/Handler
-            name: $validated['name'],
-            description: $validated['description'] ?? '',
-            price: (float) $validated['price'],
-            stock: isset($validated['stock']) ? (int) $validated['stock'] : 0,
-            categoryId: (int) $validated['category_id'],
-            imagePath: null, // Handle image separately if needed
+            tenantId: (string) $this->user()->tenant_id, productId: $productId,
+            name: (string) $validated['name'], description: (string) ($validated['description'] ?? ''),
+            price: 0, stock: (int) ($validated['stock_quantity'] ?? 0),
+            categoryId: $validated['category_id'] ?? null, imagePath: null,
             isVisible: (bool) ($validated['is_visible'] ?? true),
         );
     }

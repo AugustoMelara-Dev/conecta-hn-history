@@ -18,7 +18,7 @@ final readonly class UpdateTenantBrandingCommand
 {
     public function __construct(
         /** Tenant ID to update */
-        public int $tenantId,
+        public string $tenantId,
 
         /** New logo file (null = no change) */
         public ?FileTransferObject $logo = null,

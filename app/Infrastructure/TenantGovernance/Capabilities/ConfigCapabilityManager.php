@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Infrastructure\TenantGovernance\Capabilities;
 
 use App\Application\TenantGovernance\Contracts\CapabilityManagerInterface;
+use App\Domain\Billing\Services\PlanEntitlementService;
 use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Domain\TenantGovernance\Enums\Capability;
 use App\Domain\TenantGovernance\Enums\CommercialMode;
-use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Models\Tenant;
 
 final class ConfigCapabilityManager implements CapabilityManagerInterface
@@ -38,13 +38,6 @@ final class ConfigCapabilityManager implements CapabilityManagerInterface
             return [];
         }
 
-        try {
-            $rawPlanType = $tenant->getRawOriginal('plan_type') ?? $tenant->getAttribute('plan_type');
-        } catch (\Throwable) {
-            $rawPlanType = TenantPlan::SEMILLA->value;
-        }
-        $plan = $rawPlanType instanceof TenantPlan ? $rawPlanType->value : (string) $rawPlanType;
-
         $capabilities = match ($this->commercialMode($tenant)) {
             CommercialMode::APPOINTMENTS => [
                 Capability::CUSTOMER_DIRECTORY,
@@ -58,16 +51,14 @@ final class ConfigCapabilityManager implements CapabilityManagerInterface
                 Capability::CRM_PIPELINE_MANAGEMENT,
                 Capability::NOTIFICATIONS_BASIC,
             ],
-            CommercialMode::HYBRID => $this->hybridIsAllowed($tenant) ? [
+            CommercialMode::HYBRID => [
                 Capability::CATALOG_BASIC,
                 Capability::CHECKOUT_BASIC,
                 Capability::CUSTOMER_DIRECTORY,
                 Capability::STAFF_BASIC,
                 Capability::APPOINTMENT_BOOKING,
                 Capability::STAFF_CALENDAR,
-            ] : [
-                Capability::CUSTOMER_DIRECTORY,
-                Capability::CRM_PIPELINE_MANAGEMENT,
+                Capability::APPOINTMENT_REMINDERS,
             ],
             CommercialMode::PRODUCTS => [
                 Capability::CATALOG_BASIC,
@@ -75,22 +66,12 @@ final class ConfigCapabilityManager implements CapabilityManagerInterface
             ],
         };
 
-        if ($plan !== TenantPlan::PRO->value) {
-            return array_values(array_unique($capabilities, SORT_REGULAR));
-        }
+        $plan = (new PlanEntitlementService)->forTenant($tenant);
 
-        return array_values(array_unique(array_merge($capabilities, [
-            Capability::CATALOG_BASIC,
-            Capability::CHECKOUT_BASIC,
-            Capability::CUSTOMER_DIRECTORY,
-            Capability::CRM_PIPELINE_MANAGEMENT,
-            Capability::PAYMENTS_BASIC,
-            Capability::NOTIFICATIONS_BASIC,
-            Capability::ANALYTICS_BASIC,
-            Capability::COUPONS_BASIC,
-            Capability::STAFF_BASIC,
-            Capability::AI_CONTENT,
-        ]), SORT_REGULAR));
+        return array_values(array_unique(
+            array_merge($capabilities, $plan->capabilities),
+            SORT_REGULAR,
+        ));
     }
 
     private function commercialMode(Tenant $tenant): CommercialMode
@@ -115,17 +96,5 @@ final class ConfigCapabilityManager implements CapabilityManagerInterface
             is_string($raw) ? $raw : ($raw instanceof CommercialMode ? $raw->value : null),
             $fallbackType
         );
-    }
-
-    private function hybridIsAllowed(Tenant $tenant): bool
-    {
-        $allowed = config('conecta.features.hybrid_commercial_mode_tenants', []);
-
-        if (! is_array($allowed) || $allowed === []) {
-            return false;
-        }
-
-        return in_array((string) $tenant->getKey(), $allowed, true)
-            || in_array((string) ($tenant->slug ?? ''), $allowed, true);
     }
 }

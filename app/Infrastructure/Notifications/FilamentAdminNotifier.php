@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace App\Infrastructure\Notifications;
 
 use App\Domain\Contracts\AdminNotifier;
-use App\Models\Lead;
-use App\Models\Review;
+use App\Domain\Sales\Entities\LeadEntity;
+use App\Domain\Shared\Contracts\AdminNotifierInterface;
+use App\Models\Tenant;
 use App\Models\User;
 use Filament\Notifications\Actions\Action;
 use Filament\Notifications\Notification;
@@ -21,18 +22,15 @@ use Filament\Notifications\Notification;
  * ║  It effectively isolates the Domain from the Filament dependency.        ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final class FilamentAdminNotifier implements AdminNotifier
+final class FilamentAdminNotifier implements AdminNotifier, AdminNotifierInterface
 {
     /**
      * Notify tenant owner about a new lead.
      */
     public function notifyNewLead(object $lead): void
     {
-        /** @var \App\Models\Lead $lead */
-        // ... (assuming logic can handle object or uses duck typing)
-        // If necessary, add instanceof check:
-        // if (!$lead instanceof Lead) return;
-        $tenantOwner = $this->getTenantOwner($lead->tenant_id);
+        $tenantId = $lead instanceof LeadEntity ? $lead->tenantId : $lead->tenant_id;
+        $tenantOwner = $this->getTenantOwner($tenantId);
 
         if (! $tenantOwner) {
             return;
@@ -82,7 +80,7 @@ final class FilamentAdminNotifier implements AdminNotifier
     /**
      * Notify tenant owner about a new order.
      */
-    public function notifyNewOrder(int $tenantId, int $orderId, float $total): void
+    public function notifyNewOrder(string $tenantId, int $orderId, float $total): void
     {
         $tenantOwner = $this->getTenantOwner($tenantId);
 
@@ -106,7 +104,7 @@ final class FilamentAdminNotifier implements AdminNotifier
     /**
      * Notify tenant owner about payment status update.
      */
-    public function notifyPaymentUpdate(int $tenantId, string $status, float $amount): void
+    public function notifyPaymentUpdate(string $tenantId, string $status, float $amount): void
     {
         // Implementation stub or actual logic
     }
@@ -114,13 +112,11 @@ final class FilamentAdminNotifier implements AdminNotifier
     /**
      * Helper to find tenant owner.
      */
-    private function getTenantOwner(int $tenantId): ?User
+    private function getTenantOwner(string $tenantId): ?User
     {
-        // Assuming Tenant model has user_id or relationship.
-        // Or specific logic to find owner.
-        // For strictness, checking App\Domain\TenantGovernance\Models\Tenant
-        $tenant = \App\Domain\TenantGovernance\Models\Tenant::find($tenantId);
+        $tenant = Tenant::query()->find($tenantId);
+        $owner = $tenant?->user;
 
-        return $tenant?->user;
+        return $owner instanceof User ? $owner : null;
     }
 }

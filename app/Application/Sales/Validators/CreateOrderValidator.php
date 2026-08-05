@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Application\Validators\Sales;
+namespace App\Application\Sales\Validators;
 
 use App\Application\Sales\Commands\CreateOrderCommand;
 
@@ -24,7 +24,7 @@ class CreateOrderValidator
     public function rules(CreateOrderCommand $command): array
     {
         return [
-            'tenantId' => ['required', 'integer', 'exists:tenants,id'],
+            'tenantId' => ['required', 'uuid', 'exists:tenants,id'],
             'customerId' => ['required', 'integer', 'exists:users,id'],
             'currency' => ['required', 'string', 'size:3'],
             'items' => ['required', 'array', 'min:1'],

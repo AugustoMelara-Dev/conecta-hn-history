@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Sales;
 
+use App\Application\Markets\TenantMarketResolver;
+use App\Domain\Analytics\Enums\CommercialOutcome;
 use App\Domain\Sales\Contracts\ReportReader;
 use App\Models\Order;
+use App\Models\Tenant;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * EloquentReportReader - Eloquent Implementation of ReportReader
@@ -20,14 +25,15 @@ use Illuminate\Support\Collection;
  */
 final class EloquentReportReader implements ReportReader
 {
+    public function __construct(
+        private TenantMarketResolver $marketResolver,
+    ) {}
+
     /**
      * {@inheritdoc}
      */
-    public function getSalesData(int $tenantId, Carbon $startDate, Carbon $endDate): Collection
+    public function getSalesData(string $tenantId, Carbon $startDate, Carbon $endDate): Collection
     {
-        // DEFENSIVE: Explicit cast in case of ValueObject leakage
-        $tenantId = (int) $tenantId;
-
         // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
         return Order::withoutGlobalScopes()
             ->where('tenant_id', $tenantId)
@@ -41,24 +47,43 @@ final class EloquentReportReader implements ReportReader
     /**
      * {@inheritdoc}
      *
-     * OPTIMIZATION: If $preloadedOrders is provided, uses in-memory calculation.
-     * Otherwise, executes a fresh database query (fallback for standalone usage).
+     * Revenue is always read from the server-authoritative outcome ledger. The
+     * optional collection remains in the port for backwards compatibility and
+     * must never be trusted as a financial source.
      */
     public function getSalesSummary(
-        int $tenantId,
+        string $tenantId,
         Carbon $startDate,
         Carbon $endDate,
         ?Collection $preloadedOrders = null
     ): array {
-        // Use preloaded data if available (O(1) SQL queries)
-        // Otherwise, fetch fresh data (1 SQL query - fallback)
-        $orders = $preloadedOrders ?? $this->getSalesData($tenantId, $startDate, $endDate);
+        // INFRA_TENANT_FILTER: exact tenant identity is supplied by the trusted report boundary.
+        $tenantAttributes = DB::table('tenants')->where('id', $tenantId)->first();
+        if ($tenantAttributes === null) {
+            throw (new ModelNotFoundException)->setModel(Tenant::class, [$tenantId]);
+        }
+        $tenant = (new Tenant)->newFromBuilder((array) $tenantAttributes);
+        $currency = $this->marketResolver->resolve($tenant)->currencyCode;
+        $outcomes = DB::table('verified_commercial_outcomes')
+            ->where('tenant_id', $tenantId)
+            ->where('aggregate_type', 'order')
+            ->whereIn('outcome', [
+                CommercialOutcome::OrderPaid->value,
+                CommercialOutcome::OrderRefunded->value,
+            ])
+            ->where('currency', $currency)
+            ->whereBetween('source_occurred_at', [$startDate, $endDate]);
 
-        $totalRevenue = (float) $orders->sum('total');
-        $orderCount = $orders->count();
+        $totalRevenueMinor = (int) (clone $outcomes)->sum('amount_minor');
+        $orderCount = (clone $outcomes)
+            ->where('outcome', CommercialOutcome::OrderPaid->value)
+            ->distinct()
+            ->count('aggregate_id');
+        $totalRevenue = (float) ($totalRevenueMinor / 100);
         $averageOrder = $orderCount > 0 ? $totalRevenue / $orderCount : 0.0;
 
         return [
+            'currency' => $currency,
             'total_revenue' => $totalRevenue,
             'order_count' => $orderCount,
             'average_order' => round($averageOrder, 2),

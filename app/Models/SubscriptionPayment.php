@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Domain\Billing\Events\SubscriptionPaymentApproved;
 use App\Infrastructure\Persistence\Eloquent\Traits\BelongsToTenant;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,21 +17,22 @@ use Illuminate\Support\Facades\Storage;
  *
  * State machine: pending → approved/rejected
  *
- * @property int $id
- * @property int $tenant_id
+ * @property string $id
+ * @property string $tenant_id
  * @property float $amount
  * @property string $bank
  * @property string $reference_number
  * @property string $proof_path
  * @property string $status
  * @property string|null $admin_notes
- * @property int|null $reviewed_by
+ * @property string|null $reviewed_by
  * @property \Carbon\Carbon|null $reviewed_at
- *                                            SECURITY: Uses BelongsToTenant trait for automatic tenant isolation
+ * @property \Carbon\Carbon|null $subscription_extended_at
+ *                                                         SECURITY: Uses BelongsToTenant trait for automatic tenant isolation
  */
 class SubscriptionPayment extends Model
 {
-    use BelongsToTenant, HasFactory;
+    use BelongsToTenant, HasFactory, HasUuids;
 
     public const STATUS_PENDING = 'pending';
 
@@ -57,6 +60,7 @@ class SubscriptionPayment extends Model
     protected $casts = [
         'amount' => 'decimal:2',
         'reviewed_at' => 'datetime',
+        'subscription_extended_at' => 'datetime',
     ];
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -120,10 +124,10 @@ class SubscriptionPayment extends Model
      * - The UpdateTenantSubscription listener handles subscription logic
      *   with pessimistic locking and idempotency guards
      *
-     * @param  int  $reviewerId  The admin who approved the payment
+     * @param  int|string  $reviewerId  The admin who approved the payment
      * @param  int  $daysToAdd  Number of subscription days to add (default: 30)
      */
-    public function approve(int $reviewerId, int $daysToAdd = 30): void
+    public function approve(int|string $reviewerId, int $daysToAdd = 30): void
     {
         // Only update payment's own state (SRP compliance)
         $this->update([
@@ -134,12 +138,12 @@ class SubscriptionPayment extends Model
 
         // Dispatch IMMUTABLE DTO event for decoupled subscription extension
         // Uses factory method with primitives, not model objects
-        \App\Events\PaymentApproved::fromPayment(
+        event(SubscriptionPaymentApproved::fromPayment(
             tenantId: $this->tenant_id,
             paymentId: $this->id,
             reviewerId: $reviewerId,
             daysToAdd: $daysToAdd
-        )->dispatch();
+        ));
     }
 
     /**

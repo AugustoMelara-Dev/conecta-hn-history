@@ -43,7 +43,7 @@ class AnalyticsStatsWidget extends StatsOverviewWidget
             ->thisMonth()
             ->count();
 
-        $conversionsThisMonth = Interaction::forTenant($tenant->id)
+        $whatsappIntentsThisMonth = Interaction::forTenant($tenant->id)
             ->ofType('whatsapp_click')
             ->thisMonth()
             ->count();
@@ -56,7 +56,7 @@ class AnalyticsStatsWidget extends StatsOverviewWidget
             ->whereYear('created_at', now()->subMonth()->year)
             ->count();
 
-        $conversionsLastMonth = Interaction::forTenant($tenant->id)
+        $whatsappIntentsLastMonth = Interaction::forTenant($tenant->id)
             ->ofType('whatsapp_click')
             ->whereMonth('created_at', now()->subMonth()->month)
             ->whereYear('created_at', now()->subMonth()->year)
@@ -66,11 +66,11 @@ class AnalyticsStatsWidget extends StatsOverviewWidget
         // CALCULATE TRENDS
         // ═══════════════════════════════════════════════════════════════
         $visitsTrend = $this->calculateTrend($visitsThisMonth, $visitsLastMonth);
-        $conversionsTrend = $this->calculateTrend($conversionsThisMonth, $conversionsLastMonth);
+        $whatsappIntentsTrend = $this->calculateTrend($whatsappIntentsThisMonth, $whatsappIntentsLastMonth);
 
-        // Conversion rate
-        $conversionRate = $visitsThisMonth > 0
-            ? round(($conversionsThisMonth / $visitsThisMonth) * 100, 1)
+        // Contact-intent rate. This is explicitly not a verified sale.
+        $contactRate = $visitsThisMonth > 0
+            ? round(($whatsappIntentsThisMonth / $visitsThisMonth) * 100, 1)
             : 0;
 
         return [
@@ -80,16 +80,16 @@ class AnalyticsStatsWidget extends StatsOverviewWidget
                 ->color($visitsTrend['color'])
                 ->chart($this->getSparklineData($tenant->id, 'visits')),
 
-            Stat::make('Clics en WhatsApp', number_format($conversionsThisMonth))
-                ->description($conversionsTrend['description'])
-                ->descriptionIcon($conversionsTrend['icon'])
-                ->color($conversionsTrend['color'])
+            Stat::make('Intenciones por WhatsApp', number_format($whatsappIntentsThisMonth))
+                ->description($whatsappIntentsTrend['description'].' · no equivale a venta')
+                ->descriptionIcon($whatsappIntentsTrend['icon'])
+                ->color($whatsappIntentsTrend['color'])
                 ->chart($this->getSparklineData($tenant->id, 'conversions')),
 
-            Stat::make('Tasa de Conversión', "{$conversionRate}%")
-                ->description('Visitas → WhatsApp')
+            Stat::make('Tasa de contacto', "{$contactRate}%")
+                ->description('Visitas → intención de WhatsApp')
                 ->descriptionIcon('heroicon-o-arrow-trending-up')
-                ->color($conversionRate >= 5 ? 'success' : ($conversionRate >= 2 ? 'warning' : 'gray')),
+                ->color($contactRate >= 5 ? 'success' : ($contactRate >= 2 ? 'warning' : 'gray')),
         ];
     }
 
@@ -132,7 +132,7 @@ class AnalyticsStatsWidget extends StatsOverviewWidget
     /**
      * Get sparkline data for last 7 days.
      */
-    protected function getSparklineData(int $tenantId, string $metric): array
+    protected function getSparklineData(string $tenantId, string $metric): array
     {
         $days = collect(range(6, 0))->map(fn ($i) => now()->subDays($i)->toDateString());
 

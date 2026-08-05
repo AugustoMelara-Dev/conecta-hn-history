@@ -25,7 +25,7 @@ final readonly class RegisterTenantCommand implements IdempotentCommandInterface
         public string $password,
 
         // Profile
-        public int $cityId,
+        public ?int $cityId,
         public ?int $categoryId,
         public ?string $whatsapp,
         public string $selectedPlan = 'free',
@@ -37,7 +37,16 @@ final readonly class RegisterTenantCommand implements IdempotentCommandInterface
         public ?string $rubroKey = null,
 
         // Explicit Idempotency
-        public ?string $idempotencyKey = null
+        public ?string $idempotencyKey = null,
+
+        // Explicit global market context. Legacy Honduras callers may use cityId
+        // during the expand-and-shadow-read compatibility window.
+        public ?string $countryCode = null,
+        public ?int $localityId = null,
+        public ?string $localeCode = null,
+        public ?string $currencyCode = null,
+        public ?string $timezone = null,
+        public ?string $address = null,
     ) {}
 
     public function getIdempotencyKey(): string

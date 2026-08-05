@@ -4,31 +4,45 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Crm;
 
-use App\Application\TenantGovernance\Crm\CrmDefaultPipelineService;
+// @withoutGlobalScopes-safety INFRA_TENANT_FILTER: responder queries are constrained by the authenticated tenant.
+
+use App\Application\Crm\CanonicalOpportunityWriter;
+use App\Application\Crm\Commands\CreateOpportunityCommand;
+use App\Application\Crm\Commands\MoveOpportunityStageCommand;
+use App\Application\Crm\Commands\UpdateOpportunityCommand;
+use App\Application\Imports\OperationalImportService;
+use App\Application\Markets\MarketContext;
+use App\Application\Markets\TenantMarketResolver;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Crm\ConvertLeadToCrmDealRequest;
+use App\Http\Requests\Api\V1\Crm\DeleteCrmDealRequest;
 use App\Http\Requests\Api\V1\Crm\ExportCrmDealsRequest;
 use App\Http\Requests\Api\V1\Crm\ImportCrmDealsRequest;
 use App\Http\Requests\Api\V1\Crm\ListCrmDealsRequest;
 use App\Http\Requests\Api\V1\Crm\MoveCrmDealStageRequest;
 use App\Http\Requests\Api\V1\Crm\StoreCrmDealRequest;
 use App\Http\Requests\Api\V1\Crm\UpdateCrmDealRequest;
-use App\Http\Requests\Api\V1\Crm\DeleteCrmDealRequest;
 use App\Http\Resources\CrmDealResource;
+use App\Models\CatalogImportItem;
 use App\Models\CrmDeal;
-use App\Models\CrmPipeline;
-use App\Models\CrmStage;
-use App\Models\CustomerProfile;
-use App\Models\Lead;
-use App\Models\Location;
 use App\Models\Tenant;
-use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class HttpCrmDealResponder extends Controller
 {
+    public function __construct(
+        private readonly CanonicalOpportunityWriter $writer,
+        private readonly TenantMarketResolver $marketResolver,
+        private readonly OperationalImportService $imports,
+    ) {}
+
     public function index(ListCrmDealsRequest $request): AnonymousResourceCollection
     {
         $tenant = $request->tenantForRequest();
@@ -61,10 +75,25 @@ final class HttpCrmDealResponder extends Controller
     public function store(StoreCrmDealRequest $request): JsonResponse
     {
         $tenant = $request->tenantForRequest();
-        $data = $this->validatedPayload($tenant, $request->validated());
-
-        // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
-        $deal = CrmDeal::query()->withoutGlobalScopes()->forceCreate($data);
+        $data = $request->validated();
+        $deal = $this->writer->create(new CreateOpportunityCommand(
+            tenantId: (string) $tenant->getKey(),
+            actorId: (string) $request->user()->getKey(),
+            idempotencyKey: $this->idempotencyKey($request->header('Idempotency-Key'), 'crm-api:create'),
+            title: (string) $data['title'],
+            valueMinor: $this->minorFromDecimal($tenant, $data['value'] ?? 0, $data['currency'] ?? null),
+            currency: isset($data['currency']) ? (string) $data['currency'] : null,
+            pipelineId: (int) $data['pipeline_id'],
+            stageId: (int) $data['stage_id'],
+            customerProfileId: isset($data['customer_profile_id']) ? (int) $data['customer_profile_id'] : null,
+            leadId: isset($data['lead_id']) ? (int) $data['lead_id'] : null,
+            ownerUserId: isset($data['owner_user_id']) ? (string) $data['owner_user_id'] : null,
+            locationId: isset($data['location_id']) ? (string) $data['location_id'] : null,
+            source: isset($data['source']) ? (string) $data['source'] : null,
+            expectedCloseDate: isset($data['expected_close_at']) ? (string) $data['expected_close_at'] : null,
+            lostReason: isset($data['lost_reason']) ? (string) $data['lost_reason'] : null,
+            notes: isset($data['notes']) ? (string) $data['notes'] : null,
+        ))->deal;
 
         return (new CrmDealResource($deal->load(['customerProfile', 'lead', 'stage'])))
             ->response()
@@ -74,37 +103,92 @@ final class HttpCrmDealResponder extends Controller
     public function import(ImportCrmDealsRequest $request): JsonResponse
     {
         $tenant = $request->tenantForRequest();
-        $created = collect($request->validated('deals'))
-            ->map(function (array $row) use ($tenant): CrmDeal {
-                $defaults = $this->defaultPipelineAndStage($tenant);
-
-                return CrmDeal::query()
-                    // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
-                    ->withoutGlobalScopes()
-                    ->forceCreate($this->validatedPayload($tenant, [
-                        'pipeline_id' => $row['pipeline_id'] ?? $defaults['pipeline']->getKey(),
-                        'stage_id' => $row['stage_id'] ?? $defaults['stage']->getKey(),
-                        'title' => $row['title'],
-                        'value' => $row['value'] ?? 0,
-                        'currency' => $row['currency'] ?? 'HNL',
-                        'status' => $row['status'] ?? null,
-                        'source' => $row['source'] ?? 'crm_import',
-                        'expected_close_at' => $row['expected_close_at'] ?? null,
-                        'closed_at' => $row['closed_at'] ?? null,
-                        'lost_reason' => $row['lost_reason'] ?? null,
-                        'notes' => $row['notes'] ?? null,
-                        'customer_profile_id' => $row['customer_profile_id'] ?? null,
-                        'lead_id' => $row['lead_id'] ?? null,
-                        'owner_user_id' => $row['owner_user_id'] ?? null,
-                        'location_id' => $row['location_id'] ?? null,
-                    ]));
-            });
-
-        $created->each(fn (CrmDeal $deal): CrmDeal => $deal->load(['customerProfile', 'lead', 'stage']));
+        $rows = $request->validated('deals');
+        $headers = [
+            'title', 'value_minor', 'currency', 'pipeline_id', 'stage_id',
+            'customer_profile_id', 'lead_id', 'owner_user_id', 'location_id',
+            'source', 'expected_close_date', 'lost_reason', 'notes',
+        ];
+        $temporary = tempnam(sys_get_temp_dir(), 'dovra-crm-import-');
+        if ($temporary === false) {
+            throw new \RuntimeException('CRM import staging file could not be created.');
+        }
+        $handle = fopen($temporary, 'wb');
+        if ($handle === false) {
+            throw new \RuntimeException('CRM import staging file could not be opened.');
+        }
+        fputcsv($handle, $headers);
+        foreach ($rows as $row) {
+            fputcsv($handle, [
+                $this->safeCsv((string) $row['title']),
+                $this->minorFromDecimal($tenant, $row['value'] ?? 0, $row['currency'] ?? null),
+                strtoupper((string) ($row['currency'] ?? $this->marketResolver->resolve($tenant)->currencyCode)),
+                $row['pipeline_id'] ?? null,
+                $row['stage_id'] ?? null,
+                $row['customer_profile_id'] ?? null,
+                $row['lead_id'] ?? null,
+                $row['owner_user_id'] ?? null,
+                $row['location_id'] ?? null,
+                $row['source'] ?? 'crm_import',
+                $row['expected_close_at'] ?? null,
+                $row['lost_reason'] ?? null,
+                $row['notes'] ?? null,
+            ]);
+        }
+        fclose($handle);
+        try {
+            $batchId = $this->imports->stage(
+                (string) $tenant->getKey(),
+                (string) $request->user()->getKey(),
+                new UploadedFile($temporary, 'crm-deals.csv', 'text/csv', null, true),
+                'opportunity',
+                $this->idempotencyKey(
+                    $request->header('Idempotency-Key')
+                        ?? 'crm-import:'.substr(hash('sha256', json_encode($rows, JSON_THROW_ON_ERROR)), 0, 24),
+                    'crm-import',
+                ),
+                sourceOrigin: 'crm_json',
+            );
+        } finally {
+            @unlink($temporary);
+        }
+        $this->imports->process((string) $tenant->getKey(), $batchId);
+        $reviewable = CatalogImportItem::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', $tenant->getKey())
+            ->where('batch_id', $batchId)
+            ->where('status', 'needs_review')
+            ->pluck('id')
+            ->mapWithKeys(fn (string $id): array => [$id => 'approve'])
+            ->all();
+        $this->imports->review(
+            (string) $tenant->getKey(),
+            (string) $request->user()->getKey(),
+            $batchId,
+            $reviewable,
+        );
+        $report = $this->imports->publish(
+            (string) $tenant->getKey(),
+            (string) $request->user()->getKey(),
+            $batchId,
+        );
+        $dealIds = CatalogImportItem::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', $tenant->getKey())
+            ->where('batch_id', $batchId)
+            ->where('status', 'published')
+            ->pluck('aggregate_id');
+        $created = CrmDeal::query()
+            ->withoutGlobalScopes()
+            ->where('tenant_id', $tenant->getKey())
+            ->whereIn('id', $dealIds)
+            ->with(['customerProfile', 'lead', 'stage'])
+            ->get();
 
         return response()->json([
             'message' => 'Oportunidades importadas.',
             'created_count' => $created->count(),
+            'failed_count' => $report->failed,
             'data' => CrmDealResource::collection($created),
         ], 201);
     }
@@ -162,240 +246,133 @@ final class HttpCrmDealResponder extends Controller
         ]);
     }
 
-    public function convertLead(ConvertLeadToCrmDealRequest $request, int $lead, CrmDefaultPipelineService $defaults): JsonResponse
+    public function convertLead(ConvertLeadToCrmDealRequest $request, int $lead): JsonResponse
     {
         $tenant = $request->tenantForRequest();
-        $sourceLead = Lead::query()
-            // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
-            ->withoutGlobalScopes()
-            ->where('tenant_id', (string) $tenant->getKey())
-            ->findOrFail($lead);
+        $data = $request->validated();
+        $overrides = array_filter([
+            'pipeline_id' => $data['pipeline_id'] ?? null,
+            'stage_id' => $data['stage_id'] ?? null,
+            'title' => $data['title'] ?? null,
+            'value_minor' => array_key_exists('value', $data)
+                ? $this->minorFromDecimal($tenant, $data['value'], $data['currency'] ?? null)
+                : null,
+            'currency' => $data['currency'] ?? null,
+            'owner_user_id' => $data['owner_user_id'] ?? null,
+            'expected_close_date' => $data['expected_close_at'] ?? null,
+            'notes' => $data['notes'] ?? null,
+        ], static fn (mixed $value): bool => $value !== null && $value !== '');
+        $result = $this->writer->convertLead(
+            (string) $tenant->getKey(),
+            (string) $request->user()->getKey(),
+            $lead,
+            $this->idempotencyKey($request->header('Idempotency-Key'), "crm-lead:{$lead}"),
+            $overrides,
+        );
 
-        $existingDeal = CrmDeal::query()
-            // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
-            ->withoutGlobalScopes()
-            ->where('tenant_id', (string) $tenant->getKey())
-            ->where('lead_id', $sourceLead->getKey())
-            ->first();
-
-        if ($existingDeal instanceof CrmDeal) {
-            return (new CrmDealResource($existingDeal->load(['customerProfile', 'lead', 'stage'])))
-                ->response()
-                ->setStatusCode(200);
-        }
-
-        $pipeline = $request->validated('pipeline_id')
-            ? CrmPipeline::query()
-                // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
-                ->withoutGlobalScopes()
-                ->where('tenant_id', (string) $tenant->getKey())
-                ->where('is_active', true)
-                ->findOrFail((int) $request->validated('pipeline_id'))
-            : $defaults->ensureForTenant($tenant);
-
-        $stage = $request->validated('stage_id')
-            ? CrmStage::query()
-                // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
-                ->withoutGlobalScopes()
-                ->where('tenant_id', (string) $tenant->getKey())
-                ->where('crm_pipeline_id', $pipeline->getKey())
-                ->findOrFail((int) $request->validated('stage_id'))
-            : $pipeline->stages()->where('is_default', true)->first()
-                ?? $pipeline->stages()->orderBy('sort_order')->firstOrFail();
-
-        $customerProfile = $this->customerProfileForLead($tenant, $sourceLead);
-        $data = $this->validatedPayload($tenant, array_filter([
-            'pipeline_id' => $pipeline->getKey(),
-            'stage_id' => $stage->getKey(),
-            'customer_profile_id' => $customerProfile?->getKey(),
-            'lead_id' => $sourceLead->getKey(),
-            'title' => $request->validated('title') ?: "Oportunidad: {$sourceLead->name}",
-            'value' => $request->validated('value') ?? 0,
-            'currency' => $request->validated('currency') ?? 'HNL',
-            'owner_user_id' => $request->validated('owner_user_id'),
-            'expected_close_at' => $request->validated('expected_close_at'),
-            'source' => $sourceLead->source ?: 'lead_conversion',
-            'notes' => $request->validated('notes') ?: $sourceLead->message,
-        ], static fn (mixed $value): bool => $value !== null && $value !== ''));
-
-        // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
-        $deal = CrmDeal::query()->withoutGlobalScopes()->forceCreate($data);
-        $sourceLead->forceFill([
-            'customer_profile_id' => $customerProfile?->getKey(),
-            'status' => 'converted',
-        ])->save();
-
-        return (new CrmDealResource($deal->load(['customerProfile', 'lead', 'stage'])))
+        return (new CrmDealResource($result->deal->load(['customerProfile', 'lead', 'stage'])))
             ->response()
-            ->setStatusCode(201);
+            ->setStatusCode($result->replayed ? 200 : 201);
     }
 
     public function update(UpdateCrmDealRequest $request, int $deal): CrmDealResource
     {
         $tenant = $request->tenantForRequest();
-        $crmDeal = $this->dealForTenant($tenant, $deal);
-        $this->assertTenantRecord($tenant, $crmDeal);
+        $data = $request->validated();
+        $result = $this->writer->update(new UpdateOpportunityCommand(
+            tenantId: (string) $tenant->getKey(),
+            actorId: (string) $request->user()->getKey(),
+            dealId: $deal,
+            title: isset($data['title']) ? (string) $data['title'] : null,
+            valueMinor: array_key_exists('value', $data) && $data['value'] !== null
+                ? $this->minorFromDecimal($tenant, $data['value'], $data['currency'] ?? null)
+                : null,
+            currency: isset($data['currency']) ? (string) $data['currency'] : null,
+            customerProfileId: isset($data['customer_profile_id']) ? (int) $data['customer_profile_id'] : null,
+            customerProfileSpecified: array_key_exists('customer_profile_id', $data),
+            leadId: isset($data['lead_id']) ? (int) $data['lead_id'] : null,
+            leadSpecified: array_key_exists('lead_id', $data),
+            ownerUserId: isset($data['owner_user_id']) ? (string) $data['owner_user_id'] : null,
+            ownerSpecified: array_key_exists('owner_user_id', $data),
+            locationId: isset($data['location_id']) ? (string) $data['location_id'] : null,
+            locationSpecified: array_key_exists('location_id', $data),
+            source: isset($data['source']) ? (string) $data['source'] : null,
+            sourceSpecified: array_key_exists('source', $data),
+            expectedCloseDate: isset($data['expected_close_at']) ? (string) $data['expected_close_at'] : null,
+            expectedCloseDateSpecified: array_key_exists('expected_close_at', $data),
+            lostReason: isset($data['lost_reason']) ? (string) $data['lost_reason'] : null,
+            lostReasonSpecified: array_key_exists('lost_reason', $data),
+            notes: isset($data['notes']) ? (string) $data['notes'] : null,
+            notesSpecified: array_key_exists('notes', $data),
+        ));
+        if (isset($data['stage_id'])) {
+            $result = $this->writer->moveStage(new MoveOpportunityStageCommand(
+                tenantId: (string) $tenant->getKey(),
+                actorId: (string) $request->user()->getKey(),
+                dealId: $deal,
+                stageId: (int) $data['stage_id'],
+                lostReason: isset($data['lost_reason']) ? (string) $data['lost_reason'] : null,
+            ));
+        }
 
-        $data = $this->validatedPayload($tenant, $request->validated(), $crmDeal);
-        unset($data['tenant_id']);
-
-        $crmDeal->fill($data)->save();
-
-        return new CrmDealResource($crmDeal->refresh()->load(['customerProfile', 'lead', 'stage']));
+        return new CrmDealResource($result->deal->refresh()->load(['customerProfile', 'lead', 'stage']));
     }
 
     public function moveStage(MoveCrmDealStageRequest $request, int $deal): CrmDealResource
     {
         $tenant = $request->tenantForRequest();
-        $crmDeal = $this->dealForTenant($tenant, $deal);
-        $this->assertTenantRecord($tenant, $crmDeal);
+        $result = $this->writer->moveStage(new MoveOpportunityStageCommand(
+            tenantId: (string) $tenant->getKey(),
+            actorId: (string) $request->user()->getKey(),
+            dealId: $deal,
+            stageId: (int) $request->validated('stage_id'),
+        ));
 
-        $stage = CrmStage::query()
-            // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
-            ->withoutGlobalScopes()
-            ->where('tenant_id', $tenant->getKey())
-            ->where('crm_pipeline_id', $crmDeal->crm_pipeline_id)
-            ->findOrFail((int) $request->validated('stage_id'));
-
-        $crmDeal->forceFill([
-            'crm_stage_id' => $stage->getKey(),
-            'status' => $this->statusForStage($stage),
-            'closed_at' => $stage->type === CrmStage::TYPE_OPEN ? null : ($crmDeal->closed_at ?? now()),
-        ])->save();
-
-        return new CrmDealResource($crmDeal->refresh()->load(['customerProfile', 'lead', 'stage']));
+        return new CrmDealResource($result->deal->refresh()->load(['customerProfile', 'lead', 'stage']));
     }
 
     public function destroy(DeleteCrmDealRequest $request, int $deal): JsonResponse
     {
         $tenant = $request->tenantForRequest();
-        $crmDeal = $this->dealForTenant($tenant, $deal);
-        $this->assertTenantRecord($tenant, $crmDeal);
-
-        $crmDeal->delete();
+        $this->writer->archive(
+            (string) $tenant->getKey(),
+            (string) $request->user()->getKey(),
+            $deal,
+        );
 
         return response()->json([
             'message' => 'Deal eliminado.',
         ]);
     }
 
-    /**
-     * @param  array<string, mixed>  $data
-     * @return array<string, mixed>
-     */
-    private function validatedPayload(Tenant $tenant, array $data, ?CrmDeal $deal = null): array
+    private function idempotencyKey(?string $provided, string $prefix): string
     {
-        $pipelineId = (int) ($data['pipeline_id'] ?? $deal?->crm_pipeline_id);
-        $stageId = (int) ($data['stage_id'] ?? $deal?->crm_stage_id);
+        $provided = trim((string) $provided);
 
-        $pipeline = CrmPipeline::query()
-            // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
-            ->withoutGlobalScopes()
-            ->where('tenant_id', $tenant->getKey())
-            ->where('is_active', true)
-            ->findOrFail($pipelineId);
-
-        $stage = CrmStage::query()
-            // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
-            ->withoutGlobalScopes()
-            ->where('tenant_id', $tenant->getKey())
-            ->where('crm_pipeline_id', $pipeline->getKey())
-            ->findOrFail($stageId);
-
-        $payload = [
-            'tenant_id' => (string) $tenant->getKey(),
-            'crm_pipeline_id' => $pipeline->getKey(),
-            'crm_stage_id' => $stage->getKey(),
-            'status' => (string) ($data['status'] ?? $deal?->status ?? $this->statusForStage($stage)),
-            'currency' => strtoupper((string) ($data['currency'] ?? $deal?->currency ?? 'HNL')),
-        ];
-
-        foreach (['title', 'value', 'source', 'expected_close_at', 'closed_at', 'lost_reason', 'notes'] as $field) {
-            if (array_key_exists($field, $data)) {
-                $payload[$field] = $data[$field];
-            }
-        }
-
-        foreach ([
-            'customer_profile_id' => CustomerProfile::class,
-            'lead_id' => Lead::class,
-            'owner_user_id' => User::class,
-            'location_id' => Location::class,
-        ] as $field => $modelClass) {
-            if (array_key_exists($field, $data)) {
-                $payload[$field] = $this->nullableTenantRecordId($tenant, $modelClass, $data[$field]);
-            }
-        }
-
-        if (($payload['status'] ?? null) === CrmDeal::STATUS_OPEN) {
-            $payload['closed_at'] = null;
-        } elseif (! array_key_exists('closed_at', $payload)) {
-            $payload['closed_at'] = $deal?->closed_at ?? now();
-        }
-
-        return $payload;
+        return $provided === '' ? $prefix.':'.Str::uuid() : mb_substr($provided, 0, 160);
     }
 
-    private function assertTenantRecord(Tenant $tenant, CrmDeal $deal): void
+    private function minorFromDecimal(Tenant $tenant, mixed $value, mixed $currency): int
     {
-        abort_unless((string) $deal->tenant_id === (string) $tenant->getKey(), 404);
+        $market = $this->marketResolver->resolveOrNull($tenant);
+        if (! $market instanceof MarketContext) {
+            throw ValidationException::withMessages([
+                'market' => ['Tenant market context is required for CRM money.'],
+            ]);
+        }
+        $currencyCode = strtoupper((string) ($currency ?: $market->currencyCode));
+        $minorUnit = DB::table('currencies')->where('code', $currencyCode)->value('minor_unit');
+        if ($minorUnit === null) {
+            throw new \InvalidArgumentException("Currency [{$currencyCode}] is not configured.");
+        }
+
+        return (int) round((float) $value * (10 ** (int) $minorUnit));
     }
 
     /**
-     * @param  class-string<\Illuminate\Database\Eloquent\Model>  $modelClass
+     * @param  array<string, mixed>  $filters
      */
-    private function nullableTenantRecordId(Tenant $tenant, string $modelClass, mixed $id): mixed
-    {
-        if ($id === null || $id === '') {
-            return null;
-        }
-
-        $record = $modelClass::query()
-            // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
-            ->withoutGlobalScopes()
-            ->where('tenant_id', $tenant->getKey())
-            ->findOrFail($id);
-
-        return $record->getKey();
-    }
-
-    private function statusForStage(CrmStage $stage): string
-    {
-        return match ($stage->type) {
-            CrmStage::TYPE_WON => CrmDeal::STATUS_WON,
-            CrmStage::TYPE_LOST => CrmDeal::STATUS_LOST,
-            default => CrmDeal::STATUS_OPEN,
-        };
-    }
-
-    private function dealForTenant(Tenant $tenant, int $dealId): CrmDeal
-    {
-        return CrmDeal::query()
-            // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
-            ->withoutGlobalScopes()
-            ->where('tenant_id', $tenant->getKey())
-            ->findOrFail($dealId);
-    }
-
-    /**
-     * @return array{pipeline: CrmPipeline, stage: CrmStage}
-     */
-    private function defaultPipelineAndStage(Tenant $tenant): array
-    {
-        $pipeline = app(CrmDefaultPipelineService::class)->ensureForTenant($tenant);
-        $stage = $pipeline->stages()->where('is_default', true)->first()
-            ?? $pipeline->stages()->orderBy('sort_order')->firstOrFail();
-
-        return [
-            'pipeline' => $pipeline,
-            'stage' => $stage,
-        ];
-    }
-
-    /**
-     * @param array<string, mixed> $filters
-     */
-    private function exportQuery(Tenant $tenant, array $filters): \Illuminate\Database\Eloquent\Builder
+    private function exportQuery(Tenant $tenant, array $filters): Builder
     {
         return CrmDeal::query()
             // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
@@ -411,53 +388,5 @@ final class HttpCrmDealResponder extends Controller
     private function safeCsv(string $value): string
     {
         return preg_match('/^[=+\-@]/', $value) === 1 ? "'{$value}" : $value;
-    }
-
-    private function customerProfileForLead(Tenant $tenant, Lead $lead): ?CustomerProfile
-    {
-        if ($lead->customer_profile_id !== null) {
-            return CustomerProfile::query()
-                // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
-                ->withoutGlobalScopes()
-                ->where('tenant_id', (string) $tenant->getKey())
-                ->find($lead->customer_profile_id);
-        }
-
-        $query = CustomerProfile::query()
-            // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
-            ->withoutGlobalScopes()
-            ->where('tenant_id', (string) $tenant->getKey());
-
-        $existing = null;
-        if (filled($lead->email)) {
-            $existing = (clone $query)->where('normalized_email', strtolower((string) $lead->email))->first();
-        }
-
-        if (! $existing instanceof CustomerProfile && filled($lead->phone)) {
-            $existing = (clone $query)->where('normalized_phone', preg_replace('/\D+/', '', (string) $lead->phone))->first();
-        }
-
-        if ($existing instanceof CustomerProfile) {
-            return $existing;
-        }
-
-        if (blank($lead->name) && blank($lead->email) && blank($lead->phone)) {
-            return null;
-        }
-
-        return CustomerProfile::query()
-            // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
-            ->withoutGlobalScopes()
-            ->forceCreate([
-                'tenant_id' => (string) $tenant->getKey(),
-                'name' => (string) ($lead->name ?: 'Lead sin nombre'),
-                'email' => $lead->email,
-                'phone' => $lead->phone,
-                'preferred_channel' => filled($lead->phone) ? 'whatsapp' : 'email',
-                'lifecycle_stage' => CustomerProfile::LIFECYCLE_PROSPECT,
-                'customer_segment' => CustomerProfile::SEGMENT_PROSPECT,
-                'acquisition_channel' => $lead->source,
-                'last_lead_at' => $lead->created_at,
-            ]);
     }
 }

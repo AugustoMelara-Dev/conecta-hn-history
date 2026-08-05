@@ -13,7 +13,7 @@ final class OrderEntity
 {
     public function __construct(
         public ?int $id,
-        public int $tenantId,
+        public string $tenantId,
         public int $customerId,
         public string $orderNumber,
         public string $customerName,

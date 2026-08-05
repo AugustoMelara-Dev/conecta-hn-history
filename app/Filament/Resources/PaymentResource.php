@@ -13,6 +13,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -271,10 +272,10 @@ class PaymentResource extends Resource
 
                             if ($tenant) {
                                 // Calcular fecha de expiración
-                                $currentExpiry = $tenant->plan_expires_at;
+                                $currentExpiry = $tenant->getAttribute('plan_expires_at');
 
                                 // Si ya es PRO y no ha expirado, sumar 30 días
-                                if ($tenant->is_pro && $currentExpiry && $currentExpiry->isFuture()) {
+                                if ($tenant->is_pro && $currentExpiry instanceof Carbon && $currentExpiry->isFuture()) {
                                     $newExpiry = $currentExpiry->addDays(30);
                                 } else {
                                     // Nueva suscripción: 30 días desde ahora
@@ -282,11 +283,11 @@ class PaymentResource extends Resource
                                 }
 
                                 // Aplicar cambios al Tenant
-                                $tenant->update([
+                                $tenant->forceFill([
                                     'is_pro' => true,
                                     'is_active' => true, // Reactivar si estaba suspendido
                                     'plan_expires_at' => $newExpiry,
-                                ]);
+                                ])->save();
 
                                 // 3. Notificar al usuario propietario
                                 $user = $tenant->user;

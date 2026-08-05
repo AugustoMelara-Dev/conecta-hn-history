@@ -6,6 +6,7 @@ namespace App\Filament\App\Widgets;
 
 use App\Domain\TenantGovernance\Services\TenantOnboardingProgressService;
 use App\Models\Tenant;
+use App\Models\User;
 use Filament\Facades\Filament;
 use Filament\Widgets\Widget;
 
@@ -22,7 +23,20 @@ final class OnboardingActivationWidget extends Widget
 
     public static function canView(): bool
     {
-        return Filament::getTenant() instanceof Tenant;
+        $tenant = Filament::getTenant();
+        $user = auth()->user();
+
+        return $tenant instanceof Tenant
+            && $user instanceof User
+            && $user->canAccessTenant($tenant);
+    }
+
+    public function dismissFirstRunWizard(): void
+    {
+        [$tenant, $user] = $this->authorizedContext();
+
+        app(TenantOnboardingProgressService::class)
+            ->dismissFirstRunWizard($tenant, $user, 'owner_deferred');
     }
 
     /**
@@ -31,33 +45,19 @@ final class OnboardingActivationWidget extends Widget
      *   roleLabel:string,
      *   moduleLabel:string,
      *   businessLabel:string,
-     *   milestones:list<array{key:string,title:string,copy:string,href:string,completed:bool}>,
+     *   milestones:list<array{key:string,title:string,copy:string,href:string,completed:bool,status:string,blockedReason:?string}>,
      *   nextAction:array{key:string,title:string,copy:string,href:string},
-     *   supportTips:list<array{title:string,copy:string}>
+     *   supportTips:list<array{title:string,copy:string}>,
+     *   wizard:array<string,mixed>
      * }
      */
     protected function getViewData(): array
     {
         $moduleContext = $this->resolveModuleContext();
-        $tenant = Filament::getTenant();
-        if (! $tenant instanceof Tenant) {
-            return [
-                'progress' => 0,
-                'roleLabel' => 'Sin rol',
-                'moduleLabel' => 'General',
-                'businessLabel' => 'Negocio',
-                'milestones' => [],
-                'nextAction' => [
-                    'key' => 'none',
-                    'title' => 'Sin acciones disponibles',
-                    'copy' => 'No se detecto un tenant activo.',
-                    'href' => '',
-                ],
-                'supportTips' => [],
-            ];
-        }
-
-        $snapshot = app(TenantOnboardingProgressService::class)->persist($tenant, auth()->user(), $moduleContext);
+        [$tenant, $user] = $this->authorizedContext();
+        $service = app(TenantOnboardingProgressService::class);
+        $snapshot = $service->persist($tenant, $user, $moduleContext);
+        $wizard = $service->firstRunWizardFor($tenant, $user, $moduleContext);
         $role = (string) ($snapshot['role'] ?? 'owner');
 
         return [
@@ -77,7 +77,24 @@ final class OnboardingActivationWidget extends Widget
                 'copy' => 'No se detecto una siguiente accion.',
                 'href' => '',
             ]),
+            'wizard' => $wizard,
         ];
+    }
+
+    /** @return array{Tenant, User} */
+    private function authorizedContext(): array
+    {
+        $tenant = Filament::getTenant();
+        $user = auth()->user();
+
+        abort_unless(
+            $tenant instanceof Tenant
+                && $user instanceof User
+                && $user->canAccessTenant($tenant),
+            403,
+        );
+
+        return [$tenant, $user];
     }
 
     private function resolveModuleContext(): ?string

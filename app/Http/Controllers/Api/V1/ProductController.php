@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Application\Products\CanonicalProductWriter;
+use App\Application\Products\Commands\CreateCanonicalProductCommand;
 use App\Domain\Product\Contracts\ProductReader;
+use App\Domain\Shared\Services\TenantContext;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ProductResource;
+use App\Models\Tenant;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use OpenApi\Attributes as OA;
@@ -22,7 +26,9 @@ use OpenApi\Attributes as OA;
 final class ProductController extends Controller
 {
     public function __construct(
-        private readonly ProductReader $reader
+        private readonly ProductReader $reader,
+        private readonly CanonicalProductWriter $productWriter,
+        private readonly TenantContext $tenantContext,
     ) {}
 
     #[OA\Get(
@@ -39,12 +45,7 @@ final class ProductController extends Controller
     )]
     public function index(Request $request): AnonymousResourceCollection
     {
-        // 1. Resolve Tenant safely (Public API context)
-        $tenantId = (int) $request->input('tenant_id');
-
-        if (! $tenantId) {
-            abort(400, 'tenant_id is required');
-        }
+        $tenantId = $this->resolveTenant($request);
 
         // 2. Delegate to Reader (Hexagonal)
         $products = $this->reader->search(
@@ -74,11 +75,7 @@ final class ProductController extends Controller
     )]
     public function show(int $id, Request $request): ProductResource
     {
-        $tenantId = (int) $request->input('tenant_id');
-
-        if (! $tenantId) {
-            abort(400, 'tenant_id is required');
-        }
+        $tenantId = $this->resolveTenant($request);
 
         $product = $this->reader->find($tenantId, $id);
 
@@ -94,10 +91,22 @@ final class ProductController extends Controller
      */
     public function store(
         \App\Http\Requests\StoreProductRequest $request,
-        \App\Application\Products\Handlers\CreateProductHandler $handler
     ): \Illuminate\Http\JsonResponse {
-        $command = $request->toCommand();
-        $product = $handler->handle($command);
+        $data = $request->validated();
+        $tenantId = $this->trustedWriteTenant($request);
+        try {
+            $product = $this->productWriter->create(new CreateCanonicalProductCommand(
+                tenantId: $tenantId,
+                idempotencyKey: $this->idempotencyKey($request),
+                name: (string) $data['name'],
+                priceMinor: $this->minorHnl($data['price']),
+                initialStockQuantity: (int) ($data['stock_quantity'] ?? 0),
+                attributes: $this->writeAttributes($data),
+                published: (bool) ($data['is_visible'] ?? true),
+            ));
+        } catch (\InvalidArgumentException $exception) {
+            abort(422, $exception->getMessage());
+        }
 
         return response()->json(new ProductResource($product), 201);
     }
@@ -107,20 +116,95 @@ final class ProductController extends Controller
      */
     public function update(
         \App\Http\Requests\Tenant\UpdateProductRequest $request,
-        \App\Application\Products\Handlers\UpdateProductHandler $handler,
-        int $id
+        int $product
     ): \Illuminate\Http\JsonResponse {
-        // Resolve tenant ownership logic handled by Middleware/Request
-        // But we need to ensure ID matches or is validated?
-        // Middleware `EnsureTenantOwnership` already checked `Product` model binding?
-        // If route is /products/{product}, and model binding is on, $id might be object.
-        // But signature says `int $id`. Laravel adapts.
-        // Step 4404 `EnsureTenantOwnership` checks model binding.
-        // If we use `int $id`, ensure we are safe. Handler checks ID usually.
+        $data = $request->validated();
+        $result = \Illuminate\Support\Facades\DB::transaction(function () use ($request, $product, $data) {
+            $attributes = $this->writeAttributes($data);
+            $attributes['name'] = (string) $data['name'];
+            $attributes['price_minor'] = $this->minorHnl($data['price']);
+            $tenantId = $this->trustedWriteTenant($request);
+            $updated = $this->productWriter->update($tenantId, $product, $attributes);
+            if (array_key_exists('stock_quantity', $data)) {
+                try {
+                    $updated = $this->productWriter->setStock($tenantId, $product, (int) $data['stock_quantity'], $this->idempotencyKey($request));
+                } catch (\LogicException $exception) {
+                    abort(422, $exception->getMessage());
+                }
+            }
+            if (array_key_exists('is_visible', $data)) {
+                $updated = $this->productWriter->publish($tenantId, $product, (bool) $data['is_visible']);
+            }
 
-        $command = $request->toCommand($id);
-        $result = $handler->handle($command);
+            return $updated;
+        });
 
         return response()->json(new ProductResource($result), 200);
+    }
+
+    private function resolveTenant(Request $request): string
+    {
+        $validated = $request->validate([
+            'tenant_id' => ['required', 'uuid'],
+        ]);
+
+        $tenant = Tenant::query()
+            ->where('is_active', true)
+            ->findOrFail((string) $validated['tenant_id']);
+
+        $context = app(TenantContext::class);
+        $context->setTenant((string) $tenant->getKey());
+        app()->instance('currentTenant', $tenant);
+        app()->instance('current_tenant', $tenant);
+
+        return (string) $tenant->getKey();
+    }
+
+    /** The request body is never an authority source for mutation ownership. */
+    private function trustedWriteTenant(Request $request): string
+    {
+        if ($this->tenantContext->isInitialized() && ! $this->tenantContext->isRoot()) {
+            return (string) $this->tenantContext->id();
+        }
+
+        $tenantId = $request->user()?->tenant_id;
+        abort_unless(is_string($tenantId) && \Illuminate\Support\Str::isUuid($tenantId), 403);
+
+        return $tenantId;
+    }
+
+    /** @param array<string, mixed> $data @return array<string, mixed> */
+    private function writeAttributes(array $data): array
+    {
+        return array_filter([
+            'category_id' => $data['category_id'] ?? null,
+            'menu_section_id' => $data['menu_section_id'] ?? null,
+            'description' => $data['description'] ?? null,
+            'allow_backorders' => $data['allow_backorders'] ?? null,
+            'low_stock_threshold' => $data['low_stock_threshold'] ?? null,
+            'is_featured' => $data['is_featured'] ?? null,
+            'is_new' => $data['is_new'] ?? null,
+            'variants' => $data['variants'] ?? null,
+            'manage_stock' => array_key_exists('manage_stock', $data) ? (bool) $data['manage_stock'] : null,
+        ], static fn (mixed $value): bool => $value !== null);
+    }
+
+    /** Decimal HNL is adapter-only; application commands receive integer minor units. */
+    private function minorHnl(mixed $decimal): int
+    {
+        if (! is_string($decimal) || ! preg_match('/^\d+(?:\.\d{1,2})?$/', $decimal)) {
+            abort(422, 'price must be an exact HNL decimal with at most two places');
+        }
+        [$whole, $fraction] = array_pad(explode('.', $decimal, 2), 2, '');
+
+        return ((int) $whole * 100) + (int) str_pad($fraction, 2, '0');
+    }
+
+    private function idempotencyKey(Request $request): string
+    {
+        $key = $request->header('Idempotency-Key');
+        abort_unless(is_string($key) && trim($key) !== '' && strlen($key) <= 191, 422, 'Idempotency-Key is required and must be at most 191 characters.');
+
+        return $key;
     }
 }

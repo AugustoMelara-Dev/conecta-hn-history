@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Widgets;
 
-use App\Models\Order;
+use App\Domain\Analytics\Enums\CommercialOutcome;
 use App\Models\Tenant;
+use App\Models\VerifiedCommercialOutcome;
 use Filament\Facades\Filament;
 use Filament\Widgets\ChartWidget;
 
@@ -13,7 +14,7 @@ class RevenueChart extends ChartWidget
 {
     protected static bool $isLazy = false;
 
-    protected static ?string $heading = 'Ingresos por Ordenes (Ultimos 30 dias)';
+    protected static ?string $heading = 'Ingresos verificados (ultimos 30 dias)';
 
     protected static ?int $sort = 2;
 
@@ -31,15 +32,19 @@ class RevenueChart extends ChartWidget
         }
 
         /** @var array<string, float> $aggregates */
-        $aggregates = Order::query()
+        $aggregates = VerifiedCommercialOutcome::query()
             ->where('tenant_id', (string) $tenant->getKey())
-            ->where('status', 'delivered')
-            ->whereBetween('created_at', [now()->subDays(30)->startOfDay(), now()->endOfDay()])
-            ->selectRaw('DATE(created_at) as order_date, COALESCE(SUM(total), 0) as aggregate')
+            ->whereIn('outcome', [
+                CommercialOutcome::OrderPaid->value,
+                CommercialOutcome::OrderRefunded->value,
+            ])
+            ->where('currency', 'HNL')
+            ->whereBetween('source_occurred_at', [now()->subDays(30)->startOfDay(), now()->endOfDay()])
+            ->selectRaw('DATE(source_occurred_at) as order_date, COALESCE(SUM(amount_minor), 0) as aggregate')
             ->groupBy('order_date')
             ->orderBy('order_date')
             ->pluck('aggregate', 'order_date')
-            ->map(fn ($value): float => (float) $value)
+            ->map(fn ($value): float => ((int) $value) / 100)
             ->all();
 
         $labels = [];
@@ -55,7 +60,7 @@ class RevenueChart extends ChartWidget
         return [
             'datasets' => [
                 [
-                    'label' => 'Ingresos (L.)',
+                    'label' => 'Ingresos verificados netos (L.)',
                     'data' => $data,
                     'borderColor' => '#000000',
                     'backgroundColor' => 'rgba(0, 0, 0, 0.1)',

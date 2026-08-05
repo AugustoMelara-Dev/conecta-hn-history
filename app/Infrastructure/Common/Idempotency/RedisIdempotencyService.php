@@ -6,6 +6,9 @@ namespace App\Infrastructure\Common\Idempotency;
 
 use App\Application\Common\Contracts\IdempotencyServiceInterface;
 use App\Application\Common\Exceptions\ConcurrentRequestException;
+use App\Application\Sales\DTOs\OrderItemData;
+use App\Application\Sales\Results\CreateOrderResult;
+use App\Application\Tenant\Results\RegisterTenantResult;
 use Illuminate\Cache\Repository as CacheRepository;
 use Illuminate\Redis\Connections\Connection;
 
@@ -37,7 +40,7 @@ final class RedisIdempotencyService implements IdempotencyServiceInterface
             return null;
         }
 
-        $data = unserialize($value);
+        $data = $this->decode($value);
 
         // Unwrap envelope if present
         if (is_array($data) && isset($data['status'])) {
@@ -58,7 +61,7 @@ final class RedisIdempotencyService implements IdempotencyServiceInterface
             return null;
         }
 
-        $data = unserialize($value);
+        $data = $this->decode($value);
 
         if (is_array($data) && isset($data['status'])) {
             return $data['status'];
@@ -112,6 +115,23 @@ final class RedisIdempotencyService implements IdempotencyServiceInterface
         }
 
         $this->store->put($this->formatKey($key), $payload, $ttlSeconds);
+    }
+
+    private function decode(mixed $value): mixed
+    {
+        if (! is_string($value) || $value === '') {
+            return null;
+        }
+
+        $decoded = @unserialize($value, [
+            'allowed_classes' => [
+                RegisterTenantResult::class,
+                CreateOrderResult::class,
+                OrderItemData::class,
+            ],
+        ]);
+
+        return $decoded === false && $value !== serialize(false) ? null : $decoded;
     }
 
     private function getRaw(string $key): mixed

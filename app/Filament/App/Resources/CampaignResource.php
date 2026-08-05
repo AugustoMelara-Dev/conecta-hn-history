@@ -134,8 +134,14 @@ class CampaignResource extends Resource
                             return;
                         }
 
-                        // Dispatch the job to send emails (with tenant ID for security)
-                        \App\Domain\Marketing\Jobs\SendCampaignEmail::dispatch($record->id, $tenant->id);
+                        // Queue one isolated delivery per current follower.
+                        foreach ($tenant->followers()->select('users.id')->cursor() as $follower) {
+                            \App\Domain\Marketing\Jobs\SendCampaignEmail::dispatch(
+                                tenantId: (string) $tenant->id,
+                                campaignId: (int) $record->id,
+                                userId: (string) $follower->id,
+                            );
+                        }
 
                         // Update campaign status
                         $record->update([

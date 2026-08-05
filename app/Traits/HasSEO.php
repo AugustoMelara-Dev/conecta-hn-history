@@ -27,7 +27,7 @@ trait HasSEO
      *
      * Cascada:
      * 1. seo_title personalizado
-     * 2. "{name} | Vito Business OS"
+     * 2. "{name} | Dovra AI"
      */
     public function getSeoTitle(): string
     {
@@ -37,7 +37,7 @@ trait HasSEO
 
         $name = $this->name ?? $this->title ?? 'Página';
 
-        return "{$name} | Vito Business OS";
+        return "{$name} | Dovra AI";
     }
 
     /**
@@ -60,7 +60,7 @@ trait HasSEO
 
         $name = $this->name ?? $this->title ?? 'esta página';
 
-        return "Descubre {$name} en Vito Business OS - Directorio y plataforma para negocios locales.";
+        return "Descubre {$name} en Dovra AI - Directorio y plataforma para negocios locales.";
     }
 
     /**

@@ -7,6 +7,7 @@ namespace App\Infrastructure\Directory;
 use App\Infrastructure\Persistence\Eloquent\Scopes\TenantScope;
 use App\Models\Product;
 use App\Models\Service;
+use App\Models\Tenant;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
@@ -22,14 +23,31 @@ final class DirectoryGuideService
      *     meta:array<string, mixed>
      * }
      */
-    public function answer(string $message, ?float $budget = null, ?string $city = null, ?string $category = null): array
-    {
+    public function answer(
+        string $message,
+        ?float $budget = null,
+        ?string $city = null,
+        ?string $category = null,
+        array $semanticCandidates = [],
+    ): array {
         $term = $this->normalizeTerm($message);
-        $products = $this->publicProducts($term, $budget, $city, $category);
-        $services = $this->publicServices($term, $budget, $city, $category);
+        $products = $this->publicProducts(
+            $term,
+            $budget,
+            $city,
+            $category,
+            $this->candidateIds($semanticCandidates, 'product'),
+        );
+        $services = $this->publicServices(
+            $term,
+            $budget,
+            $city,
+            $category,
+            $this->candidateIds($semanticCandidates, 'service'),
+        );
 
-        $items = $products
-            ->merge($services)
+        $items = collect($products->all())
+            ->merge($services->all())
             ->sortBy([
                 ['price', 'asc'],
                 ['business_name', 'asc'],
@@ -45,10 +63,14 @@ final class DirectoryGuideService
                     ['label' => 'Quitar filtros', 'href' => route('directory.index', absolute: false)],
                 ],
                 'items' => [],
+                'source' => 'public_directory',
+                'fallback' => true,
                 'meta' => [
                     'mode' => 'deterministic_public_directory',
                     'llm_used' => false,
                     'privacy_scope' => 'public_directory_only',
+                    'source' => 'public_directory',
+                    'fallback' => true,
                 ],
             ];
         }
@@ -60,12 +82,34 @@ final class DirectoryGuideService
                 'href' => $item['business_url'],
             ])->unique('href')->values()->all(),
             'items' => $items->all(),
+            'source' => 'public_directory',
+            'fallback' => true,
             'meta' => [
                 'mode' => 'deterministic_public_directory',
                 'llm_used' => false,
                 'privacy_scope' => 'public_directory_only',
+                'source' => 'public_directory',
+                'fallback' => true,
             ],
         ];
+    }
+
+    /**
+     * @param  array<int, mixed>  $candidates
+     * @return list<string>
+     */
+    private function candidateIds(array $candidates, string $resourceType): array
+    {
+        return collect($candidates)
+            ->filter(static fn (mixed $candidate): bool => is_array($candidate)
+                && ($candidate['resource_type'] ?? null) === $resourceType
+                && is_string($candidate['resource_id'] ?? null)
+                && ctype_digit($candidate['resource_id']))
+            ->pluck('resource_id')
+            ->unique()
+            ->take(20)
+            ->values()
+            ->all();
     }
 
     private function normalizeTerm(string $message): string
@@ -84,7 +128,7 @@ final class DirectoryGuideService
     /**
      * @return Collection<int, array<string, mixed>>
      */
-    private function publicProducts(string $term, ?float $budget, ?string $city, ?string $category): Collection
+    private function publicProducts(string $term, ?float $budget, ?string $city, ?string $category, array $candidateIds): Collection
     {
         if (! Schema::hasTable('products') || ! Schema::hasTable('tenants')) {
             return collect();
@@ -93,17 +137,36 @@ final class DirectoryGuideService
         $query = Product::query()
             ->withoutGlobalScope(TenantScope::class)
             ->with([$this->tenantRelationSelect()])
-            ->select($this->productColumns(['id', 'tenant_id', 'name', 'description', 'price', 'is_visible', 'status']))
+            ->select($this->productColumns(['id', 'tenant_id', 'name', 'description', 'price', 'is_active', 'is_visible', 'status', 'manage_stock', 'stock_quantity', 'allow_backorders', 'stock_status']))
             ->whereHas('tenant', fn (Builder $tenant): Builder => $this->applyPublicTenantFilters($tenant, $city, $category));
+
+        if (Schema::hasColumn('products', 'is_active')) {
+            $query->where('is_active', true);
+        }
 
         if (Schema::hasColumn('products', 'is_visible')) {
             $query->where('is_visible', true);
         }
 
+        if (Schema::hasColumn('products', 'manage_stock')) {
+            $hasQuantity = Schema::hasColumn('products', 'stock_quantity');
+            $hasBackorders = Schema::hasColumn('products', 'allow_backorders');
+            $query->where(function (Builder $stock) use ($hasQuantity, $hasBackorders): void {
+                $stock->where('manage_stock', false);
+
+                if ($hasQuantity) {
+                    $stock->orWhere('stock_quantity', '>', 0);
+                }
+
+                if ($hasBackorders) {
+                    $stock->orWhere('allow_backorders', true);
+                }
+            });
+        }
+
         if (Schema::hasColumn('products', 'status')) {
             $query->where(function (Builder $status): void {
-                $status->whereNull('status')
-                    ->orWhereIn('status', ['active', 'approved', 'published']);
+                $status->whereIn('status', ['active', 'approved', 'published']);
             });
         }
 
@@ -111,27 +174,42 @@ final class DirectoryGuideService
             $query->where('price', '<=', $budget);
         }
 
-        $this->applyTextSearch($query, 'products', $term);
+        $this->applyCandidateSearch($query, 'products', $term, $candidateIds);
 
-        return $query
+        /** @var Collection<int, array<string, mixed>> $items */
+        $items = $query
             ->orderBy('price')
             ->limit(8)
             ->get()
-            ->map(fn (Product $product): array => [
-                'type' => 'product',
-                'name' => (string) $product->name,
-                'description' => Str::limit((string) ($product->description ?? ''), 120),
-                'price' => (float) $product->price,
-                'price_label' => 'L. '.number_format((float) $product->price, 2),
-                'business_name' => (string) ($product->tenant?->name ?? 'Negocio local'),
-                'business_url' => $this->tenantUrl($product->tenant?->slug),
-            ]);
+            ->map(function (Product $product): array {
+                $tenant = $product->tenant;
+                $businessName = $tenant instanceof Tenant ? (string) $tenant->name : 'Negocio local';
+                $businessUrl = $this->tenantUrl($tenant instanceof Tenant ? (string) $tenant->slug : null);
+
+                return [
+                    'type' => 'product',
+                    'evidence_id' => 'product:'.$product->getKey(),
+                    'name' => (string) $product->name,
+                    'description' => Str::limit(strip_tags((string) ($product->description ?? '')), 120),
+                    'price' => (float) $product->price,
+                    'price_label' => 'L. '.number_format((float) $product->price, 2),
+                    'business_name' => $businessName,
+                    'business_url' => $businessUrl,
+                    'url' => $businessUrl,
+                    'availability' => (bool) ($product->manage_stock ?? false)
+                        && (int) ($product->stock_quantity ?? 0) <= 0
+                        ? 'backorder'
+                        : 'available',
+                ];
+            });
+
+        return $items;
     }
 
     /**
      * @return Collection<int, array<string, mixed>>
      */
-    private function publicServices(string $term, ?float $budget, ?string $city, ?string $category): Collection
+    private function publicServices(string $term, ?float $budget, ?string $city, ?string $category, array $candidateIds): Collection
     {
         if (! Schema::hasTable('services') || ! Schema::hasTable('tenants')) {
             return collect();
@@ -147,25 +225,38 @@ final class DirectoryGuideService
             $query->where('is_active', true);
         }
 
+
         if ($budget !== null && Schema::hasColumn('services', 'price')) {
             $query->where('price', '<=', $budget);
         }
 
-        $this->applyTextSearch($query, 'services', $term);
+        $this->applyCandidateSearch($query, 'services', $term, $candidateIds);
 
-        return $query
+        /** @var Collection<int, array<string, mixed>> $items */
+        $items = $query
             ->orderBy('price')
             ->limit(8)
             ->get()
-            ->map(fn (Service $service): array => [
-                'type' => 'service',
-                'name' => (string) $service->name,
-                'description' => Str::limit((string) ($service->description ?? ''), 120),
-                'price' => (float) $service->price,
-                'price_label' => 'L. '.number_format((float) $service->price, 2),
-                'business_name' => (string) ($service->tenant?->name ?? 'Negocio local'),
-                'business_url' => $this->tenantUrl($service->tenant?->slug),
-            ]);
+            ->map(function (Service $service): array {
+                $tenant = $service->tenant;
+                $businessName = $tenant instanceof Tenant ? (string) $tenant->name : 'Negocio local';
+                $businessUrl = $this->tenantUrl($tenant instanceof Tenant ? (string) $tenant->slug : null);
+
+                return [
+                    'type' => 'service',
+                    'evidence_id' => 'service:'.$service->getKey(),
+                    'name' => (string) $service->name,
+                    'description' => Str::limit(strip_tags((string) ($service->description ?? '')), 120),
+                    'price' => (float) $service->price,
+                    'price_label' => 'L. '.number_format((float) $service->price, 2),
+                    'business_name' => $businessName,
+                    'business_url' => $businessUrl,
+                    'url' => $businessUrl,
+                    'availability' => 'available',
+                ];
+            });
+
+        return $items;
     }
 
     private function applyPublicTenantFilters(Builder $query, ?string $city, ?string $category): Builder
@@ -187,6 +278,27 @@ final class DirectoryGuideService
         }
 
         return $query;
+    }
+
+    /** @param list<string> $candidateIds */
+    private function applyCandidateSearch(Builder $query, string $table, string $term, array $candidateIds): void
+    {
+        if ($candidateIds === []) {
+            $this->applyTextSearch($query, $table, $term);
+
+            return;
+        }
+
+        $query->where(function (Builder $candidate) use ($table, $term, $candidateIds): void {
+            if ($term !== '') {
+                $this->applyTextSearch($candidate, $table, $term);
+                $candidate->orWhereIn('id', $candidateIds);
+
+                return;
+            }
+
+            $candidate->whereIn('id', $candidateIds);
+        });
     }
 
     private function applyTextSearch(Builder $query, string $table, string $term): void
@@ -241,7 +353,7 @@ final class DirectoryGuideService
             return route('directory.index', absolute: false);
         }
 
-        return route('tenant.microsite.show', ['tenant' => $slug], false);
+        return route('tenant.public.show', ['tenant' => $slug], false);
     }
 
     private function tenantRelationSelect(): string

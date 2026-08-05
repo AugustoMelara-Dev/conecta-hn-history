@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Infrastructure\Shared\Middleware\TenantQueueMiddleware;
 use App\Services\AI\OpenAIService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -58,8 +59,8 @@ class GenerateBusinessProfileJob implements ShouldQueue
     public function __construct(
         public readonly string $businessName,
         public readonly string $description,
-        public readonly int|string $userId,
-        public readonly int|string $tenantId,
+        public readonly string $userId,
+        public readonly string $tenantId,
         public readonly ?string $targetAudience = null,
         public readonly ?string $tone = null,
         public readonly array $keywords = []
@@ -100,7 +101,7 @@ class GenerateBusinessProfileJob implements ShouldQueue
         Log::info('[GenerateBusinessProfileJob] Profile generation completed.', [
             'tenant_id' => $this->tenantId,
             'user_id' => $this->userId,
-            'seo_title' => $result['seo_title'] ?? 'N/A',
+            'seo_title' => $result['seo_title'],
         ]);
     }
 
@@ -114,5 +115,10 @@ class GenerateBusinessProfileJob implements ShouldQueue
             'user_id' => $this->userId,
             'error' => $exception?->getMessage(),
         ]);
+    }
+
+    public function middleware(): array
+    {
+        return [new TenantQueueMiddleware($this->tenantId)];
     }
 }

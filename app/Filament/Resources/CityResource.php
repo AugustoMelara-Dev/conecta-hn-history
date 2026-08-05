@@ -168,7 +168,7 @@ class CityResource extends Resource
                         TextInput::make('meta_title')
                             ->label('Meta Title (SEO)')
                             ->maxLength(70)
-                            ->placeholder('Negocios en [Ciudad] | Vito Business OS')
+                            ->placeholder('Negocios en [Ciudad] | Dovra AI')
                             ->helperText('Titulo para Google. Max 70 caracteres.'),
 
                         TextInput::make('meta_description')

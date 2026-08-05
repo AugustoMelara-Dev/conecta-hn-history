@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use App\Application\Actions\Auth\SocialLoginAction;
-use App\Application\DTOs\Auth\SocialProviderData;
+use App\Application\Shared\DTOs\Auth\SocialProviderData;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;

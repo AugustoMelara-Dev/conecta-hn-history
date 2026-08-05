@@ -23,7 +23,7 @@ final class EloquentProductReadRepository implements ProductReadRepositoryInterf
     /**
      * {@inheritDoc}
      */
-    public function search(int $tenantId, array $filters = [], int $page = 1, int $perPage = 20): array
+    public function search(string $tenantId, array $filters = [], int $page = 1, int $perPage = 20): array
     {
         $query = Product::query()
             ->where('tenant_id', $tenantId)
@@ -71,7 +71,7 @@ final class EloquentProductReadRepository implements ProductReadRepositoryInterf
     /**
      * {@inheritDoc}
      */
-    public function findForDisplay(int $tenantId, int $productId): ?array
+    public function findForDisplay(string $tenantId, int $productId): ?array
     {
         $product = Product::query()
             ->where('tenant_id', $tenantId)

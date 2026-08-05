@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace App\Application\Tenant\Transformers;
 
+use App\Application\Markets\MarketContext;
+use App\Application\Markets\TenantMarketResolver;
 use App\Domain\TenantGovernance\Services\PlanFeatureFlagService;
+use App\Http\Controllers\Public\TenantMicrositeController;
+use App\Models\Location;
 use App\Models\OpeningHour;
 use App\Models\Tenant;
 use Illuminate\Support\Facades\Schema;
@@ -26,12 +30,13 @@ use Illuminate\Support\Str;
  * ║  - Pre-processes ALL display logic so React receives clean JSON          ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  *
- * @see \App\Http\Controllers\Public\TenantMicrositeController - Uses this transformer
+ * @see TenantMicrositeController - Uses this transformer
  */
 final class TenantMicrositeTransformer
 {
     public function __construct(
-        private readonly PlanFeatureFlagService $planService
+        private readonly PlanFeatureFlagService $planService,
+        private readonly TenantMarketResolver $marketResolver,
     ) {}
 
     /**
@@ -42,7 +47,10 @@ final class TenantMicrositeTransformer
      */
     public function transform(Tenant $tenant): array
     {
-        $cityName = $this->tenantCityName($tenant);
+        $market = $this->marketResolver->resolveOrNull($tenant);
+        $location = $this->primaryLocation($tenant);
+        $cityName = $location?->locality?->name ?? $this->tenantCityName($tenant);
+        $address = $location?->address ?? $this->tenantAttribute($tenant, 'address');
 
         return [
             'id' => $tenant->id,
@@ -66,11 +74,19 @@ final class TenantMicrositeTransformer
             'slogan' => $this->tenantAttribute($tenant, 'slogan'),
 
             // Contact info with formatted phone
-            'whatsapp' => $this->planService->formatPhoneWithCountryCode($this->tenantAttribute($tenant, 'whatsapp_number')),
-            'whatsapp_number' => $this->planService->formatPhoneWithCountryCode($this->tenantAttribute($tenant, 'whatsapp_number')),
-            'phone' => $this->planService->formatPhoneWithCountryCode($this->tenantAttribute($tenant, 'phone')),
+            'whatsapp' => $this->formatPhone($this->tenantAttribute($tenant, 'whatsapp_number'), $market),
+            'whatsapp_number' => $this->formatPhone($this->tenantAttribute($tenant, 'whatsapp_number'), $market),
+            'phone' => $this->formatPhone($this->tenantAttribute($tenant, 'phone'), $market),
             'email' => $this->tenantAttribute($tenant, 'email'),
-            'address' => $this->tenantAttribute($tenant, 'address') ?? 'Honduras',
+            'address' => $address,
+
+            'market' => $market === null ? null : [
+                'country_code' => $market->countryCode,
+                'locale' => $market->localeCode,
+                'currency' => $market->currencyCode,
+                'timezone' => $market->timezone,
+                'source' => $market->source,
+            ],
 
             // Location (flat legacy + structured for Map component)
             'city' => $cityName,
@@ -80,8 +96,11 @@ final class TenantMicrositeTransformer
             'location' => [ // Premium: Structured for Map components
                 'lat' => $this->tenantAttribute($tenant, 'latitude') !== null ? (float) $this->tenantAttribute($tenant, 'latitude') : null,
                 'lng' => $this->tenantAttribute($tenant, 'longitude') !== null ? (float) $this->tenantAttribute($tenant, 'longitude') : null,
-                'address' => $this->tenantAttribute($tenant, 'address') ?? 'Honduras',
+                'address' => $address,
                 'city' => $cityName,
+                'locality' => $location?->locality?->name,
+                'administrative_area' => $location?->locality?->administrativeArea?->name,
+                'country_code' => $market?->countryCode,
             ],
 
             // Category
@@ -106,7 +125,7 @@ final class TenantMicrositeTransformer
             ] : null,
 
             // Products embedded in tenant
-            'products' => $this->transformProducts($tenant),
+            'products' => $this->transformProducts($tenant, $market),
             'menuSections' => $tenant->relationLoaded('menuSections') ? $tenant->menuSections : collect(),
 
             // Reviews (Pro feature)
@@ -128,8 +147,9 @@ final class TenantMicrositeTransformer
     /**
      * Transform products collection with SaaS tier feature flagging.
      */
-    public function transformProducts(Tenant $tenant): array
+    public function transformProducts(Tenant $tenant, ?MarketContext $market = null): array
     {
+        $market ??= $this->marketResolver->resolveOrNull($tenant);
         $products = $tenant->relationLoaded('products')
             ? $tenant->products
             : $tenant->products()
@@ -147,14 +167,16 @@ final class TenantMicrositeTransformer
             && Schema::hasTable('modifier_groups')
             && Schema::hasTable('modifier_options');
 
-        return $products->map(function ($product) use ($tenant, $canShowModifiers) {
+        return $products->map(function ($product) use ($tenant, $canShowModifiers, $market) {
             $baseProduct = [
                 'id' => $product->id,
                 'name' => $product->name,
                 'slug' => $product->slug ?? Str::slug($product->name),
                 'description' => $product->description ?? '',
                 'price' => (float) ($product->price ?? 0),
-                'formatted_price' => 'L. '.number_format((float) ($product->price ?? 0), 2),
+                'currency' => $market?->currencyCode,
+                'locale' => $market?->localeCode,
+                'formatted_price' => $this->formatMoney((float) ($product->price ?? 0), $market),
                 'image' => $this->resolveImageUrl($product->image ?? null, 'product'),
                 'is_visible' => (bool) ($product->is_visible ?? true),
                 'is_featured' => (bool) ($product->is_featured ?? false),
@@ -162,7 +184,7 @@ final class TenantMicrositeTransformer
                 'menu_section_id' => $this->modelAttribute($product, 'menu_section_id'),
 
                 // Tenant context for WhatsApp generation
-                'tenant_whatsapp' => $this->planService->formatPhoneWithCountryCode($this->tenantAttribute($tenant, 'whatsapp_number')),
+                'tenant_whatsapp' => $this->formatPhone($this->tenantAttribute($tenant, 'whatsapp_number'), $market),
                 'tenant_name' => $tenant->name,
             ];
 
@@ -180,14 +202,14 @@ final class TenantMicrositeTransformer
                     'is_required' => (bool) ($group->is_required ?? false),
                     'min_selections' => $group->min_selections ?? 0,
                     'max_selections' => $group->max_selections ?? 1,
-                    'options' => ($group->options ?? collect([]))->map(function ($opt): array {
+                    'options' => ($group->options ?? collect([]))->map(function ($opt) use ($market): array {
                         $price = (float) ($opt->price_adjustment ?? $opt->price ?? 0);
 
                         return [
                             'id' => $opt->id,
                             'name' => $opt->name,
                             'price' => $price,
-                            'formatted_price' => $price > 0 ? '+L. '.number_format($price, 2) : 'Gratis',
+                            'formatted_price' => $price > 0 ? '+'.$this->formatMoney($price, $market) : 'Gratis',
                             'is_default' => (bool) ($opt->is_default ?? false),
                         ];
                     })->toArray(),
@@ -270,7 +292,7 @@ final class TenantMicrositeTransformer
             '@context' => 'https://schema.org',
             '@type' => 'LocalBusiness',
             'name' => $tenant->name,
-                'description' => $this->tenantAttribute($tenant, 'description') ?? 'Negocio local en Honduras',
+            'description' => $this->tenantAttribute($tenant, 'description') ?? 'Negocio local en Honduras',
             'url' => url("/{$tenant->slug}"),
             'telephone' => $this->planService->formatPhoneWithCountryCode(
                 $this->tenantAttribute($tenant, 'whatsapp_number') ?? $this->tenantAttribute($tenant, 'phone')
@@ -311,13 +333,53 @@ final class TenantMicrositeTransformer
         ];
     }
 
-    private function tenantCityName(Tenant $tenant): string
+    private function primaryLocation(Tenant $tenant): ?Location
     {
-        if (! Schema::hasColumn('tenants', 'city_id')) {
-            return 'Honduras';
+        $location = $tenant->relationLoaded('locations')
+            ? $tenant->locations->firstWhere('is_primary', true)
+            : $tenant->locations()
+                ->where('is_primary', true)
+                ->with('locality.administrativeArea')
+                ->first();
+
+        if ($location instanceof Location && ! $location->relationLoaded('locality')) {
+            $location->load('locality.administrativeArea');
         }
 
-        return $tenant->city?->name ?? 'Honduras';
+        return $location instanceof Location ? $location : null;
+    }
+
+    private function tenantCityName(Tenant $tenant): ?string
+    {
+        if (! Schema::hasColumn('tenants', 'city_id')) {
+            return null;
+        }
+
+        return $tenant->city?->name;
+    }
+
+    private function formatPhone(mixed $phone, ?MarketContext $market): ?string
+    {
+        if (! is_string($phone) || trim($phone) === '') {
+            return null;
+        }
+
+        if ($market?->countryCode === 'HN') {
+            return $this->planService->formatPhoneWithCountryCode($phone);
+        }
+
+        return trim($phone);
+    }
+
+    private function formatMoney(float $amount, ?MarketContext $market): string
+    {
+        $currency = $market?->currencyCode;
+
+        if ($currency === 'HNL') {
+            return 'L. '.number_format($amount, 2);
+        }
+
+        return ($currency === null ? '' : $currency.' ').number_format($amount, 2);
     }
 
     private function tenantAttribute(Tenant $tenant, string $key): mixed
@@ -399,7 +461,7 @@ final class TenantMicrositeTransformer
         if (empty($path)) {
             return match ($type) {
                 'cover' => 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800&h=600&fit=crop',
-                'logo' => 'https://ui-avatars.com/api/?name=Vito&background=0ea5e9&color=fff&size=200',
+                'logo' => 'https://ui-avatars.com/api/?name=Dovra AI&background=0ea5e9&color=fff&size=200',
                 'product' => 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop',
                 default => 'https://via.placeholder.com/400',
             };

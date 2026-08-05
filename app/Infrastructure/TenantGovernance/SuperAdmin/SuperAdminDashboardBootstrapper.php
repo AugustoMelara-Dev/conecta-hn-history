@@ -96,7 +96,7 @@ final class SuperAdminDashboardBootstrapper
         $base = Tenant::query()
             ->selectRaw("COALESCE(NULLIF(commercial_mode, ''), 'products') as mode")
             ->selectRaw('COUNT(*) as total')
-            ->selectRaw("SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active")
+            ->selectRaw('SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active')
             ->selectRaw("SUM(CASE WHEN plan_type IN ('pro','enterprise') AND subscription_status IN ('active','trial') THEN 1 ELSE 0 END) as pro")
             ->groupBy('mode')
             ->get();
@@ -164,7 +164,7 @@ final class SuperAdminDashboardBootstrapper
         return match ($mode) {
             'appointments' => 'Starter Appointments',
             'consulting_leads' => 'Starter Consulting',
-            'hybrid' => 'Hybrid (allowlist)',
+            'hybrid' => 'Hybrid',
             default => 'Starter Products',
         };
     }

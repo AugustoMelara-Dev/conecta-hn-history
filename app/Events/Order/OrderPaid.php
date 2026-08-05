@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Events\Order;
 
 use App\Contracts\Events\DomainEvent;
+use App\Domain\Shared\ValueObjects\TenantId;
 use App\Traits\HasDomainMetadata;
 use App\ValueObjects\Money;
 use App\ValueObjects\OrderNumber;
-use App\Domain\Shared\ValueObjects\TenantId;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 
 /**
@@ -87,7 +87,7 @@ final readonly class OrderPaid implements DomainEvent, ShouldDispatchAfterCommit
         string $currency = 'HNL'
     ): self {
         return new self(
-            tenantId: TenantId::fromInt((int) $tenantId),
+            tenantId: TenantId::fromString($tenantId),
             orderId: $orderId,
             orderNumber: OrderNumber::fromString($orderNumber),
             transactionId: $transactionId,
@@ -105,9 +105,9 @@ final readonly class OrderPaid implements DomainEvent, ShouldDispatchAfterCommit
         return $this->tenantId;
     }
 
-    public function aggregateId(): int
+    public function aggregateId(): string
     {
-        return (int) $this->orderId;
+        return $this->orderId;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -153,7 +153,7 @@ final readonly class OrderPaid implements DomainEvent, ShouldDispatchAfterCommit
         }
 
         return new self(
-            tenantId: TenantId::fromInt((int) $primitives['tenant_id']),
+            tenantId: TenantId::fromSerialized($primitives['tenant_id']),
             orderId: (string) $primitives['order_id'],
             orderNumber: OrderNumber::fromString($primitives['order_number']),
             transactionId: $primitives['transaction_id'],

@@ -57,6 +57,7 @@ final readonly class AgentActionExecutor
 
         $confirmation = $this->confirmations->authorizeAgentAction(
             tenantId: $request->tenantId,
+            conversationId: $request->conversationId,
             actionKey: $request->actionKey,
             payloadHash: $request->payloadHash,
             confirmationId: $request->confirmationId,
@@ -113,11 +114,12 @@ final readonly class AgentActionExecutor
                 : ($workflow->status === 'failed'
                     ? (string) ($run['last_error_code'] ?? 'workflow_failed')
                     : $workflow->status);
+            $metadata = $this->workflowMetadata($audit->metadata, $workflow->status, $reasonCode);
             $this->repository->updateAgentActionAudit($audit->id, [
                 'workflow_run_id' => $workflow->runId,
-                'status' => $executed ? 'completed' : $workflow->status,
-                'policy_code' => $reasonCode,
-                'metadata' => AgentActionAudit::sanitize(['workflow_status' => $workflow->status]),
+                'status' => $workflow->status,
+                'policy_code' => $audit->policyCode,
+                'metadata' => $metadata,
                 'updated_at' => now(),
             ]);
 
@@ -133,23 +135,56 @@ final readonly class AgentActionExecutor
                     $audit->agentVersionId,
                     $audit->conversationId,
                     $audit->actionKey,
-                    $reasonCode,
+                    $audit->policyCode,
                     $audit->confirmationId,
                     $workflow->runId,
                     null,
                     $audit->occurredAt,
-                    ['workflow_status' => $workflow->status],
+                    $metadata,
                 ),
             );
         } catch (RuntimeException) {
+            $metadata = $this->workflowMetadata($audit->metadata, 'failed', 'workflow_execution_failed');
             $this->repository->updateAgentActionAudit($audit->id, [
                 'status' => 'failed',
-                'policy_code' => 'workflow_execution_failed',
+                'policy_code' => $audit->policyCode,
+                'metadata' => $metadata,
                 'updated_at' => now(),
             ]);
 
-            return new AgentActionResult(false, 'failed', 'workflow_execution_failed', null, false, $audit);
+            return new AgentActionResult(
+                false,
+                'failed',
+                'workflow_execution_failed',
+                null,
+                false,
+                new AgentActionAudit(
+                    $audit->id,
+                    $audit->tenantId,
+                    $audit->agentVersionId,
+                    $audit->conversationId,
+                    $audit->actionKey,
+                    $audit->policyCode,
+                    $audit->confirmationId,
+                    null,
+                    null,
+                    $audit->occurredAt,
+                    $metadata,
+                ),
+            );
         }
+    }
+
+    /** @param array<string, mixed> $metadata
+     *  @return array<string, mixed>
+     */
+    private function workflowMetadata(array $metadata, string $workflowStatus, string $workflowReasonCode): array
+    {
+        return AgentActionAudit::sanitize([
+            ...$metadata,
+            'workflow_status' => $workflowStatus,
+            'workflow_reason_code' => $workflowReasonCode,
+        ]);
     }
 
     private function activeTenantId(): ?string

@@ -247,20 +247,27 @@ final class AdaptiveSequenceGenerator
 
     private function reserveBlock(string $aggregateId, int $bufferSize): void
     {
-        $now = now()->toDateTimeString();
+        $maxSequence = DB::transaction(function () use ($aggregateId, $bufferSize): mixed {
+            $now = now();
 
-        DB::statement(
-            'INSERT INTO '.self::TABLE.' (aggregate_id, last_sequence, created_at, updated_at) 
-             VALUES (?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE 
-                last_sequence = last_sequence + ?, 
-                updated_at = ?',
-            [$aggregateId, $bufferSize, $now, $now, $bufferSize, $now]
-        );
+            DB::table(self::TABLE)->upsert(
+                [[
+                    'aggregate_id' => $aggregateId,
+                    'last_sequence' => $bufferSize,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]],
+                ['aggregate_id'],
+                [
+                    'last_sequence' => DB::raw(self::TABLE.'.last_sequence + '.(int) $bufferSize),
+                    'updated_at' => $now,
+                ],
+            );
 
-        $maxSequence = DB::table(self::TABLE)
-            ->where('aggregate_id', $aggregateId)
-            ->value('last_sequence');
+            return DB::table(self::TABLE)
+                ->where('aggregate_id', $aggregateId)
+                ->value('last_sequence');
+        }, 3);
 
         if ($maxSequence === null) {
             throw new RuntimeException(

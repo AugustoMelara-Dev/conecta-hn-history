@@ -71,7 +71,7 @@ final readonly class EloquentPaymentRepository implements PaymentRepositoryInter
         }
 
         $model->tenant_id = $payment->tenantId;
-        $model->amount = $payment->amount->amount;
+        $model->amount = self::minorToMajor($payment->amount->amount);
         // $model->currency = ... Table doesn't have currency. Assume Base.
         $model->bank = $payment->bank;
         $model->reference_number = $payment->referenceNumber;
@@ -96,7 +96,7 @@ final readonly class EloquentPaymentRepository implements PaymentRepositoryInter
             ->where('version', $payment->version)
             ->update([
                 'tenant_id' => $payment->tenantId,
-                'amount' => $payment->amount->amount,
+                'amount' => self::minorToMajor($payment->amount->amount),
                 // 'currency' => 'HNL', // No column
                 'bank' => $payment->bank,
                 'reference_number' => $payment->referenceNumber,
@@ -190,12 +190,22 @@ final readonly class EloquentPaymentRepository implements PaymentRepositoryInter
         return $models->map(fn (PaymentModel $model) => $this->toEntity($model));
     }
 
+    private static function minorToMajor(int $minorAmount): string
+    {
+        return number_format($minorAmount / 100, 2, '.', '');
+    }
+
+    private static function majorToMinor(mixed $majorAmount): int
+    {
+        return (int) round(((float) $majorAmount) * 100);
+    }
+
     private function toEntity(PaymentModel $model): PaymentEntity
     {
         return new PaymentEntity(
             id: (string) $model->id,
             tenantId: (string) $model->tenant_id,
-            amount: new Money((int) round((float) $model->amount), 'HNL'), // Default Currency
+            amount: new Money(self::majorToMinor($model->amount), 'HNL'),
             bank: $model->bank,
             referenceNumber: $model->reference_number,
             status: PaymentStatus::tryFrom($model->status) ?? PaymentStatus::PENDING,

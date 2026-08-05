@@ -67,7 +67,7 @@ final readonly class TenantFactory
             productLimit: (int) ($productLimit ?? 10),
             logoPath: is_string($logoPath) && $logoPath !== '' ? $logoPath : null,
             categoryId: is_numeric($categoryId) ? (int) $categoryId : null,
-            cityId: (int) $cityId,
+            cityId: is_numeric($cityId) ? (int) $cityId : null,
             whatsapp: is_string($whatsapp) && $whatsapp !== '' ? $whatsapp : null,
             businessType: $derivedBusinessType,
             commercialMode: $mode,

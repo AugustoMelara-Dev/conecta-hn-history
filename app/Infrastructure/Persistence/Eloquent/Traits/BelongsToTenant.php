@@ -6,6 +6,7 @@ namespace App\Infrastructure\Persistence\Eloquent\Traits;
 
 use App\Domain\Shared\Services\TenantContext;
 use App\Infrastructure\Persistence\Eloquent\Scopes\TenantScope;
+use App\Models\Tenant;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
@@ -56,9 +57,11 @@ trait BelongsToTenant
 
     /**
      * Get the tenant that owns the model.
+     *
+     * @return BelongsTo<Tenant, $this>
      */
     public function tenant(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Tenant::class);
+        return $this->belongsTo(Tenant::class);
     }
 }

@@ -9,6 +9,8 @@ use App\Domain\Auth\Repositories\OtpRepositoryInterface;
 use App\Models\OneTimePassword;
 use Carbon\Carbon;
 use DateTimeImmutable;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * EloquentOtpRepository - Tenant-Isolated Data Mapper
@@ -35,6 +37,7 @@ final class EloquentOtpRepository implements OtpRepositoryInterface
             ->where('tenant_id', $tenantId) // TENANT ISOLATION
             ->where('expires_at', '>', Carbon::now()) // Not expired
             ->whereNull('used_at') // Not consumed
+            ->lockForUpdate() // Serialize verification + consumption inside the transaction decorator
             ->first();
 
         if ($model === null) {
@@ -50,7 +53,7 @@ final class EloquentOtpRepository implements OtpRepositoryInterface
      * SECURITY: OTP record MUST be associated with tenantId.
      */
     public function create(
-        ?int $userId,
+        ?string $userId,
         string $identifier,
         string $tenantId,
         string $hashedCode,
@@ -59,17 +62,39 @@ final class EloquentOtpRepository implements OtpRepositoryInterface
         ?string $userAgent,
         int $expiryMinutes
     ): OtpEntity {
-        $model = OneTimePassword::query()->forceCreate([
+        $now = Carbon::now();
+        $insertId = (string) Str::uuid();
+        DB::table('one_time_passwords')->upsert([[
+            'id' => $insertId,
             'user_id' => $userId,
             'identifier' => $identifier,
-            'tenant_id' => $tenantId, // TENANT ISOLATION
+            'tenant_id' => $tenantId,
             'code' => $hashedCode,
             'type' => $type,
             'ip_address' => $ipAddress,
             'user_agent' => $userAgent,
-            'expires_at' => Carbon::now()->addMinutes($expiryMinutes),
+            'expires_at' => $now->copy()->addMinutes($expiryMinutes),
+            'used_at' => null,
             'attempts' => 0,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]], ['tenant_id', 'identifier'], [
+            'user_id',
+            'code',
+            'type',
+            'ip_address',
+            'user_agent',
+            'expires_at',
+            'used_at',
+            'attempts',
+            'updated_at',
         ]);
+
+        /** @var OneTimePassword $model */
+        $model = OneTimePassword::query()
+            ->where('tenant_id', $tenantId)
+            ->where('identifier', $identifier)
+            ->firstOrFail();
 
         return $this->hydrate($model);
     }
@@ -147,7 +172,7 @@ final class EloquentOtpRepository implements OtpRepositoryInterface
     {
         return new OtpEntity(
             id: (string) $model->id,
-            userId: $model->user_id,
+            userId: $model->user_id !== null ? (string) $model->user_id : null,
             identifier: $model->identifier,
             tenantId: (string) $model->tenant_id, // ADDED: Tenant context in memory
             hashedCode: $model->code,

@@ -16,7 +16,7 @@ final readonly class RecordInteractionResult
      * @param  array<string, mixed>|null  $metadata
      */
     public function __construct(
-        public int $tenantId,
+        public string $tenantId,
         public string $type,
         public ?int $productId,
         public ?string $ipAddress,

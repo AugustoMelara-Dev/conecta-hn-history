@@ -32,7 +32,7 @@ final class UpdateTenantSettingsRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return $this->user() !== null && $this->user()->tenant !== null;
+        return $this->user() !== null;
     }
 
     /**

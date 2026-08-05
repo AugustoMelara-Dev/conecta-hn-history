@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace App\Listeners;
 
 use App\Events\Inventory\LowStockThresholdReached;
+use App\Infrastructure\Shared\Middleware\TenantQueueMiddleware;
+use App\Models\Product;
+use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -33,7 +37,7 @@ final class SendLowStockNotification implements ShouldQueue
     {
         // UUID STRING: Use toString() for tenant context
         return [
-            new \App\Domain\Shared\Middleware\TenantQueueMiddleware($event->tenantId()->toString()),
+            new TenantQueueMiddleware($event->tenantId()->toString()),
         ];
     }
 
@@ -51,14 +55,14 @@ final class SendLowStockNotification implements ShouldQueue
         // CRITICAL: We NEVER use Product::find() in background jobs.
         // Background workers may not have the global tenant scope booted.
         // We always enforce tenant isolation at the SQL WHERE clause level.
-        $product = \App\Models\Product::query()
+        $product = Product::query()
             ->where('id', $productId)
             ->where('tenant_id', $tenantIdString) // THE IMMUTABLE FIREWALL
             ->first();
 
         if (! $product) {
             // Check if product exists but belongs to different tenant (security probe)
-            $existsElsewhere = \App\Models\Product::where('id', $productId)->exists();
+            $existsElsewhere = Product::where('id', $productId)->exists();
 
             if ($existsElsewhere) {
                 // SECURITY ALERT: Cross-tenant access attempt blocked
@@ -79,15 +83,14 @@ final class SendLowStockNotification implements ShouldQueue
             return; // Graceful termination - do not retry malicious jobs
         }
 
-
         $newStock = $event->currentStock;
         $threshold = $event->threshold;
 
         // ═══════════════════════════════════════════════════════════════════════
         // ATOMIC LOCK: Prevents race condition duplicates
         // ═══════════════════════════════════════════════════════════════════════
-        $cacheKey = "low_stock_alert_sent_{$productId}_".now()->format('Y-m-d');
-        $secondsUntilMidnight = now()->endOfDay()->diffInSeconds(now());
+        $cacheKey = "low_stock_alert_sent_{$tenantIdString}_{$productId}_".now()->format('Y-m-d');
+        $secondsUntilMidnight = max(1, (int) ceil(now()->endOfDay()->diffInSeconds(now())));
 
         // Try to acquire atomic lock - ABORT if already sent today
         if (! Cache::add($cacheKey, true, $secondsUntilMidnight)) {
@@ -101,15 +104,17 @@ final class SendLowStockNotification implements ShouldQueue
         // ═══════════════════════════════════════════════════════════════════════
         // LOCK ACQUIRED: Proceed with notification
         // ═══════════════════════════════════════════════════════════════════════
+        /** @var Tenant|null $tenant */
         $tenant = $product->tenant;
 
-        if (! $tenant || ! $tenant->user) {
+        /** @var User|null $owner */
+        $owner = $tenant?->user()->first();
+
+        if (! $owner) {
             Log::warning("LowStockNotification: No owner found for product #{$productId}");
 
             return;
         }
-
-        $owner = $tenant->user;
 
         Log::info("🚨 LOW STOCK ALERT: {$product->name}", [
             'product_id' => $product->id,

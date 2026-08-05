@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\User\Handlers;
 
 use App\Application\Shared\Contracts\EventBusInterface;
+use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Contracts\TransactionManagerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
 use App\Application\User\Commands\UpdateUserProfileCommand;
@@ -13,7 +14,6 @@ use App\Domain\Identity\Exceptions\CrossTenantAccessException;
 use App\Domain\Identity\Exceptions\UserNotFoundException;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\User\Events\UserProfileUpdated;
-use App\Application\Shared\Contracts\LoggerInterface;
 
 /**
  * UpdateUserProfileHandler - Zero-Trust Profile Management

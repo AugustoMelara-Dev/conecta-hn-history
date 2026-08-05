@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Application\Ai\PrivateAiAccessGate;
 use App\Domain\AIEnrichment\Prompts\BusinessProfilePromptBuilder;
+use App\Domain\Shared\Services\TenantContext;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,6 +16,7 @@ final class AiController extends Controller
 {
     public function __construct(
         private readonly PrivateAiAccessGate $privateAiAccess,
+        private readonly TenantContext $tenantContext,
     ) {}
 
     public function generate(Request $request): JsonResponse
@@ -28,11 +30,11 @@ final class AiController extends Controller
 
         $user = $request->user();
 
-        if (! $user || ! $user->tenant_id) {
+        if (! $user) {
             return response()->json(['message' => 'No business associated.'], 403);
         }
 
-        $tenantId = (string) $user->tenant_id;
+        $tenantId = (string) $this->tenantContext->id();
 
         if (! $this->privateAiAccess->allows($user, $tenantId)) {
             return response()->json([

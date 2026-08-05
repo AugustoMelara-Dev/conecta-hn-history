@@ -6,9 +6,9 @@ namespace App\Console\Commands;
 
 use App\Infrastructure\Common\Outbox\MessagePublisherInterface;
 use Illuminate\Console\Command;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Database\QueryException;
 use Throwable;
 
 /**
@@ -81,6 +81,7 @@ class ProcessOutboxCommand extends Command
                     break;
                 }
                 sleep(1);
+
                 continue;
             }
 

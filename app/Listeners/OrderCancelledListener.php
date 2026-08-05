@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
-use App\Domain\Shared\Middleware\TenantQueueMiddleware;
+use App\Application\Payments\Actions\RefundOrderPaymentAction;
 use App\Events\Broadcast\OrderCancelledBroadcast;
 use App\Events\Order\OrderCancelled;
 use App\Exceptions\TenantMismatchException;
+use App\Infrastructure\Shared\Middleware\TenantQueueMiddleware;
 use App\Models\Order;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
@@ -56,10 +57,10 @@ final class OrderCancelledListener implements ShouldQueue
      *
      * @return array<int, object>
      */
-    public function middleware(): array
+    public function middleware(OrderCancelled $event): array
     {
         return [
-            new TenantQueueMiddleware,
+            new TenantQueueMiddleware($event->tenantId()->toString()),
         ];
     }
 
@@ -92,7 +93,12 @@ final class OrderCancelledListener implements ShouldQueue
         // STEP 1: Business Logic - Initiate refund if the order was paid
         // ─────────────────────────────────────────────────────────────────────
         if ($event->shouldAutoRefund()) {
-            logger()->info('Refund initiated for cancelled order', [
+            app(RefundOrderPaymentAction::class)->execute(
+                $tenantIdString,
+                (int) $event->aggregateId(),
+            );
+
+            logger()->info('Refund settled for cancelled order', [
                 'order_id' => $event->aggregateId(),
                 'tenant_id' => $tenantIdString,
             ]);

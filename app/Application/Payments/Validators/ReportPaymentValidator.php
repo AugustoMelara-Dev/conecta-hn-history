@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Application\Validators\Payments;
+namespace App\Application\Payments\Validators;
 
 use App\Application\Billing\Commands\ReportPaymentCommand;
 

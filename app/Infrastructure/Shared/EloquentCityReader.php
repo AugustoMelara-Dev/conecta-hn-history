@@ -35,7 +35,8 @@ final class EloquentCityReader implements CityReader
         return Cache::remember(self::CACHE_KEY, self::CACHE_TTL, function () {
             return City::with('municipality.department')
                 ->orderBy('name')
-                ->get();
+                ->get()
+                ->map(static fn (City $city): \stdClass => (object) $city->toArray());
         });
     }
 }

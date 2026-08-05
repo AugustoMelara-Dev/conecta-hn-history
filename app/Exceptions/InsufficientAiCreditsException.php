@@ -60,12 +60,12 @@ final class InsufficientAiCreditsException extends DomainException
      * Factory: Crear para operación de generación de perfiles
      */
     public static function forProfileGeneration(
-        int|string $tenantId,
+        string $tenantId,
         float $estimatedCost,
         float $availableBalance
     ): self {
         return new self(
-            message: "Créditos IA insuficientes. Requerido: \${$estimatedCost}, Disponible: \${$availableBalance}",
+            message: "Créditos IA insuficientes. Requerido: {$estimatedCost} créditos, disponible: {$availableBalance}.",
             requiredCredits: $estimatedCost,
             availableCredits: $availableBalance,
             contextData: [
@@ -78,14 +78,32 @@ final class InsufficientAiCreditsException extends DomainException
     /**
      * Factory: Crear para operación genérica de IA
      */
+    public static function forDailyLimit(
+        string $tenantId,
+        float $requiredCredits,
+        float $remainingDailyCredits,
+        float $dailyLimit,
+    ): self {
+        return new self(
+            message: 'Alcanzaste el limite diario de IA. El consumo se restablece al iniciar el siguiente dia UTC.',
+            requiredCredits: $requiredCredits,
+            availableCredits: $remainingDailyCredits,
+            contextData: [
+                'tenant_id' => $tenantId,
+                'reason' => 'daily_limit',
+                'daily_limit' => $dailyLimit,
+            ],
+        );
+    }
+
     public static function forOperation(
-        int|string $tenantId,
+        string $tenantId,
         string $operation,
         float $estimatedCost,
         float $availableBalance
     ): self {
         return new self(
-            message: "Créditos IA insuficientes para '{$operation}'. Requerido: \${$estimatedCost}, Disponible: \${$availableBalance}",
+            message: "Créditos IA insuficientes para '{$operation}'. Requerido: {$estimatedCost} créditos, disponible: {$availableBalance}.",
             requiredCredits: $estimatedCost,
             availableCredits: $availableBalance,
             contextData: [

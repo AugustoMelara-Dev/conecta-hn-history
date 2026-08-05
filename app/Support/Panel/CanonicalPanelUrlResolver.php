@@ -17,6 +17,10 @@ final class CanonicalPanelUrlResolver
         }
 
         if ($user->isSuperAdmin()) {
+            if ((bool) config('security.admin_mfa_required', false) && ! $user->hasEnabledTwoFactorAuthentication()) {
+                return route('profile.two-factor.show', absolute: false);
+            }
+
             return '/admin';
         }
 
@@ -37,6 +41,7 @@ final class CanonicalPanelUrlResolver
             'products' => $baseUrl.'/products',
             'products.create' => $baseUrl.'/products/create',
             'products.edit' => $baseUrl.'/products/'.rawurlencode((string) ($parameters['product'] ?? '')).'/edit',
+            'catalog.imports' => '/workspace/catalog-imports',
             'orders' => $baseUrl.'/orders',
             'billing' => $baseUrl.'/manage-billing',
             'settings' => $baseUrl.'/settings',

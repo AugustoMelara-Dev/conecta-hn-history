@@ -19,7 +19,7 @@ final class EloquentCouponRepository implements CouponRepository
     /**
      * {@inheritDoc}
      */
-    public function getDashboardList(int $tenantId, int $perPage = 10): LengthAwarePaginator
+    public function getDashboardList(string $tenantId, int $perPage = 10): LengthAwarePaginator
     {
         return Coupon::query()
             ->where('tenant_id', $tenantId)

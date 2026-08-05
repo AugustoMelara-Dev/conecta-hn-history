@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace App\Application\Sales\Listeners;
 
 use App\Application\Shared\Contracts\LoggerInterface;
-use App\Domain\Product\Repositories\ProductRepositoryInterface;
-use App\Domain\Shared\Middleware\TenantQueueMiddleware;
 use App\Events\Order\OrderCancelled;
+use App\Infrastructure\Shared\Middleware\TenantQueueMiddleware;
+use App\Models\Order;
+use App\Services\InventoryManager;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
 /**
@@ -29,7 +30,7 @@ final class RestoreStockOnCancellation implements ShouldQueue
     public int $timeout = 60;
 
     public function __construct(
-        private readonly ProductRepositoryInterface $productRepository,
+        private readonly InventoryManager $inventory,
         private readonly LoggerInterface $logger,
     ) {}
 
@@ -39,7 +40,12 @@ final class RestoreStockOnCancellation implements ShouldQueue
     public function handle(OrderCancelled $event): void
     {
         // Load order to get items (we need product_id and quantity)
-        $order = \App\Models\Order::with('items')->find($event->aggregateId());
+        // INFRA_TENANT_FILTER: reviewed scope bypass; authority is constrained by the adjacent tenant/id predicate.
+        $order = Order::withoutGlobalScopes()
+            ->with('items')
+            ->whereKey($event->aggregateId())
+            ->where('tenant_id', $event->tenantId()->toString())
+            ->first();
 
         if ($order === null) {
             $this->logger->warning('RestoreStockOnCancellation: Order not found', [
@@ -49,13 +55,7 @@ final class RestoreStockOnCancellation implements ShouldQueue
             return;
         }
 
-        // Restore stock for each item
-        foreach ($order->items as $item) {
-            $this->productRepository->incrementStock(
-                $item->product_id,
-                $item->quantity
-            );
-        }
+        $this->inventory->restock($order);
 
         $this->logger->info('Stock restored after order cancellation', [
             'order_id' => $event->aggregateId(),

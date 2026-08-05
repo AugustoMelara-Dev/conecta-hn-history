@@ -19,9 +19,12 @@ use App\Domain\TenantGovernance\Enums\Capability;
 use App\Domain\TenantGovernance\Enums\CommercialMode;
 use App\Domain\TenantGovernance\Enums\TenantFeature;
 use App\Domain\TenantGovernance\Enums\TenantPlan;
+use App\Domain\TenantGovernance\Events\TenantProfileEnhanced;
 use App\Domain\TenantGovernance\Exceptions\TenantDomainException;
+use App\Observers\TenantObserver;
 use App\Scopes\LocationScope;
 use App\Traits\CanBeFavorited;
+use Database\Factories\TenantFactory;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -30,12 +33,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Collection;
+use Spatie\Activitylog\Contracts\Activity;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Spatie\OpeningHours\OpeningHours;
 
-#[ObservedBy(\App\Observers\TenantObserver::class)]
-class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
+#[ObservedBy(TenantObserver::class)]
+class Tenant extends Model implements HasMedia
 {
     use CanBeFavorited, HasDomainEvents, HasFactory, HasUuids, LogsActivity, SoftDeletes, \Spatie\MediaLibrary\InteractsWithMedia;
 
@@ -138,7 +145,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
      */
     protected static function newFactory()
     {
-        return \Database\Factories\TenantFactory::new();
+        return TenantFactory::new();
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -199,9 +206,9 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         }
 
         $this->is_ai_enhanced = true;
-        $this->record(new \App\Domain\TenantGovernance\Events\TenantProfileEnhanced(
+        $this->record(new TenantProfileEnhanced(
             tenant_id: (string) $this->id,
-            user_id: (int) $this->user_id,
+            user_id: (string) $this->user_id,
             occurred_at: now()->toIso8601String(),
             enhanced_fields: $enhancedFields
         ));
@@ -334,7 +341,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
 
     public function scopeInPriorityOrder($query)
     {
-        return $query->orderByRaw("FIELD(plan_type, 'enterprise', 'pro', 'semilla')");
+        return $query->orderByRaw("case plan_type when 'enterprise' then 0 when 'pro' then 1 when 'semilla' then 2 else 3 end");
     }
 
     public function scopeSearch($query, ?string $term)
@@ -374,7 +381,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         });
     }
 
-    public function registerMediaConversions(?\Spatie\MediaLibrary\MediaCollections\Models\Media $media = null): void
+    public function registerMediaConversions(?Media $media = null): void
     {
         $this->addMediaConversion('thumb')
             ->width(400)
@@ -395,7 +402,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
     public function getActivitylogOptions(): LogOptions
     {
         // FIXED: Only log attributes that are always present during model lifecycle.
-        // Removed: status (doesn't exist), plan_expires_at, subscription_ends_at, 
+        // Removed: status (doesn't exist), plan_expires_at, subscription_ends_at,
         // is_pro (computed accessor), and other nullable/conditional fields that
         // cause MissingAttributeException during factory creation.
         return LogOptions::defaults()
@@ -416,7 +423,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
             ->useLogName('negocios');
     }
 
-    public function tapActivity(\Spatie\Activitylog\Contracts\Activity $activity, string $eventName)
+    public function tapActivity(Activity $activity, string $eventName)
     {
         $activity->properties = $activity->properties->merge([
             'ip' => request()->ip(),
@@ -427,6 +434,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
     // RELATIONSHIPS
     // ═══════════════════════════════════════════════════════════════════════════
 
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -442,6 +450,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         return $this->belongsTo(Category::class);
     }
 
+    /** @return BelongsTo<City, $this> */
     public function city(): BelongsTo
     {
         return $this->belongsTo(City::class);
@@ -450,6 +459,11 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
     public function primaryMarket(): HasOne
     {
         return $this->hasOne(TenantMarket::class)->where('is_primary', true);
+    }
+
+    public function locations(): HasMany
+    {
+        return $this->hasMany(Location::class);
     }
 
     public function products(): HasMany
@@ -513,8 +527,6 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
      *
      * Converts the OpeningHour models into a format consumable by
      * spatie/opening-hours for availability calculations.
-     *
-     * @return OpeningHours
      */
     public function getOpeningHours(): OpeningHours
     {
@@ -569,6 +581,21 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
         return $this->hasMany(Appointment::class);
     }
 
+    public function quotes(): HasMany
+    {
+        return $this->hasMany(Quote::class);
+    }
+
+    public function availabilityRules(): HasMany
+    {
+        return $this->hasMany(AvailabilityRule::class);
+    }
+
+    public function availabilityExceptions(): HasMany
+    {
+        return $this->hasMany(AvailabilityException::class);
+    }
+
     public function hasCapability(Capability $capability): bool
     {
         return app(CapabilityManagerInterface::class)->has($this, $capability);
@@ -604,7 +631,7 @@ class Tenant extends Model implements \Spatie\MediaLibrary\HasMedia
     // FEATURE GATING
     // ═══════════════════════════════════════════════════════════════════════════
 
-    public function getPublicMenuStructure(?int $productLimit = null): ?\Illuminate\Support\Collection
+    public function getPublicMenuStructure(?int $productLimit = null): ?Collection
     {
         if (! $this->is_pro) {
             return null;

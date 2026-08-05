@@ -16,7 +16,7 @@ interface GlobalSearchReader
     /**
      * Search across all public entities within a tenant scope.
      */
-    public function search(int $tenantId, string $query): Collection;
+    public function search(string $tenantId, string $query): Collection;
 
     /**
      * Search specifically for tenants (Unified Platform Search).
