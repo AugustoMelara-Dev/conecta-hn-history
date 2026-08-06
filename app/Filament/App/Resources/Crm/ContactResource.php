@@ -6,7 +6,7 @@ namespace App\Filament\App\Resources\Crm;
 
 use App\Application\Crm\BulkOperationsService;
 use App\Domain\Crm\Enums\LifecycleStage;
-use App\Filament\App\Resources\ContactResource\Pages;
+use App\Filament\App\Resources\Crm\ContactResource\Pages;
 use App\Models\Contact;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
@@ -53,7 +53,7 @@ class ContactResource extends Resource
     {
         return $schema
             ->components([
-                Section::make('Información personal')
+                Section::make('Informaciï¿½n personal')
                     ->components([
                         Grid::make(2)
                             ->components([
@@ -71,7 +71,7 @@ class ContactResource extends Resource
                                     ->maxLength(255),
 
                                 TextInput::make('phone')
-                                    ->label('Teléfono')
+                                    ->label('Telï¿½fono')
                                     ->tel()
                                     ->maxLength(50),
 
@@ -87,13 +87,13 @@ class ContactResource extends Resource
                                         'social' => 'Redes sociales',
                                         'email' => 'Email marketing',
                                         'paid' => 'Publicidad pagada',
-                                        'cold' => 'Contacto frío',
+                                        'cold' => 'Contacto frï¿½o',
                                     ])
                                     ->native(false),
                             ]),
                     ]),
 
-                Section::make('Clasificación')
+                Section::make('Clasificaciï¿½n')
                     ->components([
                         Grid::make(3)
                             ->components([
@@ -117,7 +117,7 @@ class ContactResource extends Resource
                             ]),
 
                         DateTimePicker::make('last_contact_at')
-                            ->label('Último contacto')
+                            ->label('ï¿½ltimo contacto')
                             ->timezone('America/Tegucigalpa')
                             ->displayFormat('d/m/Y H:i'),
                     ]),
@@ -146,15 +146,15 @@ class ContactResource extends Resource
                     ->label('Email')
                     ->searchable()
                     ->copyable()
-                    ->placeholder('—'),
+                    ->placeholder('ï¿½'),
 
                 TextColumn::make('phone')
-                    ->label('Teléfono')
-                    ->placeholder('—'),
+                    ->label('Telï¿½fono')
+                    ->placeholder('ï¿½'),
 
                 TextColumn::make('company.name')
                     ->label('Empresa')
-                    ->placeholder('—')
+                    ->placeholder('ï¿½')
                     ->toggleable(),
 
                 TextColumn::make('lifecycle_stage')
@@ -181,7 +181,7 @@ class ContactResource extends Resource
                     ->color('info'),
 
                 TextColumn::make('last_contact_at')
-                    ->label('Último contacto')
+                    ->label('ï¿½ltimo contacto')
                     ->dateTime('d/m/Y H:i')
                     ->timezone('America/Tegucigalpa')
                     ->placeholder('Nunca')
@@ -271,7 +271,7 @@ class ContactResource extends Resource
                     DeleteBulkAction::make(),
                 ]),
             ])
-            ->emptyStateHeading('No tienes contactos aún')
+            ->emptyStateHeading('No tienes contactos aï¿½n')
             ->emptyStateDescription('Crea tu primer contacto para empezar tu pipeline CRM.')
             ->emptyStateIcon('heroicon-o-user-plus')
             ->defaultSort('created_at', 'desc');
