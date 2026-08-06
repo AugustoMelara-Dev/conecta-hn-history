@@ -4,114 +4,128 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Infrastructure\Persistence\Eloquent\Traits\BelongsToTenant;
+use App\Domain\Crm\Enums\DealStatus;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Spatie\Activitylog\LogOptions;
-use Spatie\Activitylog\Traits\LogsActivity;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class CrmDeal extends Model
 {
-    use BelongsToTenant, LogsActivity;
+    use HasUuids, SoftDeletes;
 
-    public const STATUS_OPEN = 'open';
+    protected $table = 'crm_deals';
 
-    public const STATUS_WON = 'won';
+    protected $keyType = 'string';
 
-    public const STATUS_LOST = 'lost';
+    public $incrementing = false;
 
     protected $fillable = [
-        'crm_pipeline_id',
-        'crm_stage_id',
-        'customer_profile_id',
-        'lead_id',
-        'owner_user_id',
-        'location_id',
-        'title',
+        'tenant_id',
+        'pipeline_id',
+        'stage_id',
+        'contact_id',
+        'company_id',
+        'owner_id',
+        'name',
         'value',
         'currency',
+        'probability',
+        'expected_close_date',
         'status',
-        'source',
-        'expected_close_at',
-        'closed_at',
+        'won_at',
+        'lost_at',
         'lost_reason',
-        'notes',
+        'description',
+        'custom_fields',
     ];
-
-    protected $guarded = ['tenant_id'];
 
     protected $casts = [
         'value' => 'decimal:2',
-        'expected_close_at' => 'date',
-        'closed_at' => 'datetime',
+        'expected_close_date' => 'date',
+        'won_at' => 'datetime',
+        'lost_at' => 'datetime',
+        'custom_fields' => 'array',
     ];
 
     public function tenant(): BelongsTo
     {
-        return $this->belongsTo(Tenant::class);
+        return $this->belongsTo(\App\Models\Tenant::class);
     }
 
     public function pipeline(): BelongsTo
     {
-        return $this->belongsTo(CrmPipeline::class, 'crm_pipeline_id');
+        return $this->belongsTo(\App\Models\CrmPipeline::class, 'pipeline_id');
     }
 
     public function stage(): BelongsTo
     {
-        return $this->belongsTo(CrmStage::class, 'crm_stage_id');
+        return $this->belongsTo(\App\Models\CrmStage::class, 'stage_id');
     }
 
-    public function customerProfile(): BelongsTo
+    public function contact(): BelongsTo
     {
-        return $this->belongsTo(CustomerProfile::class);
+        return $this->belongsTo(\App\Models\Contact::class, 'contact_id');
     }
 
-    public function lead(): BelongsTo
+    public function company(): BelongsTo
     {
-        return $this->belongsTo(Lead::class);
+        return $this->belongsTo(\App\Models\CrmCompany::class, 'company_id');
     }
 
     public function owner(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'owner_user_id');
+        return $this->belongsTo(\App\Models\User::class, 'owner_id');
     }
 
-    public function location(): BelongsTo
+    public function activities(): HasMany
     {
-        return $this->belongsTo(Location::class);
+        return $this->hasMany(\App\Models\CrmActivity::class, 'deal_id');
     }
 
-    public function notes(): HasMany
+    public function getStatusEnumAttribute(): DealStatus
     {
-        return $this->hasMany(CustomerNote::class)->latest('pinned_at')->latest('created_at');
+        return DealStatus::from($this->status);
     }
 
-    public function tasks(): HasMany
+    public function getWeightedValueAttribute(): float
     {
-        return $this->hasMany(CustomerTask::class)->latest('sla_due_at')->latest('created_at');
+        return (float) $this->value * ($this->probability / 100);
     }
 
-    public function getActivitylogOptions(): LogOptions
+    public function isOpen(): bool
     {
-        return LogOptions::defaults()
-            ->useLogName('crm_deals')
-            ->logOnly([
-                'tenant_id',
-                'crm_pipeline_id',
-                'crm_stage_id',
-                'customer_profile_id',
-                'lead_id',
-                'owner_user_id',
-                'title',
-                'value',
-                'status',
-                'expected_close_at',
-                'closed_at',
-                'lost_reason',
-            ])
-            ->logOnlyDirty()
-            ->dontSubmitEmptyLogs()
-            ->setDescriptionForEvent(fn (string $eventName): string => "crm_deal.{$eventName}");
+        return $this->status === DealStatus::Open->value;
+    }
+
+    public function isWon(): bool
+    {
+        return $this->status === DealStatus::Won->value;
+    }
+
+    public function isLost(): bool
+    {
+        return $this->status === DealStatus::Lost->value;
+    }
+
+    public function scopeOpen($query)
+    {
+        return $query->where('status', DealStatus::Open->value);
+    }
+
+    public function scopeWon($query)
+    {
+        return $query->where('status', DealStatus::Won->value);
+    }
+
+    public function scopeLost($query)
+    {
+        return $query->where('status', DealStatus::Lost->value);
+    }
+
+    public function scopeForTenant($query, string $tenantId)
+    {
+        return $query->where('tenant_id', $tenantId);
     }
 }

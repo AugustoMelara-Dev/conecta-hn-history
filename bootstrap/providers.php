@@ -14,6 +14,8 @@ use App\Providers\Domain\SalesServiceProvider;
 use App\Providers\Domain\TenantGovernanceServiceProvider;
 use App\Providers\EventServiceProvider;
 use App\Providers\Filament\AdminPanelProvider;
+use App\Providers\AIAssistantServiceProvider;
+use App\Providers\ReportRegistryServiceProvider;
 use App\Providers\Filament\AppPanelProvider;
 use App\Providers\FortifyServiceProvider;
 use App\Providers\HorizonServiceProvider;
@@ -41,6 +43,8 @@ $providers = [
     HorizonServiceProvider::class, // Redis queue supervision (production dependency)
     AdminPanelProvider::class,
     AppPanelProvider::class,
+    ReportRegistryServiceProvider::class, // PR5 Reporting registry
+    AIAssistantServiceProvider::class, // PR6 AI assistants registry
 
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // DOMAIN PROVIDERS: Migrated to App\Providers\Domain (2026-01-07)

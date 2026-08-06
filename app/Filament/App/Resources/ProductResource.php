@@ -15,7 +15,7 @@ use App\Models\Tenant;
 use App\Support\Product\TenantAccessMatrix;
 use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -161,7 +161,7 @@ class ProductResource extends Resource
     // FORMULARIO VISUAL OPTIMIZADO PARA MÓVIL
     // ═══════════════════════════════════════════════════════════════════════
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
         return $form
             ->schema([
@@ -680,3 +680,4 @@ class ProductResource extends Resource
         ];
     }
 }
+

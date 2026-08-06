@@ -8,10 +8,10 @@ use App\Filament\Resources\CategoryResource\Pages;
 use App\Models\Category;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\Section;
+use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -60,7 +60,7 @@ class CategoryResource extends Resource
         return 'Configuracion';
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
         return $form
             ->schema([
@@ -244,3 +244,4 @@ class CategoryResource extends Resource
         ];
     }
 }
+

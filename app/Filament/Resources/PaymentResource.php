@@ -7,7 +7,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\PaymentResource\Pages;
 use App\Models\Payment;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -72,7 +72,7 @@ class PaymentResource extends Resource
     /**
      * Formulario de Solo-Lectura (Vista de Detalles)
      */
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
         return $form
             ->schema([
@@ -385,3 +385,4 @@ class PaymentResource extends Resource
                 ELSE 4 END");
     }
 }
+

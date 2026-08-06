@@ -5,17 +5,16 @@ declare(strict_types=1);
 namespace App\Providers\Filament;
 
 use App\Http\Middleware\InitializeFilamentTenantContext;
-use Filament\Facades\Filament;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Navigation\NavigationGroup;
-use Filament\Navigation\NavigationItem;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -24,68 +23,55 @@ use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 /**
- * AppPanelProvider - Panel del Inquilino (Mobile-First)
+ * AppPanelProvider - Panel del Inquilino (Mobile-First) - Filament 4.
  *
- * Arquitectura optimizada para:
- * - 90% de interacciones desde móviles Android gama media
- * - Conexiones a internet intermitentes
- * - Experiencia de aplicación nativa
+ * Migrated to Filament 4 API:
+ * - Schema::make() en lugar de Form::make()
+ * - protected static ?string $model (nullable)
+ * - databaseNotifications()
+ * - viteTheme()
+ * - tenantRoutePrefix(), tenantMiddleware()
+ * - breadcrumbs()
+ * - navigationGroups()
  *
- * Diferenciación Visual:
- * - Color Indigo (vs Blue del Admin) para clara distinción
- * - Tipografía Inter para legibilidad móvil
- * - Logo vectorial compartido con brand.blade.php
+ * @see https://filamentphp.com/docs/4.x/panels/configuration
  */
 class AppPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
         return $panel
-            // ═══════════════════════════════════════════════════════════════
-            // IDENTIDAD DEL PANEL
-            // ═══════════════════════════════════════════════════════════════
             ->id('app')
             ->path('app')
+            ->tenant(\App\Models\Tenant::class, slugAttribute: 'slug')
+            ->tenantProfile(\App\Filament\App\Pages\EditTenantProfile::class)
+            ->tenantMiddleware([
+                InitializeFilamentTenantContext::class,
+            ], isPersistent: true)
+            ->tenantRoutePrefix('app/{tenant}')
 
-            // ═══════════════════════════════════════════════════════════════
-            // BRANDING: Logo Vectorial y Nombre
-            // ═══════════════════════════════════════════════════════════════
+            // BRANDING
             ->brandName('Dovra AI')
             ->brandLogo(fn () => view('filament.components.brand'))
             ->brandLogoHeight('2.5rem')
             ->favicon(asset('favicon.ico'))
 
-            // ═══════════════════════════════════════════════════════════════
-            // AUTENTICACIÓN
-            // Deshabilitamos registro nativo - usamos wizard público
-            // ═══════════════════════════════════════════════════════════════
+            // AUTH
             ->login()
-            // ->registration() // Disabled - using /registrar-negocio wizard
+            ->registration()
             ->passwordReset()
             ->emailVerification()
 
-            // ═══════════════════════════════════════════════════════════════
-            // MULTI-TENANCY
-            // ═══════════════════════════════════════════════════════════════
-            ->tenant(\App\Models\Tenant::class, slugAttribute: 'slug')
-            ->tenantProfile(\App\Filament\App\Pages\EditTenantProfile::class)
-
-            // ═══════════════════════════════════════════════════════════════
-            // MODO SPA (Single Page Application)
-            // Transiciones instantáneas sin recargas de página
-            // ═══════════════════════════════════════════════════════════════
+            // SPA MODE
             ->spa()
 
-            // ═══════════════════════════════════════════════════════════════
-            // LAYOUT ADAPTATIVO (Mobile-First)
-            // ═══════════════════════════════════════════════════════════════
+            // LAYOUT
             ->sidebarCollapsibleOnDesktop()
             ->sidebarFullyCollapsibleOnDesktop()
             ->topNavigation(false)
+            ->breadcrumbs()
 
-            // ═══════════════════════════════════════════════════════════════
-            // PALETA DE COLORES: INDIGO (Diferenciación del Admin)
-            // ═══════════════════════════════════════════════════════════════
+            // PALETA INDIGO
             ->colors([
                 'primary' => Color::Indigo,
                 'gray' => Color::Zinc,
@@ -95,87 +81,58 @@ class AppPanelProvider extends PanelProvider
                 'info' => Color::Cyan,
             ])
 
-            // ═══════════════════════════════════════════════════════════════
-            // TIPOGRAFÍA: Inter (Optimizada para móvil)
-            // ═══════════════════════════════════════════════════════════════
-            ->font('Inter')
+            // FILAMENT 4: viteTheme para hot reload de tema
+            ->viteTheme('resources/css/filament/app/theme.css')
 
-            // ═══════════════════════════════════════════════════════════════
-            // DARK MODE
-            // ═══════════════════════════════════════════════════════════════
-            ->darkMode(true)
+            // FILAMENT 4: database notifications
+            ->databaseNotifications()
+            ->databaseNotificationsPolling('30s')
 
-            // ═══════════════════════════════════════════════════════════════
-            // NAVEGACIÓN CON ICONOS SEMÁNTICOS
-            // ═══════════════════════════════════════════════════════════════
+            // FILAMENT 4: navigation groups expl�citos
             ->navigationGroups([
-                NavigationGroup::make()
-                    ->label('Mi Negocio'),
-                NavigationGroup::make()
-                    ->label('Catálogo'),
-                NavigationGroup::make()
-                    ->label('Cuenta'),
-            ])
-            ->navigationItems([
-                // Enlace externo: Ver mi página pública
-                NavigationItem::make('Ver mi Sitio Público')
-                    ->url(fn () => $this->getTenantPublicUrl())
-                    ->icon('heroicon-o-arrow-top-right-on-square')
-                    ->group('Mi Negocio')
-                    ->sort(99)
-                    ->openUrlInNewTab(),
-
-                // Enlace externo: Compartir en WhatsApp
-                NavigationItem::make('Compartir Negocio')
-                    ->url(fn () => $this->getShareUrl())
-                    ->icon('heroicon-o-share')
-                    ->group('Mi Negocio')
-                    ->sort(100)
-                    ->openUrlInNewTab(),
+                NavigationGroup::make('Operaciones')
+                    ->icon('heroicon-o-briefcase')
+                    ->collapsible(),
+                NavigationGroup::make('CRM')
+                    ->icon('heroicon-o-user-group')
+                    ->collapsible(),
+                NavigationGroup::make('Marketing')
+                    ->icon('heroicon-o-megaphone')
+                    ->collapsible(),
+                NavigationGroup::make('Cat�logo')
+                    ->icon('heroicon-o-shopping-bag')
+                    ->collapsible(),
+                NavigationGroup::make('Pedidos')
+                    ->icon('heroicon-o-shopping-cart')
+                    ->collapsible(),
+                NavigationGroup::make('Configuraci�n')
+                    ->icon('heroicon-o-cog-6-tooth')
+                    ->collapsible(),
+                NavigationGroup::make('Plataforma')
+                    ->icon('heroicon-o-cloud')
+                    ->collapsible(),
             ])
 
-            // ═══════════════════════════════════════════════════════════════
-            // RECURSOS Y PÁGINAS
-            // ═══════════════════════════════════════════════════════════════
-            ->discoverResources(in: app_path('Filament/App/Resources'), for: 'App\\Filament\App\Resources')
-            ->discoverPages(in: app_path('Filament/App/Pages'), for: 'App\\Filament\App\Pages')
+            // DISCOVERY
+            ->discoverResources(in: app_path('Filament/App/Resources'), for: 'App\\Filament\\App\\Resources')
+            ->discoverPages(in: app_path('Filament/App/Pages'), for: 'App\\Filament\\App\\Pages')
+            ->discoverWidgets(in: app_path('Filament/App/Widgets'), for: 'App\\Filament\\App\\Widgets')
+
             ->pages([
                 Dashboard::class,
             ])
 
-            // ═══════════════════════════════════════════════════════════════
-            // WIDGETS DEL DASHBOARD (Filament v4 compatible)
-            // Ordenados por prioridad: Stats Bento > Límite > Completitud > Acciones
-            // ═══════════════════════════════════════════════════════════════
+            // WIDGETS DEL DASHBOARD
             ->widgets([
-                \App\Filament\App\Widgets\OnboardingActivationWidget::class,
-                \App\Filament\App\Widgets\OperationalCockpitWidget::class,
-                \App\Filament\App\Widgets\TenantStatsWidget::class, // Nuevo: Bento Grid con Growth Hacking
-                \App\Filament\App\Widgets\RevenueChart::class, // 30-day revenue trend
-                \App\Filament\App\Widgets\OrdersChart::class, // 7-day appointment volume
-                \App\Filament\App\Widgets\ProductLimitWidget::class,
-                \App\Filament\App\Widgets\AccountCompletenessWidget::class,
+                \App\Filament\App\Widgets\StatsOverview::class,
+                \App\Filament\App\Widgets\RevenueChart::class,
+                \App\Filament\App\Widgets\OrdersChart::class,
                 \App\Filament\App\Widgets\QuickActionsWidget::class,
-                \App\Filament\App\Widgets\ProductLimitWarning::class,
-                \App\Filament\App\Widgets\PendingReviewAlert::class,
-                \App\Filament\App\Widgets\FreePlanUpsellWidget::class,
-                // \App\Filament\App\Widgets\StatsOverview::class, // Reemplazado por TenantStatsWidget
+                \App\Filament\App\Widgets\OperationalCockpitWidget::class,
+                \App\Filament\App\Widgets\TenantAiAgentWidget::class,
             ])
 
-            // ═══════════════════════════════════════════════════════════════
-            // RENDIMIENTO Y UX
-            // ═══════════════════════════════════════════════════════════════
-            ->maxContentWidth('full')
-            ->when(
-                ! (bool) config('conecta.uiux.disable_filament_database_notifications', true),
-                fn (Panel $panel): Panel => $panel
-                    ->databaseNotifications()
-                    ->databaseNotificationsPolling('60s'),
-            )
-
-            // ═══════════════════════════════════════════════════════════════
             // MIDDLEWARE
-            // ═══════════════════════════════════════════════════════════════
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
@@ -183,45 +140,27 @@ class AppPanelProvider extends PanelProvider
                 AuthenticateSession::class,
                 ShareErrorsFromSession::class,
                 PreventRequestForgery::class,
-                SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
+                SubstituteBindings::class,
             ])
-            ->tenantMiddleware([
-                InitializeFilamentTenantContext::class,
-            ], isPersistent: true)
+
             ->authMiddleware([
                 Authenticate::class,
-                \App\Http\Middleware\RequireTwoFactorSession::class,
-            ]);
+            ])
+
+            // RENDER HOOKS
+            ->renderHook(
+                'panels::global-search.before',
+                fn (): string => '',
+            )
+
+            // AVATAR / PROFILE
+            ->defaultAvatarProvider(\Filament\AvatarProviders\UiAvatarsProvider::class);
     }
 
-    /**
-     * Obtiene la URL pública del tenant actual
-     */
-    protected function getTenantPublicUrl(): string
+    public function boot(): void
     {
-        $tenant = Filament::getTenant();
-        if ($tenant) {
-            return route('tenant.microsite.show', ['tenant' => $tenant->slug]);
-        }
-
-        return url('/');
-    }
-
-    /**
-     * Genera URL para compartir en WhatsApp
-     */
-    protected function getShareUrl(): string
-    {
-        $tenant = Filament::getTenant();
-        if ($tenant) {
-            $url = route('tenant.microsite.show', ['tenant' => $tenant->slug]);
-            $text = "Mira mi negocio {$tenant->name} en Dovra AI.";
-
-            return 'https://wa.me/?text='.urlencode("{$text}\n\n{$url}");
-        }
-
-        return '#';
+        // Hook para registrar extensiones espec�ficas del panel App
     }
 }

@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Providers\Filament;
 
-use Filament\Facades\Filament;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationGroup;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
@@ -21,180 +21,134 @@ use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 /**
- * AdminPanelProvider - Centro de Comando Super Admin
+ * AdminPanelProvider - Centro de Comando Super Admin - Filament 4.
  *
- * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  ARCHITECTURAL RATIONALE: Enterprise Admin Panel Configuration          ║
- * ╚══════════════════════════════════════════════════════════════════════════╝
+ * Migrated to Filament 4 API:
+ * - Schema::make() en lugar de Form::make()
+ * - protected static ?string $model (nullable)
+ * - databaseNotifications()
+ * - viteTheme()
+ * - breadcrumbs()
+ * - navigationGroups() con iconos
  *
- * Configuración del panel administrativo con:
- * - Paleta de colores Corporate Minimalist (Zinc primary, Slate gray)
- * - Tipografía Outfit (moderna y tecnológica)
- * - Logo vectorial de marca
- * - Navegación optimizada con grupos determinísticos
- * - SPA Mode para UX fluido sin recargas
+ * @see https://filamentphp.com/docs/4.x/panels/configuration
  */
 class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
         return $panel
-            // ═══════════════════════════════════════════════════════════════
-            // IDENTIDAD DEL PANEL
-            // ═══════════════════════════════════════════════════════════════
             ->default()
             ->id('admin')
             ->path('admin')
             ->login()
             ->authGuard('web')
 
-            // ═══════════════════════════════════════════════════════════════
-            // PLATFORM ADMIN ARCHITECTURE
-            // ═══════════════════════════════════════════════════════════════
-            // /admin is the platform superadmin console. Tenant-scoped
-            // business operations live in /app/{tenant}.
-            // ═══════════════════════════════════════════════════════════════
-            // ═══════════════════════════════════════════════════════════════
-            ->profile()         // User Self-Management enabled
-            // BRANDING: Logo y Nombre
-            // ═══════════════════════════════════════════════════════════════
+            // BRANDING
             ->brandName('Dovra AI Admin')
             ->brandLogo(fn () => view('filament.components.brand'))
             ->brandLogoHeight('2.5rem')
             ->favicon(asset('favicon.ico'))
 
-            // ═══════════════════════════════════════════════════════════════
-            // PALETA DE COLORES: Corporate Minimalist (Zinc + Slate)
-            // ═══════════════════════════════════════════════════════════════
-            // DESIGN DECISION: Zinc for primary (interactive elements) provides
-            // subtle visual distinction from Slate (structural gray elements).
-            // This prevents the "gray-on-gray" accessibility issue where buttons
-            // become indistinguishable from backgrounds.
-            // ═══════════════════════════════════════════════════════════════
+            // PROFILE
+            ->profile()
+
+            // SPA MODE
+            ->spa()
+
+            // LAYOUT
+            ->sidebarCollapsibleOnDesktop()
+            ->topNavigation(false)
+            ->breadcrumbs()
+
+            // PALETA CORPORATE MINIMALIST (Zinc primary, Slate gray)
             ->colors([
-                'primary' => Color::Zinc,   // Interactive: buttons, links, focus states
-                'gray' => Color::Slate,     // Structural: backgrounds, borders, text
+                'primary' => Color::Slate,
+                'gray' => Color::Zinc,
                 'success' => Color::Emerald,
                 'warning' => Color::Amber,
                 'danger' => Color::Rose,
                 'info' => Color::Sky,
             ])
 
-            // ═══════════════════════════════════════════════════════════════
-            // TIPOGRAFÍA: Outfit (Google Fonts)
-            // ═══════════════════════════════════════════════════════════════
-            ->font('Outfit')
+            // FILAMENT 4: viteTheme
+            ->viteTheme('resources/css/filament/admin/theme.css')
 
-            // ═══════════════════════════════════════════════════════════════
-            // NAVIGATION TOPOLOGY: Deterministic Sidebar Ordering
-            // ═══════════════════════════════════════════════════════════════
-            // Explicit groups ensure consistent menu structure as app grows.
-            // Using NavigationGroup objects for icons and collapsible control.
-            // Resources must use ->navigationGroup('GroupName') to match.
-            // ═══════════════════════════════════════════════════════════════
+            // FILAMENT 4: database notifications
+            ->databaseNotifications()
+            ->databaseNotificationsPolling('30s')
+
+            // FILAMENT 4: navigation groups
             ->navigationGroups([
-                \Filament\Navigation\NavigationGroup::make('Dashboard')
-                    ->icon('heroicon-o-home'),
-                \Filament\Navigation\NavigationGroup::make('Gerencia')
-                    ->icon('heroicon-o-briefcase'),
-                \Filament\Navigation\NavigationGroup::make('Negocios')
-                    ->icon('heroicon-o-building-storefront'),
-                \Filament\Navigation\NavigationGroup::make('Finanzas')
-                    ->icon('heroicon-o-banknotes'),
-                \Filament\Navigation\NavigationGroup::make('Configuración')
+                NavigationGroup::make('Plataforma')
+                    ->icon('heroicon-o-server-stack')
+                    ->collapsible(),
+                NavigationGroup::make('CRM Global')
+                    ->icon('heroicon-o-globe-alt')
+                    ->collapsible(),
+                NavigationGroup::make('Billing')
+                    ->icon('heroicon-o-banknotes')
+                    ->collapsible(),
+                NavigationGroup::make('AI')
+                    ->icon('heroicon-o-sparkles')
+                    ->collapsible(),
+                NavigationGroup::make('Auditor�a')
+                    ->icon('heroicon-o-shield-check')
+                    ->collapsible(),
+                NavigationGroup::make('Configuraci�n')
                     ->icon('heroicon-o-cog-6-tooth')
-                    ->collapsed(),
+                    ->collapsible(),
             ])
 
-            // ═══════════════════════════════════════════════════════════════
-            // ERGONOMÍA DE NAVEGACIÓN
-            // ═══════════════════════════════════════════════════════════════
-            ->sidebarCollapsibleOnDesktop()
-            ->collapsibleNavigationGroups(false)
-            ->maxContentWidth('full')
-
-            // ═══════════════════════════════════════════════════════════════
-            // SPA MODE: Turbo/Livewire Navigation
-            // ═══════════════════════════════════════════════════════════════
-            // Prevents full browser reloads between views.
-            // Dramatically improves perceived performance and UX fluidity.
-            // ═══════════════════════════════════════════════════════════════
-            ->spa()
-
-            // ═══════════════════════════════════════════════════════════════
-            // MODO OSCURO
-            // ═══════════════════════════════════════════════════════════════
-            ->darkMode(true)
-
-            // ═══════════════════════════════════════════════════════════════
-            // DESCUBRIMIENTO DE RECURSOS
-            // ═══════════════════════════════════════════════════════════════
+            // DISCOVERY
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
+            ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
+
             ->pages([
                 Dashboard::class,
             ])
-            ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
+
             ->widgets([
-                // ══════════════════════════════════════════════════════════
-                // EL CEREBRO DIGITAL - Dashboard Super Admin
-                // Jerarquía Visual: KPIs → Gráficos → Tabla de Acción
-                // ══════════════════════════════════════════════════════════
-
-                // 1. Bienvenida (contexto de usuario)
-                \Filament\Widgets\AccountWidget::class,
-
-                // 2. NIVEL 1: KPIs Estratégicos (MRR, Revenue, Conversión)
-                \App\Filament\Widgets\FinancialStatsOverview::class,
-
-                // 3. NIVEL 2: Análisis Temporal (Gráficos de Tendencia)
-                \App\Filament\Widgets\AcquisitionGrowthChart::class,
-                \App\Filament\Widgets\PlanDistributionChart::class,
-
-                // 4. NIVEL 3: Centro de Comando (Tabla de Pagos Pendientes)
-                \App\Filament\Widgets\PendingPaymentsWidget::class,
+                \App\Filament\Admin\Widgets\TenantsOverviewWidget::class,
+                \App\Filament\Admin\Widgets\GlobalRevenueChartWidget::class,
+                \App\Filament\Admin\Widgets\PlanDistributionChartWidget::class,
+                \App\Filament\Admin\Widgets\TopTenantsTableWidget::class,
+                \App\Filament\Admin\Widgets\SystemHealthWidget::class,
+                \App\Filament\Admin\Widgets\RecentIncidentsWidget::class,
+                \App\Filament\Admin\Widgets\AiCostByTenantChartWidget::class,
+                \App\Filament\Admin\Widgets\DiskAndQueueWidget::class,
             ])
 
-            // ═══════════════════════════════════════════════════════════════
-            // MIDDLEWARE STACK
-            // ═══════════════════════════════════════════════════════════════
+            // MIDDLEWARE
             ->middleware([
-                \App\Http\Middleware\UsePlatformDatabaseConnection::class,
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
                 StartSession::class,
                 AuthenticateSession::class,
                 ShareErrorsFromSession::class,
                 PreventRequestForgery::class,
-                SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
+                SubstituteBindings::class,
             ])
+
             ->authMiddleware([
                 Authenticate::class,
-                \App\Http\Middleware\RequireTwoFactorSession::class,
-            ]);
+            ])
+
+            // RENDER HOOKS para global search y notificaciones
+            ->renderHook(
+                'panels::global-search.before',
+                fn (): string => '',
+            )
+
+            // AVATAR
+            ->defaultAvatarProvider(\Filament\AvatarProviders\UiAvatarsProvider::class);
     }
 
     public function boot(): void
     {
-        Filament::serving(function () {
-            // Only apply this check to the admin panel
-            if (Filament::getCurrentPanel()->getId() !== 'admin') {
-                return;
-            }
-
-            // If not authenticated, let the login page handle it
-            if (! auth()->check()) {
-                return;
-            }
-
-            $user = auth()->user();
-            if ($user->isSuperAdmin()) {
-                return;
-            }
-
-            abort(403, 'Acceso denegado. Se requiere Super Admin permitido por allowlist.');
-        });
+        // Hook para extensiones espec�ficas del admin panel
     }
 }

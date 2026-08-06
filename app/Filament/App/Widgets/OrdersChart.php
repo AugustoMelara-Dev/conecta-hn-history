@@ -5,84 +5,49 @@ declare(strict_types=1);
 namespace App\Filament\App\Widgets;
 
 use App\Models\Order;
-use App\Models\Tenant;
 use Filament\Facades\Filament;
 use Filament\Widgets\ChartWidget;
+use Flowframe\Trend\Trend;
+use Flowframe\Trend\TrendValue;
 
 class OrdersChart extends ChartWidget
 {
-    protected static bool $isLazy = false;
+    protected static ?string $heading = 'Pedidos últimos 30 días';
 
-    protected static ?string $heading = 'Ordenes por Dia (Ultima Semana)';
-
-    protected static ?int $sort = 3;
+    protected static ?int $sort = 2;
 
     protected function getData(): array
     {
         $tenant = Filament::getTenant();
 
-        if (! $tenant instanceof Tenant) {
-            return [
-                'datasets' => [],
-                'labels' => [],
-            ];
+        if (! $tenant) {
+            return ['datasets' => [], 'labels' => []];
         }
 
-        /** @var array<string, int> $aggregates */
-        $aggregates = Order::query()
-            ->where('tenant_id', (string) $tenant->getKey())
-            ->whereBetween('created_at', [now()->subDays(7)->startOfDay(), now()->endOfDay()])
-            ->selectRaw('DATE(created_at) as order_date, COUNT(*) as aggregate')
-            ->groupBy('order_date')
-            ->orderBy('order_date')
-            ->pluck('aggregate', 'order_date')
-            ->map(fn ($value): int => (int) $value)
-            ->all();
-
-        $labels = [];
-        $data = [];
-
-        for ($i = 6; $i >= 0; $i--) {
-            $date = now()->subDays($i);
-            $key = $date->toDateString();
-            $labels[] = $date->format('d/m');
-            $data[] = $aggregates[$key] ?? 0;
-        }
+        $data = Trend::query(
+            Order::query()->where('business_id', $tenant->getKey())
+        )
+            ->between(start: now()->subDays(30), end: now())
+            ->perDay()
+            ->count();
 
         return [
             'datasets' => [
                 [
-                    'label' => 'Ordenes',
-                    'data' => $data,
-                    'backgroundColor' => '#000000',
-                    'borderRadius' => 4,
+                    'label' => 'Pedidos',
+                    'data' => $data->map(fn (TrendValue $value) => $value->aggregate)->toArray(),
+                    'backgroundColor' => 'rgba(99, 102, 241, 0.1)',
+                    'borderColor' => 'rgb(99, 102, 241)',
+                    'fill' => true,
+                    'tension' => 0.3,
                 ],
             ],
-            'labels' => $labels,
+            'labels' => $data->map(fn (TrendValue $value) => $value->date)->toArray(),
         ];
     }
 
     protected function getType(): string
     {
-        return 'bar';
-    }
-
-    protected function getOptions(): array
-    {
-        return [
-            'scales' => [
-                'y' => [
-                    'beginAtZero' => true,
-                    'ticks' => [
-                        'stepSize' => 1,
-                    ],
-                ],
-            ],
-            'plugins' => [
-                'legend' => [
-                    'display' => false,
-                ],
-            ],
-        ];
+        return 'line';
     }
 }

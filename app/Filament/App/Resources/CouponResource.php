@@ -8,12 +8,12 @@ use App\Filament\App\Resources\CouponResource\Pages;
 use App\Models\Coupon;
 use Filament\Forms;
 use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Section;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Forms\Get;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -45,7 +45,7 @@ class CouponResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
         return $form
             ->schema([
@@ -302,3 +302,4 @@ class CouponResource extends Resource
         ];
     }
 }
+

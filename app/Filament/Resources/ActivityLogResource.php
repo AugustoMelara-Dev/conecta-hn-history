@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ActivityLogResource\Pages;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Form;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Actions\ViewAction;
@@ -91,7 +91,7 @@ class ActivityLogResource extends Resource
         return false;
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
         return $form
             ->schema([
@@ -236,3 +236,4 @@ class ActivityLogResource extends Resource
         ];
     }
 }
+

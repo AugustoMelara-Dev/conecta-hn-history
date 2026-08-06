@@ -10,10 +10,10 @@ use App\Models\Tenant;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Pages\Tenancy\EditTenantProfile as BaseEditTenantProfile;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Schema;
+
 
 class EditTenantProfile extends BaseEditTenantProfile
 {
@@ -362,3 +362,5 @@ class EditTenantProfile extends BaseEditTenantProfile
         return $user?->canAccessTenant($tenant) ?? false;
     }
 }
+
+

@@ -27,7 +27,9 @@ use App\Http\Controllers\Api\V1\TenantAgentChatController;
 use App\Http\Controllers\Api\V1\TenantAiConfigurationController;
 use App\Http\Controllers\Api\V1\TenantSettingsController;
 use App\Http\Controllers\Api\V1\TenantWorkforceController;
-use App\Http\Controllers\Auth\OtpController;
+use App\Http\Controllers\Api\V1\Crm\ActivityController;
+use App\Http\Controllers\Api\V1\Crm\ContactController;
+use App\Http\Controllers\Api\V1\Crm\DealController;
 use App\Http\Controllers\Public\CheckoutController;
 use App\Http\Controllers\Webhook\PaymentWebhookController;
 use App\Http\Middleware\EnsurePlatformAiRegistryConfigured;
@@ -409,3 +411,8 @@ Route::prefix('coupons')->group(function () {
 Route::post('/webhooks/payment', [PaymentWebhookController::class, 'handle'])
     ->name('webhooks.payment')
     ->withoutMiddleware([PreventRequestForgery::class]);
+
+
+
+
+if (file_exists(base_path('routes/api-crm.php'))) require base_path('routes/api-crm.php');

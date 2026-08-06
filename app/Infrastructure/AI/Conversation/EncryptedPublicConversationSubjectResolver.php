@@ -11,7 +11,7 @@ use Symfony\Component\HttpFoundation\Cookie;
 
 final readonly class EncryptedPublicConversationSubjectResolver
 {
-    public const string COOKIE_NAME = 'dovra_ai_subject';
+    public const COOKIE_NAME = 'dovra_ai_subject';
 
     public function __construct(private Encrypter $encrypter) {}
 

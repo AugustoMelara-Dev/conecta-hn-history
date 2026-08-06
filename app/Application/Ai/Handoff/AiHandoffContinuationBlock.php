@@ -6,7 +6,7 @@ namespace App\Application\Ai\Handoff;
 
 final readonly class AiHandoffContinuationBlock
 {
-    public const string MESSAGE = 'A human follow-up has been requested.';
+    public const MESSAGE = 'A human follow-up has been requested.';
 
     public function __construct(
         public string $handoffId,
