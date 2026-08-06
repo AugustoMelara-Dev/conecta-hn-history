@@ -10,8 +10,8 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Form;
 
 /**
  * AiRegistry - Manage providers, models, costs.
@@ -32,10 +32,10 @@ class AiRegistry extends Page
         $this->form->fill();
     }
 
-    public function form(Schema $schema): Schema
+    public function form(Form $form): Form
     {
-        return $schema->components([
-            Section::make('Configurar AI')->components([
+        return $schema->schema([
+            Section::make('Configurar AI')->schema([
                 Select::make('provider')->label('Provider')->options(['openai' => 'OpenAI', 'anthropic' => 'Anthropic'])->default('openai'),
                 TextInput::make('model')->label('Modelo')->default('gpt-4o-mini'),
                 TextInput::make('api_key_ref')->label('API key reference'),
@@ -68,5 +68,7 @@ class AiRegistry extends Page
         Notification::make()->title('AI Registry actualizado')->success()->send();
     }
 }
+
+
 
 

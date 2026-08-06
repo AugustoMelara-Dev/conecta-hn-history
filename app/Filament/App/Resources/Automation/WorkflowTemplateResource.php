@@ -12,9 +12,9 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Form;
 use Filament\Tables;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -42,12 +42,12 @@ class WorkflowTemplateResource extends Resource
 
     protected static ?int $navigationSort = 2;
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
-        return $schema
-            ->components([
-                Section::make('Información')->components([
-                    Grid::make(2)->components([
+        return $form
+            ->schema([
+                Section::make('Información')->schema([
+                    Grid::make(2)->schema([
                         TextInput::make('name')->label('Nombre')->required()->maxLength(200),
                         TextInput::make('slug')->label('Slug')->required()->maxLength(100)->unique(ignoreRecord: true),
                         TextInput::make('category')->label('Categoría')->maxLength(50),
@@ -113,3 +113,6 @@ class WorkflowTemplateResource extends Resource
         ];
     }
 }
+
+
+

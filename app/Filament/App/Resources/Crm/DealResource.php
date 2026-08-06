@@ -21,9 +21,9 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Form;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -46,14 +46,14 @@ class DealResource extends Resource
 
     protected static ?int $navigationSort = 11;
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
-        return $schema
-            ->components([
+        return $form
+            ->schema([
                 Section::make('Información del deal')
-                    ->components([
+                    ->schema([
                         Grid::make(2)
-                            ->components([
+                            ->schema([
                                 TextInput::make('name')
                                     ->label('Nombre')
                                     ->required()
@@ -86,9 +86,9 @@ class DealResource extends Resource
                     ]),
 
                 Section::make('Valor y fechas')
-                    ->components([
+                    ->schema([
                         Grid::make(3)
-                            ->components([
+                            ->schema([
                                 TextInput::make('value')
                                     ->label('Valor')
                                     ->numeric()
@@ -128,9 +128,9 @@ class DealResource extends Resource
                     ]),
 
                 Section::make('Relaciones')
-                    ->components([
+                    ->schema([
                         Grid::make(2)
-                            ->components([
+                            ->schema([
                                 Select::make('contact_id')
                                     ->label('Contacto')
                                     ->relationship('contact', 'id')
@@ -322,3 +322,6 @@ class DealResource extends Resource
         ];
     }
 }
+
+
+

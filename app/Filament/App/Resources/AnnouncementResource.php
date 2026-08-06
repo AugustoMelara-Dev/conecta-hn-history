@@ -18,9 +18,9 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Get;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Form;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
@@ -45,13 +45,13 @@ class AnnouncementResource extends Resource
 
     protected static ?int $navigationSort = 2;
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
-        return $schema
-            ->components([
+        return $form
+            ->schema([
                 Section::make('Contenido del aviso')
                     ->description('Define el mensaje que verán tus clientes en las superficies públicas.')
-                    ->components([
+                    ->schema([
                         Select::make('type')
                             ->label('Tipo de aviso')
                             ->required()
@@ -80,9 +80,9 @@ class AnnouncementResource extends Resource
 
                 Section::make('Programación')
                     ->description('Define cuándo debe aparecer y cuándo debe dejar de mostrarse.')
-                    ->components([
+                    ->schema([
                         Grid::make(2)
-                            ->components([
+                            ->schema([
                                 DateTimePicker::make('starts_at_utc')
                                     ->label('Fecha de inicio')
                                     ->required()
@@ -221,3 +221,6 @@ class AnnouncementResource extends Resource
         ];
     }
 }
+
+
+

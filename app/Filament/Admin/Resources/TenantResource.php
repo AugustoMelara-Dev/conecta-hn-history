@@ -17,9 +17,9 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Form;
 use Filament\Tables;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -42,13 +42,13 @@ class TenantResource extends Resource
 
     protected static ?int $navigationSort = 10;
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
-        return $schema
-            ->components([
+        return $form
+            ->schema([
                 Section::make('Información')
-                    ->components([
-                        Grid::make(2)->components([
+                    ->schema([
+                        Grid::make(2)->schema([
                             TextInput::make('name')->label('Nombre')->required(),
                             TextInput::make('slug')->label('Slug')->required()->unique(ignoreRecord: true),
                             TextInput::make('email')->label('Email')->email(),
@@ -57,8 +57,8 @@ class TenantResource extends Resource
                             Select::make('status')->label('Estado')->options(['active' => 'Activo', 'banned' => 'Baneado', 'suspended' => 'Suspendido'])->default('active'),
                         ]),
                     ]),
-                Section::make('Configuración')->components([
-                    Grid::make(2)->components([
+                Section::make('Configuración')->schema([
+                    Grid::make(2)->schema([
                         Toggle::make('is_active')->label('Activo')->default(true),
                         DateTimePicker::make('trial_ends_at')->label('Trial hasta'),
                         Textarea::make('notes')->label('Notas internas')->rows(3)->columnSpanFull(),
@@ -108,4 +108,7 @@ class TenantResource extends Resource
         ];
     }
 }
+
+
+
 

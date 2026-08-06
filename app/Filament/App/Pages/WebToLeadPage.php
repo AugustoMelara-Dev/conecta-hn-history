@@ -12,8 +12,8 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Form;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 
@@ -51,13 +51,13 @@ class WebToLeadPage extends Page
         return true;
     }
 
-    public function form(Schema $schema): Schema
+    public function form(Form $form): Form
     {
-        return $schema
-            ->components([
+        return $form
+            ->schema([
                 Section::make('Cuéntanos sobre ti')
                     ->description('Nos pondremos en contacto contigo en menos de 24 horas.')
-                    ->components([
+                    ->schema([
                         TextInput::make('first_name')->label('Nombre')->required()->maxLength(100),
                         TextInput::make('last_name')->label('Apellido')->required()->maxLength(100),
                         TextInput::make('email')->label('Email')->email()->required()->maxLength(255),
@@ -148,3 +148,6 @@ class WebToLeadPage extends Page
             ->send();
     }
 }
+
+
+

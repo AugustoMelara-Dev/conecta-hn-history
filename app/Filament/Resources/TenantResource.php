@@ -15,7 +15,7 @@ use Filament\Forms;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Schema;
+use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -47,7 +47,7 @@ class TenantResource extends Resource
         return 'Negocios';
     }
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
         return $form
             ->schema([
@@ -608,4 +608,6 @@ class TenantResource extends Resource
         ];
     }
 }
+
+
 

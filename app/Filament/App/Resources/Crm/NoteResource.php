@@ -14,9 +14,9 @@ use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Form;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -39,12 +39,12 @@ class NoteResource extends Resource
 
     protected static ?int $navigationSort = 14;
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
-        return $schema
-            ->components([
-                Section::make('Detalles')->components([
-                    Grid::make(2)->components([
+        return $form
+            ->schema([
+                Section::make('Detalles')->schema([
+                    Grid::make(2)->schema([
                         Select::make('contact_id')
                             ->label('Contacto')
                             ->relationship('contact', 'id')
@@ -115,3 +115,6 @@ class NoteResource extends Resource
         ];
     }
 }
+
+
+

@@ -10,8 +10,8 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Form;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -33,10 +33,10 @@ class IncidentLog extends Page
         $this->form->fill();
     }
 
-    public function form(Schema $schema): Schema
+    public function form(Form $form): Form
     {
-        return $schema->components([
-            Section::make('Nuevo incidente')->components([
+        return $schema->schema([
+            Section::make('Nuevo incidente')->schema([
                 TextInput::make('title')->label('Título')->required(),
                 Select::make('severity')->label('Severidad')->options(['low' => 'Baja', 'medium' => 'Media', 'high' => 'Alta', 'critical' => 'Crítica'])->required(),
                 Textarea::make('description')->label('Descripción')->rows(4)->required(),
@@ -66,3 +66,5 @@ class IncidentLog extends Page
             ->orderBy('created_at', 'desc')->limit(20)->get()->toArray();
     }
 }
+
+

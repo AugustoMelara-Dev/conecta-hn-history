@@ -7,7 +7,7 @@ namespace App\Filament\App\Resources;
 use App\Filament\App\Resources\LoyaltyRewardResource\Pages;
 use App\Models\LoyaltyReward;
 use Filament\Forms;
-use Filament\Schemas\Schema;
+use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -24,7 +24,7 @@ class LoyaltyRewardResource extends Resource
 
     protected static ?int $navigationSort = 2;
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
         return $form
             ->schema([
@@ -112,4 +112,6 @@ class LoyaltyRewardResource extends Resource
         ];
     }
 }
+
+
 

@@ -15,9 +15,9 @@ use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Form;
 use Filament\Tables;
 use Filament\Tables\Columns\ColorColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -40,12 +40,12 @@ class TagResource extends Resource
 
     protected static ?int $navigationSort = 16;
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
-        return $schema
-            ->components([
-                Section::make('Detalles')->components([
-                    Grid::make(2)->components([
+        return $form
+            ->schema([
+                Section::make('Detalles')->schema([
+                    Grid::make(2)->schema([
                         TextInput::make('name')
                             ->label('Nombre')
                             ->required()
@@ -100,3 +100,6 @@ class TagResource extends Resource
         ];
     }
 }
+
+
+

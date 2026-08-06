@@ -18,9 +18,9 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Form;
 use Filament\Tables;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -44,12 +44,12 @@ class CustomFieldResource extends Resource
 
     protected static ?int $navigationSort = 17;
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
-        return $schema
-            ->components([
-                Section::make('Identidad')->components([
-                    Grid::make(2)->components([
+        return $form
+            ->schema([
+                Section::make('Identidad')->schema([
+                    Grid::make(2)->schema([
                         Select::make('entity')
                             ->label('Entidad')
                             ->options(['contact' => 'Contacto', 'company' => 'Empresa', 'deal' => 'Deal'])
@@ -78,7 +78,7 @@ class CustomFieldResource extends Resource
                     ]),
                 ]),
                 Section::make('Configuración específica del tipo')
-                    ->components([
+                    ->schema([
                         KeyValue::make('options')
                             ->label('Opciones (para tipo select)')
                             ->keyLabel('Valor')
@@ -136,3 +136,6 @@ class CustomFieldResource extends Resource
         ];
     }
 }
+
+
+

@@ -15,9 +15,9 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Form;
 use Filament\Tables;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -33,11 +33,11 @@ class UserResource extends Resource
     protected static ?string $pluralModelLabel = 'Usuarios globales';
     protected static ?int $navigationSort = 11;
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
-        return $schema->components([
-            Section::make('Identidad')->components([
-                Grid::make(2)->components([
+        return $schema->schema([
+            Section::make('Identidad')->schema([
+                Grid::make(2)->schema([
                     TextInput::make('name')->label('Nombre')->required(),
                     TextInput::make('email')->label('Email')->email()->required(),
                     Select::make('tenant_id')->label('Tenant')->relationship('tenant', 'name')->searchable(),
@@ -92,4 +92,6 @@ class UserResource extends Resource
         ];
     }
 }
+
+
 

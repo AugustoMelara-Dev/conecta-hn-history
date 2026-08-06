@@ -12,7 +12,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Schemas\Schema;
+use Filament\Forms\Form;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -23,10 +23,10 @@ class ActivitiesRelationManager extends RelationManager
 
     protected static ?string $title = 'Actividades';
 
-    public function form(Schema $schema): Schema
+    public function form(Form $form): Form
     {
-        return $schema
-            ->components([
+        return $form
+            ->schema([
                 Select::make('type')
                     ->label('Tipo')
                     ->options([
@@ -71,3 +71,6 @@ class ActivitiesRelationManager extends RelationManager
             ]);
     }
 }
+
+
+

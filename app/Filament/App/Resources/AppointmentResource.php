@@ -18,9 +18,9 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Form;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
@@ -43,13 +43,13 @@ class AppointmentResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
-        return $schema
-            ->components([
+        return $form
+            ->schema([
                 Section::make('Datos de la cita')
                     ->description('Información principal de la cita agendada.')
-                    ->components([
+                    ->schema([
                         TextInput::make('title')
                             ->label('Título')
                             ->required()
@@ -68,9 +68,9 @@ class AppointmentResource extends Resource
                     ]),
 
                 Section::make('Programación')
-                    ->components([
+                    ->schema([
                         Grid::make(2)
-                            ->components([
+                            ->schema([
                                 DateTimePicker::make('starts_at')
                                     ->label('Inicio')
                                     ->required()
@@ -209,3 +209,6 @@ class AppointmentResource extends Resource
         ];
     }
 }
+
+
+

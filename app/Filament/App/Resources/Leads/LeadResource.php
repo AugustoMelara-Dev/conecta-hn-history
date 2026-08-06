@@ -6,7 +6,7 @@ namespace App\Filament\App\Resources\Leads;
 
 use App\Filament\App\Resources\Leads\Schemas\LeadForm;
 use App\Models\Lead;
-use Filament\Schemas\Schema;
+use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Actions\BulkActionGroup;
@@ -22,7 +22,7 @@ class LeadResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
         return LeadForm::configure($form);
     }
@@ -84,4 +84,6 @@ class LeadResource extends Resource
         ];
     }
 }
+
+
 

@@ -6,8 +6,8 @@ namespace App\Filament\Admin\Pages;
 
 use Filament\Forms\Components\Select;
 use Filament\Pages\Page;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Form;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -29,10 +29,10 @@ class CrossTenantReports extends Page
         $this->form->fill();
     }
 
-    public function form(Schema $schema): Schema
+    public function form(Form $form): Form
     {
-        return $schema->components([
-            Section::make('Métricas cross-tenant')->components([
+        return $schema->schema([
+            Section::make('Métricas cross-tenant')->schema([
                 Select::make('metric')->label('Métrica')->options([
                     'total_orders' => 'Total órdenes',
                     'total_revenue' => 'Total ingresos',
@@ -56,3 +56,5 @@ class CrossTenantReports extends Page
         ];
     }
 }
+
+

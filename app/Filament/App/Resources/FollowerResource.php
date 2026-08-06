@@ -9,7 +9,7 @@ use App\Models\Follow;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Schemas\Schema;
+use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -51,7 +51,7 @@ class FollowerResource extends Resource
         return false;
     }
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
         return $form
             ->schema([
@@ -123,4 +123,6 @@ class FollowerResource extends Resource
         ];
     }
 }
+
+
 

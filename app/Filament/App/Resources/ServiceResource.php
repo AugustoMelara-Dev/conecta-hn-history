@@ -16,7 +16,7 @@ use App\Models\User;
 use App\Support\Product\TenantAccessMatrix;
 use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Schemas\Schema;
+use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables;
@@ -79,7 +79,7 @@ class ServiceResource extends Resource
         return app(TenantMarketResolver::class)->resolve(static::trustedTenant())->currencyCode;
     }
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
         return $form
             ->schema([
@@ -209,4 +209,6 @@ class ServiceResource extends Resource
         ];
     }
 }
+
+
 

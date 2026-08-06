@@ -8,8 +8,8 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Pages\Page;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Form;
 
 class Settings extends Page
 {
@@ -34,13 +34,13 @@ class Settings extends Page
         $this->form->fill();
     }
 
-    public function form(Schema $schema): Schema
+    public function form(Form $form): Form
     {
-        return $schema
-            ->components([
+        return $form
+            ->schema([
                 Section::make('Preferencias generales')
                     ->description('Configuración básica de tu tienda.')
-                    ->components([
+                    ->schema([
                         Select::make('locale')
                             ->label('Idioma')
                             ->options([
@@ -70,7 +70,7 @@ class Settings extends Page
                     ]),
 
                 Section::make('Notificaciones')
-                    ->components([
+                    ->schema([
                         Toggle::make('email_notifications')
                             ->label('Notificaciones por email')
                             ->default(true),
@@ -94,3 +94,6 @@ class Settings extends Page
         $this->notify('success', 'Ajustes guardados correctamente.');
     }
 }
+
+
+

@@ -16,9 +16,9 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Form;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -41,14 +41,14 @@ class CompanyResource extends Resource
 
     protected static ?int $navigationSort = 12;
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
-        return $schema
-            ->components([
+        return $form
+            ->schema([
                 Section::make('Información de la empresa')
-                    ->components([
+                    ->schema([
                         Grid::make(2)
-                            ->components([
+                            ->schema([
                                 TextInput::make('name')->label('Nombre')->required()->maxLength(200),
                                 TextInput::make('industry')->label('Industria')->maxLength(100),
                                 Select::make('size')->label('Tamaño')
@@ -111,3 +111,6 @@ class CompanyResource extends Resource
         ];
     }
 }
+
+
+

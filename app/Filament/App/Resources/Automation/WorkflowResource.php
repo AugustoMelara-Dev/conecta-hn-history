@@ -19,9 +19,9 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Form;
 use Filament\Tables;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -45,14 +45,14 @@ class WorkflowResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
-        return $schema
-            ->components([
+        return $form
+            ->schema([
                 Section::make('Información')
-                    ->components([
+                    ->schema([
                         Grid::make(2)
-                            ->components([
+                            ->schema([
                                 TextInput::make('name')
                                     ->label('Nombre')
                                     ->required()
@@ -77,7 +77,7 @@ class WorkflowResource extends Resource
 
                 Section::make('Grafo del workflow (JSON)')
                     ->description('Define el DAG del workflow en formato JSON.')
-                    ->components([
+                    ->schema([
                         Textarea::make('graph_json')
                             ->label('Graph JSON')
                             ->rows(15)
@@ -192,3 +192,6 @@ class WorkflowResource extends Resource
         ];
     }
 }
+
+
+

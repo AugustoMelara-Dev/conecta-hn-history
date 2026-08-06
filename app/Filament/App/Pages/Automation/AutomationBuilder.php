@@ -13,8 +13,8 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Form;
 
 /**
  * AutomationBuilder - Drag-and-drop workflow builder (Livewire + Alpine).
@@ -45,11 +45,11 @@ class AutomationBuilder extends Page
         $this->form->fill();
     }
 
-    public function form(Schema $schema): Schema
+    public function form(Form $form): Form
     {
-        return $schema
-            ->components([
-                Section::make('1. Selecciona un template (opcional)')->components([
+        return $form
+            ->schema([
+                Section::make('1. Selecciona un template (opcional)')->schema([
                     Select::make('template_slug')
                         ->label('Template')
                         ->options(fn () => collect((new TemplateCatalog())->all())->pluck('name', 'slug')->toArray())
@@ -65,7 +65,7 @@ class AutomationBuilder extends Page
                             }
                         }),
                 ]),
-                Section::make('2. Workflow')->components([
+                Section::make('2. Workflow')->schema([
                     TextInput::make('name')->label('Nombre')->required()->maxLength(200),
                     \Filament\Forms\Components\Textarea::make('description')->label('Descripción')->rows(2)->maxLength(500),
                     Select::make('trigger_type')
@@ -75,7 +75,7 @@ class AutomationBuilder extends Page
                         ->native(false),
                 ]),
                 Section::make('3. Graph (JSON DAG)')->description('Edita los nodos y edges del workflow.')
-                    ->components([
+                    ->schema([
                         Textarea::make('graph_json')
                             ->label('Graph JSON')
                             ->rows(20)
@@ -132,3 +132,6 @@ class AutomationBuilder extends Page
         ];
     }
 }
+
+
+

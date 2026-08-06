@@ -13,9 +13,9 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Form;
 use Filament\Tables;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -31,11 +31,11 @@ class PlanResource extends Resource
     protected static ?string $pluralModelLabel = 'Planes';
     protected static ?int $navigationSort = 21;
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
-        return $schema->components([
-            Section::make('Información')->components([
-                Grid::make(2)->components([
+        return $schema->schema([
+            Section::make('Información')->schema([
+                Grid::make(2)->schema([
                     TextInput::make('name')->label('Nombre')->required(),
                     TextInput::make('slug')->label('Slug')->required(),
                     TextInput::make('price')->label('Precio')->numeric()->prefix('L'),
@@ -68,4 +68,6 @@ class PlanResource extends Resource
         return ['index' => Pages\ListPlans::route('/'), 'create' => Pages\CreatePlan::route('/create'), 'edit' => Pages\EditPlan::route('/{record}/edit')];
     }
 }
+
+
 

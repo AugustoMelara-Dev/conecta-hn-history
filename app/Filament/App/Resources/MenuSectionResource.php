@@ -9,7 +9,7 @@ use App\Models\MenuSection;
 use App\Support\Product\TenantAccessMatrix;
 use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Schemas\Schema;
+use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -78,7 +78,7 @@ class MenuSectionResource extends Resource
         return 'primary';
     }
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
         return $form
             ->schema([
@@ -200,4 +200,6 @@ class MenuSectionResource extends Resource
         ];
     }
 }
+
+
 

@@ -12,7 +12,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Schemas\Schema;
+use Filament\Forms\Form;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -25,10 +25,10 @@ class DealsRelationManager extends RelationManager
 
     protected static ?string $icon = 'heroicon-o-currency-dollar';
 
-    public function form(Schema $schema): Schema
+    public function form(Form $form): Form
     {
-        return $schema
-            ->components([
+        return $form
+            ->schema([
                 TextInput::make('name')
                     ->label('Nombre del deal')
                     ->required(),
@@ -81,3 +81,6 @@ class DealsRelationManager extends RelationManager
             ]);
     }
 }
+
+
+

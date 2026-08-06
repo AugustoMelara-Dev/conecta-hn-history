@@ -22,9 +22,9 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Form;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -49,14 +49,14 @@ class ContactResource extends Resource
 
     protected static ?int $navigationSort = 10;
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
-        return $schema
-            ->components([
+        return $form
+            ->schema([
                 Section::make('Informaci�n personal')
-                    ->components([
+                    ->schema([
                         Grid::make(2)
-                            ->components([
+                            ->schema([
                                 TextInput::make('first_name')
                                     ->label('Nombre')
                                     ->maxLength(100),
@@ -94,9 +94,9 @@ class ContactResource extends Resource
                     ]),
 
                 Section::make('Clasificaci�n')
-                    ->components([
+                    ->schema([
                         Grid::make(3)
-                            ->components([
+                            ->schema([
                                 Select::make('lifecycle_stage')
                                     ->label('Etapa del ciclo')
                                     ->options(LifecycleStage::options())
@@ -123,7 +123,7 @@ class ContactResource extends Resource
                     ]),
 
                 Section::make('Notas y campos personalizados')
-                    ->components([
+                    ->schema([
                         Textarea::make('notes')
                             ->label('Notas')
                             ->rows(4)
@@ -306,3 +306,6 @@ class ContactResource extends Resource
         ];
     }
 }
+
+
+

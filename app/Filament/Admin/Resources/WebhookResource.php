@@ -16,9 +16,9 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Form;
 use Filament\Tables;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -34,11 +34,11 @@ class WebhookResource extends Resource
     protected static ?string $pluralModelLabel = 'Webhooks';
     protected static ?int $navigationSort = 31;
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
-        return $schema->components([
-            Section::make('Endpoint')->components([
-                Grid::make(2)->components([
+        return $schema->schema([
+            Section::make('Endpoint')->schema([
+                Grid::make(2)->schema([
                     TextInput::make('name')->label('Nombre')->required(),
                     TextInput::make('url')->label('URL')->url()->required(),
                     Select::make('events')->label('Eventos')->multiple()->options([
@@ -79,4 +79,6 @@ class WebhookResource extends Resource
         return ['index' => Pages\ListWebhooks::route('/'), 'create' => Pages\CreateWebhook::route('/create'), 'edit' => Pages\EditWebhook::route('/{record}/edit')];
     }
 }
+
+
 

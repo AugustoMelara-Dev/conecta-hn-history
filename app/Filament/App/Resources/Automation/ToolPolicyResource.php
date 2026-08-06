@@ -11,9 +11,9 @@ use Filament\Forms\Components\MultiSelect;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Form;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -43,12 +43,12 @@ class ToolPolicyResource extends Resource
         return auth()->user()?->can('automation.policies.manage') ?? false;
     }
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
-        return $schema
-            ->components([
-                Section::make('Configuración')->components([
-                    Grid::make(2)->components([
+        return $form
+            ->schema([
+                Section::make('Configuración')->schema([
+                    Grid::make(2)->schema([
                         Select::make('user_id')
                             ->label('Agente / Usuario')
                             ->relationship('user', 'name')
@@ -110,3 +110,6 @@ class ToolPolicyResource extends Resource
         ];
     }
 }
+
+
+
