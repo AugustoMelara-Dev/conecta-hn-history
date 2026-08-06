@@ -6,6 +6,15 @@ use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
+// PR5: Scheduled reports processor
+Schedule::command('reports:send-scheduled')->hourly()->withoutOverlapping();
+
+// PR4: Import queue worker
+Schedule::command('imports:run-async')->everyFiveMinutes()->withoutOverlapping();
+
+// PR3: Workflow scheduler tick
+Schedule::command('workflows:run --manual')->everyMinute()->withoutOverlapping();
+
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');

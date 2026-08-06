@@ -11,7 +11,7 @@ use App\Models\Order;
 use App\Models\Tenant;
 use App\Models\User;
 use Filament\Facades\Filament;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Infolists;
 use Filament\Infolists\Infolist;
 use Filament\Notifications\Notification;
@@ -481,7 +481,7 @@ class OrderResource extends Resource
             ]);
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
         // No usamos form para edición, solo infolist para vista
         return $form->schema([]);
@@ -513,3 +513,4 @@ class OrderResource extends Resource
         ];
     }
 }
+

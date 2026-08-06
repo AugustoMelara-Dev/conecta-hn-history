@@ -4,52 +4,53 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Widgets;
 
-use Filament\Widgets\StatsOverviewWidget;
+use App\Models\Order;
+use Filament\Facades\Filament;
+use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
-/**
- * StatsOverview - Widget de Estadísticas Generales
- *
- * Filament v4 Compatible: Extiende StatsOverviewWidget.
- */
-class StatsOverview extends StatsOverviewWidget
+class StatsOverview extends BaseWidget
 {
-    public static function getSort(): int
-    {
-        return 5;
-    }
+    protected static ?int $sort = 1;
 
     protected function getStats(): array
     {
-        $tenant = \Filament\Facades\Filament::getTenant();
+        $tenant = Filament::getTenant();
 
         if (! $tenant) {
             return [];
         }
 
-        $views = \App\Models\Interaction::where('tenant_id', $tenant->id)
-            ->where('type', 'view')
+        $ordersThisMonth = Order::query()
+            ->where('business_id', $tenant->getKey())
+            ->whereMonth('created_at', now()->month)
             ->count();
 
-        $clicks = \App\Models\Interaction::where('tenant_id', $tenant->id)
-            ->where('type', 'whatsapp_click')
-            ->count();
+        $revenueThisMonth = Order::query()
+            ->where('business_id', $tenant->getKey())
+            ->whereMonth('created_at', now()->month)
+            ->where('status', 'paid')
+            ->sum('total_amount') ?? 0;
 
-        $conversionRate = $views > 0 ? round(($clicks / $views) * 100, 1) : 0;
+        $customers = \App\Models\CustomerProfile::query()
+            ->where('business_id', $tenant->getKey())
+            ->count();
 
         return [
-            Stat::make('Visitas Totales', $views)
-                ->description('Vistas de tu página')
-                ->descriptionIcon('heroicon-m-eye')
-                ->color('gray'),
-            Stat::make('Clics en WhatsApp', $clicks)
-                ->description('Intenciones de compra')
-                ->descriptionIcon('heroicon-m-chat-bubble-left-right')
-                ->color('success'),
-            Stat::make('Tasa de Conversión', $conversionRate.'%')
-                ->description('De visitas a clics')
-                ->descriptionIcon('heroicon-m-arrow-trending-up')
+            Stat::make('Pedidos del mes', $ordersThisMonth)
+                ->description('Total de pedidos en el mes actual')
+                ->descriptionIcon('heroicon-m-shopping-bag')
                 ->color('primary'),
+
+            Stat::make('Ingresos del mes', 'L ' . number_format((float) $revenueThisMonth, 2))
+                ->description('Ingresos generados en el mes actual')
+                ->descriptionIcon('heroicon-m-banknotes')
+                ->color('success'),
+
+            Stat::make('Clientes', $customers)
+                ->description('Clientes registrados')
+                ->descriptionIcon('heroicon-m-users')
+                ->color('info'),
         ];
     }
 }

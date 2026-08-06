@@ -15,9 +15,9 @@ use App\Models\Tenant;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Form;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Actions\BulkActionGroup;
@@ -95,7 +95,7 @@ class CrmPipelineResource extends Resource
             && static::allows(Permission::CRM_DEALS_DELETE);
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
         return $form
             ->schema([
@@ -271,3 +271,4 @@ class CrmPipelineResource extends Resource
             ->withCount(['stages', 'deals']);
     }
 }
+

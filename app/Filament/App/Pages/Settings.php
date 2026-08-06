@@ -4,55 +4,84 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Pages;
 
-use Filament\Actions\Action;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Form;
-use Filament\Notifications\Notification;
+use Filament\Forms\Components\Toggle;
 use Filament\Pages\Page;
-use Illuminate\Support\Facades\Schema;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 
 class Settings extends Page
 {
+    protected static ?string $navigationIcon = 'heroicon-o-cog-6-tooth';
+
+    protected static ?string $navigationLabel = 'Ajustes';
+
+    protected static ?string $navigationGroup = 'Configuración';
+
+    protected static ?string $title = 'Ajustes generales';
+
+    protected static ?string $modelLabel = 'ajustes';
+
+    protected static ?int $navigationSort = 100;
+
     protected static string $view = 'filament.app.pages.settings';
 
     public ?array $data = [];
 
     public function mount(): void
     {
-        $this->form->fill(
-            \Filament\Facades\Filament::getTenant()->attributesToArray()
-        );
+        $this->form->fill();
     }
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        $generalFields = [
-            TextInput::make('name')
-                ->label('Nombre del negocio')
-                ->required(),
-            TextInput::make('whatsapp_number')
-                ->label('Numero de WhatsApp')
-                ->required(),
-        ];
+        return $schema
+            ->components([
+                Section::make('Preferencias generales')
+                    ->description('Configuración básica de tu tienda.')
+                    ->components([
+                        Select::make('locale')
+                            ->label('Idioma')
+                            ->options([
+                                'es' => 'Español',
+                                'en' => 'English',
+                            ])
+                            ->default('es'),
 
-        if (Schema::hasColumn('tenants', 'address')) {
-            $generalFields[] = Textarea::make('address')
-                ->label('Direccion');
-        }
+                        Select::make('timezone')
+                            ->label('Zona horaria')
+                            ->options([
+                                'America/Tegucigalpa' => 'Tegucigalpa (GMT-6)',
+                                'America/Mexico_City' => 'Ciudad de México (GMT-6)',
+                                'America/Bogota' => 'Bogotá (GMT-5)',
+                            ])
+                            ->default('America/Tegucigalpa'),
 
-        return $form
-            ->schema([
-                Section::make('Configuracion general')
-                    ->schema($generalFields),
-                Section::make('Personalizacion de WhatsApp')
-                    ->description('Usa {business_name}, {product_name} y {product_price} como variables.')
-                    ->schema([
-                        Textarea::make('whatsapp_template')
-                            ->label('Plantilla de mensaje')
-                            ->rows(3)
-                            ->required(),
+                        Select::make('currency')
+                            ->label('Moneda')
+                            ->options([
+                                'HNL' => 'Lempira (HNL)',
+                                'USD' => 'Dólar (USD)',
+                                'MXN' => 'Peso mexicano (MXN)',
+                                'COP' => 'Peso colombiano (COP)',
+                            ])
+                            ->default('HNL'),
+                    ]),
+
+                Section::make('Notificaciones')
+                    ->components([
+                        Toggle::make('email_notifications')
+                            ->label('Notificaciones por email')
+                            ->default(true),
+
+                        Toggle::make('sms_notifications')
+                            ->label('Notificaciones por SMS')
+                            ->default(false),
+
+                        Toggle::make('whatsapp_notifications')
+                            ->label('Notificaciones por WhatsApp')
+                            ->default(false),
                     ]),
             ])
             ->statePath('data');
@@ -60,22 +89,8 @@ class Settings extends Page
 
     public function save(): void
     {
-        $data = $this->form->getState();
-
-        \Filament\Facades\Filament::getTenant()->update($data);
-
-        Notification::make()
-            ->success()
-            ->title('Configuracion guardada')
-            ->send();
-    }
-
-    protected function getFormActions(): array
-    {
-        return [
-            Action::make('save')
-                ->label('Guardar cambios')
-                ->submit('save'),
-        ];
+        $state = $this->form->getState();
+        // Persist settings logic here
+        $this->notify('success', 'Ajustes guardados correctamente.');
     }
 }

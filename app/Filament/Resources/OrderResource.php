@@ -7,7 +7,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\OrderResource\Pages;
 use App\Filament\Traits\ScopesToTenant;
 use App\Models\Order;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Infolists\Components\Grid;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\Section;
@@ -65,7 +65,7 @@ class OrderResource extends Resource
      * from the Infolist for potential future use or read-only forms.
      * However, the primary detail view is handled by infolist().
      */
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
         return $form->schema([]); // Empty form as editing is disabled
     }
@@ -248,3 +248,4 @@ class OrderResource extends Resource
         return [];
     }
 }
+

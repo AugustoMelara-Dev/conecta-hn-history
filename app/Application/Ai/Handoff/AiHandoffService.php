@@ -22,14 +22,14 @@ use InvalidArgumentException;
 
 final readonly class AiHandoffService
 {
-    private const array TRIGGERS = [
+    private const TRIGGERS = [
         'explicit_user', 'low_confidence', 'policy', 'safety',
         'provider_failure', 'merchant_rule',
     ];
 
-    private const array PRIORITIES = ['low', 'normal', 'high', 'urgent'];
+    private const PRIORITIES = ['low', 'normal', 'high', 'urgent'];
 
-    private const array ACTIVE_STATUSES = ['requested', 'queued', 'assigned', 'accepted'];
+    private const ACTIVE_STATUSES = ['requested', 'queued', 'assigned', 'accepted'];
 
     public function __construct(
         private AiContentCipher $cipher,

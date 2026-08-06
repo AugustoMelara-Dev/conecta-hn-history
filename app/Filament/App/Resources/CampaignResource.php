@@ -4,13 +4,28 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
+use App\Filament\App\Resources\CampaignResource\Pages;
 use App\Models\Campaign;
-use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Notifications\Notification;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\CreateAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Facades\Filament;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Tables;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class CampaignResource extends Resource
 {
@@ -18,65 +33,78 @@ class CampaignResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-megaphone';
 
-    public static function getNavigationLabel(): string
-    {
-        return 'Campañas';
-    }
+    protected static ?string $navigationGroup = 'Marketing';
 
-    public static function getModelLabel(): string
-    {
-        return 'Campaña';
-    }
+    protected static ?string $navigationLabel = 'Campa�as';
 
-    public static function getPluralModelLabel(): string
-    {
-        return 'Campañas';
-    }
+    protected static ?string $modelLabel = 'campa�a';
 
-    public static function getNavigationGroup(): ?string
-    {
-        return 'Marketing PRO';
-    }
+    protected static ?string $pluralModelLabel = 'Campa�as';
 
-    public static function form(Form $form): Form
+    protected static ?int $navigationSort = 1;
+
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\Section::make('Detalles de la Campaña')
-                    ->schema([
-                        Forms\Components\TextInput::make('subject')
-                            ->label('Asunto')
+        return $schema
+            ->components([
+                Section::make('Informaci�n de la campa�a')
+                    ->components([
+                        TextInput::make('name')
+                            ->label('Nombre')
                             ->required()
-                            ->maxLength(255)
-                            ->placeholder('Ej: ¡Black Friday! 50% de descuento'),
+                            ->maxLength(255),
 
-                        Forms\Components\RichEditor::make('content')
-                            ->label('Contenido')
+                        Select::make('type')
+                            ->label('Tipo')
                             ->required()
-                            ->placeholder('Escribe tu mensaje aquí...')
-                            ->columnSpanFull()
-                            ->toolbarButtons([
-                                'bold',
-                                'italic',
-                                'underline',
-                                'link',
-                                'bulletList',
-                                'orderedList',
-                            ]),
+                            ->options([
+                                'email' => 'Email',
+                                'sms' => 'SMS',
+                                'whatsapp' => 'WhatsApp',
+                                'push' => 'Push notification',
+                            ])
+                            ->default('email'),
+
+                        Select::make('status')
+                            ->label('Estado')
+                            ->required()
+                            ->options([
+                                'draft' => 'Borrador',
+                                'scheduled' => 'Programada',
+                                'running' => 'En curso',
+                                'paused' => 'Pausada',
+                                'completed' => 'Completada',
+                            ])
+                            ->default('draft'),
                     ]),
 
-                Forms\Components\Section::make('Estadísticas')
-                    ->schema([
-                        Forms\Components\Placeholder::make('recipients_count')
-                            ->label('Destinatarios')
-                            ->content(fn (?Campaign $record) => $record ? $record->recipients_count.' seguidores' : 'Se calculará al enviar'),
+                Section::make('Contenido')
+                    ->components([
+                        RichEditor::make('content')
+                            ->label('Contenido')
+                            ->required()
+                            ->columnSpanFull(),
+                    ]),
 
-                        Forms\Components\Placeholder::make('sent_at')
-                            ->label('Fecha de envío')
-                            ->content(fn (?Campaign $record) => $record && $record->sent_at ? $record->sent_at->format('d/m/Y H:i') : 'Aún no enviada'),
-                    ])
-                    ->columns(2)
-                    ->hidden(fn (string $operation) => $operation === 'create'),
+                Section::make('Programaci�n')
+                    ->components([
+                        Grid::make(2)
+                            ->components([
+                                DateTimePicker::make('scheduled_at')
+                                    ->label('Programada para')
+                                    ->timezone('America/Tegucigalpa')
+                                    ->displayFormat('d/m/Y H:i'),
+
+                                TextInput::make('target_audience_size')
+                                    ->label('Tama�o de audiencia')
+                                    ->numeric()
+                                    ->default(0),
+
+                                Toggle::make('is_active')
+                                    ->label('Activa')
+                                    ->default(true),
+                            ]),
+                    ]),
             ]);
     }
 
@@ -84,98 +112,101 @@ class CampaignResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('subject')
-                    ->label('Asunto')
+                TextColumn::make('name')
+                    ->label('Nombre')
                     ->searchable()
-                    ->sortable()
-                    ->limit(50),
-
-                Tables\Columns\TextColumn::make('recipients_count')
-                    ->label('Destinatarios')
-                    ->badge()
-                    ->color('success')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('sent_at')
-                    ->label('Enviada')
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable()
+                TextColumn::make('type')
+                    ->label('Tipo')
                     ->badge()
-                    ->color(fn ($state) => $state ? 'success' : 'warning')
-                    ->formatStateUsing(fn ($state) => $state ? $state->format('d/m/Y H:i') : 'Pendiente'),
-
-                Tables\Columns\TextColumn::make('created_at')
-                    ->label('Creada')
-                    ->dateTime('d/m/Y')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->defaultSort('created_at', 'desc')
-            ->actions([
-                Tables\Actions\Action::make('send')
-                    ->label('Enviar')
-                    ->icon('heroicon-o-paper-airplane')
-                    ->color('success')
-                    ->requiresConfirmation()
-                    ->modalHeading('Enviar Campaña')
-                    ->modalDescription(fn (Campaign $record) => 'Se enviará esta campaña a todos tus seguidores. ¿Estás seguro?')
-                    ->visible(fn (Campaign $record) => ! $record->sent_at)
-                    ->action(function (Campaign $record) {
-                        $tenant = \Filament\Facades\Filament::getTenant();
-                        $followersCount = $tenant->followers()->count();
-
-                        if ($followersCount === 0) {
-                            Notification::make()
-                                ->title('Sin seguidores')
-                                ->warning()
-                                ->body('No tienes seguidores para enviar esta campaña.')
-                                ->send();
-
-                            return;
-                        }
-
-                        // Queue one isolated delivery per current follower.
-                        foreach ($tenant->followers()->select('users.id')->cursor() as $follower) {
-                            \App\Domain\Marketing\Jobs\SendCampaignEmail::dispatch(
-                                tenantId: (string) $tenant->id,
-                                campaignId: (int) $record->id,
-                                userId: (string) $follower->id,
-                            );
-                        }
-
-                        // Update campaign status
-                        $record->update([
-                            'sent_at' => now(),
-                            'recipients_count' => $followersCount,
-                        ]);
-
-                        Notification::make()
-                            ->title('Campaña Enviada')
-                            ->success()
-                            ->body("Se envió la campaña a {$followersCount} seguidores.")
-                            ->send();
+                    ->color(fn (string $state): string => match ($state) {
+                        'email' => 'info',
+                        'sms' => 'warning',
+                        'whatsapp' => 'success',
+                        'push' => 'primary',
+                        default => 'gray',
                     }),
 
-                Tables\Actions\EditAction::make()
-                    ->visible(fn (Campaign $record) => ! $record->sent_at),
-                Tables\Actions\DeleteAction::make(),
+                TextColumn::make('status')
+                    ->label('Estado')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'draft' => 'gray',
+                        'scheduled' => 'info',
+                        'running' => 'success',
+                        'paused' => 'warning',
+                        'completed' => 'primary',
+                        default => 'gray',
+                    }),
+
+                TextColumn::make('scheduled_at')
+                    ->label('Programada')
+                    ->dateTime('d/m/Y H:i')
+                    ->timezone('America/Tegucigalpa')
+                    ->sortable(),
+
+                TextColumn::make('target_audience_size')
+                    ->label('Audiencia')
+                    ->numeric()
+                    ->sortable(),
+
+                ToggleColumn::make('is_active')
+                    ->label('Activa'),
+            ])
+            ->filters([
+                Tables\Filters\SelectFilter::make('type')
+                    ->label('Tipo')
+                    ->options([
+                        'email' => 'Email',
+                        'sms' => 'SMS',
+                        'whatsapp' => 'WhatsApp',
+                        'push' => 'Push',
+                    ]),
+            ])
+            ->actions([
+                EditAction::make(),
+                DeleteAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ])
-            ->emptyStateHeading('No hay campañas')
-            ->emptyStateDescription('Crea tu primera campaña de marketing para conectar con tus seguidores.')
-            ->emptyStateIcon('heroicon-o-megaphone');
+            ->emptyStateHeading('No tienes campa�as creadas')
+            ->emptyStateDescription('Crea tu primera campa�a para empezar a comunicarte con tus clientes.')
+            ->emptyStateIcon('heroicon-o-megaphone')
+            ->emptyStateActions([
+                CreateAction::make()
+                    ->label('Crear primera campa�a')
+                    ->icon('heroicon-o-plus'),
+            ])
+            ->defaultSort('created_at', 'desc');
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+        $tenant = Filament::getTenant();
+
+        if (! $tenant) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where('business_id', $tenant->getKey());
+    }
+
+    public static function getRelations(): array
+    {
+        return [];
     }
 
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\App\Resources\CampaignResource\Pages\ListCampaigns::route('/'),
-            'create' => \App\Filament\App\Resources\CampaignResource\Pages\CreateCampaign::route('/create'),
-            'edit' => \App\Filament\App\Resources\CampaignResource\Pages\EditCampaign::route('/{record}/edit'),
+            'index' => Pages\ListCampaigns::route('/'),
+            'create' => Pages\CreateCampaign::route('/create'),
+            'edit' => Pages\EditCampaign::route('/{record}/edit'),
         ];
     }
 }

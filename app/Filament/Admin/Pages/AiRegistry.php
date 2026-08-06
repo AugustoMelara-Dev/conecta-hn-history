@@ -1,0 +1,72 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Filament\Admin\Pages;
+
+use App\Application\Ai\AssistantExecutor;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
+use Filament\Pages\Page;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
+
+/**
+ * AiRegistry - Manage providers, models, costs.
+ */
+class AiRegistry extends Page
+{
+    protected static ?string $navigationIcon = 'heroicon-o-sparkles';
+    protected static ?string $navigationGroup = 'AI';
+    protected static ?string $navigationLabel = 'AI Registry';
+    protected static ?string $title = 'AI Registry';
+    protected static ?int $navigationSort = 10;
+    protected static string $view = 'filament.admin.pages.ai-registry';
+
+    public ?array $data = [];
+
+    public function mount(): void
+    {
+        $this->form->fill();
+    }
+
+    public function form(Schema $schema): Schema
+    {
+        return $schema->components([
+            Section::make('Configurar AI')->components([
+                Select::make('provider')->label('Provider')->options(['openai' => 'OpenAI', 'anthropic' => 'Anthropic'])->default('openai'),
+                TextInput::make('model')->label('Modelo')->default('gpt-4o-mini'),
+                TextInput::make('api_key_ref')->label('API key reference'),
+                TextInput::make('input_cost_per_million')->label('Input cost ($/M tokens)')->numeric()->default(0.15),
+                TextInput::make('output_cost_per_million')->label('Output cost ($/M tokens)')->numeric()->default(0.60),
+            ]),
+        ])->statePath('data');
+    }
+
+    public function getAssistants(): array
+    {
+        $executor = app(AssistantExecutor::class);
+        $assistants = [];
+        foreach ($executor->all() as $assistant) {
+            $assistants[] = [
+                'key' => $assistant->key(),
+                'name' => $assistant->name(),
+                'category' => $assistant->category(),
+                'cost' => $assistant->estimateCost(),
+            ];
+        }
+        return $assistants;
+    }
+
+    public function save(): void
+    {
+        $state = $this->form->getState();
+        \Spatie\LaravelSettings\Facades\Settings::set('ai.provider', $state['provider']);
+        \Spatie\LaravelSettings\Facades\Settings::set('ai.model', $state['model']);
+        Notification::make()->title('AI Registry actualizado')->success()->send();
+    }
+}
+
+

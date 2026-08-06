@@ -23,9 +23,8 @@ use App\Models\Tenant;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Form;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Actions\DeleteAction;
@@ -33,7 +32,7 @@ use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
+
 
 class CrmDealResource extends Resource
 {
@@ -112,7 +111,7 @@ class CrmDealResource extends Resource
         return static::allows(Permission::CRM_DEALS_MOVE_STAGE);
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
         return $form
             ->schema([
@@ -572,3 +571,7 @@ class CrmDealResource extends Resource
         return $bits === [] ? 'Seguimiento comercial manual' : implode(' - ', $bits);
     }
 }
+
+
+
+

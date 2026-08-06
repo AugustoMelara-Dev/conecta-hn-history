@@ -8,7 +8,7 @@ use App\Filament\Resources\UserResource\Pages;
 // MIGRATION: Updated to Domain namespace (2026-01-05)
 use App\Models\User;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -42,7 +42,7 @@ class UserResource extends Resource
         return 'Gestión de Usuarios';
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
         return $form
             ->schema([
@@ -189,3 +189,4 @@ class UserResource extends Resource
         ];
     }
 }
+

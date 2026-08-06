@@ -1,0 +1,13 @@
+<?php\n\ndeclare(strict_types=1);\n\nnamespace App\Application\Reporting\Reports;\n\nclass FulfillmentSlaReport implements ReportInterface
+{
+    public function getKey(): ReportKey { return ReportKey::FulfillmentSla; }
+    public function getName(): string { return 'SLA de fulfillment'; }
+    public function getDescription(): string { return 'Cumplimiento de SLA de fulfillment.'; }
+    public function getChartType(): string { return 'gauge'; }
+    public function getColumns(): array { return ['Métrica', 'Valor']; }
+    public function getFilters(): array { return []; }
+    public function getData(string $tenantId, ReportRange $range): ReportData
+    {
+        return new ReportData(rows: [], series: [], summary: [], metadata: ['range' => $range->toArray()]);
+    }
+}\n

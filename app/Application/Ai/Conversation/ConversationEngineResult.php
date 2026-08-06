@@ -9,7 +9,7 @@ use InvalidArgumentException;
 
 final readonly class ConversationEngineResult
 {
-    private const array FAILURE_CODES = [
+    private const FAILURE_CODES = [
         'ai_response_invalid',
         'ai_evidence_insufficient',
         'ai_handoff_required',
