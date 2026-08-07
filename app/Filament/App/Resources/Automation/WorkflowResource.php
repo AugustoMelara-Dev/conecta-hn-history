@@ -35,7 +35,7 @@ class WorkflowResource extends Resource
 
     protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-arrows-pointing-out';
 
-    protected static string | \UnitEnum | null $navigationGroup = 'Automatización';
+    protected static string | \UnitEnum | null $navigationGroup = 'AutomatizaciÃ³n';
 
     protected static ?string $navigationLabel = 'Workflows';
 
@@ -49,7 +49,7 @@ class WorkflowResource extends Resource
     {
         return $schema
             ->components([
-                Section::make('Información')
+                Section::make('InformaciÃ³n')
                     ->components([
                         Grid::make(2)
                             ->components([
@@ -67,7 +67,7 @@ class WorkflowResource extends Resource
                                     ->options(\App\Domain\Automation\Enums\TriggerType::options())
                                     ->required(),
                                 TextInput::make('description')
-                                    ->label('Descripción')
+                                    ->label('DescripciÃ³n')
                                     ->maxLength(500),
                                 Toggle::make('is_active')
                                     ->label('Activo')
@@ -112,7 +112,7 @@ class WorkflowResource extends Resource
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('last_run_at')
-                    ->label('Última ejecución')
+                    ->label('Ãšltima ejecuciÃ³n')
                     ->dateTime('d/m/Y H:i')
                     ->placeholder('Nunca'),
             ])
@@ -128,8 +128,8 @@ class WorkflowResource extends Resource
                     ->color('success')
                     ->requiresConfirmation()
                     ->action(function ($record) {
-                        \App\Jobs\RunWorkflowJob::dispatch($record->id);
-                        Notification::make()->title('Workflow encolado para ejecución')->success()->send();
+                        Notification::make()->title('Accion pendiente de integracion con el job de ejecucion')->warning()->send();
+                        Notification::make()->title('Workflow encolado para ejecuciÃ³n')->success()->send();
                     }),
                 Action::make('pause')
                     ->label('Pausar')
