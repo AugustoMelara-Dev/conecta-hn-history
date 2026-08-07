@@ -39,13 +39,11 @@ COPY . .
 COPY --from=frontend /app/public/build ./public/build
 
 RUN composer install \
-
       --prefer-dist \
       --no-interaction \
       --no-progress \
       --optimize-autoloader \
       --classmap-authoritative \
-    && composer require fakerphp/faker --no-interaction --no-progress --no-update  \
     && php artisan config:clear --quiet \
     && php artisan route:clear --quiet \
     && php artisan view:clear --quiet \
