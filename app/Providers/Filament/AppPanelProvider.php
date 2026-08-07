@@ -22,6 +22,20 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
+/**
+ * AppPanelProvider - Panel del Inquilino (Mobile-First) - Filament 4.
+ *
+ * Migrated to Filament 4 API:
+ * - Schema::make() en lugar de Form::make()
+ * - protected static ?string $model (nullable)
+ * - databaseNotifications()
+ * - viteTheme()
+ * - tenantRoutePrefix(), tenantMiddleware()
+ * - breadcrumbs()
+ * - navigationGroups()
+ *
+ * @see https://filamentphp.com/docs/4.x/panels/configuration
+ */
 class AppPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
@@ -31,14 +45,33 @@ class AppPanelProvider extends PanelProvider
             ->path('app')
             ->tenant(\App\Models\Tenant::class, slugAttribute: 'slug')
             ->tenantProfile(\App\Filament\App\Pages\EditTenantProfile::class)
+            ->tenantMiddleware([
+                InitializeFilamentTenantContext::class,
+            ], isPersistent: true)
+            ->tenantRoutePrefix(null)
+
+            // BRANDING
+            ->brandName('Dovra AI')
+            ->brandLogo(fn () => view('filament.components.brand'))
+            ->brandLogoHeight('2.5rem')
+            ->favicon(asset('favicon.ico'))
+
+            // AUTH
             ->login()
             ->registration()
             ->passwordReset()
             ->emailVerification()
+
+            // SPA MODE
             ->spa()
+
+            // LAYOUT
             ->sidebarCollapsibleOnDesktop()
             ->sidebarFullyCollapsibleOnDesktop()
             ->topNavigation(false)
+            ->breadcrumbs()
+
+            // PALETA INDIGO
             ->colors([
                 'primary' => Color::Indigo,
                 'gray' => Color::Zinc,
@@ -47,12 +80,49 @@ class AppPanelProvider extends PanelProvider
                 'danger' => Color::Rose,
                 'info' => Color::Cyan,
             ])
+
+            // FILAMENT 4: viteTheme para hot reload de tema
+            ->viteTheme('resources/css/filament/app/theme.css')
+
+            // FILAMENT 4: database notifications
+            ->databaseNotifications()
+            ->databaseNotificationsPolling('30s')
+
+            // FILAMENT 4: navigation groups explícitos
+            ->navigationGroups([
+                NavigationGroup::make('Operaciones')
+                    ->icon('heroicon-o-briefcase')
+                    ->collapsible(),
+                NavigationGroup::make('CRM')
+                    ->icon('heroicon-o-user-group')
+                    ->collapsible(),
+                NavigationGroup::make('Marketing')
+                    ->icon('heroicon-o-megaphone')
+                    ->collapsible(),
+                NavigationGroup::make('Catálogo')
+                    ->icon('heroicon-o-shopping-bag')
+                    ->collapsible(),
+                NavigationGroup::make('Pedidos')
+                    ->icon('heroicon-o-shopping-cart')
+                    ->collapsible(),
+                NavigationGroup::make('Configuración')
+                    ->icon('heroicon-o-cog-6-tooth')
+                    ->collapsible(),
+                NavigationGroup::make('Plataforma')
+                    ->icon('heroicon-o-cloud')
+                    ->collapsible(),
+            ])
+
+            // DISCOVERY
             ->discoverResources(in: app_path('Filament/App/Resources'), for: 'App\\Filament\\App\\Resources')
             ->discoverPages(in: app_path('Filament/App/Pages'), for: 'App\\Filament\\App\\Pages')
             ->discoverWidgets(in: app_path('Filament/App/Widgets'), for: 'App\\Filament\\App\\Widgets')
+
             ->pages([
                 Dashboard::class,
             ])
+
+            // WIDGETS DEL DASHBOARD
             ->widgets([
                 \App\Filament\App\Widgets\StatsOverview::class,
                 \App\Filament\App\Widgets\RevenueChart::class,
@@ -61,6 +131,8 @@ class AppPanelProvider extends PanelProvider
                 \App\Filament\App\Widgets\OperationalCockpitWidget::class,
                 \App\Filament\App\Widgets\TenantAiAgentWidget::class,
             ])
+
+            // MIDDLEWARE
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
@@ -72,22 +144,23 @@ class AppPanelProvider extends PanelProvider
                 DispatchServingFilamentEvent::class,
                 SubstituteBindings::class,
             ])
+
             ->authMiddleware([
                 Authenticate::class,
             ])
-            ->navigationGroups([
-                NavigationGroup::make('Operaciones'),
-                NavigationGroup::make('CRM'),
-                NavigationGroup::make('Marketing'),
-                NavigationGroup::make('Cat�logo'),
-                NavigationGroup::make('Pedidos'),
-                NavigationGroup::make('Configuraci�n'),
-                NavigationGroup::make('Plataforma'),
-            ]);
+
+            // RENDER HOOKS
+            ->renderHook(
+                'panels::global-search.before',
+                fn (): string => '',
+            )
+
+            // AVATAR / PROFILE
+            ->defaultAvatarProvider(\Filament\AvatarProviders\UiAvatarsProvider::class);
     }
 
     public function boot(): void
     {
-        //
+        // Hook para registrar extensiones específicas del panel App
     }
 }

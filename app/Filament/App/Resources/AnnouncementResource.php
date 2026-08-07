@@ -18,9 +18,9 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Get;
 use Filament\Resources\Resource;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Form;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
@@ -33,9 +33,9 @@ class AnnouncementResource extends Resource
 
     protected static ?string $tenantOwnershipRelationshipName = 'business';
 
-    protected static ?string $navigationIcon = 'heroicon-o-megaphone';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-megaphone';
 
-    protected static ?string $navigationGroup = 'Marketing';
+    protected static string | \UnitEnum | null $navigationGroup = 'Marketing';
 
     protected static ?string $navigationLabel = 'Avisos';
 
@@ -45,27 +45,27 @@ class AnnouncementResource extends Resource
 
     protected static ?int $navigationSort = 2;
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 Section::make('Contenido del aviso')
-                    ->description('Define el mensaje que ver·n tus clientes en las superficies p˙blicas.')
-                    ->schema([
+                    ->description('Define el mensaje que ver√°n tus clientes en las superficies p√∫blicas.')
+                    ->components([
                         Select::make('type')
                             ->label('Tipo de aviso')
                             ->required()
                             ->live()
                             ->options([
-                                Announcement::TYPE_INFO => 'InformaciÛn',
+                                Announcement::TYPE_INFO => 'Informaci√≥n',
                                 Announcement::TYPE_WARNING => 'Advertencia',
-                                Announcement::TYPE_PROMO => 'PromociÛn',
+                                Announcement::TYPE_PROMO => 'Promoci√≥n',
                             ])
                             ->default(Announcement::TYPE_INFO)
                             ->helperText(fn (Get $get): string => match ($get('type')) {
-                                Announcement::TYPE_INFO => '⁄salo para horarios especiales, novedades o mensajes generales.',
-                                Announcement::TYPE_WARNING => '⁄salo para cambios importantes, cierres temporales o condiciones de servicio.',
-                                Announcement::TYPE_PROMO => '⁄salo para promociones, descuentos o temporadas especiales.',
+                                Announcement::TYPE_INFO => '√ösalo para horarios especiales, novedades o mensajes generales.',
+                                Announcement::TYPE_WARNING => '√ösalo para cambios importantes, cierres temporales o condiciones de servicio.',
+                                Announcement::TYPE_PROMO => '√ösalo para promociones, descuentos o temporadas especiales.',
                                 default => 'Selecciona un tipo de aviso.',
                             }),
 
@@ -78,31 +78,31 @@ class AnnouncementResource extends Resource
                             ->columnSpanFull(),
                     ]),
 
-                Section::make('ProgramaciÛn')
-                    ->description('Define cu·ndo debe aparecer y cu·ndo debe dejar de mostrarse.')
-                    ->schema([
+                Section::make('Programaci√≥n')
+                    ->description('Define cu√°ndo debe aparecer y cu√°ndo debe dejar de mostrarse.')
+                    ->components([
                         Grid::make(2)
-                            ->schema([
+                            ->components([
                                 DateTimePicker::make('starts_at_utc')
                                     ->label('Fecha de inicio')
                                     ->required()
                                     ->timezone('America/Tegucigalpa')
                                     ->displayFormat('d/m/Y H:i')
                                     ->default(now())
-                                    ->helperText('Momento en que el aviso comenzar· a mostrarse.'),
+                                    ->helperText('Momento en que el aviso comenzar√° a mostrarse.'),
 
                                 DateTimePicker::make('expires_at_utc')
-                                    ->label('Fecha de expiraciÛn')
+                                    ->label('Fecha de expiraci√≥n')
                                     ->required()
                                     ->timezone('America/Tegucigalpa')
                                     ->displayFormat('d/m/Y H:i')
                                     ->after('starts_at_utc')
-                                    ->helperText('Momento en que el aviso dejar· de mostrarse.'),
+                                    ->helperText('Momento en que el aviso dejar√° de mostrarse.'),
 
                                 Toggle::make('is_active')
                                     ->label('Aviso activo')
                                     ->default(true)
-                                    ->helperText('DesactÌvalo para pausar el aviso sin eliminarlo.')
+                                    ->helperText('Desact√≠valo para pausar el aviso sin eliminarlo.')
                                     ->columnSpanFull(),
                             ]),
                     ]),
@@ -117,9 +117,9 @@ class AnnouncementResource extends Resource
                     ->label('Tipo')
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => match ($state) {
-                        Announcement::TYPE_INFO => 'InformaciÛn',
+                        Announcement::TYPE_INFO => 'Informaci√≥n',
                         Announcement::TYPE_WARNING => 'Advertencia',
-                        Announcement::TYPE_PROMO => 'PromociÛn',
+                        Announcement::TYPE_PROMO => 'Promoci√≥n',
                         default => $state ?? '',
                     })
                     ->color(fn (?string $state): string => match ($state) {
@@ -162,9 +162,9 @@ class AnnouncementResource extends Resource
                 Tables\Filters\SelectFilter::make('type')
                     ->label('Tipo')
                     ->options([
-                        Announcement::TYPE_INFO => 'InformaciÛn',
+                        Announcement::TYPE_INFO => 'Informaci√≥n',
                         Announcement::TYPE_WARNING => 'Advertencia',
-                        Announcement::TYPE_PROMO => 'PromociÛn',
+                        Announcement::TYPE_PROMO => 'Promoci√≥n',
                     ]),
 
                 Tables\Filters\TernaryFilter::make('is_active')
@@ -221,6 +221,3 @@ class AnnouncementResource extends Resource
         ];
     }
 }
-
-
-

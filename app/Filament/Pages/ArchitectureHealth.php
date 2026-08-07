@@ -15,17 +15,17 @@ use Filament\Pages\Page;
  */
 class ArchitectureHealth extends Page
 {
-    protected static ?string $navigationIcon = 'heroicon-o-shield-check';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-shield-check';
 
     protected static ?string $navigationLabel = 'Architecture Health';
 
-    protected static ?string $navigationGroup = 'Configuración';
+    protected static string | \UnitEnum | null $navigationGroup = 'Configuración';
 
     protected static ?int $navigationSort = 100;
 
     protected static ?string $title = 'Event Architecture Health';
 
-    protected static string $view = 'filament.pages.architecture-health';
+    protected string $view = 'filament.pages.architecture-health';
 
     public array $metrics = [];
 

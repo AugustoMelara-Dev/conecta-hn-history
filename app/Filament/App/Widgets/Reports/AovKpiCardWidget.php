@@ -1,6 +1,16 @@
-<?php\n\ndeclare(strict_types=1);\n\nnamespace App\Filament\App\Widgets\Reports;\n\nclass AovKpiCardWidget extends \Filament\Widgets\StatsOverviewWidget
+<?php
+
+declare(strict_types=1);
+
+namespace App\Filament\App\Widgets\Reports;
+
+use Illuminate\Support\Facades\DB;
+
+use Filament\Facades\Filament;
+
+class AovKpiCardWidget extends \Filament\Widgets\StatsOverviewWidget
 {
-    protected static ?string $heading = 'Ticket promedio';
+    protected ?string $heading = 'Ticket promedio';
     protected static ?int $sort = 5;
 
     protected function getStats(): array
@@ -12,4 +22,5 @@
 
         return [Stat::make('AOV', 'L ' . number_format((float) $aov, 2))->color('info')];
     }
-}\n
+}
+

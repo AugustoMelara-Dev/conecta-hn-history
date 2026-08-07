@@ -19,7 +19,7 @@ use Filament\Widgets\Widget;
  */
 class AppointmentCalendarWidget extends Widget
 {
-    protected static string $view = 'filament.app.widgets.appointment-calendar-widget';
+    protected string $view = 'filament.app.widgets.appointment-calendar-widget';
 
     protected int|string|array $columnSpan = 'full';
 

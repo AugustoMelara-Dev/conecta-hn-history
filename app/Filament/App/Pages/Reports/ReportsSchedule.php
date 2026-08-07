@@ -13,12 +13,12 @@ use Filament\Pages\Page;
  */
 class ReportsSchedule extends Page
 {
-    protected static ?string $navigationIcon = 'heroicon-o-clock';
-    protected static ?string $title = 'Programación de reportes';
-    protected static ?string $navigationGroup = 'Operaciones';
-    protected static ?string $navigationLabel = 'Programación';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-clock';
+    protected static ?string $title = 'ProgramaciÃ³n de reportes';
+    protected static string | \UnitEnum | null $navigationGroup = 'Operaciones';
+    protected static ?string $navigationLabel = 'ProgramaciÃ³n';
     protected static ?int $navigationSort = 52;
-    protected static string $view = 'filament.app.pages.reports.schedule';
+    protected string $view = 'filament.app.pages.reports.schedule';
 
     public function getViewData(): array
     {
@@ -42,6 +42,6 @@ class ReportsSchedule extends Page
             'format' => $data['format'],
             'is_active' => true,
         ]);
-        Notification::make()->title('Programación creada')->success()->send();
+        Notification::make()->title('ProgramaciÃ³n creada')->success()->send();
     }
 }

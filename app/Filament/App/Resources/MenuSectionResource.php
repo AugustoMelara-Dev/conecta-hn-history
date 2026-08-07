@@ -9,7 +9,7 @@ use App\Models\MenuSection;
 use App\Support\Product\TenantAccessMatrix;
 use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -20,7 +20,7 @@ class MenuSectionResource extends Resource
 
     protected static ?int $navigationSort = 2;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-rectangle-stack';
 
     public static function getNavigationLabel(): string
     {
@@ -78,10 +78,10 @@ class MenuSectionResource extends Resource
         return 'primary';
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 Forms\Components\Section::make('Nueva sección')
                     ->description('Organiza tu menú por categorías como entradas, bebidas, platos fuertes o postres.')
                     ->icon('heroicon-o-folder-plus')
@@ -200,6 +200,4 @@ class MenuSectionResource extends Resource
         ];
     }
 }
-
-
 

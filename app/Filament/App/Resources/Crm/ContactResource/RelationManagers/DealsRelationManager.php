@@ -12,7 +12,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -23,12 +23,12 @@ class DealsRelationManager extends RelationManager
 
     protected static ?string $title = 'Deals';
 
-    protected static ?string $icon = 'heroicon-o-currency-dollar';
+    protected static string | \BackedEnum | null $icon = 'heroicon-o-currency-dollar';
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 TextInput::make('name')
                     ->label('Nombre del deal')
                     ->required(),
@@ -46,7 +46,7 @@ class DealsRelationManager extends RelationManager
                 DateTimePicker::make('expected_close_date')
                     ->label('Fecha esperada de cierre'),
                 Textarea::make('description')
-                    ->label('Descripción')
+                    ->label('DescripciÃ³n')
                     ->rows(3),
             ]);
     }
@@ -81,6 +81,3 @@ class DealsRelationManager extends RelationManager
             ]);
     }
 }
-
-
-

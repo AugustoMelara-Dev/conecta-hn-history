@@ -12,17 +12,17 @@ use Illuminate\Support\Facades\DB;
  */
 class AutomationDashboard extends Page
 {
-    protected static ?string $navigationIcon = 'heroicon-o-chart-bar-square';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-chart-bar-square';
 
     protected static ?string $title = 'Automation Dashboard';
 
-    protected static ?string $navigationGroup = 'Automatización';
+    protected static string | \UnitEnum | null $navigationGroup = 'AutomatizaciÃ³n';
 
     protected static ?string $navigationLabel = 'Dashboard';
 
     protected static ?int $navigationSort = 11;
 
-    protected static string $view = 'filament.app.pages.automation-dashboard';
+    protected string $view = 'filament.app.pages.automation-dashboard';
 
     public function getTopWorkflows(): array
     {

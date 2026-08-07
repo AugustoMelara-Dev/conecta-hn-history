@@ -19,9 +19,9 @@ class WorkflowRunResource extends Resource
 {
     protected static ?string $model = \App\Models\WorkflowRun::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-play';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-play';
 
-    protected static ?string $navigationGroup = 'Automatización';
+    protected static string | \UnitEnum | null $navigationGroup = 'AutomatizaciÃ³n';
 
     protected static ?string $navigationLabel = 'Runs';
 
@@ -44,7 +44,7 @@ class WorkflowRunResource extends Resource
                         'partial_failure' => 'warning',
                         default => 'gray',
                     }),
-                TextColumn::make('duration_ms')->label('Duración (ms)')->numeric(),
+                TextColumn::make('duration_ms')->label('DuraciÃ³n (ms)')->numeric(),
                 TextColumn::make('started_at')->label('Inicio')->dateTime('d/m/Y H:i:s')->sortable(),
                 TextColumn::make('completed_at')->label('Fin')->dateTime('d/m/Y H:i:s')->placeholder('En curso'),
             ])

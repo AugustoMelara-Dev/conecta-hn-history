@@ -28,7 +28,7 @@ return new class extends Migration
         Schema::create('automation_workflow_definitions', function (Blueprint $table): void {
             $table->uuid('id')->primary();
             $table->uuid('tenant_id')->index();
-            $table->string('workflow_key');
+            $table->string('workflow_key', 100);
             $table->uuid('current_draft_version_id')->nullable();
             $table->uuid('current_published_version_id')->nullable();
             $table->uuid('created_by')->nullable();
@@ -41,28 +41,28 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->uuid('definition_id')->index();
             $table->uuid('tenant_id')->index();
-            $table->string('workflow_key');
-            $table->string('version');
+            $table->string('workflow_key', 100);
+            $table->string('version', 100);
             $table->string('status');
             $table->json('definition');
             $table->timestamp('published_at')->nullable();
             $table->uuid('published_by')->nullable();
             $table->uuid('created_by')->nullable();
             $table->timestamps();
-            $table->unique(['tenant_id', 'workflow_key', 'version']);
+            $table->unique(['tenant_id', 'workflow_key', 'version'], 'automation_workflow_version_unique');
         });
 
         Schema::create('automation_workflow_runs', function (Blueprint $table): void {
             $table->uuid('id')->primary();
             $table->uuid('tenant_id')->index();
-            $table->string('workflow_key');
+            $table->string('workflow_key', 100);
             $table->uuid('workflow_version_id')->index();
-            $table->string('workflow_version');
+            $table->string('workflow_version', 100);
             $table->uuid('actor_id')->nullable();
             $table->string('plan');
             $table->string('channel');
             $table->string('trigger_source');
-            $table->string('idempotency_key');
+            $table->string('idempotency_key', 100);
             $table->string('status');
             $table->string('current_step_key')->nullable();
             $table->json('payload');
@@ -79,7 +79,7 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->uuid('run_id')->index();
             $table->uuid('tenant_id')->index();
-            $table->string('step_key');
+            $table->string('step_key', 100);
             $table->string('step_type');
             $table->string('action')->nullable();
             $table->string('status');
@@ -99,11 +99,11 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->uuid('run_id')->index();
             $table->uuid('tenant_id')->index();
-            $table->string('step_key');
-            $table->string('attempt_kind');
+            $table->string('step_key', 100);
+            $table->string('attempt_kind', 100);
             $table->unsignedInteger('attempt_number');
             $table->string('provider_tool_key');
-            $table->string('idempotency_key');
+            $table->string('idempotency_key', 100);
             $table->string('action')->nullable();
             $table->string('status');
             $table->string('error_code')->nullable();
@@ -119,7 +119,7 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->uuid('run_id')->index();
             $table->uuid('tenant_id')->index();
-            $table->string('step_key');
+            $table->string('step_key', 100);
             $table->uuid('actor_id')->nullable();
             $table->string('status');
             $table->text('reason')->nullable();
@@ -130,8 +130,8 @@ return new class extends Migration
         Schema::create('automation_tool_policies', function (Blueprint $table): void {
             $table->uuid('id')->primary();
             $table->uuid('tenant_id')->index();
-            $table->string('tool');
-            $table->string('tool_version');
+            $table->string('tool', 100);
+            $table->string('tool_version', 100);
             $table->json('allowed_roles');
             $table->json('allowed_plans');
             $table->json('allowed_channels');
@@ -145,8 +145,8 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->uuid('tenant_id')->index();
             $table->uuid('actor_id')->index();
-            $table->string('tool');
-            $table->string('tool_version');
+            $table->string('tool', 100);
+            $table->string('tool_version', 100);
             $table->string('payload_hash', 64);
             $table->string('confirmation_token_hash', 64);
             $table->string('status');
@@ -160,11 +160,11 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->uuid('tenant_id')->index();
             $table->uuid('actor_id')->index();
-            $table->string('provider');
+            $table->string('provider', 100);
             $table->string('market');
-            $table->string('version');
+            $table->string('version', 100);
             $table->string('capability');
-            $table->string('external_id');
+            $table->string('external_id', 100);
             $table->string('payload_hash', 64);
             $table->timestamp('received_at');
             $table->timestamps();
@@ -174,8 +174,8 @@ return new class extends Migration
         Schema::create('automation_integration_idempotency', function (Blueprint $table): void {
             $table->uuid('id')->primary();
             $table->uuid('tenant_id')->index();
-            $table->string('scope');
-            $table->string('idempotency_key');
+            $table->string('scope', 100);
+            $table->string('idempotency_key', 100);
             $table->string('fingerprint', 64);
             $table->json('outcome')->nullable();
             $table->timestamp('consumed_at')->nullable();

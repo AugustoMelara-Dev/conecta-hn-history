@@ -14,7 +14,7 @@ final class OnboardingActivationWidget extends Widget
 {
     protected static bool $isLazy = false;
 
-    protected static string $view = 'filament.app.widgets.onboarding-activation-widget';
+    protected string $view = 'filament.app.widgets.onboarding-activation-widget';
 
     public function getColumnSpan(): string
     {

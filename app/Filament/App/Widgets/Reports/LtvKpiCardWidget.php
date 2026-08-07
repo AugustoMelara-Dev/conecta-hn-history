@@ -1,6 +1,16 @@
-<?php\n\ndeclare(strict_types=1);\n\nnamespace App\Filament\App\Widgets\Reports;\n\nclass LtvKpiCardWidget extends \Filament\Widgets\StatsOverviewWidget
+<?php
+
+declare(strict_types=1);
+
+namespace App\Filament\App\Widgets\Reports;
+
+use Illuminate\Support\Facades\DB;
+
+use Filament\Facades\Filament;
+
+class LtvKpiCardWidget extends \Filament\Widgets\StatsOverviewWidget
 {
-    protected static ?string $heading = 'LTV';
+    protected ?string $heading = 'LTV';
     protected static ?int $sort = 3;
 
     protected function getStats(): array
@@ -16,4 +26,5 @@
             Stat::make('LTV promedio', 'L ' . number_format((float) $avg, 2))->description('Customer lifetime value'),
         ];
     }
-}\n
+}
+

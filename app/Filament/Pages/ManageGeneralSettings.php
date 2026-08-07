@@ -14,7 +14,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 
@@ -28,11 +28,11 @@ class ManageGeneralSettings extends Page implements HasForms
 {
     use InteractsWithForms;
 
-    protected static string $view = 'filament.pages.manage-general-settings';
+    protected string $view = 'filament.pages.manage-general-settings';
 
     public ?array $data = [];
 
-    protected static ?string $navigationIcon = 'heroicon-o-cog';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-cog';
 
     public static function getNavigationLabel(): string
     {
@@ -74,10 +74,10 @@ class ManageGeneralSettings extends Page implements HasForms
         ]);
     }
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 Tabs::make('Configuraciones')
                     ->tabs([
                         // ═══════════════════════════════════════════════════════

@@ -15,9 +15,9 @@ use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Form;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Columns\ColorColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -28,9 +28,9 @@ class TagResource extends Resource
 {
     protected static ?string $model = \App\Models\Tag::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-tag';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-tag';
 
-    protected static ?string $navigationGroup = 'CRM';
+    protected static string | \UnitEnum | null $navigationGroup = 'CRM';
 
     protected static ?string $navigationLabel = 'Tags';
 
@@ -40,12 +40,12 @@ class TagResource extends Resource
 
     protected static ?int $navigationSort = 16;
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Section::make('Detalles')->schema([
-                    Grid::make(2)->schema([
+        return $schema
+            ->components([
+                Section::make('Detalles')->components([
+                    Grid::make(2)->components([
                         TextInput::make('name')
                             ->label('Nombre')
                             ->required()
@@ -100,6 +100,3 @@ class TagResource extends Resource
         ];
     }
 }
-
-
-

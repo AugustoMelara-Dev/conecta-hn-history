@@ -14,9 +14,9 @@ use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Resources\Resource;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Form;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -27,9 +27,9 @@ class NoteResource extends Resource
 {
     protected static ?string $model = \App\Models\CustomerNote::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-document-text';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-document-text';
 
-    protected static ?string $navigationGroup = 'CRM';
+    protected static string | \UnitEnum | null $navigationGroup = 'CRM';
 
     protected static ?string $navigationLabel = 'Notas';
 
@@ -39,16 +39,16 @@ class NoteResource extends Resource
 
     protected static ?int $navigationSort = 14;
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Section::make('Detalles')->schema([
-                    Grid::make(2)->schema([
+        return $schema
+            ->components([
+                Section::make('Detalles')->components([
+                    Grid::make(2)->components([
                         Select::make('contact_id')
                             ->label('Contacto')
                             ->relationship('contact', 'id')
-                            ->getOptionLabelFromRecordUsing(fn ($r) => $r->display_name ?? '—')
+                            ->getOptionLabelFromRecordUsing(fn ($r) => $r->display_name ?? 'â€”')
                             ->searchable(['first_name', 'last_name', 'email'])
                             ->preload(),
                         Select::make('deal_id')
@@ -63,7 +63,7 @@ class NoteResource extends Resource
                             ->preload(),
                         Select::make('type')
                             ->label('Tipo')
-                            ->options(['general' => 'General', 'call_summary' => 'Resumen de llamada', 'meeting' => 'Reunión', 'follow_up' => 'Seguimiento'])
+                            ->options(['general' => 'General', 'call_summary' => 'Resumen de llamada', 'meeting' => 'ReuniÃ³n', 'follow_up' => 'Seguimiento'])
                             ->default('general'),
                     ]),
                     Textarea::make('body')
@@ -79,15 +79,15 @@ class NoteResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('contact.display_name')->label('Contacto')->placeholder('—')->searchable(),
-                TextColumn::make('deal.name')->label('Deal')->placeholder('—'),
+                TextColumn::make('contact.display_name')->label('Contacto')->placeholder('â€”')->searchable(),
+                TextColumn::make('deal.name')->label('Deal')->placeholder('â€”'),
                 TextColumn::make('type')->label('Tipo')->badge(),
                 TextColumn::make('body')->label('Contenido')->limit(80)->wrap(),
-                TextColumn::make('creator.name')->label('Autor')->placeholder('—'),
+                TextColumn::make('creator.name')->label('Autor')->placeholder('â€”'),
                 TextColumn::make('created_at')->label('Fecha')->dateTime('d/m/Y H:i')->sortable(),
             ])
             ->filters([
-                SelectFilter::make('type')->label('Tipo')->options(['general' => 'General', 'call_summary' => 'Resumen de llamada', 'meeting' => 'Reunión', 'follow_up' => 'Seguimiento']),
+                SelectFilter::make('type')->label('Tipo')->options(['general' => 'General', 'call_summary' => 'Resumen de llamada', 'meeting' => 'ReuniÃ³n', 'follow_up' => 'Seguimiento']),
             ])
             ->actions([EditAction::make(), DeleteAction::make()])
             ->bulkActions([BulkActionGroup::make([DeleteBulkAction::make()])])
@@ -115,6 +115,3 @@ class NoteResource extends Resource
         ];
     }
 }
-
-
-

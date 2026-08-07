@@ -22,7 +22,7 @@ final class TenantInvitationResource extends Resource
 {
     protected static ?string $model = TenantInvitation::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-envelope';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-envelope';
 
     protected static ?int $navigationSort = 51;
 

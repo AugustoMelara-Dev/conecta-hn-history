@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Schema;
  */
 class PendingReviewAlert extends Widget
 {
-    protected static string $view = 'filament.app.widgets.pending-review-alert';
+    protected string $view = 'filament.app.widgets.pending-review-alert';
 
     public function getView(): string
     {

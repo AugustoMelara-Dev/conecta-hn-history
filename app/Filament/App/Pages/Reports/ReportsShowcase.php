@@ -15,12 +15,12 @@ use Filament\Pages\Page;
  */
 class ReportsShowcase extends Page
 {
-    protected static ?string $navigationIcon = 'heroicon-o-document-chart-bar';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-document-chart-bar';
     protected static ?string $title = 'Detalle de reporte';
-    protected static ?string $navigationGroup = 'Operaciones';
+    protected static string | \UnitEnum | null $navigationGroup = 'Operaciones';
     protected static ?string $navigationLabel = 'Detalle';
     protected static ?int $navigationSort = 51;
-    protected static string $view = 'filament.app.pages.reports.showcase';
+    protected string $view = 'filament.app.pages.reports.showcase';
 
     public ?string $reportKey = null;
     public ?string $range = '30d';

@@ -34,7 +34,7 @@ class TopTenantsTableWidget extends TableWidget
             ->records($data)
             ->columns([
                 TextColumn::make('name')->label('Tenant'),
-                TextColumn::make('orders_count')->label('Órdenes'),
+                TextColumn::make('orders_count')->label('Ã“rdenes'),
                 TextColumn::make('revenue')->label('Ingresos')->money('HNL'),
             ]);
     }

@@ -7,12 +7,11 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\OrderResource\Pages;
 use App\Filament\Traits\ScopesToTenant;
 use App\Models\Order;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Infolists\Components\Grid;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\Section;
 use Filament\Infolists\Components\TextEntry;
-use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use Filament\Support\Enums\FontFamily;
 use Filament\Tables;
@@ -34,7 +33,7 @@ class OrderResource extends Resource
 {
     protected static ?string $model = Order::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-shopping-bag';
 
     protected static ?string $navigationLabel = 'Pedidos';
 
@@ -42,7 +41,7 @@ class OrderResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Pedidos';
 
-    protected static ?string $navigationGroup = 'Ventas';
+    protected static string | \UnitEnum | null $navigationGroup = 'Ventas';
 
     protected static ?int $navigationSort = 1;
 
@@ -65,9 +64,9 @@ class OrderResource extends Resource
      * from the Infolist for potential future use or read-only forms.
      * However, the primary detail view is handled by infolist().
      */
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form->schema([]); // Empty form as editing is disabled
+        return $form->components([]); // Empty form as editing is disabled
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -166,10 +165,10 @@ class OrderResource extends Resource
     // ═══════════════════════════════════════════════════════════════════════
     // INFOLIST: FORENSIC DECODER
     // ═══════════════════════════════════════════════════════════════════════
-    public static function infolist(Infolist $infolist): Infolist
+    public static function infolist(Schema $schema): Schema
     {
-        return $infolist
-            ->schema([
+        return $schema
+            ->components([
                 Section::make('Detalle del Pedido')
                     ->schema([
                         // REPEATABLE ENTRY: Decodes 'items' relationship/JSON
@@ -248,6 +247,4 @@ class OrderResource extends Resource
         return [];
     }
 }
-
-
 

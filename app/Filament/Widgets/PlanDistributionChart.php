@@ -17,7 +17,7 @@ class PlanDistributionChart extends ChartWidget
         Tenant::PLAN_COSECHA,
     ];
 
-    protected static ?string $heading = 'Distribucion de Cartera';
+    protected ?string $heading = 'Distribucion de Cartera';
 
     protected static ?int $sort = 3;
 

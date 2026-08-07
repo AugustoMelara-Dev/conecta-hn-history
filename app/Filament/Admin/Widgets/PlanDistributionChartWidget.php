@@ -9,7 +9,7 @@ use Filament\Widgets\ChartWidget;
 
 class PlanDistributionChartWidget extends ChartWidget
 {
-    protected static ?string $heading = 'Distribución de planes';
+    protected ?string $heading = 'DistribuciÃ³n de planes';
     protected static ?int $sort = 3;
 
     protected function getData(): array

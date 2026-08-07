@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 
 class GlobalRevenueChartWidget extends ChartWidget
 {
-    protected static ?string $heading = 'Ingresos globales (12 meses)';
+    protected ?string $heading = 'Ingresos globales (12 meses)';
     protected static ?int $sort = 2;
 
     protected function getData(): array

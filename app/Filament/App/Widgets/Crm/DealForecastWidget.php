@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 
 class DealForecastWidget extends BaseWidget
 {
-    protected static ?string $heading = 'Forecast de deals';
+    protected ?string $heading = 'Forecast de deals';
     protected static ?int $sort = 21;
 
     protected function getStats(): array

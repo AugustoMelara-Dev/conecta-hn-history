@@ -12,12 +12,12 @@ use Illuminate\Support\Facades\DB;
  */
 class SystemMetrics extends Page
 {
-    protected static ?string $navigationIcon = 'heroicon-o-chart-pie';
-    protected static ?string $navigationGroup = 'Plataforma';
-    protected static ?string $navigationLabel = 'Métricas';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-chart-pie';
+    protected static string | \UnitEnum | null $navigationGroup = 'Plataforma';
+    protected static ?string $navigationLabel = 'MÃ©tricas';
     protected static ?string $title = 'System Metrics';
     protected static ?int $navigationSort = 6;
-    protected static string $view = 'filament.admin.pages.system-metrics';
+    protected string $view = 'filament.admin.pages.system-metrics';
 
     public function getMetrics(): array
     {

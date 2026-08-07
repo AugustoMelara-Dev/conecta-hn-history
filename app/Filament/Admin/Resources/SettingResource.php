@@ -11,9 +11,9 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Tabs;
-use Filament\Forms\Form;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -21,31 +21,31 @@ use Filament\Tables\Table;
 class SettingResource extends Resource
 {
     protected static ?string $model = \Spatie\LaravelSettings\Models\SettingsProperty::class;
-    protected static ?string $navigationIcon = 'heroicon-o-cog-6-tooth';
-    protected static ?string $navigationGroup = 'Configuración';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-cog-6-tooth';
+    protected static string | \UnitEnum | null $navigationGroup = 'ConfiguraciÃ³n';
     protected static ?string $navigationLabel = 'Settings';
     protected static ?string $modelLabel = 'setting';
     protected static ?string $pluralModelLabel = 'Settings';
     protected static ?int $navigationSort = 30;
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $schema->schema([
-            Tabs::make()->schema([
-                Tabs\Tab::make('General')->schema([
+        return $schema->components([
+            Tabs::make()->components([
+                Tabs\Tab::make('General')->components([
                     TextInput::make('app_name')->label('Nombre de la app'),
                     TextInput::make('support_email')->label('Email de soporte')->email(),
                 ]),
-                Tabs\Tab::make('Features')->schema([
+                Tabs\Tab::make('Features')->components([
                     Toggle::make('feature_ai_assistants')->label('AI Assistants')->default(true),
                     Toggle::make('feature_automation')->label('Automation')->default(true),
                     Toggle::make('feature_import_export')->label('Import/Export')->default(true),
                 ]),
-                Tabs\Tab::make('Limits')->schema([
-                    TextInput::make('max_tenants')->label('Máx tenants')->numeric(),
-                    TextInput::make('max_ai_calls_per_month')->label('Máx AI calls/mes')->numeric(),
+                Tabs\Tab::make('Limits')->components([
+                    TextInput::make('max_tenants')->label('MÃ¡x tenants')->numeric(),
+                    TextInput::make('max_ai_calls_per_month')->label('MÃ¡x AI calls/mes')->numeric(),
                 ]),
-                Tabs\Tab::make('Advanced')->schema([
+                Tabs\Tab::make('Advanced')->components([
                     Textarea::make('raw_config')->label('Raw config (JSON)')->rows(5),
                 ]),
             ]),
@@ -71,6 +71,4 @@ class SettingResource extends Resource
         return ['index' => Pages\ListSettings::route('/')];
     }
 }
-
-
 

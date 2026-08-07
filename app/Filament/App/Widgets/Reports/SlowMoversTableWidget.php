@@ -1,4 +1,14 @@
-<?php\n\ndeclare(strict_types=1);\n\nnamespace App\Filament\App\Widgets\Reports;\n\nclass SlowMoversTableWidget extends TableWidget
+<?php
+
+declare(strict_types=1);
+
+namespace App\Filament\App\Widgets\Reports;
+
+use Filament\Facades\Filament;
+
+use Filament\Widgets\TableWidget;
+
+class SlowMoversTableWidget extends TableWidget
 {
     protected static ?string $heading = 'Productos lentos';
     protected static ?int $sort = 9;
@@ -15,4 +25,5 @@
                 \Filament\Tables\Columns\TextColumn::make('stock')->label('Stock'),
             ]);
     }
-}\n
+}
+

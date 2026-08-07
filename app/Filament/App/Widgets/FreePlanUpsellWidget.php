@@ -8,7 +8,7 @@ use Filament\Widgets\Widget;
 
 class FreePlanUpsellWidget extends Widget
 {
-    protected static string $view = 'filament.widgets.free-plan-upsell';
+    protected string $view = 'filament.widgets.free-plan-upsell';
 
     public function getView(): string
     {

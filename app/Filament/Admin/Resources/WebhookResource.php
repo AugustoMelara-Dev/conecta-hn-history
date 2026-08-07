@@ -16,9 +16,9 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Form;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -27,18 +27,18 @@ use Filament\Tables\Table;
 class WebhookResource extends Resource
 {
     protected static ?string $model = Webhook::class;
-    protected static ?string $navigationIcon = 'heroicon-o-cloud';
-    protected static ?string $navigationGroup = 'Configuración';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-cloud';
+    protected static string | \UnitEnum | null $navigationGroup = 'ConfiguraciÃ³n';
     protected static ?string $navigationLabel = 'Webhooks';
     protected static ?string $modelLabel = 'webhook';
     protected static ?string $pluralModelLabel = 'Webhooks';
     protected static ?int $navigationSort = 31;
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $schema->schema([
-            Section::make('Endpoint')->schema([
-                Grid::make(2)->schema([
+        return $schema->components([
+            Section::make('Endpoint')->components([
+                Grid::make(2)->components([
                     TextInput::make('name')->label('Nombre')->required(),
                     TextInput::make('url')->label('URL')->url()->required(),
                     Select::make('events')->label('Eventos')->multiple()->options([
@@ -46,7 +46,7 @@ class WebhookResource extends Resource
                         'deal.won' => 'Deal won',
                         'contact.created' => 'Contact created',
                     ]),
-                    Select::make('http_method')->label('Método')->options(['GET' => 'GET', 'POST' => 'POST'])->default('POST'),
+                    Select::make('http_method')->label('MÃ©todo')->options(['GET' => 'GET', 'POST' => 'POST'])->default('POST'),
                     Toggle::make('is_active')->label('Activo')->default(true),
                 ]),
                 Textarea::make('headers')->label('Headers (JSON)')->rows(3)->columnSpanFull(),
@@ -61,7 +61,7 @@ class WebhookResource extends Resource
                 TextColumn::make('name')->label('Nombre'),
                 TextColumn::make('url')->label('URL')->limit(50),
                 IconColumn::make('is_active')->label('Activo')->boolean(),
-                TextColumn::make('last_triggered_at')->label('Último trigger')->dateTime('d/m/Y H:i')->placeholder('Nunca'),
+                TextColumn::make('last_triggered_at')->label('Ãšltimo trigger')->dateTime('d/m/Y H:i')->placeholder('Nunca'),
             ])
             ->actions([
                 EditAction::make(),
@@ -79,6 +79,4 @@ class WebhookResource extends Resource
         return ['index' => Pages\ListWebhooks::route('/'), 'create' => Pages\CreateWebhook::route('/create'), 'edit' => Pages\EditWebhook::route('/{record}/edit')];
     }
 }
-
-
 

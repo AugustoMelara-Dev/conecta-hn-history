@@ -15,9 +15,9 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Form;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -26,18 +26,18 @@ use Filament\Tables\Table;
 class UserResource extends Resource
 {
     protected static ?string $model = User::class;
-    protected static ?string $navigationIcon = 'heroicon-o-user-circle';
-    protected static ?string $navigationGroup = 'Plataforma';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-user-circle';
+    protected static string | \UnitEnum | null $navigationGroup = 'Plataforma';
     protected static ?string $navigationLabel = 'Usuarios globales';
     protected static ?string $modelLabel = 'usuario';
     protected static ?string $pluralModelLabel = 'Usuarios globales';
     protected static ?int $navigationSort = 11;
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $schema->schema([
-            Section::make('Identidad')->schema([
-                Grid::make(2)->schema([
+        return $schema->components([
+            Section::make('Identidad')->components([
+                Grid::make(2)->components([
                     TextInput::make('name')->label('Nombre')->required(),
                     TextInput::make('email')->label('Email')->email()->required(),
                     Select::make('tenant_id')->label('Tenant')->relationship('tenant', 'name')->searchable(),
@@ -53,7 +53,7 @@ class UserResource extends Resource
             ->columns([
                 TextColumn::make('name')->label('Nombre')->searchable()->sortable(),
                 TextColumn::make('email')->label('Email')->searchable(),
-                TextColumn::make('tenant.name')->label('Tenant')->placeholder('—'),
+                TextColumn::make('tenant.name')->label('Tenant')->placeholder('â€”'),
                 IconColumn::make('is_super_admin')->label('Super admin')->boolean(),
                 IconColumn::make('mfa_enabled')->label('MFA')->boolean(),
                 TextColumn::make('created_at')->label('Creado')->dateTime('d/m/Y')->sortable(),
@@ -92,6 +92,4 @@ class UserResource extends Resource
         ];
     }
 }
-
-
 

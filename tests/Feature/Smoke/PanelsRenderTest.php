@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Artisan;
 
 /**
- * PR1 — Filament 4 base + admin skeleton
+ * PR1 â€” Filament 4 base + admin skeleton
  * Acceptance: php artisan filament pasa, ambos paneles renderizan, composer.json declara filament/filament: ^4.0.
  */
 
@@ -39,5 +39,5 @@ it('AdminPanelProvider uses Filament 4 navigation groups and database notificati
 it('filament:assets command can be invoked', function () {
     Artisan::call('filament:assets');
 
-    expect(Artisan::output())->not->toThrow();
+    expect(Artisan::output())->toBeString();
 });

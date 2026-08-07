@@ -3,18 +3,18 @@
 declare(strict_types=1);
 
 /**
- * PR1 Architecture Ratchet — Filament 4 Schema migration.
+ * PR1 Architecture Ratchet â€” Filament 4 Schema migration.
  *
  * Invariantes del PR1 (acceptance criteria):
  * - App\Filament\App\Resources y App\Filament\Resources NO importan Filament\Forms\Form.
- * - Cada Resource usa Filament\Schemas\Schema en su método form().
+ * - Cada Resource usa Filament\Schemas\Schema en su mÃ©todo form().
  * - Cada Resource declara `protected static ?string $model` (nullable).
- * - Ningún Resource importa Filament\Tables\Actions\HeaderAction (no existe en v4).
+ * - NingÃºn Resource importa Filament\Tables\Actions\HeaderAction (no existe en v4).
  */
 
 $resourceDirs = [
-    app_path('Filament/App/Resources'),
-    app_path('Filament/Resources'),
+    __DIR__.'/../../../app/Filament/App/Resources',
+    __DIR__.'/../../../app/Filament/Resources',
 ];
 
 $resourceFiles = [];

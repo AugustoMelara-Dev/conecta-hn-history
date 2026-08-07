@@ -17,9 +17,9 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Form;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -32,9 +32,9 @@ class TaskResource extends Resource
 {
     protected static ?string $model = CustomerTask::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-check';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-clipboard-document-check';
 
-    protected static ?string $navigationGroup = 'CRM';
+    protected static string | \UnitEnum | null $navigationGroup = 'CRM';
 
     protected static ?string $navigationLabel = 'Tareas';
 
@@ -44,14 +44,14 @@ class TaskResource extends Resource
 
     protected static ?int $navigationSort = 15;
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Section::make('Detalles')->schema([
-                    Grid::make(2)->schema([
+        return $schema
+            ->components([
+                Section::make('Detalles')->components([
+                    Grid::make(2)->components([
                         TextInput::make('title')
-                            ->label('Título')
+                            ->label('TÃ­tulo')
                             ->required()
                             ->maxLength(200),
                         Select::make('priority')
@@ -70,7 +70,7 @@ class TaskResource extends Resource
                         Select::make('contact_id')
                             ->label('Contacto')
                             ->relationship('contact', 'id')
-                            ->getOptionLabelFromRecordUsing(fn ($r) => $r->display_name ?? '—')
+                            ->getOptionLabelFromRecordUsing(fn ($r) => $r->display_name ?? 'â€”')
                             ->searchable(['first_name', 'last_name', 'email'])
                             ->preload(),
                         Select::make('deal_id')
@@ -83,7 +83,7 @@ class TaskResource extends Resource
                             ->default(false),
                     ]),
                     \Filament\Forms\Components\Textarea::make('description')
-                        ->label('Descripción')
+                        ->label('DescripciÃ³n')
                         ->rows(3)
                         ->columnSpanFull(),
                 ]),
@@ -94,16 +94,16 @@ class TaskResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('title')->label('Título')->searchable()->weight('medium'),
+                TextColumn::make('title')->label('TÃ­tulo')->searchable()->weight('medium'),
                 TextColumn::make('priority')->label('Prioridad')->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'high' => 'danger', 'medium' => 'warning', 'low' => 'gray', default => 'gray',
                     }),
                 IconColumn::make('is_completed')->label('Completada')->boolean(),
-                TextColumn::make('due_at')->label('Vence')->dateTime('d/m/Y H:i')->placeholder('—')->sortable(),
-                TextColumn::make('assignee.name')->label('Asignado a')->placeholder('—'),
-                TextColumn::make('contact.display_name')->label('Contacto')->placeholder('—')->toggleable(),
-                TextColumn::make('deal.name')->label('Deal')->placeholder('—')->toggleable(),
+                TextColumn::make('due_at')->label('Vence')->dateTime('d/m/Y H:i')->placeholder('â€”')->sortable(),
+                TextColumn::make('assignee.name')->label('Asignado a')->placeholder('â€”'),
+                TextColumn::make('contact.display_name')->label('Contacto')->placeholder('â€”')->toggleable(),
+                TextColumn::make('deal.name')->label('Deal')->placeholder('â€”')->toggleable(),
             ])
             ->filters([
                 SelectFilter::make('priority')->label('Prioridad')->options(['high' => 'Alta', 'medium' => 'Media', 'low' => 'Baja']),
@@ -139,6 +139,3 @@ class TaskResource extends Resource
         ];
     }
 }
-
-
-

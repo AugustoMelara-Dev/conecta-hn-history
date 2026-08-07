@@ -12,7 +12,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -23,16 +23,16 @@ class ActivitiesRelationManager extends RelationManager
 
     protected static ?string $title = 'Actividades';
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 Select::make('type')
                     ->label('Tipo')
                     ->options([
                         'call' => 'Llamada',
                         'email' => 'Email',
-                        'meeting' => 'ReuniÛn',
+                        'meeting' => 'Reuni√≥n',
                         'task' => 'Tarea',
                         'note' => 'Nota',
                     ])
@@ -40,10 +40,10 @@ class ActivitiesRelationManager extends RelationManager
                 TextInput::make('subject')
                     ->label('Asunto'),
                 Textarea::make('body')
-                    ->label('DescripciÛn')
+                    ->label('Descripci√≥n')
                     ->rows(3),
                 DateTimePicker::make('due_at')
-                    ->label('Fecha lÌmite'),
+                    ->label('Fecha l√≠mite'),
             ]);
     }
 
@@ -71,6 +71,3 @@ class ActivitiesRelationManager extends RelationManager
             ]);
     }
 }
-
-
-

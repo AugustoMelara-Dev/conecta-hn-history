@@ -15,7 +15,7 @@ use Filament\Forms;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -30,7 +30,7 @@ class TenantResource extends Resource
 
     protected static ?string $modelPolicy = TenantPolicy::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-building-storefront';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-building-storefront';
 
     public static function getNavigationLabel(): string
     {
@@ -47,10 +47,10 @@ class TenantResource extends Resource
         return 'Negocios';
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 Forms\Components\Section::make('Informacion Principal')
                     ->schema([
                         TextInput::make('name')
@@ -608,6 +608,4 @@ class TenantResource extends Resource
         ];
     }
 }
-
-
 

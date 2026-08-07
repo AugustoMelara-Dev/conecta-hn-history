@@ -13,7 +13,6 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
-use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -21,6 +20,19 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
+/**
+ * AdminPanelProvider - Centro de Comando Super Admin - Filament 4.
+ *
+ * Migrated to Filament 4 API:
+ * - Schema::make() en lugar de Form::make()
+ * - protected static ?string $model (nullable)
+ * - databaseNotifications()
+ * - viteTheme()
+ * - breadcrumbs()
+ * - navigationGroups() con iconos
+ *
+ * @see https://filamentphp.com/docs/4.x/panels/configuration
+ */
 class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
@@ -31,10 +43,25 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->login()
             ->authGuard('web')
+
+            // BRANDING
+            ->brandName('Dovra AI Admin')
+            ->brandLogo(fn () => view('filament.components.brand'))
+            ->brandLogoHeight('2.5rem')
+            ->favicon(asset('favicon.ico'))
+
+            // PROFILE
             ->profile()
+
+            // SPA MODE
             ->spa()
+
+            // LAYOUT
             ->sidebarCollapsibleOnDesktop()
             ->topNavigation(false)
+            ->breadcrumbs()
+
+            // PALETA CORPORATE MINIMALIST (Zinc primary, Slate gray)
             ->colors([
                 'primary' => Color::Slate,
                 'gray' => Color::Zinc,
@@ -43,12 +70,45 @@ class AdminPanelProvider extends PanelProvider
                 'danger' => Color::Rose,
                 'info' => Color::Sky,
             ])
+
+            // FILAMENT 4: viteTheme
+            ->viteTheme('resources/css/filament/admin/theme.css')
+
+            // FILAMENT 4: database notifications
+            ->databaseNotifications()
+            ->databaseNotificationsPolling('30s')
+
+            // FILAMENT 4: navigation groups
+            ->navigationGroups([
+                NavigationGroup::make('Plataforma')
+                    ->icon('heroicon-o-server-stack')
+                    ->collapsible(),
+                NavigationGroup::make('CRM Global')
+                    ->icon('heroicon-o-globe-alt')
+                    ->collapsible(),
+                NavigationGroup::make('Billing')
+                    ->icon('heroicon-o-banknotes')
+                    ->collapsible(),
+                NavigationGroup::make('AI')
+                    ->icon('heroicon-o-sparkles')
+                    ->collapsible(),
+                NavigationGroup::make('Auditoría')
+                    ->icon('heroicon-o-shield-check')
+                    ->collapsible(),
+                NavigationGroup::make('Configuración')
+                    ->icon('heroicon-o-cog-6-tooth')
+                    ->collapsible(),
+            ])
+
+            // DISCOVERY
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
+
             ->pages([
                 Dashboard::class,
             ])
+
             ->widgets([
                 \App\Filament\Admin\Widgets\TenantsOverviewWidget::class,
                 \App\Filament\Admin\Widgets\GlobalRevenueChartWidget::class,
@@ -59,6 +119,8 @@ class AdminPanelProvider extends PanelProvider
                 \App\Filament\Admin\Widgets\AiCostByTenantChartWidget::class,
                 \App\Filament\Admin\Widgets\DiskAndQueueWidget::class,
             ])
+
+            // MIDDLEWARE
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
@@ -70,21 +132,23 @@ class AdminPanelProvider extends PanelProvider
                 DispatchServingFilamentEvent::class,
                 SubstituteBindings::class,
             ])
+
             ->authMiddleware([
                 Authenticate::class,
             ])
-            ->navigationGroups([
-                NavigationGroup::make('Plataforma'),
-                NavigationGroup::make('CRM Global'),
-                NavigationGroup::make('Billing'),
-                NavigationGroup::make('AI'),
-                NavigationGroup::make('Auditoría'),
-                NavigationGroup::make('Configuración'),
-            ]);
+
+            // RENDER HOOKS para global search y notificaciones
+            ->renderHook(
+                'panels::global-search.before',
+                fn (): string => '',
+            )
+
+            // AVATAR
+            ->defaultAvatarProvider(\Filament\AvatarProviders\UiAvatarsProvider::class);
     }
 
     public function boot(): void
     {
-        //
+        // Hook para extensiones específicas del admin panel
     }
 }

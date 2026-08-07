@@ -1,6 +1,14 @@
-<?php\n\ndeclare(strict_types=1);\n\nnamespace App\Filament\App\Widgets\Reports;\n\nclass ChurnGaugeWidget extends ChartWidget
+<?php
+
+declare(strict_types=1);
+
+namespace App\Filament\App\Widgets\Reports;
+
+use Filament\Widgets\ChartWidget;
+
+class ChurnGaugeWidget extends ChartWidget
 {
-    protected static ?string $heading = 'Tasa de churn';
+    protected ?string $heading = 'Tasa de churn';
     protected static ?int $sort = 4;
 
     protected function getData(): array
@@ -12,4 +20,5 @@
     }
 
     protected function getType(): string { return 'doughnut'; }
-}\n
+}
+

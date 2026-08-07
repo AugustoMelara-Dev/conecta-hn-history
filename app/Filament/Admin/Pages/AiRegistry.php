@@ -10,20 +10,20 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Form;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 
 /**
  * AiRegistry - Manage providers, models, costs.
  */
 class AiRegistry extends Page
 {
-    protected static ?string $navigationIcon = 'heroicon-o-sparkles';
-    protected static ?string $navigationGroup = 'AI';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-sparkles';
+    protected static string | \UnitEnum | null $navigationGroup = 'AI';
     protected static ?string $navigationLabel = 'AI Registry';
     protected static ?string $title = 'AI Registry';
     protected static ?int $navigationSort = 10;
-    protected static string $view = 'filament.admin.pages.ai-registry';
+    protected string $view = 'filament.admin.pages.ai-registry';
 
     public ?array $data = [];
 
@@ -32,10 +32,10 @@ class AiRegistry extends Page
         $this->form->fill();
     }
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $schema->schema([
-            Section::make('Configurar AI')->schema([
+        return $schema->components([
+            Section::make('Configurar AI')->components([
                 Select::make('provider')->label('Provider')->options(['openai' => 'OpenAI', 'anthropic' => 'Anthropic'])->default('openai'),
                 TextInput::make('model')->label('Modelo')->default('gpt-4o-mini'),
                 TextInput::make('api_key_ref')->label('API key reference'),
@@ -68,7 +68,5 @@ class AiRegistry extends Page
         Notification::make()->title('AI Registry actualizado')->success()->send();
     }
 }
-
-
 
 

@@ -16,9 +16,9 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Form;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -29,9 +29,9 @@ class CompanyResource extends Resource
 {
     protected static ?string $model = CrmCompany::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-building-office';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-building-office';
 
-    protected static ?string $navigationGroup = 'CRM';
+    protected static string | \UnitEnum | null $navigationGroup = 'CRM';
 
     protected static ?string $navigationLabel = 'Empresas';
 
@@ -41,24 +41,24 @@ class CompanyResource extends Resource
 
     protected static ?int $navigationSort = 12;
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Section::make('Información de la empresa')
-                    ->schema([
+        return $schema
+            ->components([
+                Section::make('InformaciÃ³n de la empresa')
+                    ->components([
                         Grid::make(2)
-                            ->schema([
+                            ->components([
                                 TextInput::make('name')->label('Nombre')->required()->maxLength(200),
                                 TextInput::make('industry')->label('Industria')->maxLength(100),
-                                Select::make('size')->label('Tamaño')
-                                    ->options(['micro' => 'Micro', 'small' => 'Pequeña', 'medium' => 'Mediana', 'large' => 'Grande', 'enterprise' => 'Enterprise'])
+                                Select::make('size')->label('TamaÃ±o')
+                                    ->options(['micro' => 'Micro', 'small' => 'PequeÃ±a', 'medium' => 'Mediana', 'large' => 'Grande', 'enterprise' => 'Enterprise'])
                                     ->native(false),
                                 TextInput::make('website')->label('Sitio web')->url(),
-                                TextInput::make('country')->label('País')->maxLength(2),
+                                TextInput::make('country')->label('PaÃ­s')->maxLength(2),
                                 TextInput::make('city')->label('Ciudad')->maxLength(100),
-                                TextInput::make('tax_id')->label('Identificación fiscal')->maxLength(50),
-                                TextInput::make('phone')->label('Teléfono')->tel()->maxLength(50),
+                                TextInput::make('tax_id')->label('IdentificaciÃ³n fiscal')->maxLength(50),
+                                TextInput::make('phone')->label('TelÃ©fono')->tel()->maxLength(50),
                             ]),
                         Textarea::make('notes')->label('Notas')->rows(3)->columnSpanFull(),
                     ]),
@@ -70,16 +70,16 @@ class CompanyResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('name')->label('Nombre')->searchable()->sortable()->weight('medium'),
-                TextColumn::make('industry')->label('Industria')->placeholder('—')->toggleable(),
-                TextColumn::make('size')->label('Tamaño')->badge()->placeholder('—')->toggleable(),
-                TextColumn::make('city')->label('Ciudad')->placeholder('—'),
-                TextColumn::make('country')->label('País')->placeholder('—')->toggleable(),
+                TextColumn::make('industry')->label('Industria')->placeholder('â€”')->toggleable(),
+                TextColumn::make('size')->label('TamaÃ±o')->badge()->placeholder('â€”')->toggleable(),
+                TextColumn::make('city')->label('Ciudad')->placeholder('â€”'),
+                TextColumn::make('country')->label('PaÃ­s')->placeholder('â€”')->toggleable(),
                 TextColumn::make('contacts_count')->label('Contactos')->counts('contacts')->badge()->color('info'),
                 TextColumn::make('deals_count')->label('Deals')->counts('deals')->badge()->color('primary'),
             ])
             ->filters([
-                SelectFilter::make('size')->label('Tamaño')
-                    ->options(['micro' => 'Micro', 'small' => 'Pequeña', 'medium' => 'Mediana', 'large' => 'Grande', 'enterprise' => 'Enterprise']),
+                SelectFilter::make('size')->label('TamaÃ±o')
+                    ->options(['micro' => 'Micro', 'small' => 'PequeÃ±a', 'medium' => 'Mediana', 'large' => 'Grande', 'enterprise' => 'Enterprise']),
                 SelectFilter::make('industry')->label('Industria'),
             ])
             ->actions([EditAction::make(), DeleteAction::make()])
@@ -111,6 +111,3 @@ class CompanyResource extends Resource
         ];
     }
 }
-
-
-

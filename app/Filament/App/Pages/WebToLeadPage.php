@@ -12,31 +12,31 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Form;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 
 /**
- * WebToLeadPage - Formulario público de captura de leads.
+ * WebToLeadPage - Formulario pÃºblico de captura de leads.
  *
  * - Rate limit: 60 req/min por IP
- * - Captcha placeholder (integrar hCaptcha/reCAPTCHA en producción)
+ * - Captcha placeholder (integrar hCaptcha/reCAPTCHA en producciÃ³n)
  * - Crea Contact + crea Deal en pipeline por defecto
  */
 class WebToLeadPage extends Page
 {
-    protected static ?string $navigationIcon = 'heroicon-o-envelope-open';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-envelope-open';
 
     protected static ?string $title = 'Captura de Leads';
 
     protected static ?string $navigationLabel = 'Web-to-Lead';
 
-    protected static ?string $navigationGroup = 'CRM';
+    protected static string | \UnitEnum | null $navigationGroup = 'CRM';
 
     protected static ?int $navigationSort = 50;
 
-    protected static string $view = 'filament.app.pages.web-to-lead';
+    protected string $view = 'filament.app.pages.web-to-lead';
 
     public ?array $data = [];
 
@@ -51,21 +51,21 @@ class WebToLeadPage extends Page
         return true;
     }
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Section::make('Cuéntanos sobre ti')
+        return $schema
+            ->components([
+                Section::make('CuÃ©ntanos sobre ti')
                     ->description('Nos pondremos en contacto contigo en menos de 24 horas.')
-                    ->schema([
+                    ->components([
                         TextInput::make('first_name')->label('Nombre')->required()->maxLength(100),
                         TextInput::make('last_name')->label('Apellido')->required()->maxLength(100),
                         TextInput::make('email')->label('Email')->email()->required()->maxLength(255),
-                        TextInput::make('phone')->label('Teléfono')->tel()->maxLength(50),
+                        TextInput::make('phone')->label('TelÃ©fono')->tel()->maxLength(50),
                         TextInput::make('company_name')->label('Empresa')->maxLength(200),
                         TextInput::make('job_title')->label('Cargo')->maxLength(100),
                         Textarea::make('message')->label('Mensaje')->rows(4),
-                        CaptchaField::make('captcha')->label('Verificación'),
+                        CaptchaField::make('captcha')->label('VerificaciÃ³n'),
                     ]),
             ])
             ->statePath('data');
@@ -142,12 +142,9 @@ class WebToLeadPage extends Page
 
         $this->form->fill();
         Notification::make()
-            ->title('¡Gracias!')
-            ->body('Hemos recibido tu información.')
+            ->title('Â¡Gracias!')
+            ->body('Hemos recibido tu informaciÃ³n.')
             ->success()
             ->send();
     }
 }
-
-
-

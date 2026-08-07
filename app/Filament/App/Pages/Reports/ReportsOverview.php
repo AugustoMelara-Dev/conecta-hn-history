@@ -12,12 +12,12 @@ use Filament\Pages\Page;
  */
 class ReportsOverview extends Page
 {
-    protected static ?string $navigationIcon = 'heroicon-o-chart-bar';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-chart-bar';
     protected static ?string $title = 'Reportes';
-    protected static ?string $navigationGroup = 'Operaciones';
+    protected static string | \UnitEnum | null $navigationGroup = 'Operaciones';
     protected static ?string $navigationLabel = 'Reportes';
     protected static ?int $navigationSort = 50;
-    protected static string $view = 'filament.app.pages.reports.overview';
+    protected string $view = 'filament.app.pages.reports.overview';
 
     public function getViewData(): array
     {

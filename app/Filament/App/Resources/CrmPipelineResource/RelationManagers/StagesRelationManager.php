@@ -13,7 +13,7 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms;
 use Filament\Forms\Components\Grid;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -29,10 +29,10 @@ class StagesRelationManager extends RelationManager
 
     protected static ?string $pluralModelLabel = 'Etapas';
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 Forms\Components\TextInput::make('name')
                     ->label('Nombre')
                     ->required()

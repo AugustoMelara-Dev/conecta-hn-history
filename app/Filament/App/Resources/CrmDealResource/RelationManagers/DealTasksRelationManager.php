@@ -15,7 +15,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms;
 use Filament\Forms\Components\Grid;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
@@ -31,10 +31,10 @@ class DealTasksRelationManager extends RelationManager
 
     protected static ?string $pluralModelLabel = 'Tareas';
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 Forms\Components\TextInput::make('title')
                     ->label('Titulo')
                     ->required()

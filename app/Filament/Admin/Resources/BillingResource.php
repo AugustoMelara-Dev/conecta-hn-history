@@ -14,8 +14,8 @@ use Filament\Tables\Table;
 class BillingResource extends Resource
 {
     protected static ?string $model = SubscriptionPayment::class;
-    protected static ?string $navigationIcon = 'heroicon-o-banknotes';
-    protected static ?string $navigationGroup = 'Billing';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-banknotes';
+    protected static string | \UnitEnum | null $navigationGroup = 'Billing';
     protected static ?string $navigationLabel = 'Billing global';
     protected static ?string $modelLabel = 'pago';
     protected static ?string $pluralModelLabel = 'Pagos';

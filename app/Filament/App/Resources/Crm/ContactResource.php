@@ -22,9 +22,9 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Form;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -37,9 +37,9 @@ class ContactResource extends Resource
 {
     protected static ?string $model = Contact::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-user';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-user';
 
-    protected static ?string $navigationGroup = 'CRM';
+    protected static string | \UnitEnum | null $navigationGroup = 'CRM';
 
     protected static ?string $navigationLabel = 'Contactos';
 
@@ -49,14 +49,14 @@ class ContactResource extends Resource
 
     protected static ?int $navigationSort = 10;
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Section::make('Informaci�n personal')
-                    ->schema([
+        return $schema
+            ->components([
+                Section::make('Información personal')
+                    ->components([
                         Grid::make(2)
-                            ->schema([
+                            ->components([
                                 TextInput::make('first_name')
                                     ->label('Nombre')
                                     ->maxLength(100),
@@ -71,7 +71,7 @@ class ContactResource extends Resource
                                     ->maxLength(255),
 
                                 TextInput::make('phone')
-                                    ->label('Tel�fono')
+                                    ->label('Teléfono')
                                     ->tel()
                                     ->maxLength(50),
 
@@ -87,16 +87,16 @@ class ContactResource extends Resource
                                         'social' => 'Redes sociales',
                                         'email' => 'Email marketing',
                                         'paid' => 'Publicidad pagada',
-                                        'cold' => 'Contacto fr�o',
+                                        'cold' => 'Contacto frío',
                                     ])
                                     ->native(false),
                             ]),
                     ]),
 
-                Section::make('Clasificaci�n')
-                    ->schema([
+                Section::make('Clasificación')
+                    ->components([
                         Grid::make(3)
-                            ->schema([
+                            ->components([
                                 Select::make('lifecycle_stage')
                                     ->label('Etapa del ciclo')
                                     ->options(LifecycleStage::options())
@@ -117,13 +117,13 @@ class ContactResource extends Resource
                             ]),
 
                         DateTimePicker::make('last_contact_at')
-                            ->label('�ltimo contacto')
+                            ->label('Último contacto')
                             ->timezone('America/Tegucigalpa')
                             ->displayFormat('d/m/Y H:i'),
                     ]),
 
                 Section::make('Notas y campos personalizados')
-                    ->schema([
+                    ->components([
                         Textarea::make('notes')
                             ->label('Notas')
                             ->rows(4)
@@ -146,15 +146,15 @@ class ContactResource extends Resource
                     ->label('Email')
                     ->searchable()
                     ->copyable()
-                    ->placeholder('�'),
+                    ->placeholder('—'),
 
                 TextColumn::make('phone')
-                    ->label('Tel�fono')
-                    ->placeholder('�'),
+                    ->label('Teléfono')
+                    ->placeholder('—'),
 
                 TextColumn::make('company.name')
                     ->label('Empresa')
-                    ->placeholder('�')
+                    ->placeholder('—')
                     ->toggleable(),
 
                 TextColumn::make('lifecycle_stage')
@@ -181,7 +181,7 @@ class ContactResource extends Resource
                     ->color('info'),
 
                 TextColumn::make('last_contact_at')
-                    ->label('�ltimo contacto')
+                    ->label('Último contacto')
                     ->dateTime('d/m/Y H:i')
                     ->timezone('America/Tegucigalpa')
                     ->placeholder('Nunca')
@@ -271,7 +271,7 @@ class ContactResource extends Resource
                     DeleteBulkAction::make(),
                 ]),
             ])
-            ->emptyStateHeading('No tienes contactos a�n')
+            ->emptyStateHeading('No tienes contactos aún')
             ->emptyStateDescription('Crea tu primer contacto para empezar tu pipeline CRM.')
             ->emptyStateIcon('heroicon-o-user-plus')
             ->defaultSort('created_at', 'desc');
@@ -306,6 +306,3 @@ class ContactResource extends Resource
         ];
     }
 }
-
-
-

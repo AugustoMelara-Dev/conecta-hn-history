@@ -12,17 +12,17 @@ use Illuminate\Support\Facades\DB;
  */
 class ImportHistory extends Page
 {
-    protected static ?string $navigationIcon = 'heroicon-o-clock';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-clock';
 
     protected static ?string $title = 'Historial de importaciones';
 
-    protected static ?string $navigationGroup = 'Configuración';
+    protected static string | \UnitEnum | null $navigationGroup = 'ConfiguraciÃ³n';
 
     protected static ?string $navigationLabel = 'Historial';
 
     protected static ?int $navigationSort = 92;
 
-    protected static string $view = 'filament.app.pages.import-history';
+    protected string $view = 'filament.app.pages.import-history';
 
     public function getRecentImports(): array
     {

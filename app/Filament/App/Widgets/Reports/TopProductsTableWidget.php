@@ -1,4 +1,14 @@
-<?php\n\ndeclare(strict_types=1);\n\nnamespace App\Filament\App\Widgets\Reports;\n\nclass TopProductsTableWidget extends TableWidget
+<?php
+
+declare(strict_types=1);
+
+namespace App\Filament\App\Widgets\Reports;
+
+use Filament\Facades\Filament;
+
+use Filament\Widgets\TableWidget;
+
+class TopProductsTableWidget extends TableWidget
 {
     protected static ?string $heading = 'Top productos';
     protected static ?int $sort = 8;
@@ -16,4 +26,5 @@
                 \Filament\Tables\Columns\TextColumn::make('price')->label('Precio')->money('HNL'),
             ]);
     }
-}\n
+}
+

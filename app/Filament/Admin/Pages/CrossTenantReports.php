@@ -6,8 +6,8 @@ namespace App\Filament\Admin\Pages;
 
 use Filament\Forms\Components\Select;
 use Filament\Pages\Page;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Form;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -15,12 +15,12 @@ use Illuminate\Support\Facades\DB;
  */
 class CrossTenantReports extends Page
 {
-    protected static ?string $navigationIcon = 'heroicon-o-globe-alt';
-    protected static ?string $navigationGroup = 'CRM Global';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-globe-alt';
+    protected static string | \UnitEnum | null $navigationGroup = 'CRM Global';
     protected static ?string $navigationLabel = 'Cross-tenant';
     protected static ?string $title = 'Cross-Tenant Reports';
     protected static ?int $navigationSort = 5;
-    protected static string $view = 'filament.admin.pages.cross-tenant-reports';
+    protected string $view = 'filament.admin.pages.cross-tenant-reports';
 
     public ?array $data = [];
 
@@ -29,12 +29,12 @@ class CrossTenantReports extends Page
         $this->form->fill();
     }
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $schema->schema([
-            Section::make('Métricas cross-tenant')->schema([
-                Select::make('metric')->label('Métrica')->options([
-                    'total_orders' => 'Total órdenes',
+        return $schema->components([
+            Section::make('MÃ©tricas cross-tenant')->components([
+                Select::make('metric')->label('MÃ©trica')->options([
+                    'total_orders' => 'Total Ã³rdenes',
                     'total_revenue' => 'Total ingresos',
                     'total_users' => 'Total usuarios',
                     'total_ai_calls' => 'Total AI calls',
@@ -56,5 +56,3 @@ class CrossTenantReports extends Page
         ];
     }
 }
-
-

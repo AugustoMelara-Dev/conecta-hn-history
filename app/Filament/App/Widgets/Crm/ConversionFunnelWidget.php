@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 
 class ConversionFunnelWidget extends ChartWidget
 {
-    protected static ?string $heading = 'Embudo de conversión';
+    protected ?string $heading = 'Embudo de conversiÃ³n';
     protected static ?int $sort = 22;
 
     protected function getData(): array

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Components;
 
+use Filament\Schemas\Schema;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\TagsInput;
@@ -19,8 +20,8 @@ use Filament\Forms\Components\TextInput;
  * Uso:
  * use App\Filament\Components\SeoFields;
  *
- * public static function form(Form $form): Form {
- *     return $form->schema([
+ * public static function form(Schema $schema): Schema {
+ *     return $form->components([
  *         // ...otros campos
  *         SeoFields::make(),
  *     ]);

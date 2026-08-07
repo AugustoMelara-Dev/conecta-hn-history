@@ -11,9 +11,9 @@ use Filament\Forms\Components\MultiSelect;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Form;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -26,9 +26,9 @@ class ToolPolicyResource extends Resource
 {
     protected static ?string $model = \App\Models\ToolPolicy::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-shield-check';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-shield-check';
 
-    protected static ?string $navigationGroup = 'Automatización';
+    protected static string | \UnitEnum | null $navigationGroup = 'AutomatizaciÃ³n';
 
     protected static ?string $navigationLabel = 'Tool Policies';
 
@@ -43,19 +43,19 @@ class ToolPolicyResource extends Resource
         return auth()->user()?->can('automation.policies.manage') ?? false;
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Section::make('Configuración')->schema([
-                    Grid::make(2)->schema([
+        return $schema
+            ->components([
+                Section::make('ConfiguraciÃ³n')->components([
+                    Grid::make(2)->components([
                         Select::make('user_id')
                             ->label('Agente / Usuario')
                             ->relationship('user', 'name')
                             ->searchable()
                             ->preload()
                             ->required(),
-                        TextInput::make('name')->label('Nombre de la política')->required()->maxLength(100),
+                        TextInput::make('name')->label('Nombre de la polÃ­tica')->required()->maxLength(100),
                         MultiSelect::make('allowed_tools')
                             ->label('Tools permitidas')
                             ->options([
@@ -82,7 +82,7 @@ class ToolPolicyResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('user.name')->label('Agente')->searchable(),
-                TextColumn::make('name')->label('Política'),
+                TextColumn::make('name')->label('PolÃ­tica'),
                 TextColumn::make('allowed_tools')->label('Tools permitidas')->limit(60),
                 TextColumn::make('rate_limit_per_hour')->label('Rate limit'),
             ])
@@ -110,6 +110,3 @@ class ToolPolicyResource extends Resource
         ];
     }
 }
-
-
-

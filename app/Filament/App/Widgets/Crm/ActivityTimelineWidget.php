@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 
 class ActivityTimelineWidget extends ChartWidget
 {
-    protected static ?string $heading = 'Timeline de actividades (30 días)';
+    protected ?string $heading = 'Timeline de actividades (30 dÃ­as)';
     protected static ?int $sort = 23;
 
     protected function getData(): array

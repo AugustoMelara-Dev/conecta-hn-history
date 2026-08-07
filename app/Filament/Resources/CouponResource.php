@@ -7,13 +7,13 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\CouponResource\Pages;
 use App\Models\Coupon;
 use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Section;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
@@ -31,7 +31,7 @@ class CouponResource extends Resource
 {
     protected static ?string $model = Coupon::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-tag';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-tag';
 
     protected static ?string $navigationLabel = 'Cupones';
 
@@ -39,14 +39,14 @@ class CouponResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Cupones';
 
-    protected static ?string $navigationGroup = 'Ventas';
+    protected static string | \UnitEnum | null $navigationGroup = 'Ventas';
 
     protected static ?int $navigationSort = 4;
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 // ═══════════════════════════════════════════════════════════════════════
                 // MAIN SECTION: Code, Type, Value
                 // ═══════════════════════════════════════════════════════════════════════
@@ -317,6 +317,4 @@ class CouponResource extends Resource
         return 'success';
     }
 }
-
-
 

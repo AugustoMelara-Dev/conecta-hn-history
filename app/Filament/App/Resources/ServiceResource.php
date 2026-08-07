@@ -16,7 +16,7 @@ use App\Models\User;
 use App\Support\Product\TenantAccessMatrix;
 use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables;
@@ -26,9 +26,9 @@ class ServiceResource extends Resource
 {
     protected static ?string $model = Service::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-scissors';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-scissors';
 
-    protected static ?string $navigationGroup = 'Servicios';
+    protected static string | \UnitEnum | null $navigationGroup = 'Servicios';
 
     protected static ?string $navigationLabel = 'Catálogo de servicios';
 
@@ -79,10 +79,10 @@ class ServiceResource extends Resource
         return app(TenantMarketResolver::class)->resolve(static::trustedTenant())->currencyCode;
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 Forms\Components\Section::make('Detalles del servicio')
                     ->description('Define el nombre, precio y duración que verán los clientes al reservar.')
                     ->schema([
@@ -209,6 +209,4 @@ class ServiceResource extends Resource
         ];
     }
 }
-
-
 

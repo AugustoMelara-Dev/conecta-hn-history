@@ -9,7 +9,7 @@ use Filament\Pages\Page;
 
 class UpgradeToPro extends Page
 {
-    protected static string $view = 'filament.app.pages.upgrade-to-pro';
+    protected string $view = 'filament.app.pages.upgrade-to-pro';
 
     public static function getNavigationLabel(): string
     {

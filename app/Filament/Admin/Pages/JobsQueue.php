@@ -12,12 +12,12 @@ use Illuminate\Support\Facades\DB;
  */
 class JobsQueue extends Page
 {
-    protected static ?string $navigationIcon = 'heroicon-o-queue-list';
-    protected static ?string $navigationGroup = 'Plataforma';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-queue-list';
+    protected static string | \UnitEnum | null $navigationGroup = 'Plataforma';
     protected static ?string $navigationLabel = 'Jobs / Queue';
     protected static ?string $title = 'Jobs & Queue';
     protected static ?int $navigationSort = 7;
-    protected static string $view = 'filament.admin.pages.jobs-queue';
+    protected string $view = 'filament.admin.pages.jobs-queue';
 
     public function getQueueStats(): array
     {

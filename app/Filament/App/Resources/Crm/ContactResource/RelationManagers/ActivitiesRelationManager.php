@@ -12,7 +12,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -23,18 +23,18 @@ class ActivitiesRelationManager extends RelationManager
 
     protected static ?string $title = 'Actividades';
 
-    protected static ?string $icon = 'heroicon-o-calendar-days';
+    protected static string | \BackedEnum | null $icon = 'heroicon-o-calendar-days';
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 Select::make('type')
                     ->label('Tipo')
                     ->options([
                         'call' => 'Llamada',
                         'email' => 'Email',
-                        'meeting' => 'ReuniÛn',
+                        'meeting' => 'Reuni√≥n',
                         'task' => 'Tarea',
                         'note' => 'Nota',
                         'sms' => 'SMS',
@@ -46,10 +46,10 @@ class ActivitiesRelationManager extends RelationManager
                     ->label('Asunto')
                     ->maxLength(200),
                 Textarea::make('body')
-                    ->label('DescripciÛn')
+                    ->label('Descripci√≥n')
                     ->rows(3),
                 DateTimePicker::make('due_at')
-                    ->label('Fecha lÌmite'),
+                    ->label('Fecha l√≠mite'),
             ]);
     }
 
@@ -85,6 +85,3 @@ class ActivitiesRelationManager extends RelationManager
             ]);
     }
 }
-
-
-

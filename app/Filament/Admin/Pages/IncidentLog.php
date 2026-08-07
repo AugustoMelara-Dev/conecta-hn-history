@@ -10,8 +10,8 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Form;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -19,12 +19,12 @@ use Illuminate\Support\Facades\DB;
  */
 class IncidentLog extends Page
 {
-    protected static ?string $navigationIcon = 'heroicon-o-exclamation-triangle';
-    protected static ?string $navigationGroup = 'Auditoría';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-exclamation-triangle';
+    protected static string | \UnitEnum | null $navigationGroup = 'AuditorÃ­a';
     protected static ?string $navigationLabel = 'Incidentes';
     protected static ?string $title = 'Incident Log';
     protected static ?int $navigationSort = 10;
-    protected static string $view = 'filament.admin.pages.incident-log';
+    protected string $view = 'filament.admin.pages.incident-log';
 
     public ?array $data = [];
 
@@ -33,13 +33,13 @@ class IncidentLog extends Page
         $this->form->fill();
     }
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $schema->schema([
-            Section::make('Nuevo incidente')->schema([
-                TextInput::make('title')->label('Título')->required(),
-                Select::make('severity')->label('Severidad')->options(['low' => 'Baja', 'medium' => 'Media', 'high' => 'Alta', 'critical' => 'Crítica'])->required(),
-                Textarea::make('description')->label('Descripción')->rows(4)->required(),
+        return $schema->components([
+            Section::make('Nuevo incidente')->components([
+                TextInput::make('title')->label('TÃ­tulo')->required(),
+                Select::make('severity')->label('Severidad')->options(['low' => 'Baja', 'medium' => 'Media', 'high' => 'Alta', 'critical' => 'CrÃ­tica'])->required(),
+                Textarea::make('description')->label('DescripciÃ³n')->rows(4)->required(),
             ]),
         ])->statePath('data');
     }
@@ -66,5 +66,3 @@ class IncidentLog extends Page
             ->orderBy('created_at', 'desc')->limit(20)->get()->toArray();
     }
 }
-
-

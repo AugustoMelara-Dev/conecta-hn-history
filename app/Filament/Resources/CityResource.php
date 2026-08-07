@@ -8,11 +8,11 @@ use App\Filament\Resources\CityResource\Pages;
 use App\Models\City;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\RichEditor;
-use Filament\Forms\Components\Section;
+use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -44,7 +44,7 @@ class CityResource extends Resource
 
     protected static ?string $model = City::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-map-pin';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-map-pin';
 
     public static function getNavigationGroup(): ?string
     {
@@ -88,10 +88,10 @@ class CityResource extends Resource
         ];
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 // ═══════════════════════════════════════════════════════════
                 // SECCION 1: Identidad y SEO
                 // ═══════════════════════════════════════════════════════════
@@ -297,6 +297,4 @@ class CityResource extends Resource
         ];
     }
 }
-
-
 

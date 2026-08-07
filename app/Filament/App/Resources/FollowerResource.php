@@ -9,7 +9,7 @@ use App\Models\Follow;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -19,7 +19,7 @@ class FollowerResource extends Resource
 {
     protected static ?string $model = Follow::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-users';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-users';
 
     public static function getNavigationLabel(): string
     {
@@ -51,10 +51,10 @@ class FollowerResource extends Resource
         return false;
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 // Read-only view
                 Forms\Components\TextInput::make('user.name')
                     ->label('Nombre'),
@@ -123,6 +123,4 @@ class FollowerResource extends Resource
         ];
     }
 }
-
-
 

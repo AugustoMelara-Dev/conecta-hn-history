@@ -14,7 +14,7 @@ class RevenueChart extends ChartWidget
 {
     protected static bool $isLazy = false;
 
-    protected static ?string $heading = 'Ingresos verificados (ultimos 30 dias)';
+    protected ?string $heading = 'Ingresos verificados (ultimos 30 dias)';
 
     protected static ?int $sort = 2;
 

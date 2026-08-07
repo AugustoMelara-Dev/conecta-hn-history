@@ -1,6 +1,14 @@
-<?php\n\ndeclare(strict_types=1);\n\nnamespace App\Filament\App\Widgets\Reports;\n\nclass CampaignRoiBarChartWidget extends ChartWidget
+<?php
+
+declare(strict_types=1);
+
+namespace App\Filament\App\Widgets\Reports;
+
+use Filament\Widgets\ChartWidget;
+
+class CampaignRoiBarChartWidget extends ChartWidget
 {
-    protected static ?string $heading = 'ROI de campañas';
+    protected ?string $heading = 'ROI de campaÃ±as';
     protected static ?int $sort = 7;
 
     protected function getData(): array
@@ -9,4 +17,5 @@
     }
 
     protected function getType(): string { return 'bar'; }
-}\n
+}
+

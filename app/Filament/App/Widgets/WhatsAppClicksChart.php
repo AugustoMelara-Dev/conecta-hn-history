@@ -15,7 +15,7 @@ use Filament\Widgets\ChartWidget;
  */
 class WhatsAppClicksChart extends ChartWidget
 {
-    protected static ?string $heading = 'Clics en WhatsApp (Últimos 7 días)';
+    protected ?string $heading = 'Clics en WhatsApp (Últimos 7 días)';
 
     public function getColumnSpan(): int|string|array
     {

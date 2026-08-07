@@ -18,9 +18,9 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Form;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
@@ -31,24 +31,24 @@ class CampaignResource extends Resource
 {
     protected static ?string $model = Campaign::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-megaphone';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-megaphone';
 
-    protected static ?string $navigationGroup = 'Marketing';
+    protected static string | \UnitEnum | null $navigationGroup = 'Marketing';
 
-    protected static ?string $navigationLabel = 'Campañas';
+    protected static ?string $navigationLabel = 'CampaÃ±as';
 
-    protected static ?string $modelLabel = 'campaña';
+    protected static ?string $modelLabel = 'campaÃ±a';
 
-    protected static ?string $pluralModelLabel = 'Campañas';
+    protected static ?string $pluralModelLabel = 'CampaÃ±as';
 
     protected static ?int $navigationSort = 1;
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Section::make('Información de la campaña')
-                    ->schema([
+        return $schema
+            ->components([
+                Section::make('InformaciÃ³n de la campaÃ±a')
+                    ->components([
                         TextInput::make('name')
                             ->label('Nombre')
                             ->required()
@@ -79,24 +79,24 @@ class CampaignResource extends Resource
                     ]),
 
                 Section::make('Contenido')
-                    ->schema([
+                    ->components([
                         RichEditor::make('content')
                             ->label('Contenido')
                             ->required()
                             ->columnSpanFull(),
                     ]),
 
-                Section::make('Programación')
-                    ->schema([
+                Section::make('ProgramaciÃ³n')
+                    ->components([
                         Grid::make(2)
-                            ->schema([
+                            ->components([
                                 DateTimePicker::make('scheduled_at')
                                     ->label('Programada para')
                                     ->timezone('America/Tegucigalpa')
                                     ->displayFormat('d/m/Y H:i'),
 
                                 TextInput::make('target_audience_size')
-                                    ->label('Tamaño de audiencia')
+                                    ->label('TamaÃ±o de audiencia')
                                     ->numeric()
                                     ->default(0),
 
@@ -173,12 +173,12 @@ class CampaignResource extends Resource
                     DeleteBulkAction::make(),
                 ]),
             ])
-            ->emptyStateHeading('No tienes campañas creadas')
-            ->emptyStateDescription('Crea tu primera campaña para empezar a comunicarte con tus clientes.')
+            ->emptyStateHeading('No tienes campaÃ±as creadas')
+            ->emptyStateDescription('Crea tu primera campaÃ±a para empezar a comunicarte con tus clientes.')
             ->emptyStateIcon('heroicon-o-megaphone')
             ->emptyStateActions([
                 CreateAction::make()
-                    ->label('Crear primera campaña')
+                    ->label('Crear primera campaÃ±a')
                     ->icon('heroicon-o-plus'),
             ])
             ->defaultSort('created_at', 'desc');
@@ -210,6 +210,3 @@ class CampaignResource extends Resource
         ];
     }
 }
-
-
-

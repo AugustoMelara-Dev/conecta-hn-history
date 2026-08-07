@@ -11,8 +11,8 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Form;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 
 /**
  * ImportWizard - 5-step wizard para importar datos.
@@ -26,9 +26,9 @@ use Filament\Forms\Form;
  */
 class ImportWizard extends Page
 {
-    protected static ?string $navigationIcon = 'heroicon-o-arrow-up-tray';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-arrow-up-tray';
 
-    protected static ?string $navigationGroup = 'Configuración';
+    protected static string | \UnitEnum | null $navigationGroup = 'ConfiguraciÃ³n';
 
     protected static ?string $title = 'Importar datos';
 
@@ -36,7 +36,7 @@ class ImportWizard extends Page
 
     protected static ?int $navigationSort = 90;
 
-    protected static string $view = 'filament.app.pages.import-wizard';
+    protected string $view = 'filament.app.pages.import-wizard';
 
     public ?array $data = [];
 
@@ -47,13 +47,13 @@ class ImportWizard extends Page
         $this->form->fill();
     }
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 Section::make('Paso 1: Selecciona la entidad')
                     ->visible(fn () => $this->step === 1)
-                    ->schema([
+                    ->components([
                         Select::make('entity')
                             ->label('Entidad a importar')
                             ->options(fn () => app(ImportService::class)->entities())
@@ -64,7 +64,7 @@ class ImportWizard extends Page
 
                 Section::make('Paso 2: Subir archivo')
                     ->visible(fn () => $this->step === 2)
-                    ->schema([
+                    ->components([
                         FileUpload::make('file')
                             ->label('Archivo CSV o Excel')
                             ->disk('local')
@@ -82,7 +82,7 @@ class ImportWizard extends Page
                 Section::make('Paso 3: Mapear columnas')
                     ->description('Si los headers de tu archivo coinciden con los esperados, no hay que mapear.')
                     ->visible(fn () => $this->step === 3)
-                    ->schema([
+                    ->components([
                         \Filament\Forms\Components\Placeholder::make('expected_headers')
                             ->label('Headers esperados')
                             ->content(fn (Get $get) => $this->getExpectedHeaders($get('entity'))),
@@ -90,15 +90,15 @@ class ImportWizard extends Page
 
                 Section::make('Paso 4: Vista previa')
                     ->visible(fn () => $this->step === 4)
-                    ->schema([
+                    ->components([
                         \Filament\Forms\Components\Placeholder::make('preview')
                             ->label('Primeras filas')
-                            ->content('Las primeras filas del archivo se muestran aquí.'),
+                            ->content('Las primeras filas del archivo se muestran aquÃ­.'),
                     ]),
 
-                Section::make('Paso 5: Ejecutar importación')
+                Section::make('Paso 5: Ejecutar importaciÃ³n')
                     ->visible(fn () => $this->step === 5)
-                    ->schema([
+                    ->components([
                         \Filament\Forms\Components\Placeholder::make('confirm')
                             ->label('Listo para importar')
                             ->content('Click en "Importar" para iniciar.'),
@@ -135,14 +135,14 @@ class ImportWizard extends Page
 
                         if ($result['success']) {
                             Notification::make()
-                                ->title("Importación completa: {$result['imported']} filas")
+                                ->title("ImportaciÃ³n completa: {$result['imported']} filas")
                                 ->success()
                                 ->send();
                             $this->step = 1;
                             $this->form->fill();
                         } else {
                             Notification::make()
-                                ->title('Errores de importación')
+                                ->title('Errores de importaciÃ³n')
                                 ->body(implode("\n", array_slice($result['errors'], 0, 5)))
                                 ->danger()
                                 ->send();
@@ -163,6 +163,3 @@ class ImportWizard extends Page
         return implode(', ', $importer->templateHeaders());
     }
 }
-
-
-

@@ -18,9 +18,9 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Form;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
@@ -31,9 +31,9 @@ class AppointmentResource extends Resource
 {
     protected static ?string $model = Appointment::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-calendar-days';
 
-    protected static ?string $navigationGroup = 'Operaciones';
+    protected static string | \UnitEnum | null $navigationGroup = 'Operaciones';
 
     protected static ?string $navigationLabel = 'Citas';
 
@@ -43,15 +43,15 @@ class AppointmentResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 Section::make('Datos de la cita')
-                    ->description('Información principal de la cita agendada.')
-                    ->schema([
+                    ->description('InformaciÃ³n principal de la cita agendada.')
+                    ->components([
                         TextInput::make('title')
-                            ->label('Título')
+                            ->label('TÃ­tulo')
                             ->required()
                             ->maxLength(255),
 
@@ -67,10 +67,10 @@ class AppointmentResource extends Resource
                             ->default('pending'),
                     ]),
 
-                Section::make('Programación')
-                    ->schema([
+                Section::make('ProgramaciÃ³n')
+                    ->components([
                         Grid::make(2)
-                            ->schema([
+                            ->components([
                                 DateTimePicker::make('starts_at')
                                     ->label('Inicio')
                                     ->required()
@@ -114,7 +114,7 @@ class AppointmentResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('title')
-                    ->label('Título')
+                    ->label('TÃ­tulo')
                     ->searchable()
                     ->sortable(),
 
@@ -209,6 +209,3 @@ class AppointmentResource extends Resource
         ];
     }
 }
-
-
-

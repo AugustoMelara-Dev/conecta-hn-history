@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
+use Filament\Schemas\Schema;
 use App\Application\Access\Contracts\TenantPermissionGuardInterface;
 use App\Application\Crm\CanonicalOpportunityWriter;
 use App\Application\Markets\TenantMarketResolver;
@@ -23,8 +24,8 @@ use App\Models\Tenant;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Section;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Actions\DeleteAction;
@@ -40,7 +41,7 @@ class CrmDealResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'title';
 
-    protected static ?string $navigationIcon = 'heroicon-o-currency-dollar';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-currency-dollar';
 
     public static function getNavigationLabel(): string
     {
@@ -111,10 +112,10 @@ class CrmDealResource extends Resource
         return static::allows(Permission::CRM_DEALS_MOVE_STAGE);
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 Section::make('Oportunidad comercial')
                     ->description('Seguimiento comercial con oportunidades. No reemplaza automaticamente prospectos ni clientes.')
                     ->schema([
@@ -571,8 +572,6 @@ class CrmDealResource extends Resource
         return $bits === [] ? 'Seguimiento comercial manual' : implode(' - ', $bits);
     }
 }
-
-
 
 
 

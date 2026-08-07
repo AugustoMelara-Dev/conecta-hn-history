@@ -12,7 +12,7 @@ class ListServices extends ListRecords
 {
     protected static string $resource = ServiceResource::class;
 
-    protected static string $view = 'filament-panels::resources.pages.list-records';
+    protected string $view = 'filament-panels::resources.pages.list-records';
 
     protected function getHeaderActions(): array
     {

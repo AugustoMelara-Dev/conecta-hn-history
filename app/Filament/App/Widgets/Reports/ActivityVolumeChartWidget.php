@@ -1,6 +1,18 @@
-<?php\n\ndeclare(strict_types=1);\n\nnamespace App\Filament\App\Widgets\Reports;\n\nclass ActivityVolumeChartWidget extends ChartWidget
+<?php
+
+declare(strict_types=1);
+
+namespace App\Filament\App\Widgets\Reports;
+
+use Illuminate\Support\Facades\DB;
+
+use Filament\Facades\Filament;
+
+use Filament\Widgets\ChartWidget;
+
+class ActivityVolumeChartWidget extends ChartWidget
 {
-    protected static ?string $heading = 'Volumen de actividades';
+    protected ?string $heading = 'Volumen de actividades';
     protected static ?int $sort = 18;
 
     protected function getData(): array
@@ -18,4 +30,5 @@
     }
 
     protected function getType(): string { return 'line'; }
-}\n
+}
+

@@ -9,17 +9,17 @@ use App\Application\Imports\ImportService;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Form;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 
 /**
  * ExportCenter - Exporta datos a Excel/CSV/PDF.
  */
 class ExportCenter extends Page
 {
-    protected static ?string $navigationIcon = 'heroicon-o-arrow-down-tray';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-arrow-down-tray';
 
-    protected static ?string $navigationGroup = 'Configuración';
+    protected static string | \UnitEnum | null $navigationGroup = 'ConfiguraciÃ³n';
 
     protected static ?string $title = 'Exportar datos';
 
@@ -27,7 +27,7 @@ class ExportCenter extends Page
 
     protected static ?int $navigationSort = 91;
 
-    protected static string $view = 'filament.app.pages.export-center';
+    protected string $view = 'filament.app.pages.export-center';
 
     public ?array $data = [];
 
@@ -36,12 +36,12 @@ class ExportCenter extends Page
         $this->form->fill();
     }
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Section::make('Configuración de exportación')
-                    ->schema([
+        return $schema
+            ->components([
+                Section::make('ConfiguraciÃ³n de exportaciÃ³n')
+                    ->components([
                         Select::make('entity')
                             ->label('Entidad')
                             ->options(fn () => app(ImportService::class)->entities())
@@ -88,6 +88,3 @@ class ExportCenter extends Page
         }
     }
 }
-
-
-

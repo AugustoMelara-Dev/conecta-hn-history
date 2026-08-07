@@ -19,9 +19,9 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Form;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -33,9 +33,9 @@ class WorkflowResource extends Resource
 {
     protected static ?string $model = WorkflowDefinition::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-arrows-pointing-out';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-arrows-pointing-out';
 
-    protected static ?string $navigationGroup = 'Automatizaci髇';
+    protected static string | \UnitEnum | null $navigationGroup = 'Automatizaci贸n';
 
     protected static ?string $navigationLabel = 'Workflows';
 
@@ -45,14 +45,14 @@ class WorkflowResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Section::make('Informaci髇')
-                    ->schema([
+        return $schema
+            ->components([
+                Section::make('Informaci贸n')
+                    ->components([
                         Grid::make(2)
-                            ->schema([
+                            ->components([
                                 TextInput::make('name')
                                     ->label('Nombre')
                                     ->required()
@@ -67,7 +67,7 @@ class WorkflowResource extends Resource
                                     ->options(\App\Domain\Automation\Enums\TriggerType::options())
                                     ->required(),
                                 TextInput::make('description')
-                                    ->label('Descripci髇')
+                                    ->label('Descripci贸n')
                                     ->maxLength(500),
                                 Toggle::make('is_active')
                                     ->label('Activo')
@@ -77,7 +77,7 @@ class WorkflowResource extends Resource
 
                 Section::make('Grafo del workflow (JSON)')
                     ->description('Define el DAG del workflow en formato JSON.')
-                    ->schema([
+                    ->components([
                         Textarea::make('graph_json')
                             ->label('Graph JSON')
                             ->rows(15)
@@ -112,7 +112,7 @@ class WorkflowResource extends Resource
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('last_run_at')
-                    ->label('趌tima ejecuci髇')
+                    ->label('脷ltima ejecuci贸n')
                     ->dateTime('d/m/Y H:i')
                     ->placeholder('Nunca'),
             ])
@@ -129,7 +129,7 @@ class WorkflowResource extends Resource
                     ->requiresConfirmation()
                     ->action(function ($record) {
                         \App\Jobs\RunWorkflowJob::dispatch($record->id);
-                        Notification::make()->title('Workflow encolado para ejecuci髇')->success()->send();
+                        Notification::make()->title('Workflow encolado para ejecuci贸n')->success()->send();
                     }),
                 Action::make('pause')
                     ->label('Pausar')
@@ -192,6 +192,3 @@ class WorkflowResource extends Resource
         ];
     }
 }
-
-
-

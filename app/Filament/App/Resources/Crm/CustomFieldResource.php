@@ -18,9 +18,9 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Form;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -32,9 +32,9 @@ class CustomFieldResource extends Resource
 {
     protected static ?string $model = \App\Models\CrmCustomField::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-squares-plus';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-squares-plus';
 
-    protected static ?string $navigationGroup = 'CRM';
+    protected static string | \UnitEnum | null $navigationGroup = 'CRM';
 
     protected static ?string $navigationLabel = 'Campos personalizados';
 
@@ -44,12 +44,12 @@ class CustomFieldResource extends Resource
 
     protected static ?int $navigationSort = 17;
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Section::make('Identidad')->schema([
-                    Grid::make(2)->schema([
+        return $schema
+            ->components([
+                Section::make('Identidad')->components([
+                    Grid::make(2)->components([
                         Select::make('entity')
                             ->label('Entidad')
                             ->options(['contact' => 'Contacto', 'company' => 'Empresa', 'deal' => 'Deal'])
@@ -63,7 +63,7 @@ class CustomFieldResource extends Resource
                             ->label('Key (slug)')
                             ->required()
                             ->maxLength(100)
-                            ->helperText('Identificador único en la entidad (snake_case).'),
+                            ->helperText('Identificador Ãºnico en la entidad (snake_case).'),
                         Select::make('type')
                             ->label('Tipo')
                             ->options(CustomFieldType::options())
@@ -77,15 +77,15 @@ class CustomFieldResource extends Resource
                             ->default(0),
                     ]),
                 ]),
-                Section::make('Configuración específica del tipo')
-                    ->schema([
+                Section::make('ConfiguraciÃ³n especÃ­fica del tipo')
+                    ->components([
                         KeyValue::make('options')
                             ->label('Opciones (para tipo select)')
                             ->keyLabel('Valor')
                             ->valueLabel('Etiqueta')
                             ->visible(fn ($get) => $get('type') === CustomFieldType::Select->value),
                         Textarea::make('description')
-                            ->label('Descripción / ayuda')
+                            ->label('DescripciÃ³n / ayuda')
                             ->rows(2)
                             ->columnSpanFull(),
                     ]),
@@ -136,6 +136,3 @@ class CustomFieldResource extends Resource
         ];
     }
 }
-
-
-

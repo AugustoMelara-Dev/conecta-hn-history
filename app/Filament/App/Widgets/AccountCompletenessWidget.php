@@ -13,7 +13,7 @@ use Filament\Widgets\Widget;
  */
 class AccountCompletenessWidget extends Widget
 {
-    protected static string $view = 'filament.app.widgets.account-completeness-widget';
+    protected string $view = 'filament.app.widgets.account-completeness-widget';
 
     public function getView(): string
     {

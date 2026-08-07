@@ -12,12 +12,12 @@ use Illuminate\Support\Facades\DB;
  */
 class TenantsOverview extends Page
 {
-    protected static ?string $navigationIcon = 'heroicon-o-building-office';
-    protected static ?string $navigationGroup = 'Plataforma';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-building-office';
+    protected static string | \UnitEnum | null $navigationGroup = 'Plataforma';
     protected static ?string $navigationLabel = 'Tenants Overview';
     protected static ?string $title = 'Tenants Overview';
     protected static ?int $navigationSort = 2;
-    protected static string $view = 'filament.admin.pages.tenants-overview';
+    protected string $view = 'filament.admin.pages.tenants-overview';
 
     public function getTopTenants(): array
     {

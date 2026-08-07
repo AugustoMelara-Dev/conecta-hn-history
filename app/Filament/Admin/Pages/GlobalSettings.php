@@ -12,10 +12,10 @@ use Spatie\LaravelSettings\Facades\Settings;
  */
 class GlobalSettings extends Page
 {
-    protected static ?string $navigationIcon = 'heroicon-o-adjustments-horizontal';
-    protected static ?string $navigationGroup = 'Configuración';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-adjustments-horizontal';
+    protected static string | \UnitEnum | null $navigationGroup = 'ConfiguraciÃ³n';
     protected static ?string $navigationLabel = 'Global Settings';
     protected static ?string $title = 'Global Settings';
     protected static ?int $navigationSort = 1;
-    protected static string $view = 'filament.admin.pages.global-settings';
+    protected string $view = 'filament.admin.pages.global-settings';
 }

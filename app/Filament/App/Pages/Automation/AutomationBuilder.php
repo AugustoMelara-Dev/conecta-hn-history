@@ -13,8 +13,8 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Form;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 
 /**
  * AutomationBuilder - Drag-and-drop workflow builder (Livewire + Alpine).
@@ -24,17 +24,17 @@ use Filament\Forms\Form;
  */
 class AutomationBuilder extends Page
 {
-    protected static ?string $navigationIcon = 'heroicon-o-puzzle-piece';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-puzzle-piece';
 
     protected static ?string $title = 'Automation Builder';
 
-    protected static ?string $navigationGroup = 'Automatización';
+    protected static string | \UnitEnum | null $navigationGroup = 'AutomatizaciÃ³n';
 
     protected static ?string $navigationLabel = 'Builder';
 
     protected static ?int $navigationSort = 10;
 
-    protected static string $view = 'filament.app.pages.automation-builder';
+    protected string $view = 'filament.app.pages.automation-builder';
 
     public ?array $data = [];
 
@@ -45,11 +45,11 @@ class AutomationBuilder extends Page
         $this->form->fill();
     }
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Section::make('1. Selecciona un template (opcional)')->schema([
+        return $schema
+            ->components([
+                Section::make('1. Selecciona un template (opcional)')->components([
                     Select::make('template_slug')
                         ->label('Template')
                         ->options(fn () => collect((new TemplateCatalog())->all())->pluck('name', 'slug')->toArray())
@@ -65,9 +65,9 @@ class AutomationBuilder extends Page
                             }
                         }),
                 ]),
-                Section::make('2. Workflow')->schema([
+                Section::make('2. Workflow')->components([
                     TextInput::make('name')->label('Nombre')->required()->maxLength(200),
-                    \Filament\Forms\Components\Textarea::make('description')->label('Descripción')->rows(2)->maxLength(500),
+                    \Filament\Forms\Components\Textarea::make('description')->label('DescripciÃ³n')->rows(2)->maxLength(500),
                     Select::make('trigger_type')
                         ->label('Trigger')
                         ->options(TriggerType::options())
@@ -75,7 +75,7 @@ class AutomationBuilder extends Page
                         ->native(false),
                 ]),
                 Section::make('3. Graph (JSON DAG)')->description('Edita los nodos y edges del workflow.')
-                    ->schema([
+                    ->components([
                         Textarea::make('graph_json')
                             ->label('Graph JSON')
                             ->rows(20)
@@ -100,12 +100,12 @@ class AutomationBuilder extends Page
                         $builder = new \App\Application\Automation\GraphBuilder();
                         $result = $builder->validate($graph->nodes, $graph->edges);
                         if (empty($result)) {
-                            Notification::make()->title('Graph válido')->success()->send();
+                            Notification::make()->title('Graph vÃ¡lido')->success()->send();
                         } else {
                             Notification::make()->title('Errores: ' . implode(', ', $result))->danger()->send();
                         }
                     } catch (\Throwable $e) {
-                        Notification::make()->title('JSON inválido: ' . $e->getMessage())->danger()->send();
+                        Notification::make()->title('JSON invÃ¡lido: ' . $e->getMessage())->danger()->send();
                     }
                 }),
             Action::make('save')
@@ -132,6 +132,3 @@ class AutomationBuilder extends Page
         ];
     }
 }
-
-
-

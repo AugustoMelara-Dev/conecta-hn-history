@@ -15,7 +15,7 @@ use App\Models\User;
 use BackedEnum;
 use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables;
@@ -26,7 +26,7 @@ class TenantUserResource extends Resource
 {
     protected static ?string $model = TenantMembership::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-user-group';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-user-group';
 
     public static function getNavigationLabel(): string
     {
@@ -83,9 +83,9 @@ class TenantUserResource extends Resource
             );
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form->schema([
+        return $form->components([
             Forms\Components\Section::make('Identidad y rol')
                 ->description('Dovra enviará una invitación de acceso. La persona no obtiene acceso hasta aceptarla con este mismo correo.')
                 ->icon('heroicon-o-user')
@@ -342,6 +342,4 @@ class TenantUserResource extends Resource
         return $permissions === [] ? 'Ninguno' : implode(', ', $permissions);
     }
 }
-
-
 

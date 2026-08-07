@@ -12,9 +12,9 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Form;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -22,7 +22,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 
 /**
- * WorkflowTemplateResource - Cat醠ogo de templates pre-armados.
+ * WorkflowTemplateResource - Cat谩logo de templates pre-armados.
  *
  * Click en un template lo clona a un Workflow del tenant actual.
  */
@@ -30,9 +30,9 @@ class WorkflowTemplateResource extends Resource
 {
     protected static ?string $model = \App\Models\WorkflowDefinition::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-rectangle-stack';
 
-    protected static ?string $navigationGroup = 'Automatizaci髇';
+    protected static string | \UnitEnum | null $navigationGroup = 'Automatizaci贸n';
 
     protected static ?string $navigationLabel = 'Templates';
 
@@ -42,16 +42,16 @@ class WorkflowTemplateResource extends Resource
 
     protected static ?int $navigationSort = 2;
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Section::make('Informaci髇')->schema([
-                    Grid::make(2)->schema([
+        return $schema
+            ->components([
+                Section::make('Informaci贸n')->components([
+                    Grid::make(2)->components([
                         TextInput::make('name')->label('Nombre')->required()->maxLength(200),
                         TextInput::make('slug')->label('Slug')->required()->maxLength(100)->unique(ignoreRecord: true),
-                        TextInput::make('category')->label('Categor韆')->maxLength(50),
-                        TextInput::make('description')->label('Descripci髇')->maxLength(500),
+                        TextInput::make('category')->label('Categor铆a')->maxLength(50),
+                        TextInput::make('description')->label('Descripci贸n')->maxLength(500),
                     ]),
                     Textarea::make('graph_json')
                         ->label('Graph JSON')
@@ -67,11 +67,11 @@ class WorkflowTemplateResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('name')->label('Nombre')->searchable()->weight('medium'),
-                TextColumn::make('category')->label('Categor韆')->badge(),
-                TextColumn::make('description')->label('Descripci髇')->limit(80),
+                TextColumn::make('category')->label('Categor铆a')->badge(),
+                TextColumn::make('description')->label('Descripci贸n')->limit(80),
             ])
             ->filters([
-                SelectFilter::make('category')->label('Categor韆'),
+                SelectFilter::make('category')->label('Categor铆a'),
             ])
             ->actions([
                 Action::make('clone_to_tenant')
@@ -113,6 +113,3 @@ class WorkflowTemplateResource extends Resource
         ];
     }
 }
-
-
-

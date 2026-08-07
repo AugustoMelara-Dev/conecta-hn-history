@@ -12,7 +12,7 @@ use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Tables;
@@ -26,9 +26,9 @@ class ManageMarketing extends Page implements HasForms, HasTable
     use InteractsWithForms;
     use InteractsWithTable;
 
-    protected static string $view = 'filament.app.pages.manage-marketing';
+    protected string $view = 'filament.app.pages.manage-marketing';
 
-    protected static ?string $navigationIcon = 'heroicon-o-megaphone';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-megaphone';
 
     public bool $isPro = false;
 
@@ -85,10 +85,10 @@ class ManageMarketing extends Page implements HasForms, HasTable
         $this->updateMessagePreview();
     }
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 Forms\Components\Section::make('WhatsApp del negocio')
                     ->description('Define el numero y el mensaje que se abre cuando un cliente quiere consultar un producto.')
                     ->schema([
@@ -372,5 +372,4 @@ class ManageMarketing extends Page implements HasForms, HasTable
         }
     }
 }
-
 

@@ -18,9 +18,9 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Form;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -31,9 +31,9 @@ class ActivityResource extends Resource
 {
     protected static ?string $model = CrmActivity::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-calendar-days';
 
-    protected static ?string $navigationGroup = 'CRM';
+    protected static string | \UnitEnum | null $navigationGroup = 'CRM';
 
     protected static ?string $navigationLabel = 'Actividades';
 
@@ -43,14 +43,14 @@ class ActivityResource extends Resource
 
     protected static ?int $navigationSort = 13;
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 Section::make('Detalles')
-                    ->schema([
+                    ->components([
                         Grid::make(2)
-                            ->schema([
+                            ->components([
                                 Select::make('type')
                                     ->label('Tipo')
                                     ->options(ActivityType::options())
@@ -63,7 +63,7 @@ class ActivityResource extends Resource
                                 Select::make('contact_id')
                                     ->label('Contacto')
                                     ->relationship('contact', 'id')
-                                    ->getOptionLabelFromRecordUsing(fn ($r) => $r->display_name ?? '—')
+                                    ->getOptionLabelFromRecordUsing(fn ($r) => $r->display_name ?? 'â€”')
                                     ->searchable(['first_name', 'last_name', 'email'])
                                     ->preload(),
                                 Select::make('deal_id')
@@ -77,7 +77,7 @@ class ActivityResource extends Resource
                                     ->searchable()
                                     ->preload(),
                                 DateTimePicker::make('due_at')
-                                    ->label('Fecha límite')
+                                    ->label('Fecha lÃ­mite')
                                     ->timezone('America/Tegucigalpa')
                                     ->displayFormat('d/m/Y H:i'),
                                 Select::make('priority')
@@ -86,7 +86,7 @@ class ActivityResource extends Resource
                                     ->default(3),
                             ]),
                         Textarea::make('body')
-                            ->label('Descripción')
+                            ->label('DescripciÃ³n')
                             ->rows(3)
                             ->columnSpanFull(),
                     ]),
@@ -102,11 +102,11 @@ class ActivityResource extends Resource
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => ActivityType::tryFrom($state)?->label() ?? $state)
                     ->color(fn (string $state): string => ActivityType::tryFrom($state)?->color() ?? 'gray'),
-                TextColumn::make('subject')->label('Asunto')->searchable()->placeholder('—'),
-                TextColumn::make('contact.display_name')->label('Contacto')->placeholder('—'),
-                TextColumn::make('deal.name')->label('Deal')->placeholder('—'),
-                TextColumn::make('owner.name')->label('Responsable')->placeholder('—'),
-                TextColumn::make('due_at')->label('Vence')->dateTime('d/m/Y H:i')->placeholder('—')->sortable(),
+                TextColumn::make('subject')->label('Asunto')->searchable()->placeholder('â€”'),
+                TextColumn::make('contact.display_name')->label('Contacto')->placeholder('â€”'),
+                TextColumn::make('deal.name')->label('Deal')->placeholder('â€”'),
+                TextColumn::make('owner.name')->label('Responsable')->placeholder('â€”'),
+                TextColumn::make('due_at')->label('Vence')->dateTime('d/m/Y H:i')->placeholder('â€”')->sortable(),
                 TextColumn::make('completed_at')->label('Completada')->dateTime('d/m/Y H:i')->placeholder('Pendiente'),
             ])
             ->filters([
@@ -150,6 +150,3 @@ class ActivityResource extends Resource
         ];
     }
 }
-
-
-

@@ -14,8 +14,8 @@ use Filament\Tables\Table;
 class AuditLogResource extends Resource
 {
     protected static ?string $model = Activity::class;
-    protected static ?string $navigationIcon = 'heroicon-o-shield-check';
-    protected static ?string $navigationGroup = 'Auditoría';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-shield-check';
+    protected static string | \UnitEnum | null $navigationGroup = 'AuditorÃ­a';
     protected static ?string $navigationLabel = 'Audit logs';
     protected static ?string $modelLabel = 'audit log';
     protected static ?string $pluralModelLabel = 'Audit logs';
@@ -26,7 +26,7 @@ class AuditLogResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('log_name')->label('Log')->badge(),
-                TextColumn::make('description')->label('Descripción')->limit(80),
+                TextColumn::make('description')->label('DescripciÃ³n')->limit(80),
                 TextColumn::make('subject_type')->label('Subject'),
                 TextColumn::make('causer.name')->label('Causante')->placeholder('Sistema'),
                 TextColumn::make('created_at')->label('Fecha')->dateTime('d/m/Y H:i')->sortable(),

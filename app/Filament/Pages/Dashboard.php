@@ -15,13 +15,13 @@ class Dashboard extends \Filament\Pages\Page
 
     protected static ?int $navigationSort = -2;
 
-    protected static ?string $navigationIcon = 'heroicon-o-home';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-home';
 
     protected static ?string $navigationLabel = 'Escritorio';
 
     protected static ?string $title = 'Escritorio';
 
-    protected static string $view = 'filament.pages.dashboard';
+    protected string $view = 'filament.pages.dashboard';
 
     public int $tenantsCount = 0;
 
@@ -163,8 +163,4 @@ class Dashboard extends \Filament\Pages\Page
         ];
     }
 
-    public static function getRoutePath(): string
-    {
-        return static::$routePath;
-    }
 }

@@ -14,7 +14,7 @@ use Filament\Widgets\Widget;
 
 class TenantAiAgentWidget extends Widget
 {
-    protected static string $view = 'filament.app.widgets.tenant-ai-agent-widget';
+    protected string $view = 'filament.app.widgets.tenant-ai-agent-widget';
 
     protected static bool $isLazy = false;
 

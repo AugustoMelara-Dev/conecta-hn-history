@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 
 class AiCostByTenantChartWidget extends ChartWidget
 {
-    protected static ?string $heading = 'AI Cost por Tenant';
+    protected ?string $heading = 'AI Cost por Tenant';
     protected static ?int $sort = 7;
 
     protected function getData(): array

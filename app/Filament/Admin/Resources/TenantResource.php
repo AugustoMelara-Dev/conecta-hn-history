@@ -17,9 +17,9 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Form;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -30,9 +30,9 @@ class TenantResource extends Resource
 {
     protected static ?string $model = Tenant::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-building-office-2';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-building-office-2';
 
-    protected static ?string $navigationGroup = 'Plataforma';
+    protected static string | \UnitEnum | null $navigationGroup = 'Plataforma';
 
     protected static ?string $navigationLabel = 'Tenants';
 
@@ -42,23 +42,23 @@ class TenantResource extends Resource
 
     protected static ?int $navigationSort = 10;
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Section::make('Información')
-                    ->schema([
-                        Grid::make(2)->schema([
+        return $schema
+            ->components([
+                Section::make('InformaciÃ³n')
+                    ->components([
+                        Grid::make(2)->components([
                             TextInput::make('name')->label('Nombre')->required(),
                             TextInput::make('slug')->label('Slug')->required()->unique(ignoreRecord: true),
                             TextInput::make('email')->label('Email')->email(),
-                            TextInput::make('phone')->label('Teléfono'),
+                            TextInput::make('phone')->label('TelÃ©fono'),
                             Select::make('plan')->label('Plan')->options(['free' => 'Free', 'pro' => 'Pro', 'enterprise' => 'Enterprise'])->default('free'),
                             Select::make('status')->label('Estado')->options(['active' => 'Activo', 'banned' => 'Baneado', 'suspended' => 'Suspendido'])->default('active'),
                         ]),
                     ]),
-                Section::make('Configuración')->schema([
-                    Grid::make(2)->schema([
+                Section::make('ConfiguraciÃ³n')->components([
+                    Grid::make(2)->components([
                         Toggle::make('is_active')->label('Activo')->default(true),
                         DateTimePicker::make('trial_ends_at')->label('Trial hasta'),
                         Textarea::make('notes')->label('Notas internas')->rows(3)->columnSpanFull(),
@@ -108,7 +108,4 @@ class TenantResource extends Resource
         ];
     }
 }
-
-
-
 

@@ -12,12 +12,12 @@ use Spatie\Health\Facades\Health;
  */
 class ArchitectureHealth extends Page
 {
-    protected static ?string $navigationIcon = 'heroicon-o-server-stack';
-    protected static ?string $navigationGroup = 'Plataforma';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-server-stack';
+    protected static string | \UnitEnum | null $navigationGroup = 'Plataforma';
     protected static ?string $navigationLabel = 'Health';
     protected static ?string $title = 'Architecture Health';
     protected static ?int $navigationSort = 5;
-    protected static string $view = 'filament.admin.pages.architecture-health';
+    protected string $view = 'filament.admin.pages.architecture-health';
 
     public function getHealthResults(): array
     {

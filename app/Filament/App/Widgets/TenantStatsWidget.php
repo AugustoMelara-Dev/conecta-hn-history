@@ -11,7 +11,7 @@ use Filament\Widgets\Widget;
 
 class TenantStatsWidget extends Widget
 {
-    protected static string $view = 'filament.app.widgets.tenant-stats-widget';
+    protected string $view = 'filament.app.widgets.tenant-stats-widget';
 
     protected static bool $isLazy = false;
 

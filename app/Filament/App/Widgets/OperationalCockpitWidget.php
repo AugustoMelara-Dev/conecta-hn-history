@@ -11,7 +11,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 
 final class OperationalCockpitWidget extends Widget
 {
-    protected static string $view = 'filament.app.widgets.operational-cockpit-widget';
+    protected string $view = 'filament.app.widgets.operational-cockpit-widget';
 
     protected static bool $isLazy = false;
 

@@ -15,7 +15,7 @@ use App\Models\User;
 use App\Support\Product\TenantAccessMatrix;
 use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables;
@@ -25,9 +25,9 @@ class ServiceProviderResource extends Resource
 {
     protected static ?string $model = ServiceProvider::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-user-group';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-user-group';
 
-    protected static ?string $navigationGroup = 'Servicios';
+    protected static string | \UnitEnum | null $navigationGroup = 'Servicios';
 
     protected static ?string $navigationLabel = 'Equipo de atencion';
 
@@ -73,10 +73,10 @@ class ServiceProviderResource extends Resource
         return $actor;
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 Forms\Components\Section::make('Informacion del equipo')
                     ->description('Registra a las personas que pueden atender reservas y citas.')
                     ->schema([
@@ -196,6 +196,4 @@ class ServiceProviderResource extends Resource
         ];
     }
 }
-
-
 

@@ -10,7 +10,7 @@ use App\Models\Tenant;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Pages\Tenancy\EditTenantProfile as BaseEditTenantProfile;
 use Illuminate\Database\Eloquent\Model;
 
@@ -34,7 +34,7 @@ class EditTenantProfile extends BaseEditTenantProfile
         $this->fillForm();
     }
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
         $tenant = Filament::getTenant();
         $isPro = $tenant instanceof Tenant && (bool) $tenant->is_pro;
@@ -46,9 +46,9 @@ class EditTenantProfile extends BaseEditTenantProfile
             && Schema::hasColumn('tenants', 'city_id')
             && array_key_exists('city_id', $tenantAttributes);
 
-        return $form
+        return $schema
             ->model($this->tenant)
-            ->schema([
+            ->components([
                 Forms\Components\Tabs::make('ProfileSettings')
                     ->extraAttributes(['data-testid' => 'business-profile-tabs'])
                     ->tabs([
@@ -362,6 +362,5 @@ class EditTenantProfile extends BaseEditTenantProfile
         return $user?->canAccessTenant($tenant) ?? false;
     }
 }
-
 
 

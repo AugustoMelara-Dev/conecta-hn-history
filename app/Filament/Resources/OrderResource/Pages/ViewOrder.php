@@ -8,7 +8,7 @@ use App\Filament\Resources\OrderResource;
 use App\Models\Order;
 use Filament\Actions;
 use Filament\Infolists;
-use Filament\Infolists\Infolist;
+use Filament\Schemas\Schema;
 use Filament\Resources\Pages\ViewRecord;
 
 class ViewOrder extends ViewRecord
@@ -60,10 +60,10 @@ class ViewOrder extends ViewRecord
         ];
     }
 
-    public function infolist(Infolist $infolist): Infolist
+    public function infolist(Schema $schema): Schema
     {
-        return $infolist
-            ->schema([
+        return $schema
+            ->components([
                 Infolists\Components\Section::make('Información del Pedido')
                     ->columns(3)
                     ->schema([

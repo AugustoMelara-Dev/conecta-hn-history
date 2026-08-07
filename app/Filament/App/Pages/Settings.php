@@ -8,16 +8,16 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Pages\Page;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Form;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 
 class Settings extends Page
 {
-    protected static ?string $navigationIcon = 'heroicon-o-cog-6-tooth';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-cog-6-tooth';
 
     protected static ?string $navigationLabel = 'Ajustes';
 
-    protected static ?string $navigationGroup = 'Configuración';
+    protected static string | \UnitEnum | null $navigationGroup = 'ConfiguraciÃ³n';
 
     protected static ?string $title = 'Ajustes generales';
 
@@ -25,7 +25,7 @@ class Settings extends Page
 
     protected static ?int $navigationSort = 100;
 
-    protected static string $view = 'filament.app.pages.settings';
+    protected string $view = 'filament.app.pages.settings';
 
     public ?array $data = [];
 
@@ -34,17 +34,17 @@ class Settings extends Page
         $this->form->fill();
     }
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 Section::make('Preferencias generales')
-                    ->description('Configuración básica de tu tienda.')
-                    ->schema([
+                    ->description('ConfiguraciÃ³n bÃ¡sica de tu tienda.')
+                    ->components([
                         Select::make('locale')
                             ->label('Idioma')
                             ->options([
-                                'es' => 'Español',
+                                'es' => 'EspaÃ±ol',
                                 'en' => 'English',
                             ])
                             ->default('es'),
@@ -53,8 +53,8 @@ class Settings extends Page
                             ->label('Zona horaria')
                             ->options([
                                 'America/Tegucigalpa' => 'Tegucigalpa (GMT-6)',
-                                'America/Mexico_City' => 'Ciudad de México (GMT-6)',
-                                'America/Bogota' => 'Bogotá (GMT-5)',
+                                'America/Mexico_City' => 'Ciudad de MÃ©xico (GMT-6)',
+                                'America/Bogota' => 'BogotÃ¡ (GMT-5)',
                             ])
                             ->default('America/Tegucigalpa'),
 
@@ -62,7 +62,7 @@ class Settings extends Page
                             ->label('Moneda')
                             ->options([
                                 'HNL' => 'Lempira (HNL)',
-                                'USD' => 'Dólar (USD)',
+                                'USD' => 'DÃ³lar (USD)',
                                 'MXN' => 'Peso mexicano (MXN)',
                                 'COP' => 'Peso colombiano (COP)',
                             ])
@@ -70,7 +70,7 @@ class Settings extends Page
                     ]),
 
                 Section::make('Notificaciones')
-                    ->schema([
+                    ->components([
                         Toggle::make('email_notifications')
                             ->label('Notificaciones por email')
                             ->default(true),
@@ -94,6 +94,3 @@ class Settings extends Page
         $this->notify('success', 'Ajustes guardados correctamente.');
     }
 }
-
-
-

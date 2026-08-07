@@ -1,6 +1,16 @@
-<?php\n\ndeclare(strict_types=1);\n\nnamespace App\Filament\App\Widgets\Reports;\n\nclass InventoryHealthWidget extends \Filament\Widgets\StatsOverviewWidget
+<?php
+
+declare(strict_types=1);
+
+namespace App\Filament\App\Widgets\Reports;
+
+use Illuminate\Support\Facades\DB;
+
+use Filament\Facades\Filament;
+
+class InventoryHealthWidget extends \Filament\Widgets\StatsOverviewWidget
 {
-    protected static ?string $heading = 'Salud de inventario';
+    protected ?string $heading = 'Salud de inventario';
     protected static ?int $sort = 10;
 
     protected function getStats(): array
@@ -10,4 +20,5 @@
         $lowStock = DB::table('products')->where('tenant_id', $tenantId)->where('stock', '<', 10)->count();
         return [Stat::make('Bajo stock', $lowStock)->color('warning')];
     }
-}\n
+}
+

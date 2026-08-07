@@ -13,9 +13,9 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Form;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -24,18 +24,18 @@ use Filament\Tables\Table;
 class ApiKeyResource extends Resource
 {
     protected static ?string $model = ApiKey::class;
-    protected static ?string $navigationIcon = 'heroicon-o-key';
-    protected static ?string $navigationGroup = 'Configuración';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-key';
+    protected static string | \UnitEnum | null $navigationGroup = 'ConfiguraciÃ³n';
     protected static ?string $navigationLabel = 'API Keys';
     protected static ?string $modelLabel = 'api key';
     protected static ?string $pluralModelLabel = 'API Keys';
     protected static ?int $navigationSort = 32;
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $schema->schema([
-            Section::make('API Key')->schema([
-                Grid::make(2)->schema([
+        return $schema->components([
+            Section::make('API Key')->components([
+                Grid::make(2)->components([
                     TextInput::make('name')->label('Nombre')->required(),
                     Select::make('tenant_id')->label('Tenant')->relationship('tenant', 'name'),
                     Select::make('scopes')->label('Scopes')->multiple()->options(['crm' => 'CRM', 'billing' => 'Billing', 'automation' => 'Automation']),
@@ -53,7 +53,7 @@ class ApiKeyResource extends Resource
                 TextColumn::make('tenant.name')->label('Tenant'),
                 TextColumn::make('scopes')->label('Scopes'),
                 IconColumn::make('is_active')->label('Activo')->boolean(),
-                TextColumn::make('last_used_at')->label('Último uso')->dateTime('d/m/Y H:i')->placeholder('Nunca'),
+                TextColumn::make('last_used_at')->label('Ãšltimo uso')->dateTime('d/m/Y H:i')->placeholder('Nunca'),
             ])
             ->actions([EditAction::make()])
             ->bulkActions([BulkActionGroup::make([DeleteBulkAction::make()])]);
@@ -64,6 +64,4 @@ class ApiKeyResource extends Resource
         return ['index' => Pages\ListApiKeys::route('/'), 'create' => Pages\CreateApiKey::route('/create'), 'edit' => Pages\EditApiKey::route('/{record}/edit')];
     }
 }
-
-
 

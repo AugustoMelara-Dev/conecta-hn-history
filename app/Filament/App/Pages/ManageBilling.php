@@ -24,7 +24,7 @@ use Filament\Forms;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Tables;
@@ -43,9 +43,9 @@ class ManageBilling extends Page implements HasForms, HasTable
     use InteractsWithForms;
     use InteractsWithTable;
 
-    protected static string $view = 'filament.app.pages.manage-billing';
+    protected string $view = 'filament.app.pages.manage-billing';
 
-    protected static ?string $navigationIcon = 'heroicon-o-credit-card';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-credit-card';
 
     public bool $isPending = false;
 
@@ -182,10 +182,10 @@ class ManageBilling extends Page implements HasForms, HasTable
         ]);
     }
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 Section::make('Pago por transferencia')
                     ->description('Transfiere el monto exacto, guarda tu comprobante y envialo a revision.')
                     ->schema([
@@ -681,6 +681,5 @@ class ManageBilling extends Page implements HasForms, HasTable
         return $tenant instanceof Tenant ? $tenant : null;
     }
 }
-
 
 

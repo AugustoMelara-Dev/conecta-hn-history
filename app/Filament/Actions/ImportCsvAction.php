@@ -56,7 +56,7 @@ class ImportCsvAction
 
                     if ($result['success']) {
                         Notification::make()
-                            ->title("Importación completa: {$result['imported']} filas en {$result['duration_ms']}ms")
+                            ->title("ImportaciÃ³n completa: {$result['imported']} filas en {$result['duration_ms']}ms")
                             ->success()
                             ->send();
                     } else {

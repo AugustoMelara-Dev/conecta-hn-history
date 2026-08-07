@@ -23,7 +23,7 @@ class RecentIncidentsWidget extends TableWidget
         return $table
             ->records($data)
             ->columns([
-                TextColumn::make('description')->label('Título'),
+                TextColumn::make('description')->label('TÃ­tulo'),
                 TextColumn::make('event')->label('Severidad')->badge(),
                 TextColumn::make('created_at')->label('Fecha')->dateTime('d/m/Y H:i'),
             ]);

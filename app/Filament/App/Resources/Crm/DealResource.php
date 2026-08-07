@@ -21,9 +21,9 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Form;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -34,9 +34,9 @@ class DealResource extends Resource
 {
     protected static ?string $model = CrmDeal::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-currency-dollar';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-currency-dollar';
 
-    protected static ?string $navigationGroup = 'CRM';
+    protected static string | \UnitEnum | null $navigationGroup = 'CRM';
 
     protected static ?string $navigationLabel = 'Deals';
 
@@ -46,14 +46,14 @@ class DealResource extends Resource
 
     protected static ?int $navigationSort = 11;
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Section::make('Información del deal')
-                    ->schema([
+        return $schema
+            ->components([
+                Section::make('InformaciÃ³n del deal')
+                    ->components([
                         Grid::make(2)
-                            ->schema([
+                            ->components([
                                 TextInput::make('name')
                                     ->label('Nombre')
                                     ->required()
@@ -86,9 +86,9 @@ class DealResource extends Resource
                     ]),
 
                 Section::make('Valor y fechas')
-                    ->schema([
+                    ->components([
                         Grid::make(3)
-                            ->schema([
+                            ->components([
                                 TextInput::make('value')
                                     ->label('Valor')
                                     ->numeric()
@@ -121,20 +121,20 @@ class DealResource extends Resource
                                     ->visible(fn ($get) => $get('status') === DealStatus::Lost->value),
 
                                 TextInput::make('lost_reason')
-                                    ->label('Razón de pérdida')
+                                    ->label('RazÃ³n de pÃ©rdida')
                                     ->maxLength(100)
                                     ->visible(fn ($get) => $get('status') === DealStatus::Lost->value),
                             ]),
                     ]),
 
                 Section::make('Relaciones')
-                    ->schema([
+                    ->components([
                         Grid::make(2)
-                            ->schema([
+                            ->components([
                                 Select::make('contact_id')
                                     ->label('Contacto')
                                     ->relationship('contact', 'id')
-                                    ->getOptionLabelFromRecordUsing(fn ($record) => $record->display_name ?? '—')
+                                    ->getOptionLabelFromRecordUsing(fn ($record) => $record->display_name ?? 'â€”')
                                     ->searchable(['first_name', 'last_name', 'email'])
                                     ->preload(),
 
@@ -152,7 +152,7 @@ class DealResource extends Resource
                             ]),
 
                         Textarea::make('description')
-                            ->label('Descripción')
+                            ->label('DescripciÃ³n')
                             ->rows(3)
                             ->columnSpanFull(),
                     ]),
@@ -197,7 +197,7 @@ class DealResource extends Resource
 
                 TextColumn::make('contact.display_name')
                     ->label('Contacto')
-                    ->placeholder('—'),
+                    ->placeholder('â€”'),
 
                 TextColumn::make('owner.name')
                     ->label('Responsable')
@@ -207,7 +207,7 @@ class DealResource extends Resource
                 TextColumn::make('expected_close_date')
                     ->label('Cierre esperado')
                     ->date('d/m/Y')
-                    ->placeholder('—')
+                    ->placeholder('â€”')
                     ->sortable(),
             ])
             ->filters([
@@ -249,7 +249,7 @@ class DealResource extends Resource
                     ->requiresConfirmation()
                     ->form([
                         TextInput::make('lost_reason')
-                            ->label('Razón')
+                            ->label('RazÃ³n')
                             ->required(),
                     ])
                     ->action(function (array $data, CrmDeal $record) {
@@ -322,6 +322,3 @@ class DealResource extends Resource
         ];
     }
 }
-
-
-

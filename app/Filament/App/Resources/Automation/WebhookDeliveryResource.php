@@ -19,9 +19,9 @@ class WebhookDeliveryResource extends Resource
 {
     protected static ?string $model = \App\Models\WebhookDelivery::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-cloud';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-cloud';
 
-    protected static ?string $navigationGroup = 'Automatización';
+    protected static string | \UnitEnum | null $navigationGroup = 'AutomatizaciÃ³n';
 
     protected static ?string $navigationLabel = 'Webhooks';
 

@@ -11,5 +11,5 @@ use Filament\Resources\Pages\ListRecords;
 class ListToolPolicies extends ListRecords
 {
     protected static string $resource = ToolPolicyResource::class;
-    protected function getHeaderActions(): array { return [CreateAction::make()->label('Nueva polÌtica')]; }
+    protected function getHeaderActions(): array { return [CreateAction::make()->label('Nueva pol√≠tica')]; }
 }

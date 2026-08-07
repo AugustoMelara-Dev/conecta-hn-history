@@ -11,9 +11,8 @@ use App\Models\Order;
 use App\Models\Tenant;
 use App\Models\User;
 use Filament\Facades\Filament;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Infolists;
-use Filament\Infolists\Infolist;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -26,7 +25,7 @@ class OrderResource extends Resource
 {
     protected static ?string $model = Order::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-clipboard-document-list';
 
     public static function getNavigationLabel(): string
     {
@@ -299,7 +298,7 @@ class OrderResource extends Resource
     // ═══ VISTA DETALLADA CON INFOLIST ═══
     public static function deprecated_infolist(Infolist $infolist): Infolist
     {
-        return $infolist
+        return $schema
             ->schema([
                 Infolists\Components\Grid::make(3)
                     ->schema([
@@ -481,10 +480,10 @@ class OrderResource extends Resource
             ]);
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
         // No usamos form para edición, solo infolist para vista
-        return $form->schema([]);
+        return $form->components([]);
     }
 
     private static function recordCurrency(mixed $record): string
@@ -513,6 +512,4 @@ class OrderResource extends Resource
         ];
     }
 }
-
-
 

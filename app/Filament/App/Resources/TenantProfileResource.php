@@ -9,7 +9,7 @@ use App\Filament\App\Resources\TenantProfileResource\RelationManagers;
 use App\Models\Tenant;
 use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -19,9 +19,9 @@ class TenantProfileResource extends Resource
 {
     protected static ?string $model = Tenant::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-building-storefront';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-building-storefront';
 
-    protected static ?string $navigationGroup = 'Configuracion';
+    protected static string | \UnitEnum | null $navigationGroup = 'Configuracion';
 
     protected static ?int $navigationSort = 1;
 
@@ -48,10 +48,10 @@ class TenantProfileResource extends Resource
             ->where('id', Filament::getTenant()?->id);
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 Forms\Components\Section::make('Identidad visual')
                     ->description('Elementos publicos que ayudan a reconocer tu negocio.')
                     ->schema([
@@ -201,6 +201,4 @@ class TenantProfileResource extends Resource
         ];
     }
 }
-
-
 

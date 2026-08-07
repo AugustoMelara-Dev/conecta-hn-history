@@ -13,9 +13,9 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Form;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -24,24 +24,24 @@ use Filament\Tables\Table;
 class PlanResource extends Resource
 {
     protected static ?string $model = Plan::class;
-    protected static ?string $navigationIcon = 'heroicon-o-star';
-    protected static ?string $navigationGroup = 'Billing';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-star';
+    protected static string | \UnitEnum | null $navigationGroup = 'Billing';
     protected static ?string $navigationLabel = 'Planes';
     protected static ?string $modelLabel = 'plan';
     protected static ?string $pluralModelLabel = 'Planes';
     protected static ?int $navigationSort = 21;
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $schema->schema([
-            Section::make('Información')->schema([
-                Grid::make(2)->schema([
+        return $schema->components([
+            Section::make('InformaciÃ³n')->components([
+                Grid::make(2)->components([
                     TextInput::make('name')->label('Nombre')->required(),
                     TextInput::make('slug')->label('Slug')->required(),
                     TextInput::make('price')->label('Precio')->numeric()->prefix('L'),
                     TextInput::make('currency')->label('Moneda'),
-                    TextInput::make('max_users')->label('Máx usuarios')->numeric(),
-                    TextInput::make('max_products')->label('Máx productos')->numeric(),
+                    TextInput::make('max_users')->label('MÃ¡x usuarios')->numeric(),
+                    TextInput::make('max_products')->label('MÃ¡x productos')->numeric(),
                     Toggle::make('is_active')->label('Activo')->default(true),
                 ]),
                 Textarea::make('features')->label('Features (JSON)')->rows(3)->columnSpanFull(),
@@ -55,8 +55,8 @@ class PlanResource extends Resource
             ->columns([
                 TextColumn::make('name')->label('Nombre'),
                 TextColumn::make('price')->label('Precio')->money('HNL'),
-                TextColumn::make('max_users')->label('Máx usuarios'),
-                TextColumn::make('max_products')->label('Máx productos'),
+                TextColumn::make('max_users')->label('MÃ¡x usuarios'),
+                TextColumn::make('max_products')->label('MÃ¡x productos'),
                 IconColumn::make('is_active')->label('Activo')->boolean(),
             ])
             ->actions([EditAction::make()])
@@ -68,6 +68,4 @@ class PlanResource extends Resource
         return ['index' => Pages\ListPlans::route('/'), 'create' => Pages\CreatePlan::route('/create'), 'edit' => Pages\EditPlan::route('/{record}/edit')];
     }
 }
-
-
 

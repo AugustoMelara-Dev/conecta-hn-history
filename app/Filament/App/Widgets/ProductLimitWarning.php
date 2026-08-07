@@ -9,7 +9,7 @@ use Filament\Widgets\Widget;
 
 class ProductLimitWarning extends Widget
 {
-    protected static string $view = 'filament.app.widgets.product-limit-warning';
+    protected string $view = 'filament.app.widgets.product-limit-warning';
 
     protected static bool $isLazy = false;
 
