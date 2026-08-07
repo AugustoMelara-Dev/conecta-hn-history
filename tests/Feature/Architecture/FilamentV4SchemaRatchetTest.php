@@ -13,8 +13,8 @@ declare(strict_types=1);
  */
 
 $resourceDirs = [
-    __DIR__.'/../../../../app/Filament/App/Resources',
-    __DIR__.'/../../../../app/Filament/Resources',
+    dirname(__DIR__, 3).'/app/Filament/App/Resources',
+    dirname(__DIR__, 3).'/app/Filament/Resources',
 ];
 
 $resourceFiles = [];
@@ -41,6 +41,7 @@ it('at least 30 Resources migrated (PR1 + PR2 + PR6 targets)', function () use (
 });
 
 it('no Resource imports the deprecated Filament\\Forms\\Form class', function () use ($resourceFiles) {
+    expect($resourceFiles)->not->toBeEmpty();
     foreach ($resourceFiles as $file) {
         $contents = file_get_contents($file);
         expect($contents)
@@ -83,6 +84,7 @@ it('every Resource declares nullable $model', function () use ($resourceFiles) {
 });
 
 it('no Resource imports legacy HeaderAction', function () use ($resourceFiles) {
+    expect($resourceFiles)->not->toBeEmpty();
     foreach ($resourceFiles as $file) {
         $contents = file_get_contents($file);
         expect($contents)
