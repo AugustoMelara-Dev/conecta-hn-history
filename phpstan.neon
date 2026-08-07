@@ -1,22 +1,14 @@
-includes:
-    - ./vendor/larastan/larastan/extension.neon
-    - ./vendor/pestphp/pest/extension.neon
-    - ./phpstan-baseline.neon
-
 parameters:
+    level: 5
     paths:
         - app/
-
-    # Level 5: Checks argument types and return types.
-    # Good balance between strictness and developer velocity for existing codebases.
-    level: 5
-
-    # Ignore false positives from third-party libraries if necessary.
-    # Currently empty for strict checking of Domain and Application layers.
+    reportUnmatchedIgnoredErrors: false
     ignoreErrors: []
 
     stubFiles:
         - phpstan-stubs/mockery-expectation.stub
 
-    # Set to true to force documentation of array types (e.g. array<int, string>).
-    # Essential for our DTO -> TS generation pipeline.
+includes:
+    - ./vendor/larastan/larastan/extension.neon
+    - ./vendor/pestphp/pest/extension.neon
+    - ./phpstan-baseline.neon
