@@ -85,16 +85,6 @@ return new class extends Migration
             );
         });
 
-        Schema::table('crm_deals', function (Blueprint $table): void {
-            $table->string('write_idempotency_key', 160)->nullable();
-            $table->char('write_payload_hash', 64)->nullable();
-
-            $table->unique(
-                ['tenant_id', 'write_idempotency_key'],
-                'crm_deals_tenant_write_key_unique',
-            );
-        });
-
         Schema::create('service_locations', function (Blueprint $table): void {
             $table->id();
             $table->foreignUuid('tenant_id')->constrained('tenants')->cascadeOnDelete();
@@ -241,7 +231,7 @@ return new class extends Migration
                 ->constrained('customer_profiles')
                 ->nullOnDelete();
             $table->foreignId('lead_id')->nullable()->constrained('leads')->nullOnDelete();
-            $table->foreignId('crm_deal_id')->nullable()->constrained('crm_deals')->nullOnDelete();
+            $table->unsignedBigInteger('crm_deal_id')->nullable()->index();
             $table->foreignUuid('location_id')->nullable()->constrained('locations')->nullOnDelete();
             $table->foreignUuid('created_by_user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->uuid('supersedes_quote_id')->nullable();
@@ -319,11 +309,6 @@ return new class extends Migration
         Schema::dropIfExists('availability_rules');
         Schema::dropIfExists('service_provider_locations');
         Schema::dropIfExists('service_locations');
-
-        Schema::table('crm_deals', function (Blueprint $table): void {
-            $table->dropUnique('crm_deals_tenant_write_key_unique');
-            $table->dropColumn(['write_idempotency_key', 'write_payload_hash']);
-        });
 
         Schema::table('appointments', function (Blueprint $table) use ($sqlite): void {
             $table->dropIndex('appointments_tenant_location_start_idx');

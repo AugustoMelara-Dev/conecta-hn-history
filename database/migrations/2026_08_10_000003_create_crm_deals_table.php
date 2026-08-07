@@ -29,6 +29,8 @@ return new class extends Migration
             $table->string('lost_reason', 100)->nullable();
             $table->text('description')->nullable();
             $table->json('custom_fields')->nullable();
+            $table->string('write_idempotency_key', 160)->nullable();
+            $table->char('write_payload_hash', 64)->nullable();
             $table->timestamps();
             $table->softDeletes();
 
@@ -37,6 +39,7 @@ return new class extends Migration
             $table->index(['tenant_id', 'owner_id']);
             $table->index(['tenant_id', 'expected_close_date']);
             $table->index(['tenant_id', 'contact_id']);
+            $table->unique(['tenant_id', 'write_idempotency_key'], 'crm_deals_tenant_write_key_unique');
         });
     }
 
