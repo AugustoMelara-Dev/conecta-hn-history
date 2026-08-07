@@ -168,7 +168,7 @@ return new class extends Migration
             $table->string('payload_hash', 64);
             $table->timestamp('received_at');
             $table->timestamps();
-            $table->unique(['tenant_id', 'provider', 'external_id']);
+            $table->unique(['tenant_id', 'provider', 'external_id'], 'automation_webhook_delivery_unique');
         });
 
         Schema::create('automation_integration_idempotency', function (Blueprint $table): void {
