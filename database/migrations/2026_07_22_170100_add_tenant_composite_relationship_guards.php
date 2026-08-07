@@ -21,7 +21,6 @@ return new class extends Migration
         ['leads', 'customer_profile_id', 'customer_profiles', 'id'],
         ['customer_notes', 'customer_profile_id', 'customer_profiles', 'id'],
         ['customer_tasks', 'customer_profile_id', 'customer_profiles', 'id'],
-        ['crm_deals', 'customer_profile_id', 'customer_profiles', 'id'],
     ];
 
     public function up(): void
@@ -110,7 +109,6 @@ return new class extends Migration
             ['leads', ['tenant_id', 'customer_profile_id'], 'customer_profiles', ['tenant_id', 'id'], 'leads_profile_tenant_fk', 'null'],
             ['customer_notes', ['tenant_id', 'customer_profile_id'], 'customer_profiles', ['tenant_id', 'id'], 'notes_profile_tenant_fk', 'cascade'],
             ['customer_tasks', ['tenant_id', 'customer_profile_id'], 'customer_profiles', ['tenant_id', 'id'], 'tasks_profile_tenant_fk', 'cascade'],
-            ['crm_deals', ['tenant_id', 'customer_profile_id'], 'customer_profiles', ['tenant_id', 'id'], 'deals_profile_tenant_fk', 'null'],
             ['loyalty_ledger', ['tenant_id', 'order_id', 'user_id'], 'orders', ['tenant_id', 'id', 'user_id'], 'loyalty_order_tenant_user_fk', 'null'],
         ];
 
@@ -138,7 +136,6 @@ return new class extends Migration
             ['leads', 'leads_profile_tenant_fk'],
             ['customer_notes', 'notes_profile_tenant_fk'],
             ['customer_tasks', 'tasks_profile_tenant_fk'],
-            ['crm_deals', 'deals_profile_tenant_fk'],
             ['loyalty_ledger', 'loyalty_order_tenant_user_fk'],
         ];
 
