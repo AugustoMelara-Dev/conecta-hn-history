@@ -13,8 +13,8 @@ return new class extends Migration
         Schema::create('crm_deals', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('tenant_id')->constrained('tenants')->cascadeOnDelete();
-            $table->foreignUuid('pipeline_id')->constrained('crm_pipelines')->cascadeOnDelete();
-            $table->foreignUuid('stage_id')->constrained('crm_stages')->cascadeOnDelete();
+            $table->foreignId('pipeline_id')->constrained('crm_pipelines')->cascadeOnDelete();
+            $table->foreignId('stage_id')->constrained('crm_stages')->cascadeOnDelete();
             $table->foreignUuid('contact_id')->nullable()->constrained('crm_contacts')->nullOnDelete();
             $table->foreignUuid('company_id')->nullable()->constrained('crm_companies')->nullOnDelete();
             $table->foreignUuid('owner_id')->nullable()->constrained('users')->nullOnDelete();
