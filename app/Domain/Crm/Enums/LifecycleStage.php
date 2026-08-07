@@ -22,7 +22,7 @@ enum LifecycleStage: string
             self::Lead => 'Lead',
             self::Qualified => 'Calificado',
             self::Proposal => 'Propuesta',
-            self::Negotiation => 'Negociación',
+            self::Negotiation => 'NegociaciÃ³n',
             self::Won => 'Ganado',
             self::Lost => 'Perdido',
         };

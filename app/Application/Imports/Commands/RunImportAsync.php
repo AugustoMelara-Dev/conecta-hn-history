@@ -8,7 +8,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Queue;
 
 /**
- * RunImportAsync - Encola una importación para ejecutarse async.
+ * RunImportAsync - Encola una importaciÃ³n para ejecutarse async.
  */
 class RunImportAsync extends Command
 {

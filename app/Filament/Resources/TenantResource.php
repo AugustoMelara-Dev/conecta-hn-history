@@ -608,4 +608,3 @@ class TenantResource extends Resource
         ];
     }
 }
-

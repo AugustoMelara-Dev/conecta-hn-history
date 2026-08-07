@@ -8,7 +8,7 @@ use App\Application\Reporting\ValueObjects\ReportData;
 use App\Domain\Reporting\ValueObjects\ReportRow;
 
 /**
- * ReportComparison - Compara datos actuales vs período previo.
+ * ReportComparison - Compara datos actuales vs perÃ­odo previo.
  */
 class ReportComparison
 {

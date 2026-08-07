@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Cache;
  *
  * Factores:
  * - Lifecycle stage (lead/qualified/proposal/negotiation/won/lost)
- * - Engagement (actividades últimos 30 días)
+ * - Engagement (actividades Ãºltimos 30 dÃ­as)
  * - Datos completos (email, phone, job_title)
  * - Fuente (referral > organic > paid)
  * - Recencia (last_contact_at reciente suma)

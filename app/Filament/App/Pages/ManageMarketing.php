@@ -372,4 +372,3 @@ class ManageMarketing extends Page implements HasForms, HasTable
         }
     }
 }
-

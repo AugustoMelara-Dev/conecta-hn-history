@@ -342,4 +342,3 @@ class TenantUserResource extends Resource
         return $permissions === [] ? 'Ninguno' : implode(', ', $permissions);
     }
 }
-

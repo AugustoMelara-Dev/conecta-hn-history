@@ -1,10 +1,16 @@
-<?php\n\ndeclare(strict_types=1);\n\nnamespace App\Application\Reporting\Reports;\n\nclass ChannelPerformanceReport implements ReportInterface
+<?php
+
+declare(strict_types=1);
+
+namespace App\Application\Reporting\Reports;
+
+class ChannelPerformanceReport implements ReportInterface
 {
     public function getKey(): ReportKey { return ReportKey::ChannelPerformance; }
     public function getName(): string { return 'Performance por canal'; }
     public function getDescription(): string { return 'Ingresos por canal de venta.'; }
     public function getChartType(): string { return 'bar'; }
-    public function getColumns(): array { return ['Canal', 'Ingresos (HNL)', 'Órdenes']; }
+    public function getColumns(): array { return ['Canal', 'Ingresos (HNL)', 'Ã“rdenes']; }
     public function getFilters(): array { return []; }
     public function getData(string $tenantId, ReportRange $range): ReportData
     {
@@ -18,4 +24,4 @@
         }
         return new ReportData(rows: $rows, series: [], summary: [], metadata: ['range' => $range->toArray()]);
     }
-}\n
+}

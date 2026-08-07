@@ -27,4 +27,3 @@ class TopProductsTableWidget extends TableWidget
             ]);
     }
 }
-

@@ -1,10 +1,16 @@
-<?php\n\ndeclare(strict_types=1);\n\nnamespace App\Application\Reporting\Reports;\n\nclass WinRateReport implements ReportInterface
+<?php
+
+declare(strict_types=1);
+
+namespace App\Application\Reporting\Reports;
+
+class WinRateReport implements ReportInterface
 {
     public function getKey(): ReportKey { return ReportKey::WinRate; }
     public function getName(): string { return 'Win rate'; }
     public function getDescription(): string { return 'Porcentaje de deals ganados.'; }
     public function getChartType(): string { return 'gauge'; }
-    public function getColumns(): array { return ['Métrica', 'Valor']; }
+    public function getColumns(): array { return ['MÃ©trica', 'Valor']; }
     public function getFilters(): array { return []; }
     public function getData(string $tenantId, ReportRange $range): ReportData
     {
@@ -18,4 +24,4 @@
             metadata: ['range' => $range->toArray()],
         );
     }
-}\n
+}

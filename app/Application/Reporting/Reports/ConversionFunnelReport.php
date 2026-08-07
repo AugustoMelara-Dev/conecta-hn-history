@@ -1,10 +1,16 @@
-<?php\n\ndeclare(strict_types=1);\n\nnamespace App\Application\Reporting\Reports;\n\nclass ConversionFunnelReport implements ReportInterface
+<?php
+
+declare(strict_types=1);
+
+namespace App\Application\Reporting\Reports;
+
+class ConversionFunnelReport implements ReportInterface
 {
     public function getKey(): ReportKey { return ReportKey::ConversionFunnel; }
-    public function getName(): string { return 'Embudo de conversión'; }
+    public function getName(): string { return 'Embudo de conversiÃ³n'; }
     public function getDescription(): string { return 'Embudo lifecycle ? won.'; }
     public function getChartType(): string { return 'funnel'; }
-    public function getColumns(): array { return ['Etapa', 'Contactos', 'Conversión %']; }
+    public function getColumns(): array { return ['Etapa', 'Contactos', 'ConversiÃ³n %']; }
     public function getFilters(): array { return []; }
     public function getData(string $tenantId, ReportRange $range): ReportData
     {
@@ -19,4 +25,4 @@
         }
         return new ReportData(rows: $rows, series: [], summary: [], metadata: ['range' => $range->toArray()]);
     }
-}\n
+}

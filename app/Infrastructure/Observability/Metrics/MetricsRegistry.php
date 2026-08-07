@@ -7,7 +7,7 @@ namespace App\Infrastructure\Observability\Metrics;
 /**
  * MetricsRegistry - Prometheus-style metrics counters.
  *
- * Implementación en memoria (para dev/test). En producción conectar a
+ * ImplementaciÃ³n en memoria (para dev/test). En producciÃ³n conectar a
  * open-telemetry o prometheus_client.
  */
 class MetricsRegistry

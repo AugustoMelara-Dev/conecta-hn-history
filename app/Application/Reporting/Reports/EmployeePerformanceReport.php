@@ -1,4 +1,10 @@
-<?php\n\ndeclare(strict_types=1);\n\nnamespace App\Application\Reporting\Reports;\n\nclass EmployeePerformanceReport implements ReportInterface
+<?php
+
+declare(strict_types=1);
+
+namespace App\Application\Reporting\Reports;
+
+class EmployeePerformanceReport implements ReportInterface
 {
     public function getKey(): ReportKey { return ReportKey::EmployeePerformance; }
     public function getName(): string { return 'Performance del equipo'; }
@@ -19,4 +25,4 @@
         }
         return new ReportData(rows: $rows, series: [], summary: [], metadata: ['range' => $range->toArray()]);
     }
-}\n
+}

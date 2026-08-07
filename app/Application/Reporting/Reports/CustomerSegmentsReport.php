@@ -1,8 +1,14 @@
-<?php\n\ndeclare(strict_types=1);\n\nnamespace App\Application\Reporting\Reports;\n\nclass CustomerSegmentsReport implements ReportInterface
+<?php
+
+declare(strict_types=1);
+
+namespace App\Application\Reporting\Reports;
+
+class CustomerSegmentsReport implements ReportInterface
 {
     public function getKey(): ReportKey { return ReportKey::CustomerSegments; }
     public function getName(): string { return 'Segmentos de clientes'; }
-    public function getDescription(): string { return 'Segmentación RFM.'; }
+    public function getDescription(): string { return 'SegmentaciÃ³n RFM.'; }
     public function getChartType(): string { return 'pie'; }
     public function getColumns(): array { return ['Segmento', 'Clientes', '%']; }
     public function getFilters(): array { return []; }
@@ -10,4 +16,4 @@
     {
         return new ReportData(rows: [], series: [], summary: [], metadata: ['range' => $range->toArray()]);
     }
-}\n
+}

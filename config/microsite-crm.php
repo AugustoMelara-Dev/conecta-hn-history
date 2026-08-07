@@ -26,4 +26,3 @@ return [
     // 0-100 inclusive. 0 means allowlist-only, 100 means all tenants that pass feature gate.
     'percentage' => 0,
 ];
-

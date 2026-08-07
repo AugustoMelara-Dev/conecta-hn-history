@@ -12,7 +12,7 @@ use App\Domain\Automation\Enums\ActionType;
  * Cada action handler debe:
  *   - Ser idempotente (input.idempotency_key check)
  *   - Retornar array con status, output, errors
- *   - Auditar la ejecución
+ *   - Auditar la ejecuciÃ³n
  */
 class ActionRegistry
 {

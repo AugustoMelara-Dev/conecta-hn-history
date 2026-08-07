@@ -19,10 +19,10 @@ enum CustomFieldType: string
     {
         return match ($this) {
             self::Text => 'Texto',
-            self::Number => 'Número',
+            self::Number => 'NÃºmero',
             self::Date => 'Fecha',
-            self::Select => 'Selección',
-            self::Boolean => 'Sí/No',
+            self::Select => 'SelecciÃ³n',
+            self::Boolean => 'SÃ­/No',
             self::Email => 'Email',
             self::Url => 'URL',
             self::Textarea => 'Texto largo',

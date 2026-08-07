@@ -68,5 +68,3 @@ class AiRegistry extends Page
         Notification::make()->title('AI Registry actualizado')->success()->send();
     }
 }
-
-

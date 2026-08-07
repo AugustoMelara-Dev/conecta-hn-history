@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\File;
 
 /**
- * PR5 Architecture Ratchet — Report Registry coverage.
+ * PR5 Architecture Ratchet â€” Report Registry coverage.
  *
  * Cada ReportKey enum case debe tener un Report class registrado.
  */

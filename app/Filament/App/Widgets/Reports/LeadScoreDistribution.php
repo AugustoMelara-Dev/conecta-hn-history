@@ -14,4 +14,3 @@ class LeadScoreDistribution extends ChartWidget
     protected function getData(): array { return ['datasets' => [], 'labels' => ['Hot', 'Warm', 'Qualified', 'Cold']]; }
     protected function getType(): string { return 'pie'; }
 }
-

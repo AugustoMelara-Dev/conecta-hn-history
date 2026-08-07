@@ -1,4 +1,12 @@
-<?php\n\ndeclare(strict_types=1);\n\nnamespace App.Application.Ai.Assistants;\n\nclass EmailReplyAssistant extends BaseAssistant
+<?php
+
+declare(strict_types=1);
+
+namespace App\Application\Ai\Assistants;
+
+use App\Application\Ai\Contracts\AssistantResult;
+
+class EmailReplyAssistant extends BaseAssistant
 {
     public function key(): string { return 'email_reply'; }
     public function name(): string { return 'Email Reply Draft'; }
@@ -18,4 +26,3 @@
         ]);
     }
 }
-

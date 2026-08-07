@@ -108,4 +108,3 @@ class LoyaltyProgramResource extends Resource
         ];
     }
 }
-

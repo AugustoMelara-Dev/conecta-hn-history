@@ -25,7 +25,4 @@ class InvoiceMemoAssistant extends BaseAssistant
             'tone' => 'polite_firm',
         ]);
     }
-}
-
-
-
+}

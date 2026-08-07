@@ -31,4 +31,3 @@ class AttributionChartWidget extends ChartWidget
 
     protected function getType(): string { return 'doughnut'; }
 }
-

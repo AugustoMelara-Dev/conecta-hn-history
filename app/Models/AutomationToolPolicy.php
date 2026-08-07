@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * AutomationToolPolicy - Política de tools permitidas por agente/usuario.
+ * AutomationToolPolicy - PolÃ­tica de tools permitidas por agente/usuario.
  */
 class AutomationToolPolicy extends Model
 {

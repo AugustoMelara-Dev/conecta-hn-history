@@ -247,4 +247,3 @@ class OrderResource extends Resource
         return [];
     }
 }
-

@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * ReportSchedule - Programación recurrente de un reporte.
+ * ReportSchedule - ProgramaciÃ³n recurrente de un reporte.
  */
 class ReportSchedule extends Model
 {

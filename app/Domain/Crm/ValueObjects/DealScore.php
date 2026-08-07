@@ -7,7 +7,7 @@ namespace App\Domain\Crm\ValueObjects;
 /**
  * DealScore - Score de calidad del deal (0-100).
  *
- * Calculado por LeadScoringService bas·ndose en:
+ * Calculado por LeadScoringService bas√°ndose en:
  * - Lifecycle stage
  * - Engagement (actividades, emails abiertos, calls)
  * - Deal value vs tenant median

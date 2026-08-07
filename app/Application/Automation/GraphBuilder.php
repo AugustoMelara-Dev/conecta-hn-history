@@ -10,11 +10,11 @@ use App\Domain\Automation\ValueObjects\AutomationGraph;
 /**
  * GraphBuilder - Construye y valida DAG de workflows.
  *
- * GarantÌas:
+ * Garant√≠as:
  * - Existe exactamente un nodo trigger
  * - No hay ciclos
  * - Cada edge conecta nodos existentes
- * - Cada acciÛn tiene schema v·lido
+ * - Cada acci√≥n tiene schema v√°lido
  */
 class GraphBuilder
 {

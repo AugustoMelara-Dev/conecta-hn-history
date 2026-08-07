@@ -26,4 +26,3 @@ class MrrKpiCardWidget extends \Filament\Widgets\StatsOverviewWidget
         ];
     }
 }
-

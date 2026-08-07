@@ -201,4 +201,3 @@ class TenantProfileResource extends Resource
         ];
     }
 }
-

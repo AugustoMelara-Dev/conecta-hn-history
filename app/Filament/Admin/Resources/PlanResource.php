@@ -68,4 +68,3 @@ class PlanResource extends Resource
         return ['index' => Pages\ListPlans::route('/'), 'create' => Pages\CreatePlan::route('/create'), 'edit' => Pages\EditPlan::route('/{record}/edit')];
     }
 }
-

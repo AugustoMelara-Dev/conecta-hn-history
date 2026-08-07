@@ -7,12 +7,12 @@ namespace App\Application\Automation;
 use App\Domain\Automation\Enums\ConditionType;
 
 /**
- * ConditionRegistry - Evalúa condiciones contra un payload.
+ * ConditionRegistry - EvalÃºa condiciones contra un payload.
  */
 class ConditionRegistry
 {
     /**
-     * Evalúa una sola condición.
+     * EvalÃºa una sola condiciÃ³n.
      */
     public function evaluate(ConditionType $type, mixed $actual, mixed $expected): bool
     {
@@ -20,7 +20,7 @@ class ConditionRegistry
     }
 
     /**
-     * Evalúa un grupo de condiciones (AND lógico).
+     * EvalÃºa un grupo de condiciones (AND lÃ³gico).
      *
      * @param array<int, array{type: string, actual: mixed, expected: mixed}> $conditions
      */
@@ -39,7 +39,7 @@ class ConditionRegistry
     }
 
     /**
-     * Evalúa un grupo de condiciones (OR lógico).
+     * EvalÃºa un grupo de condiciones (OR lÃ³gico).
      *
      * @param array<int, array{type: string, actual: mixed, expected: mixed}> $conditions
      */

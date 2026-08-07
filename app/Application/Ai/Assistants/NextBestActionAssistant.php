@@ -1,4 +1,12 @@
-<?php\n\ndeclare(strict_types=1);
+<?php
+
+declare(strict_types=1);
+
+namespace App\Application\Ai\Assistants;
+
+use App\Application\Ai\Contracts\AssistantResult;
+
+class NextBestActionAssistant extends BaseAssistant
 {
     public function key(): string { return 'next_best_action'; }
     public function name(): string { return 'Next Best Action'; }
@@ -18,4 +26,3 @@
         ]);
     }
 }
-

@@ -54,6 +54,3 @@ abstract class BaseAssistant implements AssistantInterface
         );
     }
 }
-
-
-

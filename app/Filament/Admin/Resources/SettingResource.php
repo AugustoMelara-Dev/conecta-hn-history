@@ -71,4 +71,3 @@ class SettingResource extends Resource
         return ['index' => Pages\ListSettings::route('/')];
     }
 }
-

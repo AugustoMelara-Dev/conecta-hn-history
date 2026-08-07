@@ -8,7 +8,7 @@ use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 
 /**
- * GenericReportExport - Export genérico a Excel/CSV.
+ * GenericReportExport - Export genÃ©rico a Excel/CSV.
  *
  * Adapter que convierte ReportData a FromArray.
  */

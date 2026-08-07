@@ -23,4 +23,3 @@ class AovKpiCardWidget extends \Filament\Widgets\StatsOverviewWidget
         return [Stat::make('AOV', 'L ' . number_format((float) $aov, 2))->color('info')];
     }
 }
-

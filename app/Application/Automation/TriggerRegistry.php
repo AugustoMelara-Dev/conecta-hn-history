@@ -13,7 +13,7 @@ use App\Domain\Automation\Enums\TriggerType;
  *   - event_name: string
  *   - entity_type: string (contact, deal, order, etc.)
  *   - entity_id: string
- *   - data: array (datos específicos del evento)
+ *   - data: array (datos especÃ­ficos del evento)
  *   - timestamp: ISO 8601
  */
 class TriggerRegistry

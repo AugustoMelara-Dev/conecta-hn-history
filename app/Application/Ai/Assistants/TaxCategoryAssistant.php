@@ -1,10 +1,18 @@
-<?php\n\ndeclare(strict_types=1);\n\nnamespace App.Application.Ai.Assistants;\n\nclass TaxCategoryAssistant extends BaseAssistant
+<?php
+
+declare(strict_types=1);
+
+namespace App\Application\Ai\Assistants;
+
+use App\Application\Ai\Contracts\AssistantResult;
+
+class TaxCategoryAssistant extends BaseAssistant
 {
     public function key(): string { return 'tax_category'; }
     public function name(): string { return 'Tax Category Classifier'; }
-    public function description(): string { return 'Clasifica producto en categoría fiscal.'; }
+    public function description(): string { return 'Clasifica producto en categorÃ­a fiscal.'; }
     public function estimateCost(): float { return 0.02; }
-    public function category(): string { return 'Catálogo'; }
+    public function category(): string { return 'CatÃ¡logo'; }
 
     public function execute(array $input): AssistantResult
     {
@@ -17,5 +25,4 @@
             'confidence' => 0.88,
         ]);
     }
-}\n
-
+}

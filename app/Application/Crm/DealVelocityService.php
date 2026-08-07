@@ -8,17 +8,17 @@ use App\Models\CrmDeal;
 use Illuminate\Support\Facades\DB;
 
 /**
- * DealVelocityService - Mide velocidad del deal en dÌas promedio por stage.
+ * DealVelocityService - Mide velocidad del deal en d√≠as promedio por stage.
  *
  * Calcula:
- * - Promedio de dÌas en cada stage antes de moverse
+ * - Promedio de d√≠as en cada stage antes de moverse
  * - Tiempo promedio total de lead a won
- * - Identifica cuellos de botella (stages donde los deals se quedan m·s tiempo)
+ * - Identifica cuellos de botella (stages donde los deals se quedan m√°s tiempo)
  */
 class DealVelocityService
 {
     /**
-     * @return array<string, float> promedio de dÌas por stage_id
+     * @return array<string, float> promedio de d√≠as por stage_id
      */
     public function averageDaysPerStage(string $tenantId, ?string $pipelineId = null): array
     {

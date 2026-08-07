@@ -10,7 +10,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * RunImportSync - Ejecuta una importación de manera síncrona.
+ * RunImportSync - Ejecuta una importaciÃ³n de manera sÃ­ncrona.
  */
 class RunImportSync extends Command
 {

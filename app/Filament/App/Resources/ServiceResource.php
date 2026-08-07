@@ -209,4 +209,3 @@ class ServiceResource extends Resource
         ];
     }
 }
-

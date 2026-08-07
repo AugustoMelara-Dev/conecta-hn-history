@@ -84,4 +84,3 @@ class LeadResource extends Resource
         ];
     }
 }
-

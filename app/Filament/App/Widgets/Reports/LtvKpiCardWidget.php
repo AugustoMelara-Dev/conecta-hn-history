@@ -27,4 +27,3 @@ class LtvKpiCardWidget extends \Filament\Widgets\StatsOverviewWidget
         ];
     }
 }
-

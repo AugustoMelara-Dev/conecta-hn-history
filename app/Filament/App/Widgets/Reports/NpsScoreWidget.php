@@ -14,4 +14,3 @@ class NpsScoreWidget extends ChartWidget
     protected function getData(): array { return ['datasets' => [['data' => [72]]], 'labels' => ['NPS']]; }
     protected function getType(): string { return 'gauge'; }
 }
-

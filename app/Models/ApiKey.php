@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * ApiKey - API key para acceso program·tico al sistema.
+ * ApiKey - API key para acceso program√°tico al sistema.
  */
 class ApiKey extends Model
 {

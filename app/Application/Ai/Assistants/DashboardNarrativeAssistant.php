@@ -1,4 +1,12 @@
-<?php\n\ndeclare(strict_types=1);\n\nnamespace App.Application.Ai.Assistants;\n\nclass DashboardNarrativeAssistant extends BaseAssistant
+<?php
+
+declare(strict_types=1);
+
+namespace App\Application\Ai\Assistants;
+
+use App\Application\Ai\Contracts\AssistantResult;
+
+class DashboardNarrativeAssistant extends BaseAssistant
 {
     public function key(): string { return 'dashboard_narrative'; }
     public function name(): string { return 'Dashboard Narrative'; }
@@ -15,4 +23,3 @@
         ]);
     }
 }
-

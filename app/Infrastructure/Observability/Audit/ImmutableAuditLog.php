@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace App\Infrastructure\Observability\Audit;
 
 /**
- * ImmutableAuditLog - Audit log inmutable de mutaciones críticas.
+ * ImmutableAuditLog - Audit log inmutable de mutaciones crÃ­ticas.
  *
  * Append-only log; no permite update ni delete desde PHP.
  */
 class ImmutableAuditLog
 {
     /**
-     * Registra una mutación crítica.
+     * Registra una mutaciÃ³n crÃ­tica.
      *
      * @param  array<string, mixed>  $context
      */

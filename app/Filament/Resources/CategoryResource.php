@@ -244,4 +244,3 @@ class CategoryResource extends Resource
         ];
     }
 }
-

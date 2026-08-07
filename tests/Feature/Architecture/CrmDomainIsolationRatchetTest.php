@@ -5,9 +5,9 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\File;
 
 /**
- * PR2 Architecture Ratchet — CRM Domain isolation.
+ * PR2 Architecture Ratchet â€” CRM Domain isolation.
  *
- * Garantiza que el código en app/Domain/Crm/ no importa Filament ni App\Models.
+ * Garantiza que el cÃ³digo en app/Domain/Crm/ no importa Filament ni App\Models.
  * (Domain layer debe ser puro PHP, sin dependencias de UI.)
  */
 

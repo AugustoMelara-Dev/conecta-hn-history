@@ -37,7 +37,7 @@ class ContactsExport implements FromQuery, WithHeadings, WithMapping, WithStyles
 
     public function headings(): array
     {
-        return ['ID', 'Nombre', 'Email', 'Teléfono', 'Etapa', 'Fuente', 'Último contacto', 'Created'];
+        return ['ID', 'Nombre', 'Email', 'TelÃ©fono', 'Etapa', 'Fuente', 'Ãšltimo contacto', 'Created'];
     }
 
     public function map($contact): array

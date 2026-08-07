@@ -40,5 +40,3 @@ final readonly class AssistantResult
         ];
     }
 }
-
-

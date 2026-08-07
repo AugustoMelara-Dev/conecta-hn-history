@@ -31,7 +31,7 @@ class RevenueByMonthReport implements ReportInterface
 
     public function getDescription(): string
     {
-        return 'Evolución mensual de ingresos por órdenes pagadas.';
+        return 'EvoluciÃ³n mensual de ingresos por Ã³rdenes pagadas.';
     }
 
     public function getChartType(): string
@@ -41,7 +41,7 @@ class RevenueByMonthReport implements ReportInterface
 
     public function getColumns(): array
     {
-        return ['Mes', 'Ingresos (HNL)', 'Órdenes', 'Cambio %'];
+        return ['Mes', 'Ingresos (HNL)', 'Ã“rdenes', 'Cambio %'];
     }
 
     public function getFilters(): array

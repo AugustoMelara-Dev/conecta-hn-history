@@ -271,4 +271,3 @@ class CrmPipelineResource extends Resource
             ->withCount(['stages', 'deals']);
     }
 }
-

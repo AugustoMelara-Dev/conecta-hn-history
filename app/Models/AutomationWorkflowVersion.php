@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * AutomationWorkflowVersion - Versión de un workflow (draft/published).
+ * AutomationWorkflowVersion - VersiÃ³n de un workflow (draft/published).
  */
 class AutomationWorkflowVersion extends Model
 {

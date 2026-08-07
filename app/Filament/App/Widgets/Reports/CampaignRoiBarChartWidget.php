@@ -18,4 +18,3 @@ class CampaignRoiBarChartWidget extends ChartWidget
 
     protected function getType(): string { return 'bar'; }
 }
-

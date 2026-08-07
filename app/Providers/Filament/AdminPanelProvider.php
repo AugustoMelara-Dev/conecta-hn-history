@@ -92,10 +92,10 @@ class AdminPanelProvider extends PanelProvider
                 NavigationGroup::make('AI')
                     ->icon('heroicon-o-sparkles')
                     ->collapsible(),
-                NavigationGroup::make('Auditoría')
+                NavigationGroup::make('AuditorÃ­a')
                     ->icon('heroicon-o-shield-check')
                     ->collapsible(),
-                NavigationGroup::make('Configuración')
+                NavigationGroup::make('ConfiguraciÃ³n')
                     ->icon('heroicon-o-cog-6-tooth')
                     ->collapsible(),
             ])
@@ -149,6 +149,6 @@ class AdminPanelProvider extends PanelProvider
 
     public function boot(): void
     {
-        // Hook para extensiones específicas del admin panel
+        // Hook para extensiones especÃ­ficas del admin panel
     }
 }

@@ -1,4 +1,10 @@
-<?php\n\ndeclare(strict_types=1);\n\nnamespace App\Application\Reporting\Reports;\n\nclass ProductMarginReport implements ReportInterface
+<?php
+
+declare(strict_types=1);
+
+namespace App\Application\Reporting\Reports;
+
+class ProductMarginReport implements ReportInterface
 {
     public function getKey(): ReportKey { return ReportKey::ProductMargin; }
     public function getName(): string { return 'Margen por producto'; }
@@ -10,4 +16,4 @@
     {
         return new ReportData(rows: [], series: [], summary: [], metadata: ['range' => $range->toArray()]);
     }
-}\n
+}

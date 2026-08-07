@@ -572,7 +572,3 @@ class CrmDealResource extends Resource
         return $bits === [] ? 'Seguimiento comercial manual' : implode(' - ', $bits);
     }
 }
-
-
-
-

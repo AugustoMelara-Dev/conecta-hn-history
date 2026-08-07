@@ -26,7 +26,4 @@ class LeadScoringAssistant extends BaseAssistant
             'factors' => ['engagement' => 80, 'completeness' => 60, 'recency' => 70],
         ]);
     }
-}
-
-
-
+}

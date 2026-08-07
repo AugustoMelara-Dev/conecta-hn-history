@@ -236,4 +236,3 @@ class ActivityLogResource extends Resource
         ];
     }
 }
-

@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * AutomationWorkflowRun - Ejecución de un workflow.
+ * AutomationWorkflowRun - EjecuciÃ³n de un workflow.
  */
 class AutomationWorkflowRun extends Model
 {

@@ -32,4 +32,3 @@ class ConversionFunnelChartWidget extends ChartWidget
 
     protected function getType(): string { return 'bar'; }
 }
-

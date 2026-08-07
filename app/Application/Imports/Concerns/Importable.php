@@ -7,7 +7,7 @@ namespace App\Application\Imports\Concerns;
 /**
  * Importable - Interface que cada Import class implementa.
  *
- * Define las reglas de validación y la lógica de mapeo de columnas.
+ * Define las reglas de validaciÃ³n y la lÃ³gica de mapeo de columnas.
  */
 interface Importable
 {
@@ -22,7 +22,7 @@ interface Importable
     public function modelClass(): string;
 
     /**
-     * Reglas de validación por columna (key => rule).
+     * Reglas de validaciÃ³n por columna (key => rule).
      *
      * @return array<string, string|array>
      */

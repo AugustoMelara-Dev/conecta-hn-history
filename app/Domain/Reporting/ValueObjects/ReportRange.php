@@ -10,7 +10,7 @@ use Carbon\CarbonImmutable;
  * ReportRange - Rango de fechas para queries de reportes.
  *
  * Soporta presets (today/yesterday/7d/30d/qtd/ytd) o custom.
- * Cada rango tiene comparison_start/comparison_end para an·lisis vs perÌodo previo.
+ * Cada rango tiene comparison_start/comparison_end para an√°lisis vs per√≠odo previo.
  */
 final readonly class ReportRange
 {

@@ -24,7 +24,4 @@ class RefundJustificationAssistant extends BaseAssistant
             'risk_score' => 'low',
         ]);
     }
-}
-
-
-
+}

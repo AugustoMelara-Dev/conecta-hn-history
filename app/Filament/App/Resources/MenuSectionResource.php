@@ -200,4 +200,3 @@ class MenuSectionResource extends Resource
         ];
     }
 }
-

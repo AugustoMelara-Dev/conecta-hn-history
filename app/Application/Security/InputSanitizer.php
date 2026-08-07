@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Security;
 
 /**
- * InputSanitizer - SanitizaciÛn de inputs de usuario.
+ * InputSanitizer - Sanitizaci√≥n de inputs de usuario.
  *
  * - stripHtml(): strip dangerous HTML tags
  * - validateUrl(): check URL no apunta a scripts
@@ -14,7 +14,7 @@ namespace App\Application\Security;
 class InputSanitizer
 {
     /**
-     * Strip dangerous HTML tags, conservando format b·sico.
+     * Strip dangerous HTML tags, conservando format b√°sico.
      */
     public function stripHtml(string $html): string
     {

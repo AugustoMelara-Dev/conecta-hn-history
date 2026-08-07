@@ -7,7 +7,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * ImportJob - Job de importación ejecutado por el ImportService.
+ * ImportJob - Job de importaciÃ³n ejecutado por el ImportService.
  */
 class ImportJob extends Model
 {

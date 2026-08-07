@@ -16,13 +16,13 @@ trait HasImportTemplate
         $row = [];
         foreach ($this->templateHeaders() as $header) {
             $row[$header] = match (strtolower($header)) {
-                'name', 'first_name', 'last_name' => 'Juan Pérez',
+                'name', 'first_name', 'last_name' => 'Juan PÃ©rez',
                 'email' => 'juan@example.com',
                 'phone' => '+504 9999 9999',
                 'price', 'value' => 100.00,
                 'quantity', 'stock' => 10,
                 'is_active', 'active' => true,
-                'description', 'notes', 'body' => 'Descripción de ejemplo',
+                'description', 'notes', 'body' => 'DescripciÃ³n de ejemplo',
                 'currency' => 'HNL',
                 'country' => 'HN',
                 default => 'valor',

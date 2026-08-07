@@ -7,7 +7,7 @@ namespace App\Domain\Reporting\Enums;
 /**
  * ReportKey - 25 reports disponibles.
  *
- * Categor韆s:
+ * Categor铆as:
  * - Revenue: RevenueByMonth, MrrArr, AvgOrderValue, ProductMargin, DiscountEffectiveness, RefundRate
  * - Customers: CustomerLtv, ChurnRate, CohortRetention, CustomerSegments
  * - Marketing: CampaignRoi, AttributionBySource, ChannelPerformance, NpsScore
@@ -62,21 +62,21 @@ enum ReportKey: string
             self::RefundRate => 'Tasa de reembolso',
             self::CustomerLtv => 'LTV del cliente',
             self::ChurnRate => 'Tasa de churn',
-            self::CohortRetention => 'Retenci髇 por cohorte',
+            self::CohortRetention => 'Retenci贸n por cohorte',
             self::CustomerSegments => 'Segmentos de clientes',
-            self::CampaignRoi => 'ROI de campa馻s',
-            self::AttributionBySource => 'Atribuci髇 por fuente',
+            self::CampaignRoi => 'ROI de campa帽as',
+            self::AttributionBySource => 'Atribuci贸n por fuente',
             self::ChannelPerformance => 'Performance por canal',
             self::NpsScore => 'NPS score',
             self::TopProducts => 'Top productos',
             self::SlowMovers => 'Productos lentos',
-            self::InventoryTurnover => 'Rotaci髇 de inventario',
+            self::InventoryTurnover => 'Rotaci贸n de inventario',
             self::FulfillmentSla => 'SLA de fulfillment',
-            self::GeographicDistribution => 'Distribuci髇 geogr醘ica',
+            self::GeographicDistribution => 'Distribuci贸n geogr谩fica',
             self::EmployeePerformance => 'Performance del equipo',
-            self::ConversionFunnel => 'Embudo de conversi髇',
+            self::ConversionFunnel => 'Embudo de conversi贸n',
             self::DealVelocity => 'Velocidad de deals',
-            self::LeadScore => 'Distribuci髇 de lead score',
+            self::LeadScore => 'Distribuci贸n de lead score',
             self::WinRate => 'Win rate',
             self::ActivityVolume => 'Volumen de actividades',
         };

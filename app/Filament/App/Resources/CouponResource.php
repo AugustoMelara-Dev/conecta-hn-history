@@ -302,4 +302,3 @@ class CouponResource extends Resource
         ];
     }
 }
-

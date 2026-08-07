@@ -1,4 +1,12 @@
-<?php\n\ndeclare(strict_types=1);\n\nnamespace App.Application.Ai.Assistants;\n\nclass ReportInsightAssistant extends BaseAssistant
+<?php
+
+declare(strict_types=1);
+
+namespace App\Application\Ai\Assistants;
+
+use App\Application\Ai\Contracts\AssistantResult;
+
+class ReportInsightAssistant extends BaseAssistant
 {
     public function key(): string { return 'report_insight'; }
     public function name(): string { return 'Report Insights'; }
@@ -13,12 +21,11 @@
         }
         return $this->mockOutput($input, [
             'insights' => [
-                'Tendencia al alza en los ˙ltimos 3 meses',
-                'CategorÌa X con mejor performance',
-                'Oportunidad de optimizaciÛn en canal Y',
+                'Tendencia al alza en los √∫ltimos 3 meses',
+                'Categor√≠a X con mejor performance',
+                'Oportunidad de optimizaci√≥n en canal Y',
             ],
-            'recommendations' => ['Invertir m·s en canal Z', 'Revisar pricing de categorÌa X'],
+            'recommendations' => ['Invertir m√°s en canal Z', 'Revisar pricing de categor√≠a X'],
         ]);
     }
-}\n
-
+}

@@ -14,4 +14,3 @@ class RefundRateGaugeWidget extends ChartWidget
     protected function getData(): array { return ['datasets' => [['data' => [2.3]]], 'labels' => ['Refund']]; }
     protected function getType(): string { return 'gauge'; }
 }
-

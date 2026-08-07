@@ -362,5 +362,3 @@ class EditTenantProfile extends BaseEditTenantProfile
         return $user?->canAccessTenant($tenant) ?? false;
     }
 }
-
-

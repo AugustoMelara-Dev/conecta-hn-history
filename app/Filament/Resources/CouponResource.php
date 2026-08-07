@@ -317,4 +317,3 @@ class CouponResource extends Resource
         return 'success';
     }
 }
-

@@ -31,4 +31,3 @@ class ActivityVolumeChartWidget extends ChartWidget
 
     protected function getType(): string { return 'line'; }
 }
-

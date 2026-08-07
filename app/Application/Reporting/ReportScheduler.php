@@ -23,7 +23,7 @@ class ReportScheduler
     ) {}
 
     /**
-     * Procesa todos los schedules que est·n listos para ejecutarse.
+     * Procesa todos los schedules que est√°n listos para ejecutarse.
      *
      * @return array{processed: int, sent: int, errors: int}
      */

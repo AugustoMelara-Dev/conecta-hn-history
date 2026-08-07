@@ -13,13 +13,13 @@ use App\Domain\Reporting\ValueObjects\ReportSeries;
 use Illuminate\Support\Facades\DB;
 
 /**
- * TopProductsReport - Top N productos más vendidos.
+ * TopProductsReport - Top N productos mÃ¡s vendidos.
  */
 class TopProductsReport implements ReportInterface
 {
     public function getKey(): ReportKey { return ReportKey::TopProducts; }
     public function getName(): string { return 'Top productos'; }
-    public function getDescription(): string { return 'Productos más vendidos por ingresos.'; }
+    public function getDescription(): string { return 'Productos mÃ¡s vendidos por ingresos.'; }
     public function getChartType(): string { return 'table'; }
     public function getColumns(): array { return ['Producto', 'Unidades vendidas', 'Ingresos (HNL)']; }
     public function getFilters(): array { return ['limit' => 'int', 'sort_by' => 'string']; }

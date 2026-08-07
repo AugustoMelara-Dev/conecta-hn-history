@@ -385,4 +385,3 @@ class PaymentResource extends Resource
                 ELSE 4 END");
     }
 }
-

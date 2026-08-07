@@ -9,7 +9,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
 /**
- * SaveWorkflowTemplate - Guarda un template en el cat·logo.
+ * SaveWorkflowTemplate - Guarda un template en el cat√°logo.
  */
 class SaveWorkflowTemplate extends Command
 {

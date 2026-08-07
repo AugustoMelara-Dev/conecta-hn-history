@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * AutomationWorkflowDefinition - Definición de un workflow de automation.
+ * AutomationWorkflowDefinition - DefiniciÃ³n de un workflow de automation.
  */
 class AutomationWorkflowDefinition extends Model
 {

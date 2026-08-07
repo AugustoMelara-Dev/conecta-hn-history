@@ -29,7 +29,7 @@ class CustomersExport implements FromQuery, WithHeadings, WithMapping, WithStyle
 
     public function headings(): array
     {
-        return ['ID', 'Nombre', 'Email', 'Teléfono', 'Ciudad', 'País'];
+        return ['ID', 'Nombre', 'Email', 'TelÃ©fono', 'Ciudad', 'PaÃ­s'];
     }
 
     public function map($customer): array

@@ -14,4 +14,3 @@ class ProductMarginChartWidget extends ChartWidget
     protected function getData(): array { return ['datasets' => [], 'labels' => []]; }
     protected function getType(): string { return 'bar'; }
 }
-

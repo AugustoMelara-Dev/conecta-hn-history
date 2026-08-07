@@ -42,4 +42,3 @@ class RevenueChartWidget extends ChartWidget
 
     protected function getType(): string { return 'line'; }
 }
-

@@ -28,7 +28,7 @@ enum ConditionType: string
             self::Contains => 'Contiene',
             self::GreaterThan => 'Mayor que',
             self::LessThan => 'Menor que',
-            self::Changed => 'Cambió',
+            self::Changed => 'CambiÃ³',
             self::IsTrue => 'Es verdadero',
             self::IsFalse => 'Es falso',
             self::DateAfter => 'Fecha posterior a',

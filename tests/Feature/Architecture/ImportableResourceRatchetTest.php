@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\File;
 
 /**
- * PR4 Architecture Ratchet — Importable Resource coverage.
+ * PR4 Architecture Ratchet â€” Importable Resource coverage.
  *
  * Cada Import class debe estar en el registry de ImportService.
  */

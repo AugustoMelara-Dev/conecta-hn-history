@@ -23,7 +23,7 @@ class TemplateCatalog
             [
                 'name' => 'Welcome new contact',
                 'slug' => 'welcome-new-contact',
-                'description' => 'Envía un email de bienvenida cuando se crea un nuevo contacto.',
+                'description' => 'EnvÃ­a un email de bienvenida cuando se crea un nuevo contacto.',
                 'category' => 'engagement',
                 'graph' => [
                     'nodes' => [
@@ -66,7 +66,7 @@ class TemplateCatalog
             [
                 'name' => 'Subscription renewal reminder',
                 'slug' => 'subscription-renewal-reminder',
-                'description' => 'Recordatorio automático 7 días antes de la renovación.',
+                'description' => 'Recordatorio automÃ¡tico 7 dÃ­as antes de la renovaciÃ³n.',
                 'category' => 'billing',
                 'graph' => [
                     'nodes' => [
@@ -96,7 +96,7 @@ class TemplateCatalog
             [
                 'name' => 'Manual approval flow',
                 'slug' => 'manual-approval',
-                'description' => 'Workflow que requiere aprobación manual antes de ejecutar.',
+                'description' => 'Workflow que requiere aprobaciÃ³n manual antes de ejecutar.',
                 'category' => 'governance',
                 'graph' => [
                     'nodes' => [
@@ -113,7 +113,7 @@ class TemplateCatalog
             [
                 'name' => 'Branching by deal value',
                 'slug' => 'branch-by-deal-value',
-                'description' => 'Rama el workflow según el valor del deal.',
+                'description' => 'Rama el workflow segÃºn el valor del deal.',
                 'category' => 'sales',
                 'graph' => [
                     'nodes' => [
@@ -150,7 +150,7 @@ class TemplateCatalog
             [
                 'name' => 'Loop over contacts',
                 'slug' => 'loop-over-contacts',
-                'description' => 'Envía emails programados a una lista de contactos.',
+                'description' => 'EnvÃ­a emails programados a una lista de contactos.',
                 'category' => 'engagement',
                 'graph' => [
                     'nodes' => [
@@ -201,7 +201,7 @@ class TemplateCatalog
             [
                 'name' => 'NPS score collection',
                 'slug' => 'nps-collection',
-                'description' => 'Envía encuesta NPS a clientes activos cada 90 días.',
+                'description' => 'EnvÃ­a encuesta NPS a clientes activos cada 90 dÃ­as.',
                 'category' => 'feedback',
                 'graph' => [
                     'nodes' => [

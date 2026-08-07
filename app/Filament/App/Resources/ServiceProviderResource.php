@@ -196,4 +196,3 @@ class ServiceProviderResource extends Resource
         ];
     }
 }
-

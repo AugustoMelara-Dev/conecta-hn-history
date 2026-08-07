@@ -681,5 +681,3 @@ class ManageBilling extends Page implements HasForms, HasTable
         return $tenant instanceof Tenant ? $tenant : null;
     }
 }
-
-

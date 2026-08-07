@@ -10,7 +10,7 @@ namespace App\Application\Ai\Contracts;
 interface AssistantInterface
 {
     /**
-     * Key única del assistant (e.g. 'deal_email_draft').
+     * Key Ãºnica del assistant (e.g. 'deal_email_draft').
      */
     public function key(): string;
 
@@ -20,7 +20,7 @@ interface AssistantInterface
     public function name(): string;
 
     /**
-     * Descripción corta.
+     * DescripciÃ³n corta.
      */
     public function description(): string;
 
@@ -33,7 +33,7 @@ interface AssistantInterface
     public function execute(array $input): AssistantResult;
 
     /**
-     * Costo estimado en USD por ejecución.
+     * Costo estimado en USD por ejecuciÃ³n.
      */
     public function estimateCost(): float;
 
@@ -45,9 +45,7 @@ interface AssistantInterface
     public function guardrails(): array;
 
     /**
-     * Categoría del assistant para agrupación en UI.
+     * CategorÃ­a del assistant para agrupaciÃ³n en UI.
      */
     public function category(): string;
 }
-
-

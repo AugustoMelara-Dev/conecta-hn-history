@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\File;
 
 /**
- * PR3 Architecture Ratchet — Automation Action isolation.
+ * PR3 Architecture Ratchet â€” Automation Action isolation.
  *
  * Las acciones de workflow solo pueden mutar estado dentro de un WorkflowRun.
  * Garbage: ninguna Action debe mutar entidades fuera de su contexto controlado.

@@ -39,4 +39,3 @@ class BillingResource extends Resource
         return ['index' => Pages\ListBilling::route('/')];
     }
 }
-

@@ -1,8 +1,14 @@
-<?php\n\ndeclare(strict_types=1);\n\nnamespace App\Application\Reporting\Reports;\n\nclass LeadScoreReport implements ReportInterface
+<?php
+
+declare(strict_types=1);
+
+namespace App\Application\Reporting\Reports;
+
+class LeadScoreReport implements ReportInterface
 {
     public function getKey(): ReportKey { return ReportKey::LeadScore; }
-    public function getName(): string { return 'Distribución de lead score'; }
-    public function getDescription(): string { return 'Distribución de contactos por score.'; }
+    public function getName(): string { return 'DistribuciÃ³n de lead score'; }
+    public function getDescription(): string { return 'DistribuciÃ³n de contactos por score.'; }
     public function getChartType(): string { return 'pie'; }
     public function getColumns(): array { return ['Tier', 'Contactos', '%']; }
     public function getFilters(): array { return []; }
@@ -29,4 +35,4 @@
         }
         return new ReportData(rows: $rows, series: [], summary: [], metadata: ['range' => $range->toArray()]);
     }
-}\n
+}

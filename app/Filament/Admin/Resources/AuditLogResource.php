@@ -39,4 +39,3 @@ class AuditLogResource extends Resource
         return ['index' => Pages\ListAuditLogs::route('/')];
     }
 }
-

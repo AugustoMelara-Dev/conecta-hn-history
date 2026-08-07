@@ -23,9 +23,9 @@ enum TriggerType: string
             self::RecordCreated => 'Registro creado',
             self::RecordUpdated => 'Registro actualizado',
             self::RecordDeleted => 'Registro eliminado',
-            self::ScheduleReached => 'Programación alcanzada',
+            self::ScheduleReached => 'ProgramaciÃ³n alcanzada',
             self::WebhookReceived => 'Webhook recibido',
-            self::ManualRun => 'Ejecución manual',
+            self::ManualRun => 'EjecuciÃ³n manual',
             self::AiMessageReceived => 'Mensaje AI recibido',
         };
     }

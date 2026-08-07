@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Plan - Plan de subscripción (Free, Pro, Enterprise).
+ * Plan - Plan de subscripciÃ³n (Free, Pro, Enterprise).
  */
 class Plan extends Model
 {

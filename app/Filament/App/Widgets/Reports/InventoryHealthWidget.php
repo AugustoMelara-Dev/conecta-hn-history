@@ -21,4 +21,3 @@ class InventoryHealthWidget extends \Filament\Widgets\StatsOverviewWidget
         return [Stat::make('Bajo stock', $lowStock)->color('warning')];
     }
 }
-

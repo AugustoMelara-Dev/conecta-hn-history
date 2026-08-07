@@ -1,4 +1,12 @@
-<?php\n\ndeclare(strict_types=1);\n\nnamespace App.Application.Ai.Assistants;\n\nclass SentimentAssistant extends BaseAssistant
+<?php
+
+declare(strict_types=1);
+
+namespace App\Application\Ai\Assistants;
+
+use App\Application\Ai\Contracts\AssistantResult;
+
+class SentimentAssistant extends BaseAssistant
 {
     public function key(): string { return 'sentiment'; }
     public function name(): string { return 'Sentiment Analysis'; }
@@ -18,5 +26,4 @@
             'emotions' => ['joy' => 0.7, 'satisfaction' => 0.6],
         ]);
     }
-}\n
-
+}

@@ -30,8 +30,8 @@ enum ActionType: string
             self::UpdateRecord => 'Actualizar registro',
             self::CallWebhook => 'Llamar webhook',
             self::RunAiCommand => 'Ejecutar comando AI',
-            self::WaitForApproval => 'Esperar aprobación',
-            self::Branch => 'Bifurcación',
+            self::WaitForApproval => 'Esperar aprobaciÃ³n',
+            self::Branch => 'BifurcaciÃ³n',
             self::Loop => 'Loop',
         };
     }

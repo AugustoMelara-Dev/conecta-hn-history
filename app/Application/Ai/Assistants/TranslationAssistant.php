@@ -1,4 +1,12 @@
-<?php\n\ndeclare(strict_types=1);\n\nnamespace App.Application.Ai.Assistants;\n\nclass TranslationAssistant extends BaseAssistant
+<?php
+
+declare(strict_types=1);
+
+namespace App\Application\Ai\Assistants;
+
+use App\Application\Ai\Contracts\AssistantResult;
+
+class TranslationAssistant extends BaseAssistant
 {
     public function key(): string { return 'translation'; }
     public function name(): string { return 'Translation'; }
@@ -12,10 +20,9 @@
             return AssistantResult::failure('Missing text or target_lang');
         }
         return $this->mockOutput($input, [
-            'translation' => '[Traducción al ' . $input['target_lang'] . ']',
+            'translation' => '[TraducciÃ³n al ' . $input['target_lang'] . ']',
             'source_lang' => 'es',
             'target_lang' => $input['target_lang'],
         ]);
     }
-}\n
-
+}

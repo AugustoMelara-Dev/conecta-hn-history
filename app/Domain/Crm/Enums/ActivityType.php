@@ -19,7 +19,7 @@ enum ActivityType: string
         return match ($this) {
             self::Call => 'Llamada',
             self::Email => 'Email',
-            self::Meeting => 'Reunión',
+            self::Meeting => 'ReuniÃ³n',
             self::Task => 'Tarea',
             self::Note => 'Nota',
             self::Sms => 'SMS',

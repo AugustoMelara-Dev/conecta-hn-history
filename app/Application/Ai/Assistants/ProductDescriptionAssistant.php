@@ -25,7 +25,4 @@ class ProductDescriptionAssistant extends BaseAssistant
             'seo_keywords' => ['producto', 'premium', 'calidad'],
         ]);
     }
-}
-
-
-
+}

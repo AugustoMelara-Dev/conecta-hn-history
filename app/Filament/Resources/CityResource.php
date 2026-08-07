@@ -297,4 +297,3 @@ class CityResource extends Resource
         ];
     }
 }
-

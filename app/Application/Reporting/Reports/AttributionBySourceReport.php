@@ -1,7 +1,13 @@
-<?php\n\ndeclare(strict_types=1);\n\nnamespace App\Application\Reporting\Reports;\n\nclass AttributionBySourceReport implements ReportInterface
+<?php
+
+declare(strict_types=1);
+
+namespace App\Application\Reporting\Reports;
+
+class AttributionBySourceReport implements ReportInterface
 {
     public function getKey(): ReportKey { return ReportKey::AttributionBySource; }
-    public function getName(): string { return 'Atribución por fuente'; }
+    public function getName(): string { return 'AtribuciÃ³n por fuente'; }
     public function getDescription(): string { return 'Ingresos por source attribution.'; }
     public function getChartType(): string { return 'pie'; }
     public function getColumns(): array { return ['Fuente', 'Ingresos (HNL)', '%']; }
@@ -21,4 +27,4 @@
         }
         return new ReportData(rows: $rows, series: [], summary: [], metadata: ['range' => $range->toArray()]);
     }
-}\n
+}

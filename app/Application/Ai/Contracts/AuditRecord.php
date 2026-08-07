@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Ai\Contracts;
 
 /**
- * AuditRecord - Inmutable log de una ejecución de assistant.
+ * AuditRecord - Inmutable log de una ejecuciÃ³n de assistant.
  */
 final readonly class AuditRecord
 {
@@ -30,5 +30,3 @@ final readonly class AuditRecord
         ];
     }
 }
-
-

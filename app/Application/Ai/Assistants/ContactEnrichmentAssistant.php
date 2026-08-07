@@ -25,7 +25,4 @@ class ContactEnrichmentAssistant extends BaseAssistant
             'confidence' => 0.82,
         ]);
     }
-}
-
-
-
+}
