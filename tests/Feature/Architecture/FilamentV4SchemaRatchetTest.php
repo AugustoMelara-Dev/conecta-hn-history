@@ -13,8 +13,8 @@ declare(strict_types=1);
  */
 
 $resourceDirs = [
-    __DIR__.'/../../../app/Filament/App/Resources',
-    __DIR__.'/../../../app/Filament/Resources',
+    __DIR__.'/../../../../app/Filament/App/Resources',
+    __DIR__.'/../../../../app/Filament/Resources',
 ];
 
 $resourceFiles = [];
@@ -51,6 +51,7 @@ it('no Resource imports the deprecated Filament\\Forms\\Form class', function ()
 });
 
 it('every Resource uses Schema in form() signature', function () use ($resourceFiles) {
+    expect($resourceFiles)->not->toBeEmpty();
     foreach ($resourceFiles as $file) {
         $contents = file_get_contents($file);
         // Each Resource must declare Schema in form() signature
@@ -67,6 +68,7 @@ it('every Resource uses Schema in form() signature', function () use ($resourceF
 });
 
 it('every Resource declares nullable $model', function () use ($resourceFiles) {
+    expect($resourceFiles)->not->toBeEmpty();
     foreach ($resourceFiles as $file) {
         $contents = file_get_contents($file);
         if (str_contains($contents, 'protected static ?string $model')) {
