@@ -138,7 +138,7 @@ return new class extends Migration
             $table->string('max_risk');
             $table->boolean('confirmation_required')->default(false);
             $table->timestamps();
-            $table->unique(['tenant_id', 'tool', 'tool_version']);
+            $table->unique(['tenant_id', 'tool', 'tool_version'], 'automation_tool_policy_unique');
         });
 
         Schema::create('automation_confirmation_attempts', function (Blueprint $table): void {
