@@ -26,10 +26,10 @@ return new class extends Migration
                 $table->dropUnique('dovra_privacy_requests_idempotency_key_unique');
             }
 
-            if (! $this->indexExists('dovra_privacy_requests', 'dovra_privacy_requests_tenant_actor_subject_action_idempotency_unique')) {
+            if (! $this->indexExists('dovra_privacy_requests', 'dovra_privacy_tenant_idempotency_unique')) {
                 $table->unique(
                     ['tenant_id', 'actor_id', 'subject_type', 'subject_id', 'request_type', 'idempotency_key'],
-                    'dovra_privacy_requests_tenant_actor_subject_action_idempotency_unique',
+                    'dovra_privacy_tenant_idempotency_unique',
                 );
             }
         });
