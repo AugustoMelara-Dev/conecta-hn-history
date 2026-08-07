@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\V1\DirectoryGuideChatController;
 use App\Http\Controllers\Api\V1\InteractionController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\OrderController;
+use App\Http\Controllers\Auth\OtpController;
 use App\Http\Controllers\Api\V1\PlatformAiEvaluationController;
 use App\Http\Controllers\Api\V1\PlatformAiRegistryController;
 use App\Http\Controllers\Api\V1\ProductController;
