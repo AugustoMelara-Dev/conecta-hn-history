@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Application\Imports;
+namespace App\Application\Imports\Exports;
 
 use App\Models\Contact;
 use Maatwebsite\Excel\Concerns\FromQuery;

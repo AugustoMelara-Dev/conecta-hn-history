@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Application\Reporting\Reports;
 
+use App\Domain\Reporting\Enums\ReportKey;
+use App\Domain\Reporting\ValueObjects\ReportData;
+use App\Domain\Reporting\ValueObjects\ReportRange;
 class ProductMarginReport implements ReportInterface
 {
     public function getKey(): ReportKey { return ReportKey::ProductMargin; }

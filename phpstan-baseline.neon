@@ -7,6 +7,210 @@ parameters:
 			path: app/Actions/Authentication/UpdateUserProfileInformation.php
 
 		-
+			message: '#^Method App\\Application\\Ai\\Assistants\\BaseAssistant\:\:guardrails\(\) should return array\<int, string\> but returns array\<string, string\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Application/Ai/Assistants/BaseAssistant.php
+
+		-
+			message: '#^Method App\\Application\\Ai\\Conversation\\AiFoundationBackfill\:\:executions\(\) should return array\{Illuminate\\Support\\Collection\<int, object\>, array\{created_at\: string, id\: string, empty\?\: bool\}\} but returns array\{Illuminate\\Support\\Collection\<int, stdClass\>, mixed\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Application/Ai/Conversation/AiFoundationBackfill.php
+
+		-
+			message: '#^Call to function is_float\(\) with float will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Application/Ai/Evaluation/EvaluationMetrics.php
+
+		-
+			message: '#^Parameter \#1 \$array \(list\<array\<string, mixed\>\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: app/Application/Ai/Grounding/GroundingEvidenceProjector.php
+
+		-
+			message: '#^Call to function array_is_list\(\) with list\<string\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Application/Ai/Grounding/GroundingPolicy.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Application/Ai/Grounding/GroundingPolicy.php
+
+		-
+			message: '#^Instanceof between App\\Application\\Ai\\Grounding\\EvidenceSnapshot and App\\Application\\Ai\\Grounding\\EvidenceSnapshot will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: app/Application/Ai/Grounding/GroundingValidator.php
+
+		-
+			message: '#^Parameter \$evidence of class App\\Application\\Ai\\Conversation\\ConversationEngineResult constructor expects list\<array\<string, mixed\>\>, list\<App\\Application\\Ai\\Grounding\\EvidenceSnapshot\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Application/Ai/PrivateGroundedAgent.php
+
+		-
+			message: '#^Parameter \$evidence of class App\\Application\\Ai\\Conversation\\ConversationEngineResult constructor expects list\<array\<string, mixed\>\>, list\<App\\Application\\Ai\\Grounding\\EvidenceSnapshot\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Application/Ai/PublicGroundedDiscovery.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 5
+			path: app/Application/Ai/Registry/AiRegistryBackfill.php
+
+		-
+			message: '#^Instanceof between App\\Application\\Ai\\Registry\\AiReleaseCandidateSet and App\\Application\\Ai\\Registry\\AiReleaseCandidateSet will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: app/Application/Ai/Registry/AiRegistryLifecycle.php
+
+		-
+			message: '#^Method App\\Application\\Ai\\Registry\\AiRegistryLifecycle\:\:stringList\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/Application/Ai/Registry/AiRegistryLifecycle.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between object and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Application/Ai/Registry/AiRegistryLifecycle.php
+
+		-
+			message: '#^Method App\\Application\\Ai\\Registry\\AiRegistryLockCoordinator\:\:activationScope\(\) should return Illuminate\\Support\\Collection\<int, object\> but returns Illuminate\\Support\\Collection\<int, stdClass\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Application/Ai/Registry/AiRegistryLockCoordinator.php
+
+		-
+			message: '#^Method App\\Application\\Ai\\Registry\\AiRegistryLockCoordinator\:\:agentActivations\(\) should return Illuminate\\Support\\Collection\<int, object\> but returns Illuminate\\Support\\Collection\<int, stdClass\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Application/Ai/Registry/AiRegistryLockCoordinator.php
+
+		-
+			message: '#^Method App\\Application\\Ai\\Registry\\AiRegistryLockCoordinator\:\:decisionActivations\(\) should return Illuminate\\Support\\Collection\<int, object\> but returns Illuminate\\Support\\Collection\<int, stdClass\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Application/Ai/Registry/AiRegistryLockCoordinator.php
+
+		-
+			message: '#^Method App\\Application\\Ai\\Registry\\AiRegistryLockCoordinator\:\:decisionDependentActivations\(\) should return Illuminate\\Support\\Collection\<int, object\> but returns Illuminate\\Support\\Collection\<int, stdClass\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Application/Ai/Registry/AiRegistryLockCoordinator.php
+
+		-
+			message: '#^Negated boolean expression is always false\.$#'
+			identifier: booleanNot.alwaysFalse
+			count: 1
+			path: app/Application/Ai/Registry/AiRegistrySecretPolicy.php
+
+		-
+			message: '#^Call to function array_is_list\(\) with list\<string\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Application/Ai/Registry/AiRuntimeSelection.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Application/Ai/Registry/AiRuntimeSelection.php
+
+		-
+			message: '#^Access to an undefined property Exception\:\:\$token\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Application/Ai/Registry/RegistryMutationScanner.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Application/Ai/Registry/RegistryMutationScanner.php
+
+		-
+			message: '#^Instanceof between PhpParser\\Node\\Expr and PhpParser\\Node\\Expr will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 3
+			path: app/Application/Ai/Registry/RegistryMutationScanner.php
+
+		-
+			message: '#^Method App\\Application\\Ai\\Registry\\RegistryMutationScanner\:\:parse\(\) should return list\<PhpParser\\Node\\Stmt\> but returns array\<PhpParser\\Node\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Application/Ai/Registry/RegistryMutationScanner.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between PhpParser\\Node\\ArrayItem and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 3
+			path: app/Application/Ai/Registry/RegistryMutationScanner.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between array\{kind\: string, tables\: list\<string\>\} and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Application/Ai/Registry/RegistryMutationScanner.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Application/Ai/Registry/RegistryMutationScanner.php
+
+		-
+			message: '#^Using nullsafe property access on non\-nullable type PhpParser\\Node\\ArrayItem\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Application/Ai/Registry/RegistryMutationScanner.php
+
+		-
+			message: '#^Offset ''front_desk''\|''growth''\|''manager''\|''operations''\|''revenue''\|''service''\|''support'' on array\{front_desk\: array\{objective\: ''Orientar…'', allowedJobs\: array\{''catalog\.search'', ''availability\.read'', ''tenant_catalog\.read'', ''tenant_availability…'', ''tenant_sales\.read'', ''conversation\.handoff''\}, riskProfile\: ''low'', metricKeys\: array\{''response_quality'', ''handoff_rate'', ''lead_capture_rate''\}\}, revenue\: array\{objective\: ''Aumentar ingresos…'', allowedJobs\: array\{''catalog\.search'', ''quote\.draft'', ''tenant_catalog\.read'', ''tenant_sales\.read'', ''crm\.opportunity\.read'', ''conversation\.handoff''\}, riskProfile\: ''medium'', metricKeys\: array\{''qualified…'', ''quote_acceptance…'', ''revenue_attributed''\}\}, service\: array\{objective\: ''Resolver…'', allowedJobs\: array\{''catalog\.search'', ''availability\.read'', ''tenant_catalog\.read'', ''tenant_availability…'', ''tenant_appointments…'', ''appointment\.draft'', ''conversation\.handoff''\}, riskProfile\: ''medium'', metricKeys\: array\{''resolution_rate'', ''booking_completion…'', ''handoff_rate''\}\}, support\: array\{objective\: ''Resolver…'', allowedJobs\: array\{''crm\.customer\.read'', ''order\.read'', ''tenant_sales\.read'', ''conversation\.handoff'', ''support\.case\.draft''\}, riskProfile\: ''medium'', metricKeys\: array\{''first_response_time'', ''resolution_rate'', ''safety_escalations''\}\}, operations\: array\{objective\: ''Mantener…'', allowedJobs\: array\{''availability\.read'', ''appointment\.read'', ''tenant_availability…'', ''tenant_appointments…'', ''inventory\.read'', ''workflow\.draft''\}, riskProfile\: ''high'', metricKeys\: array\{''schedule_accuracy'', ''exception_rate'', ''workflow_completion…''\}\}, growth\: array\{objective\: ''Convertir señales…'', allowedJobs\: array\{''analytics\.read'', ''campaign\.draft'', ''crm\.segment\.read'', ''tenant_sales\.read'', ''conversation\.handoff''\}, riskProfile\: ''medium'', metricKeys\: array\{''qualified_demand'', ''experiment…'', ''retention_signal''\}\}, manager\: array\{objective\: ''Coordinar la fuerza…'', allowedJobs\: array\{''analytics\.read'', ''workflow\.approve'', ''agent\.evaluate'', ''tenant_catalog\.read'', ''tenant_availability…'', ''tenant_appointments…'', ''tenant_sales\.read'', ''conversation\.handoff''\}, riskProfile\: ''high'', metricKeys\: array\{''outcome_rate'', ''approval_latency'', ''policy_violations''\}\}\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Application/Ai/Workforce/AgentRoleCatalog.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between array\{objective\: ''Aumentar ingresos…'', allowedJobs\: array\{''catalog\.search'', ''quote\.draft'', ''tenant_catalog\.read'', ''tenant_sales\.read'', ''crm\.opportunity\.read'', ''conversation\.handoff''\}, riskProfile\: ''medium'', metricKeys\: array\{''qualified…'', ''quote_acceptance…'', ''revenue_attributed''\}\}\|array\{objective\: ''Convertir señales…'', allowedJobs\: array\{''analytics\.read'', ''campaign\.draft'', ''crm\.segment\.read'', ''tenant_sales\.read'', ''conversation\.handoff''\}, riskProfile\: ''medium'', metricKeys\: array\{''qualified_demand'', ''experiment…'', ''retention_signal''\}\}\|array\{objective\: ''Coordinar la fuerza…'', allowedJobs\: array\{''analytics\.read'', ''workflow\.approve'', ''agent\.evaluate'', ''tenant_catalog\.read'', ''tenant_availability…'', ''tenant_appointments…'', ''tenant_sales\.read'', ''conversation\.handoff''\}, riskProfile\: ''high'', metricKeys\: array\{''outcome_rate'', ''approval_latency'', ''policy_violations''\}\}\|array\{objective\: ''Mantener…'', allowedJobs\: array\{''availability\.read'', ''appointment\.read'', ''tenant_availability…'', ''tenant_appointments…'', ''inventory\.read'', ''workflow\.draft''\}, riskProfile\: ''high'', metricKeys\: array\{''schedule_accuracy'', ''exception_rate'', ''workflow_completion…''\}\}\|array\{objective\: ''Orientar…'', allowedJobs\: array\{''catalog\.search'', ''availability\.read'', ''tenant_catalog\.read'', ''tenant_availability…'', ''tenant_sales\.read'', ''conversation\.handoff''\}, riskProfile\: ''low'', metricKeys\: array\{''response_quality'', ''handoff_rate'', ''lead_capture_rate''\}\}\|array\{objective\: ''Resolver…'', allowedJobs\: array\{''catalog\.search'', ''availability\.read'', ''tenant_catalog\.read'', ''tenant_availability…'', ''tenant_appointments…'', ''appointment\.draft'', ''conversation\.handoff''\}, riskProfile\: ''medium'', metricKeys\: array\{''resolution_rate'', ''booking_completion…'', ''handoff_rate''\}\}\|array\{objective\: ''Resolver…'', allowedJobs\: array\{''crm\.customer\.read'', ''order\.read'', ''tenant_sales\.read'', ''conversation\.handoff'', ''support\.case\.draft''\}, riskProfile\: ''medium'', metricKeys\: array\{''first_response_time'', ''resolution_rate'', ''safety_escalations''\}\} and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Application/Ai/Workforce/AgentRoleCatalog.php
+
+		-
+			message: '#^Instanceof between App\\Application\\BusinessGraph\\BusinessGraphEdge and App\\Application\\BusinessGraph\\BusinessGraphEdge will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: app/Application/Ai/Workforce/WorkforceAgentContext.php
+
+		-
+			message: '#^Instanceof between App\\Application\\BusinessGraph\\BusinessGraphFact and App\\Application\\BusinessGraph\\BusinessGraphFact will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: app/Application/Ai/Workforce/WorkforceAgentContext.php
+
+		-
+			message: '#^Call to function array_is_list\(\) with list\<string\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Application/Ai/Workforce/WorkforceRoleConfiguration.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Application/Ai/Workforce/WorkforceRoleConfiguration.php
+
+		-
 			message: '#^Call to private method validate\(\) of class App\\Application\\Auth\\Validators\\DeleteUserCommandValidator\.$#'
 			identifier: method.private
 			count: 1
@@ -109,6 +313,90 @@ parameters:
 			path: app/Application/Auth/Results/SocialLoginResult.php
 
 		-
+			message: '#^Call to function array_is_list\(\) with array\<string, mixed\> will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Application/Automation/AgentAction/AgentActionRequest.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\AutomationWorkflowDefinition\:\:\$is_active\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Application/Automation/Commands/CloneWorkflowForTenant.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\AutomationWorkflowDefinition\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Application/Automation/Commands/CloneWorkflowForTenant.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\AutomationWorkflowDefinition\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Application/Automation/Commands/CloneWorkflowForTenant.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\AutomationWorkflowDefinition\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\AutomationWorkflowDefinition\>\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Application/Automation/Commands/CloneWorkflowForTenant.php
+
+		-
+			message: '#^Offset ''type'' on array\{type\: string, actual\: mixed, expected\: mixed\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/Application/Automation/ConditionRegistry.php
+
+		-
+			message: '#^Property App\\Application\\Automation\\WorkflowExecutor\:\:\$conditionRegistry is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Application/Automation/WorkflowExecutor.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 2
+			path: app/Application/Automation/WorkflowRunService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Application/Automation/WorkflowRuntime.php
+
+		-
+			message: '#^Offset ''event_id'' on non\-empty\-array\<string, mixed\> in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.offset
+			count: 1
+			path: app/Application/Billing/Global/GlobalEntitlementService.php
+
+		-
+			message: '#^Offset ''plan'' on non\-empty\-array\<string, mixed\> on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Application/Billing/Global/GlobalEntitlementService.php
+
+		-
+			message: '#^Offset ''provider'' on non\-empty\-array\<string, mixed\> in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.offset
+			count: 1
+			path: app/Application/Billing/Global/GlobalEntitlementService.php
+
+		-
+			message: '#^Offset ''status'' on non\-empty\-array\<string, mixed\> on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Application/Billing/Global/GlobalEntitlementService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between Illuminate\\Support\\Collection\<int, stdClass\> and array\{\} will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Application/Billing/Global/GlobalEntitlementService.php
+
+		-
 			message: '#^Method App\\Application\\Shared\\Contracts\\TransactionManagerInterface\:\:transaction\(\) invoked with 2 parameters, 1 required\.$#'
 			identifier: arguments.count
 			count: 1
@@ -181,10 +469,136 @@ parameters:
 			path: app/Application/Billing/Validators/RequestUpgradeCommandValidator.php
 
 		-
+			message: '#^Using nullsafe property access "\?\-\>connected_at" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Application/Channels/ChannelConnectionService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>created_at" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Application/Channels/ChannelConnectionService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>created_at" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Application/Channels/ChannelConsentService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between App\\Application\\Channels\\ChannelAuthorizationEnvelope and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Application/Channels/ChannelContext.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>costAmount" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Application/Channels/ChannelDeliveryService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>costCurrency" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Application/Channels/ChannelDeliveryService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>created_at" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Application/Channels/ChannelIdentityResolver.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>first_seen_at" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Application/Channels/ChannelIdentityResolver.php
+
+		-
 			message: '#^PHPDoc tag @throws with type App\\Application\\Common\\Exceptions\\LockTimeoutException is not subtype of Throwable$#'
 			identifier: throws.notThrowable
 			count: 1
 			path: app/Application/Common/Contracts/LockInterface.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\CrmDeal\:\:\$closed_at\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Application/Crm/CanonicalOpportunityWriter.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\CrmDeal\:\:\$crm_pipeline_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Application/Crm/CanonicalOpportunityWriter.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\CrmDeal\:\:\$customer_profile_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Application/Crm/CanonicalOpportunityWriter.php
+
+		-
+			message: '#^Access to undefined constant App\\Models\\CrmDeal\:\:STATUS_LOST\.$#'
+			identifier: classConstant.notFound
+			count: 3
+			path: app/Application/Crm/CanonicalOpportunityWriter.php
+
+		-
+			message: '#^Access to undefined constant App\\Models\\CrmDeal\:\:STATUS_OPEN\.$#'
+			identifier: classConstant.notFound
+			count: 1
+			path: app/Application/Crm/CanonicalOpportunityWriter.php
+
+		-
+			message: '#^Access to undefined constant App\\Models\\CrmDeal\:\:STATUS_WON\.$#'
+			identifier: classConstant.notFound
+			count: 1
+			path: app/Application/Crm/CanonicalOpportunityWriter.php
+
+		-
+			message: '#^Method App\\Application\\Crm\\ContactEnrichmentService\:\:enrich\(\) should return array\{job_title\?\: string, company_name\?\: string, linkedin_url\?\: string, seniority\?\: string, industry\?\: string, confidence\: float, raw\: array\<string, mixed\>\} but returns array\{job_title\: ''Director de…'', company_name\: ''Empresa Detectada SA'', linkedin_url\: null, seniority\: ''senior'', industry\: ''tecnologia'', confidence\: 0\.82, raw\: array\{source\: ''mock'', enriched_at\: string\}\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Application/Crm/ContactEnrichmentService.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Application/Crm/DealVelocityService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>count" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Application/Crm/WinLossAnalysisService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>total_value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Application/Crm/WinLossAnalysisService.php
+
+		-
+			message: '#^Offset ''semantic_score'' on non\-empty\-array\<string, mixed\> on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Application/Discovery/DiscoveryQueryService.php
+
+		-
+			message: '#^Call to function is_string\(\) with non\-empty\-string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Application/Discovery/PublishedDiscoveryGuideService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Application/Identity/TenantInvitationService.php
 
 		-
 			message: '#^Call to an undefined method App\\Domain\\Identity\\Repositories\\UserRepositoryInterface\:\:existsByEmail\(\)\.$#'
@@ -193,10 +607,1036 @@ parameters:
 			path: app/Application/Identity/Validators/Rules/UniqueUserEmailRule.php
 
 		-
+			message: '#^Class App\\Jobs\\RunImportJob not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Imports/Commands/RunImportAsync.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>tenant_id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Application/Imports/Commands/RunImportSync.php
+
+		-
+			message: '#^Class App\\Application\\Imports\\Exports\\ContactsExport not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Imports/ExportService.php
+
+		-
+			message: '#^Call to an undefined method App\\Models\\User\:\:assignRole\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Application/Imports/Imports/UsersImport.php
+
+		-
 			message: '#^Method App\\Application\\Interactions\\Handlers\\RecordInteractionHandler\:\:sanitizePayload\(\) invoked with 2 parameters, 1 required\.$#'
 			identifier: arguments.count
 			count: 2
 			path: app/Application/Interactions/Handlers/RecordInteractionHandler.php
+
+		-
+			message: '#^Parameter \#2 \$records of method App\\Application\\Markets\\AvailableMarketCatalog\:\:ordered\(\) expects Illuminate\\Support\\Collection\<string, object\>, Illuminate\\Support\\Collection\<\(int\|string\), stdClass\> given\.$#'
+			identifier: argument.type
+			count: 3
+			path: app/Application/Markets/AvailableMarketCatalog.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>created_at" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Application/Markets/TenantMarketAssignmentService.php
+
+		-
+			message: '#^Offset 3 on array\{0\: non\-falsy\-string, 1\: non\-falsy\-string&numeric\-string, 2\: non\-falsy\-string&numeric\-string, 3\: ''''\|\(non\-falsy\-string&numeric\-string\), 4\: non\-falsy\-string&numeric\-string, 5\: non\-falsy\-string&numeric\-string, 6\?\: non\-falsy\-string&numeric\-string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Application/Operations/BusinessOperationsBackfill.php
+
+		-
+			message: '#^Instanceof between App\\Models\\Product and App\\Models\\Product will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: app/Application/Orders/CanonicalOrderWriter.php
+
+		-
+			message: '#^Offset ''product_id'' on array\{product_id\: int, quantity\: int, options\?\: array\<int, mixed\>, notes\?\: string\|null\} in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.offset
+			count: 1
+			path: app/Application/Orders/CanonicalOrderWriter.php
+
+		-
+			message: '#^Offset ''quantity'' on array\{product_id\: int, quantity\: int, options\?\: array\<int, mixed\>, notes\?\: string\|null\} in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.offset
+			count: 1
+			path: app/Application/Orders/CanonicalOrderWriter.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$description\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Application/Quotes/CanonicalQuoteWriter.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$metadata\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Application/Quotes/CanonicalQuoteWriter.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$product_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Application/Quotes/CanonicalQuoteWriter.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$service_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Application/Quotes/CanonicalQuoteWriter.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$unit_price_minor\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Application/Quotes/CanonicalQuoteWriter.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{product_id\: int\<0, max\>, quantity\: int\}, Closure\(App\\Models\\QuoteItem\)\: array\{product_id\: int\<0, max\>, quantity\: int\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Application/Quotes/CanonicalQuoteWriter.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{product_id\?\: int\<0, max\>, service_id\?\: int\<0, max\>, quantity\: int, discount_minor\: int, tax_minor\: int, metadata\?\: array\}, Closure\(App\\Models\\QuoteItem\)\: array\{product_id\?\: int\<0, max\>, service_id\?\: int\<0, max\>, quantity\: int, discount_minor\: int, tax_minor\: int, metadata\?\: array\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Application/Quotes/CanonicalQuoteWriter.php
+
+		-
+			message: '#^Parameter \#1 \$key of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:contains\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|Illuminate\\Database\\Eloquent\\Model\|int\|string, Closure\(App\\Models\\QuoteItem\)\: bool given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Application/Quotes/CanonicalQuoteWriter.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Application/Reporting/ReportComparison.php
+
+		-
+			message: '#^Property App\\Application\\Reporting\\ReportScheduler\:\:\$executor is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Application/Reporting/ReportScheduler.php
+
+		-
+			message: '#^Access to constant ActivityVolume on an unknown class App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ActivityVolumeReport.php
+
+		-
+			message: '#^Access to property \$end on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ActivityVolumeReport.php
+
+		-
+			message: '#^Access to property \$start on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ActivityVolumeReport.php
+
+		-
+			message: '#^Call to method toArray\(\) on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ActivityVolumeReport.php
+
+		-
+			message: '#^Call to static method table\(\) on an unknown class App\\Application\\Reporting\\Reports\\DB\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ActivityVolumeReport.php
+
+		-
+			message: '#^Instantiated class App\\Application\\Reporting\\Reports\\ReportData not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ActivityVolumeReport.php
+
+		-
+			message: '#^Instantiated class App\\Application\\Reporting\\Reports\\ReportRow not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ActivityVolumeReport.php
+
+		-
+			message: '#^Instantiated class App\\Application\\Reporting\\Reports\\ReportSeries not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ActivityVolumeReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\ActivityVolumeReport\:\:getData\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportData\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ActivityVolumeReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\ActivityVolumeReport\:\:getKey\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ActivityVolumeReport.php
+
+		-
+			message: '#^Parameter \$range of method App\\Application\\Reporting\\Reports\\ActivityVolumeReport\:\:getData\(\) has invalid type App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ActivityVolumeReport.php
+
+		-
+			message: '#^Access to constant AttributionBySource on an unknown class App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/AttributionBySourceReport.php
+
+		-
+			message: '#^Access to property \$end on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/AttributionBySourceReport.php
+
+		-
+			message: '#^Access to property \$start on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/AttributionBySourceReport.php
+
+		-
+			message: '#^Call to method toArray\(\) on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/AttributionBySourceReport.php
+
+		-
+			message: '#^Call to static method table\(\) on an unknown class App\\Application\\Reporting\\Reports\\DB\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/AttributionBySourceReport.php
+
+		-
+			message: '#^Instantiated class App\\Application\\Reporting\\Reports\\ReportData not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/AttributionBySourceReport.php
+
+		-
+			message: '#^Instantiated class App\\Application\\Reporting\\Reports\\ReportRow not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/AttributionBySourceReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\AttributionBySourceReport\:\:getData\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportData\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/AttributionBySourceReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\AttributionBySourceReport\:\:getKey\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/AttributionBySourceReport.php
+
+		-
+			message: '#^Parameter \$range of method App\\Application\\Reporting\\Reports\\AttributionBySourceReport\:\:getData\(\) has invalid type App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/AttributionBySourceReport.php
+
+		-
+			message: '#^Access to constant CampaignRoi on an unknown class App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/CampaignRoiReport.php
+
+		-
+			message: '#^Call to method toArray\(\) on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/CampaignRoiReport.php
+
+		-
+			message: '#^Instantiated class App\\Application\\Reporting\\Reports\\ReportData not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/CampaignRoiReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\CampaignRoiReport\:\:getData\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportData\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/CampaignRoiReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\CampaignRoiReport\:\:getKey\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/CampaignRoiReport.php
+
+		-
+			message: '#^Parameter \$range of method App\\Application\\Reporting\\Reports\\CampaignRoiReport\:\:getData\(\) has invalid type App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/CampaignRoiReport.php
+
+		-
+			message: '#^Access to constant ChannelPerformance on an unknown class App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ChannelPerformanceReport.php
+
+		-
+			message: '#^Access to property \$end on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ChannelPerformanceReport.php
+
+		-
+			message: '#^Access to property \$start on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ChannelPerformanceReport.php
+
+		-
+			message: '#^Call to method toArray\(\) on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ChannelPerformanceReport.php
+
+		-
+			message: '#^Call to static method table\(\) on an unknown class App\\Application\\Reporting\\Reports\\DB\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ChannelPerformanceReport.php
+
+		-
+			message: '#^Instantiated class App\\Application\\Reporting\\Reports\\ReportData not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ChannelPerformanceReport.php
+
+		-
+			message: '#^Instantiated class App\\Application\\Reporting\\Reports\\ReportRow not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ChannelPerformanceReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\ChannelPerformanceReport\:\:getData\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportData\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ChannelPerformanceReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\ChannelPerformanceReport\:\:getKey\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ChannelPerformanceReport.php
+
+		-
+			message: '#^Parameter \$range of method App\\Application\\Reporting\\Reports\\ChannelPerformanceReport\:\:getData\(\) has invalid type App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ChannelPerformanceReport.php
+
+		-
+			message: '#^Access to constant CohortRetention on an unknown class App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/CohortRetentionReport.php
+
+		-
+			message: '#^Call to method toArray\(\) on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/CohortRetentionReport.php
+
+		-
+			message: '#^Instantiated class App\\Application\\Reporting\\Reports\\ReportData not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/CohortRetentionReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\CohortRetentionReport\:\:getData\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportData\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/CohortRetentionReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\CohortRetentionReport\:\:getKey\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/CohortRetentionReport.php
+
+		-
+			message: '#^Parameter \$range of method App\\Application\\Reporting\\Reports\\CohortRetentionReport\:\:getData\(\) has invalid type App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/CohortRetentionReport.php
+
+		-
+			message: '#^Access to constant ConversionFunnel on an unknown class App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ConversionFunnelReport.php
+
+		-
+			message: '#^Call to method toArray\(\) on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ConversionFunnelReport.php
+
+		-
+			message: '#^Call to static method table\(\) on an unknown class App\\Application\\Reporting\\Reports\\DB\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ConversionFunnelReport.php
+
+		-
+			message: '#^Instantiated class App\\Application\\Reporting\\Reports\\ReportData not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ConversionFunnelReport.php
+
+		-
+			message: '#^Instantiated class App\\Application\\Reporting\\Reports\\ReportRow not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ConversionFunnelReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\ConversionFunnelReport\:\:getData\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportData\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ConversionFunnelReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\ConversionFunnelReport\:\:getKey\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ConversionFunnelReport.php
+
+		-
+			message: '#^Parameter \$range of method App\\Application\\Reporting\\Reports\\ConversionFunnelReport\:\:getData\(\) has invalid type App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ConversionFunnelReport.php
+
+		-
+			message: '#^Comparison operation "\>" between int\<1, max\> and 0 is always true\.$#'
+			identifier: greater.alwaysTrue
+			count: 2
+			path: app/Application/Reporting/Reports/CustomerLtvReport.php
+
+		-
+			message: '#^Access to constant CustomerSegments on an unknown class App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/CustomerSegmentsReport.php
+
+		-
+			message: '#^Call to method toArray\(\) on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/CustomerSegmentsReport.php
+
+		-
+			message: '#^Instantiated class App\\Application\\Reporting\\Reports\\ReportData not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/CustomerSegmentsReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\CustomerSegmentsReport\:\:getData\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportData\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/CustomerSegmentsReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\CustomerSegmentsReport\:\:getKey\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/CustomerSegmentsReport.php
+
+		-
+			message: '#^Parameter \$range of method App\\Application\\Reporting\\Reports\\CustomerSegmentsReport\:\:getData\(\) has invalid type App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/CustomerSegmentsReport.php
+
+		-
+			message: '#^Access to constant DealVelocity on an unknown class App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/DealVelocityReport.php
+
+		-
+			message: '#^Access to property \$end on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/DealVelocityReport.php
+
+		-
+			message: '#^Access to property \$start on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/DealVelocityReport.php
+
+		-
+			message: '#^Call to method toArray\(\) on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/DealVelocityReport.php
+
+		-
+			message: '#^Call to static method table\(\) on an unknown class App\\Application\\Reporting\\Reports\\DB\.$#'
+			identifier: class.notFound
+			count: 2
+			path: app/Application/Reporting/Reports/DealVelocityReport.php
+
+		-
+			message: '#^Instantiated class App\\Application\\Reporting\\Reports\\ReportData not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/DealVelocityReport.php
+
+		-
+			message: '#^Instantiated class App\\Application\\Reporting\\Reports\\ReportRow not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/DealVelocityReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\DealVelocityReport\:\:getData\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportData\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/DealVelocityReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\DealVelocityReport\:\:getKey\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/DealVelocityReport.php
+
+		-
+			message: '#^Parameter \$range of method App\\Application\\Reporting\\Reports\\DealVelocityReport\:\:getData\(\) has invalid type App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/DealVelocityReport.php
+
+		-
+			message: '#^Access to constant DiscountEffectiveness on an unknown class App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/DiscountEffectivenessReport.php
+
+		-
+			message: '#^Call to method toArray\(\) on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/DiscountEffectivenessReport.php
+
+		-
+			message: '#^Instantiated class App\\Application\\Reporting\\Reports\\ReportData not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/DiscountEffectivenessReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\DiscountEffectivenessReport\:\:getData\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportData\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/DiscountEffectivenessReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\DiscountEffectivenessReport\:\:getKey\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/DiscountEffectivenessReport.php
+
+		-
+			message: '#^Parameter \$range of method App\\Application\\Reporting\\Reports\\DiscountEffectivenessReport\:\:getData\(\) has invalid type App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/DiscountEffectivenessReport.php
+
+		-
+			message: '#^Access to constant EmployeePerformance on an unknown class App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/EmployeePerformanceReport.php
+
+		-
+			message: '#^Access to property \$end on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/EmployeePerformanceReport.php
+
+		-
+			message: '#^Access to property \$start on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/EmployeePerformanceReport.php
+
+		-
+			message: '#^Call to method toArray\(\) on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/EmployeePerformanceReport.php
+
+		-
+			message: '#^Call to static method table\(\) on an unknown class App\\Application\\Reporting\\Reports\\DB\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/EmployeePerformanceReport.php
+
+		-
+			message: '#^Instantiated class App\\Application\\Reporting\\Reports\\ReportData not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/EmployeePerformanceReport.php
+
+		-
+			message: '#^Instantiated class App\\Application\\Reporting\\Reports\\ReportRow not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/EmployeePerformanceReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\EmployeePerformanceReport\:\:getData\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportData\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/EmployeePerformanceReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\EmployeePerformanceReport\:\:getKey\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/EmployeePerformanceReport.php
+
+		-
+			message: '#^Parameter \$range of method App\\Application\\Reporting\\Reports\\EmployeePerformanceReport\:\:getData\(\) has invalid type App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/EmployeePerformanceReport.php
+
+		-
+			message: '#^Access to constant FulfillmentSla on an unknown class App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/FulfillmentSlaReport.php
+
+		-
+			message: '#^Call to method toArray\(\) on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/FulfillmentSlaReport.php
+
+		-
+			message: '#^Instantiated class App\\Application\\Reporting\\Reports\\ReportData not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/FulfillmentSlaReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\FulfillmentSlaReport\:\:getData\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportData\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/FulfillmentSlaReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\FulfillmentSlaReport\:\:getKey\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/FulfillmentSlaReport.php
+
+		-
+			message: '#^Parameter \$range of method App\\Application\\Reporting\\Reports\\FulfillmentSlaReport\:\:getData\(\) has invalid type App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/FulfillmentSlaReport.php
+
+		-
+			message: '#^Access to constant GeographicDistribution on an unknown class App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/GeographicDistributionReport.php
+
+		-
+			message: '#^Call to method toArray\(\) on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/GeographicDistributionReport.php
+
+		-
+			message: '#^Instantiated class App\\Application\\Reporting\\Reports\\ReportData not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/GeographicDistributionReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\GeographicDistributionReport\:\:getData\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportData\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/GeographicDistributionReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\GeographicDistributionReport\:\:getKey\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/GeographicDistributionReport.php
+
+		-
+			message: '#^Parameter \$range of method App\\Application\\Reporting\\Reports\\GeographicDistributionReport\:\:getData\(\) has invalid type App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/GeographicDistributionReport.php
+
+		-
+			message: '#^Access to constant InventoryTurnover on an unknown class App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/InventoryTurnoverReport.php
+
+		-
+			message: '#^Call to method toArray\(\) on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/InventoryTurnoverReport.php
+
+		-
+			message: '#^Instantiated class App\\Application\\Reporting\\Reports\\ReportData not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/InventoryTurnoverReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\InventoryTurnoverReport\:\:getData\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportData\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/InventoryTurnoverReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\InventoryTurnoverReport\:\:getKey\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/InventoryTurnoverReport.php
+
+		-
+			message: '#^Parameter \$range of method App\\Application\\Reporting\\Reports\\InventoryTurnoverReport\:\:getData\(\) has invalid type App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/InventoryTurnoverReport.php
+
+		-
+			message: '#^Access to constant LeadScore on an unknown class App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/LeadScoreReport.php
+
+		-
+			message: '#^Access to property \$end on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/LeadScoreReport.php
+
+		-
+			message: '#^Access to property \$start on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/LeadScoreReport.php
+
+		-
+			message: '#^Call to method toArray\(\) on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/LeadScoreReport.php
+
+		-
+			message: '#^Call to static method table\(\) on an unknown class App\\Application\\Reporting\\Reports\\DB\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/LeadScoreReport.php
+
+		-
+			message: '#^Instantiated class App\\Application\\Reporting\\Reports\\ReportData not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/LeadScoreReport.php
+
+		-
+			message: '#^Instantiated class App\\Application\\Reporting\\Reports\\ReportRow not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/LeadScoreReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\LeadScoreReport\:\:getData\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportData\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/LeadScoreReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\LeadScoreReport\:\:getKey\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/LeadScoreReport.php
+
+		-
+			message: '#^Parameter \$range of method App\\Application\\Reporting\\Reports\\LeadScoreReport\:\:getData\(\) has invalid type App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/LeadScoreReport.php
+
+		-
+			message: '#^Access to constant NpsScore on an unknown class App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/NpsScoreReport.php
+
+		-
+			message: '#^Call to method toArray\(\) on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/NpsScoreReport.php
+
+		-
+			message: '#^Instantiated class App\\Application\\Reporting\\Reports\\ReportData not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/NpsScoreReport.php
+
+		-
+			message: '#^Instantiated class App\\Application\\Reporting\\Reports\\ReportRow not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/NpsScoreReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\NpsScoreReport\:\:getData\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportData\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/NpsScoreReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\NpsScoreReport\:\:getKey\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/NpsScoreReport.php
+
+		-
+			message: '#^Parameter \$range of method App\\Application\\Reporting\\Reports\\NpsScoreReport\:\:getData\(\) has invalid type App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/NpsScoreReport.php
+
+		-
+			message: '#^Access to constant ProductMargin on an unknown class App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ProductMarginReport.php
+
+		-
+			message: '#^Call to method toArray\(\) on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ProductMarginReport.php
+
+		-
+			message: '#^Instantiated class App\\Application\\Reporting\\Reports\\ReportData not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ProductMarginReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\ProductMarginReport\:\:getData\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportData\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ProductMarginReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\ProductMarginReport\:\:getKey\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ProductMarginReport.php
+
+		-
+			message: '#^Parameter \$range of method App\\Application\\Reporting\\Reports\\ProductMarginReport\:\:getData\(\) has invalid type App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/ProductMarginReport.php
+
+		-
+			message: '#^Access to constant RefundRate on an unknown class App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/RefundRateReport.php
+
+		-
+			message: '#^Access to property \$end on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 2
+			path: app/Application/Reporting/Reports/RefundRateReport.php
+
+		-
+			message: '#^Access to property \$start on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 2
+			path: app/Application/Reporting/Reports/RefundRateReport.php
+
+		-
+			message: '#^Call to method toArray\(\) on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/RefundRateReport.php
+
+		-
+			message: '#^Call to static method table\(\) on an unknown class App\\Application\\Reporting\\Reports\\DB\.$#'
+			identifier: class.notFound
+			count: 2
+			path: app/Application/Reporting/Reports/RefundRateReport.php
+
+		-
+			message: '#^Instantiated class App\\Application\\Reporting\\Reports\\ReportData not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/RefundRateReport.php
+
+		-
+			message: '#^Instantiated class App\\Application\\Reporting\\Reports\\ReportRow not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/RefundRateReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\RefundRateReport\:\:getData\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportData\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/RefundRateReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\RefundRateReport\:\:getKey\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/RefundRateReport.php
+
+		-
+			message: '#^Parameter \$range of method App\\Application\\Reporting\\Reports\\RefundRateReport\:\:getData\(\) has invalid type App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/RefundRateReport.php
+
+		-
+			message: '#^Access to constant SlowMovers on an unknown class App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/SlowMoversReport.php
+
+		-
+			message: '#^Call to method toArray\(\) on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/SlowMoversReport.php
+
+		-
+			message: '#^Instantiated class App\\Application\\Reporting\\Reports\\ReportData not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/SlowMoversReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\SlowMoversReport\:\:getData\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportData\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/SlowMoversReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\SlowMoversReport\:\:getKey\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/SlowMoversReport.php
+
+		-
+			message: '#^Parameter \$range of method App\\Application\\Reporting\\Reports\\SlowMoversReport\:\:getData\(\) has invalid type App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/SlowMoversReport.php
+
+		-
+			message: '#^Access to constant WinRate on an unknown class App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/WinRateReport.php
+
+		-
+			message: '#^Access to property \$end on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 2
+			path: app/Application/Reporting/Reports/WinRateReport.php
+
+		-
+			message: '#^Access to property \$start on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 2
+			path: app/Application/Reporting/Reports/WinRateReport.php
+
+		-
+			message: '#^Call to method toArray\(\) on an unknown class App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/WinRateReport.php
+
+		-
+			message: '#^Call to static method table\(\) on an unknown class App\\Application\\Reporting\\Reports\\DB\.$#'
+			identifier: class.notFound
+			count: 2
+			path: app/Application/Reporting/Reports/WinRateReport.php
+
+		-
+			message: '#^Instantiated class App\\Application\\Reporting\\Reports\\ReportData not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/WinRateReport.php
+
+		-
+			message: '#^Instantiated class App\\Application\\Reporting\\Reports\\ReportRow not found\.$#'
+			identifier: class.notFound
+			count: 3
+			path: app/Application/Reporting/Reports/WinRateReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\WinRateReport\:\:getData\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportData\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/WinRateReport.php
+
+		-
+			message: '#^Method App\\Application\\Reporting\\Reports\\WinRateReport\:\:getKey\(\) has invalid return type App\\Application\\Reporting\\Reports\\ReportKey\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/WinRateReport.php
+
+		-
+			message: '#^Parameter \$range of method App\\Application\\Reporting\\Reports\\WinRateReport\:\:getData\(\) has invalid type App\\Application\\Reporting\\Reports\\ReportRange\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Application/Reporting/Reports/WinRateReport.php
 
 		-
 			message: '#^Offset ''average_rating'' on array\{average_rating\: float, total_reviews\: int\} on left side of \?\? always exists and is not nullable\.$#'
@@ -211,92 +1651,8 @@ parameters:
 			path: app/Application/Reviews/Listeners/UpdateProductRating.php
 
 		-
-			message: '#^Access to an undefined property App\\Domain\\Sales\\Entities\\OrderEntity\:\:\$order_number\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Application/Sales/Handlers/CancelOrderHandler.php
-
-		-
-			message: '#^Access to an undefined property App\\Domain\\Sales\\Entities\\OrderEntity\:\:\$tenant_id\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Application/Sales/Handlers/CancelOrderHandler.php
-
-		-
-			message: '#^Call to an undefined method App\\Domain\\Sales\\Entities\\OrderEntity\:\:cancel\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Application/Sales/Handlers/CancelOrderHandler.php
-
-		-
-			message: '#^Call to an undefined method App\\Domain\\Sales\\Entities\\OrderEntity\:\:wasPaid\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Application/Sales/Handlers/CancelOrderHandler.php
-
-		-
-			message: '#^Access to private property App\\Domain\\Identity\\Entities\\UserEntity\:\:\$email\.$#'
-			identifier: property.private
-			count: 1
-			path: app/Application/Sales/Handlers/CreateOrderHandler.php
-
-		-
-			message: '#^Access to private property App\\Domain\\Identity\\Entities\\UserEntity\:\:\$id\.$#'
-			identifier: property.private
-			count: 1
-			path: app/Application/Sales/Handlers/CreateOrderHandler.php
-
-		-
-			message: '#^Access to private property App\\Domain\\Identity\\Entities\\UserEntity\:\:\$name\.$#'
-			identifier: property.private
-			count: 1
-			path: app/Application/Sales/Handlers/CreateOrderHandler.php
-
-		-
-			message: '#^Cannot access property \$value on string\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Application/Sales/Handlers/CreateOrderHandler.php
-
-		-
-			message: '#^Cannot call method toString\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Application/Sales/Handlers/CreateOrderHandler.php
-
-		-
 			message: '#^Instantiated class App\\Exceptions\\UserNotFoundException not found\.$#'
 			identifier: class.notFound
-			count: 1
-			path: app/Application/Sales/Handlers/CreateOrderHandler.php
-
-		-
-			message: '#^Parameter \#2 \$user of method App\\Services\\CouponValidatorService\:\:linkToOrder\(\) expects App\\Models\\User\|null, int\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Application/Sales/Handlers/CreateOrderHandler.php
-
-		-
-			message: '#^Parameter \#2 \$user of method App\\Services\\CouponValidatorService\:\:redeem\(\) expects App\\Models\\User\|null, App\\Domain\\Identity\\Entities\\UserEntity given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Application/Sales/Handlers/CreateOrderHandler.php
-
-		-
-			message: '#^Parameter \#2 \$user of method App\\Services\\CouponValidatorService\:\:validate\(\) expects App\\Models\\User\|null, App\\Domain\\Identity\\Entities\\UserEntity given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Application/Sales/Handlers/CreateOrderHandler.php
-
-		-
-			message: '#^Parameter \#4 \$tenant of method App\\Services\\CouponValidatorService\:\:validate\(\) expects App\\Models\\Tenant\|null, App\\Domain\\TenantGovernance\\Entities\\TenantEntity given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Application/Sales/Handlers/CreateOrderHandler.php
-
-		-
-			message: '#^Parameter \$customerId of method App\\Domain\\Sales\\Factories\\OrderFactory\:\:create\(\) expects int, string given\.$#'
-			identifier: argument.type
 			count: 1
 			path: app/Application/Sales/Handlers/CreateOrderHandler.php
 
@@ -311,6 +1667,12 @@ parameters:
 			identifier: instanceof.alwaysTrue
 			count: 1
 			path: app/Application/Sales/Results/CreateOrderResult.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Application/ServiceCatalog/CanonicalServiceWriter.php
 
 		-
 			message: '#^PHPDoc tag @throws with type App\\Application\\Shared\\Common\\Exceptions\\RateLimitExceededException is not subtype of Throwable$#'
@@ -427,6 +1789,12 @@ parameters:
 			path: app/Application/Tenant/Handlers/UpdateTenantScheduleHandler.php
 
 		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$administrativeArea\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Application/Tenant/Transformers/TenantMicrositeTransformer.php
+
+		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 2
@@ -435,7 +1803,7 @@ parameters:
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
 			identifier: property.notFound
-			count: 3
+			count: 5
 			path: app/Application/Tenant/Transformers/TenantMicrositeTransformer.php
 
 		-
@@ -465,6 +1833,12 @@ parameters:
 		-
 			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
 			identifier: argument.unresolvableType
+			count: 1
+			path: app/Application/Tenant/Transformers/TenantMicrositeTransformer.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>address" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Application/Tenant/Transformers/TenantMicrositeTransformer.php
 
@@ -529,6 +1903,24 @@ parameters:
 			path: app/Console/Commands/SubscriptionLifecycleCommand.php
 
 		-
+			message: '#^Empty array passed to foreach\.$#'
+			identifier: foreach.emptyArray
+			count: 1
+			path: app/Console/Commands/ValidateDovraWorkforceCommand.php
+
+		-
+			message: '#^Parameter \#1 \$array \(array\{\}\) to function array_values is empty, call has no effect\.$#'
+			identifier: arrayValues.empty
+			count: 1
+			path: app/Console/Commands/ValidateDovraWorkforceCommand.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between array\{\} and array\{\} will always evaluate to true\.$#'
+			identifier: identical.alwaysTrue
+			count: 1
+			path: app/Console/Commands/ValidateDovraWorkforceCommand.php
+
+		-
 			message: '#^Call to an undefined method ReflectionType\:\:getName\(\)\.$#'
 			identifier: method.notFound
 			count: 1
@@ -589,6 +1981,12 @@ parameters:
 			path: app/Domain/Analytics/Events/AnalyticsSynced.php
 
 		-
+			message: '#^Strict comparison using \!\=\= between string and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Domain/Billing/Global/GlobalTenantContext.php
+
+		-
 			message: '#^Readonly property App\\Domain\\Catalog\\Events\\ProductPriceChanged\:\:\$correlationId is assigned outside of the constructor\.$#'
 			identifier: property.readOnlyAssignNotInConstructor
 			count: 2
@@ -625,6 +2023,12 @@ parameters:
 			path: app/Domain/Contracts/SearchRepository.php
 
 		-
+			message: '#^Match expression does not handle remaining value\: string$#'
+			identifier: match.unhandled
+			count: 1
+			path: app/Domain/Crm/ValueObjects/DealScore.php
+
+		-
 			message: '#^Readonly property App\\Domain\\Identity\\Events\\TenantRegistered\:\:\$correlationId is assigned outside of the constructor\.$#'
 			identifier: property.readOnlyAssignNotInConstructor
 			count: 2
@@ -659,6 +2063,12 @@ parameters:
 			identifier: class.notFound
 			count: 1
 			path: app/Domain/Orders/Contracts/ReceiptGeneratorInterface.php
+
+		-
+			message: '#^Method App\\Domain\\Reporting\\ValueObjects\\ReportRange\:\:days\(\) should return int but returns float\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Domain/Reporting/ValueObjects/ReportRange.php
 
 		-
 			message: '#^Readonly property App\\Domain\\Sales\\Events\\OrderCreated\:\:\$correlationId is assigned outside of the constructor\.$#'
@@ -1003,10 +2413,154 @@ parameters:
 			path: app/Events/Security/NewLoginDetected.php
 
 		-
+			message: '#^Access to an undefined property App\\Filament\\Admin\\Pages\\AiRegistry\:\:\$form\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Filament/Admin/Pages/AiRegistry.php
+
+		-
+			message: '#^Call to static method set\(\) on an unknown class Spatie\\LaravelSettings\\Facades\\Settings\.$#'
+			identifier: class.notFound
+			count: 2
+			path: app/Filament/Admin/Pages/AiRegistry.php
+
+		-
+			message: '#^Call to an undefined static method Spatie\\Health\\Facades\\Health\:\:check\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Filament/Admin/Pages/ArchitectureHealth.php
+
+		-
+			message: '#^Access to an undefined property App\\Filament\\Admin\\Pages\\CrossTenantReports\:\:\$form\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/Admin/Pages/CrossTenantReports.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Filament/Admin/Pages/CrossTenantReports.php
+
+		-
+			message: '#^Access to an undefined property App\\Filament\\Admin\\Pages\\IncidentLog\:\:\$form\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Filament/Admin/Pages/IncidentLog.php
+
+		-
+			message: '#^Parameter \#1 \$dataSource of method Filament\\Tables\\Table\:\:records\(\) expects Closure\|null, Illuminate\\Support\\Collection\<int, stdClass\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Filament/Admin/Widgets/RecentIncidentsWidget.php
+
+		-
+			message: '#^Parameter \#1 \$dataSource of method Filament\\Tables\\Table\:\:records\(\) expects Closure\|null, Illuminate\\Support\\Collection\<int, object\{tenant_id\: mixed, name\: mixed, orders_count\: int, revenue\: float\}&stdClass\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Filament/Admin/Widgets/TopTenantsTableWidget.php
+
+		-
+			message: '#^Access to an undefined property App\\Filament\\App\\Pages\\Automation\\AutomationBuilder\:\:\$form\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Filament/App/Pages/Automation/AutomationBuilder.php
+
+		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$slug\.$#'
 			identifier: property.notFound
 			count: 2
 			path: app/Filament/App/Pages/EditTenantProfile.php
+
+		-
+			message: '#^Call to an undefined static method Filament\\Schemas\\Schema\:\:hasColumn\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 2
+			path: app/Filament/App/Pages/EditTenantProfile.php
+
+		-
+			message: '#^Call to an undefined static method Filament\\Schemas\\Schema\:\:hasTable\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 2
+			path: app/Filament/App/Pages/EditTenantProfile.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Forms\\Components\\Section\.$#'
+			identifier: class.notFound
+			count: 10
+			path: app/Filament/App/Pages/EditTenantProfile.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Forms\\Components\\Tabs\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Pages/EditTenantProfile.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Forms\\Components\\Tabs\\Tab\.$#'
+			identifier: class.notFound
+			count: 3
+			path: app/Filament/App/Pages/EditTenantProfile.php
+
+		-
+			message: '#^Access to an undefined property App\\Filament\\App\\Pages\\ImportExport\\ExportCenter\:\:\$form\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Filament/App/Pages/ImportExport/ExportCenter.php
+
+		-
+			message: '#^Access to an undefined property App\\Filament\\App\\Pages\\ImportExport\\ImportWizard\:\:\$form\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Filament/App/Pages/ImportExport/ImportWizard.php
+
+		-
+			message: '#^Invoking callable on an unknown class Filament\\Forms\\Get\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Pages/ImportExport/ImportWizard.php
+
+		-
+			message: '#^Parameter \$get of anonymous function has invalid type Filament\\Forms\\Get\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Pages/ImportExport/ImportWizard.php
+
+		-
+			message: '#^Call to an undefined static method Filament\\Schemas\\Schema\:\:hasTable\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 2
+			path: app/Filament/App/Pages/ManageBilling.php
+
+		-
+			message: '#^Call to method fill\(\) on an unknown class App\\Filament\\App\\Pages\\Form\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Pages/ManageBilling.php
+
+		-
+			message: '#^Call to method getState\(\) on an unknown class App\\Filament\\App\\Pages\\Form\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Pages/ManageBilling.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Forms\\Components\\Section\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Pages/ManageBilling.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\Action\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Pages/ManageBilling.php
+
+		-
+			message: '#^PHPDoc tag @property\-read for property App\\Filament\\App\\Pages\\ManageBilling\:\:\$form contains unknown class App\\Filament\\App\\Pages\\Form\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Pages/ManageBilling.php
 
 		-
 			message: '#^Access to an undefined property App\\Filament\\App\\Pages\\ManageMarketing\:\:\$form\.$#'
@@ -1039,6 +2593,42 @@ parameters:
 			path: app/Filament/App/Pages/ManageMarketing.php
 
 		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Forms\\Components\\Section\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Pages/ManageMarketing.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\CreateAction\.$#'
+			identifier: class.notFound
+			count: 2
+			path: app/Filament/App/Pages/ManageMarketing.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\DeleteAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Pages/ManageMarketing.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\EditAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Pages/ManageMarketing.php
+
+		-
+			message: '#^Method App\\Filament\\App\\Pages\\ManageMarketing\:\:sectionForm\(\) has invalid return type Filament\\Forms\\Components\\Component\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Pages/ManageMarketing.php
+
+		-
+			message: '#^Method App\\Filament\\App\\Pages\\ManageMarketing\:\:sectionForm\(\) should return array\<int, Filament\\Forms\\Components\\Component\> but returns array\<int, Filament\\Forms\\Components\\TextInput\|Filament\\Forms\\Components\\Toggle\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Filament/App/Pages/ManageMarketing.php
+
+		-
 			message: '#^Parameter \#1 \$tenant of method App\\Services\\QrCodeService\:\:getQrCode\(\) expects App\\Models\\Tenant, Illuminate\\Database\\Eloquent\\Model given\.$#'
 			identifier: argument.type
 			count: 1
@@ -1057,22 +2647,46 @@ parameters:
 			path: app/Filament/App/Pages/Settings.php
 
 		-
+			message: '#^Call to an undefined method App\\Filament\\App\\Pages\\Settings\:\:notify\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Filament/App/Pages/Settings.php
+
+		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_pro\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Filament/App/Pages/UpgradeToPro.php
 
 		-
+			message: '#^Access to an undefined property App\\Filament\\App\\Pages\\WebToLeadPage\:\:\$form\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Filament/App/Pages/WebToLeadPage.php
+
+		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Filament/App/Resources/CampaignResource.php
+			path: app/Filament/App/Pages/WebToLeadPage.php
 
 		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:followers\(\)\.$#'
-			identifier: method.notFound
-			count: 2
-			path: app/Filament/App/Resources/CampaignResource.php
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Forms\\Components\\CaptchaField\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Pages/WebToLeadPage.php
+
+		-
+			message: '#^Invoking callable on an unknown class Filament\\Forms\\Get\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/AnnouncementResource.php
+
+		-
+			message: '#^Parameter \$get of anonymous function has invalid type Filament\\Forms\\Get\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/AnnouncementResource.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
@@ -1087,14 +2701,146 @@ parameters:
 			path: app/Filament/App/Resources/CouponResource.php
 
 		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\BulkActionGroup\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/CouponResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\DeleteAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/CouponResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\DeleteBulkAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/CouponResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\EditAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/CouponResource.php
+
+		-
+			message: '#^Invoking callable on an unknown class Filament\\Forms\\Get\.$#'
+			identifier: class.notFound
+			count: 6
+			path: app/Filament/App/Resources/CouponResource.php
+
+		-
+			message: '#^Parameter \$get of anonymous function has invalid type Filament\\Forms\\Get\.$#'
+			identifier: class.notFound
+			count: 6
+			path: app/Filament/App/Resources/CouponResource.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\:\:overdue\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Filament/App/Resources/Crm/ActivityResource.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\:\:pending\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Filament/App/Resources/Crm/ActivityResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\BulkActionGroup\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/Crm/ContactResource/RelationManagers/ActivitiesRelationManager.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\DeleteBulkAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/Crm/ContactResource/RelationManagers/ActivitiesRelationManager.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\BulkActionGroup\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/Crm/ContactResource/RelationManagers/DealsRelationManager.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\DeleteBulkAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/Crm/ContactResource/RelationManagers/DealsRelationManager.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\BulkActionGroup\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/Crm/DealResource/RelationManagers/ActivitiesRelationManager.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\DeleteBulkAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/Crm/DealResource/RelationManagers/ActivitiesRelationManager.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\CrmDeal\:\:\$lead\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/App/Resources/CrmDealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\CrmDeal\:\:\$source\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/App/Resources/CrmDealResource.php
+
+		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
 			identifier: property.notFound
-			count: 2
+			count: 1
 			path: app/Filament/App/Resources/CrmDealResource.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$type\.$#'
 			identifier: property.notFound
+			count: 1
+			path: app/Filament/App/Resources/CrmDealResource.php
+
+		-
+			message: '#^Access to undefined constant App\\Models\\CrmDeal\:\:STATUS_LOST\.$#'
+			identifier: classConstant.notFound
+			count: 5
+			path: app/Filament/App/Resources/CrmDealResource.php
+
+		-
+			message: '#^Access to undefined constant App\\Models\\CrmDeal\:\:STATUS_OPEN\.$#'
+			identifier: classConstant.notFound
+			count: 3
+			path: app/Filament/App/Resources/CrmDealResource.php
+
+		-
+			message: '#^Access to undefined constant App\\Models\\CrmDeal\:\:STATUS_WON\.$#'
+			identifier: classConstant.notFound
+			count: 4
+			path: app/Filament/App/Resources/CrmDealResource.php
+
+		-
+			message: '#^Call to an undefined static method Filament\\Schemas\\Schema\:\:hasTable\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Filament/App/Resources/CrmDealResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\DeleteAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/CrmDealResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\EditAction\.$#'
+			identifier: class.notFound
 			count: 1
 			path: app/Filament/App/Resources/CrmDealResource.php
 
@@ -1135,64 +2881,46 @@ parameters:
 			path: app/Filament/App/Resources/CrmDealResource.php
 
 		-
-			message: '#^Call to an undefined method Filament\\Actions\\CreateAction\:\:mutateDataUsing\(\)\.$#'
-			identifier: method.notFound
+			message: '#^Access to an undefined property App\\Models\\CrmDeal\:\:\$crm_stage_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/App/Resources/CrmDealResource/Pages/EditCrmDeal.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\CrmDeal\:\:\$customer_profile_id\.$#'
+			identifier: property.notFound
 			count: 1
 			path: app/Filament/App/Resources/CrmDealResource/RelationManagers/DealNotesRelationManager.php
 
 		-
-			message: '#^Call to an undefined method Filament\\Actions\\EditAction\:\:mutateDataUsing\(\)\.$#'
-			identifier: method.notFound
+			message: '#^Access to an undefined property App\\Models\\CrmDeal\:\:\$customer_profile_id\.$#'
+			identifier: property.notFound
 			count: 1
-			path: app/Filament/App/Resources/CrmDealResource/RelationManagers/DealNotesRelationManager.php
+			path: app/Filament/App/Resources/CrmDealResource/RelationManagers/DealTasksRelationManager.php
 
 		-
-			message: '#^Call to static method make\(\) on an unknown class Filament\\Actions\\BulkActionGroup\.$#'
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Forms\\Components\\Grid\.$#'
+			identifier: class.notFound
+			count: 2
+			path: app/Filament/App/Resources/CrmDealResource/RelationManagers/DealTasksRelationManager.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\BulkActionGroup\.$#'
 			identifier: class.notFound
 			count: 1
-			path: app/Filament/App/Resources/CrmDealResource/RelationManagers/DealNotesRelationManager.php
+			path: app/Filament/App/Resources/CrmPipelineResource.php
 
 		-
-			message: '#^Call to static method make\(\) on an unknown class Filament\\Actions\\DeleteBulkAction\.$#'
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\DeleteAction\.$#'
 			identifier: class.notFound
 			count: 1
-			path: app/Filament/App/Resources/CrmDealResource/RelationManagers/DealNotesRelationManager.php
+			path: app/Filament/App/Resources/CrmPipelineResource.php
 
 		-
-			message: '#^Parameter \#1 \$actions of method Filament\\Tables\\Table\:\:actions\(\) expects array\<Filament\\Tables\\Actions\\Action\|Filament\\Tables\\Actions\\ActionGroup\>\|Filament\\Tables\\Actions\\ActionGroup, array\{mixed, Filament\\Actions\\DeleteAction\} given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Filament/App/Resources/CrmDealResource/RelationManagers/DealNotesRelationManager.php
-
-		-
-			message: '#^Call to an undefined method Filament\\Actions\\CreateAction\:\:mutateDataUsing\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Filament/App/Resources/CrmDealResource/RelationManagers/DealTasksRelationManager.php
-
-		-
-			message: '#^Call to an undefined method Filament\\Actions\\EditAction\:\:mutateDataUsing\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Filament/App/Resources/CrmDealResource/RelationManagers/DealTasksRelationManager.php
-
-		-
-			message: '#^Call to static method make\(\) on an unknown class Filament\\Actions\\BulkActionGroup\.$#'
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\EditAction\.$#'
 			identifier: class.notFound
 			count: 1
-			path: app/Filament/App/Resources/CrmDealResource/RelationManagers/DealTasksRelationManager.php
-
-		-
-			message: '#^Call to static method make\(\) on an unknown class Filament\\Actions\\DeleteBulkAction\.$#'
-			identifier: class.notFound
-			count: 1
-			path: app/Filament/App/Resources/CrmDealResource/RelationManagers/DealTasksRelationManager.php
-
-		-
-			message: '#^Parameter \#1 \$actions of method Filament\\Tables\\Table\:\:actions\(\) expects array\<Filament\\Tables\\Actions\\Action\|Filament\\Tables\\Actions\\ActionGroup\>\|Filament\\Tables\\Actions\\ActionGroup, array\{Filament\\Actions\\Action, mixed, Filament\\Actions\\DeleteAction\} given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Filament/App/Resources/CrmDealResource/RelationManagers/DealTasksRelationManager.php
+			path: app/Filament/App/Resources/CrmPipelineResource.php
 
 		-
 			message: '#^Unsafe call to private method App\\Filament\\App\\Resources\\CrmPipelineResource\:\:allows\(\) through static\:\:\.$#'
@@ -1219,26 +2947,8 @@ parameters:
 			path: app/Filament/App/Resources/CrmPipelineResource.php
 
 		-
-			message: '#^Call to an undefined method Filament\\Actions\\CreateAction\:\:mutateDataUsing\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Filament/App/Resources/CrmPipelineResource/RelationManagers/StagesRelationManager.php
-
-		-
-			message: '#^Call to an undefined method Filament\\Actions\\EditAction\:\:mutateDataUsing\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Filament/App/Resources/CrmPipelineResource/RelationManagers/StagesRelationManager.php
-
-		-
-			message: '#^Call to static method make\(\) on an unknown class Filament\\Actions\\BulkActionGroup\.$#'
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Forms\\Components\\Grid\.$#'
 			identifier: class.notFound
-			count: 1
-			path: app/Filament/App/Resources/CrmPipelineResource/RelationManagers/StagesRelationManager.php
-
-		-
-			message: '#^Parameter \#1 \$actions of method Filament\\Tables\\Table\:\:actions\(\) expects array\<Filament\\Tables\\Actions\\Action\|Filament\\Tables\\Actions\\ActionGroup\>\|Filament\\Tables\\Actions\\ActionGroup, array\{mixed, Filament\\Actions\\DeleteAction\} given\.$#'
-			identifier: argument.type
 			count: 1
 			path: app/Filament/App/Resources/CrmPipelineResource/RelationManagers/StagesRelationManager.php
 
@@ -1261,27 +2971,123 @@ parameters:
 			path: app/Filament/App/Resources/FollowerResource.php
 
 		-
-			message: '#^Call to an undefined method Filament\\Tables\\Table\:\:recordActions\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Filament/App/Resources/Leads/Tables/LeadsTable.php
-
-		-
-			message: '#^Call to static method make\(\) on an unknown class Filament\\Actions\\BulkActionGroup\.$#'
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\BulkActionGroup\.$#'
 			identifier: class.notFound
 			count: 1
-			path: app/Filament/App/Resources/Leads/Tables/LeadsTable.php
+			path: app/Filament/App/Resources/Leads/LeadResource.php
 
 		-
-			message: '#^Call to static method make\(\) on an unknown class Filament\\Actions\\DeleteBulkAction\.$#'
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\DeleteBulkAction\.$#'
 			identifier: class.notFound
 			count: 1
-			path: app/Filament/App/Resources/Leads/Tables/LeadsTable.php
+			path: app/Filament/App/Resources/Leads/LeadResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\EditAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/Leads/LeadResource.php
+
+		-
+			message: '#^Undefined variable\: \$form$#'
+			identifier: variable.undefined
+			count: 1
+			path: app/Filament/App/Resources/Leads/LeadResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Forms\\Components\\Grid\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/LoyaltyProgramResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Forms\\Components\\Section\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/LoyaltyProgramResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\EditAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/LoyaltyProgramResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Forms\\Components\\Grid\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/LoyaltyRewardResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Forms\\Components\\Section\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/LoyaltyRewardResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\BulkActionGroup\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/LoyaltyRewardResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\DeleteAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/LoyaltyRewardResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\DeleteBulkAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/LoyaltyRewardResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\EditAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/LoyaltyRewardResource.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 2
+			path: app/Filament/App/Resources/MenuSectionResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Forms\\Components\\Section\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/MenuSectionResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\BulkActionGroup\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/MenuSectionResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\CreateAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/MenuSectionResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\DeleteAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/MenuSectionResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\DeleteBulkAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/MenuSectionResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\EditAction\.$#'
+			identifier: class.notFound
+			count: 1
 			path: app/Filament/App/Resources/MenuSectionResource.php
 
 		-
@@ -1297,6 +3103,72 @@ parameters:
 			path: app/Filament/App/Resources/OrderResource.php
 
 		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Infolists\\Components\\Actions\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/OrderResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Infolists\\Components\\Actions\\Action\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/OrderResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Infolists\\Components\\Grid\.$#'
+			identifier: class.notFound
+			count: 2
+			path: app/Filament/App/Resources/OrderResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Infolists\\Components\\Section\.$#'
+			identifier: class.notFound
+			count: 3
+			path: app/Filament/App/Resources/OrderResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\Action\.$#'
+			identifier: class.notFound
+			count: 4
+			path: app/Filament/App/Resources/OrderResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\ViewAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/OrderResource.php
+
+		-
+			message: '#^Method App\\Filament\\App\\Resources\\OrderResource\:\:deprecated_infolist\(\) has invalid return type App\\Filament\\App\\Resources\\Infolist\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/OrderResource.php
+
+		-
+			message: '#^Parameter \$infolist of method App\\Filament\\App\\Resources\\OrderResource\:\:deprecated_infolist\(\) has invalid type App\\Filament\\App\\Resources\\Infolist\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/OrderResource.php
+
+		-
+			message: '#^Undefined variable\: \$form$#'
+			identifier: variable.undefined
+			count: 1
+			path: app/Filament/App/Resources/OrderResource.php
+
+		-
+			message: '#^Undefined variable\: \$schema$#'
+			identifier: variable.undefined
+			count: 1
+			path: app/Filament/App/Resources/OrderResource.php
+
+		-
+			message: '#^Unsafe call to private method App\\Filament\\App\\Resources\\OrderResource\:\:canonicalTransition\(\) through static\:\:\.$#'
+			identifier: staticClassAccess.privateMethod
+			count: 4
+			path: app/Filament/App/Resources/OrderResource.php
+
+		-
 			message: '#^Cannot access property \$customer_phone on Illuminate\\Database\\Eloquent\\Model\|int\|string\.$#'
 			identifier: property.nonObject
 			count: 1
@@ -1309,21 +3181,69 @@ parameters:
 			path: app/Filament/App/Resources/OrderResource/Pages/ViewOrder.php
 
 		-
-			message: '#^Call to an undefined method App\\Filament\\App\\Resources\\Pages\\CreateTenantRecord\:\:associateRecordWithParent\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Filament/App/Resources/Pages/CreateTenantRecord.php
-
-		-
-			message: '#^Call to an undefined method App\\Filament\\App\\Resources\\Pages\\CreateTenantRecord\:\:getParentRecord\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Filament/App/Resources/Pages/CreateTenantRecord.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 2
+			path: app/Filament/App/Resources/ProductResource.php
+
+		-
+			message: '#^Call to method success\(\) on an unknown class Filament\\Tables\\Actions\\Action\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/ProductResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Forms\\Components\\Actions\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/ProductResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Forms\\Components\\Actions\\Action\.$#'
+			identifier: class.notFound
+			count: 2
+			path: app/Filament/App/Resources/ProductResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Forms\\Components\\Section\.$#'
+			identifier: class.notFound
+			count: 6
+			path: app/Filament/App/Resources/ProductResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\Action\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/ProductResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\BulkAction\.$#'
+			identifier: class.notFound
+			count: 2
+			path: app/Filament/App/Resources/ProductResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\BulkActionGroup\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/ProductResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\DeleteAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/ProductResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\EditAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/ProductResource.php
+
+		-
+			message: '#^Parameter \$action of anonymous function has invalid type Filament\\Tables\\Actions\\Action\.$#'
+			identifier: class.notFound
+			count: 1
 			path: app/Filament/App/Resources/ProductResource.php
 
 		-
@@ -1333,9 +3253,63 @@ parameters:
 			path: app/Filament/App/Resources/ProductResource.php
 
 		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Notifications\\Actions\\Action\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/ProductResource/Pages/ListProducts.php
+
+		-
 			message: '#^Anonymous function never returns null so it can be removed from the return type\.$#'
 			identifier: return.unusedType
 			count: 1
+			path: app/Filament/App/Resources/ProductResource/RelationManagers/OptionGroupsRelationManager.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Forms\\Components\\Section\.$#'
+			identifier: class.notFound
+			count: 2
+			path: app/Filament/App/Resources/ProductResource/RelationManagers/OptionGroupsRelationManager.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\BulkActionGroup\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/ProductResource/RelationManagers/OptionGroupsRelationManager.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\CreateAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/ProductResource/RelationManagers/OptionGroupsRelationManager.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\DeleteAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/ProductResource/RelationManagers/OptionGroupsRelationManager.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\DeleteBulkAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/ProductResource/RelationManagers/OptionGroupsRelationManager.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\EditAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/ProductResource/RelationManagers/OptionGroupsRelationManager.php
+
+		-
+			message: '#^Invoking callable on an unknown class Filament\\Forms\\Get\.$#'
+			identifier: class.notFound
+			count: 2
+			path: app/Filament/App/Resources/ProductResource/RelationManagers/OptionGroupsRelationManager.php
+
+		-
+			message: '#^Parameter \$get of anonymous function has invalid type Filament\\Forms\\Get\.$#'
+			identifier: class.notFound
+			count: 2
 			path: app/Filament/App/Resources/ProductResource/RelationManagers/OptionGroupsRelationManager.php
 
 		-
@@ -1347,6 +3321,12 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:products\(\)\.$#'
 			identifier: method.notFound
+			count: 1
+			path: app/Filament/App/Resources/Products/Pages/CreateProduct.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Notifications\\Actions\\Action\.$#'
+			identifier: class.notFound
 			count: 1
 			path: app/Filament/App/Resources/Products/Pages/CreateProduct.php
 
@@ -1369,13 +3349,139 @@ parameters:
 			path: app/Filament/App/Resources/Products/Pages/ListProducts.php
 
 		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Forms\\Components\\Section\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/ServiceProviderResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\CreateAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/ServiceProviderResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\DeleteAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/ServiceProviderResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\EditAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/ServiceProviderResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Forms\\Components\\Grid\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/ServiceResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Forms\\Components\\Section\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/ServiceResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\CreateAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/ServiceResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\DeleteAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/ServiceResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\EditAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/ServiceResource.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/App/Resources/TenantInvitationResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\Action\.$#'
+			identifier: class.notFound
+			count: 2
+			path: app/Filament/App/Resources/TenantInvitationResource.php
+
+		-
+			message: '#^Cannot call method isPast\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Filament/App/Resources/TenantInvitationResource.php
+
+		-
+			message: '#^Method App\\Filament\\App\\Resources\\TenantInvitationResource\:\:getNavigationGroup\(\) never returns null so it can be removed from the return type\.$#'
+			identifier: return.unusedType
+			count: 1
+			path: app/Filament/App/Resources/TenantInvitationResource.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type string\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Filament/App/Resources/TenantInvitationResource.php
+
+		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Filament/App/Resources/TenantProfileResource.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Forms\\Components\\Section\.$#'
+			identifier: class.notFound
+			count: 3
+			path: app/Filament/App/Resources/TenantProfileResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\EditAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/TenantProfileResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\BulkActionGroup\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/TenantProfileResource/RelationManagers/OpeningHoursRelationManager.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\CreateAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/TenantProfileResource/RelationManagers/OpeningHoursRelationManager.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\DeleteAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/TenantProfileResource/RelationManagers/OpeningHoursRelationManager.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\DeleteBulkAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/TenantProfileResource/RelationManagers/OpeningHoursRelationManager.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\EditAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/TenantProfileResource/RelationManagers/OpeningHoursRelationManager.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$email\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Filament/App/Resources/TenantUserResource.php
@@ -1384,13 +3490,55 @@ parameters:
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Filament/App/Resources/TenantUserResource/Pages/CreateTenantUser.php
+			path: app/Filament/App/Resources/TenantUserResource.php
 
 		-
-			message: '#^Cannot access property \$role on Illuminate\\Database\\Eloquent\\Model\|int\|string\.$#'
-			identifier: property.nonObject
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
 			count: 1
-			path: app/Filament/App/Resources/TenantUserResource/Pages/EditTenantUser.php
+			path: app/Filament/App/Resources/TenantUserResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Forms\\Components\\Section\.$#'
+			identifier: class.notFound
+			count: 3
+			path: app/Filament/App/Resources/TenantUserResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\Action\.$#'
+			identifier: class.notFound
+			count: 3
+			path: app/Filament/App/Resources/TenantUserResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\CreateAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/TenantUserResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\EditAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Resources/TenantUserResource.php
+
+		-
+			message: '#^Cannot call method format\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Filament/App/Resources/TenantUserResource.php
+
+		-
+			message: '#^Undefined variable\: \$form$#'
+			identifier: variable.undefined
+			count: 1
+			path: app/Filament/App/Resources/TenantUserResource.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Filament/App/Resources/TenantUserResource/Pages/CreateTenantUser.php
 
 		-
 			message: '#^Cannot access property \$user on Illuminate\\Database\\Eloquent\\Model\|int\|string\.$#'
@@ -1423,7 +3571,13 @@ parameters:
 			path: app/Filament/App/Widgets/AppointmentCalendarWidget.php
 
 		-
-			message: '#^Static property App\\Filament\\App\\Widgets\\FollowerCountWidget\:\:\$view \(view\-string\) does not accept default value of type string\.$#'
+			message: '#^Using nullsafe property access "\?\-\>cnt" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Filament/App/Widgets/Crm/ActivityTimelineWidget.php
+
+		-
+			message: '#^Property App\\Filament\\App\\Widgets\\FollowerCountWidget\:\:\$view \(view\-string\) does not accept default value of type string\.$#'
 			identifier: property.defaultValue
 			count: 1
 			path: app/Filament/App/Widgets/FollowerCountWidget.php
@@ -1489,9 +3643,51 @@ parameters:
 			path: app/Filament/App/Widgets/QuickActionsWidget.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
+			message: '#^Call to static method make\(\) on an unknown class App\\Filament\\App\\Widgets\\Reports\\Stat\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Widgets/Reports/AovKpiCardWidget.php
+
+		-
+			message: '#^Parameter \#1 \$query of method Filament\\Tables\\Table\:\:query\(\) expects Closure\|Illuminate\\Database\\Eloquent\\Builder\|null, Illuminate\\Database\\Query\\Builder given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Filament/App/Widgets/Reports/EmployeeLeaderboardWidget.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class App\\Filament\\App\\Widgets\\Reports\\Stat\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Widgets/Reports/InventoryHealthWidget.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class App\\Filament\\App\\Widgets\\Reports\\Stat\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/App/Widgets/Reports/LtvKpiCardWidget.php
+
+		-
+			message: '#^Called ''avg'' on Laravel collection, but could have been retrieved as a query\.$#'
+			identifier: larastan.noUnnecessaryCollectionCall
+			count: 1
+			path: app/Filament/App/Widgets/Reports/LtvKpiCardWidget.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class App\\Filament\\App\\Widgets\\Reports\\Stat\.$#'
+			identifier: class.notFound
 			count: 2
+			path: app/Filament/App/Widgets/Reports/MrrKpiCardWidget.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Filament/App/Widgets/Reports/MrrKpiCardWidget.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
 			path: app/Filament/App/Widgets/StatsOverview.php
 
 		-
@@ -1523,6 +3719,18 @@ parameters:
 			identifier: property.notFound
 			count: 1
 			path: app/Filament/App/Widgets/WhatsAppClicksChart.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Forms\\Components\\Section\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Components/SeoFields.php
+
+		-
+			message: '#^Method App\\Filament\\Components\\SeoFields\:\:make\(\) has invalid return type Filament\\Forms\\Components\\Section\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Components/SeoFields.php
 
 		-
 			message: '#^Parameter \#1 \$height of method Filament\\Forms\\Components\\FileUpload\:\:imageResizeTargetHeight\(\) expects Closure\|string\|null, 630 given\.$#'
@@ -1561,6 +3769,102 @@ parameters:
 			path: app/Filament/Pages/ManageGeneralSettings.php
 
 		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Forms\\Components\\Section\.$#'
+			identifier: class.notFound
+			count: 5
+			path: app/Filament/Pages/ManageGeneralSettings.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Forms\\Components\\Tabs\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Pages/ManageGeneralSettings.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Forms\\Components\\Tabs\\Tab\.$#'
+			identifier: class.notFound
+			count: 3
+			path: app/Filament/Pages/ManageGeneralSettings.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\ViewAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/ActivityLogResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\BulkActionGroup\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/CategoryResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\DeleteAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/CategoryResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\DeleteBulkAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/CategoryResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\EditAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/CategoryResource.php
+
+		-
+			message: '#^Invoking callable on an unknown class Filament\\Forms\\Set\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/CategoryResource.php
+
+		-
+			message: '#^Parameter \$set of anonymous function has invalid type Filament\\Forms\\Set\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/CategoryResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\BulkActionGroup\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/CityResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\DeleteAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/CityResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\DeleteBulkAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/CityResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\EditAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/CityResource.php
+
+		-
+			message: '#^Invoking callable on an unknown class Filament\\Forms\\Set\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/CityResource.php
+
+		-
+			message: '#^Parameter \$set of anonymous function has invalid type Filament\\Forms\\Set\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/CityResource.php
+
+		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 2
@@ -1569,7 +3873,55 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\:\:valid\(\)\.$#'
 			identifier: method.notFound
+			count: 1
+			path: app/Filament/Resources/CouponResource.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:valid\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Filament/Resources/CouponResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\Action\.$#'
+			identifier: class.notFound
 			count: 2
+			path: app/Filament/Resources/CouponResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\ActionGroup\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/CouponResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\BulkActionGroup\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/CouponResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\DeleteAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/CouponResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\DeleteBulkAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/CouponResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\EditAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/CouponResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\ViewAction\.$#'
+			identifier: class.notFound
+			count: 1
 			path: app/Filament/Resources/CouponResource.php
 
 		-
@@ -1579,10 +3931,58 @@ parameters:
 			path: app/Filament/Resources/OrderResource.php
 
 		-
+			message: '#^Access to constant Large on an unknown class Filament\\Infolists\\Components\\TextEntry\\TextEntrySize\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/OrderResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Infolists\\Components\\Grid\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/OrderResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Infolists\\Components\\Section\.$#'
+			identifier: class.notFound
+			count: 3
+			path: app/Filament/Resources/OrderResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\Action\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/OrderResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\ViewAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/OrderResource.php
+
+		-
+			message: '#^Undefined variable\: \$form$#'
+			identifier: variable.undefined
+			count: 1
+			path: app/Filament/Resources/OrderResource.php
+
+		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Filament/Resources/OrderResource/Pages/ListOrders.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Resources\\Components\\Tab\.$#'
+			identifier: class.notFound
+			count: 5
+			path: app/Filament/Resources/OrderResource/Pages/ListOrders.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Infolists\\Components\\Section\.$#'
+			identifier: class.notFound
+			count: 4
+			path: app/Filament/Resources/OrderResource/Pages/ViewOrder.php
 
 		-
 			message: '#^Cannot access property \$status on Illuminate\\Database\\Eloquent\\Model\|int\|string\.$#'
@@ -1609,6 +4009,18 @@ parameters:
 			path: app/Filament/Resources/PaymentResource.php
 
 		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Forms\\Components\\Section\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/PaymentResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\Action\.$#'
+			identifier: class.notFound
+			count: 2
+			path: app/Filament/Resources/PaymentResource.php
+
+		-
 			message: '#^Using nullsafe property access "\?\-\>email" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
@@ -1624,6 +4036,18 @@ parameters:
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$plan_type\.$#'
 			identifier: property.notFound
 			count: 2
+			path: app/Filament/Resources/ProductResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Forms\\Components\\Group\.$#'
+			identifier: class.notFound
+			count: 2
+			path: app/Filament/Resources/ProductResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Forms\\Components\\Section\.$#'
+			identifier: class.notFound
+			count: 4
 			path: app/Filament/Resources/ProductResource.php
 
 		-
@@ -1657,6 +4081,96 @@ parameters:
 			path: app/Filament/Resources/ProductResource/Pages/CreateProduct.php
 
 		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Notifications\\Actions\\Action\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/ProductResource/Pages/CreateProduct.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Forms\\Components\\Section\.$#'
+			identifier: class.notFound
+			count: 5
+			path: app/Filament/Resources/TenantResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\Action\.$#'
+			identifier: class.notFound
+			count: 5
+			path: app/Filament/Resources/TenantResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\BulkActionGroup\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/TenantResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\DeleteBulkAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/TenantResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\EditAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/TenantResource.php
+
+		-
+			message: '#^Invoking callable on an unknown class Filament\\Forms\\Get\.$#'
+			identifier: class.notFound
+			count: 8
+			path: app/Filament/Resources/TenantResource.php
+
+		-
+			message: '#^Invoking callable on an unknown class Filament\\Forms\\Set\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/TenantResource.php
+
+		-
+			message: '#^Parameter \$get of anonymous function has invalid type Filament\\Forms\\Get\.$#'
+			identifier: class.notFound
+			count: 8
+			path: app/Filament/Resources/TenantResource.php
+
+		-
+			message: '#^Parameter \$set of anonymous function has invalid type Filament\\Forms\\Set\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/TenantResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\Action\.$#'
+			identifier: class.notFound
+			count: 3
+			path: app/Filament/Resources/UserResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\BulkActionGroup\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/UserResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\DeleteAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/UserResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\DeleteBulkAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/UserResource.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\EditAction\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Filament/Resources/UserResource.php
+
+		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 6
@@ -1678,6 +4192,12 @@ parameters:
 			message: '#^Access to an undefined property App\\Models\\Payment\:\:\$proof_image_path\.$#'
 			identifier: property.notFound
 			count: 1
+			path: app/Filament/Widgets/PendingPaymentsWidget.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Tables\\Actions\\Action\.$#'
+			identifier: class.notFound
+			count: 3
 			path: app/Filament/Widgets/PendingPaymentsWidget.php
 
 		-
@@ -1729,6 +4249,42 @@ parameters:
 			path: app/Http/Controllers/Api/V1/AuthController.php
 
 		-
+			message: '#^Using nullsafe property access "\?\-\>tenant_id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Api/V1/Crm/ActivityController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>tenant_id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Api/V1/Crm/CompanyController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>tenant_id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Api/V1/Crm/ContactController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>tenant_id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Api/V1/Crm/DealController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>tenant_id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Api/V1/Crm/NoteController.php
+
+		-
+			message: '#^Variable \$response might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: app/Http/Controllers/Api/V1/DirectoryGuideChatController.php
+
+		-
 			message: '#^Parameter \$userId of method App\\Domain\\Api\\Contracts\\NotificationRepository\:\:getUserNotifications\(\) expects int, string given\.$#'
 			identifier: argument.type
 			count: 1
@@ -1747,6 +4303,54 @@ parameters:
 			path: app/Http/Controllers/Api/V1/NotificationController.php
 
 		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$description\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/V1/QuoteController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/V1/QuoteController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$line_total_minor\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/V1/QuoteController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$product_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/V1/QuoteController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$quantity\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/V1/QuoteController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$service_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/V1/QuoteController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$unit_price_minor\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/V1/QuoteController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Api/V1/QuoteController.php
+
+		-
 			message: '#^Call to function abort_unless\(\) with true and 403 will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
 			count: 1
@@ -1757,6 +4361,30 @@ parameters:
 			identifier: function.alreadyNarrowedType
 			count: 1
 			path: app/Http/Controllers/Api/V1/TenantPrivateAgentController.php
+
+		-
+			message: '#^Call to function is_object\(\) with App\\Models\\User will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Http/Controllers/Api/V1/TenantWorkforceController.php
+
+		-
+			message: '#^Call to function method_exists\(\) with App\\Models\\User and ''getKey'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Http/Controllers/Api/V1/TenantWorkforceController.php
+
+		-
+			message: '#^Missing parameter \$actorId \(int\|string\|null\) in call to App\\Application\\Ai\\Registry\\AiRegistryQuery constructor\.$#'
+			identifier: argument.missing
+			count: 1
+			path: app/Http/Controllers/Api/V1/TenantWorkforceController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>lifecycle_status" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Api/V1/TenantWorkforceController.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Contracts\\Auth\\Authenticatable\:\:\$id\.$#'
@@ -1781,6 +4409,18 @@ parameters:
 			identifier: class.notFound
 			count: 1
 			path: app/Http/Controllers/Auth/SocialAuthController.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\HttpFoundation\\Response\:\:withHeaders\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Auth/TenantInvitationController.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\HttpFoundation\\Response\:\:withHeaders\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Auth/TenantInvitationRegistrationController.php
 
 		-
 			message: '#^Parameter \#1 \$userId of method App\\Domain\\Public\\Contracts\\BuyerRepository\:\:getFavorites\(\) expects int, string given\.$#'
@@ -1813,6 +4453,18 @@ parameters:
 			path: app/Http/Controllers/Tenant/AnalyticsController.php
 
 		-
+			message: '#^Missing parameter \$actorId \(int\|string\|null\) in call to App\\Application\\Ai\\Registry\\AiRegistryQuery constructor\.$#'
+			identifier: argument.missing
+			count: 1
+			path: app/Http/Controllers/Tenant/WorkforceController.php
+
+		-
+			message: '#^Parameter \#1 \$array \(list\<array\{key\: ''front_desk''\|''growth''\|''manager''\|''operations''\|''revenue''\|''service''\|''support'', title\: non\-falsy\-string, objective\: string, risk_profile\: string, metric_keys\: list\<string\>, agent_version_id\: null, candidate_status\: ''not_created'', state\: ''preview'', \.\.\.\}\|array\{key\: ''front_desk''\|''growth''\|''manager''\|''operations''\|''revenue''\|''service''\|''support'', title\: non\-falsy\-string, objective\: string, risk_profile\: string, metric_keys\: list\<string\>, agent_version_id\: string, candidate_status\: string, state\: ''live_evidence''\|''pending_evaluation''\|''pending_external…'', \.\.\.\}\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: app/Http/Controllers/Tenant/WorkforceController.php
+
+		-
 			message: '#^Method App\\Http\\Controllers\\Web\\BillingController\:\:showPaymentPending\(\) should return Inertia\\Response but returns Symfony\\Component\\HttpFoundation\\Response\.$#'
 			identifier: return.type
 			count: 1
@@ -1831,12 +4483,6 @@ parameters:
 			path: app/Http/Middleware/CheckMaintenanceMode.php
 
 		-
-			message: '#^Dead catch \- Throwable is never thrown in the try block\.$#'
-			identifier: catch.neverThrown
-			count: 1
-			path: app/Http/Middleware/CheckMaintenanceMode.php
-
-		-
 			message: '#^Parameter \#2 \$values of method Illuminate\\Http\\Response\:\:header\(\) expects array\|string, int given\.$#'
 			identifier: argument.type
 			count: 1
@@ -1848,6 +4494,35 @@ parameters:
 			count: 1
 			path: app/Http/Middleware/EnsureUserBelongsToTenant.php
 
+		-
+			message: '#^Call to function method_exists\(\) with App\\Models\\User and ''canAccessTenant'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Http/Middleware/InitializeFilamentLivewireTenantContext.php
+
+		-
+			message: '#^Call to function method_exists\(\) with App\\Models\\User and ''canAccessTenant'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Http/Middleware/InitializeFilamentTenantContext.php
+
+		-
+			message: '#^Access to undefined constant App\\Models\\CrmDeal\:\:STATUS_LOST\.$#'
+			identifier: classConstant.notFound
+			count: 1
+			path: app/Http/Requests/Api/V1/Crm/ImportCrmDealsRequest.php
+
+		-
+			message: '#^Access to undefined constant App\\Models\\CrmDeal\:\:STATUS_OPEN\.$#'
+			identifier: classConstant.notFound
+			count: 1
+			path: app/Http/Requests/Api/V1/Crm/ImportCrmDealsRequest.php
+
+		-
+			message: '#^Access to undefined constant App\\Models\\CrmDeal\:\:STATUS_WON\.$#'
+			identifier: classConstant.notFound
+			count: 1
+			path: app/Http/Requests/Api/V1/Crm/ImportCrmDealsRequest.php
 
 		-
 			message: '#^Parameter \#1 \$value of static method Illuminate\\Support\\Str\:\:lower\(\) expects string, Illuminate\\Support\\Stringable given\.$#'
@@ -1860,6 +4535,222 @@ parameters:
 			identifier: property.notFound
 			count: 1
 			path: app/Http/Requests/Tenant/StoreProductRequest.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\ContactResource\:\:\$company\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Resources/Crm/ContactResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\ContactResource\:\:\$company_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/ContactResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\ContactResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/ContactResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\ContactResource\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/ContactResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\ContactResource\:\:\$first_name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/ContactResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\ContactResource\:\:\$full_name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/ContactResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\ContactResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/ContactResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\ContactResource\:\:\$job_title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/ContactResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\ContactResource\:\:\$last_contact_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/ContactResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\ContactResource\:\:\$last_name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/ContactResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\ContactResource\:\:\$lifecycle_stage\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/ContactResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\ContactResource\:\:\$owner_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/ContactResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\ContactResource\:\:\$phone\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/ContactResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\ContactResource\:\:\$source\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/ContactResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\ContactResource\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/ContactResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\ContactResource\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/ContactResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\DealResource\:\:\$company_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/DealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\DealResource\:\:\$contact_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/DealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\DealResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/DealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\DealResource\:\:\$currency\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/DealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\DealResource\:\:\$description\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/DealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\DealResource\:\:\$expected_close_date\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/DealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\DealResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/DealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\DealResource\:\:\$lost_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/DealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\DealResource\:\:\$lost_reason\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/DealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\DealResource\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/DealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\DealResource\:\:\$owner_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/DealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\DealResource\:\:\$pipeline_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/DealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\DealResource\:\:\$probability\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/DealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\DealResource\:\:\$stage_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/DealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\DealResource\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/DealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\DealResource\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/DealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\DealResource\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/DealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\DealResource\:\:\$value\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/DealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\DealResource\:\:\$weighted_value\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/DealResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Crm\\DealResource\:\:\$won_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Crm/DealResource.php
 
 		-
 			message: '#^Access to an undefined property App\\Http\\Resources\\CrmDealResource\:\:\$closed_at\.$#'
@@ -2330,6 +5221,72 @@ parameters:
 			path: app/Infrastructure/AI/BudgetEnforcer.php
 
 		-
+			message: '#^Call to function array_is_list\(\) with list\<array\<string, mixed\>\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Infrastructure/AI/Conversation/EloquentConversationStore.php
+
+		-
+			message: '#^Call to function array_is_list\(\) with non\-empty\-array\<string, mixed\> will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Infrastructure/AI/Conversation/EloquentConversationStore.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\<string, mixed\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Infrastructure/AI/Conversation/EloquentConversationStore.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Infrastructure/AI/Conversation/EloquentConversationStore.php
+
+		-
+			message: '#^Instanceof between array\<string, mixed\> and App\\Application\\Ai\\Grounding\\EvidenceSnapshot will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 1
+			path: app/Infrastructure/AI/Conversation/EloquentConversationStore.php
+
+		-
+			message: '#^Offset mixed on array\{\} in isset\(\) does not exist\.$#'
+			identifier: isset.offset
+			count: 1
+			path: app/Infrastructure/AI/Conversation/EloquentConversationStore.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 1
+			path: app/Infrastructure/AI/Conversation/EloquentConversationStore.php
+
+		-
+			message: '#^Method App\\Infrastructure\\Auth\\AuthenticatedSessionRegistry\:\:forUser\(\) should return Illuminate\\Support\\Collection\<int, object\> but returns Illuminate\\Support\\Collection\<int, stdClass\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Infrastructure/Auth/AuthenticatedSessionRegistry.php
+
+		-
+			message: '#^Parameter \#1 \$rows of method App\\Infrastructure\\Availability\\EloquentAvailabilityQuery\:\:mostSpecific\(\) expects Illuminate\\Support\\Collection\<int, object\>, Illuminate\\Support\\Collection\<int, stdClass\> given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Infrastructure/Availability/EloquentAvailabilityQuery.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between list\<array\{ts\: int, time\: string, offset\: int, isdst\: bool, abbr\: string\}\> and false will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Infrastructure/Availability/EloquentAvailabilityQuery.php
+
+		-
+			message: '#^Call to an undefined method App\\Application\\Billing\\Global\\EntitlementServiceInterface\:\:synchronizeFromWebhook\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Infrastructure/Billing/Global/DeterministicBillingProviderFake.php
+
+		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
 			identifier: property.notFound
 			count: 2
@@ -2462,6 +5419,12 @@ parameters:
 			path: app/Infrastructure/Console/Commands/ProcessOutboxCommand.php
 
 		-
+			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Infrastructure/Console/Commands/ProcessOutboxCommand.php
+
+		-
 			message: '#^Instanceof between Exception and ArgumentCountError will always evaluate to false\.$#'
 			identifier: instanceof.alwaysFalse
 			count: 1
@@ -2534,6 +5497,36 @@ parameters:
 			path: app/Infrastructure/Console/Commands/RescueStuckProofsCommand.php
 
 		-
+			message: '#^Access to an undefined property App\\Models\\CrmDeal\:\:\$closed_at\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Infrastructure/Crm/EloquentCrmPipelineSummaryGateway.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\CrmDeal\:\:\$expected_close_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Infrastructure/Crm/EloquentCrmPipelineSummaryGateway.php
+
+		-
+			message: '#^Access to undefined constant App\\Models\\CrmDeal\:\:STATUS_LOST\.$#'
+			identifier: classConstant.notFound
+			count: 3
+			path: app/Infrastructure/Crm/EloquentCrmPipelineSummaryGateway.php
+
+		-
+			message: '#^Access to undefined constant App\\Models\\CrmDeal\:\:STATUS_OPEN\.$#'
+			identifier: classConstant.notFound
+			count: 3
+			path: app/Infrastructure/Crm/EloquentCrmPipelineSummaryGateway.php
+
+		-
+			message: '#^Access to undefined constant App\\Models\\CrmDeal\:\:STATUS_WON\.$#'
+			identifier: classConstant.notFound
+			count: 3
+			path: app/Infrastructure/Crm/EloquentCrmPipelineSummaryGateway.php
+
+		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$closed_at\.$#'
 			identifier: property.notFound
 			count: 1
@@ -2570,27 +5563,21 @@ parameters:
 			path: app/Infrastructure/Crm/HttpCrmDealResponder.php
 
 		-
-			message: '#^Using nullsafe property access "\?\-\>closed_at" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
+			message: '#^Relation ''customerProfile'' is not found in App\\Models\\CrmDeal model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
 			path: app/Infrastructure/Crm/HttpCrmDealResponder.php
 
 		-
-			message: '#^Using nullsafe property access "\?\-\>currency" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
+			message: '#^Relation ''lead'' is not found in App\\Models\\CrmDeal model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
 			path: app/Infrastructure/Crm/HttpCrmDealResponder.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 4
-			path: app/Infrastructure/Crm/HttpCrmDealResponder.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>status" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
 			path: app/Infrastructure/Crm/HttpCrmDealResponder.php
 
 		-
@@ -2634,6 +5621,54 @@ parameters:
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Infrastructure/Directory/EloquentDirectoryGuideReader.php
+
+		-
+			message: '#^Offset ''location_id'' on array\{tenant_id\: string, service_id\: int, location_id\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Infrastructure/Discovery/CanonicalAvailabilityInspector.php
+
+		-
+			message: '#^Offset ''service_id'' on array\{tenant_id\: string, service_id\: int, location_id\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Infrastructure/Discovery/CanonicalAvailabilityInspector.php
+
+		-
+			message: '#^Offset ''tenant_id'' on array\{tenant_id\: string, service_id\: int, location_id\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Infrastructure/Discovery/CanonicalAvailabilityInspector.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Infrastructure/Discovery/DiscoveryProjectionStore.php
+
+		-
+			message: '#^Cannot call method isPast\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Infrastructure/Identity/ImpersonationGrantService.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Infrastructure/Identity/ImpersonationGrantService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Infrastructure/Identity/ImpersonationGrantService.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type string\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Infrastructure/Identity/ImpersonationGrantService.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
@@ -2696,12 +5731,6 @@ parameters:
 			path: app/Infrastructure/Jobs/AI/GenerateBusinessProfile.php
 
 		-
-			message: '#^Instantiated class App\\Infrastructure\\Jobs\\Middleware\\TenantAwareMiddleware not found\.$#'
-			identifier: class.notFound
-			count: 1
-			path: app/Infrastructure/Jobs/TenantJob.php
-
-		-
 			message: '#^Access to an undefined property App\\Domain\\Identity\\Events\\UserRegistered\:\:\$user\.$#'
 			identifier: property.notFound
 			count: 1
@@ -2748,6 +5777,18 @@ parameters:
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Infrastructure/Notifications/EmailOtpNotifier.php
+
+		-
+			message: '#^Call to static method make\(\) on an unknown class Filament\\Notifications\\Actions\\Action\.$#'
+			identifier: class.notFound
+			count: 3
+			path: app/Infrastructure/Notifications/FilamentAdminNotifier.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Illuminate\\Http\\Request\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Infrastructure/Observability/Audit/ImmutableAuditLog.php
 
 		-
 			message: '#^Call to method getDeclineCode\(\) on an unknown class Stripe\\Exception\\CardException\.$#'
@@ -2912,9 +5953,27 @@ parameters:
 			path: app/Infrastructure/Persistence/Queries/AdminProductQuery.php
 
 		-
+			message: '#^Access to an undefined property App\\Models\\CrmDeal\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Infrastructure/Public/EloquentTenantMicrositeReader.php
+
+		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
 			identifier: property.notFound
 			count: 2
+			path: app/Infrastructure/Public/EloquentTenantMicrositeReader.php
+
+		-
+			message: '#^Access to undefined constant App\\Models\\CrmDeal\:\:STATUS_OPEN\.$#'
+			identifier: classConstant.notFound
+			count: 1
+			path: app/Infrastructure/Public/EloquentTenantMicrositeReader.php
+
+		-
+			message: '#^Access to undefined constant App\\Models\\CrmDeal\:\:STATUS_WON\.$#'
+			identifier: classConstant.notFound
+			count: 1
 			path: app/Infrastructure/Public/EloquentTenantMicrositeReader.php
 
 		-
@@ -3014,30 +6073,6 @@ parameters:
 			path: app/Infrastructure/Search/EloquentSearchRepository.php
 
 		-
-			message: '#^Call to method createPresignedRequest\(\) on an unknown class Aws\\S3\\S3Client\.$#'
-			identifier: class.notFound
-			count: 1
-			path: app/Infrastructure/Services/S3PresignerService.php
-
-		-
-			message: '#^Call to method getCommand\(\) on an unknown class Aws\\S3\\S3Client\.$#'
-			identifier: class.notFound
-			count: 1
-			path: app/Infrastructure/Services/S3PresignerService.php
-
-		-
-			message: '#^Instantiated class Aws\\S3\\S3Client not found\.$#'
-			identifier: class.notFound
-			count: 1
-			path: app/Infrastructure/Services/S3PresignerService.php
-
-		-
-			message: '#^Property App\\Infrastructure\\Services\\S3PresignerService\:\:\$client has unknown class Aws\\S3\\S3Client as its type\.$#'
-			identifier: class.notFound
-			count: 1
-			path: app/Infrastructure/Services/S3PresignerService.php
-
-		-
 			message: '#^Method App\\Infrastructure\\Shared\\Persistence\\Decorators\\SchemaValidatingOutboxRepository\:\:resolveSubject\(\) never returns null so it can be removed from the return type\.$#'
 			identifier: return.unusedType
 			count: 1
@@ -3102,12 +6137,6 @@ parameters:
 			identifier: return.type
 			count: 1
 			path: app/Infrastructure/Tenant/EloquentOrderRepository.php
-
-		-
-			message: '#^Using nullsafe method call on non\-nullable type Carbon\\Carbon\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Infrastructure/Tenant/TenantPrivateAgentService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Tenant\:\:\$active\.$#'
@@ -3212,12 +6241,6 @@ parameters:
 			path: app/Models/CustomerNote.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Location\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/CustomerNote.php
-
-		-
 			message: '#^Class App\\Models\\CustomerConversation not found\.$#'
 			identifier: class.notFound
 			count: 1
@@ -3249,12 +6272,6 @@ parameters:
 
 		-
 			message: '#^Access to an undefined property App\\Models\\CustomerProfile\:\:\$redeemable_rewards_count\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/CustomerProfile.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Location\:\:\$name\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Models/CustomerProfile.php
@@ -3312,18 +6329,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: app/Models/CustomerTask.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Location\:\:\$is_primary\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Models/Location.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Location\:\:\$tenant_id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Models/Location.php
 
 		-
 			message: '#^Parameter \#1 \$num of function abs expects float\|int, string given\.$#'
@@ -3512,6 +6517,18 @@ parameters:
 			path: app/Models/Tenant.php
 
 		-
+			message: '#^Cannot call method isFuture\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/TenantInvitation.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type string\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Models/TenantInvitation.php
+
+		-
 			message: '#^Expression on left side of \?\? is not nullable\.$#'
 			identifier: nullCoalesce.expr
 			count: 1
@@ -3638,18 +6655,6 @@ parameters:
 			path: app/Providers/AppServiceProvider.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Providers/Filament/AppPanelProvider.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$slug\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Providers/Filament/AppPanelProvider.php
-
-		-
 			message: '#^Parameter \#1 \$view of function view expects view\-string\|null, string given\.$#'
 			identifier: argument.type
 			count: 6
@@ -3708,6 +6713,12 @@ parameters:
 			identifier: identical.alwaysFalse
 			count: 1
 			path: app/Services/InventoryManager.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Order\:\:\$cancellation_reason\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/OrderStateService.php
 
 		-
 			message: '#^Call to function is_array\(\) with non\-empty\-array will always evaluate to true\.$#'

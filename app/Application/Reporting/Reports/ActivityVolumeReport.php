@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace App\Application\Reporting\Reports;
 
+use App\Domain\Reporting\Enums\ReportKey;
+use App\Domain\Reporting\ValueObjects\ReportRow;
+use App\Domain\Reporting\ValueObjects\ReportData;
+use App\Domain\Reporting\ValueObjects\ReportRange;
+use App\Domain\Reporting\ValueObjects\ReportSeries;
+
 class ActivityVolumeReport implements ReportInterface
 {
     public function getKey(): ReportKey { return ReportKey::ActivityVolume; }
