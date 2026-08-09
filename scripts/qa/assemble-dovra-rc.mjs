@@ -15,33 +15,13 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { releaseCandidatePathExclusion } from "./dovra-rc-path-policy.mjs";
 import { secretSignatureDetections } from "./dovra-rc-secret-policy.mjs";
 
 export const RELEASE_CANDIDATE_SCHEMA = 1;
 export const STATUS_VALUES = Object.freeze(["PASS", "BLOCKED", "NOT_RUN", "EXTERNAL_BLOCKED"]);
 
 const scriptRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const generatedDirectoryNames = new Set([
-    "build",
-    "coverage",
-    "dist",
-    "out",
-    "playwright-report",
-    "reports",
-    "results",
-    "test-results",
-]);
-const excludedDirectoryNames = new Set([
-    ".git",
-    ".worktrees",
-    "node_modules",
-    "storage",
-    "vendor",
-    "secrets",
-    "keys",
-    "private-keys",
-    "credentials",
-]);
 const criticalFiles = ["composer.lock", "package-lock.json", "Dockerfile", ".env.example"];
 const strictRequirements = [
     "PHP 8.4/Laravel backend bootstrap and dependency certification",
@@ -181,41 +161,6 @@ function isInside(parent, child) {
     return fromParent === "" || (!fromParent.startsWith("..") && !isAbsolute(fromParent));
 }
 
-function hasSensitivePath(relativePath) {
-    const normalized = toPosixPath(relativePath);
-    const segments = normalized.split("/").filter(Boolean);
-    const basename = segments.at(-1)?.toLowerCase() ?? "";
-    if (basename === ".env" || (basename.startsWith(".env.") && basename !== ".env.example")) {
-        return { excluded: true, reason: "environment-secret" };
-    }
-    if (segments.some((segment) => excludedDirectoryNames.has(segment.toLowerCase()))) {
-        return { excluded: true, reason: "sensitive-or-runtime-directory" };
-    }
-    for (let index = 0; index < segments.length - 1; index += 1) {
-        if (segments[index].toLowerCase() === "artifacts" && segments[index + 1].toLowerCase() === "releases") {
-            return { excluded: true, reason: "release-artifact" };
-        }
-    }
-    if (segments.some((segment) => generatedDirectoryNames.has(segment.toLowerCase()))) {
-        return { excluded: true, reason: "generated-output" };
-    }
-    if (
-        basename === "secret" ||
-        basename === "secrets" ||
-        basename === "credentials" ||
-        basename === "credential" ||
-        basename === "passwords" ||
-        basename === "password" ||
-        basename === "id_rsa" ||
-        basename === "id_dsa" ||
-        basename === "id_ed25519" ||
-        /\.(?:pem|key|p12|pfx|jks|keystore|secret|secrets|credentials)$/iu.test(basename)
-    ) {
-        return { excluded: true, reason: "secret-or-private-key" };
-    }
-    return { excluded: false, reason: null };
-}
-
 function envNamesFromContent(content) {
     const names = new Set();
     for (const line of content.toString("utf8").split(/\r?\n/u)) {
@@ -316,9 +261,9 @@ function copyVisibleFiles(source, sourceOutput, visiblePaths) {
         if (!isSafeRelativePath(candidate)) {
             throw new Error(`Unsafe Git path cannot be copied: ${candidate}`);
         }
-        const pathDecision = hasSensitivePath(candidate);
-        if (pathDecision.excluded) {
-            excludedCounts.set(pathDecision.reason, (excludedCounts.get(pathDecision.reason) ?? 0) + 1);
+        const pathExclusion = releaseCandidatePathExclusion(candidate);
+        if (pathExclusion !== null) {
+            excludedCounts.set(pathExclusion, (excludedCounts.get(pathExclusion) ?? 0) + 1);
             continue;
         }
 

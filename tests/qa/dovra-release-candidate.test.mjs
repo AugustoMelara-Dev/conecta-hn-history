@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { releaseCandidatePathExclusion } from "../../scripts/qa/dovra-rc-path-policy.mjs";
 import { secretSignatureDetections } from "../../scripts/qa/dovra-rc-secret-policy.mjs";
 
 const repositoryRoot = resolve(import.meta.dirname, "../..");
@@ -22,6 +23,16 @@ function assertSharedSecretPolicyConsumer(source, label) {
     assert.equal(exactImports.length, 1, `${label} must import only secretSignatureDetections`);
     assert.doesNotMatch(source, /(?:function\s+|(?:const|let|var)\s+)(?:secretSignatureDetections|secretSignatures|hasSecretSignature|hasPrivateKeySignature|isHighEntropyCredential|valueSignatureDetections)\b/u, `${label} must not define scanner policy locally`);
     assert.doesNotMatch(source, /AKIA\|ASIA|github_pat_|sk-\(proj-|BEGIN \[A-Z0-9 \]\*PRIVATE KEY/u, `${label} must not embed scanner signatures locally`);
+}
+
+function assertSharedPathPolicyConsumer(source, label) {
+    const policyImports = source.match(/import[^;]+from\s*["']\.\/dovra-rc-path-policy\.mjs["'];/gu) ?? [];
+    const exactImports = source.match(/import\s*\{\s*releaseCandidatePathExclusion\s*\}\s*from\s*["']\.\/dovra-rc-path-policy\.mjs["'];/gu) ?? [];
+    assert.equal(policyImports.length, 1, `${label} must have exactly one shared path-policy import`);
+    assert.equal(exactImports.length, 1, `${label} must import only releaseCandidatePathExclusion`);
+    assert.doesNotMatch(source, /(?:function\s+hasSensitivePath\b|(?:const|let|var)\s+(?:generatedDirectoryNames|excludedDirectoryNames)\b)/u, `${label} must not define path policy locally`);
+    assert.doesNotMatch(source, /["'](?:environment-secret|sensitive-or-runtime-directory|release-artifact|generated-output|secret-or-private-key)["']/u, `${label} must not embed path-policy reasons locally`);
+    assert.doesNotMatch(source, /new\s+Set\s*\(\s*\[[^\]]*["'](?:\.git|storage|vendor|build|reports|results|artifacts)["']/su, `${label} must not define path policy locally`);
 }
 
 function git(cwd, args) {
@@ -134,6 +145,37 @@ test("shared secret policy classifies safe and unsafe content without values", (
     }
 });
 
+test("shared path policy classifies only canonical top-level exclusions", () => {
+    const included = [
+        ".env.example",
+        "config/.env.example",
+        "source/Storage/cache.txt",
+        "source\\Reports\\monthly.md",
+        "source/Results/result.json",
+        "source/vendor/package.php",
+        "source/build/app.js",
+        "source/artifacts/releases/archive.zip",
+        "nested/node_modules/package.js",
+    ];
+    for (const path of included) assert.equal(releaseCandidatePathExclusion(path), null, path);
+
+    const excluded = [
+        [".env", "environment-secret"],
+        ["config\\.ENV.production", "environment-secret"],
+        ["Storage/cache.txt", "sensitive-or-runtime-directory"],
+        ["VENDOR/package.php", "sensitive-or-runtime-directory"],
+        [".Git/config", "sensitive-or-runtime-directory"],
+        ["Reports/monthly.md", "generated-output"],
+        ["RESULTS/result.json", "generated-output"],
+        ["build/app.js", "generated-output"],
+        ["artifacts/releases/archive.zip", "release-artifact"],
+        ["Artifacts\\Releases\\archive.zip", "release-artifact"],
+        ["source/nested/private.pem", "secret-or-private-key"],
+        ["source/nested/PASSWORD", "secret-or-private-key"],
+    ];
+    for (const [path, reason] of excluded) assert.equal(releaseCandidatePathExclusion(path), reason, path);
+});
+
 test("assembler and verifier consume only the shared secret policy", () => {
     const assemblerSource = readFileSync(assembler, "utf8");
     const verifierSource = readFileSync(verifier, "utf8");
@@ -144,6 +186,18 @@ test("assembler and verifier consume only the shared secret policy", () => {
         "const hasSecretSignature = () => false;",
     ].join("\n");
     assert.throws(() => assertSharedSecretPolicyConsumer(adversarial, "adversarial"), /must not define scanner policy locally/u);
+});
+
+test("assembler and verifier consume only the shared path policy", () => {
+    const assemblerSource = readFileSync(assembler, "utf8");
+    const verifierSource = readFileSync(verifier, "utf8");
+    assertSharedPathPolicyConsumer(assemblerSource, "assembler");
+    assertSharedPathPolicyConsumer(verifierSource, "verifier");
+    const adversarial = [
+        "import { releaseCandidatePathExclusion } from \"./dovra-rc-path-policy.mjs\";",
+        "const localExcluded = new Set(['vendor']);",
+    ].join("\n");
+    assert.throws(() => assertSharedPathPolicyConsumer(adversarial, "adversarial"), /must not define path policy locally/u);
 });
 
 test("assembles a deterministic index and snapshot hash", (t) => {
@@ -168,6 +222,49 @@ test("assembles a deterministic index and snapshot hash", (t) => {
     const secondManifest = JSON.parse(readFileSync(join(second, "manifest.json"), "utf8"));
     assert.equal(firstManifest.snapshot_sha256, secondManifest.snapshot_sha256);
     assert.equal(firstManifest.release_decision, "LOCALLY_VERIFIED/NO_GO");
+});
+
+test("assembler indexes nested reserved names byte for byte and verifier agrees", (t) => {
+    const source = createFixture();
+    const outputParent = mkdtempSync(join(tmpdir(), "dovra-rc-output-"));
+    const output = join(outputParent, "bundle");
+    const included = new Map([
+        ["source/Storage/cache.txt", "nested storage stays visible\n"],
+        ["source/Reports/monthly.md", "nested reports stay visible\n"],
+        ["source/Results/result.json", "{\"visible\":true}\n"],
+        ["source/vendor/package.php", "<?php return 'visible';\n"],
+        ["source/build/app.js", "export const visible = true;\n"],
+        ["source/artifacts/releases/archive.zip", "visible nested artifact\n"],
+    ]);
+    for (const [path, content] of included) writeFixtureFile(source, path, content);
+    const excluded = [
+        "Storage/drop.txt",
+        "Reports/drop.txt",
+        "Results/drop.txt",
+        "Vendor/drop.txt",
+        "BUILD/drop.txt",
+        "Artifacts/Releases/drop.txt",
+        "source/nested/.env.production",
+        "source/nested/private.pem",
+    ];
+    for (const path of excluded) writeFixtureFile(source, path, "must not be indexed\n");
+    t.after(() => {
+        rmSync(source, { recursive: true, force: true });
+        rmSync(outputParent, { recursive: true, force: true });
+    });
+
+    const assembled = assemble(source, output);
+    assert.equal(assembled.status, 0, assembled.stderr || assembled.stdout);
+    const index = JSON.parse(readFileSync(join(output, "index.json"), "utf8"));
+    const indexed = new Set(index.entries.map((entry) => entry.path));
+    for (const [path, content] of included) {
+        assert.ok(indexed.has(path), path);
+        assert.equal(readFileSync(join(output, "source", path), "utf8"), content);
+    }
+    for (const path of excluded) assert.ok(!indexed.has(path), path);
+    const verified = verify(output);
+    assert.equal(verified.status, 0, verified.stderr || verified.stdout);
+    assert.equal(parseJsonOutput(verified).status, "PASS");
 });
 
 test("excludes sensitive/generated paths and records environment names without values", (t) => {

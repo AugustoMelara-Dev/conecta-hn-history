@@ -7,32 +7,12 @@ import {
 import { createHash } from "node:crypto";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { releaseCandidatePathExclusion } from "./dovra-rc-path-policy.mjs";
 import { secretSignatureDetections } from "./dovra-rc-secret-policy.mjs";
 
 export const RELEASE_CANDIDATE_SCHEMA = 1;
 
 const scriptRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const generatedDirectoryNames = new Set([
-    "build",
-    "coverage",
-    "dist",
-    "out",
-    "playwright-report",
-    "reports",
-    "results",
-    "test-results",
-]);
-const excludedDirectoryNames = new Set([
-    ".git",
-    ".worktrees",
-    "node_modules",
-    "storage",
-    "vendor",
-    "secrets",
-    "keys",
-    "private-keys",
-    "credentials",
-]);
 const criticalFiles = ["composer.lock", "package-lock.json", "Dockerfile", ".env.example"];
 const expectedEvidenceStatuses = Object.freeze({
     code: "BLOCKED",
@@ -103,41 +83,6 @@ function readJson(path, findings, code) {
         findings.push({ code: `${code}_INVALID`, path, detail: error instanceof Error ? error.message : String(error) });
         return null;
     }
-}
-
-function hasSensitivePath(relativePath) {
-    const normalized = toPosixPath(relativePath);
-    const segments = normalized.split("/").filter(Boolean);
-    const basename = segments.at(-1)?.toLowerCase() ?? "";
-    if (basename === ".env" || (basename.startsWith(".env.") && basename !== ".env.example")) {
-        return "environment-secret";
-    }
-    if (segments.some((segment) => excludedDirectoryNames.has(segment.toLowerCase()))) {
-        return "sensitive-or-runtime-directory";
-    }
-    for (let index = 0; index < segments.length - 1; index += 1) {
-        if (segments[index].toLowerCase() === "artifacts" && segments[index + 1].toLowerCase() === "releases") {
-            return "release-artifact";
-        }
-    }
-    if (segments.some((segment) => generatedDirectoryNames.has(segment.toLowerCase()))) {
-        return "generated-output";
-    }
-    if (
-        basename === "secret" ||
-        basename === "secrets" ||
-        basename === "credentials" ||
-        basename === "credential" ||
-        basename === "passwords" ||
-        basename === "password" ||
-        basename === "id_rsa" ||
-        basename === "id_dsa" ||
-        basename === "id_ed25519" ||
-        /\.(?:pem|key|p12|pfx|jks|keystore|secret|secrets|credentials)$/iu.test(basename)
-    ) {
-        return "secret-or-private-key";
-    }
-    return null;
 }
 
 function envNamesFromContent(content) {
@@ -255,7 +200,7 @@ function compareSortedEntries(index, findings) {
         if (!isSafeRelativePath(entry.path)) {
             findings.push(finding("INDEX_PATH_INVALID", entry.path, "Index paths must be normalized relative POSIX paths."));
         }
-        const sensitiveReason = hasSensitivePath(entry.path);
+        const sensitiveReason = releaseCandidatePathExclusion(entry.path);
         if (sensitiveReason) {
             findings.push(finding("FORBIDDEN_INDEX_PATH", entry.path, `Sensitive/generated path is forbidden (${sensitiveReason}).`));
         }
@@ -272,7 +217,7 @@ function verifySource(input, index, manifest, findings) {
     const expectedSet = new Set(Array.isArray(index?.entries) ? index.entries.map((entry) => entry.path) : []);
 
     for (const path of actual.files) {
-        const sensitiveReason = hasSensitivePath(path);
+        const sensitiveReason = releaseCandidatePathExclusion(path);
         if (sensitiveReason) {
             findings.push(finding("FORBIDDEN_PATH", path, `Sensitive/generated path is present (${sensitiveReason}).`));
         }
