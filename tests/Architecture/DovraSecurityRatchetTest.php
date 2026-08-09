@@ -27,9 +27,11 @@ use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PhpParser\Node\Scalar\Int_;
 use PhpParser\Node\Scalar\String_;
+use PhpParser\Node\Stmt\Catch_;
 use PhpParser\Node\Stmt\Class_;
 use PhpParser\Node\Stmt\ClassConst;
 use PhpParser\Node\Stmt\ClassMethod;
+use PhpParser\Node\Stmt\TryCatch;
 use PhpParser\NodeFinder;
 use PhpParser\ParserFactory;
 use PHPUnit\Framework\AssertionFailedError;
@@ -536,6 +538,46 @@ final class DovraSecurityRatchetTest extends TestCase
     }
 
     #[Test]
+    public function channel_delivery_provider_failure_is_generic_before_finalize_sinks(): void
+    {
+        $root = dirname(__DIR__, 2);
+        self::assertSecureChannelProviderFailure(
+            (string) file_get_contents($root.'/app/Application/Channels/ChannelDeliveryService.php'),
+        );
+    }
+
+    #[Test]
+    public function channel_delivery_ratchet_rejects_exception_read_after_a_compliant_finalize(): void
+    {
+        $fixture = <<<'PHP'
+            <?php
+            final class ChannelDeliveryService {
+                public function send($adapter, $context, $message) {
+                    try {
+                        $receipt = $adapter->send($providerMessage)->withProviderIdempotencyKey($providerKey);
+                    } catch (Throwable $exception) {
+                        $receipt = new DeliveryReceipt(deliveryState: 'provider_unavailable');
+                        $this->finalizeIntent(
+                            $context, $message, $intent, $payloadHash, $receipt, 'provider_unavailable',
+                        );
+                        $raw = $exception->getMessage();
+                    }
+                }
+            }
+            PHP;
+
+        try {
+            self::assertSecureChannelProviderFailure($fixture);
+            self::fail('A provider exception read unexpectedly satisfied the channel ratchet.');
+        } catch (AssertionFailedError $exception) {
+            self::assertSame(
+                'Provider failure catch must not bind or read the thrown exception.',
+                $exception->getMessage(),
+            );
+        }
+    }
+
+    #[Test]
     public function dovra_rls_contract_cannot_pass_by_missing_tables_or_unregistered_inventory(): void
     {
         $root = dirname(__DIR__, 2);
@@ -905,6 +947,57 @@ final class DovraSecurityRatchetTest extends TestCase
         self::assertSemanticGuardArguments($publicGuards[0], $privateGuards[0]);
         self::assertSemanticEmbeddingArguments($embeddingSinks[0]);
         self::assertSemanticIndexArguments($indexSinks[0]);
+    }
+
+    private static function assertSecureChannelProviderFailure(string $source): void
+    {
+        $service = self::parsedClass($source, 'ChannelDeliveryService');
+        $send = $service->getMethod('send');
+        self::assertInstanceOf(ClassMethod::class, $send);
+        $providerTries = [];
+        foreach ((new NodeFinder)->findInstanceOf($send->stmts ?? [], TryCatch::class) as $tryCatch) {
+            $adapterCalls = array_values(array_filter(
+                self::flattenExecutableNodes($tryCatch->stmts),
+                static fn (Node $node): bool => self::isVariableReceiverCall($node, 'adapter', 'send'),
+            ));
+            if ($adapterCalls !== []) {
+                $providerTries[] = [$tryCatch, $adapterCalls];
+            }
+        }
+
+        self::assertCount(1, $providerTries, 'send() must have one provider try/catch boundary.');
+        [$providerTry, $adapterCalls] = $providerTries[0];
+        self::assertCount(1, $adapterCalls, 'Channel adapter send must occur exactly once.');
+        self::assertCount(1, $adapterCalls[0]->args);
+        self::assertTrue(self::isVariable($adapterCalls[0]->args[0]->value, 'providerMessage'));
+        self::assertCount(1, $providerTry->catches, 'Provider send must have one failure catch.');
+        $catch = $providerTry->catches[0];
+        self::assertInstanceOf(Catch_::class, $catch);
+        self::assertCount(1, $catch->types);
+        self::assertSame('Throwable', $catch->types[0]->getLast());
+
+        $catchNodes = self::flattenExecutableNodes($catch->stmts);
+        $messageReads = array_values(array_filter(
+            $catchNodes,
+            static fn (Node $node): bool => $node instanceof MethodCall
+                && $node->name instanceof Identifier
+                && $node->name->toString() === 'getMessage',
+        ));
+        if ($catch->var !== null || $messageReads !== []) {
+            self::fail('Provider failure catch must not bind or read the thrown exception.');
+        }
+
+        $finalizes = array_values(array_filter(
+            $catchNodes,
+            static fn (Node $node): bool => $node instanceof MethodCall
+                && self::isVariable($node->var, 'this')
+                && $node->name instanceof Identifier
+                && $node->name->toString() === 'finalizeIntent',
+        ));
+        self::assertCount(1, $finalizes, 'Provider failure must finalize the intent exactly once.');
+        self::assertCount(6, $finalizes[0]->args);
+        self::assertInstanceOf(String_::class, $finalizes[0]->args[5]->value);
+        self::assertSame('provider_unavailable', $finalizes[0]->args[5]->value->value);
     }
 
     private static function isExactSemanticQueryTernary(Node $node): bool
