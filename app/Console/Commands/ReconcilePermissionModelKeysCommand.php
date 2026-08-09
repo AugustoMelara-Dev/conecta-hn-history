@@ -16,6 +16,8 @@ final class ReconcilePermissionModelKeysCommand extends Command
         {--batch-size=100 : Maximum assignments examined per bounded batch}
         {--checkpoint= : Atomic resumable checkpoint JSON path}
         {--artifact= : Validation artifact JSON path}
+        {--expected-head= : Expected nonempty git HEAD identity for validation}
+        {--expected-tree= : Expected nonempty git tree identity for validation}
         {--dry-run : Roll back shadow writes and checkpoint advancement}
         {--json : Emit the complete sanitized report as JSON}';
 
@@ -36,6 +38,8 @@ final class ReconcilePermissionModelKeysCommand extends Command
 
         $checkpoint = $this->stringOption('checkpoint');
         $artifact = $this->stringOption('artifact');
+        $expectedHead = $this->stringOption('expected-head');
+        $expectedTree = $this->stringOption('expected-tree');
         try {
             $report = $migration->run(
                 phase: $phase,
@@ -43,6 +47,8 @@ final class ReconcilePermissionModelKeysCommand extends Command
                 checkpointPath: $checkpoint,
                 artifactPath: $artifact,
                 dryRun: (bool) $this->option('dry-run'),
+                expectedHead: $expectedHead,
+                expectedTree: $expectedTree,
             );
         } catch (InvalidArgumentException $exception) {
             $this->error($exception->getMessage());

@@ -51,12 +51,14 @@ final class PermissionModelKeyMigration
         ?string $checkpointPath = null,
         ?string $artifactPath = null,
         bool $dryRun = false,
+        ?string $expectedHead = null,
+        ?string $expectedTree = null,
     ): PermissionModelKeyMigrationReport {
         return match (strtolower(trim($phase))) {
             'preflight' => $this->preflight(),
             'expand' => $this->expand(),
             'backfill' => $this->backfill($batchSize, $checkpointPath, $dryRun),
-            'validate' => $this->validate($artifactPath),
+            'validate' => $this->validate($artifactPath, $expectedHead, $expectedTree),
             'contract' => $this->blockedContract(),
             default => throw new InvalidArgumentException('Permission model-key phase must be preflight, expand, backfill, or validate.'),
         };
@@ -108,12 +110,9 @@ final class PermissionModelKeyMigration
         }
 
         $source = $this->sourceRows();
-        $sourceSnapshots = [];
-        foreach ($source as $table => $rows) {
-            $sourceSnapshots[$table] = $this->snapshot($rows, $table === self::SOURCE_PERMISSION ? 'permission_id' : 'role_id');
-        }
+        $sourceSnapshots = $this->sourceSnapshots();
 
-        $scanned = $this->scanSourceAnomalies($source);
+        $scanned = $this->scanSourceAnomaliesStreaming();
         foreach ($scanned as $code => $count) {
             $anomalies[$code] = ($anomalies[$code] ?? 0) + $count;
             $blocking[] = $code;
@@ -121,7 +120,8 @@ final class PermissionModelKeyMigration
 
         $shape = $this->classifyShape($source, $sourceSchemaIssues, $cutoverIssues);
         if ($shape === self::SHAPE_MIXED) {
-            $anomalies['SHADOW_SCHEMA_DRIFT'] = ($anomalies['SHADOW_SCHEMA_DRIFT'] ?? 0) + 0;
+            $anomalies['MIXED_OR_UNKNOWN_SHAPE'] = ($anomalies['MIXED_OR_UNKNOWN_SHAPE'] ?? 0) + 1;
+            $blocking[] = 'MIXED_OR_UNKNOWN_SHAPE';
         }
 
         $shadow = $this->shadowSnapshots();
@@ -192,6 +192,93 @@ final class PermissionModelKeyMigration
         return $this->phaseReport($post, 'expand', 'blocked', ['SHADOW_SCHEMA_DRIFT']);
     }
 
+    /**
+     * Authorize the additive migration before it is allowed to create any table.
+     *
+     * The migration file is intentionally a thin DDL adapter.  Keeping this
+     * gate here means a direct `migrate` invocation cannot bypass the same
+     * preflight, ownership, and schema fingerprint checks used by the command.
+     */
+    public function authorizeExpansionMigration(): bool
+    {
+        $this->assertLocalEngine();
+
+        $preflight = $this->preflight();
+        if ($preflight->status !== 'ready') {
+            $issue = $preflight->blockingIssues[0] ?? 'PREFLIGHT_BLOCKED';
+
+            throw new RuntimeException('EXPANSION_PRECHECK_BLOCKED:'.$issue);
+        }
+        if ($preflight->shape === self::SHAPE_CANONICAL) {
+            return false;
+        }
+
+        if (Schema::hasTable(self::BACKUP_PERMISSION) || Schema::hasTable(self::BACKUP_ROLE)) {
+            throw new RuntimeException('EXPANSION_BACKUP_OCCUPIED');
+        }
+
+        $permissionShadow = Schema::hasTable(self::SHADOW_PERMISSION);
+        $roleShadow = Schema::hasTable(self::SHADOW_ROLE);
+        if ($permissionShadow xor $roleShadow) {
+            throw new RuntimeException('PARTIAL_SHADOW_EXPANSION');
+        }
+        if ($permissionShadow && $this->shadowSchemaIssues() !== []) {
+            throw new RuntimeException('SHADOW_SCHEMA_DRIFT');
+        }
+        if ($permissionShadow && $roleShadow) {
+            return false;
+        }
+
+        $expectedFingerprint = (string) ($preflight->schema['fingerprint'] ?? '');
+        if ($expectedFingerprint === '' || ! hash_equals($expectedFingerprint, $this->schemaFingerprint())) {
+            throw new RuntimeException('SOURCE_CHANGED_SINCE_PREFLIGHT');
+        }
+
+        return true;
+    }
+
+    /**
+     * Authorize a direct migration rollback.  Only exact, empty shadows that
+     * this service created may be removed; legacy backups or populated tables
+     * make rollback fail closed.
+     */
+    public function authorizeRollbackMigration(): bool
+    {
+        $this->assertLocalEngine();
+
+        if (Schema::hasTable(self::BACKUP_PERMISSION) || Schema::hasTable(self::BACKUP_ROLE)) {
+            throw new RuntimeException('ROLLBACK_BACKUP_OCCUPIED');
+        }
+
+        $permissionShadow = Schema::hasTable(self::SHADOW_PERMISSION);
+        $roleShadow = Schema::hasTable(self::SHADOW_ROLE);
+        if (! $permissionShadow && ! $roleShadow) {
+            return false;
+        }
+        if ($permissionShadow xor $roleShadow) {
+            throw new RuntimeException('PARTIAL_SHADOW_EXPANSION');
+        }
+        if ($this->shadowSchemaIssues() !== []) {
+            throw new RuntimeException('SHADOW_SCHEMA_DRIFT');
+        }
+        if (DB::table(self::SHADOW_PERMISSION)->count() > 0 || DB::table(self::SHADOW_ROLE)->count() > 0) {
+            throw new RuntimeException('ROLLBACK_SHADOW_NOT_EMPTY');
+        }
+
+        $preflight = $this->preflight();
+        if ($preflight->status !== 'ready') {
+            $issue = $preflight->blockingIssues[0] ?? 'PREFLIGHT_BLOCKED';
+
+            throw new RuntimeException('ROLLBACK_PRECHECK_BLOCKED:'.$issue);
+        }
+        $expectedFingerprint = (string) ($preflight->schema['fingerprint'] ?? '');
+        if ($expectedFingerprint === '' || ! hash_equals($expectedFingerprint, $this->schemaFingerprint())) {
+            throw new RuntimeException('SOURCE_CHANGED_SINCE_PREFLIGHT');
+        }
+
+        return true;
+    }
+
     public function backfill(int $batchSize = 100, ?string $checkpointPath = null, bool $dryRun = false): PermissionModelKeyMigrationReport
     {
         if ($batchSize < 1 || $batchSize > self::MAX_BATCH_SIZE) {
@@ -212,8 +299,7 @@ final class PermissionModelKeyMigration
             return $this->phaseReport($preflight, 'backfill', 'blocked', ['EXPAND_REQUIRED']);
         }
 
-        $currentSource = $this->sourceRows();
-        $currentSnapshots = $this->sourceSnapshots($currentSource);
+        $currentSnapshots = $this->sourceSnapshots();
         $schemaFingerprint = $this->schemaFingerprint();
         $checkpoint = $this->readCheckpoint($checkpointPath);
         if ($checkpoint['error'] !== null) {
@@ -237,15 +323,13 @@ final class PermissionModelKeyMigration
             }
         }
 
-        $rowsByTable = [];
         $selectedByTable = [];
         $nextCursors = $cursors;
         $examined = 0;
         $batchIssues = [];
         $remainingBatch = $batchSize;
-        foreach ($currentSource as $table => $rows) {
-            $rowsByTable[$table] = $rows;
-            [$selected, $nextCursor, $cursorError] = $this->selectBatch($rows, $table, $cursors[$table], $remainingBatch);
+        foreach ([self::SOURCE_PERMISSION, self::SOURCE_ROLE] as $table) {
+            [$selected, $nextCursor, $cursorError] = $this->selectBatchStreaming($table, $cursors[$table], $remainingBatch);
             if ($cursorError !== null) {
                 return $this->phaseReport($preflight, 'backfill', 'blocked', [$cursorError]);
             }
@@ -291,8 +375,7 @@ final class PermissionModelKeyMigration
                 }
             }
 
-            $afterSource = $this->sourceRows();
-            if ($this->sourceSnapshots($afterSource) !== $currentSnapshots) {
+            if ($this->sourceSnapshots() !== $currentSnapshots) {
                 throw new RuntimeException('SOURCE_CHANGED_SINCE_CHECKPOINT');
             }
 
@@ -301,7 +384,7 @@ final class PermissionModelKeyMigration
 
                 return $this->phaseReport($preflight, 'backfill', 'dry_run', [], [
                     'batch_size' => $batchSize,
-                    'has_more' => $this->hasMore($rowsByTable, $nextCursors),
+                    'has_more' => $this->hasMoreStreaming($nextCursors),
                 ], $examined, $copied, $alreadyPresent, true);
             }
             DB::commit();
@@ -316,7 +399,7 @@ final class PermissionModelKeyMigration
             return $this->phaseReport($preflight, 'backfill', 'blocked', [$code]);
         }
 
-        $hasMore = $this->hasMore($rowsByTable, $nextCursors);
+        $hasMore = $this->hasMoreStreaming($nextCursors);
         $batchSequence++;
         $checkpointSummary = [
             'command_version' => self::COMMAND_VERSION,
@@ -330,6 +413,7 @@ final class PermissionModelKeyMigration
             'schema_fingerprint' => $schemaFingerprint,
             'source_schema_fingerprint' => $this->sourceSchemaFingerprint(),
             'config_fingerprint' => $this->configurationFingerprint(),
+            'cursor_schema' => $this->cursorSchema(),
             'cursors' => $nextCursors,
             'rows_examined' => $examined,
             'rows_copied' => $copied,
@@ -338,7 +422,8 @@ final class PermissionModelKeyMigration
             'anomaly_counts' => [],
             'previous_chain_sha256' => $previousChain,
         ];
-        $checkpointSummary['chain_sha256'] = hash('sha256', $previousChain.'|'.self::canonicalJson($checkpointSummary));
+        $checkpointSummary['batch_payload_sha256'] = $this->batchPayloadChecksum($checkpointSummary);
+        $checkpointSummary['chain_sha256'] = $this->chainChecksum($checkpointSummary);
         $checkpointSummary['checkpoint_sha256'] = $this->checkpointChecksum($checkpointSummary);
         if ($checkpointPath !== null && trim($checkpointPath) !== '') {
             if (! $this->writeJsonAtomic($checkpointPath, $checkpointSummary)) {
@@ -353,8 +438,11 @@ final class PermissionModelKeyMigration
         ], $examined, $copied, $alreadyPresent, false, true);
     }
 
-    public function validate(?string $artifactPath = null): PermissionModelKeyMigrationReport
-    {
+    public function validate(
+        ?string $artifactPath = null,
+        ?string $expectedHead = null,
+        ?string $expectedTree = null,
+    ): PermissionModelKeyMigrationReport {
         if (DB::getDriverName() !== 'sqlite') {
             return $this->sqliteOnlyBlocked('validate');
         }
@@ -366,41 +454,49 @@ final class PermissionModelKeyMigration
             return $this->phaseReport($preflight, 'validate', 'blocked', ['EXPAND_REQUIRED']);
         }
 
-        $source = $this->sourceRows();
-        $sourceSnapshots = $this->sourceSnapshots($source);
-        $shadow = $this->shadowRows();
-        $shadowSnapshots = $this->shadowSnapshots($shadow);
-        $anomalies = $this->scanSourceAnomalies($source);
+        $sourceSnapshots = $this->sourceSnapshots();
+        $shadowSnapshots = $this->shadowSnapshots();
+        $anomalies = $this->scanSourceAnomaliesStreaming();
         $blocking = array_keys($anomalies);
 
         foreach ([self::SOURCE_PERMISSION, self::SOURCE_ROLE] as $table) {
-            $sourceKeys = $this->tupleSet($source[$table] ?? [], $table);
             $shadowTable = $table === self::SOURCE_PERMISSION ? self::SHADOW_PERMISSION : self::SHADOW_ROLE;
-            $shadowKeys = $this->tupleSet($shadow[$shadowTable] ?? [], $table);
-            foreach (array_diff_key($sourceKeys, $shadowKeys) as $_missing) {
-                $anomalies['SHADOW_ASSIGNMENT_MISSING'] = ($anomalies['SHADOW_ASSIGNMENT_MISSING'] ?? 0) + 1;
+            $diff = $this->compareTupleStreams($table, $shadowTable);
+            if ($diff['missing'] > 0) {
+                $anomalies['SHADOW_ASSIGNMENT_MISSING'] = ($anomalies['SHADOW_ASSIGNMENT_MISSING'] ?? 0) + $diff['missing'];
             }
-            foreach (array_diff_key($shadowKeys, $sourceKeys) as $_extra) {
-                $anomalies['SHADOW_ASSIGNMENT_EXTRA'] = ($anomalies['SHADOW_ASSIGNMENT_EXTRA'] ?? 0) + 1;
+            if ($diff['extra'] > 0) {
+                $anomalies['SHADOW_ASSIGNMENT_EXTRA'] = ($anomalies['SHADOW_ASSIGNMENT_EXTRA'] ?? 0) + $diff['extra'];
             }
         }
         $blocking = array_keys($anomalies);
 
-        $sourceAfter = $this->sourceSnapshots($this->sourceRows());
+        $sourceAfter = $this->sourceSnapshots();
+        $shadowAfter = $this->shadowSnapshots();
         if ($sourceAfter !== $sourceSnapshots) {
             $anomalies['SOURCE_CHANGED_SINCE_CHECKPOINT'] = 1;
             $blocking[] = 'SOURCE_CHANGED_SINCE_CHECKPOINT';
+        }
+        if ($shadowAfter !== $shadowSnapshots) {
+            $anomalies['SHADOW_CHANGED_DURING_VALIDATION'] = 1;
+            $blocking[] = 'SHADOW_CHANGED_DURING_VALIDATION';
         }
         if ($this->foreignKeyIssues() !== []) {
             $anomalies['FOREIGN_KEY_INTEGRITY'] = count($this->foreignKeyIssues());
             $blocking[] = 'FOREIGN_KEY_INTEGRITY';
         }
 
+        $identity = $this->resolveGitIdentity($expectedHead, $expectedTree);
+        if ($identity['error'] !== null) {
+            $anomalies[$identity['error']] = ($anomalies[$identity['error']] ?? 0) + 1;
+            $blocking[] = $identity['error'];
+        }
+
         $payload = [
             'command_version' => self::COMMAND_VERSION,
             'phase' => 'validate',
-            'head' => getenv('DOVRA_GIT_HEAD') !== false ? getenv('DOVRA_GIT_HEAD') : null,
-            'tree' => getenv('DOVRA_GIT_TREE') !== false ? getenv('DOVRA_GIT_TREE') : null,
+            'head' => $identity['head'],
+            'tree' => $identity['tree'],
             'verification_scope' => $this->verificationScope(DB::getDriverName()),
             'driver' => DB::getDriverName(),
             'database_version' => $this->databaseVersion(),
@@ -411,6 +507,12 @@ final class PermissionModelKeyMigration
             'schema_fingerprint' => $this->schemaFingerprint(),
             'anomaly_counts' => $anomalies,
             'blocking_issues' => array_values(array_unique($blocking)),
+            'replay_proof' => [
+                'idempotent' => ($anomalies['SHADOW_ASSIGNMENT_MISSING'] ?? 0) === 0
+                    && ($anomalies['SHADOW_ASSIGNMENT_EXTRA'] ?? 0) === 0,
+                'rows_changed_on_replay' => 0,
+                'strategy' => 'exact_sorted_tuple_stream',
+            ],
         ];
         $artifact = $this->persistOrVerifyArtifact($artifactPath, $payload);
         if ($artifact['error'] !== null) {
@@ -431,7 +533,11 @@ final class PermissionModelKeyMigration
             blockingIssues: $blocking,
             schema: ['fingerprint' => $this->schemaFingerprint()],
             artifact: $artifact['summary'],
-            details: ['source_immutable' => true, 'cutover' => 'EXTERNAL_BLOCKED'],
+            details: [
+                'source_immutable' => true,
+                'cutover' => 'EXTERNAL_BLOCKED',
+                'replay_proof' => $payload['replay_proof'],
+            ],
         );
     }
 
@@ -461,6 +567,13 @@ final class PermissionModelKeyMigration
             blockingIssues: ['EXTERNAL_ENGINE_BLOCKED'],
             details: ['writes_performed' => false, 'reason' => 'Tasks 1-2 are authorized only for disposable SQLite verification.'],
         );
+    }
+
+    private function assertLocalEngine(): void
+    {
+        if (DB::getDriverName() !== 'sqlite') {
+            throw new RuntimeException('EXTERNAL_ENGINE_BLOCKED');
+        }
     }
 
     /** @param array<string, mixed> $base */
@@ -595,6 +708,13 @@ final class PermissionModelKeyMigration
     private function sourceSchemaIssues(): array
     {
         $issues = [];
+
+        if (! Schema::hasColumn('users', 'id')
+            || ! $this->isUuidColumnExact('users', 'id')
+            || ! $this->hasPrimaryKey('users', ['id'])) {
+            $issues[] = 'USER_UUID_SCHEMA_DRIFT';
+        }
+
         foreach ([self::SOURCE_PERMISSION => 'permission_id', self::SOURCE_ROLE => 'role_id'] as $table => $pivot) {
             $columns = Schema::getColumnListing($table);
             $expectedColumns = [$pivot, 'model_type', 'model_id'];
@@ -604,7 +724,8 @@ final class PermissionModelKeyMigration
             if (Schema::hasColumn($table, 'team_id')) {
                 $issues[] = 'TEAMS_SHAPE_UNSUPPORTED';
             }
-            if (Schema::hasColumn($table, 'model_type') && ! $this->isUuidType(Schema::getColumnType($table, 'model_type'))) {
+            if (Schema::hasColumn($table, 'model_type')
+                && ! $this->sameColumnContract($table, 'model_type', self::SOURCE_PERMISSION, 'model_type')) {
                 $issues[] = 'CONFIG_TABLE_OR_COLUMN_DRIFT';
             }
             $descriptor = $this->tableDescriptor($table);
@@ -619,16 +740,20 @@ final class PermissionModelKeyMigration
             $primaryMatches = false;
             foreach ($descriptor['indexes'] ?? [] as $index) {
                 $indexColumns = array_values(array_map('strval', $index['columns'] ?? []));
-                if (($index['name'] ?? null) === $lookupName && $indexColumns === ['model_id', 'model_type']) {
+                if (($index['name'] ?? null) === $lookupName
+                    && $indexColumns === ['model_id', 'model_type']
+                    && ($index['unique'] ?? false) === false) {
                     $lookupMatches = true;
                 }
                 if (($index['name'] ?? null) === $primaryName
-                    && $indexColumns === $primaryColumns) {
+                    && $indexColumns === $primaryColumns
+                    && ($index['primary'] ?? false) === true) {
                     $primaryMatches = true;
                 }
                 if (DB::getDriverName() === 'sqlite'
                     && ($index['primary'] ?? false) === true
-                    && $indexColumns === $primaryColumns) {
+                    && $indexColumns === $primaryColumns
+                    && ($index['unique'] ?? true) === true) {
                     $primaryMatches = true;
                 }
             }
@@ -642,22 +767,115 @@ final class PermissionModelKeyMigration
                     $foreignKeyMatches = true;
                 }
             }
-            if (! $lookupMatches || ! $primaryMatches || ! $foreignKeyMatches) {
+            if (! $lookupMatches || ! $primaryMatches || ! $foreignKeyMatches
+                || ! $this->sameColumnContract($table, $pivot, $parent, 'id')) {
                 $issues[] = 'CONFIG_TABLE_OR_COLUMN_DRIFT';
             }
         }
         foreach (['permissions' => 'id', 'roles' => 'id'] as $table => $column) {
-            if (! Schema::hasColumn($table, $column) || ! $this->isIntegerType(Schema::getColumnType($table, $column))) {
+            $parentContract = $this->columnContract($table, $column);
+            if (! Schema::hasColumn($table, $column)
+                || ! $this->isIntegerType(Schema::getColumnType($table, $column))
+                || ($parentContract['auto_increment'] ?? false) !== true) {
                 $issues[] = 'ROLE_PERMISSION_KEY_TYPE_DRIFT';
             }
         }
-        if (! Schema::hasColumn('role_has_permissions', 'permission_id')
-            || ! Schema::hasColumn('role_has_permissions', 'role_id')
+        $rolePermissionColumns = Schema::getColumnListing('role_has_permissions');
+        if ($rolePermissionColumns !== ['permission_id', 'role_id']
+            && array_values(array_diff($rolePermissionColumns, ['permission_id', 'role_id'])) !== []) {
+            $issues[] = 'ROLE_PERMISSION_SCHEMA_DRIFT';
+        }
+        if (! $this->sameColumnContract('role_has_permissions', 'permission_id', 'permissions', 'id')
+            || ! $this->sameColumnContract('role_has_permissions', 'role_id', 'roles', 'id')
+            || ! $this->hasPrimaryKey('role_has_permissions', ['permission_id', 'role_id'])
+            || ! $this->hasForeignKey('role_has_permissions', ['permission_id'], 'permissions', ['id'], 'cascade')
+            || ! $this->hasForeignKey('role_has_permissions', ['role_id'], 'roles', ['id'], 'cascade')
             || Schema::hasColumn('role_has_permissions', 'team_id')) {
-            $issues[] = 'CONFIG_TABLE_OR_COLUMN_DRIFT';
+            $issues[] = 'ROLE_PERMISSION_SCHEMA_DRIFT';
         }
 
         return array_values(array_unique($issues));
+    }
+
+    private function isUuidColumnExact(string $table, string $column): bool
+    {
+        if (! Schema::hasColumn($table, $column)) {
+            return false;
+        }
+
+        $contract = $this->columnContract($table, $column);
+        $type = strtolower((string) ($contract['type'] ?? ''));
+        $length = $contract['length'] ?? null;
+        if (DB::getDriverName() === 'pgsql') {
+            return $type === 'uuid';
+        }
+        if (DB::getDriverName() === 'mysql') {
+            return in_array($type, ['char', 'varchar', 'uuid'], true) && ($length === null || (int) $length === 36);
+        }
+
+        // SQLite's Blueprint::uuid() is represented as varchar(36).  Do not
+        // accept an unconstrained/string(255) primary key as UUID-compatible.
+        return in_array($type, ['uuid', 'char', 'varchar', 'string'], true)
+            && ($length === null || (int) $length === 36);
+    }
+
+    private function hasPrimaryKey(string $table, array $columns): bool
+    {
+        if (! Schema::hasTable($table)) {
+            return false;
+        }
+        foreach ($this->tableDescriptor($table)['indexes'] ?? [] as $index) {
+            if (($index['primary'] ?? false) === true
+                && array_values($index['columns'] ?? []) === array_values($columns)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function hasForeignKey(string $table, array $columns, string $parent, array $parentColumns, string $onDelete): bool
+    {
+        foreach ($this->tableDescriptor($table)['foreign_keys'] ?? [] as $foreignKey) {
+            if (array_values($foreignKey['columns'] ?? []) === array_values($columns)
+                && ($foreignKey['foreign_table'] ?? null) === $parent
+                && array_values($foreignKey['foreign_columns'] ?? []) === array_values($parentColumns)
+                && strtolower((string) ($foreignKey['on_delete'] ?? '')) === strtolower($onDelete)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function sameColumnContract(string $leftTable, string $leftColumn, string $rightTable, string $rightColumn): bool
+    {
+        if (! Schema::hasColumn($leftTable, $leftColumn) || ! Schema::hasColumn($rightTable, $rightColumn)) {
+            return false;
+        }
+        $left = $this->columnContract($leftTable, $leftColumn);
+        $right = $this->columnContract($rightTable, $rightColumn);
+        $leftType = strtolower((string) ($left['type'] ?? ''));
+        $rightType = strtolower((string) ($right['type'] ?? ''));
+        if ($this->isIntegerType($leftType) && $this->isIntegerType($rightType)) {
+            return true;
+        }
+
+        return $leftType === $rightType
+            && ($left['length'] ?? null) === ($right['length'] ?? null)
+            && ($left['collation'] ?? null) === ($right['collation'] ?? null);
+    }
+
+    /** @return array<string, mixed> */
+    private function columnContract(string $table, string $column): array
+    {
+        foreach ($this->tableDescriptor($table)['columns'] ?? [] as $descriptor) {
+            if (($descriptor['name'] ?? null) === $column) {
+                return $descriptor;
+            }
+        }
+
+        return [];
     }
 
     /** @return list<string> */
@@ -750,17 +968,70 @@ final class PermissionModelKeyMigration
         return DB::table($table)->get()->all();
     }
 
-    /** @param array<string, list<object>> $source */
-    private function sourceSnapshots(array $source): array
+    /** @param array<string, list<object>>|null $source */
+    private function sourceSnapshots(?array $source = null): array
     {
+        if ($source === null) {
+            $permission = $this->streamSnapshot(self::SOURCE_PERMISSION, 'permission_id');
+            $role = $this->streamSnapshot(self::SOURCE_ROLE, 'role_id');
+
+            return [
+                self::SOURCE_PERMISSION => $permission,
+                self::SOURCE_ROLE => $role,
+                'aggregate_hash' => hash('sha256', self::canonicalJson([
+                    self::SOURCE_PERMISSION => $permission,
+                    self::SOURCE_ROLE => $role,
+                ])),
+            ];
+        }
+
+        $permission = $this->snapshot($source[self::SOURCE_PERMISSION] ?? [], 'permission_id');
+        $role = $this->snapshot($source[self::SOURCE_ROLE] ?? [], 'role_id');
+
         return [
-            self::SOURCE_PERMISSION => $this->snapshot($source[self::SOURCE_PERMISSION] ?? [], 'permission_id'),
-            self::SOURCE_ROLE => $this->snapshot($source[self::SOURCE_ROLE] ?? [], 'role_id'),
+            self::SOURCE_PERMISSION => $permission,
+            self::SOURCE_ROLE => $role,
             'aggregate_hash' => hash('sha256', self::canonicalJson([
-                self::SOURCE_PERMISSION => $this->snapshot($source[self::SOURCE_PERMISSION] ?? [], 'permission_id'),
-                self::SOURCE_ROLE => $this->snapshot($source[self::SOURCE_ROLE] ?? [], 'role_id'),
+                self::SOURCE_PERMISSION => $permission,
+                self::SOURCE_ROLE => $role,
             ])),
         ];
+    }
+
+    /** @return array{count:int,hash:string} */
+    private function streamSnapshot(string $table, string $pivot): array
+    {
+        if (! Schema::hasTable($table)) {
+            return ['count' => 0, 'hash' => hash('sha256', self::canonicalJson([]))];
+        }
+
+        $context = hash_init('sha256');
+        $count = 0;
+        foreach ($this->streamRows($table, $pivot) as $row) {
+            $tuple = [
+                $pivot => (string) ($row->{$pivot} ?? ''),
+                'model_type' => (string) ($row->model_type ?? ''),
+                'model_id' => (string) ($row->model_id ?? ''),
+            ];
+            hash_update($context, self::canonicalJson($tuple)."\n");
+            $count++;
+        }
+
+        return ['count' => $count, 'hash' => hash_final($context)];
+    }
+
+    /** @return iterable<object> */
+    private function streamRows(string $table, string $pivot): iterable
+    {
+        if (! Schema::hasTable($table)) {
+            return;
+        }
+
+        yield from DB::table($table)
+            ->orderBy($pivot)
+            ->orderBy('model_type')
+            ->orderBy('model_id')
+            ->cursor();
     }
 
     /** @param list<object> $rows @return array{count:int,hash:string} */
@@ -782,24 +1053,38 @@ final class PermissionModelKeyMigration
             return 0;
         });
 
+        $context = hash_init('sha256');
+        foreach ($tuples as $tuple) {
+            hash_update($context, self::canonicalJson($tuple)."\n");
+        }
+
         return [
             'count' => count($tuples),
-            'hash' => hash('sha256', self::canonicalJson($tuples)),
+            'hash' => hash_final($context),
         ];
     }
 
-    /** @param array<string, list<object>> $source @return array<string, int> */
-    private function scanSourceAnomalies(array $source): array
+    /** @return array<string, int> */
+    private function scanSourceAnomaliesStreaming(): array
     {
         $anomalies = [];
         foreach ([self::SOURCE_PERMISSION => 'permission_id', self::SOURCE_ROLE => 'role_id'] as $table => $pivot) {
-            $seen = [];
-            foreach ($source[$table] ?? [] as $row) {
-                $key = (string) ($row->{$pivot} ?? '').'|'.(string) ($row->model_type ?? '').'|'.(string) ($row->model_id ?? '');
-                if (isset($seen[$key])) {
-                    $anomalies['DUPLICATE_ASSIGNMENT'] = ($anomalies['DUPLICATE_ASSIGNMENT'] ?? 0) + 1;
+            try {
+                $duplicateQuery = DB::table($table)
+                    ->select($pivot, 'model_type', 'model_id')
+                    ->groupBy($pivot, 'model_type', 'model_id')
+                    ->havingRaw('COUNT(*) > 1');
+                $duplicateCount = (int) DB::query()->fromSub($duplicateQuery, 'duplicate_assignments')->count();
+                if ($duplicateCount > 0) {
+                    $anomalies['DUPLICATE_ASSIGNMENT'] = ($anomalies['DUPLICATE_ASSIGNMENT'] ?? 0) + $duplicateCount;
                 }
-                $seen[$key] = true;
+            } catch (Throwable) {
+                // A source primary key normally makes duplicates impossible;
+                // inability to prove that remains a stable blocking anomaly.
+                $anomalies['DUPLICATE_ASSIGNMENT_SCAN_UNAVAILABLE'] = ($anomalies['DUPLICATE_ASSIGNMENT_SCAN_UNAVAILABLE'] ?? 0) + 1;
+            }
+
+            foreach ($this->streamRows($table, $pivot) as $row) {
                 foreach ($this->rowIssues($row, $table) as $code) {
                     $anomalies[$code] = ($anomalies[$code] ?? 0) + 1;
                 }
@@ -807,6 +1092,49 @@ final class PermissionModelKeyMigration
         }
 
         return $anomalies;
+    }
+
+    /** @return array{missing:int,extra:int} */
+    private function compareTupleStreams(string $sourceTable, string $shadowTable): array
+    {
+        $pivot = $sourceTable === self::SOURCE_PERMISSION ? 'permission_id' : 'role_id';
+        $source = $this->streamRows($sourceTable, $pivot);
+        $shadow = $this->streamRows($shadowTable, $pivot);
+        $source->rewind();
+        $shadow->rewind();
+        $missing = 0;
+        $extra = 0;
+        while ($source->valid() || $shadow->valid()) {
+            if (! $source->valid()) {
+                $extra++;
+                $shadow->next();
+
+                continue;
+            }
+            if (! $shadow->valid()) {
+                $missing++;
+                $source->next();
+
+                continue;
+            }
+            $comparison = self::compareRows($source->current(), $shadow->current(), $sourceTable);
+            if ($comparison < 0) {
+                $missing++;
+                $source->next();
+
+                continue;
+            }
+            if ($comparison > 0) {
+                $extra++;
+                $shadow->next();
+
+                continue;
+            }
+            $source->next();
+            $shadow->next();
+        }
+
+        return ['missing' => $missing, 'extra' => $extra];
     }
 
     /** @return list<string> */
@@ -841,75 +1169,78 @@ final class PermissionModelKeyMigration
     /** @return array<string, array<string, mixed>> */
     private function shadowSnapshots(?array $shadow = null): array
     {
-        $shadow ??= $this->shadowRows();
+        if ($shadow === null) {
+            $permission = $this->streamSnapshot(self::SHADOW_PERMISSION, 'permission_id');
+            $role = $this->streamSnapshot(self::SHADOW_ROLE, 'role_id');
+
+            return [
+                self::SHADOW_PERMISSION => $permission,
+                self::SHADOW_ROLE => $role,
+            ];
+        }
+
+        $permission = $this->snapshot($shadow[self::SHADOW_PERMISSION] ?? [], 'permission_id');
+        $role = $this->snapshot($shadow[self::SHADOW_ROLE] ?? [], 'role_id');
 
         return [
-            self::SHADOW_PERMISSION => $this->snapshot($shadow[self::SHADOW_PERMISSION] ?? [], 'permission_id'),
-            self::SHADOW_ROLE => $this->snapshot($shadow[self::SHADOW_ROLE] ?? [], 'role_id'),
+            self::SHADOW_PERMISSION => $permission,
+            self::SHADOW_ROLE => $role,
         ];
     }
 
-    /** @param array<string, list<object>> $rows @return array<string, bool> */
-    private function tupleSet(array $rows, string $table): array
+    /**
+     * Select one bounded batch directly from a sorted cursor.  The source is
+     * never materialized or sorted in PHP; only the selected rows are kept.
+     *
+     * @return array{0:list<object>,1:?string,2:?string}
+     */
+    private function selectBatchStreaming(string $table, ?string $cursor, int $limit): array
     {
-        $pivot = $table === self::SOURCE_PERMISSION ? 'permission_id' : 'role_id';
-        $set = [];
-        foreach ($rows as $row) {
-            $key = self::canonicalJson([
-                $pivot => (string) ($row->{$pivot} ?? ''),
-                'model_type' => (string) ($row->model_type ?? ''),
-                'model_id' => (string) ($row->model_id ?? ''),
-            ]);
-            $set[hash('sha256', $key)] = true;
+        if ($limit < 1) {
+            return [[], $cursor, null];
         }
 
-        return $set;
-    }
-
-    /** @param list<object> $rows @return array{0:list<object>,1:?string,2:?string} */
-    private function selectBatch(array $rows, string $table, ?string $cursor, int $limit): array
-    {
-        usort($rows, static fn (object $left, object $right): int => self::compareRows($left, $right, $table));
-        $start = 0;
-        if ($cursor !== null) {
-            $found = false;
-            foreach ($rows as $index => $row) {
-                if (hash('sha256', self::cursorKey($row, $table)) === $cursor) {
-                    $start = $index + 1;
-                    $found = true;
-                    break;
+        $cursorFound = $cursor === null;
+        $selected = [];
+        $last = null;
+        foreach ($this->streamRows($table, $table === self::SOURCE_PERMISSION ? 'permission_id' : 'role_id') as $row) {
+            $hash = hash('sha256', self::cursorKey($row, $table));
+            if (! $cursorFound) {
+                if (hash_equals($hash, $cursor)) {
+                    $cursorFound = true;
                 }
+
+                continue;
             }
-            if (! $found) {
-                return [[], null, 'CHECKPOINT_CURSOR_STALE'];
+            if (count($selected) >= $limit) {
+                break;
             }
+            $selected[] = $row;
+            $last = $row;
         }
-        $selected = array_slice($rows, $start, $limit);
-        $last = $selected === [] ? null : $selected[array_key_last($selected)];
+        if (! $cursorFound) {
+            return [[], null, 'CHECKPOINT_CURSOR_STALE'];
+        }
+
         $next = $last === null ? $cursor : hash('sha256', self::cursorKey($last, $table));
 
         return [$selected, $next, null];
     }
 
-    /** @param array<string, list<object>> $rows @param array<string, ?string> $cursors */
-    private function hasMore(array $rows, array $cursors): bool
+    /** @param array<string, ?string> $cursors */
+    private function hasMoreStreaming(array $cursors): bool
     {
         foreach ([self::SOURCE_PERMISSION, self::SOURCE_ROLE] as $table) {
             $cursor = $cursors[$table] ?? null;
-            $ordered = $rows[$table] ?? [];
-            usort($ordered, static fn (object $left, object $right): int => self::compareRows($left, $right, $table));
-            if ($ordered === []) {
-                continue;
-            }
-            if ($cursor === null) {
-                return true;
-            }
-            $found = false;
-            foreach ($ordered as $row) {
-                if ($found) {
-                    return true;
+            $found = $cursor === null;
+            foreach ($this->streamRows($table, $table === self::SOURCE_PERMISSION ? 'permission_id' : 'role_id') as $row) {
+                if (! $found) {
+                    $found = hash_equals(hash('sha256', self::cursorKey($row, $table)), $cursor);
+
+                    continue;
                 }
-                $found = hash('sha256', self::cursorKey($row, $table)) === $cursor;
+
+                return true;
             }
         }
 
@@ -962,7 +1293,7 @@ final class PermissionModelKeyMigration
     /** @param array<string, mixed> $checkpoint @param array<string, mixed> $snapshots */
     private function validateCheckpoint(array $checkpoint, int $batchSize, array $snapshots, string $schemaFingerprint): ?string
     {
-        foreach (['command_version', 'phase', 'driver', 'database_version', 'cursor_version', 'batch_size', 'batch_sequence', 'source', 'schema_fingerprint', 'source_schema_fingerprint', 'config_fingerprint', 'cursors', 'has_more', 'chain_sha256', 'checkpoint_sha256'] as $key) {
+        foreach (['command_version', 'phase', 'driver', 'database_version', 'cursor_version', 'batch_size', 'batch_sequence', 'source', 'schema_fingerprint', 'source_schema_fingerprint', 'config_fingerprint', 'cursor_schema', 'cursors', 'has_more', 'previous_chain_sha256', 'batch_payload_sha256', 'chain_sha256', 'checkpoint_sha256'] as $key) {
             if (! array_key_exists($key, $checkpoint)) {
                 return 'CHECKPOINT_TAMPERED';
             }
@@ -970,6 +1301,8 @@ final class PermissionModelKeyMigration
         if (($checkpoint['command_version'] ?? null) !== self::COMMAND_VERSION
             || ($checkpoint['phase'] ?? null) !== 'backfill'
             || ($checkpoint['cursor_version'] ?? null) !== 1
+            || ($checkpoint['driver'] ?? null) !== DB::getDriverName()
+            || ($checkpoint['database_version'] ?? null) !== $this->databaseVersion()
             || ($checkpoint['batch_size'] ?? null) !== $batchSize
             || ! is_int($checkpoint['batch_sequence'] ?? null)
             || $checkpoint['batch_sequence'] < 1
@@ -977,13 +1310,19 @@ final class PermissionModelKeyMigration
             || ($checkpoint['schema_fingerprint'] ?? null) !== $schemaFingerprint
             || ($checkpoint['source_schema_fingerprint'] ?? null) !== $this->sourceSchemaFingerprint()
             || ($checkpoint['config_fingerprint'] ?? null) !== $this->configurationFingerprint()
+            || ($checkpoint['cursor_schema'] ?? null) !== $this->cursorSchema()
             || ! is_array($checkpoint['cursors'] ?? null)
             || ! is_bool($checkpoint['has_more'] ?? null)) {
             return 'SOURCE_CHANGED_SINCE_CHECKPOINT';
         }
         if (($checkpoint['checkpoint_sha256'] ?? null) !== $this->checkpointChecksum($checkpoint)
             || ! is_string($checkpoint['chain_sha256'] ?? null)
-            || preg_match('/^[a-f0-9]{64}$/', $checkpoint['chain_sha256']) !== 1) {
+            || preg_match('/^[a-f0-9]{64}$/', $checkpoint['chain_sha256']) !== 1
+            || ! is_string($checkpoint['previous_chain_sha256'] ?? null)
+            || preg_match('/^[a-f0-9]{64}$/', $checkpoint['previous_chain_sha256']) !== 1
+            || ! is_string($checkpoint['batch_payload_sha256'] ?? null)
+            || ! hash_equals((string) $checkpoint['batch_payload_sha256'], $this->batchPayloadChecksum($checkpoint))
+            || ! hash_equals((string) $checkpoint['chain_sha256'], $this->chainChecksum($checkpoint))) {
             return 'CHECKPOINT_TAMPERED';
         }
 
@@ -1002,6 +1341,43 @@ final class PermissionModelKeyMigration
             'chain_sha256' => (string) ($checkpoint['chain_sha256'] ?? ''),
             'checkpoint_sha256' => (string) ($checkpoint['checkpoint_sha256'] ?? ''),
         ];
+    }
+
+    /** @return array<string, array<string, mixed>> */
+    private function cursorSchema(): array
+    {
+        $schema = [];
+        foreach ([self::SOURCE_PERMISSION => 'permission_id', self::SOURCE_ROLE => 'role_id'] as $table => $pivot) {
+            $schema[$table] = [
+                'table' => $table,
+                'key' => [$pivot, 'model_type', 'model_id'],
+                'types' => [
+                    $pivot => $this->columnContract($table, $pivot),
+                    'model_type' => $this->columnContract($table, 'model_type'),
+                    'model_id' => $this->columnContract($table, 'model_id'),
+                ],
+            ];
+        }
+
+        return $schema;
+    }
+
+    /** @param array<string, mixed> $checkpoint */
+    private function chainChecksum(array $checkpoint): string
+    {
+        $previous = (string) ($checkpoint['previous_chain_sha256'] ?? '');
+        $batch = $this->batchPayloadChecksum($checkpoint);
+
+        return hash('sha256', $previous.'|'.$batch);
+    }
+
+    /** @param array<string, mixed> $checkpoint */
+    private function batchPayloadChecksum(array $checkpoint): string
+    {
+        $payload = $checkpoint;
+        unset($payload['batch_payload_sha256'], $payload['chain_sha256'], $payload['checkpoint_sha256']);
+
+        return hash('sha256', self::canonicalJson($payload));
     }
 
     /** @param array<string, mixed> $checkpoint */
@@ -1081,6 +1457,39 @@ final class PermissionModelKeyMigration
         return ['summary' => $summary, 'error' => null];
     }
 
+    /** @return array{head:?string,tree:?string,error:?string} */
+    private function resolveGitIdentity(?string $expectedHead, ?string $expectedTree): array
+    {
+        $actualHead = $this->gitIdentity('rev-parse HEAD');
+        $actualTree = $this->gitIdentity('write-tree');
+        $head = trim((string) ($expectedHead ?? (getenv('DOVRA_GIT_HEAD') !== false ? getenv('DOVRA_GIT_HEAD') : $actualHead)));
+        $tree = trim((string) ($expectedTree ?? (getenv('DOVRA_GIT_TREE') !== false ? getenv('DOVRA_GIT_TREE') : $actualTree)));
+
+        if ($head === '' || $tree === '') {
+            return ['head' => $head !== '' ? $head : null, 'tree' => $tree !== '' ? $tree : null, 'error' => 'HEAD_TREE_IDENTITY_MISSING'];
+        }
+        if (preg_match('/^[a-f0-9]{40,64}$/i', $head) !== 1 || preg_match('/^[a-f0-9]{40,64}$/i', $tree) !== 1) {
+            return ['head' => null, 'tree' => null, 'error' => 'HEAD_TREE_IDENTITY_INVALID'];
+        }
+        if (($actualHead !== null && ! hash_equals(strtolower($actualHead), strtolower($head)))
+            || ($actualTree !== null && ! hash_equals(strtolower($actualTree), strtolower($tree)))) {
+            return ['head' => $head, 'tree' => $tree, 'error' => 'HEAD_TREE_IDENTITY_MISMATCH'];
+        }
+
+        return ['head' => strtolower($head), 'tree' => strtolower($tree), 'error' => null];
+    }
+
+    private function gitIdentity(string $command): ?string
+    {
+        $output = [];
+        $status = 1;
+        @exec('git '.$command, $output, $status);
+
+        return $status === 0 && isset($output[0]) && trim((string) $output[0]) !== ''
+            ? trim((string) $output[0])
+            : null;
+    }
+
     /** @param array<string, mixed> $value */
     private function containsUuid(array $value): bool
     {
@@ -1130,7 +1539,7 @@ final class PermissionModelKeyMigration
     private function schemaPayload(): array
     {
         $tables = [];
-        foreach (['permissions', 'roles', self::SOURCE_PERMISSION, self::SOURCE_ROLE, self::SHADOW_PERMISSION, self::SHADOW_ROLE] as $table) {
+        foreach (['users', 'permissions', 'roles', 'role_has_permissions', self::SOURCE_PERMISSION, self::SOURCE_ROLE, self::SHADOW_PERMISSION, self::SHADOW_ROLE] as $table) {
             if (Schema::hasTable($table)) {
                 $tables[$table] = $this->tableDescriptor($table);
             }
@@ -1151,13 +1560,24 @@ final class PermissionModelKeyMigration
                 $columns[] = [
                     'name' => (string) ($column['name'] ?? ''),
                     'type' => strtolower((string) ($column['type'] ?? '')),
+                    'type_name' => strtolower((string) ($column['type_name'] ?? $column['type'] ?? '')),
+                    'length' => isset($column['length']) && $column['length'] !== null ? (int) $column['length'] : null,
+                    'collation' => $column['collation'] ?? null,
                     'nullable' => (bool) ($column['nullable'] ?? false),
                     'default' => $column['default'] ?? null,
+                    'auto_increment' => (bool) ($column['auto_increment'] ?? false),
                 ];
             }
         } catch (Throwable) {
             foreach (Schema::getColumnListing($table) as $name) {
-                $columns[] = ['name' => $name, 'type' => strtolower((string) Schema::getColumnType($table, $name))];
+                $columns[] = [
+                    'name' => $name,
+                    'type' => strtolower((string) Schema::getColumnType($table, $name)),
+                    'type_name' => strtolower((string) Schema::getColumnType($table, $name)),
+                    'length' => null,
+                    'collation' => null,
+                    'auto_increment' => false,
+                ];
             }
         }
         usort($columns, static fn (array $left, array $right): int => strcmp((string) $left['name'], (string) $right['name']));
@@ -1178,6 +1598,7 @@ final class PermissionModelKeyMigration
         try {
             foreach (Schema::getForeignKeys($table) as $foreignKey) {
                 $foreignKeys[] = [
+                    'name' => (string) ($foreignKey['name'] ?? ''),
                     'columns' => array_values(array_map('strval', $foreignKey['columns'] ?? [])),
                     'foreign_table' => (string) ($foreignKey['foreign_table'] ?? ''),
                     'foreign_columns' => array_values(array_map('strval', $foreignKey['foreign_columns'] ?? [])),
@@ -1205,8 +1626,14 @@ final class PermissionModelKeyMigration
             $expectedColumns = [$pivot, 'model_type', 'model_id'];
             if (array_diff($expectedColumns, $columns) !== []
                 || array_diff($columns, $expectedColumns) !== []
-                || ! $this->isIntegerType(Schema::getColumnType($table, $pivot))
-                || ! $this->isUuidType(Schema::getColumnType($table, 'model_id'))
+                || ! $this->sameColumnContract(
+                    $table,
+                    $pivot,
+                    $table === self::SHADOW_PERMISSION ? 'permissions' : 'roles',
+                    'id',
+                )
+                || ! $this->isUuidColumnExact($table, 'model_id')
+                || ! $this->sameColumnContract($table, 'model_type', $table === self::SHADOW_PERMISSION ? self::SOURCE_PERMISSION : self::SOURCE_ROLE, 'model_type')
                 || Schema::hasColumn($table, 'team_id')) {
                 $issues[] = 'SHADOW_SCHEMA_DRIFT';
             }
@@ -1219,16 +1646,19 @@ final class PermissionModelKeyMigration
                 $indexColumns = array_values(array_map('strval', $index['columns'] ?? []));
                 if (($index['name'] ?? null) === $requiredIndex
                     && $indexColumns === ['model_id', 'model_type']) {
-                    $lookupMatches = true;
+                    $lookupMatches = ($index['unique'] ?? false) === false;
                 }
                 if (($index['name'] ?? null) === $requiredPrimary
-                    && $indexColumns === [$pivot, 'model_id', 'model_type']) {
+                    && $indexColumns === [$pivot, 'model_id', 'model_type']
+                    && ($index['primary'] ?? false) === true
+                    && ($index['unique'] ?? false) === true) {
                     $primaryMatches = true;
                 }
                 // SQLite synthesizes primary index names, so its column shape is authoritative.
                 if (DB::getDriverName() === 'sqlite'
                     && ($index['primary'] ?? false) === true
-                    && $indexColumns === [$pivot, 'model_id', 'model_type']) {
+                    && $indexColumns === [$pivot, 'model_id', 'model_type']
+                    && ($index['unique'] ?? true) === true) {
                     $primaryMatches = true;
                 }
             }
@@ -1238,7 +1668,9 @@ final class PermissionModelKeyMigration
                 if (($foreignKey['columns'] ?? []) === [$pivot]
                     && ($foreignKey['foreign_table'] ?? null) === $parent
                     && ($foreignKey['foreign_columns'] ?? []) === ['id']
-                    && strtolower((string) ($foreignKey['on_delete'] ?? '')) === 'cascade') {
+                    && strtolower((string) ($foreignKey['on_delete'] ?? '')) === 'cascade'
+                    && (DB::getDriverName() === 'sqlite'
+                        || ($foreignKey['name'] ?? null) === ($table === self::SHADOW_PERMISSION ? 'spatie_mhpu_permission_fk' : 'spatie_mhru_role_fk'))) {
                     $foreignKeyMatches = true;
                 }
             }

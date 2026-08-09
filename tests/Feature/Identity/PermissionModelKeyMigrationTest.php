@@ -360,6 +360,270 @@ it('exposes a sanitized artisan report with the sqlite verification scope', func
         ->expectsOutputToContain('"verification_scope":"LOCALLY_VERIFIED_SQLITE"');
 });
 
+it('blocks when users id is not an exact uuid primary key', function (): void {
+    Schema::disableForeignKeyConstraints();
+    Schema::drop('users');
+    Schema::enableForeignKeyConstraints();
+    Schema::create('users', static function (Blueprint $table): void {
+        $table->integer('id')->primary();
+        $table->string('name')->nullable();
+    });
+
+    $report = app(PermissionModelKeyMigration::class)->preflight()->toArray();
+
+    expect($report['status'])->toBe('blocked')
+        ->and($report['anomalies']['USER_UUID_SCHEMA_DRIFT'] ?? 0)->toBeGreaterThan(0)
+        ->and($report['blocking_issues'])->toContain('USER_UUID_SCHEMA_DRIFT');
+});
+
+it('blocks when role permission keys drift from the exact primary and foreign-key contract', function (): void {
+    Schema::disableForeignKeyConstraints();
+    Schema::drop('role_has_permissions');
+    Schema::enableForeignKeyConstraints();
+    Schema::create('role_has_permissions', static function (Blueprint $table): void {
+        $table->integer('permission_id');
+        $table->integer('role_id');
+    });
+
+    $report = app(PermissionModelKeyMigration::class)->preflight()->toArray();
+
+    expect($report['status'])->toBe('blocked')
+        ->and($report['anomalies']['ROLE_PERMISSION_SCHEMA_DRIFT'] ?? 0)->toBeGreaterThan(0)
+        ->and($report['blocking_issues'])->toContain('ROLE_PERMISSION_SCHEMA_DRIFT');
+});
+
+it('reports duplicate source assignments while preserving a sanitized anomaly', function (): void {
+    Schema::disableForeignKeyConstraints();
+    Schema::drop('model_has_permissions');
+    Schema::enableForeignKeyConstraints();
+    Schema::create('model_has_permissions', static function (Blueprint $table): void {
+        $table->unsignedBigInteger('permission_id');
+        $table->string('model_type');
+        $table->unsignedBigInteger('model_id');
+    });
+    $permissionId = DB::table('permissions')->insertGetId([
+        'name' => 'crm.duplicate',
+        'guard_name' => 'web',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+    DB::table('model_has_permissions')->insert([
+        ['permission_id' => $permissionId, 'model_type' => 'user', 'model_id' => 1],
+        ['permission_id' => $permissionId, 'model_type' => 'user', 'model_id' => 1],
+    ]);
+
+    $report = app(PermissionModelKeyMigration::class)->preflight()->toArray();
+
+    expect($report['status'])->toBe('blocked')
+        ->and($report['anomalies']['DUPLICATE_ASSIGNMENT'] ?? 0)->toBeGreaterThan(0)
+        ->and(json_encode($report, JSON_THROW_ON_ERROR))->not->toContain('"model_id":1');
+});
+
+it('does not let a direct migration bypass preflight ownership', function (): void {
+    Schema::disableForeignKeyConstraints();
+    Schema::drop('users');
+    Schema::enableForeignKeyConstraints();
+    Schema::create('users', static function (Blueprint $table): void {
+        $table->integer('id')->primary();
+    });
+
+    $migrationDefinition = require database_path('migrations/2026_08_23_000001_expand_spatie_uuid_permission_pivots.php');
+
+    expect(fn (): mixed => $migrationDefinition->up())
+        ->toThrow(RuntimeException::class)
+        ->and(Schema::hasTable('model_has_permissions_uuid_shadow'))->toBeFalse()
+        ->and(Schema::hasTable('model_has_roles_uuid_shadow'))->toBeFalse();
+});
+
+it('rejects rollback when an owned shadow contains assignments', function (): void {
+    $migration = app(PermissionModelKeyMigration::class);
+    $migration->expand();
+    $permissionId = DB::table('permissions')->insertGetId([
+        'name' => 'crm.rollback',
+        'guard_name' => 'web',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+    DB::table('model_has_permissions_uuid_shadow')->insert([
+        'permission_id' => $permissionId,
+        'model_type' => 'user',
+        'model_id' => '00000000-0000-0000-0000-0000000000ab',
+    ]);
+    $migrationDefinition = require database_path('migrations/2026_08_23_000001_expand_spatie_uuid_permission_pivots.php');
+
+    expect(fn (): mixed => $migrationDefinition->down())
+        ->toThrow(RuntimeException::class)
+        ->and(Schema::hasTable('model_has_permissions_uuid_shadow'))->toBeTrue()
+        ->and(Schema::hasTable('model_has_roles_uuid_shadow'))->toBeTrue();
+});
+
+it('blocks a shadow schema drift before any copy can proceed', function (): void {
+    $migration = app(PermissionModelKeyMigration::class);
+    expect($migration->expand()->status)->toBe('expanded');
+    Schema::table('model_has_permissions_uuid_shadow', static function (Blueprint $table): void {
+        $table->dropIndex('spatie_mhpu_model_lookup_idx');
+    });
+
+    $preflight = $migration->preflight()->toArray();
+    $backfill = $migration->backfill(1)->toArray();
+
+    expect($preflight['status'])->toBe('blocked')
+        ->and($preflight['anomalies']['SHADOW_SCHEMA_DRIFT'] ?? 0)->toBeGreaterThan(0)
+        ->and($backfill['status'])->toBe('blocked')
+        ->and($backfill['anomalies']['SHADOW_SCHEMA_DRIFT'] ?? 0)->toBeGreaterThan(0);
+});
+
+it('blocks a command with a stable nonzero exit when preflight is unsafe', function (): void {
+    Config::set('permission.teams', true);
+
+    $result = $this->artisan('permissions:reconcile-model-keys', [
+        'phase' => 'preflight',
+        '--json' => true,
+    ]);
+
+    $result->assertExitCode(5)
+        ->expectsOutputToContain('TEAMS_SHAPE_UNSUPPORTED');
+});
+
+it('binds validation artifacts to exact nonempty head and tree identities', function (): void {
+    $migration = app(PermissionModelKeyMigration::class);
+    $migration->expand();
+    $artifact = tempnam(sys_get_temp_dir(), 'permission-key-identity-');
+    $head = [];
+    $tree = [];
+    $headStatus = 1;
+    $treeStatus = 1;
+    exec('git rev-parse HEAD', $head, $headStatus);
+    exec('git write-tree', $tree, $treeStatus);
+    expect($headStatus)->toBe(0)->and($treeStatus)->toBe(0);
+
+    $valid = $migration->validate($artifact ?: null, trim((string) ($head[0] ?? '')), trim((string) ($tree[0] ?? '')))->toArray();
+    $stale = $migration->validate($artifact ?: null, str_repeat('a', 40), trim((string) ($tree[0] ?? '')))->toArray();
+
+    expect($valid['status'])->toBe('valid')
+        ->and($valid['artifact'])->not->toBeEmpty()
+        ->and($stale['status'])->toBe('blocked')
+        ->and($stale['anomalies']['HEAD_TREE_IDENTITY_MISMATCH'] ?? 0)->toBeGreaterThan(0);
+
+    @unlink($artifact ?: '');
+});
+
+it('blocks expired validation artifacts with a stable anomaly', function (): void {
+    $migration = app(PermissionModelKeyMigration::class);
+    $migration->expand();
+    $artifact = tempnam(sys_get_temp_dir(), 'permission-key-expired-');
+    $migration->validate($artifact ?: null);
+    $payload = json_decode((string) file_get_contents($artifact ?: ''), true, 512, JSON_THROW_ON_ERROR);
+    $payload['expires_at'] = '2000-01-01T00:00:00+00:00';
+    $canonical = new ReflectionMethod(PermissionModelKeyMigration::class, 'canonicalJson');
+    $canonical->setAccessible(true);
+    $payload['artifact_sha256'] = hash('sha256', $canonical->invoke(null, $payload, ['artifact_sha256']));
+    file_put_contents($artifact ?: '', json_encode($payload, JSON_THROW_ON_ERROR));
+
+    $report = $migration->validate($artifact ?: null)->toArray();
+
+    expect($report['status'])->toBe('blocked')
+        ->and($report['anomalies']['VALIDATION_ARTIFACT_EXPIRED'] ?? 0)->toBeGreaterThan(0);
+
+    @unlink($artifact ?: '');
+});
+
+it('rejects a checkpoint whose chain cannot be recomputed from its previous chain', function (): void {
+    $userId = '00000000-0000-0000-0000-0000000000ac';
+    DB::table('users')->insert([
+        'id' => $userId,
+        'name' => 'Checkpoint fixture',
+        'email' => 'checkpoint@example.test',
+        'password' => 'x',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+    $permissionId = DB::table('permissions')->insertGetId([
+        'name' => 'crm.checkpoint',
+        'guard_name' => 'web',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+    DB::table('model_has_permissions')->insert([
+        'permission_id' => $permissionId,
+        'model_type' => 'user',
+        'model_id' => $userId,
+    ]);
+
+    $migration = app(PermissionModelKeyMigration::class);
+    $migration->expand();
+    $checkpoint = tempnam(sys_get_temp_dir(), 'permission-key-chain-');
+    $migration->backfill(1, $checkpoint ?: null, false);
+    $payload = json_decode((string) file_get_contents($checkpoint ?: ''), true, 512, JSON_THROW_ON_ERROR);
+    $payload['chain_sha256'] = str_repeat('a', 64);
+    $checksum = new ReflectionMethod(PermissionModelKeyMigration::class, 'checkpointChecksum');
+    $checksum->setAccessible(true);
+    $payload['checkpoint_sha256'] = $checksum->invoke($migration, $payload);
+    file_put_contents($checkpoint ?: '', json_encode($payload, JSON_THROW_ON_ERROR));
+
+    $report = $migration->backfill(1, $checkpoint ?: null, false)->toArray();
+
+    expect($report['status'])->toBe('blocked')
+        ->and($report['anomalies']['CHECKPOINT_TAMPERED'] ?? 0)->toBeGreaterThan(0);
+
+    @unlink($checkpoint ?: '');
+});
+
+it('blocks a stale opaque cursor without exposing its source tuple', function (): void {
+    $permissionId = DB::table('permissions')->insertGetId([
+        'name' => 'crm.cursor',
+        'guard_name' => 'web',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+    foreach (['00000000-0000-0000-0000-0000000000ad', '00000000-0000-0000-0000-0000000000ae'] as $index => $userId) {
+        DB::table('users')->insert([
+            'id' => $userId,
+            'name' => 'Cursor '.$index,
+            'email' => 'cursor'.$index.'@example.test',
+            'password' => 'x',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('model_has_permissions')->insert([
+            'permission_id' => $permissionId,
+            'model_type' => 'user',
+            'model_id' => $userId,
+        ]);
+    }
+
+    $migration = app(PermissionModelKeyMigration::class);
+    $migration->expand();
+    $checkpoint = tempnam(sys_get_temp_dir(), 'permission-key-stale-');
+    $migration->backfill(1, $checkpoint ?: null, false);
+    $payload = json_decode((string) file_get_contents($checkpoint ?: ''), true, 512, JSON_THROW_ON_ERROR);
+    $cursorKey = new ReflectionMethod(PermissionModelKeyMigration::class, 'cursorKey');
+    $cursorKey->setAccessible(true);
+    $payload['cursors']['model_has_permissions'] = hash('sha256', $cursorKey->invoke(null, (object) [
+        'permission_id' => 999999,
+        'model_type' => 'user',
+        'model_id' => '00000000-0000-0000-0000-0000000000ff',
+    ], 'model_has_permissions'));
+    $chain = new ReflectionMethod(PermissionModelKeyMigration::class, 'chainChecksum');
+    $chain->setAccessible(true);
+    $batchPayload = new ReflectionMethod(PermissionModelKeyMigration::class, 'batchPayloadChecksum');
+    $batchPayload->setAccessible(true);
+    $payload['batch_payload_sha256'] = $batchPayload->invoke($migration, $payload);
+    $payload['chain_sha256'] = $chain->invoke($migration, $payload);
+    $checksum = new ReflectionMethod(PermissionModelKeyMigration::class, 'checkpointChecksum');
+    $checksum->setAccessible(true);
+    $payload['checkpoint_sha256'] = $checksum->invoke($migration, $payload);
+    file_put_contents($checkpoint ?: '', json_encode($payload, JSON_THROW_ON_ERROR));
+
+    $report = $migration->backfill(1, $checkpoint ?: null, false)->toArray();
+
+    expect($report['status'])->toBe('blocked')
+        ->and($report['anomalies']['CHECKPOINT_CURSOR_STALE'] ?? 0)->toBeGreaterThan(0)
+        ->and(json_encode($report, JSON_THROW_ON_ERROR))->not->toContain('00000000-0000-0000-0000-0000000000ff');
+
+    @unlink($checkpoint ?: '');
+});
+
 function setUpPermissionFixture(): void
 {
     Config::set('permission.teams', false);
