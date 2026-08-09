@@ -60,15 +60,15 @@ describe('OrdersChart Widget', function () {
         $reflection = new ReflectionClass(OrdersChart::class);
         $heading = $reflection->getProperty('heading');
 
-        expect($heading->getDefaultValue())->toBe('Ordenes por Dia (Ultima Semana)');
+        expect($heading->getDefaultValue())->toBe('Pedidos últimos 30 días');
     });
 
-    it('is configured as bar chart', function () {
+    it('is configured as a line chart for the time series', function () {
         $widget = new OrdersChart;
         $method = new ReflectionMethod($widget, 'getType');
         $method->setAccessible(true);
 
-        expect($method->invoke($widget))->toBe('bar');
+        expect($method->invoke($widget))->toBe('line');
     });
 });
 

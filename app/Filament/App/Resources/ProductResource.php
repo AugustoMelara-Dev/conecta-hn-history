@@ -13,10 +13,17 @@ use App\Models\MenuSection;
 use App\Models\Product;
 use App\Models\Tenant;
 use App\Support\Product\TenantAccessMatrix;
+use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\EditAction;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Actions as SchemaActions;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -168,7 +175,7 @@ class ProductResource extends Resource
                 // ═══════════════════════════════════════════════════════════
                 // SECCIÓN 1: IMAGEN INSTAGRAM-STYLE
                 // ═══════════════════════════════════════════════════════════
-                Forms\Components\Section::make('Imagen del producto')
+                Section::make('Imagen del producto')
                     ->description(fn () => static::trustedTenant()->is_pro
                         ? 'Sube una imagen principal segura para tu producto.'
                         : 'Sube una imagen principal segura para tu producto.')
@@ -220,7 +227,7 @@ class ProductResource extends Resource
                 // ═══════════════════════════════════════════════════════════
                 // SECCIÓN 2: DATOS ESENCIALES
                 // ═══════════════════════════════════════════════════════════
-                Forms\Components\Section::make('Informacion basica')
+                Section::make('Informacion basica')
                     ->schema([
                         Forms\Components\TextInput::make('name')
                             ->label('Nombre del producto')
@@ -235,6 +242,7 @@ class ProductResource extends Resource
                         Forms\Components\TextInput::make('price')
                             ->label('Precio')
                             ->numeric()
+                            ->dehydrateStateUsing(static fn (mixed $state): string => trim((string) $state))
                             ->prefix(fn (): string => static::currencyCode())
                             ->required()
                             ->minValue(0)
@@ -253,7 +261,7 @@ class ProductResource extends Resource
                 // ═══════════════════════════════════════════════════════════
                 // SECCIÓN 3: ORGANIZACIÓN
                 // ═══════════════════════════════════════════════════════════
-                Forms\Components\Section::make('Organizacion')
+                Section::make('Organizacion')
                     ->schema([
                         Forms\Components\Select::make('category_id')
                             ->relationship('category', 'name')
@@ -322,7 +330,7 @@ class ProductResource extends Resource
 
                             ->helperText('Organiza tus productos en secciones personalizadas.')
                             ->hintAction(
-                                Forms\Components\Actions\Action::make('unlock_menu_sections')
+                                Action::make('unlock_menu_sections')
                                     ->label('Desbloquear con PRO')
                                     ->icon('heroicon-o-arrow-up-right')
                                     ->url(fn () => route('filament.app.pages.manage-billing', ['tenant' => static::trustedTenant()->slug]))
@@ -334,7 +342,7 @@ class ProductResource extends Resource
                 // ═══════════════════════════════════════════════════════════
                 // SECCIÓN 4: CONTROL DE ESTADO
                 // ═══════════════════════════════════════════════════════════
-                Forms\Components\Section::make('Control')
+                Section::make('Control')
                     ->schema([
                         Forms\Components\Toggle::make('is_visible')
                             ->label('Visible en catalogo')
@@ -363,7 +371,7 @@ class ProductResource extends Resource
                 // ═══════════════════════════════════════════════════════════
                 // SECCIÓN: UPSELL MARKETING (Solo para Free)
                 // ═══════════════════════════════════════════════════════════
-                Forms\Components\Section::make('Funciones PRO')
+                Section::make('Funciones PRO')
                     ->description('Mejora tu presencia y convierte mas clientes.')
                     ->visible(fn () => ! static::trustedTenant()->is_pro)
                     ->schema([
@@ -390,8 +398,8 @@ class ProductResource extends Resource
                                 </div>
                             ')),
 
-                        Forms\Components\Actions::make([
-                            Forms\Components\Actions\Action::make('upgrade_to_pro')
+                        SchemaActions::make([
+                            Action::make('upgrade_to_pro')
                                 ->label('Mejorar a Plan PRO')
                                 ->color('warning')
                                 ->size('lg')
@@ -404,7 +412,7 @@ class ProductResource extends Resource
                 // ═══════════════════════════════════════════════════════════
                 // SECCIÓN 5: VARIANTES (Solo PRO)
                 // ═══════════════════════════════════════════════════════════
-                Forms\Components\Section::make('Variantes del producto')
+                Section::make('Variantes del producto')
                     ->description('Define opciones como talla, color o tamano.')
                     ->visible(fn () => static::trustedTenant()->is_pro)
                     ->schema([
@@ -545,7 +553,7 @@ class ProductResource extends Resource
                     ->label('Seccion'),
             ])
             ->actions([
-                Tables\Actions\EditAction::make()
+                EditAction::make()
                     ->iconButton(),
 
                 // ═══════════════════════════════════════════════════════════
@@ -553,7 +561,7 @@ class ProductResource extends Resource
                 // ═══════════════════════════════════════════════════════════
                 // Hamburguesa Sencilla → Hamburguesa Doble en 1 clic
                 // ═══════════════════════════════════════════════════════════
-                Tables\Actions\Action::make('clone')
+                Action::make('clone')
                     ->iconButton()
                     ->icon('heroicon-o-document-duplicate')
                     ->label('Duplicar')
@@ -561,7 +569,7 @@ class ProductResource extends Resource
                         Forms\Components\Hidden::make('attempt_id')
                             ->default(fn (): string => (string) Str::uuid()),
                     ])
-                    ->action(function (Product $record, array $data, Tables\Actions\Action $action): void {
+                    ->action(function (Product $record, array $data, Action $action): void {
                         $attemptId = $data['attempt_id'] ?? null;
                         if (! is_string($attemptId) || ! Str::isUuid($attemptId)) {
                             throw new \InvalidArgumentException('Clone action requires a stable UUID attempt identity.');
@@ -576,7 +584,7 @@ class ProductResource extends Resource
                     ->modalDescription('Se creara una copia inactiva que podras editar.')
                     ->modalSubmitActionLabel('Duplicar'),
 
-                Tables\Actions\DeleteAction::make()
+                DeleteAction::make()
                     ->iconButton()
                     ->using(function (Product $record): bool {
                         app(MerchantProductCatalogAdapter::class)->delete(static::trustedTenant(), $record);
@@ -585,8 +593,8 @@ class ProductResource extends Resource
                     }),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\BulkAction::make('delete')
+                BulkActionGroup::make([
+                    BulkAction::make('delete')
                         ->label('Eliminar')
                         ->requiresConfirmation()
                         ->action(function (Collection $records): void {
@@ -599,7 +607,7 @@ class ProductResource extends Resource
                     // Resuelve el pain point de migrar 50+ productos al plan PRO
                     // Permite mover múltiples productos a una sección en 1 clic
                     // ═══════════════════════════════════════════════════════════
-                    Tables\Actions\BulkAction::make('assign_section')
+                    BulkAction::make('assign_section')
                         ->label('Mover a seccion')
                         ->icon('heroicon-o-folder-arrow-down')
                         ->color('primary')

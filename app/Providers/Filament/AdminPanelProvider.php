@@ -13,6 +13,7 @@ use App\Filament\Admin\Widgets\SystemHealthWidget;
 use App\Filament\Admin\Widgets\TenantsOverviewWidget;
 use App\Filament\Admin\Widgets\TopTenantsTableWidget;
 use App\Filament\Pages\Dashboard as AdminDashboard;
+use App\Filament\Widgets\FinancialStatsOverview;
 use Filament\AvatarProviders\UiAvatarsProvider;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -135,6 +136,7 @@ class AdminPanelProvider extends PanelProvider
                 RecentIncidentsWidget::class,
                 AiCostByTenantChartWidget::class,
                 DiskAndQueueWidget::class,
+                FinancialStatsOverview::class,
             ])
 
             // MIDDLEWARE

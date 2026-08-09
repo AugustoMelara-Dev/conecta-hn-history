@@ -7,6 +7,7 @@ namespace App\Providers\Filament;
 use App\Filament\App\Pages\EditTenantProfile;
 use App\Filament\App\Pages\Dashboard as AppDashboard;
 use App\Filament\App\Widgets\OperationalCockpitWidget;
+use App\Filament\App\Widgets\OnboardingActivationWidget;
 use App\Filament\App\Widgets\OrdersChart;
 use App\Filament\App\Widgets\QuickActionsWidget;
 use App\Filament\App\Widgets\RevenueChart;
@@ -145,6 +146,7 @@ class AppPanelProvider extends PanelProvider
                 OrdersChart::class,
                 QuickActionsWidget::class,
                 OperationalCockpitWidget::class,
+                OnboardingActivationWidget::class,
                 TenantAiAgentWidget::class,
             ])
 

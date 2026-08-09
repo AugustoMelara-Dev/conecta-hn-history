@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Filament\App\Resources\AppointmentResource;
 use App\Filament\App\Resources\AppointmentResource\Pages\CreateAppointment;
-use App\Filament\App\Resources\AppointmentResource\Pages\EditAppointment;
 use App\Filament\App\Resources\AppointmentResource\Pages\ListAppointments;
 use App\Filament\App\Resources\ServiceProviderResource;
 use App\Filament\App\Resources\ServiceProviderResource\Pages\CreateServiceProvider;
@@ -40,7 +39,7 @@ it('ServiceProviderResource is properly configured', function () {
 it('AppointmentResource is properly configured', function () {
     expect(class_exists(AppointmentResource::class))->toBeTrue();
     expect(AppointmentResource::getModel())->toBe(Appointment::class);
-    expect(AppointmentResource::getNavigationGroup())->toBe('Servicios');
+    expect(AppointmentResource::getNavigationGroup())->toBe('Operaciones');
 });
 
 // TEST 4: ServiceResource has required pages
@@ -77,9 +76,9 @@ it('ServiceProvider page classes exist', function () {
     expect(class_exists(EditServiceProvider::class))->toBeTrue();
 });
 
-// TEST 9: Appointment canonical pages exist and the legacy class remains loadable
-it('Appointment page compatibility classes exist', function () {
+// TEST 9: Appointment canonical pages exist and the unsafe legacy editor stays retired
+it('Appointment canonical page classes exist without the legacy editor', function () {
     expect(class_exists(ListAppointments::class))->toBeTrue();
     expect(class_exists(CreateAppointment::class))->toBeTrue();
-    expect(class_exists(EditAppointment::class))->toBeTrue();
+    expect(is_file(app_path('Filament/App/Resources/AppointmentResource/Pages/EditAppointment.php')))->toBeFalse();
 });
