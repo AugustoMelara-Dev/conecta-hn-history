@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { Home, Search, User, Store, Eye } from 'lucide-react';
+import { Heart, Home, Search, User, Store, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function MobileBottomNav() {
@@ -24,6 +24,13 @@ export default function MobileBottomNav() {
             href: '/directorio',
             active: false,
             show: !user
+        },
+        {
+            label: 'Favoritos',
+            icon: Heart,
+            href: user ? '/favoritos' : '/login',
+            active: route().current('favorites.index'),
+            show: true
         },
         {
             label: 'Mi Negocio',

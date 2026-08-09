@@ -269,7 +269,7 @@
             >
                 @foreach($newTenants as $tenant)
                 <a 
-                    href="{{ route('tenant.show', $tenant->slug) }}"
+                    href="{{ route('tenant.public.show', ['tenant' => $tenant->slug]) }}"
                     class="flex-shrink-0 snap-start w-64
                            bg-gray-50 hover:bg-white
                            rounded-2xl p-4

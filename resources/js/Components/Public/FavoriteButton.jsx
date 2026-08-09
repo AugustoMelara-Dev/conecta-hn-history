@@ -12,7 +12,7 @@ const buttonSizes = {
     lg: 'size-12',
 };
 
-function useFavoriteToggle(tenantId, initialFavorited, initialCount = 0) {
+function useFavoriteToggle(tenantId, initialFavorited, initialCount = 0, onToggled) {
     const { auth } = usePage().props;
     const [isFavorited, setIsFavorited] = useState(initialFavorited);
     const [count, setCount] = useState(initialCount);
@@ -45,9 +45,10 @@ function useFavoriteToggle(tenantId, initialFavorited, initialCount = 0) {
                     setIsFavorited(!nextState);
                     setCount((current) => nextState ? Math.max(0, current - 1) : current + 1);
                 },
+                onSuccess: () => onToggled?.(nextState),
             }
         );
-    }, [auth, isFavorited, tenantId]);
+    }, [auth, isFavorited, onToggled, tenantId]);
 
     return { count, handleToggle, isAnimating, isFavorited };
 }
@@ -58,11 +59,13 @@ export default function FavoriteButton({
     count: initialCount = 0,
     size = 'md',
     showCount = false,
+    onToggled,
 }) {
     const { count, handleToggle, isAnimating, isFavorited } = useFavoriteToggle(
         tenantId,
         initialFavorited,
-        initialCount
+        initialCount,
+        onToggled,
     );
 
     return (
@@ -97,8 +100,8 @@ export default function FavoriteButton({
     );
 }
 
-export function FavoriteButtonInline({ tenantId, isFavorited: initialFavorited = false }) {
-    const { handleToggle, isFavorited } = useFavoriteToggle(tenantId, initialFavorited);
+export function FavoriteButtonInline({ tenantId, isFavorited: initialFavorited = false, onToggled }) {
+    const { handleToggle, isFavorited } = useFavoriteToggle(tenantId, initialFavorited, 0, onToggled);
 
     return (
         <Button

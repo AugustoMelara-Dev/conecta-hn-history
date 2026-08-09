@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, router, usePage } from '@inertiajs/react';
-import { Menu, Search, Store } from 'lucide-react';
+import { Heart, Menu, Search, Store } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/Components/ui/button';
@@ -98,6 +98,12 @@ function DesktopNavigation({ auth }) {
             {auth?.user ? (
                 <>
                     <Button variant="ghost" asChild>
+                        <Link href={safeRoute('favorites.index', '/favoritos')}>
+                            <Heart data-icon="inline-start" aria-hidden="true" />
+                            Favoritos
+                        </Link>
+                    </Button>
+                    <Button variant="ghost" asChild>
                         <Link href={safeRoute('mi-cuenta.edit', '/mi-cuenta')}>Mi cuenta</Link>
                     </Button>
                     <Button asChild>
@@ -160,6 +166,12 @@ function MobileNavigation({ auth }) {
                 <div className="flex flex-col gap-2">
                     {auth?.user ? (
                         <>
+                            <Button variant="ghost" className="justify-start" asChild>
+                                <Link href={safeRoute('favorites.index', '/favoritos')}>
+                                    <Heart data-icon="inline-start" aria-hidden="true" />
+                                    Favoritos
+                                </Link>
+                            </Button>
                             <Button variant="outline" asChild>
                                 <Link href={safeRoute('mi-cuenta.edit', '/mi-cuenta')}>Mi cuenta</Link>
                             </Button>

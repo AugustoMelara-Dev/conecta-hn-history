@@ -95,6 +95,10 @@ export default function SmartNavbar() {
                                         </div>
 
                                         <div className="py-1">
+                                            <Link href="/favoritos" className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors">
+                                                <Icons.Heart className="w-4 h-4 text-muted-foreground" />
+                                                Favoritos
+                                            </Link>
                                             {/* Super Admin & Admin Links */}
                                             {(auth.user.role === 'admin' || auth.user.role === 'super_admin') && (
                                                 <>

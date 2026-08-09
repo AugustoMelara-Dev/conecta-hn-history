@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { useEffect } from 'react';
 import {
     CalendarClock,
@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 
 import { Alert, AlertDescription, AlertTitle } from '@/Components/ui/alert';
+import { FavoriteButtonInline } from '@/Components/Public/FavoriteButton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/Components/ui/avatar';
 import { Badge } from '@/Components/ui/badge';
 import { Button } from '@/Components/ui/button';
@@ -31,7 +32,16 @@ import {
     CardTitle,
 } from '@/Components/ui/card';
 import { Separator } from '@/Components/ui/separator';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/Components/ui/select';
+import { Spinner } from '@/Components/ui/spinner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
+import { Textarea } from '@/Components/ui/textarea';
 import FloatingCart from '@/Components/Tenant/FloatingCart';
 import ProductActionArea from '@/Components/Tenant/ProductActionArea';
 import UpsellCard from '@/Components/Tenant/UpsellCard';
@@ -201,7 +211,18 @@ function StatusBadge({ isOpen }) {
     );
 }
 
-function TenantHero({ tenant, isOpen, totalProductsCount, productsCount, categoryName, cityName, whatsappUrl }) {
+function TenantHero({
+    tenant,
+    isOpen,
+    totalProductsCount,
+    productsCount,
+    categoryName,
+    cityName,
+    whatsappUrl,
+    isFavorited,
+    favoritesCount,
+    reviewSummary,
+}) {
     const coverImage = getMediaUrl(tenant.cover || tenant.hero_image || tenant.banner_path);
     const logoImage = getMediaUrl(tenant.logo);
 
@@ -247,6 +268,10 @@ function TenantHero({ tenant, isOpen, totalProductsCount, productsCount, categor
                             <div className="flex flex-wrap items-center gap-2">
                                 <StatusBadge isOpen={isOpen} />
                                 <Badge variant="outline">{categoryName}</Badge>
+                                <FavoriteButtonInline
+                                    tenantId={tenant.id}
+                                    isFavorited={isFavorited}
+                                />
                             </div>
 
                             <div>
@@ -267,11 +292,14 @@ function TenantHero({ tenant, isOpen, totalProductsCount, productsCount, categor
                                     <ShoppingBag className="size-4" aria-hidden="true" />
                                     {productsCount} de {totalProductsCount || productsCount} productos visibles
                                 </span>
-                                {tenant.features?.can_show_reviews && (
+                                {reviewSummary.count > 0 && (
                                     <span className="inline-flex items-center gap-2">
                                         <Star className="size-4" aria-hidden="true" />
-                                        {tenant.rating || '4.8'} ({tenant.reviews_count || 0})
+                                        {reviewSummary.average} ({reviewSummary.count})
                                     </span>
+                                )}
+                                {favoritesCount > 0 && (
+                                    <span>{favoritesCount} {favoritesCount === 1 ? 'persona guardó' : 'personas guardaron'} este negocio</span>
                                 )}
                             </div>
                         </div>
@@ -535,23 +563,189 @@ function InfoSection({ tenant, isOpen, openingHours }) {
     );
 }
 
-function ReviewsSection({ tenant }) {
+function RatingStars({ value, onChange, readOnly = false }) {
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Resenas</CardTitle>
-                <CardDescription>Pronto habra comentarios verificados de clientes.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Alert>
-                    <MessageCircle className="mr-2 inline size-4" aria-hidden="true" />
-                    <AlertTitle>Resenas proximamente</AlertTitle>
-                    <AlertDescription>
-                        {tenant.name} todavia no tiene resenas publicadas en esta vista.
-                    </AlertDescription>
-                </Alert>
-            </CardContent>
-        </Card>
+        <div className="flex items-center gap-1" role={readOnly ? 'img' : 'radiogroup'} aria-label={`${value} de 5 estrellas`}>
+            {[1, 2, 3, 4, 5].map((star) => (
+                readOnly ? (
+                    <Star
+                        key={star}
+                        className={cn('size-4', star <= value ? 'fill-primary text-primary' : 'text-muted-foreground/40')}
+                        aria-hidden="true"
+                    />
+                ) : (
+                    <Button
+                        key={star}
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="size-9"
+                        role="radio"
+                        aria-checked={star === value}
+                        aria-label={`${star} ${star === 1 ? 'estrella' : 'estrellas'}`}
+                        onClick={() => onChange(star)}
+                    >
+                        <Star className={cn('size-5', star <= value && 'fill-primary text-primary')} aria-hidden="true" />
+                    </Button>
+                )
+            ))}
+        </div>
+    );
+}
+
+function ReviewForm({ tenant, products, reviewedProductIds }) {
+    const { auth } = usePage().props;
+    const availableProducts = products.filter((product) => !reviewedProductIds.includes(Number(product.id)));
+    const { data, setData, post, processing, errors, reset } = useForm({
+        tenant_id: tenant.id,
+        product_id: '',
+        rating: 5,
+        comment: '',
+    });
+
+    if (!auth?.user) {
+        return (
+            <Alert>
+                <Star className="size-4" aria-hidden="true" />
+                <AlertTitle>Inicia sesión para escribir una reseña</AlertTitle>
+                <AlertDescription className="mt-2">
+                    <Button variant="outline" size="sm" asChild>
+                        <Link href={safeRoute('login', '/login')}>Iniciar sesión</Link>
+                    </Button>
+                </AlertDescription>
+            </Alert>
+        );
+    }
+
+    if (products.length === 0) {
+        return (
+            <Alert>
+                <AlertTitle>No hay productos disponibles para reseñar</AlertTitle>
+                <AlertDescription>Las reseñas se vinculan a una oferta publicada del negocio.</AlertDescription>
+            </Alert>
+        );
+    }
+
+    if (availableProducts.length === 0) {
+        return (
+            <Alert>
+                <CheckCircle2 className="size-4" aria-hidden="true" />
+                <AlertTitle>Ya reseñaste las ofertas disponibles</AlertTitle>
+                <AlertDescription>Tu opinión está publicada en la lista de reseñas.</AlertDescription>
+            </Alert>
+        );
+    }
+
+    const submit = (event) => {
+        event.preventDefault();
+        post(safeRoute('reviews.store', '/reviews'), {
+            preserveScroll: true,
+            onSuccess: () => reset('product_id', 'comment'),
+        });
+    };
+
+    return (
+        <form onSubmit={submit} className="flex flex-col gap-4" data-testid="review-form">
+            <div>
+                <h3 className="font-semibold text-foreground">Comparte tu experiencia</h3>
+                <p className="mt-1 text-sm text-muted-foreground">Selecciona la oferta y califica del 1 al 5.</p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                <div className="space-y-2">
+                    <label htmlFor="review-product" className="text-sm font-medium">Producto o servicio</label>
+                    <Select value={String(data.product_id)} onValueChange={(value) => setData('product_id', value)}>
+                        <SelectTrigger id="review-product" aria-invalid={Boolean(errors.product_id)}>
+                            <SelectValue placeholder="Selecciona una opción" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {availableProducts.map((product) => (
+                                <SelectItem key={product.id} value={String(product.id)}>{product.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    {errors.product_id ? <p className="text-sm text-destructive" role="alert">{errors.product_id}</p> : null}
+                </div>
+                <div className="space-y-2">
+                    <span className="text-sm font-medium">Calificación</span>
+                    <RatingStars value={Number(data.rating)} onChange={(value) => setData('rating', value)} />
+                </div>
+            </div>
+
+            <div className="space-y-2">
+                <label htmlFor="review-comment" className="text-sm font-medium">Comentario opcional</label>
+                <Textarea
+                    id="review-comment"
+                    value={data.comment}
+                    onChange={(event) => setData('comment', event.target.value)}
+                    maxLength={1000}
+                    placeholder="Cuenta qué fue útil para otras personas."
+                    aria-invalid={Boolean(errors.comment)}
+                />
+                <div className="flex justify-between gap-3 text-xs text-muted-foreground">
+                    {errors.comment ? <span className="text-destructive" role="alert">{errors.comment}</span> : <span>Evita compartir datos personales.</span>}
+                    <span className="tabular-nums">{data.comment.length}/1000</span>
+                </div>
+            </div>
+
+            <Button type="submit" className="w-full sm:w-fit" disabled={processing || !data.product_id}>
+                {processing ? <Spinner /> : <Star data-icon="inline-start" aria-hidden="true" />}
+                {processing ? 'Publicando...' : 'Publicar reseña'}
+            </Button>
+        </form>
+    );
+}
+
+function ReviewsSection({ tenant, products, reviews, reviewSummary, reviewedProductIds }) {
+    return (
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+            <Card>
+                <CardHeader className="flex-row items-start justify-between gap-4">
+                    <div>
+                        <CardTitle>Reseñas</CardTitle>
+                        <CardDescription>Opiniones públicas vinculadas a ofertas de {tenant.name}.</CardDescription>
+                    </div>
+                    <Badge variant="secondary" className="tabular-nums">
+                        {reviewSummary.count > 0 ? `${reviewSummary.average} / 5` : 'Sin calificaciones'}
+                    </Badge>
+                </CardHeader>
+                <CardContent>
+                    {reviews.length > 0 ? (
+                        <div className="divide-y" data-testid="reviews-list">
+                            {reviews.map((review) => (
+                                <article key={review.id} className="flex gap-3 py-5 first:pt-0 last:pb-0">
+                                    <Avatar className="size-10 rounded-md">
+                                        <AvatarFallback className="rounded-md">{getInitials(review.author)}</AvatarFallback>
+                                    </Avatar>
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex flex-wrap items-start justify-between gap-2">
+                                            <div>
+                                                <p className="font-medium text-foreground">{review.author}</p>
+                                                <p className="text-xs text-muted-foreground">{review.product_name || 'Oferta del negocio'} · {review.created_at}</p>
+                                            </div>
+                                            <RatingStars value={review.rating} readOnly />
+                                        </div>
+                                        {review.comment ? <p className="mt-3 text-pretty text-sm leading-6 text-muted-foreground">{review.comment}</p> : null}
+                                    </div>
+                                </article>
+                            ))}
+                        </div>
+                    ) : (
+                        <Alert>
+                            <MessageCircle className="size-4" aria-hidden="true" />
+                            <AlertTitle>Aún no hay reseñas publicadas</AlertTitle>
+                            <AlertDescription>Sé la primera persona en compartir una experiencia sobre una oferta disponible.</AlertDescription>
+                        </Alert>
+                    )}
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardContent className="pt-6">
+                    <ReviewForm tenant={tenant} products={products} reviewedProductIds={reviewedProductIds} />
+                </CardContent>
+            </Card>
+        </div>
     );
 }
 
@@ -728,6 +922,11 @@ export default function TenantShow({
     isOpen = true,
     openingHours = [],
     crmMicrosite = null,
+    isFavorited = false,
+    favoritesCount = 0,
+    reviews = [],
+    reviewSummary = { average: 0, count: 0 },
+    reviewedProductIds = [],
 }) {
     const initForTenant = useCartStore((state) => state.initForTenant);
     const effectiveTenantPlan = storefrontCapabilities.checkout ? PLAN.PRO : PLAN.SEMILLA;
@@ -798,6 +997,9 @@ export default function TenantShow({
                 categoryName={categoryName}
                 cityName={cityName}
                 whatsappUrl={whatsappUrl}
+                isFavorited={isFavorited}
+                favoritesCount={favoritesCount}
+                reviewSummary={reviewSummary}
             />
 
             <main id="catalogo" className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
@@ -838,7 +1040,13 @@ export default function TenantShow({
                     </TabsContent>
 
                     <TabsContent value="reviews" className="mt-6">
-                        <ReviewsSection tenant={tenant} />
+                        <ReviewsSection
+                            tenant={tenant}
+                            products={safeProducts}
+                            reviews={Array.isArray(reviews) ? reviews : []}
+                            reviewSummary={reviewSummary || { average: 0, count: 0 }}
+                            reviewedProductIds={(Array.isArray(reviewedProductIds) ? reviewedProductIds : []).map(Number)}
+                        />
                     </TabsContent>
 
                     {showCrmTab && (

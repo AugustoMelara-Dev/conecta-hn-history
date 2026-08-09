@@ -54,7 +54,7 @@ function getImageUrl(value) {
     return `/storage/${value}`;
 }
 
-export default function TenantCard({ tenant }) {
+export default function TenantCard({ tenant, onFavoriteToggled }) {
     const name = tenant?.name || 'Negocio local';
     const category = typeof tenant?.category === 'string' ? tenant.category : tenant?.category?.name;
     const city = typeof tenant?.city === 'string' ? tenant.city : tenant?.city?.name;
@@ -103,6 +103,7 @@ export default function TenantCard({ tenant }) {
                         count={Number(tenant.favorites_count || 0)}
                         size="sm"
                         showCount={Boolean(tenant.favorites_count)}
+                        onToggled={onFavoriteToggled}
                     />
                 </div>
             ) : null}

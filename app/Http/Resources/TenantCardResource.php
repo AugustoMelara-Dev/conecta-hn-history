@@ -23,6 +23,8 @@ class TenantCardResource extends JsonResource
             'banner_path' => $attributes['hero_image'] ?? $attributes['banner_path'] ?? $attributes['cover_path'] ?? null,
             'blur_hash' => $attributes['blur_hash'] ?? null,
             'brand_color' => $attributes['brand_color'] ?? '#2563EB',
+            'favorites_count' => (int) ($this->resource->tenant_favorites_count ?? 0),
+            'is_favorited' => (bool) ($this->resource->is_favorited ?? false),
             'city' => $this->whenLoaded('city', fn () => [
                 'id' => $this->city->id,
                 'name' => $this->city->name,

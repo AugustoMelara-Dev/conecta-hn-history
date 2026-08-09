@@ -16,4 +16,14 @@ final class RedirectController extends Controller
 
         return redirect('/directorio'.($query ? '?'.$query : ''), 302);
     }
+
+    public function legacyTenant(string $tenant): RedirectResponse
+    {
+        return redirect()->route('tenant.public.show', ['tenant' => $tenant], 301);
+    }
+
+    public function favorites(): RedirectResponse
+    {
+        return redirect('/favoritos', 301);
+    }
 }

@@ -1,4 +1,4 @@
-import { Head, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { CalendarX, CheckCircle2, Clock, XCircle } from 'lucide-react';
 import PublicLayout from '@/Layouts/PublicLayout';
 import { Alert, AlertDescription, AlertTitle } from '@/Components/ui/alert';
@@ -55,7 +55,9 @@ export default function ManageAppointment({ appointment, tenant }) {
     const { flash } = usePage().props;
 
     const handleCancel = () => {
-        post(window.location.href.replace('/manage', '/cancel'));
+        if (appointment.cancel_url) {
+            post(appointment.cancel_url);
+        }
     };
 
     return (
@@ -197,9 +199,9 @@ export default function ManageAppointment({ appointment, tenant }) {
                             ) : null}
 
                             <Button asChild variant="outline" className="w-full">
-                                <a href="/" data-testid="appointment-back-home">
+                                <Link href={tenant.public_url || '/directorio'} data-testid="appointment-back-home">
                                     Volver a {tenant.name}
-                                </a>
+                                </Link>
                             </Button>
                         </CardFooter>
                     </Card>

@@ -55,7 +55,7 @@
 
         {{-- Botón Volver --}}
         <a 
-            href="{{ route('directory') }}"
+            href="{{ route('directory.index') }}"
             class="absolute top-4 left-4 z-20 p-2 rounded-full bg-black/30 backdrop-blur-sm text-white hover:bg-black/50 transition-colors"
         >
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

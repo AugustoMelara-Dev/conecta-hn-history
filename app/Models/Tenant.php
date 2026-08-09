@@ -21,6 +21,7 @@ use App\Domain\TenantGovernance\Enums\TenantFeature;
 use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Domain\TenantGovernance\Events\TenantProfileEnhanced;
 use App\Domain\TenantGovernance\Exceptions\TenantDomainException;
+use App\Infrastructure\Persistence\Eloquent\Scopes\TenantScope;
 use App\Observers\TenantObserver;
 use App\Scopes\LocationScope;
 use App\Traits\CanBeFavorited;
@@ -489,6 +490,13 @@ class Tenant extends Model implements HasMedia
     public function reviews(): HasMany
     {
         return $this->hasMany(Review::class);
+    }
+
+    public function tenantFavorites(): HasMany
+    {
+        return $this->hasMany(TenantFavorite::class)
+            // PUBLIC_READ_WITH_TENANT_FILTER: the relation itself always constrains tenant_favorites.tenant_id.
+            ->withoutGlobalScope(TenantScope::class);
     }
 
     public function tenantVisits(): HasMany

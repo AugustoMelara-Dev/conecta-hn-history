@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Public;
 use App\Http\Controllers\Controller;
 use App\Infrastructure\Booking\GuestAppointmentManagementReader;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\URL;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -29,7 +30,15 @@ final class AppointmentManagementController extends Controller
      */
     public function show(Request $request, mixed $appointment): Response
     {
-        return Inertia::render('Public/Appointment/Manage', $this->appointments->pageData($this->appointmentKey($appointment)));
+        $appointmentKey = $this->appointmentKey($appointment);
+        $data = $this->appointments->pageData($appointmentKey);
+        $data['appointment']['cancel_url'] = URL::temporarySignedRoute(
+            'public.appointment.cancel',
+            now()->addMinutes(30),
+            ['appointment' => $appointmentKey],
+        );
+
+        return Inertia::render('Public/Appointment/Manage', $data);
     }
 
     /**

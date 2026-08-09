@@ -128,10 +128,6 @@ final class TenantMicrositeTransformer
             'products' => $this->transformProducts($tenant, $market),
             'menuSections' => $tenant->relationLoaded('menuSections') ? $tenant->menuSections : collect(),
 
-            // Reviews (Pro feature)
-            'rating' => $this->planService->canShowReviews($tenant) ? 4.8 : null,
-            'reviews_count' => $this->planService->canShowReviews($tenant) ? rand(10, 100) : null,
-
             // Feature flags for frontend conditional rendering
             'features' => [
                 'can_show_modifiers' => $this->planService->canShowModifiers($tenant),

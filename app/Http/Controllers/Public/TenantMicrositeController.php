@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Public;
 
+use App\Application\Directory\Contracts\PublicTenantEngagementGatewayInterface;
 use App\Application\Tenant\Transformers\TenantMicrositeTransformer;
 use App\Domain\Public\Contracts\TenantStorefrontRepository;
 use App\Domain\Tenant\Services\TenantVisibilityService;
@@ -32,6 +33,7 @@ final class TenantMicrositeController extends Controller
         private readonly PlanFeatureFlagService $planService,
         private readonly TenantVisibilityService $visibilityService,
         private readonly EloquentTenantMicrositeReader $micrositeReader,
+        private readonly PublicTenantEngagementGatewayInterface $engagement,
     ) {}
 
     public function show(Request $request): Response
@@ -74,6 +76,11 @@ final class TenantMicrositeController extends Controller
         $isOwner = $request->user() && $request->user()->id === $tenant->user_id;
         $crmMicrosite = $this->micrositeReader->crmData($tenant, (bool) $isOwner);
         $hiddenProductsCount = max(0, $totalProductsCount - $visibleProductsCount);
+        $userId = $request->user() ? (string) $request->user()->getKey() : null;
+        $favoriteIds = $userId === null
+            ? []
+            : $this->engagement->favoriteTenantIds($userId, [(string) $tenant->getKey()]);
+        $reviews = $this->engagement->publicReviews((string) $tenant->getKey(), $userId);
 
         return Inertia::render('Tenant/Show', [
             'tenant' => $tenantData,
@@ -87,8 +94,14 @@ final class TenantMicrositeController extends Controller
             'totalProductsCount' => $isOwner ? $totalProductsCount : $visibleProductsCount,
             'hiddenProductsCount' => $isOwner ? $hiddenProductsCount : 0,
             'isOwner' => $isOwner,
-            'isFollowing' => false,
-            'followersCount' => 0,
+            'isFavorited' => in_array((string) $tenant->getKey(), $favoriteIds, true),
+            'favoritesCount' => (int) $tenant->tenantFavorites()->count(),
+            'reviews' => $reviews['items'],
+            'reviewSummary' => [
+                'average' => $reviews['average'],
+                'count' => $reviews['count'],
+            ],
+            'reviewedProductIds' => $reviews['reviewed_product_ids'],
             'isOpen' => $this->transformer->isCurrentlyOpen($tenant),
             'openingHours' => $this->transformer->transformOpeningHours($tenant->relationLoaded('openingHours') ? $tenant->openingHours : collect()),
             'seoStructuredData' => $this->transformer->buildStructuredData($tenant),

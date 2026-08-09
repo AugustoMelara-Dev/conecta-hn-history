@@ -34,8 +34,8 @@
 @endphp
 
 <a 
-    href="{{ route('tenant.show', $tenant->slug) }}"
-    class="group relative block h-full bg-white rounded-2xl overflow-hidden isolate
+    href="{{ route('tenant.public.show', ['tenant' => $tenant->slug]) }}"
+    class="group relative block h-full bg-white rounded-xl overflow-hidden isolate
            border border-gray-100 shadow-sm
            transition-all duration-300 ease-out
            hover:shadow-xl hover:-translate-y-1 hover:scale-[1.01] hover:border-gray-200"

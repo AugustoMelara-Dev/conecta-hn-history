@@ -39,6 +39,7 @@ final class GuestAppointmentManagementReader
             'tenant' => [
                 'name' => $appointment->tenant->name,
                 'slug' => $appointment->tenant->slug,
+                'public_url' => route('tenant.public.show', ['tenant' => $appointment->tenant->slug], absolute: false),
                 'logo_url' => $appointment->tenant->logo_path
                     ? Storage::url($appointment->tenant->logo_path)
                     : null,

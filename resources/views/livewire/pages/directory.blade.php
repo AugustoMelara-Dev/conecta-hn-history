@@ -344,7 +344,7 @@
                     $isBusinessOpen = $this->isBusinessOpenNow($tenant);
                 @endphp
                 <a 
-                    href="{{ route('tenant.show', $tenant->slug) }}"
+                    href="{{ route('tenant.public.show', ['tenant' => $tenant->slug]) }}"
                     wire:key="tenant-{{ $tenant->id }}"
                     class="group bg-white rounded-2xl border border-gray-200 hover:border-gray-300 overflow-hidden
                            hover:shadow-xl hover:shadow-gray-200/50 transition-all duration-300"

@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\ProfileController;
 use App\Http\Controllers\Auth\RegisterTenantController;
 use App\Http\Controllers\Public\BookingController;
 use App\Http\Controllers\Public\DirectoryController;
+use App\Http\Controllers\Public\FavoritesController;
 use App\Http\Controllers\Public\InteractionController;
 use App\Http\Controllers\Public\LocationController;
 use App\Http\Controllers\Public\RedirectController;
@@ -71,6 +72,7 @@ Route::get('/', WelcomeController::class)->name('home');
 // 2. EXPLORE: Marketplace Discovery (Luxury Entrance Strategy)
 // ═══════════════════════════════════════════════════════════════════════
 Route::get('/explore', [RedirectController::class, 'explore'])->name('public.explore');
+Route::get('/explorar', [RedirectController::class, 'explore'])->name('public.explore.legacy');
 
 // ═══════════════════════════════════════════════════════════════════════
 // 3. DIRECTORIO: React/Inertia (Directory/Index.jsx)
@@ -90,6 +92,9 @@ Route::redirect('/privacy', '/legal/privacy', 301)->name('legal.privacy.legacy')
 
 Route::get('/t/{tenant}', [TenantMicrositeController::class, 'show'])
     ->name('tenant.public.show');
+Route::get('/@{tenant}', [RedirectController::class, 'legacyTenant'])
+    ->where('tenant', '[A-Za-z0-9][A-Za-z0-9-]*')
+    ->name('tenant.public.legacy');
 
 // Ruta SEO para Ciudades (ej. /ciudad/tocoa)
 Route::get('/ciudad/{city:slug}', [DirectoryController::class, 'byCity'])->name('city.show');
@@ -153,9 +158,13 @@ Route::controller(RegisterTenantController::class)->group(function () {
 // FAVORITES - Inertia-Compatible Toggle Controller
 // ═══════════════════════════════════════════════════════════════════════
 Route::middleware('auth')->group(function () {
+    Route::get('/favoritos', FavoritesController::class)
+        ->name('favorites.index');
     Route::post('/favorites/toggle', ToggleFavoriteController::class)
         ->name('favorites.toggle');
 });
+
+Route::get('/favorites', [RedirectController::class, 'favorites'])->name('favorites.legacy');
 
 // ═══════════════════════════════════════════════════════════════════════
 // Auth Routes (Dashboard, Mi Cuenta)
@@ -262,7 +271,7 @@ require __DIR__.'/auth.php';
 |
 | Routes defined before the central `/` route in routes/web.php.
 |
-| DEPRECATED: The old /@{slug} prefix routing has been removed.
-| All legacy URLs will return 404.
+| The old /@{slug} prefix redirects permanently to the canonical /t/{slug}
+| bridge so bookmarks do not land on a dead surface.
 |
 */

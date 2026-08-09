@@ -35,6 +35,7 @@ final class EloquentDirectoryReader implements DirectoryReader
                     'brand_color', 'plan_type', 'subscription_status', 'city_id', 'category_id',
                 ]))
                 ->tap(fn ($query) => $this->applyPublished($query))
+                ->when(Schema::hasTable('tenant_favorites'), fn ($query) => $query->withCount('tenantFavorites'))
                 ->tap(fn ($query) => $this->applyPriorityOrder($query))
                 ->take($limit)
                 ->get();
@@ -75,6 +76,7 @@ final class EloquentDirectoryReader implements DirectoryReader
                         'city_id', 'category_id', 'created_at',
                     ]))
                     ->tap(fn ($query) => $this->applyPublished($query))
+                    ->when(Schema::hasTable('tenant_favorites'), fn ($query) => $query->withCount('tenantFavorites'))
                     ->tap(fn ($query) => $this->applySearch($query, $filters->search))
                     ->tap(fn ($query) => $this->applyCategory($query, $filters->categorySlug))
                     ->tap(fn ($query) => $this->applyCity($query, $filters->citySlug))

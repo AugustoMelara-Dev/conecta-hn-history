@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Public;
 
 use App\Domain\Directory\Contracts\DirectoryReader;
+use App\Application\Directory\Contracts\PublicTenantEngagementGatewayInterface;
 use App\Domain\Directory\DTOs\DirectorySearchData;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\TenantCardResource;
@@ -23,7 +24,8 @@ use Inertia\Response;
 final class DirectoryController extends Controller
 {
     public function __construct(
-        private readonly DirectoryReader $reader
+        private readonly DirectoryReader $reader,
+        private readonly PublicTenantEngagementGatewayInterface $engagement,
     ) {}
 
     public function index(Request $request): Response
@@ -45,7 +47,18 @@ final class DirectoryController extends Controller
         $categories = $this->reader->getCategoriesWithTenants();
 
         // 4. Transform using Resource (Clean Presentation)
-        $tenants->through(fn ($t) => new TenantCardResource($t));
+        $tenantIds = collect($tenants->items())
+            ->map(static fn ($tenant): string => (string) $tenant->getKey())
+            ->all();
+        $favoriteIds = $request->user()
+            ? $this->engagement->favoriteTenantIds((string) $request->user()->getKey(), $tenantIds)
+            : [];
+
+        $tenants->through(function ($tenant) use ($favoriteIds, $request): array {
+            $tenant->setAttribute('is_favorited', in_array((string) $tenant->getKey(), $favoriteIds, true));
+
+            return (new TenantCardResource($tenant))->resolve($request);
+        });
 
         return Inertia::render('Directory/Index', [
             'tenants' => $tenants,

@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { Home, Search, User, PlusCircle, Store } from 'lucide-react';
+import { Heart, Home, Search, User, PlusCircle, Store } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -49,6 +49,12 @@ export default function MobileBottomNav() {
     // Post-FAB items
     const endNavItems = [
         {
+            label: 'Favoritos',
+            href: isAuthenticated ? '/favoritos' : '/login',
+            icon: Heart,
+            active: url.startsWith('/favoritos'),
+        },
+        {
             label: isAuthenticated ? 'Mi Tienda' : 'Perfil',
             href: isAuthenticated ? (hasTenant ? panelUrl : '/registrar-negocio') : '/login',
             icon: isAuthenticated ? Store : User,
@@ -62,7 +68,7 @@ export default function MobileBottomNav() {
         : [...baseNavItems, ...endNavItems];
 
     // Grid columns: 5 with FAB, 4 without
-    const gridCols = showFAB ? 'grid-cols-4' : 'grid-cols-3';
+    const gridCols = showFAB ? 'grid-cols-5' : 'grid-cols-4';
 
     return (
         <div className={cn("grid h-16 items-center justify-items-center px-2 pb-safe", gridCols)}>
