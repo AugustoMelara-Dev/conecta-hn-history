@@ -46,7 +46,6 @@ class ActivityController extends Controller
             'body' => ['nullable', 'string'],
             'contact_id' => ['nullable', 'string'],
             'deal_id' => ['nullable', 'integer', 'min:1'],
-            'company_id' => ['nullable', 'string'],
             'owner_id' => ['nullable', 'string'],
             'due_at' => ['nullable', 'date'],
             'priority' => ['nullable', 'integer', 'min:1', 'max:3'],

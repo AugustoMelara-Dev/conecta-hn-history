@@ -42,14 +42,17 @@ final class CrmEntityTenantWriteApiTest extends TestCase
             ->assertJsonStructure(['data' => ['id', 'tenant_id', 'company_id', 'first_name']])
             ->json('data');
 
-        $this->withTenant($tenant)
+        $activity = $this->withTenant($tenant)
             ->postJson('/api/v1/crm/activities', [
                 'type' => 'call',
                 'contact_id' => $contact['id'],
                 'company_id' => $company['id'],
             ])
             ->assertCreated()
-            ->assertJsonStructure(['id', 'tenant_id', 'contact_id', 'company_id', 'type']);
+            ->assertJsonStructure(['id', 'tenant_id', 'contact_id', 'type'])
+            ->json();
+
+        self::assertArrayNotHasKey('company_id', $activity);
 
         self::assertNotSame((string) $foreignTenant->getKey(), (string) $tenant->getKey());
         self::assertNotSame((string) $foreignCompany->getKey(), (string) $company['id']);
@@ -61,6 +64,11 @@ final class CrmEntityTenantWriteApiTest extends TestCase
             'id' => $contact['id'],
             'tenant_id' => (string) $tenant->getKey(),
             'company_id' => $company['id'],
+        ]);
+        self::assertDatabaseHas('crm_activities', [
+            'id' => $activity['id'],
+            'tenant_id' => (string) $tenant->getKey(),
+            'company_id' => null,
         ]);
     }
 

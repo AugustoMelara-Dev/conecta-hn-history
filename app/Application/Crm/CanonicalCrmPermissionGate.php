@@ -29,6 +29,7 @@ final readonly class CanonicalCrmPermissionGate
         }
 
         if (! Schema::hasTable('permissions')
+            || ! Schema::hasTable('roles')
             || ! Schema::hasTable('model_has_permissions')
             || ! Schema::hasTable('model_has_roles')
             || ! Schema::hasTable('role_has_permissions')) {
@@ -55,6 +56,8 @@ final readonly class CanonicalCrmPermissionGate
             ->where('model_type', $actor->getMorphClass())
             ->where('model_id', $actor->getKey())
             ->join('role_has_permissions', 'model_has_roles.role_id', '=', 'role_has_permissions.role_id')
+            ->join('roles', 'model_has_roles.role_id', '=', 'roles.id')
+            ->where('roles.guard_name', 'web')
             ->where('role_has_permissions.permission_id', $permissionId)
             ->exists();
     }

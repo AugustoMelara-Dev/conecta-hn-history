@@ -13,6 +13,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -255,6 +256,41 @@ it('authorizes an active member through a canonical Spatie role permission pivot
         (string) $member->id,
         ['name' => 'Role member company'],
     ))->toBeInstanceOf(CrmCompany::class);
+});
+
+it('rejects a role assignment whose role guard is not web', function (): void {
+    ['tenant' => $tenant] = canonicalWriterTenant();
+    $member = canonicalWriterUser();
+    canonicalWriterMembership($tenant, $member);
+    canonicalWriterGrantSpatieRole($member, 'crm-api-role', 'crm.companies.create');
+    DB::table('roles')->where('name', 'crm-api-role')->update(['guard_name' => 'api']);
+
+    expect(fn () => app(CanonicalCrmEntityWriter::class)->createCompany(
+        (string) $tenant->id,
+        (string) $member->id,
+        ['name' => 'Wrong guard role'],
+    ))->toThrow(AuthorizationException::class);
+});
+
+it('fails closed when the canonical roles table is unavailable', function (): void {
+    ['tenant' => $tenant] = canonicalWriterTenant();
+    $member = canonicalWriterUser();
+    canonicalWriterMembership($tenant, $member);
+    canonicalWriterGrantSpatieRole($member, 'crm-missing-role-table', 'crm.companies.create');
+
+    Schema::partialMock();
+    Schema::shouldReceive('hasTable')
+        ->with('roles')
+        ->andReturn(false);
+    Schema::shouldReceive('hasTable')
+        ->withArgs(static fn (string $table): bool => $table !== 'roles')
+        ->andReturn(true);
+
+    expect(fn () => app(CanonicalCrmEntityWriter::class)->createCompany(
+        (string) $tenant->id,
+        (string) $member->id,
+        ['name' => 'Missing roles table'],
+    ))->toThrow(AuthorizationException::class);
 });
 
 it('does not disclose whether a relationship identifier is foreign or absent', function (): void {
