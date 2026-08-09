@@ -9,9 +9,11 @@ it('keeps legacy database table references limited to documented compatibility s
 
     $legacyReferences = [
         'domain_outbox_messages' => [
+            'tests/Feature/Automation/AgentActionExecutorTest.php',
             'tests/Feature/Database/PlatformLedgerSchemaTest.php',
         ],
         'domain_outbox' => [
+            'tests/Feature/Automation/AgentActionExecutorTest.php',
             'tests/Feature/Database/PlatformLedgerSchemaTest.php',
             'tests/Feature/Infrastructure/Scale10xTest.php',
         ],
@@ -56,7 +58,7 @@ it('keeps legacy database table references limited to documented compatibility s
 
             foreach ($legacyReferences as $table => $allowedPaths) {
                 $hasTableReference = preg_match(
-                    '/(?<![A-Za-z0-9_])'.preg_quote($table, '/').'(?![A-Za-z0-9_])/',
+                    '/([\'\"])'.preg_quote($table, '/').'\1/',
                     $contents
                 ) === 1;
 

@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Widgets;
 
+use App\Application\Markets\TenantMarketResolver;
+use App\Domain\Analytics\Enums\CommercialOutcome;
 use App\Models\CustomerProfile;
 use App\Models\Order;
+use App\Models\Tenant;
+use App\Models\VerifiedCommercialOutcome;
 use Filament\Facades\Filament;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -18,9 +22,12 @@ class StatsOverview extends BaseWidget
     {
         $tenant = Filament::getTenant();
 
-        if (! $tenant) {
+        if (! $tenant instanceof Tenant) {
             return [];
         }
+
+        $market = app(TenantMarketResolver::class)->resolveOrNull($tenant);
+        $currency = $market?->currencyCode;
 
         $ordersThisMonth = Order::query()
             ->where('tenant_id', $tenant->getKey())
@@ -28,12 +35,19 @@ class StatsOverview extends BaseWidget
             ->whereMonth('created_at', now()->month)
             ->count();
 
-        $revenueThisMonth = Order::query()
+        $revenueMinor = $currency === null ? null : (int) VerifiedCommercialOutcome::query()
             ->where('tenant_id', $tenant->getKey())
-            ->whereYear('created_at', now()->year)
-            ->whereMonth('created_at', now()->month)
-            ->where('payment_status', 'paid')
-            ->sum('total') ?? 0;
+            ->whereIn('outcome', [
+                CommercialOutcome::OrderPaid->value,
+                CommercialOutcome::OrderRefunded->value,
+            ])
+            ->where('currency', $currency)
+            ->whereYear('source_occurred_at', now()->year)
+            ->whereMonth('source_occurred_at', now()->month)
+            ->sum('amount_minor');
+        $revenueLabel = $revenueMinor === null
+            ? 'No disponible'
+            : $currency.' '.number_format($revenueMinor / 100, 2);
 
         $customers = CustomerProfile::query()
             ->where('tenant_id', $tenant->getKey())
@@ -45,8 +59,10 @@ class StatsOverview extends BaseWidget
                 ->descriptionIcon('heroicon-m-shopping-bag')
                 ->color('primary'),
 
-            Stat::make('Ingresos del mes', 'L '.number_format((float) $revenueThisMonth, 2))
-                ->description('Ingresos generados en el mes actual')
+            Stat::make('Ingresos del mes', $revenueLabel)
+                ->description($revenueMinor === null
+                    ? 'Configura el mercado principal para consolidar ingresos'
+                    : 'Pagos confirmados menos reembolsos del mes actual')
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->color('success'),
 
