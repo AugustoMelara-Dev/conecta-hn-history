@@ -1,13 +1,28 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { secretSignatureDetections } from "../../scripts/qa/dovra-rc-secret-policy.mjs";
 
 const repositoryRoot = resolve(import.meta.dirname, "../..");
 const assembler = join(repositoryRoot, "scripts/qa/assemble-dovra-rc.mjs");
 const verifier = join(repositoryRoot, "scripts/qa/verify-dovra-rc.mjs");
+
+function sha256(value) {
+    return createHash("sha256").update(value).digest("hex");
+}
+
+function assertSharedSecretPolicyConsumer(source, label) {
+    const policyImports = source.match(/import[^;]+from\s*["']\.\/dovra-rc-secret-policy\.mjs["'];/gu) ?? [];
+    const exactImports = source.match(/import\s*\{\s*secretSignatureDetections\s*\}\s*from\s*["']\.\/dovra-rc-secret-policy\.mjs["'];/gu) ?? [];
+    assert.equal(policyImports.length, 1, `${label} must have exactly one shared-policy import`);
+    assert.equal(exactImports.length, 1, `${label} must import only secretSignatureDetections`);
+    assert.doesNotMatch(source, /(?:function\s+|(?:const|let|var)\s+)(?:secretSignatureDetections|secretSignatures|hasSecretSignature|hasPrivateKeySignature|isHighEntropyCredential|valueSignatureDetections)\b/u, `${label} must not define scanner policy locally`);
+    assert.doesNotMatch(source, /AKIA\|ASIA|github_pat_|sk-\(proj-|BEGIN \[A-Z0-9 \]\*PRIVATE KEY/u, `${label} must not embed scanner signatures locally`);
+}
 
 function git(cwd, args) {
     return execFileSync("git", args, {
@@ -94,6 +109,42 @@ function parseJsonOutput(result) {
     assert.ok(result.stdout.trim(), `expected JSON output, stderr=${result.stderr}`);
     return JSON.parse(result.stdout);
 }
+
+test("shared secret policy classifies safe and unsafe content without values", () => {
+    const productionBody = ["Ab3dE5fG7hJ9", "kL2mN4pQ6rS8", "tU0vW1xY2zC7", "aD9eF4G"].join("");
+    const provider = ["github", "_pat_", productionBody, productionBody].join("");
+    const pemBody = "QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVo0123456789+/abcd".repeat(2);
+    const safeCases = [
+        ["resources/js/lib/i18n.js", "forgotPassword = \"¿Olvidaste tu contraseña?\";"],
+        ["tests/example.js", "const forgotPasswordPath = \"resources/js/lib/i18n.js\";"],
+        [".env.example", "PASSWORD=${PASSWORD}"],
+        ["docs/provider.md", ["AK", "IAIOSFODNN7EXAMPLE"].join("")],
+    ];
+    for (const [path, content] of safeCases) {
+        assert.deepEqual(secretSignatureDetections(Buffer.from(content), path), [], path);
+    }
+    const unsafeCases = [
+        [".env.example", "PASSWORD='correct horse battery staple'", "sensitive-literal"],
+        ["app/provider.php", `return '${provider}';`, "github-token"],
+        ["docs/key.md", `-----BEGIN PRIVATE KEY-----\n${pemBody}\n-----END PRIVATE KEY-----`, "pem-private-key"],
+        ["app/atomic.js", "const forgotPassword = \"aB3dE5fG7hJ9kL2mN4pQ6rS8\";", "sensitive-literal"],
+    ];
+    for (const [path, content, type] of unsafeCases) {
+        assert.ok(secretSignatureDetections(content, path).some((detection) => detection.type === type), `${path}:${type}`);
+    }
+});
+
+test("assembler and verifier consume only the shared secret policy", () => {
+    const assemblerSource = readFileSync(assembler, "utf8");
+    const verifierSource = readFileSync(verifier, "utf8");
+    assertSharedSecretPolicyConsumer(assemblerSource, "assembler");
+    assertSharedSecretPolicyConsumer(verifierSource, "verifier");
+    const adversarial = [
+        "import { secretSignatureDetections } from \"./dovra-rc-secret-policy.mjs\";",
+        "const hasSecretSignature = () => false;",
+    ].join("\n");
+    assert.throws(() => assertSharedSecretPolicyConsumer(adversarial, "adversarial"), /must not define scanner policy locally/u);
+});
 
 test("assembles a deterministic index and snapshot hash", (t) => {
     const source = createFixture();
@@ -315,6 +366,46 @@ test("verifier detects index divergence independently of source hashes", (t) => 
     const report = parseJsonOutput(result);
     assert.notEqual(result.status, 0);
     assert.ok(report.findings.some((finding) => finding.code === "INDEX_HASH_MISMATCH" || finding.code === "SNAPSHOT_MISMATCH"));
+});
+
+test("verifier detects a secret in an otherwise consistently signed bundle", (t) => {
+    const source = createFixture();
+    const output = join(mkdtempSync(join(tmpdir(), "dovra-rc-output-")), "bundle");
+    t.after(() => {
+        rmSync(source, { recursive: true, force: true });
+        rmSync(dirname(output), { recursive: true, force: true });
+    });
+    const assembled = assemble(source, output);
+    assert.equal(assembled.status, 0, assembled.stderr || assembled.stdout);
+    const baseline = verify(output);
+    assert.equal(baseline.status, 0, baseline.stderr || baseline.stdout);
+    assert.equal(parseJsonOutput(baseline).status, "PASS");
+
+    const provider = ["github", "_pat_11AA22BB33CC44DD55EE66FF77GG88HH"].join("");
+    const relativePath = "docs/README.md";
+    const sourcePath = join(output, "source", relativePath);
+    const content = Buffer.from(`credential ${provider}\n`, "utf8");
+    writeFileSync(sourcePath, content);
+    const indexPath = join(output, "index.json");
+    const index = JSON.parse(readFileSync(indexPath, "utf8"));
+    const entry = index.entries.find((candidate) => candidate.path === relativePath);
+    entry.size = content.length;
+    entry.sha256 = sha256(content);
+    index.snapshot_sha256 = sha256(JSON.stringify(index.entries));
+    const indexBytes = Buffer.from(`${JSON.stringify(index, null, 2)}\n`, "utf8");
+    writeFileSync(indexPath, indexBytes);
+    const manifestPath = join(output, "manifest.json");
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    manifest.snapshot_sha256 = index.snapshot_sha256;
+    manifest.index_sha256 = sha256(indexBytes);
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
+    const result = verify(output);
+    const report = parseJsonOutput(result);
+    assert.notEqual(result.status, 0);
+    assert.ok(report.findings.some((finding) => finding.code === "SECRET_SIGNATURE" && finding.path === relativePath));
+    assert.ok(!report.findings.some((finding) => ["HASH_MISMATCH", "SIZE_MISMATCH", "INDEX_HASH_MISMATCH", "SNAPSHOT_MISMATCH"].includes(finding.code)));
+    assert.ok(!`${result.stdout}\n${result.stderr}`.includes(provider));
 });
 
 test("assembler refuses a pre-existing output junction and never writes through it", (t) => {

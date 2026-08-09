@@ -7,6 +7,7 @@ import {
 import { createHash } from "node:crypto";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { secretSignatureDetections } from "./dovra-rc-secret-policy.mjs";
 
 export const RELEASE_CANDIDATE_SCHEMA = 1;
 
@@ -150,36 +151,6 @@ function envNamesFromContent(content) {
     return [...names].sort();
 }
 
-function hasPrivateKeySignature(content) {
-    return /-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----/u.test(content.toString("utf8"));
-}
-
-function hasSecretSignature(content) {
-    const text = content.toString("utf8");
-    for (const line of text.split(/\r?\n/u)) {
-        const match = line.match(/^[ \t]*([A-Za-z_][A-Za-z0-9_]*)[ \t]*[:=][ \t]*["']?([^#\r\n]*)/u);
-        if (!match) {
-            continue;
-        }
-        const name = match[1].toUpperCase();
-        const value = match[2].trim().replace(/["'][ \t]*$/u, "").trim();
-        if (!/(?:SECRET|TOKEN|API_KEY|PRIVATE_KEY|PASSWORD|ACCESS_KEY)/u.test(name)) {
-            continue;
-        }
-        if (/(?:_TTL(?:_|$)|_DAYS(?:_|$)|_SECONDS(?:_|$)|_MINUTES(?:_|$)|_HOURS(?:_|$)|_REFERENCE$|_REF$)/u.test(name)) {
-            continue;
-        }
-        if (value.length === 0 || /^\$\{[^}]+\}$/u.test(value) || /^\{\{[^}]+\}\}$/u.test(value) || /^<(?:[^>]+)>$/u.test(value) || /^(?:env|getenv)\s*\(/iu.test(value) || /^process\.env(?:\.|$)/iu.test(value) || /^(?:change|replace|example|dummy|test|your)[-_ ]?/iu.test(value)) {
-            continue;
-        }
-        if (/(?:^|[_-])(?:dummy|placeholder|example|local|test)(?:$|[_-])/iu.test(value) || /^(?:null|none|false|true)$/iu.test(value)) {
-            continue;
-        }
-        return true;
-    }
-    return false;
-}
-
 function isSafeRelativePath(path) {
     return Boolean(path) && !isAbsolute(path) && !path.split(/[\\/]/u).includes("..") && !path.includes("\0") && toPosixPath(path) === path;
 }
@@ -310,10 +281,12 @@ function verifySource(input, index, manifest, findings) {
         }
         const absolutePath = resolve(sourceRoot, path);
         const content = readFileSync(absolutePath);
-        if (hasPrivateKeySignature(content)) {
-            findings.push(finding("PRIVATE_KEY_SIGNATURE", path, "Private-key signature detected in source bundle."));
-        } else if (hasSecretSignature(content)) {
-            findings.push(finding("SECRET_SIGNATURE", path, "Secret assignment signature detected in source bundle."));
+        for (const { type } of secretSignatureDetections(content, path)) {
+            if (type === "pem-private-key") {
+                findings.push(finding("PRIVATE_KEY_SIGNATURE", path, "Private-key signature detected in source bundle."));
+            } else {
+                findings.push(finding("SECRET_SIGNATURE", path, "Secret signature detected in source bundle."));
+            }
         }
     }
     for (const entry of index?.entries ?? []) {
