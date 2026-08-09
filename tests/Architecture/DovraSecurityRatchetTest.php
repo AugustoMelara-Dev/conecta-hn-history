@@ -5,6 +5,27 @@ declare(strict_types=1);
 namespace Tests\Architecture;
 
 use App\Infrastructure\Privacy\Dovra\DovraIntegrationSeamRegistry;
+use PhpParser\Node;
+use PhpParser\Node\Arg;
+use PhpParser\Node\Expr\Array_;
+use PhpParser\Node\Expr\ArrayDimFetch;
+use PhpParser\Node\Expr\Assign;
+use PhpParser\Node\Expr\AssignOp;
+use PhpParser\Node\Expr\ClassConstFetch;
+use PhpParser\Node\Expr\MethodCall;
+use PhpParser\Node\Expr\New_;
+use PhpParser\Node\Expr\PropertyFetch;
+use PhpParser\Node\Expr\StaticCall;
+use PhpParser\Node\Expr\Variable;
+use PhpParser\Node\FunctionLike;
+use PhpParser\Node\Identifier;
+use PhpParser\Node\Name;
+use PhpParser\Node\Scalar\String_;
+use PhpParser\Node\Stmt\Class_;
+use PhpParser\Node\Stmt\ClassMethod;
+use PhpParser\NodeFinder;
+use PhpParser\ParserFactory;
+use PHPUnit\Framework\AssertionFailedError;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
@@ -86,23 +107,77 @@ final class DovraSecurityRatchetTest extends TestCase
         $root = dirname(__DIR__, 2);
         $source = (string) file_get_contents($root.'/app/Http/Controllers/Api/V1/AiOptimizationController.php');
 
-        self::assertStringContainsString('DovraDataIngressGuard', $source);
-        self::assertStringContainsString('DovraTenantBusinessContextResolver', $source);
-        self::assertStringContainsString("private const DOVRA_SOURCE = 'private_ai_prompt';", $source);
+        self::assertSecureProfileOptimizationMethod($source);
+    }
 
-        $authorization = strpos($source, 'privateAiAccess->allows');
-        $inspection = strpos($source, '->inspect(new DataEnvelope');
-        $dispatch = strpos($source, 'GenerateBusinessProfileJob::dispatch');
+    #[Test]
+    public function profile_optimization_ratchet_rejects_comments_strings_reversed_guards_and_raw_aliases(): void
+    {
+        $fixtures = [
+            <<<'PHP'
+                <?php
+                final class AiOptimizationController {
+                    public function optimizeProfile($request) {
+                        // $this->privateAiAccess->allows($user, $tenantId);
+                        $bait = '$this->dovraIngress->inspect(new DataEnvelope); GenerateBusinessProfileJob::dispatch';
+                        $validated = $request->validated();
+                        $rawAlias = $validated;
+                        GenerateBusinessProfileJob::dispatch(
+                            businessName: $rawAlias['business_name'], description: $rawAlias['description'],
+                            userId: $actorId, tenantId: $tenantId, targetAudience: $rawAlias['target_audience'],
+                            tone: $rawAlias['tone'], keywords: $rawAlias['keywords'],
+                        );
+                    }
+                }
+                PHP,
+            <<<'PHP'
+                <?php
+                final class AiOptimizationController {
+                    public function optimizeProfile($request) {
+                        $decision = $this->dovraIngress->inspect(new DataEnvelope(payload: $validated));
+                        $this->privateAiAccess->allows($user, $tenantId);
+                        $rawAlias = $request->validated();
+                        GenerateBusinessProfileJob::dispatch(
+                            businessName: $rawAlias['business_name'], description: $rawAlias['description'],
+                            userId: $actorId, tenantId: $tenantId, targetAudience: $rawAlias['target_audience'],
+                            tone: $rawAlias['tone'], keywords: $rawAlias['keywords'],
+                        );
+                    }
+                }
+                PHP,
+            <<<'PHP'
+                <?php
+                final class AiOptimizationController {
+                    public function optimizeProfile($request) {
+                        $this->privateAiAccess->allows($user, $tenantId);
+                        $validated = $request->validated();
+                        $decision = $this->dovraIngress->inspect(new DataEnvelope(
+                            sourceSystem: self::DOVRA_SOURCE, payload: $validated, tenantId: $tenantId,
+                            actorId: $actorId, channel: 'private_ai_web',
+                            context: ['business_type' => $policyBusinessType],
+                        ));
+                        $rawAlias = $validated;
+                        $redactedPayload = $rawAlias;
+                        GenerateBusinessProfileJob::dispatch(
+                            businessName: $redactedPayload['business_name'], description: $redactedPayload['description'],
+                            userId: $actorId, tenantId: $tenantId, targetAudience: $redactedPayload['target_audience'],
+                            tone: $redactedPayload['tone'], keywords: $redactedPayload['keywords'],
+                        );
+                    }
+                }
+                PHP,
+        ];
 
-        self::assertIsInt($authorization);
-        self::assertIsInt($inspection);
-        self::assertIsInt($dispatch);
-        self::assertLessThan($inspection, $authorization === false ? PHP_INT_MAX : $authorization);
-        self::assertLessThan($dispatch, $inspection === false ? PHP_INT_MAX : $inspection);
-        $postGuard = strpos($source, '$failure = $this->ingressFailureResponse($decision);', $inspection);
+        foreach ($fixtures as $fixture) {
+            $rejected = false;
+            try {
+                self::assertSecureProfileOptimizationMethod($fixture);
+            } catch (AssertionFailedError) {
+                $rejected = true;
+            }
 
-        self::assertIsInt($postGuard);
-        self::assertStringNotContainsString('$validated', substr($source, $postGuard === false ? 0 : $postGuard));
+            self::assertTrue($rejected, 'Adversarial source must not satisfy the profile ingress ratchet.');
+        }
     }
 
     #[Test]
@@ -155,5 +230,246 @@ final class DovraSecurityRatchetTest extends TestCase
         }
 
         self::assertSame([], $violations, implode(PHP_EOL, $violations));
+    }
+
+    private static function assertSecureProfileOptimizationMethod(string $source): void
+    {
+        $statements = (new ParserFactory)->createForNewestSupportedVersion()->parse($source);
+        self::assertIsArray($statements, 'Controller source must parse as PHP.');
+
+        $finder = new NodeFinder;
+        $controller = $finder->findFirst($statements, static fn (Node $node): bool => $node instanceof Class_
+            && $node->name?->toString() === 'AiOptimizationController');
+        self::assertInstanceOf(Class_::class, $controller, 'AiOptimizationController AST is required.');
+        $method = $controller->getMethod('optimizeProfile');
+        self::assertInstanceOf(ClassMethod::class, $method, 'optimizeProfile AST is required.');
+
+        $nodes = self::flattenExecutableNodes($method->stmts);
+        $authorizationIndex = null;
+        $inspectionIndex = null;
+        $dispatchIndex = null;
+        $inspection = null;
+        $dispatch = null;
+        $redactedAssignments = [];
+
+        foreach ($nodes as $index => $node) {
+            if ($authorizationIndex === null && self::isThisReceiverCall($node, 'privateAiAccess', 'allows')) {
+                $authorizationIndex = $index;
+            }
+            if ($inspectionIndex === null && self::isThisReceiverCall($node, 'dovraIngress', 'inspect')) {
+                $inspectionIndex = $index;
+                $inspection = $node;
+            }
+            if ($dispatchIndex === null && self::isStaticCall($node, 'GenerateBusinessProfileJob', 'dispatch')) {
+                $dispatchIndex = $index;
+                $dispatch = $node;
+            }
+            if ($node instanceof Assign && self::isVariable($node->var, 'redactedPayload')) {
+                $redactedAssignments[] = [$index, $node];
+            }
+            if (($node instanceof Assign || $node instanceof AssignOp)
+                && $node->var instanceof ArrayDimFetch
+                && self::arrayRootIsVariable($node->var, 'redactedPayload')) {
+                self::fail('The redacted payload must not be overwritten from a post-inspection alias.');
+            }
+        }
+
+        self::assertIsInt($authorizationIndex, 'A real $this->privateAiAccess->allows() call is required.');
+        self::assertIsInt($inspectionIndex, 'A real $this->dovraIngress->inspect() call is required.');
+        self::assertIsInt($dispatchIndex, 'A real GenerateBusinessProfileJob::dispatch() call is required.');
+        self::assertLessThan($inspectionIndex, $authorizationIndex);
+        self::assertLessThan($dispatchIndex, $inspectionIndex);
+        self::assertInstanceOf(MethodCall::class, $inspection);
+        self::assertInstanceOf(StaticCall::class, $dispatch);
+
+        self::assertInspectsCanonicalEnvelope($inspection);
+        self::assertCount(1, $redactedAssignments, 'Exactly one redacted payload assignment is required.');
+        [$redactedAssignmentIndex, $redactedAssignment] = $redactedAssignments[0];
+        self::assertGreaterThan($inspectionIndex, $redactedAssignmentIndex);
+        self::assertLessThan($dispatchIndex, $redactedAssignmentIndex);
+        self::assertTrue(
+            self::isDecisionRedactedPayload($redactedAssignment->expr),
+            '$redactedPayload must come directly from $decision->redactedPayload.',
+        );
+        self::assertDispatchUsesOnlyRedactedPayload($dispatch);
+
+        foreach (array_slice($nodes, $inspectionIndex + 1) as $postInspectionNode) {
+            self::assertFalse(
+                self::isVariableReceiverCall($postInspectionNode, 'request', 'validated'),
+                '$request->validated() must not be called after Dovra inspection.',
+            );
+        }
+    }
+
+    private static function assertInspectsCanonicalEnvelope(MethodCall $inspection): void
+    {
+        self::assertCount(1, $inspection->args);
+        $envelope = $inspection->args[0]->value;
+        self::assertInstanceOf(New_::class, $envelope);
+        self::assertInstanceOf(Name::class, $envelope->class);
+        self::assertSame('DataEnvelope', $envelope->class->getLast());
+
+        $arguments = self::namedArguments($envelope->args);
+        self::assertSame(
+            ['sourceSystem', 'payload', 'tenantId', 'actorId', 'channel', 'context'],
+            array_keys($arguments),
+        );
+        self::assertTrue(self::isSelfConstant($arguments['sourceSystem'], 'DOVRA_SOURCE'));
+        self::assertTrue(self::isVariable($arguments['payload'], 'validated'));
+        self::assertTrue(self::isVariable($arguments['tenantId'], 'tenantId'));
+        self::assertTrue(self::isVariable($arguments['actorId'], 'actorId'));
+        self::assertInstanceOf(String_::class, $arguments['channel']);
+        self::assertSame('private_ai_web', $arguments['channel']->value);
+        self::assertTrue(self::isBusinessContextArray($arguments['context']));
+    }
+
+    private static function assertDispatchUsesOnlyRedactedPayload(StaticCall $dispatch): void
+    {
+        $arguments = self::namedArguments($dispatch->args);
+        self::assertSame(
+            ['businessName', 'description', 'userId', 'tenantId', 'targetAudience', 'tone', 'keywords'],
+            array_keys($arguments),
+        );
+
+        foreach ([
+            'businessName' => 'business_name',
+            'description' => 'description',
+            'targetAudience' => 'target_audience',
+            'tone' => 'tone',
+            'keywords' => 'keywords',
+        ] as $argument => $key) {
+            self::assertTrue(
+                self::isArrayRead($arguments[$argument], 'redactedPayload', $key),
+                "{$argument} must read the exact redacted payload key.",
+            );
+        }
+        self::assertTrue(self::isVariable($arguments['userId'], 'actorId'));
+        self::assertTrue(self::isVariable($arguments['tenantId'], 'tenantId'));
+    }
+
+    /** @param list<Arg> $arguments @return array<string, Node\Expr> */
+    private static function namedArguments(array $arguments): array
+    {
+        $named = [];
+        foreach ($arguments as $argument) {
+            self::assertInstanceOf(Identifier::class, $argument->name, 'All guarded arguments must be named.');
+            self::assertFalse($argument->unpack, 'Guarded arguments must not be unpacked.');
+            $named[$argument->name->toString()] = $argument->value;
+        }
+
+        return $named;
+    }
+
+    /** @param array<Node>|null $nodes @return list<Node> */
+    private static function flattenExecutableNodes(?array $nodes): array
+    {
+        $flattened = [];
+        foreach ($nodes ?? [] as $node) {
+            self::appendExecutableNode($node, $flattened);
+        }
+
+        return $flattened;
+    }
+
+    /** @param list<Node> $flattened */
+    private static function appendExecutableNode(Node $node, array &$flattened): void
+    {
+        $flattened[] = $node;
+        if ($node instanceof FunctionLike) {
+            return;
+        }
+        foreach ($node->getSubNodeNames() as $name) {
+            $child = $node->{$name};
+            if ($child instanceof Node) {
+                self::appendExecutableNode($child, $flattened);
+            } elseif (is_array($child)) {
+                foreach ($child as $item) {
+                    if ($item instanceof Node) {
+                        self::appendExecutableNode($item, $flattened);
+                    }
+                }
+            }
+        }
+    }
+
+    private static function isThisReceiverCall(Node $node, string $property, string $method): bool
+    {
+        return $node instanceof MethodCall
+            && $node->name instanceof Identifier
+            && $node->name->toString() === $method
+            && $node->var instanceof PropertyFetch
+            && $node->var->name instanceof Identifier
+            && $node->var->name->toString() === $property
+            && self::isVariable($node->var->var, 'this');
+    }
+
+    private static function isVariableReceiverCall(Node $node, string $variable, string $method): bool
+    {
+        return $node instanceof MethodCall
+            && $node->name instanceof Identifier
+            && $node->name->toString() === $method
+            && self::isVariable($node->var, $variable);
+    }
+
+    private static function isStaticCall(Node $node, string $class, string $method): bool
+    {
+        return $node instanceof StaticCall
+            && $node->class instanceof Name
+            && $node->class->getLast() === $class
+            && $node->name instanceof Identifier
+            && $node->name->toString() === $method;
+    }
+
+    private static function isVariable(Node $node, string $name): bool
+    {
+        return $node instanceof Variable && $node->name === $name;
+    }
+
+    private static function isArrayRead(Node $node, string $variable, string $key): bool
+    {
+        return $node instanceof ArrayDimFetch
+            && self::isVariable($node->var, $variable)
+            && $node->dim instanceof String_
+            && $node->dim->value === $key;
+    }
+
+    private static function arrayRootIsVariable(ArrayDimFetch $node, string $variable): bool
+    {
+        $root = $node->var;
+        while ($root instanceof ArrayDimFetch) {
+            $root = $root->var;
+        }
+
+        return self::isVariable($root, $variable);
+    }
+
+    private static function isDecisionRedactedPayload(Node $node): bool
+    {
+        return $node instanceof PropertyFetch
+            && self::isVariable($node->var, 'decision')
+            && $node->name instanceof Identifier
+            && $node->name->toString() === 'redactedPayload';
+    }
+
+    private static function isSelfConstant(Node $node, string $constant): bool
+    {
+        return $node instanceof ClassConstFetch
+            && $node->class instanceof Name
+            && strtolower($node->class->toString()) === 'self'
+            && $node->name instanceof Identifier
+            && $node->name->toString() === $constant;
+    }
+
+    private static function isBusinessContextArray(Node $node): bool
+    {
+        if (! $node instanceof Array_ || count($node->items) !== 1) {
+            return false;
+        }
+        $item = $node->items[0];
+
+        return $item !== null
+            && $item->key instanceof String_
+            && $item->key->value === 'business_type'
+            && self::isVariable($item->value, 'policyBusinessType');
     }
 }
