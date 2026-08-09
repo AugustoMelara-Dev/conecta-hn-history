@@ -171,6 +171,31 @@ test("legitimate DeleteUser UpdatePassword and security report corpus is indexed
     }
 });
 
+test("non-config password prose with Unicode whitespace is indexed byte for byte", (t) => {
+    const source = createFixture();
+    const outputParent = mkdtempSync(join(tmpdir(), "dovra-rc-output-"));
+    const output = join(outputParent, "bundle");
+    const forgotPasswordPath = "resources/js/lib/i18n.js";
+    const forgotPasswordContent = readFileSync(join(repositoryRoot, forgotPasswordPath));
+    const unicodePath = "resources/js/unicode-password-prose.js";
+    const unicodeContent = [
+        "forgotPassword = \"Frase con tabulador\tpara recuperar acceso\";",
+        "forgotPassword = \"Frase con espacio\u00a0inseparable para acceso\";",
+        "forgotPassword = \"Frase con espacio\u2003Unicode para acceso\";",
+    ].join("\n");
+    writeFixtureFile(source, forgotPasswordPath, forgotPasswordContent);
+    writeFixtureFile(source, unicodePath, unicodeContent);
+    t.after(() => {
+        rmSync(source, { recursive: true, force: true });
+        rmSync(outputParent, { recursive: true, force: true });
+    });
+
+    const result = assemble(source, output);
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    assert.deepEqual(readFileSync(join(output, "source", forgotPasswordPath)), forgotPasswordContent);
+    assert.equal(readFileSync(join(output, "source", unicodePath), "utf8"), unicodeContent);
+});
+
 test("verifier rejects tampered and unexpected source files", (t) => {
     const source = createFixture();
     const output = join(mkdtempSync(join(tmpdir(), "dovra-rc-output-")), "bundle");
@@ -312,6 +337,7 @@ test("assembler rejects real secrets in .env.example and missing mandatory criti
 
 test("assembler fails closed on static literal secrets without echoing their values", (t) => {
     const fixtures = [
+        [".env.example", "PASSWORD='correct horse battery staple'\n", "correct horse battery staple"],
         ["config/leaked.yml", "API_KEY: short-real\n", "short-real"],
         ["config/leaked.yml", "API_KEY: postgres\n", "postgres"],
         ["config/leaked.yml", "PASSWORD: production-value\n", "production-value"],

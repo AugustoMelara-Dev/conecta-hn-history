@@ -324,7 +324,10 @@ function characterClassCount(value) {
 }
 
 function isHighEntropyCredential(value) {
-    return value.length >= 24 && characterClassCount(value) >= 2 && shannonEntropy(value) >= 3.5;
+    return value.length >= 24
+        && !/\p{White_Space}/u.test(value)
+        && characterClassCount(value) >= 2
+        && shannonEntropy(value) >= 3.5;
 }
 
 function hasProductionEntropy(value) {
