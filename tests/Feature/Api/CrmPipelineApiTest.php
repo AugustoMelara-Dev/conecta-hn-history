@@ -636,6 +636,14 @@ final class CrmPipelineApiTest extends TestCase
 
         Sanctum::actingAs($viewer);
 
+        self::assertTrue($viewer->canAccessTenant($tenant));
+        self::assertTrue(app(\App\Application\Access\Contracts\TenantPermissionGuardInterface::class)->allows(
+            $viewer,
+            $tenant,
+            \App\Domain\TenantGovernance\Enums\Capability::CRM_PIPELINE_MANAGEMENT,
+            \App\Domain\Access\Enums\Permission::CRM_DEALS_VIEW,
+        ));
+
         $this->withHeader('X-Tenant-ID', (string) $tenant->getKey())
             ->getJson('/api/v1/crm/pipelines')
             ->assertOk();

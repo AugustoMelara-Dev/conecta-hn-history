@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api;
 
+use App\Http\Controllers\Api\V1\Crm\CrmDealController;
 use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
@@ -37,6 +38,24 @@ final class CrmRoutesSnapshotTest extends TestCase
             'api.crm.deals.destroy',
         ] as $expectedName) {
             $this->assertContains($expectedName, $names);
+        }
+    }
+
+    public function test_canonical_controller_owns_every_mutating_deal_route(): void
+    {
+        $routes = collect(Route::getRoutes()->getRoutes())
+            ->filter(fn ($route): bool => str_starts_with($route->uri(), 'api/v1/crm/deals'))
+            ->filter(fn ($route): bool => array_intersect($route->methods(), ['POST', 'PUT', 'PATCH', 'DELETE']) !== [])
+            ->values();
+
+        self::assertNotEmpty($routes);
+
+        foreach ($routes as $route) {
+            self::assertStringStartsWith(
+                CrmDealController::class.'@',
+                $route->getActionName(),
+                "Non-canonical CRM mutation route: {$route->uri()}",
+            );
         }
     }
 }

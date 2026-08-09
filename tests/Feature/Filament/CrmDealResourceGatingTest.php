@@ -27,6 +27,16 @@ final class CrmDealResourceGatingTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_app_panel_discovers_only_the_canonical_deal_resource(): void
+    {
+        $dealResources = collect(Filament::getPanel('app')->getResources())
+            ->filter(fn (string $resource): bool => $resource::getModel() === CrmDeal::class)
+            ->values()
+            ->all();
+
+        self::assertSame([CrmDealResource::class], $dealResources);
+    }
+
     public function test_free_tenant_cannot_see_or_open_deals_resource(): void
     {
         [$owner, $tenant] = $this->tenantUser(Role::OWNER, TenantPlan::SEMILLA->value);

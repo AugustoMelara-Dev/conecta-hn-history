@@ -10,7 +10,6 @@ use App\Application\Imports\Imports\CompaniesImport;
 use App\Application\Imports\Imports\ContactsImport;
 use App\Application\Imports\Imports\CouponsImport;
 use App\Application\Imports\Imports\CustomersImport;
-use App\Application\Imports\Imports\DealsImport;
 use App\Application\Imports\Imports\OrdersImport;
 use App\Application\Imports\Imports\ProductsImport;
 use App\Application\Imports\Imports\UsersImport;
@@ -27,7 +26,6 @@ class ImportService
     private array $registry = [
         'contacts' => ContactsImport::class,
         'companies' => CompaniesImport::class,
-        'deals' => DealsImport::class,
         'products' => ProductsImport::class,
         'orders' => OrdersImport::class,
         'users' => UsersImport::class,

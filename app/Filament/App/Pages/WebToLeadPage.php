@@ -6,7 +6,7 @@ namespace App\Filament\App\Pages;
 
 use App\Models\Contact;
 use App\Models\CrmCompany;
-use App\Models\CrmDeal;
+use App\Models\Lead;
 use Filament\Forms\Components\CaptchaField;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\RateLimiter;
  *
  * - Rate limit: 60 req/min por IP
  * - Captcha placeholder (integrar hCaptcha/reCAPTCHA en producción)
- * - Crea Contact + crea Deal en pipeline por defecto
+ * - Captura Contact + Lead; una oportunidad requiere conversión autorizada por el writer canónico
  */
 class WebToLeadPage extends Page
 {
@@ -110,26 +110,15 @@ class WebToLeadPage extends Page
                 'lifecycle_stage' => 'lead',
             ]);
 
-            $defaultPipeline = \App\Models\CrmPipeline::where('tenant_id', $tenantId)
-                ->where('is_default', true)
-                ->first();
-            if ($defaultPipeline) {
-                $firstStage = $defaultPipeline->stages()->orderBy('sort_order')->first();
-                if ($firstStage) {
-                    CrmDeal::create([
-                        'tenant_id' => $tenantId,
-                        'pipeline_id' => $defaultPipeline->id,
-                        'stage_id' => $firstStage->id,
-                        'contact_id' => $contact->id,
-                        'company_id' => $company?->id,
-                        'name' => 'Lead desde web: ' . $contact->full_name,
-                        'value' => 0,
-                        'currency' => 'HNL',
-                        'probability' => 10,
-                        'status' => 'open',
-                    ]);
-                }
-            }
+            Lead::query()->withoutGlobalScopes()->forceCreate([
+                'tenant_id' => $tenantId,
+                'name' => $contact->full_name,
+                'email' => $contact->email,
+                'phone' => $contact->phone,
+                'message' => $state['message'] ?? null,
+                'source' => 'web-to-lead',
+                'status' => 'new',
+            ]);
 
             \App\Models\CrmActivity::create([
                 'tenant_id' => $tenantId,

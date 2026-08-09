@@ -7,8 +7,10 @@ namespace App\Application\Reporting\Reports;
 use App\Application\Reporting\Contracts\ReportInterface;
 use App\Application\Reporting\ValueObjects\ReportData;
 use App\Domain\Reporting\Enums\ReportKey;
-use App\Domain\Reporting\ValueObjects\ReportRow;
 use App\Domain\Reporting\ValueObjects\ReportRange;
+use App\Domain\Reporting\ValueObjects\ReportRow;
+use Illuminate\Support\Facades\DB;
+
 class EmployeePerformanceReport implements ReportInterface
 {
     public function getKey(): ReportKey { return ReportKey::EmployeePerformance; }
@@ -19,11 +21,17 @@ class EmployeePerformanceReport implements ReportInterface
     public function getFilters(): array { return []; }
     public function getData(string $tenantId, ReportRange $range): ReportData
     {
-        $agents = DB::table('crm_deals as d')->join('users as u', 'u.id', '=', 'd.owner_id')
-            ->where('d.tenant_id', $tenantId)->where('d.status', 'won')
-            ->whereBetween('d.won_at', [$range->start, $range->end])
+        $agents = DB::table('crm_deals as d')
+            ->join('users as u', 'u.id', '=', 'd.owner_user_id')
+            ->where('d.tenant_id', $tenantId)
+            ->where('d.status', 'won')
+            ->whereNotNull('d.closed_at')
+            ->whereBetween('d.closed_at', [$range->start, $range->end])
             ->selectRaw('u.id, u.name, COUNT(*) as cnt, SUM(d.value) as revenue')
-            ->groupBy('u.id', 'u.name')->orderByDesc('revenue')->limit(20)->get();
+            ->groupBy('u.id', 'u.name')
+            ->orderByDesc('revenue')
+            ->limit(20)
+            ->get();
         $rows = [];
         foreach ($agents as $a) {
             $rows[] = new ReportRow($a->name, (int) $a->cnt, unit: 'deals', metadata: ['revenue' => (float) $a->revenue]);

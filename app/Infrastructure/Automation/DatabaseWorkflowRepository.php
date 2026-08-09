@@ -228,42 +228,54 @@ final readonly class DatabaseWorkflowRepository implements WorkflowRepositoryInt
         string $actorId,
         CarbonImmutable $occurredAt,
     ): array {
-        $version = $this->normalize(
+        return $this->connection->transaction(function () use (
+            $tenantId,
+            $workflowKey,
+            $draftVersionId,
+            $publishedVersion,
+            $actorId,
+            $occurredAt,
+        ): array {
+            $version = $this->normalize(
+                $this->connection->table('automation_workflow_versions')
+                    ->where('id', $draftVersionId)
+                    ->where('tenant_id', $tenantId)
+                    ->where('workflow_key', $workflowKey)
+                    ->lockForUpdate()
+                    ->first(),
+                ['definition'],
+            );
+
+            if ($version === null || (string) $version['status'] !== 'draft') {
+                throw new RuntimeException('Draft workflow version not found.');
+            }
+
             $this->connection->table('automation_workflow_versions')
                 ->where('id', $draftVersionId)
+                ->update([
+                    'version' => $publishedVersion,
+                    'status' => 'published',
+                    'published_at' => $occurredAt->toIso8601String(),
+                    'published_by' => $actorId,
+                    'updated_at' => $occurredAt->toIso8601String(),
+                ]);
+
+            $this->connection->table('automation_workflow_definitions')
+                ->where('id', $version['definition_id'])
                 ->where('tenant_id', $tenantId)
-                ->where('workflow_key', $workflowKey)
-                ->first(),
-            ['definition'],
-        );
+                ->update([
+                    'current_draft_version_id' => null,
+                    'current_published_version_id' => $draftVersionId,
+                    'updated_by' => $actorId,
+                    'updated_at' => $occurredAt->toIso8601String(),
+                ]);
 
-        if ($version === null || (string) $version['status'] !== 'draft') {
-            throw new RuntimeException('Draft workflow version not found.');
-        }
-
-        $this->connection->table('automation_workflow_versions')
-            ->where('id', $draftVersionId)
-            ->update([
+            return [
+                'definition_id' => $version['definition_id'],
+                'version_id' => $draftVersionId,
                 'version' => $publishedVersion,
-                'status' => 'published',
-                'published_at' => $occurredAt->toIso8601String(),
-                'published_by' => $actorId,
-                'updated_at' => $occurredAt->toIso8601String(),
-            ]);
-
-        $this->connection->table('automation_workflow_definitions')
-            ->where('id', $version['definition_id'])
-            ->update([
-                'current_published_version_id' => $draftVersionId,
-                'updated_by' => $actorId,
-                'updated_at' => $occurredAt->toIso8601String(),
-            ]);
-
-        return [
-            'definition_id' => $version['definition_id'],
-            'version_id' => $draftVersionId,
-            'version' => $publishedVersion,
-        ];
+            ];
+        });
     }
 
     public function updateDraftVersion(

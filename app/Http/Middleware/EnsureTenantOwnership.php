@@ -6,6 +6,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -104,8 +105,25 @@ class EnsureTenantOwnership
     {
         $user = auth()->user();
 
-        // User->tenants() returns HasMany
-        return $user->tenants()->pluck('id')->toArray();
+        $ownedTenantIds = $user->tenants()->pluck('id');
+
+        if (! Schema::hasTable('tenant_memberships')) {
+            return $ownedTenantIds->all();
+        }
+
+        $memberTenantIds = $user->tenantMemberships()
+            ->whereNotNull('accepted_at')
+            ->where('status', 'active')
+            ->whereNull('suspended_at')
+            ->whereNull('revoked_at')
+            ->pluck('tenant_id');
+
+        return $ownedTenantIds
+            ->merge($memberTenantIds)
+            ->map(static fn (mixed $tenantId): string => (string) $tenantId)
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /**

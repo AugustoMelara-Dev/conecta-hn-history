@@ -9,7 +9,6 @@ use App\Models\CrmDeal;
 use Filament\Facades\Filament;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use Illuminate\Support\Facades\DB;
 
 class DealForecastWidget extends BaseWidget
 {
@@ -21,19 +20,19 @@ class DealForecastWidget extends BaseWidget
         $tenantId = Filament::getTenant()?->getKey();
         if (! $tenantId) return [];
 
-        $openValue = (float) CrmDeal::where('tenant_id', $tenantId)
-            ->where('status', DealStatus::Open->value)
-            ->sum('value');
-
-        $weightedValue = (float) DB::table('crm_deals')
+        $openDeals = CrmDeal::query()
             ->where('tenant_id', $tenantId)
             ->where('status', DealStatus::Open->value)
-            ->selectRaw('SUM(value * probability / 100) as weighted')
-            ->value('weighted');
+            ->with(['stage' => fn ($query) => $query->where('tenant_id', $tenantId)])
+            ->get();
 
-        $wonThisMonth = (float) CrmDeal::where('tenant_id', $tenantId)
+        $openValue = (float) $openDeals->sum(fn (CrmDeal $deal): float => (float) $deal->value);
+        $weightedValue = (float) $openDeals->sum(fn (CrmDeal $deal): float => $deal->weighted_value);
+
+        $wonThisMonth = (float) CrmDeal::query()
+            ->where('tenant_id', $tenantId)
             ->where('status', DealStatus::Won->value)
-            ->whereMonth('won_at', now()->month)
+            ->whereBetween('closed_at', [now()->startOfMonth(), now()->endOfMonth()])
             ->sum('value');
 
         return [

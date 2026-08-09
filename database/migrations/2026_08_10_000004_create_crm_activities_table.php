@@ -14,7 +14,7 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->foreignUuid('tenant_id')->constrained('tenants')->cascadeOnDelete();
             $table->foreignUuid('contact_id')->nullable()->constrained('crm_contacts')->nullOnDelete();
-            $table->foreignUuid('deal_id')->nullable()->constrained('crm_deals')->nullOnDelete();
+            $table->foreignId('deal_id')->nullable()->constrained('crm_deals')->nullOnDelete();
             $table->foreignUuid('company_id')->nullable()->constrained('crm_companies')->nullOnDelete();
             $table->foreignUuid('owner_id')->nullable()->constrained('users')->nullOnDelete();
             $table->string('type', 30); // call/email/meeting/task/note/sms/whatsapp

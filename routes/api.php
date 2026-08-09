@@ -30,7 +30,6 @@ use App\Http\Controllers\Api\V1\TenantSettingsController;
 use App\Http\Controllers\Api\V1\TenantWorkforceController;
 use App\Http\Controllers\Api\V1\Crm\ActivityController;
 use App\Http\Controllers\Api\V1\Crm\ContactController;
-use App\Http\Controllers\Api\V1\Crm\DealController;
 use App\Http\Controllers\Public\CheckoutController;
 use App\Http\Controllers\Webhook\PaymentWebhookController;
 use App\Http\Middleware\EnsurePlatformAiRegistryConfigured;

@@ -14,6 +14,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -52,6 +53,52 @@ final class WorkflowRuntimeTest extends TestCase
             versionId: $published['version_id'],
             definition: ['steps' => [['id' => 'changed', 'type' => 'tool', 'action' => 'noop']]],
         );
+    }
+
+    public function test_publishing_rolls_back_the_version_when_the_definition_pointer_cannot_be_updated(): void
+    {
+        [$tenant, $actor] = $this->tenantActor();
+        $definitions = $this->definitions();
+        $draft = $definitions->createDraft(
+            tenantId: (string) $tenant->getKey(),
+            workflowKey: 'fulfillment.atomic',
+            definition: ['steps' => []],
+            actorId: (string) $actor->getKey(),
+        );
+        DB::unprepared(<<<'SQL'
+            CREATE TRIGGER reject_published_pointer
+            BEFORE UPDATE ON automation_workflow_definitions
+            WHEN NEW.current_published_version_id IS NOT NULL
+            BEGIN
+                SELECT RAISE(ABORT, 'forced pointer failure');
+            END
+            SQL);
+
+        try {
+            $definitions->publishDraft(
+                tenantId: (string) $tenant->getKey(),
+                workflowKey: 'fulfillment.atomic',
+                draftVersionId: $draft['version_id'],
+                publishedVersion: 'v1',
+                actorId: (string) $actor->getKey(),
+            );
+            self::fail('Expected the definition pointer update to fail.');
+        } catch (QueryException) {
+            // The version mutation must be part of the same transaction.
+        }
+
+        $this->assertDatabaseHas('automation_workflow_versions', [
+            'id' => $draft['version_id'],
+            'version' => $draft['version'],
+            'status' => 'draft',
+            'published_at' => null,
+            'published_by' => null,
+        ]);
+        $this->assertDatabaseHas('automation_workflow_definitions', [
+            'id' => $draft['definition_id'],
+            'current_draft_version_id' => $draft['version_id'],
+            'current_published_version_id' => null,
+        ]);
     }
 
     public function test_runtime_persists_durable_waits_and_resumes_after_the_due_time(): void

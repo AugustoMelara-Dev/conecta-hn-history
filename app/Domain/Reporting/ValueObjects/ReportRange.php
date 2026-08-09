@@ -119,7 +119,7 @@ final readonly class ReportRange
 
     public function days(): int
     {
-        return $this->start->diffInDays($this->end);
+        return (int) $this->start->diffInDays($this->end);
     }
 
     public function hasComparison(): bool

@@ -10,9 +10,10 @@ use Illuminate\Support\Facades\File;
  * Cada Import class debe estar en el registry de ImportService.
  */
 
-it('ImportService exposes 9 entities', function () {
+it('ImportService exposes 8 legacy entities while opportunities use governed imports', function () {
     $service = new \App\Application\Imports\ImportService();
-    expect(count($service->entities()))->toBe(9);
+    expect(count($service->entities()))->toBe(8)
+        ->and($service->entities())->not->toContain('deals');
 });
 
 it('Each Importable Resource has a corresponding Import class', function () {
