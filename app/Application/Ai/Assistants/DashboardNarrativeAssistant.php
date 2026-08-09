@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Ai\Assistants;
 
 use App\Application\Ai\Contracts\AssistantResult;
+use App\Application\Ai\DTOs\AssistantExecutionContext;
 
 class DashboardNarrativeAssistant extends BaseAssistant
 {
@@ -33,12 +34,8 @@ class DashboardNarrativeAssistant extends BaseAssistant
         return 'Analytics';
     }
 
-    public function execute(array $input): AssistantResult
+    public function execute(array $input, ?AssistantExecutionContext $context = null): AssistantResult
     {
-        return $this->mockOutput($input, [
-            'narrative' => 'Tus ventas crecieron 12% este mes, con un ticket promedio de L 250. Los productos top son...',
-            'highlights' => ['Crecimiento sostenido', 'Ticket promedio estable'],
-            'concerns' => ['Bajo inventario en categor�a X'],
-        ]);
+        return $this->executeCanonical($input, $context);
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Ai\Assistants;
 
 use App\Application\Ai\Contracts\AssistantResult;
+use App\Application\Ai\DTOs\AssistantExecutionContext;
 
 class RefundJustificationAssistant extends BaseAssistant
 {
@@ -33,15 +34,12 @@ class RefundJustificationAssistant extends BaseAssistant
         return 'Billing';
     }
 
-    public function execute(array $input): AssistantResult
+    public function execute(array $input, ?AssistantExecutionContext $context = null): AssistantResult
     {
         if (! isset($input['refund_request_id'])) {
             return AssistantResult::failure('Missing refund_request_id');
         }
 
-        return $this->mockOutput($input, [
-            'justification' => 'Refund aprobado por cumplimiento de pol�tica.',
-            'risk_score' => 'low',
-        ]);
+        return $this->executeCanonical($input, $context);
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Ai\Assistants;
 
 use App\Application\Ai\Contracts\AssistantResult;
+use App\Application\Ai\DTOs\AssistantExecutionContext;
 
 class ContactEnrichmentAssistant extends BaseAssistant
 {
@@ -33,15 +34,12 @@ class ContactEnrichmentAssistant extends BaseAssistant
         return 'CRM';
     }
 
-    public function execute(array $input): AssistantResult
+    public function execute(array $input, ?AssistantExecutionContext $context = null): AssistantResult
     {
-        return $this->mockOutput($input, [
-            'job_title' => 'Director',
-            'company_name' => 'Empresa Detectada SA',
-            'linkedin_url' => null,
-            'seniority' => 'senior',
-            'industry' => 'tecnologia',
-            'confidence' => 0.82,
-        ]);
+        if (! isset($input['identifier']) || trim((string) $input['identifier']) === '') {
+            return AssistantResult::failure('Missing contact identifier');
+        }
+
+        return $this->executeCanonical($input, $context);
     }
 }

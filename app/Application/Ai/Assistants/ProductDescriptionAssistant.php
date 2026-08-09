@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Ai\Assistants;
 
 use App\Application\Ai\Contracts\AssistantResult;
+use App\Application\Ai\DTOs\AssistantExecutionContext;
 
 class ProductDescriptionAssistant extends BaseAssistant
 {
@@ -33,16 +34,12 @@ class ProductDescriptionAssistant extends BaseAssistant
         return 'Cat�logo';
     }
 
-    public function execute(array $input): AssistantResult
+    public function execute(array $input, ?AssistantExecutionContext $context = null): AssistantResult
     {
         if (! isset($input['product_name'])) {
             return AssistantResult::failure('Missing product_name');
         }
 
-        return $this->mockOutput($input, [
-            'description' => "{$input['product_name']} - Descripci�n generada con AI.",
-            'tags' => ['calidad', 'premium'],
-            'seo_keywords' => ['producto', 'premium', 'calidad'],
-        ]);
+        return $this->executeCanonical($input, $context);
     }
 }

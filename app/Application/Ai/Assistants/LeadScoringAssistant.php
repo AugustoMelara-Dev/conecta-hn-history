@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Ai\Assistants;
 
 use App\Application\Ai\Contracts\AssistantResult;
+use App\Application\Ai\DTOs\AssistantExecutionContext;
 
 class LeadScoringAssistant extends BaseAssistant
 {
@@ -33,16 +34,12 @@ class LeadScoringAssistant extends BaseAssistant
         return 'CRM';
     }
 
-    public function execute(array $input): AssistantResult
+    public function execute(array $input, ?AssistantExecutionContext $context = null): AssistantResult
     {
         if (! isset($input['contact_id'])) {
             return AssistantResult::failure('Missing contact_id');
         }
 
-        return $this->mockOutput($input, [
-            'score' => 72,
-            'tier' => 'warm',
-            'factors' => ['engagement' => 80, 'completeness' => 60, 'recency' => 70],
-        ]);
+        return $this->executeCanonical($input, $context);
     }
 }

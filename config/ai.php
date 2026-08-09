@@ -100,9 +100,53 @@ return [
             'requests_per_minute' => (int) env('AI_CATALOG_VISION_REQUESTS_PER_MINUTE', 10),
             'tools' => [],
         ],
+        'assistant_execution' => [
+            'enabled' => (bool) env('AI_ASSISTANTS_ENABLED', false),
+            'audience' => 'internal',
+            'billing_mode' => 'tenant',
+            'provider' => (string) env('AI_ASSISTANTS_PROVIDER', 'openai'),
+            'models' => [(string) env('AI_ASSISTANTS_MODEL', 'gpt-4o-mini')],
+            'requires_tenant' => true,
+            'max_cost_usd' => (float) env('AI_ASSISTANTS_MAX_COST_USD', 0.10),
+            'requests_per_minute' => (int) env('AI_ASSISTANTS_REQUESTS_PER_MINUTE', 20),
+            'tools' => [],
+        ],
     ],
 
     'schemas' => [
+        'assistant.structured_result.v1' => [
+            'capability' => 'assistant_execution',
+            'rules' => [
+                'summary' => ['required', 'string', 'max:4000'],
+                'fields' => ['required', 'array', 'max:50'],
+                'fields.*' => ['required', 'array:key,value'],
+                'fields.*.key' => ['required', 'string', 'max:100'],
+                'fields.*.value' => ['nullable', 'string', 'max:4000'],
+                'confidence' => ['required', 'numeric', 'between:0,1'],
+            ],
+            'json_schema' => [
+                'type' => 'object',
+                'additionalProperties' => false,
+                'required' => ['summary', 'fields', 'confidence'],
+                'properties' => [
+                    'summary' => ['type' => 'string', 'pattern' => '.*\\S.*'],
+                    'fields' => [
+                        'type' => 'array',
+                        'maxItems' => 50,
+                        'items' => [
+                            'type' => 'object',
+                            'additionalProperties' => false,
+                            'required' => ['key', 'value'],
+                            'properties' => [
+                                'key' => ['type' => 'string', 'pattern' => '^[a-z][a-z0-9_]{0,99}$'],
+                                'value' => ['type' => ['string', 'null']],
+                            ],
+                        ],
+                    ],
+                    'confidence' => ['type' => 'number', 'minimum' => 0, 'maximum' => 1],
+                ],
+            ],
+        ],
         'public_discovery.answer.v1' => [
             'capability' => 'public_discovery',
             'rules' => [

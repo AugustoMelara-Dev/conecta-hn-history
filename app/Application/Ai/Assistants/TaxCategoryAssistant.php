@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Ai\Assistants;
 
 use App\Application\Ai\Contracts\AssistantResult;
+use App\Application\Ai\DTOs\AssistantExecutionContext;
 
 class TaxCategoryAssistant extends BaseAssistant
 {
@@ -33,16 +34,12 @@ class TaxCategoryAssistant extends BaseAssistant
         return 'Catálogo';
     }
 
-    public function execute(array $input): AssistantResult
+    public function execute(array $input, ?AssistantExecutionContext $context = null): AssistantResult
     {
         if (! isset($input['product_id'])) {
             return AssistantResult::failure('Missing product_id');
         }
 
-        return $this->mockOutput($input, [
-            'tax_category' => 'standard',
-            'tax_rate' => 0.15,
-            'confidence' => 0.88,
-        ]);
+        return $this->executeCanonical($input, $context);
     }
 }

@@ -25,6 +25,7 @@ class AiAssistantRun extends Model
         'tenant_id',
         'user_id',
         'assistant_key',
+        'correlation_id',
         'prompt',
         'response',
         'cost_usd',

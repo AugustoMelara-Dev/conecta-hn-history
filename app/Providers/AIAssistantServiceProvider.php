@@ -18,6 +18,8 @@ use App\Application\Ai\Assistants\ReportInsightAssistant;
 use App\Application\Ai\Assistants\SentimentAssistant;
 use App\Application\Ai\Assistants\TaxCategoryAssistant;
 use App\Application\Ai\Assistants\TranslationAssistant;
+use App\Application\Ai\Contracts\AssistantRuntime;
+use App\Infrastructure\AI\CanonicalAssistantRuntime;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -27,27 +29,29 @@ class AIAssistantServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->singleton(AssistantExecutor::class, function () {
+        $this->app->bind(AssistantRuntime::class, CanonicalAssistantRuntime::class);
+
+        $this->app->singleton(AssistantExecutor::class, function ($app) {
             $executor = new AssistantExecutor;
 
             $assistants = [
-                new DealEmailDraftAssistant,
-                new ContactEnrichmentAssistant,
-                new LeadScoringAssistant,
-                new ProductDescriptionAssistant,
-                new InvoiceMemoAssistant,
-                new RefundJustificationAssistant,
-                new DashboardNarrativeAssistant,
-                new EmailReplyAssistant,
-                new SentimentAssistant,
-                new TranslationAssistant,
-                new TaxCategoryAssistant,
-                new NextBestActionAssistant,
-                new ReportInsightAssistant,
+                DealEmailDraftAssistant::class,
+                ContactEnrichmentAssistant::class,
+                LeadScoringAssistant::class,
+                ProductDescriptionAssistant::class,
+                InvoiceMemoAssistant::class,
+                RefundJustificationAssistant::class,
+                DashboardNarrativeAssistant::class,
+                EmailReplyAssistant::class,
+                SentimentAssistant::class,
+                TranslationAssistant::class,
+                TaxCategoryAssistant::class,
+                NextBestActionAssistant::class,
+                ReportInsightAssistant::class,
             ];
 
-            foreach ($assistants as $assistant) {
-                $executor->register($assistant);
+            foreach ($assistants as $assistantClass) {
+                $executor->register($app->make($assistantClass));
             }
 
             return $executor;

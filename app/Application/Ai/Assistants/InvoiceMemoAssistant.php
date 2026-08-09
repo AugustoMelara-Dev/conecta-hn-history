@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Ai\Assistants;
 
 use App\Application\Ai\Contracts\AssistantResult;
+use App\Application\Ai\DTOs\AssistantExecutionContext;
 
 class InvoiceMemoAssistant extends BaseAssistant
 {
@@ -33,16 +34,12 @@ class InvoiceMemoAssistant extends BaseAssistant
         return 'Billing';
     }
 
-    public function execute(array $input): AssistantResult
+    public function execute(array $input, ?AssistantExecutionContext $context = null): AssistantResult
     {
         if (! isset($input['invoice_id'])) {
             return AssistantResult::failure('Missing invoice_id');
         }
 
-        return $this->mockOutput($input, [
-            'memo_subject' => 'Recordatorio de pago',
-            'memo_body' => 'Estimado cliente, le recordamos que su factura est� pr�xima a vencer...',
-            'tone' => 'polite_firm',
-        ]);
+        return $this->executeCanonical($input, $context);
     }
 }

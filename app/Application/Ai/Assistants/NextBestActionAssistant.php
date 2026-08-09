@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Ai\Assistants;
 
 use App\Application\Ai\Contracts\AssistantResult;
+use App\Application\Ai\DTOs\AssistantExecutionContext;
 
 class NextBestActionAssistant extends BaseAssistant
 {
@@ -33,16 +34,12 @@ class NextBestActionAssistant extends BaseAssistant
         return 'CRM';
     }
 
-    public function execute(array $input): AssistantResult
+    public function execute(array $input, ?AssistantExecutionContext $context = null): AssistantResult
     {
         if (! isset($input['contact_id'])) {
             return AssistantResult::failure('Missing contact_id');
         }
 
-        return $this->mockOutput($input, [
-            'recommended_action' => 'schedule_call',
-            'reason' => 'Contacto activo hace 14 d�as, alta probabilidad de cierre.',
-            'priority' => 'high',
-        ]);
+        return $this->executeCanonical($input, $context);
     }
 }

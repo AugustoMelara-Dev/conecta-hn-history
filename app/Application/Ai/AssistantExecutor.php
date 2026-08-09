@@ -6,6 +6,7 @@ namespace App\Application\Ai;
 
 use App\Application\Ai\Contracts\AssistantInterface;
 use App\Application\Ai\Contracts\AssistantResult;
+use App\Application\Ai\DTOs\AssistantExecutionContext;
 use App\Models\AiAssistantRun;
 use Illuminate\Support\Facades\Log;
 
@@ -44,49 +45,55 @@ class AssistantExecutor
         return $this->assistants[$key];
     }
 
-    public function execute(string $key, array $input, ?string $tenantId = null, ?string $userId = null): AssistantResult
+    public function execute(string $key, array $input, AssistantExecutionContext $context): AssistantResult
     {
         $assistant = $this->get($key);
         $startTime = microtime(true);
 
         try {
-            $result = $assistant->execute($input);
+            $result = $assistant->execute($input, $context);
             $durationMs = (int) ((microtime(true) - $startTime) * 1000);
             $result = new AssistantResult(
                 success: $result->success,
                 output: $result->output,
-                costUsd: $result->costUsd ?: $assistant->estimateCost(),
+                costUsd: $result->success && $result->costUsd <= 0 ? $assistant->estimateCost() : $result->costUsd,
                 durationMs: $durationMs,
                 errorMessage: $result->errorMessage,
                 metadata: array_merge($result->metadata, ['assistant_key' => $key]),
             );
 
-            $this->audit($key, $input, $result, $tenantId, $userId);
+            $this->audit($key, $input, $result, $context);
 
             return $result;
         } catch (\Throwable $e) {
             $durationMs = (int) ((microtime(true) - $startTime) * 1000);
             $result = AssistantResult::failure($e->getMessage(), ['assistant_key' => $key]);
-            $this->audit($key, $input, $result, $tenantId, $userId);
+            $this->audit($key, $input, $result, $context);
 
             return $result;
         }
     }
 
-    private function audit(string $key, array $input, AssistantResult $result, ?string $tenantId, ?string $userId): void
+    private function audit(string $key, array $input, AssistantResult $result, AssistantExecutionContext $context): void
     {
         try {
-            AiAssistantRun::create([
-                'tenant_id' => $tenantId,
-                'user_id' => $userId,
+            AiAssistantRun::updateOrCreate([
+                'tenant_id' => $context->tenantId,
                 'assistant_key' => $key,
-                'prompt' => json_encode($input, JSON_UNESCAPED_UNICODE),
-                'response' => is_string($result->output) ? $result->output : json_encode($result->output, JSON_UNESCAPED_UNICODE),
+                'correlation_id' => $context->correlationId,
+            ], [
+                'user_id' => $context->actorId,
+                'assistant_key' => $key,
+                'prompt' => null,
+                'response' => null,
                 'cost_usd' => $result->costUsd,
-                'status' => $result->success ? 'completed' : 'failed',
+                'status' => $result->success ? 'completed' : (string) ($result->metadata['status'] ?? 'failed'),
                 'duration_ms' => $result->durationMs,
-                'error_message' => $result->errorMessage,
-                'metadata' => $result->metadata,
+                'error_message' => $result->success ? null : $result->errorMessage,
+                'metadata' => array_merge($result->metadata, [
+                    'correlation_id' => $context->correlationId,
+                    'input_hash' => hash('sha256', serialize($input)),
+                ]),
             ]);
         } catch (\Throwable $e) {
             Log::warning('Failed to audit AI assistant run', ['error' => $e->getMessage()]);

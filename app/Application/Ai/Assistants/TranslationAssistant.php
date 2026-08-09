@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Ai\Assistants;
 
 use App\Application\Ai\Contracts\AssistantResult;
+use App\Application\Ai\DTOs\AssistantExecutionContext;
 
 class TranslationAssistant extends BaseAssistant
 {
@@ -33,16 +34,12 @@ class TranslationAssistant extends BaseAssistant
         return 'Communications';
     }
 
-    public function execute(array $input): AssistantResult
+    public function execute(array $input, ?AssistantExecutionContext $context = null): AssistantResult
     {
         if (! isset($input['text']) || ! isset($input['target_lang'])) {
             return AssistantResult::failure('Missing text or target_lang');
         }
 
-        return $this->mockOutput($input, [
-            'translation' => '[Traducción al '.$input['target_lang'].']',
-            'source_lang' => 'es',
-            'target_lang' => $input['target_lang'],
-        ]);
+        return $this->executeCanonical($input, $context);
     }
 }

@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace App\Application\Crm;
 
+use App\Application\Ai\AssistantExecutor;
+use App\Application\Ai\DTOs\AssistantExecutionContext;
 use App\Models\Contact;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Str;
 
 /**
  * ContactEnrichmentService - Enriquece datos de contacto via OpenAI structured-output.
@@ -14,7 +18,10 @@ use App\Models\Contact;
  */
 class ContactEnrichmentService
 {
-    public function __construct(private CanonicalCrmEntityWriter $writer) {}
+    public function __construct(
+        private CanonicalCrmEntityWriter $writer,
+        private AssistantExecutor $assistants,
+    ) {}
 
     /**
      * @return array{
@@ -27,29 +34,34 @@ class ContactEnrichmentService
      *     raw: array<string, mixed>,
      * }
      */
-    public function enrich(string $emailOrPhone): array
-    {
-        // In production this would call OpenAI API:
-        // $client = \OpenAI::client(config('services.openai.key'));
-        // $response = $client->chat()->create([
-        //     'model' => 'gpt-4o-mini',
-        //     'messages' => [...],
-        //     'response_format' => ['type' => 'json_object'],
-        // ]);
-        // For test/dev we return deterministic mock data.
+    public function enrich(
+        string $emailOrPhone,
+        string $tenantId,
+        string $actorId,
+        ?string $correlationId = null,
+    ): array {
+        $context = new AssistantExecutionContext(
+            tenantId: $tenantId,
+            actorId: $actorId,
+            correlationId: $correlationId ?? (string) Str::uuid(),
+        );
+        $result = $this->assistants->execute('contact_enrichment', ['identifier' => $emailOrPhone], $context);
+        if (! $result->success || ! is_array($result->output)) {
+            return ['confidence' => 0.0, 'status' => 'unavailable', 'raw' => []];
+        }
 
-        return [
-            'job_title' => 'Director de Operaciones',
-            'company_name' => 'Empresa Detectada SA',
-            'linkedin_url' => null,
-            'seniority' => 'senior',
-            'industry' => 'tecnologia',
-            'confidence' => 0.82,
-            'raw' => [
-                'source' => 'mock',
-                'enriched_at' => now()->toIso8601String(),
-            ],
-        ];
+        $fields = [];
+        foreach ((array) ($result->output['fields'] ?? []) as $field) {
+            if (is_array($field) && is_string($field['key'] ?? null)) {
+                $fields[$field['key']] = is_string($field['value'] ?? null) ? $field['value'] : null;
+            }
+        }
+
+        return array_merge($fields, [
+            'confidence' => (float) ($result->output['confidence'] ?? 0),
+            'status' => 'completed',
+            'raw' => ['correlation_id' => $context->correlationId],
+        ]);
     }
 
     /**
@@ -61,13 +73,17 @@ class ContactEnrichmentService
             throw new \InvalidArgumentException('CRM enrichment requires explicit tenant and actor identifiers.');
         }
 
+        if (! hash_equals($tenantId, (string) $contact->tenant_id)) {
+            throw new AuthorizationException('Contact does not belong to the requested tenant.');
+        }
+
         $identifier = $contact->email ?? $contact->phone ?? '';
 
         if ($identifier === '') {
             return $contact;
         }
 
-        $data = $this->enrich($identifier);
+        $data = $this->enrich($identifier, $tenantId, $actorId);
 
         if (! array_key_exists('job_title', $data) || $data['job_title'] === null) {
             return $contact;

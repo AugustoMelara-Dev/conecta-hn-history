@@ -18,6 +18,7 @@ use App\Infrastructure\Privacy\Dovra\DovraTenantBusinessContextResolver;
 use App\Infrastructure\Privacy\Dovra\LegacySensitivePayloadRedactor;
 use App\Jobs\GenerateBusinessProfileJob;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Str;
 
 /**
  * AiOptimizationController - Async AI Profile Generation
@@ -110,6 +111,7 @@ final class AiOptimizationController extends Controller
             return $this->ingressUnavailableResponse();
         }
 
+        $correlationId = (string) Str::uuid();
         GenerateBusinessProfileJob::dispatch(
             businessName: $redactedPayload['business_name'],
             description: $redactedPayload['description'],
@@ -118,11 +120,13 @@ final class AiOptimizationController extends Controller
             targetAudience: $redactedPayload['target_audience'],
             tone: $redactedPayload['tone'],
             keywords: $redactedPayload['keywords'],
+            correlationId: $correlationId,
         );
 
         return response()->json([
             'status' => 'processing',
             'message' => 'Profile optimization has been queued.',
+            'correlation_id' => $correlationId,
         ], 202);
     }
 

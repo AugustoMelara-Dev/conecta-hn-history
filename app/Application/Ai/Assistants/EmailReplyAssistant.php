@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Ai\Assistants;
 
 use App\Application\Ai\Contracts\AssistantResult;
+use App\Application\Ai\DTOs\AssistantExecutionContext;
 
 class EmailReplyAssistant extends BaseAssistant
 {
@@ -33,16 +34,12 @@ class EmailReplyAssistant extends BaseAssistant
         return 'Communications';
     }
 
-    public function execute(array $input): AssistantResult
+    public function execute(array $input, ?AssistantExecutionContext $context = null): AssistantResult
     {
         if (! isset($input['inbox_message_id'])) {
             return AssistantResult::failure('Missing inbox_message_id');
         }
 
-        return $this->mockOutput($input, [
-            'reply_subject' => 'Re: Tu consulta',
-            'reply_body' => 'Gracias por tu mensaje. Te respondo a continuaci�n...',
-            'requires_review' => true,
-        ]);
+        return $this->executeCanonical($input, $context);
     }
 }

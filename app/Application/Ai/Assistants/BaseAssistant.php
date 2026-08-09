@@ -6,6 +6,8 @@ namespace App\Application\Ai\Assistants;
 
 use App\Application\Ai\Contracts\AssistantInterface;
 use App\Application\Ai\Contracts\AssistantResult;
+use App\Application\Ai\Contracts\AssistantRuntime;
+use App\Application\Ai\DTOs\AssistantExecutionContext;
 
 /**
  * BaseAssistant - Implementaci�n com�n para assistants.
@@ -15,6 +17,8 @@ use App\Application\Ai\Contracts\AssistantResult;
  */
 abstract class BaseAssistant implements AssistantInterface
 {
+    public function __construct(private readonly AssistantRuntime $runtime) {}
+
     abstract public function key(): string;
 
     abstract public function name(): string;
@@ -25,7 +29,7 @@ abstract class BaseAssistant implements AssistantInterface
 
     abstract public function category(): string;
 
-    abstract public function execute(array $input): AssistantResult;
+    abstract public function execute(array $input, ?AssistantExecutionContext $context = null): AssistantResult;
 
     public function guardrails(): array
     {
@@ -42,20 +46,12 @@ abstract class BaseAssistant implements AssistantInterface
      * $response = $client->chat()->create([...]);
      * Por ahora retornamos un placeholder.
      */
-    protected function mockOutput(array $input, array $overrides = []): AssistantResult
+    protected function executeCanonical(array $input, ?AssistantExecutionContext $context): AssistantResult
     {
-        $output = array_merge([
-            'status' => 'completed',
-            'mock' => true,
-            'timestamp' => now()->toIso8601String(),
-            'input_keys' => array_keys($input),
-        ], $overrides);
+        if ($context === null) {
+            return AssistantResult::failure('AI assistant context is required.', ['status' => 'unavailable']);
+        }
 
-        return AssistantResult::success(
-            output: $output,
-            cost: $this->estimateCost(),
-            durationMs: 100,
-            metadata: ['assistant' => $this->key()],
-        );
+        return $this->runtime->execute($this->key(), $input, $context);
     }
 }

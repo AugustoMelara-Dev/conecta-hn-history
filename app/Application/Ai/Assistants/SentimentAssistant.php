@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Ai\Assistants;
 
 use App\Application\Ai\Contracts\AssistantResult;
+use App\Application\Ai\DTOs\AssistantExecutionContext;
 
 class SentimentAssistant extends BaseAssistant
 {
@@ -33,17 +34,12 @@ class SentimentAssistant extends BaseAssistant
         return 'Communications';
     }
 
-    public function execute(array $input): AssistantResult
+    public function execute(array $input, ?AssistantExecutionContext $context = null): AssistantResult
     {
         if (! isset($input['message_id'])) {
             return AssistantResult::failure('Missing message_id');
         }
 
-        return $this->mockOutput($input, [
-            'sentiment' => 'positive',
-            'confidence' => 0.91,
-            'risk_score' => 'low',
-            'emotions' => ['joy' => 0.7, 'satisfaction' => 0.6],
-        ]);
+        return $this->executeCanonical($input, $context);
     }
 }

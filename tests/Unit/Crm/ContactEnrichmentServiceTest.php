@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Application\Ai\Contracts\AssistantResult;
+use App\Application\Ai\Contracts\AssistantRuntime;
+use App\Application\Ai\DTOs\AssistantExecutionContext;
 use App\Application\Crm\ContactEnrichmentService;
 use App\Domain\Crm\ValueObjects\CrmMetrics;
 use App\Models\Contact;
@@ -12,9 +15,31 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-it('ContactEnrichmentService enrich returns array structure', function () {
+function bindContactEnrichmentRuntime(): void
+{
+    app()->bind(AssistantRuntime::class, fn () => new class implements AssistantRuntime
+    {
+        public function execute(string $assistantKey, array $input, AssistantExecutionContext $context): AssistantResult
+        {
+            return AssistantResult::success([
+                'summary' => 'Public professional data found.',
+                'fields' => [
+                    ['key' => 'job_title', 'value' => 'Director de Operaciones'],
+                    ['key' => 'company_name', 'value' => 'Empresa verificada'],
+                ],
+                'confidence' => 0.82,
+            ], metadata: ['status' => 'completed', 'correlation_id' => $context->correlationId]);
+        }
+    });
+}
+
+beforeEach(fn () => bindContactEnrichmentRuntime());
+
+it('ContactEnrichmentService maps canonical structured output', function () {
+    $owner = User::factory()->tenantOwner()->create();
+    $tenant = Tenant::factory()->forUser($owner)->create();
     $service = app(ContactEnrichmentService::class);
-    $result = $service->enrich('test@example.com');
+    $result = $service->enrich('test@example.com', (string) $tenant->id, (string) $owner->id);
     expect($result)->toHaveKeys(['job_title', 'company_name', 'confidence', 'raw']);
     expect($result['confidence'])->toBeGreaterThan(0);
 });

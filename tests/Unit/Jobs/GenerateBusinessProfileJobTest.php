@@ -2,11 +2,17 @@
 
 declare(strict_types=1);
 
+use App\Application\Ai\Contracts\AssistantResult;
+use App\Application\Ai\Contracts\AssistantRuntime;
+use App\Application\Ai\DTOs\AssistantExecutionContext;
 use App\Jobs\GenerateBusinessProfileJob;
+use App\Models\AiAssistantRun;
+use App\Models\Tenant;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
-use Tests\TestCase;
 
-uses(TestCase::class);
+uses(RefreshDatabase::class);
 
 describe('GenerateBusinessProfileJob', function () {
 
@@ -69,6 +75,38 @@ describe('GenerateBusinessProfileJob', function () {
         );
 
         expect($job->tenantId)->toBe($tenantId);
+    });
+
+    it('persists an idempotent correlation reference without plaintext prompts', function () {
+        $owner = User::factory()->tenantOwner()->create();
+        $tenant = Tenant::factory()->forUser($owner)->create();
+        $runtime = new class implements AssistantRuntime
+        {
+            public function execute(string $assistantKey, array $input, AssistantExecutionContext $context): AssistantResult
+            {
+                return AssistantResult::success([
+                    'summary' => 'Generated profile',
+                    'fields' => [['key' => 'seo_title', 'value' => 'Verified title']],
+                    'confidence' => 0.9,
+                ], 0.01, 5, ['status' => 'completed', 'correlation_id' => $context->correlationId]);
+            }
+        };
+        $job = new GenerateBusinessProfileJob(
+            businessName: 'Tenant Business',
+            description: 'A sufficiently detailed business description.',
+            userId: (string) $owner->id,
+            tenantId: (string) $tenant->id,
+            correlationId: '00000000-0000-4000-8000-000000012345',
+        );
+
+        $job->handle($runtime);
+        $job->handle($runtime);
+
+        expect(AiAssistantRun::query()->where('correlation_id', $job->correlationId)->count())->toBe(1);
+        $run = AiAssistantRun::query()->where('correlation_id', $job->correlationId)->firstOrFail();
+        expect($run->status)->toBe('completed')
+            ->and($run->prompt)->toBeNull()
+            ->and($run->response)->toBeNull();
     });
 
 });

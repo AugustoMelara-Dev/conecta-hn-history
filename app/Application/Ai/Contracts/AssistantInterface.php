@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Application\Ai\Contracts;
 
+use App\Application\Ai\DTOs\AssistantExecutionContext;
+
 /**
  * AssistantInterface - Cada AI Assistant implementa este contrato.
  */
@@ -29,7 +31,7 @@ interface AssistantInterface
      *
      * @param  array<string, mixed>  $input
      */
-    public function execute(array $input): AssistantResult;
+    public function execute(array $input, ?AssistantExecutionContext $context = null): AssistantResult;
 
     /**
      * Costo estimado en USD por ejecución.

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Ai\Assistants;
 
 use App\Application\Ai\Contracts\AssistantResult;
+use App\Application\Ai\DTOs\AssistantExecutionContext;
 
 class ReportInsightAssistant extends BaseAssistant
 {
@@ -33,19 +34,12 @@ class ReportInsightAssistant extends BaseAssistant
         return 'Analytics';
     }
 
-    public function execute(array $input): AssistantResult
+    public function execute(array $input, ?AssistantExecutionContext $context = null): AssistantResult
     {
         if (! isset($input['report_key'])) {
             return AssistantResult::failure('Missing report_key');
         }
 
-        return $this->mockOutput($input, [
-            'insights' => [
-                'Tendencia al alza en los últimos 3 meses',
-                'Categoría X con mejor performance',
-                'Oportunidad de optimización en canal Y',
-            ],
-            'recommendations' => ['Invertir más en canal Z', 'Revisar pricing de categoría X'],
-        ]);
+        return $this->executeCanonical($input, $context);
     }
 }
