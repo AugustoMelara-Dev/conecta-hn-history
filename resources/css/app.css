@@ -68,9 +68,14 @@
     }
 
     body {
-        @apply bg-background text-foreground;
+        @apply min-h-screen bg-background text-foreground antialiased;
         text-rendering: optimizeLegibility;
         font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    }
+
+    ::selection {
+        background: hsl(var(--accent) / 0.22);
+        color: hsl(var(--foreground));
     }
 
     h1,
@@ -106,6 +111,42 @@
     .rounded-b-xl {
         border-bottom-left-radius: var(--radius-surface);
         border-bottom-right-radius: var(--radius-surface);
+    }
+}
+
+@layer components {
+    .ui-page {
+        @apply min-h-[100svh] bg-background text-foreground;
+    }
+
+    .ui-page-container {
+        @apply mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8;
+    }
+
+    .ui-surface {
+        @apply rounded-xl border bg-card text-card-foreground shadow-sm;
+    }
+
+    .ui-control {
+        @apply rounded-lg border border-input bg-background text-foreground shadow-sm transition-colors hover:border-ring/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+    }
+
+    .ui-empty,
+    .ui-error,
+    .ui-loading {
+        @apply rounded-xl border p-6 text-center;
+    }
+
+    .ui-empty {
+        @apply border-dashed bg-muted/40 text-muted-foreground;
+    }
+
+    .ui-error {
+        @apply border-destructive/30 bg-destructive/5 text-destructive;
+    }
+
+    .ui-loading {
+        @apply animate-pulse bg-muted/60 text-muted-foreground;
     }
 }
 

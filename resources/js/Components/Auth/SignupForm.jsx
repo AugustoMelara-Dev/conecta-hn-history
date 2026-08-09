@@ -37,9 +37,9 @@ export function SignupForm({
 }) {
     const exploreUrl = safeRoute("directory.index", "/directorio")
     const inputClassName =
-        "border-slate-200 bg-white text-slate-950 placeholder:text-slate-400 focus-visible:ring-slate-300 focus-visible:ring-offset-0"
+        "border-input bg-background text-foreground placeholder:text-muted-foreground focus-visible:ring-ring focus-visible:ring-offset-0"
     const selectClassName =
-        "flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-0"
+        "flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0"
 
     const { data, setData, post, processing, errors } = useForm({
         business_name: "",
@@ -62,13 +62,13 @@ export function SignupForm({
         <div className={cn("flex flex-col gap-6", className)}>
             <Card
                 {...props}
-                className={cn("border-slate-200 bg-white text-slate-950 shadow-sm", props.className)}
+                className={cn("border-border bg-card text-card-foreground shadow-sm", props.className)}
             >
                 <CardHeader>
-                    <CardTitle className="text-2xl font-semibold text-slate-950">
+                    <CardTitle className="text-2xl font-semibold text-foreground">
                         Crea tu cuenta
                     </CardTitle>
-                    <CardDescription className="text-slate-500">
+                    <CardDescription className="text-muted-foreground">
                         Registra tu negocio y prepara el acceso administrativo.
                     </CardDescription>
                 </CardHeader>
@@ -86,14 +86,14 @@ export function SignupForm({
                                     onChange={(event) => setData("business_name", event.target.value)}
                                     className={cn(
                                         inputClassName,
-                                        errors.business_name && "border-rose-300 focus-visible:ring-rose-200"
+                                        errors.business_name && "border-destructive focus-visible:ring-destructive/30"
                                     )}
                                 />
                                 <FieldDescription>
                                     Generaremos la URL pública de tu negocio desde este nombre.
                                 </FieldDescription>
                                 {errors.business_name ? (
-                                    <FieldDescription className="text-rose-600">
+                                    <FieldDescription className="text-destructive" role="alert">
                                         {errors.business_name}
                                     </FieldDescription>
                                 ) : null}
@@ -110,11 +110,11 @@ export function SignupForm({
                                     onChange={(event) => setData("name", event.target.value)}
                                     className={cn(
                                         inputClassName,
-                                        errors.name && "border-rose-300 focus-visible:ring-rose-200"
+                                        errors.name && "border-destructive focus-visible:ring-destructive/30"
                                     )}
                                 />
                                 {errors.name ? (
-                                    <FieldDescription className="text-rose-600">
+                                    <FieldDescription className="text-destructive" role="alert">
                                         {errors.name}
                                     </FieldDescription>
                                 ) : null}
@@ -131,14 +131,14 @@ export function SignupForm({
                                     onChange={(event) => setData("email", event.target.value)}
                                     className={cn(
                                         inputClassName,
-                                        errors.email && "border-rose-300 focus-visible:ring-rose-200"
+                                        errors.email && "border-destructive focus-visible:ring-destructive/30"
                                     )}
                                 />
                                 <FieldDescription>
                                     Usaremos este correo para avisos de acceso, facturación y seguridad.
                                 </FieldDescription>
                                 {errors.email ? (
-                                    <FieldDescription className="text-rose-600">
+                                    <FieldDescription className="text-destructive" role="alert">
                                         {errors.email}
                                     </FieldDescription>
                                 ) : null}
@@ -154,14 +154,14 @@ export function SignupForm({
                                     onChange={(event) => setData("password", event.target.value)}
                                     className={cn(
                                         inputClassName,
-                                        errors.password && "border-rose-300 focus-visible:ring-rose-200"
+                                        errors.password && "border-destructive focus-visible:ring-destructive/30"
                                     )}
                                 />
                                 <FieldDescription>
                                     Debe tener al menos 8 caracteres.
                                 </FieldDescription>
                                 {errors.password ? (
-                                    <FieldDescription className="text-rose-600">
+                                    <FieldDescription className="text-destructive" role="alert">
                                         {errors.password}
                                     </FieldDescription>
                                 ) : null}
@@ -177,12 +177,12 @@ export function SignupForm({
                                     onChange={(event) => setData("password_confirmation", event.target.value)}
                                     className={cn(
                                         inputClassName,
-                                        errors.password_confirmation && "border-rose-300 focus-visible:ring-rose-200"
+                                        errors.password_confirmation && "border-destructive focus-visible:ring-destructive/30"
                                     )}
                                 />
                                 <FieldDescription>Escribe la misma contraseña para confirmarla.</FieldDescription>
                                 {errors.password_confirmation ? (
-                                    <FieldDescription className="text-rose-600">
+                                    <FieldDescription className="text-destructive" role="alert">
                                         {errors.password_confirmation}
                                     </FieldDescription>
                                 ) : null}
@@ -197,7 +197,7 @@ export function SignupForm({
                                     onChange={(event) => setData("category_id", event.target.value)}
                                     className={cn(
                                         selectClassName,
-                                        errors.category_id && "border-rose-300 focus-visible:ring-rose-200"
+                                        errors.category_id && "border-destructive focus-visible:ring-destructive/30"
                                     )}
                                 >
                                     <option value="">Selecciona una categoría</option>
@@ -208,7 +208,7 @@ export function SignupForm({
                                     ))}
                                 </select>
                                 {errors.category_id ? (
-                                    <FieldDescription className="text-rose-600">
+                                    <FieldDescription className="text-destructive" role="alert">
                                         {errors.category_id}
                                     </FieldDescription>
                                 ) : null}
@@ -223,7 +223,7 @@ export function SignupForm({
                                     onChange={(event) => setData("city_id", event.target.value)}
                                     className={cn(
                                         selectClassName,
-                                        errors.city_id && "border-rose-300 focus-visible:ring-rose-200"
+                                        errors.city_id && "border-destructive focus-visible:ring-destructive/30"
                                     )}
                                 >
                                     <option value="">Selecciona una ciudad</option>
@@ -234,24 +234,24 @@ export function SignupForm({
                                     ))}
                                 </select>
                                 {errors.city_id ? (
-                                    <FieldDescription className="text-rose-600">
+                                    <FieldDescription className="text-destructive" role="alert">
                                         {errors.city_id}
                                     </FieldDescription>
                                 ) : null}
                             </Field>
 
                             <Field>
-                                <label className="flex items-start gap-3 text-sm text-slate-600">
+                                <label className="flex items-start gap-3 text-sm text-muted-foreground">
                                     <input
                                         type="checkbox"
                                         checked={data.terms_accepted}
                                         onChange={(event) => setData("terms_accepted", event.target.checked)}
-                                        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-slate-950 focus:ring-slate-300"
+                                        className="mt-0.5 h-4 w-4 rounded-sm border-input text-accent focus:ring-ring"
                                     />
                                     <span>Acepto los términos necesarios para crear esta cuenta de negocio.</span>
                                 </label>
                                 {errors.terms_accepted ? (
-                                    <FieldDescription className="text-rose-600">
+                                    <FieldDescription className="text-destructive" role="alert">
                                         {errors.terms_accepted}
                                     </FieldDescription>
                                 ) : null}
@@ -261,14 +261,14 @@ export function SignupForm({
                                 <Button
                                     type="submit"
                                     disabled={processing}
-                                    className="w-full bg-slate-950 text-white hover:bg-slate-800"
+                                    className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
                                 >
                                     {processing ? "Creando cuenta..." : "Crear cuenta"}
                                 </Button>
                                 <Button
                                     variant="outline"
                                     type="button"
-                                    className="w-full border-slate-200 bg-white text-slate-950 hover:bg-slate-50"
+                                    className="w-full border-border bg-background text-foreground hover:bg-muted"
                                     asChild
                                 >
                                     <Link href={exploreUrl}>

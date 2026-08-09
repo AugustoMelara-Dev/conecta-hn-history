@@ -1,15 +1,15 @@
 :root {
     --biz-surface: #ffffff;
-    --biz-surface-subtle: #f8fafc;
-    --biz-surface-accent: #eef2ff;
+    --biz-surface-subtle: #fafafa;
+    --biz-surface-accent: #ecfeff;
     --biz-surface-warning: #fffbeb;
-    --biz-border: #e2e8f0;
-    --biz-border-strong: #cbd5e1;
-    --biz-text: #0f172a;
-    --biz-text-soft: #334155;
-    --biz-text-muted: #64748b;
-    --biz-primary: #4f46e5;
-    --biz-primary-strong: #4338ca;
+    --biz-border: #e4e4e7;
+    --biz-border-strong: #d4d4d8;
+    --biz-text: #18181b;
+    --biz-text-soft: #3f3f46;
+    --biz-text-muted: #71717a;
+    --biz-primary: #0891b2;
+    --biz-primary-strong: #0e7490;
     --biz-success: #047857;
     --biz-warning: #b45309;
     --biz-danger: #be123c;
@@ -23,15 +23,15 @@
 .dark {
     --biz-surface: #18181b;
     --biz-surface-subtle: #202024;
-    --biz-surface-accent: #20213a;
+    --biz-surface-accent: #123138;
     --biz-surface-warning: #2a2115;
     --biz-border: rgba(255, 255, 255, 0.1);
     --biz-border-strong: rgba(255, 255, 255, 0.18);
     --biz-text: #fafafa;
     --biz-text-soft: #e4e4e7;
     --biz-text-muted: #a1a1aa;
-    --biz-primary: #818cf8;
-    --biz-primary-strong: #a5b4fc;
+    --biz-primary: #22d3ee;
+    --biz-primary-strong: #67e8f9;
     --biz-success: #34d399;
     --biz-warning: #fbbf24;
     --biz-danger: #fb7185;
@@ -46,6 +46,19 @@
     display: grid;
     gap: 1rem;
     min-width: 0;
+}
+
+.biz-shell {
+    color: var(--biz-text);
+    font-family: "Manrope", ui-sans-serif, system-ui, sans-serif;
+}
+
+.biz-title,
+.biz-heading,
+.biz-action-title,
+.biz-checklist-title,
+.biz-stat-value {
+    font-family: "Epilogue", "Manrope", ui-sans-serif, system-ui, sans-serif;
 }
 
 .biz-grid-two {
@@ -187,6 +200,14 @@
     transform: translateY(-1px);
 }
 
+.biz-action:focus-visible,
+.biz-stat-link:focus-visible,
+.biz-button:focus-visible,
+.biz-button-secondary:focus-visible {
+    outline: 2px solid var(--biz-primary);
+    outline-offset: 2px;
+}
+
 .biz-stat-link {
     display: block;
     color: inherit;
@@ -236,6 +257,48 @@
 
 .biz-button-secondary:hover {
     border-color: var(--biz-primary);
+    background: var(--biz-surface-subtle);
+}
+
+.biz-error,
+.biz-loading {
+    min-width: 0;
+    border: 1px solid var(--biz-border);
+    border-radius: var(--biz-radius-card);
+    padding: 1rem;
+    text-align: center;
+}
+
+.biz-error {
+    border-color: color-mix(in srgb, var(--biz-danger) 35%, var(--biz-border));
+    background: color-mix(in srgb, var(--biz-danger) 7%, var(--biz-surface));
+    color: var(--biz-danger);
+}
+
+.biz-loading {
+    background: var(--biz-surface-subtle);
+    color: var(--biz-text-muted);
+}
+
+/* Filament and custom pages share the same radius and focus policy. */
+.fi-section,
+.fi-ta-ctn,
+.fi-wi-stats-overview-stat {
+    border-radius: var(--biz-radius-surface) !important;
+}
+
+.fi-btn,
+.fi-input-wrp,
+.fi-select-input,
+.fi-dropdown-panel {
+    border-radius: var(--biz-radius-control) !important;
+}
+
+.fi-btn:focus-visible,
+.fi-input-wrp:focus-within,
+.fi-select-input:focus-visible {
+    outline: 2px solid var(--biz-primary);
+    outline-offset: 2px;
 }
 
 .biz-button[disabled],

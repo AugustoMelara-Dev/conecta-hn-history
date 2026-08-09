@@ -338,7 +338,7 @@ function DirectoryGuide({ instance = 'desktop' }) {
     return (
         <Card className="border-border/70 bg-foreground text-background shadow-[0_24px_80px_rgba(15,23,42,0.14)]" data-testid="directory-guide">
             <CardHeader>
-                <Badge variant="secondary" className="w-fit rounded-full">
+                <Badge variant="secondary" className="w-fit rounded-md">
                     Guía pública con IA
                 </Badge>
                 <h2 className="font-display text-2xl font-semibold leading-none tracking-tight">Pregunta con datos públicos</h2>
@@ -353,7 +353,7 @@ function DirectoryGuide({ instance = 'desktop' }) {
                             <FieldLabel htmlFor={inputId} className="sr-only">
                                 Pregunta para la guía del directorio
                             </FieldLabel>
-                            <div className="flex min-w-0 gap-2 rounded-2xl border border-white/10 bg-white/10 p-2">
+                            <div className="flex min-w-0 gap-2 rounded-xl border border-primary-foreground/10 bg-primary-foreground/10 p-2">
                                 <Input
                                     id={inputId}
                                     value={message}
@@ -370,7 +370,7 @@ function DirectoryGuide({ instance = 'desktop' }) {
                     </FieldGroup>
                 </form>
 
-                <div className="mt-5 rounded-2xl border border-white/10 bg-white/10 p-4">
+                <div className="mt-5 rounded-xl border border-primary-foreground/10 bg-primary-foreground/10 p-4">
                     <div className="flex items-start gap-3">
                         <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white text-foreground">
                             {error ? <AlertCircle aria-hidden="true" /> : <Bot aria-hidden="true" />}
@@ -476,7 +476,7 @@ export default function DirectoryIndex({
                 <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
                     <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
                         <div>
-                            <Badge variant="outline" className="rounded-full bg-background/80">Directorio para clientes</Badge>
+                            <Badge variant="outline" className="rounded-md bg-background/80">Directorio para clientes</Badge>
                             <h1 className="mt-4 font-display text-4xl font-bold tracking-normal sm:text-5xl">
                                 {pageTitle}
                             </h1>
@@ -484,7 +484,7 @@ export default function DirectoryIndex({
                                 Encuentra negocios reales, guarda favoritos y entra a micrositios públicos sin ver información privada del plan del negocio.
                             </p>
                         </div>
-                        <Badge variant="secondary" className="w-fit rounded-full px-4 py-2" role="status" aria-live="polite">
+                        <Badge variant="secondary" className="w-fit rounded-md px-4 py-2" role="status" aria-live="polite">
                             {resultCount} resultados
                         </Badge>
                     </div>
@@ -519,7 +519,7 @@ export default function DirectoryIndex({
                                 <DirectoryGuide instance="mobile" />
                             </div>
 
-                            <div className="flex min-w-0 gap-3 rounded-2xl border bg-background p-2 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
+                            <div className="flex min-w-0 gap-3 rounded-xl border bg-background p-2 shadow-md">
                                 <FieldGroup className="min-w-0 flex-1 gap-0">
                                     <Field>
                                         <FieldLabel htmlFor="directory-search" className="sr-only">

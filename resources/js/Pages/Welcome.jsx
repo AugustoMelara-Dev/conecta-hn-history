@@ -362,7 +362,7 @@ function Hero({ auth, canRegister }) {
         <div className="relative overflow-hidden" data-testid="landing-page">
             <section className="relative z-10 mx-auto flex max-w-7xl flex-col items-center justify-center gap-10 px-4 pb-20 pt-24 text-center sm:px-6 sm:pb-28 sm:pt-32 lg:px-8">
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.65, ease: 'easeOut' }} className="mx-auto flex max-w-4xl flex-col items-center">
-                    <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white/35 px-3 py-1 text-xs font-medium text-zinc-700 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-300">
+                    <span className="mb-5 inline-flex items-center gap-2 rounded-md border border-zinc-300 bg-white/35 px-3 py-1 text-xs font-medium text-zinc-700 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-300">
                         <Zap className="size-3.5" aria-hidden="true" />
                         Nacida en Honduras · construida para operar globalmente
                     </span>
@@ -435,7 +435,7 @@ function ProductEngines() {
                     </p>
                 </motion.div>
 
-                <div className="grid gap-px overflow-hidden rounded-2xl border border-zinc-300/80 bg-zinc-300/80 shadow-sm dark:border-zinc-800 dark:bg-zinc-800 md:grid-cols-2">
+                <div className="grid gap-px overflow-hidden rounded-xl border border-zinc-300/80 bg-zinc-300/80 shadow-sm dark:border-zinc-800 dark:bg-zinc-800 md:grid-cols-2">
                     {productEngines.map(({ name, role, icon: Icon, content, outcome }, index) => (
                         <motion.article
                             key={name}
@@ -460,8 +460,8 @@ function ProductEngines() {
                     ))}
                 </div>
 
-                <motion.div {...reveal} className="mt-8 grid gap-3 rounded-2xl border border-zinc-300/80 bg-white/25 p-5 dark:border-zinc-800 dark:bg-zinc-900/25 sm:grid-cols-[auto_1fr] sm:items-center sm:gap-6 sm:p-6">
-                    <span className="inline-flex w-fit items-center gap-2 rounded-full bg-zinc-950 px-3 py-1.5 text-xs font-medium text-white dark:bg-zinc-50 dark:text-zinc-950">
+                <motion.div {...reveal} className="mt-8 grid gap-3 rounded-xl border border-zinc-300/80 bg-white/25 p-5 dark:border-zinc-800 dark:bg-zinc-900/25 sm:grid-cols-[auto_1fr] sm:items-center sm:gap-6 sm:p-6">
+                    <span className="inline-flex w-fit items-center gap-2 rounded-md bg-zinc-950 px-3 py-1.5 text-xs font-medium text-white dark:bg-zinc-50 dark:text-zinc-950">
                         <Check className="size-3.5" aria-hidden="true" />
                         Gobernanza fuera del modelo
                     </span>
@@ -503,8 +503,8 @@ function Pricing({ auth, canRegister, proPlanPrice }) {
 
             <div className="mx-auto grid min-w-0 max-w-5xl grid-cols-[minmax(0,1fr)] gap-5 [overflow-wrap:anywhere] md:grid-cols-3 md:gap-7">
                 {plans.map((plan, index) => (
-                    <motion.article key={plan.name} {...reveal} transition={{ duration: 0.55, delay: index * 0.08 }} className={`relative min-w-0 flex h-full flex-col rounded-2xl border bg-white/20 p-5 shadow-sm backdrop-blur-sm dark:bg-zinc-900/20 sm:p-6 ${plan.featured ? 'border-2 border-zinc-950 bg-black/[0.035] shadow-lg md:scale-[1.03] dark:border-zinc-100 dark:bg-white/[0.045]' : 'border-zinc-300/80 dark:border-zinc-800'}`}>
-                        {plan.featured && <span className="absolute -top-4 left-1/2 -translate-x-1/2 max-w-full whitespace-normal rounded-full border-2 text-center border-zinc-950 bg-[#eeeeec] px-4 py-1 text-xs font-medium text-zinc-950 dark:border-zinc-100 dark:bg-[#131316] dark:text-zinc-100">Primer Market Pack</span>}
+                    <motion.article key={plan.name} {...reveal} transition={{ duration: 0.55, delay: index * 0.08 }} className={`relative min-w-0 flex h-full flex-col rounded-xl border bg-white/20 p-5 shadow-sm backdrop-blur-sm dark:bg-zinc-900/20 sm:p-6 ${plan.featured ? 'border-2 border-zinc-950 bg-black/[0.035] shadow-lg md:scale-[1.03] dark:border-zinc-100 dark:bg-white/[0.045]' : 'border-zinc-300/80 dark:border-zinc-800'}`}>
+                        {plan.featured && <span className="absolute -top-4 left-1/2 -translate-x-1/2 max-w-full whitespace-normal rounded-md border-2 text-center border-zinc-950 bg-[#eeeeec] px-4 py-1 text-xs font-medium text-zinc-950 dark:border-zinc-100 dark:bg-[#131316] dark:text-zinc-100">Primer Market Pack</span>}
                         <div className="text-center">
                             <h3 className="text-lg font-semibold">{plan.name}</h3>
                             <p className="mt-2 min-h-10 text-sm text-zinc-600 dark:text-zinc-400">{plan.description}</p>

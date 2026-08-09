@@ -626,7 +626,7 @@ export function RegisterTenantWizard({
                 <>
                     <div className="flex max-w-xl flex-col gap-6">
                         <div
-                            className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-300"
+                            className="inline-flex items-center rounded-md border border-primary-foreground/10 bg-primary-foreground/5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-primary-foreground/70"
                             style={{ fontFamily: PUBLIC_LABEL_FONT }}
                         >
                             Onboarding integrado
@@ -636,7 +636,7 @@ export function RegisterTenantWizard({
                             <h2 className="max-w-lg text-4xl font-extrabold leading-[1.02] tracking-tight text-white xl:text-5xl" style={{ fontFamily: PUBLIC_DISPLAY_FONT }}>
                                 Lanza tu negocio en minutos con un registro guiado.
                             </h2>
-                            <p className="max-w-lg text-base leading-7 text-slate-300 xl:text-lg">
+                            <p className="max-w-lg text-base leading-7 text-primary-foreground/70 xl:text-lg">
                                 Definimos URL, perfil comercial, cuenta y plan en un solo flujo listo para empezar.
                             </p>
                         </div>
@@ -664,7 +664,7 @@ export function RegisterTenantWizard({
                                     "Cuenta propietaria con login real",
                                     "Plan, términos y privacidad confirmados",
                                 ].map((item) => (
-                                    <div key={item} className="flex items-start gap-2 text-sm text-slate-200">
+                                    <div key={item} className="flex items-start gap-2 text-sm text-primary-foreground/80">
                                         <CheckCircle2 className="mt-0.5 h-4 w-4" />
                                         <span>{item}</span>
                                     </div>
@@ -711,7 +711,7 @@ export function RegisterTenantWizard({
                     </div>
 
                     {!canSubmit ? (
-                        <Alert variant="destructive" className="mt-8 rounded-2xl">
+                        <Alert variant="destructive" className="mt-8 rounded-xl">
                             <p className="mb-1 font-semibold leading-none">Datos incompletos</p>
                             <AlertDescription>
                                 No pudimos cargar mercados o categorías. Recarga la página e inténtalo de nuevo.
@@ -797,10 +797,10 @@ export function RegisterTenantWizard({
 
                     <div className="mt-6 flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                            <span className="break-words text-xs font-bold uppercase tracking-[0.2em] text-slate-500" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
+                            <span className="break-words text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground" style={{ fontFamily: PUBLIC_LABEL_FONT }}>
                                 Progreso
                             </span>
-                            <Progress value={progress} className="h-2 w-full min-w-0 bg-slate-200 sm:w-40 [&>div]:bg-slate-950" />
+                            <Progress value={progress} className="h-2 w-full min-w-0 bg-muted sm:w-40 [&>div]:bg-accent" />
                         </div>
 
                         <div className="flex min-w-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end">

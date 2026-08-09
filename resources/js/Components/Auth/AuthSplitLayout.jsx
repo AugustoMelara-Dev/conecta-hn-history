@@ -12,18 +12,18 @@ import {
 export function AuthBrand({ href = "/", className }) {
     return (
         <Link href={href} className={cn("inline-flex items-center gap-3", className)}>
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-lg shadow-slate-950/10">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md">
                 <DovraMonogram variant="mark" />
             </div>
             <div>
                 <p
-                    className="text-base font-extrabold tracking-tight text-slate-950"
+                    className="text-base font-extrabold tracking-tight text-foreground"
                     style={{ fontFamily: PUBLIC_DISPLAY_FONT }}
                 >
                     Dovra AI
                 </p>
                 <p
-                    className="text-[11px] font-bold uppercase tracking-[0.28em] text-slate-500"
+                    className="text-[11px] font-bold uppercase tracking-[0.28em] text-muted-foreground"
                     style={{ fontFamily: PUBLIC_LABEL_FONT }}
                 >
                     Dovra AI
@@ -46,8 +46,8 @@ export function AuthAsideCard({
             className={cn(
                 "rounded-lg p-5",
                 invert
-                    ? "border border-white/10 bg-white/5 text-white backdrop-blur-md"
-                    : "bg-white text-slate-950 shadow-2xl shadow-slate-950/20",
+                    ? "border border-primary-foreground/10 bg-primary-foreground/5 text-primary-foreground backdrop-blur-md"
+                    : "border bg-card text-card-foreground shadow-md",
                 className
             )}
         >
@@ -55,7 +55,7 @@ export function AuthAsideCard({
                 <p
                     className={cn(
                         "text-[11px] font-bold uppercase tracking-[0.18em]",
-                        invert ? "text-slate-300" : "text-slate-500"
+                        invert ? "text-primary-foreground/70" : "text-muted-foreground"
                     )}
                     style={{ fontFamily: PUBLIC_LABEL_FONT }}
                 >
@@ -66,7 +66,7 @@ export function AuthAsideCard({
                 <p
                     className={cn(
                         "mt-3 text-2xl font-extrabold tracking-tight",
-                        invert ? "text-white" : "text-slate-950"
+                        invert ? "text-primary-foreground" : "text-foreground"
                     )}
                     style={{ fontFamily: PUBLIC_DISPLAY_FONT }}
                 >
@@ -77,7 +77,7 @@ export function AuthAsideCard({
                 <p
                     className={cn(
                         "mt-2 text-sm leading-6",
-                        invert ? "text-slate-300" : "text-slate-600"
+                        invert ? "text-primary-foreground/70" : "text-muted-foreground"
                     )}
                 >
                     {description}
@@ -91,17 +91,17 @@ export function AuthAsideCard({
 export function AuthAsideFeature({ icon: Icon, title, body }) {
     return (
         <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-slate-950 shadow-lg shadow-slate-950/10">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-foreground text-primary shadow-md">
                 <Icon className="h-5 w-5" />
             </div>
             <div>
                 <p
-                    className="text-lg font-bold text-white"
+                    className="text-lg font-bold text-primary-foreground"
                     style={{ fontFamily: PUBLIC_DISPLAY_FONT }}
                 >
                     {title}
                 </p>
-                <p className="mt-2 text-sm leading-6 text-slate-300">{body}</p>
+                <p className="mt-2 text-sm leading-6 text-primary-foreground/70">{body}</p>
             </div>
         </div>
     )
@@ -115,7 +115,7 @@ export default function AuthSplitLayout({
 }) {
     return (
         <div
-            className="grid min-h-[100svh] min-w-0 bg-[radial-gradient(circle_at_top_right,hsl(var(--secondary))_0,transparent_34%),linear-gradient(180deg,#fff_0%,#f8fafc_100%)] text-slate-950 xl:grid-cols-[0.9fr_1.1fr]"
+            className="grid min-h-[100svh] min-w-0 bg-[radial-gradient(circle_at_top_right,hsl(var(--secondary))_0,transparent_34%),linear-gradient(180deg,hsl(var(--background))_0%,hsl(var(--muted))_100%)] text-foreground xl:grid-cols-[0.9fr_1.1fr]"
             style={{ fontFamily: PUBLIC_BODY_FONT }}
         >
             <SkipLink />
@@ -132,8 +132,8 @@ export default function AuthSplitLayout({
                 </main>
             </div>
 
-            <aside className="relative hidden overflow-hidden bg-slate-950 xl:block">
-                <div className="absolute inset-0 bg-slate-950" />
+            <aside className="relative hidden overflow-hidden bg-primary text-primary-foreground xl:block">
+                <div className="absolute inset-0 bg-primary" />
                 <div className="absolute inset-0 opacity-10 [background-image:linear-gradient(to_right,currentColor_1px,transparent_1px),linear-gradient(to_bottom,currentColor_1px,transparent_1px)] [background-size:72px_72px]" />
 
                 <div className="relative flex h-full flex-col justify-between p-10 xl:p-14">

@@ -36,7 +36,7 @@
                         </div>
                     </div>
 
-                    <div class="flex w-full max-w-sm flex-col gap-4 rounded-2xl bg-gray-50 p-6 ring-1 ring-gray-200 dark:bg-white/5 dark:ring-white/10">
+                    <div class="flex w-full max-w-sm flex-col gap-4 rounded-xl bg-gray-50 p-6 ring-1 ring-gray-200 dark:bg-white/5 dark:ring-white/10">
                         <div>
                             <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Desde</p>
                             <p class="mt-1 text-3xl font-semibold text-gray-950 dark:text-white">{{ $formattedProPrice }}/mes</p>
@@ -71,7 +71,7 @@
                     <div class="flex flex-col gap-6">
                         {{ $this->form }}
 
-                        <div data-testid="marketing-whatsapp-preview" class="rounded-2xl bg-gray-50 p-4 ring-1 ring-gray-200 dark:bg-white/5 dark:ring-white/10">
+                        <div data-testid="marketing-whatsapp-preview" class="rounded-xl bg-gray-50 p-4 ring-1 ring-gray-200 dark:bg-white/5 dark:ring-white/10">
                             <div class="mb-3 flex items-center justify-between gap-3">
                                 <div>
                                     <p class="text-sm font-medium text-gray-950 dark:text-white">Vista previa</p>
@@ -98,7 +98,7 @@
                     </x-slot>
 
                     <div class="flex flex-col gap-5">
-                        <div class="flex justify-center rounded-2xl bg-gray-50 p-6 ring-1 ring-gray-200 dark:bg-white/5 dark:ring-white/10">
+                        <div class="flex justify-center rounded-xl bg-gray-50 p-6 ring-1 ring-gray-200 dark:bg-white/5 dark:ring-white/10">
                             @if($qrCodeSvg)
                                 <div class="size-[250px]" aria-label="Codigo QR del negocio">
                                     {!! $qrCodeSvg !!}

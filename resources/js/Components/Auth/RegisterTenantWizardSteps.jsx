@@ -33,7 +33,7 @@ function PlanCard({ active, recommended = false, title, caption, price, bullets,
         >
             {recommended ? (
                 <span
-                    className={`absolute left-6 top-0 -translate-y-1/2 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] ${active ? "bg-background text-foreground" : "bg-primary text-primary-foreground"}`}
+                    className={`absolute left-6 top-0 -translate-y-1/2 rounded-md px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] ${active ? "bg-background text-foreground" : "bg-primary text-primary-foreground"}`}
                 >
                     Recomendado
                 </span>
@@ -92,7 +92,7 @@ function BusinessTypeCard({ active, title, description, capabilities, examples, 
                         {title}
                     </p>
                     {badge ? (
-                        <span className={`w-fit rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${active ? "bg-primary-foreground/10 text-primary-foreground" : "bg-background text-muted-foreground"}`}>
+                        <span className={`w-fit rounded-md px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${active ? "bg-primary-foreground/10 text-primary-foreground" : "bg-background text-muted-foreground"}`}>
                             {badge}
                         </span>
                     ) : null}
@@ -100,7 +100,7 @@ function BusinessTypeCard({ active, title, description, capabilities, examples, 
                         {description}
                     </p>
                     {starterPack ? (
-                        <span className={`w-fit rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${active ? "bg-primary-foreground/10 text-primary-foreground" : "bg-background text-muted-foreground"}`}>
+                        <span className={`w-fit rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${active ? "bg-primary-foreground/10 text-primary-foreground" : "bg-background text-muted-foreground"}`}>
                             {starterPack}
                         </span>
                     ) : null}
@@ -212,7 +212,7 @@ export function BusinessStep({
                         <p className="text-xs font-semibold text-muted-foreground">Opciones sugeridas:</p>
                         <div className="flex flex-wrap gap-2">
                             {slugState.suggestions.map((suggestion) => (
-                                <Button key={suggestion} type="button" variant="outline" onClick={() => { setSlugTouched(true); updateField("slug", suggestion) }} className="h-8 rounded-full border-border bg-background px-3 text-xs font-semibold text-foreground/80 hover:border-ring/40 hover:text-foreground">
+                                <Button key={suggestion} type="button" variant="outline" onClick={() => { setSlugTouched(true); updateField("slug", suggestion) }} className="h-8 rounded-md border-border bg-background px-3 text-xs font-semibold text-foreground/80 hover:border-ring/40 hover:text-foreground">
                                     {suggestion}
                                 </Button>
                             ))}
@@ -303,12 +303,12 @@ export function BusinessStep({
                         <div className="flex flex-col gap-3">
                             <div className="flex flex-wrap items-center gap-2">
                                 <span
-                                    className="inline-flex rounded-full bg-primary px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-primary-foreground"
+                                    className="inline-flex rounded-md bg-primary px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-primary-foreground"
                                 >
                                     Segmento sugerido
                                 </span>
                                 <span
-                                    className="inline-flex rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-primary"
+                                    className="inline-flex rounded-md border border-primary/30 bg-primary/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-primary"
                                 >
                                     {selectedSegment.label}
                                 </span>
@@ -328,7 +328,7 @@ export function BusinessStep({
                                     {selectedSegment.modules.slice(0, 4).map((module) => (
                                         <span
                                             key={module}
-                                            className="rounded-full border border-border bg-background px-3 py-1 text-[11px] font-semibold text-foreground/80"
+                                            className="rounded-md border border-border bg-background px-3 py-1 text-[11px] font-semibold text-foreground/80"
                                         >
                                             {module}
                                         </span>
@@ -347,7 +347,7 @@ export function BusinessStep({
                                         {segmentCandidates.slice(1).map((segment) => (
                                             <span
                                                 key={segment.key}
-                                                className="rounded-full border border-border bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground"
+                                                className="rounded-md border border-border bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground"
                                             >
                                                 {segment.label}
                                             </span>
