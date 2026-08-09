@@ -174,6 +174,7 @@ final class EloquentTenantAgentReader
         $productIds = $this->candidateIds($candidates, 'product');
         $serviceIds = $this->candidateIds($candidates, 'service');
         $products = Product::query()
+            // INFRA_TENANT_FILTER: private-agent catalog lookup is constrained to the authenticated tenant ID.
             ->withoutGlobalScope(TenantScope::class)
             ->where('tenant_id', $tenantId)
             ->when($hasCandidates, fn (Builder $query): Builder => $query->whereIn('id', $productIds))
@@ -197,6 +198,7 @@ final class EloquentTenantAgentReader
                 ];
             });
         $services = Service::query()
+            // INFRA_TENANT_FILTER: private-agent service lookup is constrained to the authenticated tenant ID.
             ->withoutGlobalScope(TenantScope::class)
             ->where('tenant_id', $tenantId)
             ->when($hasCandidates, fn (Builder $query): Builder => $query->whereIn('id', $serviceIds))

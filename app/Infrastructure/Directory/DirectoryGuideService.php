@@ -135,6 +135,7 @@ final class DirectoryGuideService
         }
 
         $query = Product::query()
+            // PUBLIC_READ_WITH_TENANT_FILTER: public discovery is constrained through the active public tenant relation.
             ->withoutGlobalScope(TenantScope::class)
             ->with([$this->tenantRelationSelect()])
             ->select($this->productColumns(['id', 'tenant_id', 'name', 'description', 'price', 'is_active', 'is_visible', 'status', 'manage_stock', 'stock_quantity', 'allow_backorders', 'stock_status']))
@@ -216,6 +217,7 @@ final class DirectoryGuideService
         }
 
         $query = Service::query()
+            // PUBLIC_READ_WITH_TENANT_FILTER: public discovery is constrained through the active public tenant relation.
             ->withoutGlobalScope(TenantScope::class)
             ->with([$this->tenantRelationSelect()])
             ->select($this->serviceColumns(['id', 'tenant_id', 'name', 'description', 'price', 'is_active']))

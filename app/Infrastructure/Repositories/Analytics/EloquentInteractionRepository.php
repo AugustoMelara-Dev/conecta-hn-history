@@ -89,6 +89,7 @@ final class EloquentInteractionRepository implements InteractionRepositoryInterf
         // This repository already receives an explicit tenant identifier, so we
         // bypass only the global tenant scope and keep the rest of the model
         // behavior intact.
+        // INFRA_TENANT_FILTER: callers append the repository's mandatory tenant UUID predicate before execution.
         return Interaction::query()->withoutGlobalScope(TenantScope::class);
     }
 

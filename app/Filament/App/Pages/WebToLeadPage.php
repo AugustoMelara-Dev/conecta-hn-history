@@ -98,6 +98,7 @@ final class WebToLeadPage extends Page
                 $companyId = null;
                 if (filled($state['company_name'] ?? null)) {
                     $company = CrmCompany::query()
+                        // CANONICAL_WRITER_TENANT_FILTER: deduplication is constrained to the active tenant before canonical CRM write.
                         ->withoutGlobalScopes()
                         ->where('tenant_id', $tenantId)
                         ->where('name', trim((string) $state['company_name']))

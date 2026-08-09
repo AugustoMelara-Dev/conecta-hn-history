@@ -37,6 +37,7 @@ final class TenantAiConfigurationController extends Controller
 
         /** @var Tenant $tenant */
         $tenant = Tenant::query()
+            // INFRA_TENANT_FILTER: only LocationScope is bypassed and the query is constrained to TenantContext.
             ->withoutGlobalScope(LocationScope::class)
             ->whereKey($tenantId)
             ->firstOrFail();

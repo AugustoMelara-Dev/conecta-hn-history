@@ -140,6 +140,7 @@ class CrmDeal extends Model
 
     public function scopeForTenant($query, string $tenantId)
     {
+        // MODEL_RELATION_TENANT_OWNED: this named scope always restores an explicit tenant predicate.
         return $query->withoutGlobalScopes()->where('tenant_id', $tenantId);
     }
 

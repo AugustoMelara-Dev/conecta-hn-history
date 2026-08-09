@@ -7,14 +7,20 @@ namespace App\Application\Imports\Imports;
 use App\Application\Imports\Concerns\HasImportTemplate;
 use App\Application\Imports\Concerns\Importable;
 use App\Models\Order;
+use LogicException;
 use Maatwebsite\Excel\Concerns\Importable as ExcelImportable;
 use Maatwebsite\Excel\Concerns\ToModel;
-use Maatwebsite\Excel\Concerns\WithBatchInserts;
-use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
 
-class OrdersImport implements Importable, ToModel, WithBatchInserts, WithChunkReading, WithHeadingRow, WithValidation
+/**
+ * Template compatibility boundary for legacy order spreadsheets.
+ *
+ * Order aggregates require products, inventory locking, authorization and an
+ * idempotency snapshot. A summary-only spreadsheet cannot satisfy that
+ * contract, so ingestion fails closed instead of writing partial aggregates.
+ */
+final class OrdersImport implements Importable, ToModel, WithHeadingRow, WithValidation
 {
     use ExcelImportable;
     use HasImportTemplate;
@@ -52,25 +58,10 @@ class OrdersImport implements Importable, ToModel, WithBatchInserts, WithChunkRe
         return ['order_number', 'customer_email', 'total_amount', 'currency', 'status'];
     }
 
-    public function model(array $row): ?Order
+    public function model(array $row): never
     {
-        return Order::create([
-            'tenant_id' => $this->tenantId,
-            'order_number' => $row['order_number'],
-            'customer_email' => $row['customer_email'],
-            'total_amount' => $row['total_amount'],
-            'currency' => $row['currency'] ?? 'HNL',
-            'status' => $row['status'] ?? 'pending',
-        ]);
-    }
-
-    public function chunkSize(): int
-    {
-        return 500;
-    }
-
-    public function batchSize(): int
-    {
-        return 500;
+        throw new LogicException(
+            'Order spreadsheet ingestion is unavailable because summary rows cannot satisfy the canonical inventory and idempotency contract.'
+        );
     }
 }

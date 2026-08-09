@@ -30,6 +30,7 @@ final class DovraTenantBusinessContextResolver
              * force so deleted tenants fail closed.
              */
             $tenant = Tenant::query()
+                // INFRA_TENANT_FILTER: only LocationScope is bypassed and the canonical tenant UUID remains mandatory.
                 ->withoutGlobalScope(LocationScope::class)
                 ->whereKey($tenantId)
                 ->first(['id', 'business_type', 'category_id']);

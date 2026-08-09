@@ -3,8 +3,9 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Str;
+use PHPUnit\Framework\Assert;
 
-it('requires safety labels for every withoutGlobalScopes bypass in application code', function (): void {
+it('requires safety labels for every global scope bypass in application code', function (): void {
     $allowedLabels = [
         'ADMIN_CROSS_TENANT',
         'PUBLIC_READ_WITH_TENANT_FILTER',
@@ -50,7 +51,8 @@ it('requires safety labels for every withoutGlobalScopes bypass in application c
                 ));
 
             foreach ($lines as $index => $line) {
-                if (! str_contains($line, 'withoutGlobalScopes')) {
+                if (! str_contains($line, 'withoutGlobalScopes')
+                    && ! str_contains($line, 'withoutGlobalScope(')) {
                     continue;
                 }
 
@@ -70,5 +72,5 @@ it('requires safety labels for every withoutGlobalScopes bypass in application c
         }
     }
 
-    expect($violations)->toBeEmpty();
+    Assert::assertSame([], $violations, implode(PHP_EOL, $violations));
 });

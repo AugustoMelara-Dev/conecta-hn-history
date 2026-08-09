@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Application\Crm;
 
+// @withoutGlobalScopes-safety CANONICAL_WRITER_TENANT_FILTER: every CRM lookup/write is constrained by the authorized tenant command.
+
 use App\Models\Contact;
 use App\Models\CrmActivity;
 use App\Models\CrmCompany;

@@ -981,6 +981,7 @@ final readonly class AiRegistryLifecycle
 
     private function platformActor(string $actorId): User
     {
+        // ADMIN_CROSS_TENANT: registry mutation immediately requires the configured platform super-admin identity.
         $actor = User::query()->withoutGlobalScopes()->find($actorId);
         if (! $actor instanceof User || ! $actor->isSuperAdmin()) {
             throw new AuthorizationException('Only a platform super administrator may mutate the AI registry.');

@@ -13,7 +13,7 @@ final class Dashboard extends \Filament\Pages\Dashboard
 {
     protected static bool $isDiscovered = false;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-home';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-home';
 
     protected static ?string $navigationLabel = 'Escritorio';
 
@@ -89,6 +89,7 @@ final class Dashboard extends \Filament\Pages\Dashboard
         try {
             $now = now(OpeningHour::BUSINESS_TIMEZONE);
             $hours = OpeningHour::query()
+                // INFRA_TENANT_FILTER: dashboard hours are constrained to the active Filament tenant location.
                 ->withoutGlobalScopes()
                 ->where('tenant_id', $tenant->getKey())
                 ->where('day_of_week', $now->dayOfWeek)

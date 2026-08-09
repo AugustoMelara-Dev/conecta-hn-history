@@ -37,6 +37,7 @@ final class AdminProductQuery
         // Option 1: Switch context temporarily (Dangerous)
         // Option 2: Use Model Bypass (Explicit Scope Removal)
 
+        // ADMIN_CROSS_TENANT: this administrator-only inventory projection intentionally spans tenants.
         return Product::withoutGlobalScope(TenantScope::class)
             ->with(['tenant']) // Admin usually needs to know who owns what
             ->get();
@@ -47,6 +48,7 @@ final class AdminProductQuery
      */
     public function findSystemProduct(int $id): ?Product
     {
+        // ADMIN_CROSS_TENANT: exact product lookup is exposed only through the trusted administrator query port.
         return Product::withoutGlobalScope(TenantScope::class)
             ->where('id', $id)
             ->first();

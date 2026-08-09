@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+// @withoutGlobalScopes-safety INFRA_TENANT_FILTER: actor and tenant are re-authorized against the tenant-scoped queued payload before resume.
+
 use App\Application\Automation\Contracts\WorkflowRuntimeInterface;
 use App\Domain\Automation\WorkflowResumeRequest;
 use App\Infrastructure\Shared\Middleware\TenantQueueMiddleware;
-use App\Models\User;
 use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;

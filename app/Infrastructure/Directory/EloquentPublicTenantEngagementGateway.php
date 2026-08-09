@@ -12,8 +12,8 @@ use App\Models\Review;
 use App\Models\Tenant;
 use App\Models\TenantFavorite;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 final class EloquentPublicTenantEngagementGateway implements PublicTenantEngagementGatewayInterface
 {
@@ -49,6 +49,7 @@ final class EloquentPublicTenantEngagementGateway implements PublicTenantEngagem
                 tenantId: $tenantId,
                 engaged: $engaged,
                 count: TenantFavorite::query()
+                    // PUBLIC_READ_WITH_TENANT_FILTER: aggregate is constrained to the engaged tenant UUID.
                     ->withoutGlobalScope(TenantScope::class)
                     ->where('tenant_id', $tenantId)
                     ->count(),
@@ -83,6 +84,7 @@ final class EloquentPublicTenantEngagementGateway implements PublicTenantEngagem
             ->withCount('tenantFavorites')
             ->orderByDesc(
                 TenantFavorite::query()
+                    // PUBLIC_READ_WITH_TENANT_FILTER: ordering subquery is constrained to the authenticated buyer and related tenant.
                     ->withoutGlobalScope(TenantScope::class)
                     ->select('created_at')
                     ->whereColumn('tenant_id', 'tenants.id')

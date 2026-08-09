@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Tenant;
 
+// @withoutGlobalScopes-safety INFRA_TENANT_FILTER: receipt lookup is constrained by the authenticated TenantContext ID and order ID.
+
 use App\Domain\Shared\Services\TenantContext;
 use App\Http\Controllers\Controller;
 use App\Models\Order;

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Application\Automation\Commands;
 
+// @withoutGlobalScopes-safety ADMIN_CROSS_TENANT: manual lookup is followed by actor-to-workflow-tenant authorization before dispatch.
+
 use App\Jobs\RunWorkflowJob;
 use App\Models\AutomationWorkflowDefinition;
 use App\Models\User;

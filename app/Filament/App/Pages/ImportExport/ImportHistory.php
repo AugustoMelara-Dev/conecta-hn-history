@@ -35,6 +35,7 @@ final class ImportHistory extends Page
         }
 
         return CatalogImportBatch::query()
+            // INFRA_TENANT_FILTER: history is constrained to the active Filament tenant UUID.
             ->withoutGlobalScopes()
             ->where('tenant_id', $tenantId)
             ->withCount('items')
@@ -62,6 +63,7 @@ final class ImportHistory extends Page
         }
         $tenantId = (string) $tenant->getKey();
         $decisions = CatalogImportItem::query()
+            // INFRA_TENANT_FILTER: review decisions require both active tenant and selected import batch.
             ->withoutGlobalScopes()
             ->where('tenant_id', $tenantId)
             ->where('batch_id', $batchId)

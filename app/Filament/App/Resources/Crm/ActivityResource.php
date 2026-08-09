@@ -178,6 +178,7 @@ class ActivityResource extends Resource
         }
 
         return CrmDeal::query()
+            // INFRA_TENANT_FILTER: relationship options are constrained to the active Filament tenant UUID.
             ->withoutGlobalScopes()
             ->where('tenant_id', $tenant->getKey())
             ->orderBy('title')

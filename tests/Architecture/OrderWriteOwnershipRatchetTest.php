@@ -48,6 +48,7 @@ it('blocks direct order and order item persistence outside documented owners', f
     $allowed = [
         str_replace('\\', '/', $root.'/Application/Orders/CanonicalOrderWriter.php'),
         str_replace('\\', '/', $root.'/Application/Payments/Actions/RefundOrderPaymentAction.php'),
+        str_replace('\\', '/', $root.'/Application/Payments/Actions/SettleOrderPaymentAction.php'),
         str_replace('\\', '/', $root.'/Services/WebhookService.php'),
     ];
     $patterns = [
@@ -84,4 +85,38 @@ it('blocks direct order and order item persistence outside documented owners', f
     }
 
     expect(array_values(array_unique($violations)))->toBe([]);
+});
+
+it('constrains the payment settlement owner to the local tenant checkout intent', function (): void {
+    $root = dirname(__DIR__, 2);
+    $settlement = (string) file_get_contents(
+        $root.'/app/Application/Payments/Actions/SettleOrderPaymentAction.php',
+    );
+    $webhookAdapter = (string) file_get_contents(
+        $root.'/app/Infrastructure/Billing/EloquentPaymentWebhookSettlement.php',
+    );
+
+    expect($settlement)
+        ->toContain('@withoutGlobalScopes-safety WEBHOOK_LOCAL_INTENT_MATCH')
+        ->toContain("->where('tenant_id', \$tenantId)")
+        ->toContain('->whereKey($orderId)')
+        ->toContain('hash_equals((string) $order->idempotency_key, $orderIdempotencyKey)')
+        ->toContain('->lockForUpdate()')
+        ->and($webhookAdapter)
+        ->toContain('SettleOrderPaymentAction')
+        ->not->toContain('->withoutGlobalScopes()')
+        ->not->toContain('$order->forceFill(');
+});
+
+it('keeps the legacy order spreadsheet boundary fail closed', function (): void {
+    $root = dirname(__DIR__, 2);
+    $registry = (string) file_get_contents($root.'/app/Application/Imports/ImportService.php');
+    $importer = (string) file_get_contents($root.'/app/Application/Imports/Imports/OrdersImport.php');
+
+    expect($registry)->toContain('OrdersImport::class')
+        ->and($importer)
+        ->toContain('summary rows cannot satisfy the canonical inventory and idempotency contract')
+        ->toContain('throw new LogicException(')
+        ->not->toContain('Order::create(')
+        ->not->toContain('new Order');
 });
