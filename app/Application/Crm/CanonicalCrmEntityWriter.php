@@ -14,7 +14,6 @@ use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -42,6 +41,8 @@ final readonly class CanonicalCrmEntityWriter
     private const string REFERENCE_MESSAGE = 'The selected reference is invalid for this tenant.';
 
     private const string OWNER_MESSAGE = 'The selected owner is invalid for this tenant.';
+
+    public function __construct(private CanonicalCrmPermissionGate $permissionGate) {}
 
     /**
      * @param  array<string, mixed>  $attributes
@@ -285,56 +286,25 @@ final readonly class CanonicalCrmEntityWriter
             throw new AuthorizationException('Actor cannot mutate CRM entities for this tenant.');
         }
 
-        if ((string) $tenant->user_id === (string) $actor->id) {
-            return;
+        if ((string) $tenant->user_id !== (string) $actor->id) {
+            $memberships = DB::table('tenant_memberships')
+                ->where('tenant_id', $tenantId)
+                ->where('user_id', $actorId)
+                ->where('status', 'active')
+                ->whereNotNull('accepted_at')
+                ->whereNull('suspended_at')
+                ->whereNull('revoked_at')
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+            if ($memberships->count() !== 1) {
+                throw new AuthorizationException('Actor cannot mutate CRM entities for this tenant.');
+            }
         }
 
-        $memberships = DB::table('tenant_memberships')
-            ->where('tenant_id', $tenantId)
-            ->where('user_id', $actorId)
-            ->where('status', 'active')
-            ->whereNotNull('accepted_at')
-            ->whereNull('suspended_at')
-            ->whereNull('revoked_at')
-            ->orderBy('id')
-            ->lockForUpdate()
-            ->get();
-        if ($memberships->count() !== 1 || ! $this->spatieAllows($actor, $permission)) {
+        if (! $this->permissionGate->allows($actor, $tenant, $permission)) {
             throw new AuthorizationException('Actor cannot mutate CRM entities for this tenant.');
         }
-    }
-
-    private function spatieAllows(User $actor, string $permission): bool
-    {
-        if (! Schema::hasTable('permissions')
-            || ! Schema::hasTable('model_has_permissions')
-            || ! Schema::hasTable('model_has_roles')
-            || ! Schema::hasTable('role_has_permissions')) {
-            return false;
-        }
-
-        $permissionId = DB::table('permissions')
-            ->where('name', $permission)
-            ->where('guard_name', 'web')
-            ->value('id');
-        if ($permissionId === null) {
-            return false;
-        }
-
-        if (DB::table('model_has_permissions')
-            ->where('permission_id', $permissionId)
-            ->where('model_type', $actor->getMorphClass())
-            ->where('model_id', $actor->getKey())
-            ->exists()) {
-            return true;
-        }
-
-        return DB::table('model_has_roles')
-            ->where('model_type', $actor->getMorphClass())
-            ->where('model_id', $actor->getKey())
-            ->join('role_has_permissions', 'model_has_roles.role_id', '=', 'role_has_permissions.role_id')
-            ->where('role_has_permissions.permission_id', $permissionId)
-            ->exists();
     }
 
     /**

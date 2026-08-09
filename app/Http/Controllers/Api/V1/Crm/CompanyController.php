@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Crm;
 
+use App\Application\Crm\CanonicalCrmEntityWriter;
 use App\Models\CrmCompany;
+use App\Models\Tenant;
+use App\Models\User;
+use App\Policies\CompanyPolicy;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -12,10 +16,15 @@ use Illuminate\Support\Facades\Gate;
 
 class CompanyController extends Controller
 {
+    public function __construct()
+    {
+        Gate::policy(CrmCompany::class, CompanyPolicy::class);
+    }
+
     public function index(Request $request): JsonResponse
     {
         Gate::authorize('viewAny', CrmCompany::class);
-        $tenantId = $request->user()?->tenant_id ?? $request->header('X-Tenant-Id');
+        $tenantId = $this->currentTenantId();
         $query = CrmCompany::query()->where('tenant_id', $tenantId);
 
         if ($search = $request->query('search')) {
@@ -29,6 +38,7 @@ class CompanyController extends Controller
         }
 
         $perPage = (int) $request->query('per_page', 25);
+
         return response()->json($query->paginate(min($perPage, 100)));
     }
 
@@ -46,14 +56,19 @@ class CompanyController extends Controller
             'tax_id' => ['nullable', 'string', 'max:50'],
             'notes' => ['nullable', 'string'],
         ]);
-        $data['tenant_id'] = $request->user()->tenant_id;
-        $company = CrmCompany::create($data);
+        $company = app(CanonicalCrmEntityWriter::class)->createCompany(
+            $this->currentTenantId(),
+            $this->actorId($request),
+            $data,
+        );
+
         return response()->json($company, 201);
     }
 
     public function show(CrmCompany $company): JsonResponse
     {
         Gate::authorize('view', $company);
+
         return response()->json($company);
     }
 
@@ -70,7 +85,13 @@ class CompanyController extends Controller
             'phone' => ['sometimes', 'nullable', 'string', 'max:50'],
             'notes' => ['sometimes', 'nullable', 'string'],
         ]);
-        $company->update($data);
+        $company = app(CanonicalCrmEntityWriter::class)->updateCompany(
+            $this->currentTenantId(),
+            $this->actorId($request),
+            (string) $company->getKey(),
+            $data,
+        );
+
         return response()->json($company);
     }
 
@@ -78,6 +99,25 @@ class CompanyController extends Controller
     {
         Gate::authorize('delete', $company);
         $company->delete();
+
         return response()->json(['message' => 'Company deleted successfully']);
+    }
+
+    private function currentTenantId(): string
+    {
+        abort_unless(app()->bound('currentTenant'), 403);
+
+        $tenant = app('currentTenant');
+        abort_unless($tenant instanceof Tenant && (bool) $tenant->is_active, 403);
+
+        return (string) $tenant->getKey();
+    }
+
+    private function actorId(Request $request): string
+    {
+        $actor = $request->user();
+        abort_unless($actor instanceof User, 401);
+
+        return (string) $actor->getKey();
     }
 }

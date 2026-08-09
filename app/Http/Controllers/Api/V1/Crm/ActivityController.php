@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Crm;
 
+use App\Application\Crm\CanonicalCrmEntityWriter;
 use App\Models\CrmActivity;
+use App\Models\Tenant;
+use App\Models\User;
+use App\Policies\ActivityPolicy;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -12,10 +16,15 @@ use Illuminate\Support\Facades\Gate;
 
 class ActivityController extends Controller
 {
+    public function __construct()
+    {
+        Gate::policy(CrmActivity::class, ActivityPolicy::class);
+    }
+
     public function index(Request $request): JsonResponse
     {
         Gate::authorize('viewAny', CrmActivity::class);
-        $tenantId = $request->user()?->tenant_id ?? $request->header('X-Tenant-Id');
+        $tenantId = $this->currentTenantId();
         $query = CrmActivity::where('tenant_id', $tenantId);
 
         if ($type = $request->query('type')) {
@@ -35,19 +44,27 @@ class ActivityController extends Controller
             'type' => ['required', 'string', 'in:call,email,meeting,task,note,sms,whatsapp'],
             'subject' => ['nullable', 'string', 'max:200'],
             'body' => ['nullable', 'string'],
-            'contact_id' => ['nullable', 'string', 'exists:crm_contacts,id'],
-            'deal_id' => ['nullable', 'string', 'exists:crm_deals,id'],
-            'owner_id' => ['nullable', 'string', 'exists:users,id'],
+            'contact_id' => ['nullable', 'string'],
+            'deal_id' => ['nullable', 'integer', 'min:1'],
+            'company_id' => ['nullable', 'string'],
+            'owner_id' => ['nullable', 'string'],
             'due_at' => ['nullable', 'date'],
             'priority' => ['nullable', 'integer', 'min:1', 'max:3'],
         ]);
-        $data['tenant_id'] = $request->user()->tenant_id;
-        return response()->json(CrmActivity::create($data), 201);
+
+        $activity = app(CanonicalCrmEntityWriter::class)->createActivity(
+            $this->currentTenantId(),
+            $this->actorId($request),
+            $data,
+        );
+
+        return response()->json($activity, 201);
     }
 
     public function show(CrmActivity $activity): JsonResponse
     {
         Gate::authorize('view', $activity);
+
         return response()->json($activity);
     }
 
@@ -62,7 +79,13 @@ class ActivityController extends Controller
             'completed_at' => ['sometimes', 'nullable', 'date'],
             'priority' => ['sometimes', 'integer', 'min:1', 'max:3'],
         ]);
-        $activity->update($data);
+        $activity = app(CanonicalCrmEntityWriter::class)->updateActivity(
+            $this->currentTenantId(),
+            $this->actorId($request),
+            (string) $activity->getKey(),
+            $data,
+        );
+
         return response()->json($activity);
     }
 
@@ -70,6 +93,25 @@ class ActivityController extends Controller
     {
         Gate::authorize('delete', $activity);
         $activity->delete();
+
         return response()->json(['message' => 'Activity deleted successfully']);
+    }
+
+    private function currentTenantId(): string
+    {
+        abort_unless(app()->bound('currentTenant'), 403);
+
+        $tenant = app('currentTenant');
+        abort_unless($tenant instanceof Tenant && (bool) $tenant->is_active, 403);
+
+        return (string) $tenant->getKey();
+    }
+
+    private function actorId(Request $request): string
+    {
+        $actor = $request->user();
+        abort_unless($actor instanceof User, 401);
+
+        return (string) $actor->getKey();
     }
 }
