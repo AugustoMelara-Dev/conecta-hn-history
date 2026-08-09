@@ -239,19 +239,47 @@ function isSensitiveAssignmentName(name) {
     return false;
 }
 
-function staticAssignmentValue(rawValue, delimiter) {
-    let value = rawValue.replace(/[,;][ \t]*$/u, "").trim();
-    if (value.length === 0) {
+function staticAssignmentValue(rawValue, delimiter, configSurface) {
+    const candidate = rawValue.trim();
+    if (candidate.length === 0) {
         return "";
     }
-    const quote = value[0];
-    if ((quote === "\"" || quote === "'") && value.at(-1) === quote) {
-        value = value.slice(1, -1).trim();
+    const quote = candidate[0];
+    let value;
+    if (quote === "\"" || quote === "'") {
+        let escaped = false;
+        let closingIndex = -1;
+        for (let index = 1; index < candidate.length; index += 1) {
+            const character = candidate[index];
+            if (!escaped && character === quote) {
+                closingIndex = index;
+                break;
+            }
+            if (!escaped && character === "\\") {
+                escaped = true;
+            } else {
+                escaped = false;
+            }
+        }
+        if (closingIndex < 0 || !/^\s*[,;]?\s*(?:(?:#|\/\/).*)?$/u.test(candidate.slice(closingIndex + 1))) {
+            return null;
+        }
+        value = candidate.slice(1, closingIndex);
+    } else {
+        if (!configSurface || delimiter === "=>") {
+            return null;
+        }
+        value = candidate.replace(/\s+(?:#|\/\/).*$/u, "").replace(/[,;]\s*$/u, "").trim();
+        if (value.length === 0) {
+            return "";
+        }
+        if (/\s/u.test(value)) {
+            return null;
+        }
     }
-    if (/^(?:\$|\$\{|\{\{|<)|^(?:env|getenv)\s*\(|^process\.env(?:\.|\[|$)/iu.test(value)) {
-        return null;
-    }
-    if (delimiter === "=>" && quote !== "\"" && quote !== "'") {
+    if (/\$|\{\{|\}\}|\(|\)|::|->|=>|\[|\]|\{|\}/u.test(value)
+        || /^(?:env|getenv)\b|^process\.env\b/iu.test(value)
+        || /^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)+$/u.test(value)) {
         return null;
     }
     return value;
@@ -299,30 +327,84 @@ function isHighEntropyCredential(value) {
     return value.length >= 24 && characterClassCount(value) >= 2 && shannonEntropy(value) >= 3.5;
 }
 
+function hasProductionEntropy(value) {
+    return characterClassCount(value) >= 2 && shannonEntropy(value) >= 3.5;
+}
+
+function lineNumberAt(text, index) {
+    return text.slice(0, index).split("\n").length;
+}
+
+function decodesJsonObject(value) {
+    try {
+        const decoded = JSON.parse(Buffer.from(value, "base64url").toString("utf8"));
+        return decoded !== null && typeof decoded === "object" && !Array.isArray(decoded);
+    } catch {
+        return false;
+    }
+}
+
+function isKnownProviderExample(value) {
+    return value === "AKIAIOSFODNN7EXAMPLE" || value === "whsec_dummy_secret_for_local_dev_only";
+}
+
 function valueSignatureDetections(text) {
     const detections = [];
-    const patterns = [
-        ["aws-access-key", /\b(?:AKIA|ASIA)[A-Z0-9]{16}\b/gu],
-        ["github-token", /\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})\b/gu],
-        ["openai-key", /\b(?:sk-proj-|sk-)[A-Za-z0-9_-]{20,}\b/gu],
-        ["stripe-key", /\b(?:sk_live_|rk_live_|whsec_)[A-Za-z0-9]{16,}\b/gu],
-        ["slack-token", /\bxox[a-z]-[A-Za-z0-9-]{16,}\b/giu],
-        ["google-api-key", /\bAIza[0-9A-Za-z_-]{35}\b/gu],
-        ["jwt", /\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/gu],
+    const signatures = [
+        ["aws-access-key", /\b(?:AKIA|ASIA)([A-Z0-9]{16})\b/gu],
+        ["github-token", /\b(?:gh[pousr]_([A-Za-z0-9]{20,})|github_pat_([A-Za-z0-9_]{20,}))\b/gu],
+        ["openai-key", /\bsk-(proj-)?([A-Za-z0-9_-]+)\b/gu],
+        ["stripe-key", /\b(sk_live_|rk_live_|whsec_)([A-Za-z0-9_-]+)\b/gu],
+        ["slack-token", /\bxox[a-z]-([A-Za-z0-9-]{16,})\b/giu],
+        ["google-api-key", /\bAIza([0-9A-Za-z_-]{35})\b/gu],
     ];
-    for (const [type, pattern] of patterns) {
+    for (const [type, pattern] of signatures) {
         for (const match of text.matchAll(pattern)) {
-            detections.push({ line: text.slice(0, match.index).split("\n").length, name: type });
+            const full = match[0];
+            if (isKnownProviderExample(full)) {
+                continue;
+            }
+            let body = match.at(-1);
+            let minimum = 0;
+            if (type === "aws-access-key") minimum = 16;
+            if (type === "github-token") body = match[1] ?? match[2];
+            if (type === "openai-key") minimum = match[1] === "proj-" ? 40 : 32;
+            if (type === "stripe-key") minimum = match[1] === "whsec_" ? 32 : 24;
+            if (type === "slack-token") minimum = 20;
+            if (type === "google-api-key") minimum = 35;
+            if (body.length >= minimum && hasProductionEntropy(body)) {
+                detections.push({ line: lineNumberAt(text, match.index), name: type });
+            }
+        }
+    }
+    const jwtPattern = /\b([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]+)\b/gu;
+    for (const match of text.matchAll(jwtPattern)) {
+        if (match[3].length >= 32 && hasProductionEntropy(match[3]) && decodesJsonObject(match[1]) && decodesJsonObject(match[2])) {
+            detections.push({ line: lineNumberAt(text, match.index), name: "jwt" });
         }
     }
     const pemPattern = /-----BEGIN ([A-Z0-9 ]*PRIVATE KEY)-----([\s\S]*?)-----END \1-----/gu;
     for (const match of text.matchAll(pemPattern)) {
         const material = match[2].replace(/\s+/gu, "");
         if (material.length >= 64 && /^[A-Za-z0-9+/=]+$/u.test(material)) {
-            detections.push({ line: text.slice(0, match.index).split("\n").length, name: "pem-private-key" });
+            detections.push({ line: lineNumberAt(text, match.index), name: "pem-private-key" });
         }
     }
     return detections;
+}
+
+function isConfigLiteralExempt(name, value) {
+    if (value.length === 0 || /^(?:null|none)$/iu.test(value)) {
+        return true;
+    }
+    if (name === "MYSQL_ALLOW_EMPTY_PASSWORD" || isKnownLocalDatabaseSentinel(name, value) || isKnownProviderExample(value)) {
+        return true;
+    }
+    if (/(?:_REFERENCE|_REF)$/u.test(name)) {
+        return true;
+    }
+    return /(?:_(?:TTL|TIMEOUT)(?:_(?:DAYS|HOURS|MINUTES|SECONDS))?|_(?:DAYS|HOURS|MINUTES|SECONDS))$/u.test(name)
+        && /^\d+(?:\.\d+)?$/u.test(value);
 }
 
 function secretSignatures(content, path) {
@@ -330,7 +412,7 @@ function secretSignatures(content, path) {
     const detections = valueSignatureDetections(text);
     const configSurface = isCredentialConfigSurface(path);
     for (const [index, line] of text.split(/\r?\n/u).entries()) {
-        const match = line.match(/^[ \t]*(?:(?:export[ \t]+)?(?:const|let|var)[ \t]+)?(?:(['"])([A-Za-z_][A-Za-z0-9_]*)\1|([A-Za-z_][A-Za-z0-9_]*))[ \t]*(=>|:|=)[ \t]*([^#\r\n]*)/u);
+        const match = line.match(/^[ \t]*(?:(?:export[ \t]+)?(?:const|let|var)[ \t]+)?(?:(['"])([A-Za-z_][A-Za-z0-9_]*)\1|([A-Za-z_][A-Za-z0-9_]*))[ \t]*(=>|:|=)[ \t]*(.*)$/u);
         if (!match) {
             continue;
         }
@@ -338,19 +420,16 @@ function secretSignatures(content, path) {
         if (!isSensitiveAssignmentName(name)) {
             continue;
         }
-        const value = staticAssignmentValue(match[5], match[4]);
-        if (value === null || value.length === 0) {
+        const value = staticAssignmentValue(match[5], match[4], configSurface);
+        if (value === null) {
             continue;
         }
-        if (configSurface && name === "MYSQL_ALLOW_EMPTY_PASSWORD") {
-            continue;
-        }
-        if (configSurface && isKnownLocalDatabaseSentinel(name, value)) {
+        if (configSurface && isConfigLiteralExempt(name, value)) {
             continue;
         }
         const quotedName = match[1] !== undefined;
         if (configSurface || (!quotedName && isHighEntropyCredential(value))) {
-            detections.push({ line: index + 1, name });
+            detections.push({ line: index + 1, name: "sensitive-literal" });
         }
     }
     return detections.filter((detection, index, all) => all.findIndex((candidate) => candidate.line === detection.line && candidate.name === detection.name) === index);

@@ -352,7 +352,7 @@ test("non-config sensitive literals require the exact entropy boundary", (t) => 
     const blockedParent = mkdtempSync(join(tmpdir(), "dovra-rc-output-"));
     const blockedOutput = join(blockedParent, "bundle");
     writeFixtureFile(blockedSource, "app/entropy-blocked.php", [
-        "PRIVATE_KEY: aB3dE5fG7hJ9kL2mN4pQ6rS8",
+        "PRIVATE_KEY = \"aB3dE5fG7hJ9kL2mN4pQ6rS8\";",
     ].join("\n"));
     t.after(() => {
         for (const path of [safeSource, safeParent, blockedSource, blockedParent]) rmSync(path, { recursive: true, force: true });
@@ -364,7 +364,7 @@ test("non-config sensitive literals require the exact entropy boundary", (t) => 
     const blocked = assemble(blockedSource, blockedOutput);
     const diagnostics = `${blocked.stdout}\n${blocked.stderr}`;
     assert.notEqual(blocked.status, 0);
-    assert.match(diagnostics, /app\/entropy-blocked\.php:1:PRIVATE_KEY/u);
+    assert.match(diagnostics, /app\/entropy-blocked\.php:1:sensitive-literal/u);
     assert.ok(!diagnostics.includes("aB3dE5fG7hJ9kL2mN4pQ6rS8"));
 });
 
@@ -372,16 +372,19 @@ test("provider value signatures fail in code and markdown without echo", (t) => 
     const source = createFixture();
     const outputParent = mkdtempSync(join(tmpdir(), "dovra-rc-output-"));
     const output = join(outputParent, "bundle");
+    const productionBody = ["Ab3dE5fG7hJ9", "kL2mN4pQ6rS8", "tU0vW1xY2zC7", "aD9eF4G"].join("");
+    const jwtHeader = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
+    const jwtPayload = Buffer.from(JSON.stringify({ sub: "1234567890" })).toString("base64url");
     const signatures = [
         ["aws-access-key", ["AK", "IA1234567890ABCDEF"].join("")],
         ["github-token", ["github", "_pat_11AA22BB33CC44DD55EE66FF77GG88HH"].join("")],
-        ["openai-key", ["sk", "-proj-AbCdEfGhIjKlMnOpQrStUvWxYz123456"].join("")],
-        ["stripe-key", ["sk", "_live_AbCdEfGhIjKlMnOpQrStUvWx"].join("")],
-        ["stripe-key", ["rk", "_live_AbCdEfGhIjKlMnOpQrStUvWx"].join("")],
-        ["stripe-key", ["wh", "sec_AbCdEfGhIjKlMnOpQrStUvWx"].join("")],
+        ["openai-key", ["sk", "-proj-", productionBody.slice(0, 40)].join("")],
+        ["stripe-key", ["sk", "_live_", productionBody.slice(0, 24)].join("")],
+        ["stripe-key", ["rk", "_live_", productionBody.slice(0, 24)].join("")],
+        ["stripe-key", ["wh", "sec_", productionBody.slice(0, 32)].join("")],
         ["slack-token", ["xox", "b-1234567890-AbCdEfGhIjKlMnOp"].join("")],
         ["google-api-key", ["AI", "za", "1234567890AbCdEfGhIjKlMnOpQrStUvWxy"].join("")],
-        ["jwt", ["eyJ", "hbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signatureABC123"].join("")],
+        ["jwt", [jwtHeader, jwtPayload, productionBody.slice(0, 32)].join(".")],
     ];
     writeFixtureFile(source, "app/provider.php", `${signatures.slice(0, 4).map(([, value]) => `return '${value}';`).join("\n")}\n`);
     writeFixtureFile(source, "docs/provider.md", `${signatures.slice(4).map(([, value]) => `credential ${value}`).join("\n")}\n`);
@@ -422,7 +425,7 @@ test("private-key header mentions index but real PEM material aborts", (t) => {
     assert.ok(!`${real.stdout}\n${real.stderr}`.includes(pemBody));
 });
 
-test("assembler reports every static literal secret by path line and name without values", (t) => {
+test("assembler reports every static literal secret by path line and type without values", (t) => {
     const source = createFixture();
     const outputParent = mkdtempSync(join(tmpdir(), "dovra-rc-output-"));
     const output = join(outputParent, "bundle");
@@ -436,8 +439,8 @@ test("assembler reports every static literal secret by path line and name withou
     const result = assemble(source, output);
     const diagnostics = `${result.stdout}\n${result.stderr}`;
     assert.notEqual(result.status, 0);
-    assert.match(diagnostics, /config\/first\.yml:2:API_KEY/u);
-    assert.match(diagnostics, /config\/second\.yml:1:PASSWORD/u);
+    assert.match(diagnostics, /config\/first\.yml:2:sensitive-literal/u);
+    assert.match(diagnostics, /config\/second\.yml:1:sensitive-literal/u);
     assert.ok(!diagnostics.includes("aggregate-api-value"));
     assert.ok(!diagnostics.includes("aggregate-password-value"));
     assert.ok(!existsSync(join(output, "manifest.json")));
@@ -499,7 +502,7 @@ test("scanner accepts empty and dynamic credential configuration values", (t) =>
         "OPENAI_API_KEY=",
         "PAYMENT_WEBHOOK_SECRET=${PAYMENT_WEBHOOK_SECRET}",
         "API_TOKEN={{ API_TOKEN }}",
-        "REDIS_PASSWORD=<injected-at-runtime>",
+        "REDIS_PASSWORD=$runtimePassword",
         "REAL_SECRET=",
     ].join("\n"));
     t.after(() => {
@@ -509,6 +512,141 @@ test("scanner accepts empty and dynamic credential configuration values", (t) =>
 
     const fixtureResult = assemble(source, output);
     assert.equal(fixtureResult.status, 0, fixtureResult.stderr || fixtureResult.stdout);
+});
+
+test("scanner indexes dynamic expressions byte for byte and rejects only closed static scalars", (t) => {
+    const source = createFixture();
+    const outputParent = mkdtempSync(join(tmpdir(), "dovra-rc-output-"));
+    const output = join(outputParent, "bundle");
+    const path = "config/dynamic.yml";
+    const content = [
+        "API_KEY: $input['api_key']",
+        "PASSWORD: ${PASSWORD}",
+        "ACCESS_TOKEN: env('ACCESS_TOKEN')",
+        "PRIVATE_KEY: Credentials::PRIVATE_KEY",
+        "WEBHOOK_SECRET: factory()->secret",
+        "SESSION_TOKEN: tokens[0]",
+        "CLIENT_SECRET: { injected: true }",
+        "AUTH_TOKEN: prefix suffix",
+        "API_SECRET: credentials.value",
+        "BROKEN_PASSWORD: \"unterminated",
+    ].join("\n");
+    writeFixtureFile(source, path, content);
+    t.after(() => {
+        rmSync(source, { recursive: true, force: true });
+        rmSync(outputParent, { recursive: true, force: true });
+    });
+
+    const result = assemble(source, output);
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    assert.deepEqual(readFileSync(join(output, "source", path), "utf8"), content);
+});
+
+test("scanner recognizes balanced quoted scalars with escapes delimiters and comments", (t) => {
+    const source = createFixture();
+    const outputParent = mkdtempSync(join(tmpdir(), "dovra-rc-output-"));
+    const output = join(outputParent, "bundle");
+    const first = "Ab3!dEf5-Gh7_jKl9.Mn2#Qr4";
+    const second = "Zy8@xW6v-Ut4_sR2q.Po0\\\"Nm";
+    const third = "Qr4!sTu6-Vw8_xYz0.Ab2\\'Cd";
+    writeFixtureFile(source, "app/quoted.php", [
+        `API_KEY = "${first}"; // retained comment`,
+        `PASSWORD = "${second}"; # retained comment`,
+        `ACCESS_TOKEN = '${third}', // retained comment`,
+    ].join("\n"));
+    t.after(() => {
+        rmSync(source, { recursive: true, force: true });
+        rmSync(outputParent, { recursive: true, force: true });
+    });
+
+    const result = assemble(source, output);
+    const diagnostics = `${result.stdout}\n${result.stderr}`;
+    assert.notEqual(result.status, 0);
+    assert.match(diagnostics, /app\/quoted\.php:1:sensitive-literal/u);
+    assert.match(diagnostics, /app\/quoted\.php:2:sensitive-literal/u);
+    assert.match(diagnostics, /app\/quoted\.php:3:sensitive-literal/u);
+    assert.ok(!diagnostics.includes(first));
+    assert.ok(!diagnostics.includes(second));
+    assert.ok(!diagnostics.includes(third));
+    assert.ok(!existsSync(join(output, "manifest.json")));
+});
+
+test("config scanner limits reference time and empty-value exemptions", (t) => {
+    const safeSource = createFixture();
+    const safeParent = mkdtempSync(join(tmpdir(), "dovra-rc-output-"));
+    const safeOutput = join(safeParent, "bundle");
+    writeFixtureFile(safeSource, "config/safe.yml", [
+        "OPENAI_SECRET_REFERENCE: openai-primary",
+        "PAYMENT_TOKEN_REF: vault-payment",
+        "SECURITY_TOKEN_TTL_DAYS: 30",
+        "PASSWORD_TIMEOUT_SECONDS: 120",
+        "OPTIONAL_PASSWORD: null",
+        "LEGACY_TOKEN: none",
+    ].join("\n"));
+    const blockedSource = createFixture();
+    const blockedParent = mkdtempSync(join(tmpdir(), "dovra-rc-output-"));
+    const blockedOutput = join(blockedParent, "bundle");
+    writeFixtureFile(blockedSource, "config/blocked.yml", [
+        "OPENAI_SECRET_REFERENCE_EXTRA: openai-primary",
+        "SECURITY_TOKEN_TTL_DAYS: forever",
+    ].join("\n"));
+    t.after(() => {
+        for (const path of [safeSource, safeParent, blockedSource, blockedParent]) rmSync(path, { recursive: true, force: true });
+    });
+
+    const safe = assemble(safeSource, safeOutput);
+    assert.equal(safe.status, 0, safe.stderr || safe.stdout);
+    const blocked = assemble(blockedSource, blockedOutput);
+    const diagnostics = `${blocked.stdout}\n${blocked.stderr}`;
+    assert.notEqual(blocked.status, 0);
+    assert.match(diagnostics, /config\/blocked\.yml:1:sensitive-literal/u);
+    assert.match(diagnostics, /config\/blocked\.yml:2:sensitive-literal/u);
+});
+
+test("provider signatures use production boundaries entropy and structured JWTs", (t) => {
+    const safeSource = createFixture();
+    const safeParent = mkdtempSync(join(tmpdir(), "dovra-rc-output-"));
+    const safeOutput = join(safeParent, "bundle");
+    const productionBody = ["Ab3dE5fG7hJ9", "kL2mN4pQ6rS8", "tU0vW1xY2zC7", "aD9eF4G"].join("");
+    const safeValues = [
+        ["AK", "IAIOSFODNN7EXAMPLE"].join(""),
+        ["wh", "sec_dummy_secret_for_local_dev_only"].join(""),
+        ["sk", "-proj-", productionBody.slice(0, 39)].join(""),
+        ["sk", "-proj-", "A".repeat(40)].join(""),
+        ["sk", "-", productionBody.slice(0, 31)].join(""),
+        ["sk", "_live_", productionBody.slice(0, 23)].join(""),
+        ["eyJ", "ub3QiOiJqc29uIn0.not-json-payload.", productionBody.slice(0, 32)].join(""),
+    ];
+    writeFixtureFile(safeSource, "docs/provider-examples.md", safeValues.join("\n"));
+    writeFixtureFile(safeSource, ".env.example", [
+        `AWS_ACCESS_KEY_ID=${safeValues[0]}`,
+        `PAYMENT_WEBHOOK_SECRET=${safeValues[1]}`,
+    ].join("\n"));
+    const blockedSource = createFixture();
+    const blockedParent = mkdtempSync(join(tmpdir(), "dovra-rc-output-"));
+    const blockedOutput = join(blockedParent, "bundle");
+    const jwtHeader = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
+    const jwtPayload = Buffer.from(JSON.stringify({ sub: "1234567890" })).toString("base64url");
+    const blockedValues = [
+        ["sk", "-proj-", productionBody.slice(0, 40)].join(""),
+        ["sk", "-", productionBody.slice(0, 32)].join(""),
+        ["rk", "_live_", productionBody.slice(0, 24)].join(""),
+        ["wh", "sec_", productionBody.slice(0, 32)].join(""),
+        [jwtHeader, jwtPayload, productionBody.slice(0, 32)].join("."),
+    ];
+    writeFixtureFile(blockedSource, "app/provider.php", blockedValues.map((value) => `return '${value}';`).join("\n"));
+    t.after(() => {
+        for (const path of [safeSource, safeParent, blockedSource, blockedParent]) rmSync(path, { recursive: true, force: true });
+    });
+
+    const safe = assemble(safeSource, safeOutput);
+    assert.equal(safe.status, 0, safe.stderr || safe.stdout);
+    const blocked = assemble(blockedSource, blockedOutput);
+    const diagnostics = `${blocked.stdout}\n${blocked.stderr}`;
+    assert.notEqual(blocked.status, 0);
+    for (const type of ["openai-key", "stripe-key", "jwt"]) assert.match(diagnostics, new RegExp(`app/provider\\.php:[0-9]+:${type}`, "u"));
+    for (const value of blockedValues) assert.ok(!diagnostics.includes(value));
+    assert.ok(!existsSync(join(blockedOutput, "manifest.json")));
 });
 
 test("assembler rejects a symlinked source candidate before reading its target", (t) => {
