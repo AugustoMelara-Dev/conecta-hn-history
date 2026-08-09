@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Filament\App\Resources\Crm;
 
 use App\Application\Crm\BulkOperationsService;
+use App\Application\Crm\ContactEnrichmentService;
 use App\Domain\Crm\Enums\LifecycleStage;
 use App\Filament\App\Resources\Crm\ContactResource\Pages;
+use App\Filament\App\Resources\Crm\ContactResource\RelationManagers\ActivitiesRelationManager;
 use App\Models\Contact;
 use App\Models\CrmCompany;
 use App\Models\Tenant;
@@ -27,11 +29,11 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -41,9 +43,9 @@ class ContactResource extends Resource
 {
     protected static ?string $model = Contact::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-user';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-user';
 
-    protected static string | \UnitEnum | null $navigationGroup = 'CRM';
+    protected static string|\UnitEnum|null $navigationGroup = 'CRM';
 
     protected static ?string $navigationLabel = 'Contactos';
 
@@ -223,8 +225,23 @@ class ContactResource extends Resource
                     ->icon('heroicon-o-sparkles')
                     ->color('info')
                     ->action(function (Contact $record) {
-                        app(\App\Application\Crm\ContactEnrichmentService::class)
-                            ->applyToContact($record);
+                        $tenant = Filament::getTenant();
+                        $actor = Filament::auth()->user();
+
+                        if (! $tenant instanceof Tenant || ! $actor instanceof User) {
+                            throw new \RuntimeException('CRM enrichment requires tenant and actor context.');
+                        }
+
+                        if ((string) $record->getAttribute('tenant_id') !== (string) $tenant->getKey()) {
+                            throw new AuthorizationException('CRM enrichment requires tenant and actor context.');
+                        }
+
+                        if (($record->email ?? $record->phone ?? '') === '') {
+                            return;
+                        }
+
+                        app(ContactEnrichmentService::class)
+                            ->applyToContact($record, (string) $tenant->getKey(), (string) $actor->getKey());
                         Notification::make()
                             ->title('Contacto enriquecido')
                             ->success()
@@ -299,7 +316,7 @@ class ContactResource extends Resource
     public static function getRelations(): array
     {
         return [
-            \App\Filament\App\Resources\Crm\ContactResource\RelationManagers\ActivitiesRelationManager::class,
+            ActivitiesRelationManager::class,
         ];
     }
 

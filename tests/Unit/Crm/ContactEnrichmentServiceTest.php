@@ -4,27 +4,77 @@ declare(strict_types=1);
 
 use App\Application\Crm\ContactEnrichmentService;
 use App\Domain\Crm\ValueObjects\CrmMetrics;
+use App\Models\Contact;
 use App\Models\Tenant;
+use App\Models\User;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+uses(RefreshDatabase::class);
 
 it('ContactEnrichmentService enrich returns array structure', function () {
-    $service = new ContactEnrichmentService();
+    $service = app(ContactEnrichmentService::class);
     $result = $service->enrich('test@example.com');
     expect($result)->toHaveKeys(['job_title', 'company_name', 'confidence', 'raw']);
     expect($result['confidence'])->toBeGreaterThan(0);
 });
 
 it('ContactEnrichmentService applies enrichment to contact', function () {
-    $tenant = Tenant::factory()->create();
-    $contact = \App\Models\Contact::create([
+    $owner = User::factory()->tenantOwner()->create();
+    $tenant = Tenant::factory()->forUser($owner)->create();
+    $contact = Contact::create([
         'tenant_id' => $tenant->id,
         'first_name' => 'Test',
         'email' => 'test@example.com',
     ]);
 
-    $service = new ContactEnrichmentService();
-    $updated = $service->applyToContact($contact);
+    $service = app(ContactEnrichmentService::class);
+    $updated = $service->applyToContact($contact, (string) $tenant->id, (string) $owner->id);
 
     expect($updated->job_title)->toBe('Director de Operaciones');
+});
+
+it('ContactEnrichmentService rejects enrichment when explicit tenant authority is foreign', function () {
+    $owner = User::factory()->tenantOwner()->create();
+    $tenant = Tenant::factory()->forUser($owner)->create();
+    $foreignTenant = Tenant::factory()->create();
+    $contact = Contact::create([
+        'tenant_id' => $tenant->id,
+        'first_name' => 'Protected',
+        'email' => 'protected@example.com',
+        'job_title' => 'Before enrichment',
+    ]);
+
+    $service = app(ContactEnrichmentService::class);
+
+    expect(fn () => $service->applyToContact(
+        $contact,
+        (string) $foreignTenant->id,
+        (string) $owner->id,
+    ))->toThrow(AuthorizationException::class);
+
+    expect($contact->fresh()->job_title)->toBe('Before enrichment');
+});
+
+it('ContactEnrichmentService rejects missing explicit authority identifiers', function () {
+    $owner = User::factory()->tenantOwner()->create();
+    $tenant = Tenant::factory()->forUser($owner)->create();
+    $contact = Contact::create([
+        'tenant_id' => $tenant->id,
+        'first_name' => 'Protected',
+        'email' => 'protected@example.com',
+        'job_title' => 'Before enrichment',
+    ]);
+
+    $service = app(ContactEnrichmentService::class);
+
+    expect(fn () => $service->applyToContact(
+        $contact,
+        '',
+        (string) $owner->id,
+    ))->toThrow(InvalidArgumentException::class);
+
+    expect($contact->fresh()->job_title)->toBe('Before enrichment');
 });
 
 it('CrmMetrics value object exposes all metrics', function () {
