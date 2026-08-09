@@ -20,7 +20,7 @@ final class DovraProgram11RlsIsolationTest extends TestCase
     {
         $indexes = collect(Schema::getIndexes('dovra_privacy_requests'));
 
-        self::assertTrue($indexes->contains(static fn (array $index): bool => ($index['name'] ?? null) === 'dovra_privacy_requests_tenant_actor_subject_action_idempotency_unique'
+        self::assertTrue($indexes->contains(static fn (array $index): bool => ($index['name'] ?? null) === 'dovra_privacy_tenant_idempotency_unique'
             && ($index['unique'] ?? false) === true
             && ($index['columns'] ?? []) === [
                 'tenant_id',

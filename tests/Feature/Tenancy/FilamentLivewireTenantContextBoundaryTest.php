@@ -108,8 +108,8 @@ final class FilamentLivewireTenantContextBoundaryTest extends TestCase
             $request->setLaravelSession(session()->driver());
             $request->setRouteResolver(static function () use ($candidate, $request): Route {
                 $route = new Route(['GET'], 'app/{tenant}', static fn (): Response => new Response('ok'));
-                $route->setParameter('tenant', $candidate);
                 $route->bind($request);
+                $route->setParameter('tenant', $candidate);
 
                 return $route;
             });
