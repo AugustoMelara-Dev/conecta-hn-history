@@ -18,7 +18,8 @@ final readonly class RequestUpgradeResult
         public string $tenantId,
         public string $newPlanId,
         public string $status,
-        public ?string $validUntil
+        public ?string $validUntil,
+        public ?string $subscriptionIntentId = null,
     ) {}
 
     /**
@@ -30,7 +31,18 @@ final readonly class RequestUpgradeResult
             tenantId: $tenantId,
             newPlanId: $newPlanId,
             status: 'active', // Assumed active after successful gateway swap
-            validUntil: $endsAt instanceof \DateTimeInterface ? $endsAt->format('Y-m-d') : $endsAt
+            validUntil: $endsAt instanceof \DateTimeInterface ? $endsAt->format('Y-m-d') : $endsAt,
+        );
+    }
+
+    public static function pendingManualApproval(string $tenantId, string $newPlanId, string $intentId): self
+    {
+        return new self(
+            tenantId: $tenantId,
+            newPlanId: $newPlanId,
+            status: 'pending_manual_approval',
+            validUntil: null,
+            subscriptionIntentId: $intentId,
         );
     }
 }

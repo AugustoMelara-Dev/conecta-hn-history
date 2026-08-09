@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Widgets\Reports;
 
-use Filament\Facades\Filament;
+use App\Domain\Reporting\Enums\ReportKey;
 use Filament\Widgets\StatsOverviewWidget;
-use Illuminate\Support\Facades\DB;
+use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class MrrKpiCardWidget extends StatsOverviewWidget
 {
@@ -16,12 +16,11 @@ class MrrKpiCardWidget extends StatsOverviewWidget
 
     protected function getStats(): array
     {
-        $tenantId = Filament::getTenant()?->getKey();
-        if (! $tenantId) {
+        $data = ReportWidgetData::report(ReportKey::MrrArr);
+        if ($data === null) {
             return [];
         }
-        $mrr = DB::table('subscription_payments')->where('tenant_id', $tenantId)
-            ->where('created_at', '>=', now()->subMonth())->sum('amount') ?? 0;
+        $mrr = (float) ($data->summary['current_mrr'] ?? 0);
 
         return [
             Stat::make('MRR', 'L '.number_format((float) $mrr, 2))->description('Monthly recurring revenue')->color('success'),

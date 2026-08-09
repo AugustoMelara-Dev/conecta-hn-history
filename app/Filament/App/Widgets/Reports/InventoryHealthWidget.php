@@ -6,6 +6,7 @@ namespace App\Filament\App\Widgets\Reports;
 
 use Filament\Facades\Filament;
 use Filament\Widgets\StatsOverviewWidget;
+use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\DB;
 
 class InventoryHealthWidget extends StatsOverviewWidget
@@ -20,7 +21,11 @@ class InventoryHealthWidget extends StatsOverviewWidget
         if (! $tenantId) {
             return [];
         }
-        $lowStock = DB::table('products')->where('tenant_id', $tenantId)->where('stock', '<', 10)->count();
+        $lowStock = DB::table('products')
+            ->where('tenant_id', $tenantId)
+            ->where('manage_stock', true)
+            ->whereColumn('stock_quantity', '<=', 'low_stock_threshold')
+            ->count();
 
         return [Stat::make('Bajo stock', $lowStock)->color('warning')];
     }

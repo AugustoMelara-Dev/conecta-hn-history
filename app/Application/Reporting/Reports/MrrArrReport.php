@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Application\Reporting\Reports;
 
 use App\Application\Reporting\Contracts\ReportInterface;
-use App\Application\Reporting\ValueObjects\ReportData;
 use App\Application\Reporting\SqlMonthBucket;
+use App\Application\Reporting\ValueObjects\ReportData;
 use App\Domain\Reporting\Enums\ReportKey;
 use App\Domain\Reporting\ValueObjects\ReportRange;
 use App\Domain\Reporting\ValueObjects\ReportRow;
@@ -53,6 +53,7 @@ class MrrArrReport implements ReportInterface
         $monthBucket = SqlMonthBucket::expression(DB::connection()->getDriverName());
         $subscriptionRevenue = DB::table('subscription_payments')
             ->where('tenant_id', $tenantId)
+            ->where('status', 'approved')
             ->whereBetween('created_at', [$range->start, $range->end])
             ->selectRaw($monthBucket.' as month, SUM(amount) as revenue')
             ->groupBy('month')

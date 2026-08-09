@@ -23,18 +23,20 @@ class StatsOverview extends BaseWidget
         }
 
         $ordersThisMonth = Order::query()
-            ->where('business_id', $tenant->getKey())
+            ->where('tenant_id', $tenant->getKey())
+            ->whereYear('created_at', now()->year)
             ->whereMonth('created_at', now()->month)
             ->count();
 
         $revenueThisMonth = Order::query()
-            ->where('business_id', $tenant->getKey())
+            ->where('tenant_id', $tenant->getKey())
+            ->whereYear('created_at', now()->year)
             ->whereMonth('created_at', now()->month)
-            ->where('status', 'paid')
-            ->sum('total_amount') ?? 0;
+            ->where('payment_status', 'paid')
+            ->sum('total') ?? 0;
 
         $customers = CustomerProfile::query()
-            ->where('business_id', $tenant->getKey())
+            ->where('tenant_id', $tenant->getKey())
             ->count();
 
         return [

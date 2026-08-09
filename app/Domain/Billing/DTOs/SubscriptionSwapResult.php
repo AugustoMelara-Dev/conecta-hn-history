@@ -11,6 +11,12 @@ namespace App\Domain\Billing\DTOs;
  */
 final readonly class SubscriptionSwapResult
 {
+    public const STATUS_COMPLETED = 'completed';
+
+    public const STATUS_PENDING = 'pending';
+
+    public const STATUS_FAILED = 'failed';
+
     public function __construct(
         /** Whether the swap was successful */
         public bool $success,
@@ -23,6 +29,9 @@ final readonly class SubscriptionSwapResult
 
         /** Failure reason if not successful */
         public ?string $failureReason = null,
+
+        /** Canonical provider outcome. */
+        public string $status = self::STATUS_COMPLETED,
     ) {}
 
     /**
@@ -36,6 +45,16 @@ final readonly class SubscriptionSwapResult
             success: true,
             newPeriodEnd: $newPeriodEnd,
             transactionId: $transactionId,
+            status: self::STATUS_COMPLETED,
+        );
+    }
+
+    public static function pending(string $transactionId): self
+    {
+        return new self(
+            success: false,
+            transactionId: $transactionId,
+            status: self::STATUS_PENDING,
         );
     }
 
@@ -47,6 +66,12 @@ final readonly class SubscriptionSwapResult
         return new self(
             success: false,
             failureReason: $reason,
+            status: self::STATUS_FAILED,
         );
+    }
+
+    public function isPending(): bool
+    {
+        return $this->status === self::STATUS_PENDING;
     }
 }

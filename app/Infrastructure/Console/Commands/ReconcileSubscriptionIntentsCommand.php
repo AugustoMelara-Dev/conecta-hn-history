@@ -89,6 +89,12 @@ final class ReconcileSubscriptionIntentsCommand extends Command
                 idempotencyKey: $intent->id
             );
 
+            if ($gatewayResult->isPending()) {
+                $this->line("Intent {$intent->id} remains pending manual approval.");
+
+                return;
+            }
+
             if ($gatewayResult->success) {
                 // 3. ATOMIC SETTLEMENT (The Retry Loop)
                 $this->healWithRetry($intent, $plan, $gatewayResult);

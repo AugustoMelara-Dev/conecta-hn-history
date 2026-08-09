@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Reporting;
 
 use App\Domain\Reporting\Enums\ReportFormat;
+use App\Domain\Reporting\Enums\ReportFrequency;
 use App\Domain\Reporting\Enums\ReportKey;
 use App\Domain\Reporting\ValueObjects\ReportRange;
 use App\Models\ReportSchedule;
@@ -25,18 +26,19 @@ class ReportScheduler
     /**
      * Procesa todos los schedules que están listos para ejecutarse.
      *
-     * @return array{processed: int, sent: int, errors: int}
+     * @return array{processed: int, generated: int, sent: int, errors: int}
      */
     public function processDue(): array
     {
         $schedules = ReportSchedule::dueForRun()->get();
-        $stats = ['processed' => 0, 'sent' => 0, 'errors' => 0];
+        $stats = ['processed' => 0, 'generated' => 0, 'sent' => 0, 'errors' => 0];
 
         foreach ($schedules as $schedule) {
             $stats['processed']++;
             try {
                 $this->runSchedule($schedule);
-                $stats['sent']++;
+                $stats['generated']++;
+                $stats['sent'] += count($schedule->recipients ?? []);
             } catch (\Throwable $e) {
                 Log::error('Report schedule failed', [
                     'schedule_id' => $schedule->id,
@@ -58,12 +60,18 @@ class ReportScheduler
 
         $report = $this->registry->get($reportKey);
         $range = ReportRange::last30Days();
-        $format = ReportFormat::from($schedule->format);
+        $format = ReportFormat::tryFrom((string) $schedule->format);
+        if ($format === null) {
+            throw new \InvalidArgumentException("Unsupported report format: {$schedule->format}");
+        }
 
         $path = $this->exporter->export($report, $schedule->tenant_id, $range, $format);
 
         // Send email to recipients
-        $recipients = $schedule->recipients ?? [];
+        $recipients = array_values(array_filter(
+            $schedule->recipients ?? [],
+            static fn (mixed $email): bool => is_string($email) && filter_var($email, FILTER_VALIDATE_EMAIL) !== false,
+        ));
         if (! empty($recipients)) {
             foreach ($recipients as $email) {
                 Mail::raw(
@@ -87,6 +95,25 @@ class ReportScheduler
 
     public function schedule(string $reportKey, string $tenantId, string $frequency, array $recipients, ReportFormat $format = ReportFormat::Pdf): ReportSchedule
     {
+        $key = ReportKey::tryFrom($reportKey);
+        if ($key === null || ! $this->registry->has($key)) {
+            throw new \InvalidArgumentException("Unknown report: {$reportKey}");
+        }
+        if (ReportFrequency::tryFrom($frequency) === null) {
+            throw new \InvalidArgumentException("Unsupported report frequency: {$frequency}");
+        }
+        if (trim($tenantId) === '') {
+            throw new \InvalidArgumentException('A tenant id is required to schedule a report.');
+        }
+
+        $recipients = array_values(array_unique(array_filter(
+            $recipients,
+            static fn (mixed $email): bool => is_string($email) && filter_var($email, FILTER_VALIDATE_EMAIL) !== false,
+        )));
+        if ($recipients === []) {
+            throw new \InvalidArgumentException('At least one valid report recipient is required.');
+        }
+
         $schedule = ReportSchedule::create([
             'tenant_id' => $tenantId,
             'report_key' => $reportKey,
@@ -94,7 +121,7 @@ class ReportScheduler
             'recipients' => $recipients,
             'format' => $format->value,
             'is_active' => true,
-            'next_run_at' => now()->addDay(), // Default next run
+            'next_run_at' => null,
         ]);
 
         $schedule->update(['next_run_at' => $schedule->computeNextRun()]);

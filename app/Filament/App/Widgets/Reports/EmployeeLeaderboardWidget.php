@@ -21,15 +21,15 @@ class EmployeeLeaderboardWidget extends TableWidget
         $tenantId = Filament::getTenant()?->getKey();
         $query = DB::table('users as u')
             ->leftJoin('crm_deals as d', function ($join) {
-                $join->on('d.owner_id', '=', 'u.id')->where('d.status', 'won');
+                $join->on('d.owner_user_id', '=', 'u.id')->where('d.status', 'won');
             })
             ->selectRaw('u.id, u.name, COUNT(d.id) as deals_won, COALESCE(SUM(d.value), 0) as revenue')
             ->groupBy('u.id', 'u.name')
             ->orderByDesc('revenue')
             ->limit(10);
-        if ($tenantId) {
-            $query->where('u.tenant_id', $tenantId);
-        }
+        $tenantId
+            ? $query->where('u.tenant_id', $tenantId)
+            : $query->whereRaw('1 = 0');
 
         return $table->query($query)
             ->columns([

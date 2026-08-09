@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Widgets\Reports;
 
+use App\Domain\Reporting\Enums\ReportKey;
 use Filament\Widgets\ChartWidget;
 
 class CohortHeatmapWidget extends ChartWidget
@@ -14,7 +15,7 @@ class CohortHeatmapWidget extends ChartWidget
 
     protected function getData(): array
     {
-        return ['datasets' => [], 'labels' => []];
+        return ReportWidgetData::chart(ReportKey::CohortRetention, 'Retención');
     }
 
     protected function getType(): string

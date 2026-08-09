@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Widgets\Reports;
 
+use App\Domain\Reporting\Enums\ReportKey;
 use Filament\Widgets\ChartWidget;
 
 class ChannelPerformanceChartWidget extends ChartWidget
@@ -14,7 +15,7 @@ class ChannelPerformanceChartWidget extends ChartWidget
 
     protected function getData(): array
     {
-        return ['datasets' => [], 'labels' => []];
+        return ReportWidgetData::chart(ReportKey::ChannelPerformance, 'Ingresos por canal');
     }
 
     protected function getType(): string

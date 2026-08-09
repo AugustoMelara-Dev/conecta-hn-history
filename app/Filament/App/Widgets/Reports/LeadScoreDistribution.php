@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Widgets\Reports;
 
+use App\Domain\Reporting\Enums\ReportKey;
 use Filament\Widgets\ChartWidget;
 
 class LeadScoreDistribution extends ChartWidget
@@ -14,7 +15,7 @@ class LeadScoreDistribution extends ChartWidget
 
     protected function getData(): array
     {
-        return ['datasets' => [], 'labels' => ['Hot', 'Warm', 'Qualified', 'Cold']];
+        return ReportWidgetData::chart(ReportKey::LeadScore, 'Contactos');
     }
 
     protected function getType(): string

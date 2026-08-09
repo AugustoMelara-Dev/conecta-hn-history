@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Widgets\Reports;
 
-use Filament\Facades\Filament;
+use App\Domain\Reporting\Enums\ReportKey;
 use Filament\Widgets\StatsOverviewWidget;
-use Illuminate\Support\Facades\DB;
+use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class LtvKpiCardWidget extends StatsOverviewWidget
 {
@@ -16,14 +16,12 @@ class LtvKpiCardWidget extends StatsOverviewWidget
 
     protected function getStats(): array
     {
-        $tenantId = Filament::getTenant()?->getKey();
-        if (! $tenantId) {
+        $data = ReportWidgetData::report(ReportKey::CustomerLtv);
+        if ($data === null) {
             return [];
         }
-        $avg = DB::table('orders')->where('tenant_id', $tenantId)->where('status', 'paid')
-            ->selectRaw('customer_email, SUM(total_amount) as total')
-            ->groupBy('customer_email')
-            ->get()->avg('total') ?? 0;
+        $values = array_map(static fn ($row): float => (float) $row->value, $data->rows);
+        $avg = $values === [] ? 0.0 : array_sum($values) / count($values);
 
         return [
             Stat::make('LTV promedio', 'L '.number_format((float) $avg, 2))->description('Customer lifetime value'),

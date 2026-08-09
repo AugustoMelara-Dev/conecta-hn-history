@@ -73,7 +73,7 @@ final readonly class RequestUpgradeHandler implements RequestUpgradeHandlerInter
             tenantId: $tenant->id(),
             clientIdempotencyKey: $command->clientIdempotencyKey,
             planIdentifier: $plan->identifier,
-            gatewayProvider: 'stripe',
+            gatewayProvider: (string) config('dovra_billing.subscription_gateway.driver', 'manual'),
             pendingStatus: 'PENDING',
         );
 
@@ -95,6 +95,19 @@ final readonly class RequestUpgradeHandler implements RequestUpgradeHandlerInter
                 newPlanId: $plan->externalGatewayId,
                 idempotencyKey: $capturedIntentId // UNIFIED KEY: Always the same for this client request
             );
+
+            if ($gatewayResult->isPending()) {
+                $this->logger->info('Subscription upgrade awaits manual approval', [
+                    'intent_id' => $capturedIntentId,
+                    'tenant_id' => $command->tenantId,
+                ]);
+
+                return RequestUpgradeResult::pendingManualApproval(
+                    tenantId: $command->tenantId,
+                    newPlanId: $plan->id,
+                    intentId: $capturedIntentId,
+                );
+            }
 
             if (! $gatewayResult->success) {
                 $this->subscriptionIntents->markFailed($capturedIntentId, $gatewayResult->failureReason);

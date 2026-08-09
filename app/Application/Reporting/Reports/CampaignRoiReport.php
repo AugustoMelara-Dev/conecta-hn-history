@@ -43,6 +43,10 @@ class CampaignRoiReport implements ReportInterface
 
     public function getData(string $tenantId, ReportRange $range): ReportData
     {
-        return new ReportData(rows: [], series: [], summary: [], metadata: ['range' => $range->toArray()]);
+        return ReportAvailability::unavailable(
+            $range,
+            'No existe una relación verificable entre campañas, gasto atribuido y órdenes pagadas.',
+            ['campaign_costs', 'orders.campaign_id'],
+        );
     }
 }

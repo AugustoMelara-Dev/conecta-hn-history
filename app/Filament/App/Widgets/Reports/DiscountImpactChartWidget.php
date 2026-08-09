@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Widgets\Reports;
 
+use App\Domain\Reporting\Enums\ReportKey;
 use Filament\Widgets\ChartWidget;
 
 class DiscountImpactChartWidget extends ChartWidget
@@ -14,7 +15,7 @@ class DiscountImpactChartWidget extends ChartWidget
 
     protected function getData(): array
     {
-        return ['datasets' => [], 'labels' => []];
+        return ReportWidgetData::chart(ReportKey::DiscountEffectiveness, 'Ingresos con cupón');
     }
 
     protected function getType(): string

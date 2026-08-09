@@ -43,6 +43,10 @@ class ProductMarginReport implements ReportInterface
 
     public function getData(string $tenantId, ReportRange $range): ReportData
     {
-        return new ReportData(rows: [], series: [], summary: [], metadata: ['range' => $range->toArray()]);
+        return ReportAvailability::unavailable(
+            $range,
+            'El catálogo conserva precio de venta, pero no una base de costo auditable por producto.',
+            ['products.cost_amount', 'order_items.unit_cost'],
+        );
     }
 }

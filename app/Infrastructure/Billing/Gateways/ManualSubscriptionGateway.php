@@ -21,20 +21,22 @@ final class ManualSubscriptionGateway implements SubscriptionGatewayInterface
     /**
      * {@inheritDoc}
      *
-     * In manual billing mode, always returns success.
-     * The actual upgrade happens when admin approves the payment.
+     * Manual billing accepts the request but never reports a completed charge.
+     * The tenant plan remains unchanged until an administrator approves evidence.
      */
-    public function swapPlan(string $subscriptionReference, string $newPlanExternalId): SubscriptionSwapResult
-    {
+    public function swapPlan(
+        string $subscriptionReference,
+        string $newPlanId,
+        string $idempotencyKey,
+    ): SubscriptionSwapResult {
         Log::info('Manual subscription swap initiated', [
             'subscription_reference' => $subscriptionReference,
-            'new_plan' => $newPlanExternalId,
+            'new_plan' => $newPlanId,
+            'idempotency_fingerprint' => substr(hash('sha256', $idempotencyKey), 0, 12),
         ]);
 
-        // Manual billing: Always succeed, upgrade activated on admin approval
-        return SubscriptionSwapResult::success(
-            newPeriodEnd: new \DateTimeImmutable('+30 days'),
-            transactionId: 'MANUAL-'.strtoupper(uniqid()),
+        return SubscriptionSwapResult::pending(
+            transactionId: 'MANUAL-'.strtoupper(substr(hash('sha256', $idempotencyKey), 0, 24)),
         );
     }
 

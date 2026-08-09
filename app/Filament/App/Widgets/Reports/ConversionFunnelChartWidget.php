@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Widgets\Reports;
 
-use Filament\Facades\Filament;
+use App\Domain\Reporting\Enums\ReportKey;
 use Filament\Widgets\ChartWidget;
-use Illuminate\Support\Facades\DB;
 
 class ConversionFunnelChartWidget extends ChartWidget
 {
@@ -16,20 +15,7 @@ class ConversionFunnelChartWidget extends ChartWidget
 
     protected function getData(): array
     {
-        $tenantId = Filament::getTenant()?->getKey();
-        if (! $tenantId) {
-            return ['datasets' => [], 'labels' => []];
-        }
-        $stages = ['lead', 'qualified', 'proposal', 'negotiation', 'won'];
-        $counts = [];
-        foreach ($stages as $stage) {
-            $counts[] = DB::table('crm_contacts')->where('tenant_id', $tenantId)->where('lifecycle_stage', $stage)->count();
-        }
-
-        return [
-            'datasets' => [['label' => 'Contactos', 'data' => $counts, 'backgroundColor' => '#4F46E5']],
-            'labels' => array_map('ucfirst', $stages),
-        ];
+        return ReportWidgetData::chart(ReportKey::ConversionFunnel, 'Contactos');
     }
 
     protected function getType(): string

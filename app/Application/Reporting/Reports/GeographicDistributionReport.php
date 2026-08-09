@@ -43,6 +43,10 @@ class GeographicDistributionReport implements ReportInterface
 
     public function getData(string $tenantId, ReportRange $range): ReportData
     {
-        return new ReportData(rows: [], series: [], summary: [], metadata: ['range' => $range->toArray()]);
+        return ReportAvailability::unavailable(
+            $range,
+            'Las órdenes no conservan una localidad o área administrativa estructurada para atribución geográfica.',
+            ['orders.locality_id', 'orders.administrative_area_id'],
+        );
     }
 }

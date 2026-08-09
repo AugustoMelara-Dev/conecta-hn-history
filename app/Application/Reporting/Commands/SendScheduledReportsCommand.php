@@ -16,8 +16,8 @@ class SendScheduledReportsCommand extends Command
     public function handle(ReportScheduler $scheduler): int
     {
         $stats = $scheduler->processDue();
-        $this->info("Processed: {$stats['processed']}, Sent: {$stats['sent']}, Errors: {$stats['errors']}");
+        $this->info("Processed: {$stats['processed']}, Generated: {$stats['generated']}, Emails: {$stats['sent']}, Errors: {$stats['errors']}");
 
-        return self::SUCCESS;
+        return $stats['errors'] === 0 ? self::SUCCESS : self::FAILURE;
     }
 }

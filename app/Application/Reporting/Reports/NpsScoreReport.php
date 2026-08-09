@@ -8,7 +8,6 @@ use App\Application\Reporting\Contracts\ReportInterface;
 use App\Application\Reporting\ValueObjects\ReportData;
 use App\Domain\Reporting\Enums\ReportKey;
 use App\Domain\Reporting\ValueObjects\ReportRange;
-use App\Domain\Reporting\ValueObjects\ReportRow;
 
 class NpsScoreReport implements ReportInterface
 {
@@ -44,6 +43,10 @@ class NpsScoreReport implements ReportInterface
 
     public function getData(string $tenantId, ReportRange $range): ReportData
     {
-        return new ReportData(rows: [new ReportRow('NPS', 0, unit: 'score')], series: [], summary: ['placeholder' => true], metadata: ['range' => $range->toArray()]);
+        return ReportAvailability::unavailable(
+            $range,
+            'Las reseñas de 1 a 5 estrellas no son respuestas NPS de 0 a 10 y no deben convertirse artificialmente.',
+            ['nps_responses.score_0_to_10'],
+        );
     }
 }

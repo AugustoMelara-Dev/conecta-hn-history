@@ -25,7 +25,7 @@ class OrdersChart extends ChartWidget
         }
 
         $data = Trend::query(
-            Order::query()->where('business_id', $tenant->getKey())
+            Order::query()->where('tenant_id', $tenant->getKey())
         )
             ->between(start: now()->subDays(30), end: now())
             ->perDay()

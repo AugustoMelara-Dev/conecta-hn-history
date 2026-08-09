@@ -25,13 +25,21 @@ class RunReportCommand extends Command
             return self::FAILURE;
         }
 
-        $tenantId = $this->option('tenant') ?? '1';
+        $tenantId = $this->option('tenant');
+        if (! is_string($tenantId) || trim($tenantId) === '') {
+            $this->error('The --tenant option is required.');
+
+            return self::FAILURE;
+        }
         $range = ReportRange::fromPreset($this->option('range'));
         $data = $executor->execute($key, $tenantId, $range);
 
         $this->info("Report: {$key->label()}");
         $this->info('Rows: '.count($data->rows));
         $this->info('Series: '.count($data->series));
+        if (($data->metadata['status'] ?? null) === 'unavailable') {
+            $this->warn('Unavailable: '.($data->metadata['reason'] ?? 'required source data is missing'));
+        }
 
         return self::SUCCESS;
     }

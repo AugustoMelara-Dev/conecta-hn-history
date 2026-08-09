@@ -18,9 +18,14 @@ interface SubscriptionGatewayInterface
      * Swap the subscription to a new plan.
      *
      * @param  string  $subscriptionReference  Provider's subscription ID
-     * @param  string  $newPlanExternalId  Provider's plan/price ID
+     * @param  string  $newPlanId  Provider's plan/price ID
+     * @param  string  $idempotencyKey  Stable request identity used by the provider
      */
-    public function swapPlan(string $subscriptionReference, string $newPlanExternalId): SubscriptionSwapResult;
+    public function swapPlan(
+        string $subscriptionReference,
+        string $newPlanId,
+        string $idempotencyKey,
+    ): SubscriptionSwapResult;
 
     /**
      * Cancel a subscription.

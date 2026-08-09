@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Widgets\Reports;
 
+use App\Domain\Reporting\Enums\ReportKey;
 use Filament\Widgets\ChartWidget;
 
 class NpsScoreWidget extends ChartWidget
@@ -14,11 +15,11 @@ class NpsScoreWidget extends ChartWidget
 
     protected function getData(): array
     {
-        return ['datasets' => [['data' => [72]]], 'labels' => ['NPS']];
+        return ReportWidgetData::chart(ReportKey::NpsScore, 'NPS');
     }
 
     protected function getType(): string
     {
-        return 'gauge';
+        return 'doughnut';
     }
 }

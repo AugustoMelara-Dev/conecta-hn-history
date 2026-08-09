@@ -7,11 +7,21 @@ namespace Tests\Feature\Reporting;
 use App\Application\Reporting\ReportRegistry;
 use App\Application\Reporting\Reports\AttributionBySourceReport;
 use App\Application\Reporting\Reports\AvgOrderValueReport;
+use App\Application\Reporting\Reports\CampaignRoiReport;
 use App\Application\Reporting\Reports\ChannelPerformanceReport;
 use App\Application\Reporting\Reports\ChurnRateReport;
+use App\Application\Reporting\Reports\CohortRetentionReport;
 use App\Application\Reporting\Reports\CustomerLtvReport;
+use App\Application\Reporting\Reports\CustomerSegmentsReport;
+use App\Application\Reporting\Reports\DiscountEffectivenessReport;
+use App\Application\Reporting\Reports\FulfillmentSlaReport;
+use App\Application\Reporting\Reports\GeographicDistributionReport;
+use App\Application\Reporting\Reports\InventoryTurnoverReport;
+use App\Application\Reporting\Reports\NpsScoreReport;
+use App\Application\Reporting\Reports\ProductMarginReport;
 use App\Application\Reporting\Reports\RefundRateReport;
 use App\Application\Reporting\Reports\RevenueByMonthReport;
+use App\Application\Reporting\Reports\SlowMoversReport;
 use App\Application\Reporting\Reports\TopProductsReport;
 use App\Domain\Reporting\ValueObjects\ReportRange;
 use App\Models\Tenant;
@@ -138,8 +148,80 @@ final class ReportSqlPortabilityTest extends TestCase
         }
     }
 
-    private function order(string $tenantId, string $number, string $email, string $createdAt, int $total, string $paymentStatus, ?string $source): int
+    #[Test]
+    public function operational_reports_use_real_tenant_scoped_sources(): void
     {
+        DB::table('customer_profiles')->insert([
+            ['tenant_id' => $this->tenant->id, 'email' => 'vip@example.test', 'customer_segment' => 'new', 'manual_segment' => 'vip', 'created_at' => now(), 'updated_at' => now()],
+            ['tenant_id' => $this->tenant->id, 'email' => 'new@example.test', 'customer_segment' => 'new', 'manual_segment' => null, 'created_at' => now(), 'updated_at' => now()],
+            ['tenant_id' => $this->foreignTenant->id, 'email' => 'foreign@example.test', 'customer_segment' => 'foreign', 'manual_segment' => null, 'created_at' => now(), 'updated_at' => now()],
+        ]);
+
+        $alpha = $this->product($this->tenant->id, 'Alpha Stock', 8);
+        $this->product($this->tenant->id, 'Beta Slow', 20);
+        $foreignProduct = $this->product($this->foreignTenant->id, 'Foreign Stock', 99);
+
+        $jan = $this->order($this->tenant->id, 'cohort-jan', 'repeat@example.test', '2026-01-05 08:00:00', 100, 'paid', 'web', 10, 'SAVE10', '2026-01-05 20:00:00');
+        $this->order($this->tenant->id, 'cohort-feb', 'repeat@example.test', '2026-02-05 08:00:00', 80, 'paid', 'web', 0, null, '2026-02-06 20:00:00');
+        $this->order($this->tenant->id, 'cohort-single', 'single@example.test', '2026-01-06 08:00:00', 50, 'paid', 'web', 5, 'SAVE10', '2026-01-06 20:00:00');
+        $foreignOrder = $this->order($this->foreignTenant->id, 'foreign-paid', 'foreign@example.test', '2026-01-07 08:00:00', 999, 'paid', 'web', 99, 'SAVE10', '2026-01-07 20:00:00');
+        $this->orderItem($jan, $alpha, 2, 100);
+        $this->orderItem($foreignOrder, $foreignProduct, 50, 999);
+
+        $segments = (new CustomerSegmentsReport)->getData($this->tenant->id, $this->range)->toArray();
+        self::assertSame(2, $segments['summary']['total_customers']);
+        self::assertSame(['new', 'vip'], array_column($segments['rows'], 'label'));
+
+        $cohorts = (new CohortRetentionReport)->getData($this->tenant->id, $this->range)->toArray();
+        self::assertSame(2, $cohorts['summary']['customers']);
+        self::assertSame(50.0, $cohorts['rows'][0]['metadata']['month_1_pct']);
+
+        $discounts = (new DiscountEffectivenessReport)->getData($this->tenant->id, $this->range)->toArray();
+        self::assertSame(['uses' => 2, 'discount_total' => 15.0, 'revenue' => 150.0], $discounts['summary']);
+
+        $fulfillment = (new FulfillmentSlaReport)->getData($this->tenant->id, $this->range)->toArray();
+        self::assertSame(3, $fulfillment['summary']['delivered_orders']);
+        self::assertSame(2, $fulfillment['summary']['on_time_orders']);
+
+        $inventory = (new InventoryTurnoverReport)->getData($this->tenant->id, $this->range)->toArray();
+        self::assertSame(2, $inventory['summary']['units_sold']);
+        self::assertSame(0.2, $inventory['rows'][0]['value']);
+
+        $slow = (new SlowMoversReport)->getData($this->tenant->id, $this->range)->toArray();
+        self::assertSame('Beta Slow', $slow['rows'][0]['label']);
+        self::assertSame(0, $slow['rows'][0]['metadata']['units_sold']);
+    }
+
+    #[Test]
+    public function reports_without_required_source_data_are_explicitly_unavailable(): void
+    {
+        foreach ([
+            new CampaignRoiReport,
+            new GeographicDistributionReport,
+            new NpsScoreReport,
+            new ProductMarginReport,
+        ] as $report) {
+            $data = $report->getData($this->tenant->id, $this->range);
+
+            self::assertSame([], $data->rows, $report->getKey()->value);
+            self::assertFalse($data->summary['available'], $report->getKey()->value);
+            self::assertSame('unavailable', $data->metadata['status'], $report->getKey()->value);
+            self::assertNotEmpty($data->metadata['required_sources'], $report->getKey()->value);
+        }
+    }
+
+    private function order(
+        string $tenantId,
+        string $number,
+        string $email,
+        string $createdAt,
+        int $total,
+        string $paymentStatus,
+        ?string $source,
+        int $discount = 0,
+        ?string $couponCode = null,
+        ?string $deliveredAt = null,
+    ): int {
         return (int) DB::table('orders')->insertGetId([
             'tenant_id' => $tenantId,
             'order_number' => $number,
@@ -148,7 +230,10 @@ final class ReportSqlPortabilityTest extends TestCase
             'total' => $total,
             'payment_status' => $paymentStatus,
             'source' => $source,
+            'discount' => $discount,
+            'coupon_code' => $couponCode,
             'status' => 'delivered',
+            'delivered_at' => $deliveredAt,
             'created_at' => $createdAt,
             'updated_at' => $createdAt,
         ]);
@@ -166,13 +251,15 @@ final class ReportSqlPortabilityTest extends TestCase
         ]);
     }
 
-    private function product(string $tenantId, string $name): int
+    private function product(string $tenantId, string $name, int $stockQuantity = 0): int
     {
         return (int) DB::table('products')->insertGetId([
             'tenant_id' => $tenantId,
             'name' => $name,
             'slug' => Str::slug($name).'-'.Str::lower(Str::random(6)),
             'price' => 10,
+            'manage_stock' => true,
+            'stock_quantity' => $stockQuantity,
             'created_at' => now(),
             'updated_at' => now(),
         ]);

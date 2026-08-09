@@ -8,6 +8,10 @@ use App\Infrastructure\Billing\Global\GlobalBillingRuntimeAdapter;
 return [
     'usage_alert_thresholds' => [70, 90, 100],
 
+    'subscription_gateway' => [
+        'driver' => env('DOVRA_SUBSCRIPTION_GATEWAY', 'manual'),
+    ],
+
     'price_books' => [
         'hn' => [
             'version' => 'research-v1',
@@ -66,7 +70,7 @@ return [
         'hn' => [
             'provider' => 'deterministic-fake',
             'checkout_mode' => 'external',
-            'signing_secret' => 'hn-secret',
+            'signing_secret' => env('DOVRA_HN_BILLING_SIGNING_SECRET'),
         ],
     ],
 

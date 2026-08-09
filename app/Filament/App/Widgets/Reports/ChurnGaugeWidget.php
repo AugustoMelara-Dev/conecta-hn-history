@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Widgets\Reports;
 
+use App\Domain\Reporting\Enums\ReportKey;
 use Filament\Widgets\ChartWidget;
 
 class ChurnGaugeWidget extends ChartWidget
@@ -14,10 +15,7 @@ class ChurnGaugeWidget extends ChartWidget
 
     protected function getData(): array
     {
-        return [
-            'datasets' => [['data' => [3.5], 'backgroundColor' => ['#EF4444']]],
-            'labels' => ['Churn'],
-        ];
+        return ReportWidgetData::chart(ReportKey::ChurnRate, 'Churn', '#EF4444');
     }
 
     protected function getType(): string

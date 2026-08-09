@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Widgets\Reports;
 
-use Filament\Facades\Filament;
+use App\Domain\Reporting\Enums\ReportKey;
 use Filament\Widgets\StatsOverviewWidget;
-use Illuminate\Support\Facades\DB;
+use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class AovKpiCardWidget extends StatsOverviewWidget
 {
@@ -16,12 +16,11 @@ class AovKpiCardWidget extends StatsOverviewWidget
 
     protected function getStats(): array
     {
-        $tenantId = Filament::getTenant()?->getKey();
-        if (! $tenantId) {
+        $data = ReportWidgetData::report(ReportKey::AvgOrderValue);
+        if ($data === null) {
             return [];
         }
-        $aov = DB::table('orders')->where('tenant_id', $tenantId)->where('status', 'paid')
-            ->where('created_at', '>=', now()->subMonth())->avg('total_amount') ?? 0;
+        $aov = (float) ($data->summary['current_aov'] ?? 0);
 
         return [Stat::make('AOV', 'L '.number_format((float) $aov, 2))->color('info')];
     }

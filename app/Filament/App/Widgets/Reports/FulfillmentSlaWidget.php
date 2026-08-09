@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Widgets\Reports;
 
+use App\Domain\Reporting\Enums\ReportKey;
 use Filament\Widgets\ChartWidget;
 
 class FulfillmentSlaWidget extends ChartWidget
@@ -14,11 +15,11 @@ class FulfillmentSlaWidget extends ChartWidget
 
     protected function getData(): array
     {
-        return ['datasets' => [['data' => [95]]], 'labels' => ['SLA']];
+        return ReportWidgetData::chart(ReportKey::FulfillmentSla, 'SLA', '#10B981');
     }
 
     protected function getType(): string
     {
-        return 'gauge';
+        return 'doughnut';
     }
 }

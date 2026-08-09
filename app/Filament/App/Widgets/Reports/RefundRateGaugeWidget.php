@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Widgets\Reports;
 
+use App\Domain\Reporting\Enums\ReportKey;
 use Filament\Widgets\ChartWidget;
 
 class RefundRateGaugeWidget extends ChartWidget
@@ -14,11 +15,11 @@ class RefundRateGaugeWidget extends ChartWidget
 
     protected function getData(): array
     {
-        return ['datasets' => [['data' => [2.3]]], 'labels' => ['Refund']];
+        return ReportWidgetData::chart(ReportKey::RefundRate, 'Reembolsos', '#EF4444');
     }
 
     protected function getType(): string
     {
-        return 'gauge';
+        return 'doughnut';
     }
 }

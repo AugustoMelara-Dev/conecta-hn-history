@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Application\Reporting\Commands\RunReportCommand;
+use App\Application\Reporting\Commands\SendScheduledReportsCommand;
 use App\Application\Reporting\ReportRegistry;
 use App\Application\Reporting\Reports\ActivityVolumeReport;
 use App\Application\Reporting\Reports\AttributionBySourceReport;
@@ -83,6 +85,11 @@ class ReportRegistryServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // Nothing for now
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                RunReportCommand::class,
+                SendScheduledReportsCommand::class,
+            ]);
+        }
     }
 }
