@@ -6,12 +6,15 @@ use App\Application\Imports\Imports\CompaniesImport;
 use App\Application\Imports\Imports\ContactsImport;
 use App\Application\Imports\ImportService;
 use App\Infrastructure\Imports\ExcelImporter;
+use Illuminate\Database\Events\ConnectionEstablished;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Event;
+use Maatwebsite\Excel\Facades\Excel;
 
-it('keeps CRM legacy imports fail-closed at the Excel constructor boundary', function (): void {
+it('keeps CRM legacy imports fail-closed before the Excel facade can execute', function (): void {
     Bus::fake();
     Event::fake();
+    Excel::shouldReceive('import')->never();
 
     $csv = tempnam(sys_get_temp_dir(), 'dovra-crm-import-boundary-');
     expect($csv)->not->toBeFalse();
@@ -19,6 +22,10 @@ it('keeps CRM legacy imports fail-closed at the Excel constructor boundary', fun
 
     try {
         foreach ([ContactsImport::class, CompaniesImport::class] as $importClass) {
+            $constructor = (new ReflectionClass($importClass))->getConstructor();
+            expect($constructor)->not->toBeNull()
+                ->and($constructor->getNumberOfRequiredParameters())->toBe(1);
+
             $result = (new ExcelImporter)->import($importClass, $csv);
 
             expect($result['success'])->toBeFalse()
@@ -28,15 +35,32 @@ it('keeps CRM legacy imports fail-closed at the Excel constructor boundary', fun
         }
 
         Bus::assertNothingDispatched();
-        Event::assertNothingDispatched();
+        $events = Event::dispatchedEvents();
+        $unexpectedEvents = array_diff_key($events, [ConnectionEstablished::class => true]);
+        expect($unexpectedEvents)->toBeEmpty('no import/domain event may be reported on constructor failure');
     } finally {
         @unlink($csv);
     }
 });
 
-it('does not advertise a deleted DealsImport through the legacy import registry', function (): void {
+it('keeps the deleted DealsImport absent and unadvertised', function (): void {
     $service = new ImportService;
+    $dealsClass = 'App\\Application\\Imports\\Imports\\DealsImport';
+    $dealsPath = base_path('app/Application/Imports/Imports/DealsImport.php');
+    $autoloadWarning = null;
 
-    expect($service->entities())->not->toContain('deals')
-        ->and(class_exists('App\\Application\\Imports\\Imports\\DealsImport', false))->toBeFalse();
+    set_error_handler(static function (int $severity, string $message) use (&$autoloadWarning): bool {
+        $autoloadWarning = $message;
+
+        return true;
+    });
+    try {
+        $loaded = class_exists($dealsClass, true);
+    } finally {
+        restore_error_handler();
+    }
+
+    expect(is_file($dealsPath))->toBeFalse()
+        ->and($loaded)->toBeFalse()
+        ->and($service->entities())->not->toContain('deals');
 });
