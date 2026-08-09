@@ -81,6 +81,31 @@ final class DovraSecurityRatchetTest extends TestCase
     }
 
     #[Test]
+    public function profile_optimization_authorizes_then_guards_and_dispatches_only_redacted_input(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $source = (string) file_get_contents($root.'/app/Http/Controllers/Api/V1/AiOptimizationController.php');
+
+        self::assertStringContainsString('DovraDataIngressGuard', $source);
+        self::assertStringContainsString('DovraTenantBusinessContextResolver', $source);
+        self::assertStringContainsString("private const DOVRA_SOURCE = 'private_ai_prompt';", $source);
+
+        $authorization = strpos($source, 'privateAiAccess->allows');
+        $inspection = strpos($source, '->inspect(new DataEnvelope');
+        $dispatch = strpos($source, 'GenerateBusinessProfileJob::dispatch');
+
+        self::assertIsInt($authorization);
+        self::assertIsInt($inspection);
+        self::assertIsInt($dispatch);
+        self::assertLessThan($inspection, $authorization === false ? PHP_INT_MAX : $authorization);
+        self::assertLessThan($dispatch, $inspection === false ? PHP_INT_MAX : $inspection);
+        $postGuard = strpos($source, '$failure = $this->ingressFailureResponse($decision);', $inspection);
+
+        self::assertIsInt($postGuard);
+        self::assertStringNotContainsString('$validated', substr($source, $postGuard === false ? 0 : $postGuard));
+    }
+
+    #[Test]
     public function dovra_rls_contract_cannot_pass_by_missing_tables_or_unregistered_inventory(): void
     {
         $root = dirname(__DIR__, 2);

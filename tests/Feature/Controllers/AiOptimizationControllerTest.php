@@ -7,15 +7,20 @@ use App\Domain\Shared\Services\TenantContext;
 use App\Http\Controllers\Api\V1\AiOptimizationController;
 use App\Http\Requests\Api\OptimizeProfileRequest;
 use App\Jobs\GenerateBusinessProfileJob;
+use App\Models\Tenant;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Routing\Redirector;
 use Illuminate\Support\Facades\Queue;
+
+uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Queue::fake();
 });
 
 test('optimizeProfile dispatches provider work only after private AI gate allows it', function (): void {
-    $tenantId = '00000000-0000-4000-8000-000000000042';
+    $tenantId = (string) Tenant::factory()->create(['business_type' => 'retail'])->id;
     $tenantContext = new TenantContext;
     $tenantContext->setTenant($tenantId);
 
@@ -37,7 +42,7 @@ test('optimizeProfile dispatches provider work only after private AI gate allows
     ]);
     $request->setUserResolver(fn () => $user);
     $request->setContainer(app());
-    $request->setRedirector(app(\Illuminate\Routing\Redirector::class));
+    $request->setRedirector(app(Redirector::class));
     $request->validateResolved();
 
     $response = $controller->optimizeProfile($request);
@@ -79,7 +84,7 @@ test('optimizeProfile denies tenants outside the private AI gate', function (): 
     ]);
     $request->setUserResolver(fn () => $user);
     $request->setContainer(app());
-    $request->setRedirector(app(\Illuminate\Routing\Redirector::class));
+    $request->setRedirector(app(Redirector::class));
     $request->validateResolved();
 
     $response = $controller->optimizeProfile($request);
@@ -93,13 +98,15 @@ test('private AI is disabled by default', function (): void {
     expect(config('ai.private.tenant_allowlist'))->toBe([]);
 });
 
-test('controller depends on tenant context and private AI gate only', function (): void {
+test('controller depends on tenant authority and Dovra ingress seams', function (): void {
     $reflection = new ReflectionClass(AiOptimizationController::class);
     $params = $reflection->getConstructor()->getParameters();
 
-    expect($params)->toHaveCount(2);
+    expect($params)->toHaveCount(4);
     expect($params[0]->getName())->toBe('tenantContext');
     expect($params[1]->getName())->toBe('privateAiAccess');
+    expect($params[2]->getName())->toBe('dovraIngress');
+    expect($params[3]->getName())->toBe('businessContext');
 });
 
 test('controller imports queued job but not OpenAIService directly', function (): void {
