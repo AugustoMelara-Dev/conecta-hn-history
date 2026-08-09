@@ -22,6 +22,7 @@ use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PhpParser\Node\Scalar\String_;
 use PhpParser\Node\Stmt\Class_;
+use PhpParser\Node\Stmt\ClassConst;
 use PhpParser\Node\Stmt\ClassMethod;
 use PhpParser\NodeFinder;
 use PhpParser\ParserFactory;
@@ -166,6 +167,51 @@ final class DovraSecurityRatchetTest extends TestCase
                     }
                 }
                 PHP,
+            <<<'PHP'
+                <?php
+                final class AiOptimizationController {
+                    private const DOVRA_SOURCE = 'changed_private_ai_source';
+                    public function optimizeProfile($request) {
+                        $this->privateAiAccess->allows($user, $tenantId);
+                        $validated = $request->validated();
+                        $decision = $this->dovraIngress->inspect(new DataEnvelope(
+                            sourceSystem: self::DOVRA_SOURCE, payload: $validated, tenantId: $tenantId,
+                            actorId: $actorId, channel: 'private_ai_web',
+                            context: ['business_type' => $policyBusinessType],
+                        ));
+                        $redactedPayload = $decision->redactedPayload;
+                        GenerateBusinessProfileJob::dispatch(
+                            businessName: $redactedPayload['business_name'], description: $redactedPayload['description'],
+                            userId: $actorId, tenantId: $tenantId, targetAudience: $redactedPayload['target_audience'],
+                            tone: $redactedPayload['tone'], keywords: $redactedPayload['keywords'],
+                        );
+                    }
+                }
+                PHP,
+            <<<'PHP'
+                <?php
+                final class AiOptimizationController {
+                    private const DOVRA_SOURCE = 'private_ai_prompt';
+                    public function optimizeProfile($request) {
+                        $this->privateAiAccess->allows($user, $tenantId);
+                        $validated = $request->validated();
+                        $decision = $this->dovraIngress->inspect(new DataEnvelope(
+                            sourceSystem: self::DOVRA_SOURCE, payload: $validated, tenantId: $tenantId,
+                            actorId: $actorId, channel: 'private_ai_web',
+                            context: ['business_type' => $policyBusinessType],
+                        ));
+                        $rawAlias = $validated;
+                        $decision = $rawAlias;
+                        $redactedPayload = $decision->redactedPayload;
+                        $redactedPayload += $rawAlias;
+                        GenerateBusinessProfileJob::dispatch(
+                            businessName: $redactedPayload['business_name'], description: $redactedPayload['description'],
+                            userId: $actorId, tenantId: $tenantId, targetAudience: $redactedPayload['target_audience'],
+                            tone: $redactedPayload['tone'], keywords: $redactedPayload['keywords'],
+                        );
+                    }
+                }
+                PHP,
         ];
 
         foreach ($fixtures as $fixture) {
@@ -241,6 +287,7 @@ final class DovraSecurityRatchetTest extends TestCase
         $controller = $finder->findFirst($statements, static fn (Node $node): bool => $node instanceof Class_
             && $node->name?->toString() === 'AiOptimizationController');
         self::assertInstanceOf(Class_::class, $controller, 'AiOptimizationController AST is required.');
+        self::assertPrivateAiSourceConstant($controller);
         $method = $controller->getMethod('optimizeProfile');
         self::assertInstanceOf(ClassMethod::class, $method, 'optimizeProfile AST is required.');
 
@@ -282,6 +329,28 @@ final class DovraSecurityRatchetTest extends TestCase
         self::assertInstanceOf(MethodCall::class, $inspection);
         self::assertInstanceOf(StaticCall::class, $dispatch);
 
+        $inspectionAssignments = [];
+        foreach ($nodes as $index => $node) {
+            if ($node instanceof Assign && $node->expr === $inspection) {
+                $inspectionAssignments[] = [$index, $node];
+            }
+            if ($index > $inspectionIndex
+                && ($node instanceof Assign || $node instanceof AssignOp)
+                && self::isVariable($node->var, 'decision')) {
+                self::fail('$decision must not be overwritten after Dovra inspection.');
+            }
+            if ($node instanceof AssignOp && self::isVariable($node->var, 'redactedPayload')) {
+                self::fail('$redactedPayload must not be mutated with an assignment operator.');
+            }
+        }
+        self::assertCount(1, $inspectionAssignments, 'inspect() must have exactly one parent assignment.');
+        [$inspectionAssignmentIndex, $inspectionAssignment] = $inspectionAssignments[0];
+        self::assertLessThan($inspectionIndex, $inspectionAssignmentIndex);
+        self::assertTrue(
+            self::isVariable($inspectionAssignment->var, 'decision'),
+            'inspect() must be assigned directly to $decision.',
+        );
+
         self::assertInspectsCanonicalEnvelope($inspection);
         self::assertCount(1, $redactedAssignments, 'Exactly one redacted payload assignment is required.');
         [$redactedAssignmentIndex, $redactedAssignment] = $redactedAssignments[0];
@@ -292,6 +361,11 @@ final class DovraSecurityRatchetTest extends TestCase
             '$redactedPayload must come directly from $decision->redactedPayload.',
         );
         self::assertDispatchUsesOnlyRedactedPayload($dispatch);
+        self::assertNoValidatedAliasAfterInspection(
+            $nodes,
+            $inspectionAssignment,
+            $redactedAssignment,
+        );
 
         foreach (array_slice($nodes, $inspectionIndex + 1) as $postInspectionNode) {
             self::assertFalse(
@@ -299,6 +373,91 @@ final class DovraSecurityRatchetTest extends TestCase
                 '$request->validated() must not be called after Dovra inspection.',
             );
         }
+    }
+
+    private static function assertPrivateAiSourceConstant(Class_ $controller): void
+    {
+        $matches = [];
+        foreach ($controller->getConstants() as $declaration) {
+            foreach ($declaration->consts as $constant) {
+                if ($constant->name->toString() === 'DOVRA_SOURCE') {
+                    $matches[] = [$declaration, $constant->value];
+                }
+            }
+        }
+
+        self::assertCount(1, $matches, 'Exactly one DOVRA_SOURCE class constant is required.');
+        [$declaration, $value] = $matches[0];
+        self::assertInstanceOf(ClassConst::class, $declaration);
+        self::assertTrue($declaration->isPrivate(), 'DOVRA_SOURCE must remain private.');
+        self::assertInstanceOf(String_::class, $value);
+        self::assertSame('private_ai_prompt', $value->value);
+    }
+
+    /**
+     * @param  list<Node>  $nodes
+     */
+    private static function assertNoValidatedAliasAfterInspection(
+        array $nodes,
+        Assign $inspectionAssignment,
+        Assign $redactedAssignment,
+    ): void {
+        $tainted = ['validated' => true];
+        do {
+            $changed = false;
+            foreach ($nodes as $node) {
+                if ((! $node instanceof Assign && ! $node instanceof AssignOp)
+                    || ! $node->var instanceof Variable
+                    || ! is_string($node->var->name)
+                    || $node === $inspectionAssignment
+                    || $node === $redactedAssignment) {
+                    continue;
+                }
+                if (! isset($tainted[$node->var->name]) && self::containsTaintedVariable($node->expr, $tainted)) {
+                    $tainted[$node->var->name] = true;
+                    $changed = true;
+                }
+            }
+        } while ($changed);
+
+        $inspectionEnd = $inspectionAssignment->getEndTokenPos();
+        self::assertGreaterThanOrEqual(0, $inspectionEnd, 'AST token positions are required for taint ordering.');
+        foreach ($nodes as $node) {
+            if (! $node instanceof Variable
+                || ! is_string($node->name)
+                || ! isset($tainted[$node->name])
+                || $node->getStartTokenPos() <= $inspectionEnd) {
+                continue;
+            }
+
+            self::fail('Raw validated input or alias $'.$node->name.' is used after Dovra inspection.');
+        }
+    }
+
+    /** @param array<string, true> $tainted */
+    private static function containsTaintedVariable(Node $node, array $tainted): bool
+    {
+        if ($node instanceof Variable && is_string($node->name) && isset($tainted[$node->name])) {
+            return true;
+        }
+        if ($node instanceof FunctionLike) {
+            return false;
+        }
+        foreach ($node->getSubNodeNames() as $name) {
+            $child = $node->{$name};
+            if ($child instanceof Node && self::containsTaintedVariable($child, $tainted)) {
+                return true;
+            }
+            if (is_array($child)) {
+                foreach ($child as $item) {
+                    if ($item instanceof Node && self::containsTaintedVariable($item, $tainted)) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
     }
 
     private static function assertInspectsCanonicalEnvelope(MethodCall $inspection): void
