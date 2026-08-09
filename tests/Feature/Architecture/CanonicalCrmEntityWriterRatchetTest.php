@@ -224,6 +224,72 @@ it('proves the AST ratchet detects bypass shapes while ignoring comments and imp
     expect(implode('; ', $importBypassViolations))->toContain('importer->model() bypass')
         ->and(implode('; ', $importBypassViolations))->toContain('direct Excel::import caller');
 
+    $importServiceBypass = <<<'PHP'
+        <?php
+        use App\Application\Imports\ImportService;
+
+        final class ImportServiceBypass
+        {
+            public function __construct(private ImportService $service) {}
+
+            public function run(): void
+            {
+                $serviceAlias = $this->service;
+                $candidate = $serviceAlias->makeImporter('contacts', 'tenant');
+                $candidate->templateHeaders();
+                $candidate->model([]);
+                $factory = new ImportService();
+                $factoryAlias = $factory;
+                $fromNew = $factoryAlias->makeImporter('contacts', 'tenant');
+                $fromNew->model([]);
+            }
+        }
+        PHP;
+
+    $importServiceBypassViolations = dovraCrmImportSourceViolations(
+        $importServiceBypass,
+        'app/Tests/Fixtures/ImportServiceBypass.php',
+    );
+    expect(implode('; ', $importServiceBypassViolations))->toContain('makeImporter outside template-only path')
+        ->and(implode('; ', $importServiceBypassViolations))->toContain('importer->model() bypass');
+
+    $importTemplateBinding = <<<'PHP'
+        <?php
+        use App\Application\Imports\ImportService;
+
+        final class ImportWizardFixture
+        {
+            public function __construct(private ImportService $service) {}
+
+            private function getExpectedHeaders(): string
+            {
+                $candidate = $this->service->makeImporter('contacts', '');
+                return implode(', ', $candidate->templateHeaders());
+            }
+        }
+        PHP;
+
+    expect(dovraCrmImportSourceViolations(
+        $importTemplateBinding,
+        'app/Filament/App/Pages/ImportExport/ImportWizard.php',
+    ))->toBeEmpty('typed/promoted ImportService receiver should allow only its matching templateHeaders call');
+
+    $unrelatedMakeImporter = <<<'PHP'
+        <?php
+        final class UnrelatedFactory
+        {
+            public function makeImporter(): object { return new stdClass(); }
+        }
+
+        $other = new UnrelatedFactory();
+        $other->makeImporter()->templateHeaders();
+        PHP;
+
+    expect(dovraCrmImportSourceViolations(
+        $unrelatedMakeImporter,
+        'app/Tests/Fixtures/UnrelatedFactory.php',
+    ))->toBeEmpty('makeImporter on an unrelated object must not create an import-boundary false positive');
+
     $webToLeadStateBypass = <<<'PHP'
         <?php
         use App\Models\Contact;
@@ -277,6 +343,91 @@ it('proves the AST ratchet detects bypass shapes while ignoring comments and imp
     expect(dovraCrmWebToLeadSentinel($webToLeadStateBypass, true)['ok'])->toBeFalse();
     expect(dovraCrmWebToLeadSentinel($webToLeadRequestBypass, true)['ok'])->toBeFalse();
     expect(dovraCrmWebToLeadSentinel($webToLeadWrongTenant, true)['ok'])->toBeFalse();
+
+    $webToLeadValidStatic = <<<'PHP'
+        <?php
+        use App\Models\Contact;
+        use App\Models\CrmActivity;
+        use Illuminate\Support\Facades\DB;
+
+        function submit(): void
+        {
+            DB::transaction(function (): void {
+                $tenantId = \Filament\Facades\Filament::getTenant()?->getKey();
+                Contact::create(['tenant_id' => $tenantId]);
+                CrmActivity::create(['tenant_id' => $tenantId]);
+            });
+        }
+        PHP;
+
+    $webToLeadInvalidInstance = <<<'PHP'
+        <?php
+        use App\Models\Contact;
+        use Illuminate\Support\Facades\DB;
+
+        function submit(): void
+        {
+            DB::transaction(function (): void {
+                $tenantId = \Filament\Facades\Filament::getTenant()?->getKey();
+                Contact::create(['tenant_id' => $tenantId]);
+                $contact = Contact::find($id);
+                $contact->update(['job_title' => 'drift']);
+            });
+        }
+        PHP;
+
+    $webToLeadInvalidQuery = <<<'PHP'
+        <?php
+        use App\Models\Contact;
+        use Illuminate\Support\Facades\DB;
+
+        function submit(): void
+        {
+            DB::transaction(function (): void {
+                $tenantId = \Filament\Facades\Filament::getTenant()?->getKey();
+                Contact::create(['tenant_id' => $tenantId]);
+                $query = Contact::query()->where('id', $id);
+                $query->update(['job_title' => 'drift']);
+            });
+        }
+        PHP;
+
+    $webToLeadInvalidTable = <<<'PHP'
+        <?php
+        use App\Models\Contact;
+        use Illuminate\Support\Facades\DB;
+
+        function submit(): void
+        {
+            DB::transaction(function (): void {
+                $tenantId = \Filament\Facades\Filament::getTenant()?->getKey();
+                Contact::create(['tenant_id' => $tenantId]);
+                DB::table('crm_contacts')->where('id', $id)->update(['job_title' => 'drift']);
+            });
+        }
+        PHP;
+
+    $webToLeadInvalidRelation = <<<'PHP'
+        <?php
+        use App\Models\Contact;
+        use Illuminate\Support\Facades\DB;
+
+        function submit(): void
+        {
+            DB::transaction(function (): void {
+                $tenantId = \Filament\Facades\Filament::getTenant()?->getKey();
+                Contact::create(['tenant_id' => $tenantId]);
+                $contact = Contact::find($id);
+                $contact->tags()->sync($tagIds);
+            });
+        }
+        PHP;
+
+    expect(dovraCrmWebToLeadSentinel($webToLeadValidStatic, true)['ok'])->toBeTrue();
+    expect(dovraCrmWebToLeadSentinel($webToLeadInvalidInstance, true)['ok'])->toBeFalse();
+    expect(dovraCrmWebToLeadSentinel($webToLeadInvalidQuery, true)['ok'])->toBeFalse();
+    expect(dovraCrmWebToLeadSentinel($webToLeadInvalidTable, true)['ok'])->toBeFalse();
+    expect(dovraCrmWebToLeadSentinel($webToLeadInvalidRelation, true)['ok'])->toBeFalse();
 });
 
 /** @return list<string> */
@@ -388,6 +539,13 @@ function dovraCrmWebToLeadSentinel(string $sourceOrPath, bool $sourceInput = fal
     if ($ast === []) {
         return ['ok' => false, 'reason' => 'parse failed'];
     }
+
+    $collector = new DovraCrmCanonicalAstCollector(
+        $sourceInput ? '<fixture>' : dovraCrmRelativePath($sourceOrPath),
+    );
+    $collectorTraverser = new NodeTraverser;
+    $collectorTraverser->addVisitor($collector);
+    $collectorTraverser->traverse($ast);
 
     $visitor = new class extends NodeVisitorAbstract
     {
@@ -597,10 +755,20 @@ function dovraCrmWebToLeadSentinel(string $sourceOrPath, bool $sourceInput = fal
     $traverser->addVisitor($visitor);
     $traverser->traverse($ast);
 
-    if ($visitor->transactions !== 1 || $visitor->canonicalWritesInTransaction < 2
-        || $visitor->canonicalWritesOutsideTransaction > 0
-        || $visitor->unboundTenantWrites > 0) {
-        return ['ok' => false, 'reason' => 'expected every canonical intake write bound to derived tenant inside one transaction'];
+    if ($collector->transactions !== 1 || $collector->operationContexts === []) {
+        return ['ok' => false, 'reason' => 'expected canonical intake operations inside one transaction'];
+    }
+    foreach ($collector->operationContexts as $operation) {
+        if (! $operation['inTransaction'] || ! $operation['tenantBound']) {
+            return [
+                'ok' => false,
+                'reason' => sprintf(
+                    'canonical %s at line %d is not explicitly tenant-derived or scoped inside the transaction',
+                    $operation['operation'],
+                    $operation['line'],
+                ),
+            ];
+        }
     }
     if (! $visitor->tenantDerived) {
         return ['ok' => false, 'reason' => 'tenant is not derived from Filament context'];
@@ -1013,6 +1181,9 @@ function dovraCrmImportSourceViolations(string $source, string $relative): array
         private array $serviceReceivers = [];
 
         /** @var array<string, bool> */
+        private array $serviceProperties = [];
+
+        /** @var array<string, bool> */
         private array $importReceivers = [];
 
         /** @var array<string, bool> */
@@ -1040,7 +1211,17 @@ function dovraCrmImportSourceViolations(string $source, string $relative): array
                         && is_string($parameter->var->name)
                         && dovraCrmImportServiceTypeNode($parameter->type, $this->aliases)) {
                         $this->serviceReceivers[$this->symbol($parameter->var)] = true;
+                        if ($node->name->toString() === '__construct' && $parameter->flags !== 0) {
+                            $this->serviceProperties['$this->'.$parameter->var->name] = true;
+                        }
                     }
+                }
+            }
+
+            if ($node instanceof Node\Stmt\Property
+                && dovraCrmImportServiceTypeNode($node->type, $this->aliases)) {
+                foreach ($node->props as $property) {
+                    $this->serviceProperties['$this->'.$property->name->toString()] = true;
                 }
             }
 
@@ -1054,6 +1235,7 @@ function dovraCrmImportSourceViolations(string $source, string $relative): array
             if ($node instanceof Node\Expr\MethodCall && $node->name instanceof Node\Identifier) {
                 $name = $node->name->toString();
                 if ($name === 'makeImporter'
+                    && $this->isServiceReceiver($node->var)
                     && ($this->relative !== 'app/Filament/App/Pages/ImportExport/ImportWizard.php'
                         || $this->method !== 'getExpectedHeaders')) {
                     $this->violations[] = $this->relative.':makeImporter outside template-only path';
@@ -1087,7 +1269,7 @@ function dovraCrmImportSourceViolations(string $source, string $relative): array
                     if ($this->isImportReceiver($node->expr)) {
                         $this->importReceivers[$symbol] = true;
                     }
-                    if ($this->isMakeImporterExpression($node->expr)) {
+                    if ($this->isTemplateReceiver($node->expr)) {
                         $this->importReceivers[$symbol] = true;
                         $this->templateReceivers[$symbol] = true;
                     }
@@ -1126,7 +1308,7 @@ function dovraCrmImportSourceViolations(string $source, string $relative): array
         {
             $symbol = $this->symbol($node);
             if ($symbol !== null) {
-                return isset($this->serviceReceivers[$symbol]);
+                return isset($this->serviceReceivers[$symbol]) || isset($this->serviceProperties[$symbol]);
             }
             if ($node instanceof Node\Expr\FuncCall
                 && $node->name instanceof Node\Name
@@ -1134,8 +1316,22 @@ function dovraCrmImportSourceViolations(string $source, string $relative): array
                 && isset($node->args[0])) {
                 return dovraCrmImportServiceClassConst($node->args[0]->value, $this->aliases);
             }
+            if ($node instanceof Node\Expr\New_
+                && $node->class instanceof Node\Name) {
+                return dovraCrmImportServiceClassName($node->class->toString(), $this->aliases);
+            }
 
             return false;
+        }
+
+        private function isTemplateReceiver(Node $node): bool
+        {
+            $symbol = $this->symbol($node);
+            if ($symbol !== null) {
+                return isset($this->templateReceivers[$symbol]);
+            }
+
+            return $this->isMakeImporterExpression($node);
         }
 
         private function isMakeImporterExpression(Node $node): bool
@@ -1277,6 +1473,11 @@ final class DovraCrmCanonicalAstCollector extends NodeVisitorAbstract
     /** @var list<array{canonical: bool, sensitive: bool, operation: string, line: int, receiver: string, keys: list<string>, context: string}> */
     public array $operations = [];
 
+    public int $transactions = 0;
+
+    /** @var list<array{operation: string, line: int, receiver: string, context: string, inTransaction: bool, tenantBound: bool}> */
+    public array $operationContexts = [];
+
     /** @var array<string, string> */
     private array $aliases = [];
 
@@ -1286,13 +1487,21 @@ final class DovraCrmCanonicalAstCollector extends NodeVisitorAbstract
     /** @var array<string, list<string>> */
     private array $pendingAssignments = [];
 
+    /** @var array<string, bool> */
+    private array $derivedTenantVariables = [];
+
+    /** @var array<string, bool> */
+    private array $tenantScopedLocals = [];
+
+    private int $transactionDepth = 0;
+
     private string $method = '';
 
-    /** @var list<array{method: string, locals: array<string, string>, pending: array<string, list<string>>}> */
+    /** @var list<array{method: string, locals: array<string, string>, pending: array<string, list<string>>, derived: array<string, bool>, scoped: array<string, bool>}> */
     private array $scopes = [];
 
     private const PERSISTENCE = [
-        'create', 'createOrFirst', 'firstOrCreate', 'updateOrCreate', 'update', 'save',
+        'create', 'createOrFirst', 'firstOrCreate', 'updateOrCreate', 'forceCreate', 'update', 'save',
         'fill', 'forceFill', 'upsert', 'insert', 'insertOrIgnore', 'associate', 'sync',
         'syncWithoutDetaching', 'attach', 'detach',
     ];
@@ -1317,10 +1526,18 @@ final class DovraCrmCanonicalAstCollector extends NodeVisitorAbstract
         }
 
         if ($node instanceof Node\Stmt\ClassMethod) {
-            $this->scopes[] = ['method' => $this->method, 'locals' => $this->locals, 'pending' => $this->pendingAssignments];
+            $this->scopes[] = [
+                'method' => $this->method,
+                'locals' => $this->locals,
+                'pending' => $this->pendingAssignments,
+                'derived' => $this->derivedTenantVariables,
+                'scoped' => $this->tenantScopedLocals,
+            ];
             $this->method = $node->name->toString();
             $this->locals = [];
             $this->pendingAssignments = [];
+            $this->derivedTenantVariables = [];
+            $this->tenantScopedLocals = [];
             foreach ($node->params as $parameter) {
                 if ($parameter->var instanceof Node\Expr\Variable && is_string($parameter->var->name)
                     && $parameter->type instanceof Node\Name) {
@@ -1341,6 +1558,16 @@ final class DovraCrmCanonicalAstCollector extends NodeVisitorAbstract
             }
         }
 
+        if ($node instanceof Node\Expr\StaticCall
+            && $node->name instanceof Node\Identifier
+            && $node->name->toString() === 'transaction'
+            && $node->class instanceof Node\Name
+            && (($class = ltrim($node->class->toString(), '\\')) === 'DB'
+                || str_ends_with($class, '\\DB'))) {
+            $this->transactions++;
+            $this->transactionDepth++;
+        }
+
         if ($node instanceof Node\Expr\StaticCall || $node instanceof Node\Expr\MethodCall
             || $node instanceof Node\Expr\NullsafeMethodCall) {
             $method = $node->name instanceof Node\Identifier ? $node->name->toString() : null;
@@ -1357,6 +1584,15 @@ final class DovraCrmCanonicalAstCollector extends NodeVisitorAbstract
             $pending = $this->pendingAssignments[$receiver] ?? [];
             $effectiveKeys = array_values(array_unique([...$keys, ...$pending]));
             $sensitive = $this->isSensitive($method, $effectiveKeys, $receiver);
+            $operationContext = [
+                'operation' => $method,
+                'line' => $node->getStartLine(),
+                'receiver' => $receiver,
+                'context' => $this->method === '' ? 'global' : $this->method,
+                'inTransaction' => $this->transactionDepth > 0,
+                'tenantBound' => $this->hasTenantBinding($node),
+            ];
+            $this->operationContexts[] = $operationContext;
             if ($sensitive && ! $this->isRetainedBulkMutation($method, $effectiveKeys)) {
                 $this->operations[] = [
                     'canonical' => true,
@@ -1392,6 +1628,33 @@ final class DovraCrmCanonicalAstCollector extends NodeVisitorAbstract
                     $this->pendingAssignments[$receiver][] = $field;
                 }
             }
+
+            if ($node->var instanceof Node\Expr\Variable && is_string($node->var->name)) {
+                $derived = dovraCrmContainsFilamentTenant($node->expr)
+                    || ($node->expr instanceof Node\Expr\Variable
+                        && is_string($node->expr->name)
+                        && ($this->derivedTenantVariables[$node->expr->name] ?? false));
+                if ($derived) {
+                    $this->derivedTenantVariables[$node->var->name] = $this->transactionDepth > 0;
+                }
+
+                $scoped = $this->hasTenantScope($node->expr)
+                    || ($node->expr instanceof Node\Expr\Variable
+                        && is_string($node->expr->name)
+                        && ($this->tenantScopedLocals[$node->expr->name] ?? false));
+                if ($scoped) {
+                    $this->tenantScopedLocals[$node->var->name] = true;
+                }
+            }
+        }
+
+        if ($node instanceof Node\Expr\StaticCall
+            && $node->name instanceof Node\Identifier
+            && $node->name->toString() === 'transaction'
+            && $node->class instanceof Node\Name
+            && (($class = ltrim($node->class->toString(), '\\')) === 'DB'
+                || str_ends_with($class, '\\DB'))) {
+            $this->transactionDepth = max(0, $this->transactionDepth - 1);
         }
 
         if ($node instanceof Node\Stmt\ClassMethod) {
@@ -1400,6 +1663,8 @@ final class DovraCrmCanonicalAstCollector extends NodeVisitorAbstract
                 $this->method = $scope['method'];
                 $this->locals = $scope['locals'];
                 $this->pendingAssignments = $scope['pending'];
+                $this->derivedTenantVariables = $scope['derived'];
+                $this->tenantScopedLocals = $scope['scoped'];
             }
         }
 
@@ -1443,6 +1708,103 @@ final class DovraCrmCanonicalAstCollector extends NodeVisitorAbstract
         }
 
         return null;
+    }
+
+    private function hasTenantBinding(Node $write): bool
+    {
+        if ($this->hasTenantScope($write)
+            || ($write instanceof Node\Expr\MethodCall
+                && $write->var instanceof Node\Expr\Variable
+                && is_string($write->var->name)
+                && ($this->tenantScopedLocals[$write->var->name] ?? false))) {
+            return true;
+        }
+
+        $bindings = [];
+        foreach ($write->getSubNodeNames() as $name) {
+            $child = $write->{$name};
+            if ($child instanceof Node) {
+                $this->collectTenantBindings($child, $bindings);
+            } elseif (is_array($child)) {
+                foreach ($child as $item) {
+                    if ($item instanceof Node) {
+                        $this->collectTenantBindings($item, $bindings);
+                    }
+                }
+            }
+        }
+
+        return $bindings !== [] && ! in_array(false, $bindings, true);
+    }
+
+    /** @param list<bool> $bindings */
+    private function collectTenantBindings(Node $node, array &$bindings): void
+    {
+        if ($node instanceof Node\Expr\Array_) {
+            foreach ($node->items as $item) {
+                if ($item === null) {
+                    continue;
+                }
+                if ($item->key instanceof Node\Scalar\String_
+                    && $item->key->value === 'tenant_id') {
+                    $bindings[] = $this->isDerivedTenantExpression($item->value);
+                } else {
+                    $this->collectTenantBindings($item->value, $bindings);
+                }
+            }
+
+            return;
+        }
+
+        foreach ($node->getSubNodeNames() as $name) {
+            $child = $node->{$name};
+            if ($child instanceof Node) {
+                $this->collectTenantBindings($child, $bindings);
+            } elseif (is_array($child)) {
+                foreach ($child as $item) {
+                    if ($item instanceof Node) {
+                        $this->collectTenantBindings($item, $bindings);
+                    }
+                }
+            }
+        }
+    }
+
+    private function isDerivedTenantExpression(Node $node): bool
+    {
+        return ($node instanceof Node\Expr\Variable
+            && is_string($node->name)
+            && ($this->derivedTenantVariables[$node->name] ?? false))
+            || dovraCrmContainsFilamentTenant($node);
+    }
+
+    private function hasTenantScope(Node $node): bool
+    {
+        if (($node instanceof Node\Expr\MethodCall || $node instanceof Node\Expr\NullsafeMethodCall)
+            && $node->name instanceof Node\Identifier
+            && in_array($node->name->toString(), ['where', 'whereIn', 'whereIntegerInRaw'], true)
+            && isset($node->args[0])
+            && $node->args[0]->value instanceof Node\Scalar\String_
+            && strtolower($node->args[0]->value->value) === 'tenant_id'
+            && isset($node->args[1])) {
+            return $this->isDerivedTenantExpression($node->args[1]->value);
+        }
+
+        foreach ($node->getSubNodeNames() as $name) {
+            $child = $node->{$name};
+            if ($child instanceof Node && $this->hasTenantScope($child)) {
+                return true;
+            }
+            if (is_array($child)) {
+                foreach ($child as $item) {
+                    if ($item instanceof Node && $this->hasTenantScope($item)) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
     }
 
     /** @param list<Node\Arg> $arguments @return list<string> */
