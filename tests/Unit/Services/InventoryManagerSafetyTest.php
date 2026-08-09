@@ -3,9 +3,6 @@
 declare(strict_types=1);
 
 use App\Services\InventoryManager;
-use Tests\TestCase;
-
-uses(TestCase::class);
 
 /**
  * VC-AUDIT-102 / VC-AUDIT-104 Test Suite

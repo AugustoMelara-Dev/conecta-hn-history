@@ -8,9 +8,6 @@ use App\Models\User;
 use App\Notifications\NewOrderNotification;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
-use Tests\TestCase;
-
-uses(TestCase::class);
 
 const NEW_ORDER_TENANT_ID = '00000000-0000-4000-8000-000000000042';
 

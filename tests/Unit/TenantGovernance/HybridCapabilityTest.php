@@ -8,9 +8,6 @@ use App\Domain\TenantGovernance\Enums\CommercialMode;
 use App\Domain\TenantGovernance\Enums\TenantPlan;
 use App\Infrastructure\TenantGovernance\Capabilities\ConfigCapabilityManager;
 use App\Models\Tenant;
-use Tests\TestCase;
-
-uses(TestCase::class);
 
 it('grants complete base product and appointment capabilities to hybrid tenants without paid leakage', function (): void {
     config()->set('conecta.features.hybrid_commercial_mode_tenants', []);

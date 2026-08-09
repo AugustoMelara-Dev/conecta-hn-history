@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 use App\Services\TenantCacheManager;
 use Illuminate\Support\Facades\Cache;
-use Tests\TestCase;
-
-uses(TestCase::class);
 
 describe('TenantCacheManager', function () {
     beforeEach(function () {

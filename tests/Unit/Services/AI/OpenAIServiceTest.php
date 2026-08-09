@@ -7,9 +7,6 @@ use App\Exceptions\Ai\AiProviderUnavailableException;
 use App\Infrastructure\AI\BudgetEnforcer;
 use App\Services\AI\OpenAIService;
 use Illuminate\Support\Facades\Http;
-use Tests\TestCase;
-
-uses(TestCase::class);
 
 function makeOpenAIService(): OpenAIService
 {

@@ -3,9 +3,6 @@
 declare(strict_types=1);
 
 use App\Domain\TenantGovernance\Services\TenantOnboardingProgressService;
-use Tests\TestCase;
-
-uses(TestCase::class);
 
 it('routes consulting lead offer milestones to settings instead of service catalog', function (): void {
     $service = new TenantOnboardingProgressService;

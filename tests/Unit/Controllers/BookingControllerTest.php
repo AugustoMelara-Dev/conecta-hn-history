@@ -6,9 +6,6 @@ use App\Http\Controllers\Public\BookingController;
 use App\Models\Service;
 use App\Models\ServiceProvider;
 use App\Models\Tenant;
-use Tests\TestCase;
-
-uses(TestCase::class);
 
 // ═══════════════════════════════════════════════════════════════════════
 // BOOKING UNIT TESTS - Controller and Model Configuration

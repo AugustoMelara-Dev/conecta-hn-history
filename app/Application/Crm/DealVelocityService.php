@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Crm;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * DealVelocityService - Mide velocidad del deal en días promedio por stage.
@@ -19,8 +20,12 @@ class DealVelocityService
     /**
      * @return array<string, float> promedio de días por stage_id
      */
-    public function averageDaysPerStage(string $tenantId, ?string $pipelineId = null): array
+    public function averageDaysPerStage(string $tenantId, int|string|null $pipelineId = null): array
     {
+        if (! Schema::hasTable('crm_deal_stage_history')) {
+            return [];
+        }
+
         $query = DB::table('crm_deal_stage_history as h')
             ->join('crm_deals as d', 'd.id', '=', 'h.deal_id')
             ->where('d.tenant_id', $tenantId)
@@ -28,17 +33,18 @@ class DealVelocityService
             ->whereNotNull('h.exited_at');
 
         if ($pipelineId) {
-            $query->where('d.pipeline_id', $pipelineId);
+            $query->where('d.crm_pipeline_id', $pipelineId);
         }
 
+        $elapsedDays = $this->elapsedDaysExpression('h.exited_at', 'h.entered_at');
         $rows = $query
-            ->select('h.stage_id', DB::raw('AVG(EXTRACT(EPOCH FROM (h.exited_at - h.entered_at))/86400) as avg_days'))
-            ->groupBy('h.stage_id')
+            ->select('h.crm_stage_id', DB::raw("AVG({$elapsedDays}) as avg_days"))
+            ->groupBy('h.crm_stage_id')
             ->get();
 
         $result = [];
         foreach ($rows as $row) {
-            $result[$row->stage_id] = (float) $row->avg_days;
+            $result[$row->crm_stage_id] = (float) $row->avg_days;
         }
 
         return $result;
@@ -49,34 +55,48 @@ class DealVelocityService
         return (float) DB::table('crm_deals')
             ->where('tenant_id', $tenantId)
             ->where('status', $status)
-            ->whereNotNull('won_at')
-            ->selectRaw('AVG(EXTRACT(EPOCH FROM (won_at - created_at))/86400) as avg_days')
+            ->whereNotNull('closed_at')
+            ->selectRaw('AVG('.$this->elapsedDaysExpression('closed_at', 'created_at').') as avg_days')
             ->value('avg_days') ?? 0;
     }
 
     /**
      * @return array<int, array{stage_id: string, stage_name: string, avg_days: float, deal_count: int}>
      */
-    public function bottlenecks(string $tenantId, ?string $pipelineId = null, int $limit = 5): array
+    public function bottlenecks(string $tenantId, int|string|null $pipelineId = null, int $limit = 5): array
     {
+        if (! Schema::hasTable('crm_deal_stage_history')) {
+            return [];
+        }
+
         return DB::table('crm_deal_stage_history as h')
             ->join('crm_deals as d', 'd.id', '=', 'h.deal_id')
-            ->join('crm_stages as s', 's.id', '=', 'h.stage_id')
+            ->join('crm_stages as s', 's.id', '=', 'h.crm_stage_id')
             ->where('d.tenant_id', $tenantId)
             ->whereNotNull('h.entered_at')
             ->whereNotNull('h.exited_at')
-            ->when($pipelineId, fn ($q) => $q->where('d.pipeline_id', $pipelineId))
-            ->groupBy('h.stage_id', 's.name')
-            ->selectRaw('h.stage_id, s.name as stage_name, AVG(EXTRACT(EPOCH FROM (h.exited_at - h.entered_at))/86400) as avg_days, COUNT(*) as deal_count')
+            ->when($pipelineId, fn ($q) => $q->where('d.crm_pipeline_id', $pipelineId))
+            ->groupBy('h.crm_stage_id', 's.name')
+            ->selectRaw('h.crm_stage_id, s.name as stage_name, AVG('.$this->elapsedDaysExpression('h.exited_at', 'h.entered_at').') as avg_days, COUNT(*) as deal_count')
             ->orderByDesc('avg_days')
             ->limit($limit)
             ->get()
             ->map(fn ($r) => [
-                'stage_id' => $r->stage_id,
+                'stage_id' => $r->crm_stage_id,
                 'stage_name' => $r->stage_name,
                 'avg_days' => (float) $r->avg_days,
                 'deal_count' => (int) $r->deal_count,
             ])
             ->all();
+    }
+
+    private function elapsedDaysExpression(string $endColumn, string $startColumn): string
+    {
+        return match (DB::connection()->getDriverName()) {
+            'sqlite' => "julianday({$endColumn}) - julianday({$startColumn})",
+            'mysql', 'mariadb' => "TIMESTAMPDIFF(SECOND, {$startColumn}, {$endColumn}) / 86400",
+            'pgsql' => "EXTRACT(EPOCH FROM ({$endColumn} - {$startColumn})) / 86400",
+            default => throw new \RuntimeException('CRM velocity SQL dialect is unavailable.'),
+        };
     }
 }

@@ -6,10 +6,8 @@ use App\Models\Order;
 use App\Notifications\NewOrderNotification;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Collection;
-use Tests\TestCase;
 
 // Bootstrap Laravel app — needed because NewOrderNotification::toMail() calls url()
-uses(TestCase::class);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPER: Build a test double that satisfies the Order type hint
@@ -43,6 +41,7 @@ function makeNotificationOrder(array $overrides = []): Order
     if (($overrides['_null_tenant'] ?? false) === false) {
         $tenant = new stdClass;
         $tenant->name = $overrides['tenant_name'] ?? 'Café Tegus';
+        $tenant->slug = $overrides['tenant_slug'] ?? 'cafe-tegus';
         $data['tenant'] = $tenant;
     } else {
         $data['tenant'] = null;
@@ -52,6 +51,7 @@ function makeNotificationOrder(array $overrides = []): Order
 
     // loadMissing (called in toMail + toArray) → no-op
     $order->shouldReceive('loadMissing')->andReturnSelf();
+    $order->shouldReceive('getKey')->andReturn($data['id']);
 
     // Property access: Eloquent models proxy __get to getAttribute
     $order->shouldReceive('getAttribute')->andReturnUsing(function ($key) use ($data) {
@@ -121,7 +121,7 @@ test('toMail includes View Order action button', function () {
     $mail = $notification->toMail((object) []);
 
     expect($mail->actionText)->toBe('Ver Pedido');
-    expect($mail->actionUrl)->toContain('/admin/orders/100/edit');
+    expect($mail->actionUrl)->toContain('/app/cafe-tegus/orders/100');
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -177,7 +177,7 @@ test('toArray contains correct values', function () {
     expect($array['order_id'])->toBe(100);
     expect($array['order_number'])->toBe('#1042');
     expect($array['formatted_total'])->toBe('L. 350.50');
-    expect($array['action_url'])->toBe('/admin/orders/100/edit');
+    expect($array['action_url'])->toBe('/app/cafe-tegus/orders/100');
 });
 
 // ═══════════════════════════════════════════════════════════════════════════

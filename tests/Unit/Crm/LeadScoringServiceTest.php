@@ -5,6 +5,9 @@ declare(strict_types=1);
 use App\Application\Crm\LeadScoringService;
 use App\Domain\Crm\ValueObjects\DealScore;
 use App\Models\Contact;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+uses(RefreshDatabase::class);
 
 it('LeadScoringService assigns higher score to qualified leads', function () {
     $service = new LeadScoringService;

@@ -5,9 +5,6 @@ declare(strict_types=1);
 use App\Models\Product;
 use App\Observers\ProductObserver;
 use App\Services\TenantCacheManager;
-use Tests\TestCase;
-
-uses(TestCase::class);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SAVED EVENT: Cache Invalidation

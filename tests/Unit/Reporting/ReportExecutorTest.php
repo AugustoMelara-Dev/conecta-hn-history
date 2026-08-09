@@ -7,6 +7,9 @@ use App\Application\Reporting\ReportRegistry;
 use App\Application\Reporting\Reports\RevenueByMonthReport;
 use App\Domain\Reporting\Enums\ReportKey;
 use App\Domain\Reporting\ValueObjects\ReportRange;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+uses(RefreshDatabase::class);
 
 it('RevenueByMonthReport returns rows and series', function () {
     $report = new RevenueByMonthReport;

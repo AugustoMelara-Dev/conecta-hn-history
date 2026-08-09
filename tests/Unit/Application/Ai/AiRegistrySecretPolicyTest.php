@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 use App\Application\Ai\Registry\AiRegistrySecretPolicy;
 use Illuminate\Validation\ValidationException;
-use Tests\TestCase;
-
-uses(TestCase::class);
 
 it('rejects camel case uri and encoded credential material', function (array $payload): void {
     expect(fn () => (new AiRegistrySecretPolicy)->assertSafePayload($payload))

@@ -9,9 +9,8 @@ use App\Models\Payment;
 use App\Models\Tenant;
 use Illuminate\Database\Eloquent\MassAssignmentException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
 
-uses(TestCase::class, RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 /**
  * VC-AUDIT-002 Verification: Payment Mass Assignment Protection

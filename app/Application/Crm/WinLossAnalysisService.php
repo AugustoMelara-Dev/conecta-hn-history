@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Crm;
 
+use App\Application\Reporting\SqlMonthBucket;
 use App\Domain\Crm\Enums\DealStatus;
 use Illuminate\Support\Facades\DB;
 
@@ -59,11 +60,13 @@ class WinLossAnalysisService
      */
     public function monthlyWinLoss(string $tenantId, int $months = 12): array
     {
+        $monthBucket = SqlMonthBucket::expression(DB::connection()->getDriverName());
+
         return DB::table('crm_deals')
             ->where('tenant_id', $tenantId)
             ->whereIn('status', [DealStatus::Won->value, DealStatus::Lost->value])
             ->where('created_at', '>=', now()->subMonths($months))
-            ->selectRaw("TO_CHAR(created_at, 'YYYY-MM') as month, status, COUNT(*) as count, SUM(value) as total_value")
+            ->selectRaw("{$monthBucket} as month, status, COUNT(*) as count, SUM(value) as total_value")
             ->groupBy('month', 'status')
             ->orderBy('month')
             ->get()

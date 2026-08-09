@@ -5,9 +5,6 @@ declare(strict_types=1);
 use App\Models\Appointment;
 use App\Models\Service;
 use App\Models\ServiceProvider;
-use Tests\TestCase;
-
-uses(TestCase::class);
 
 // ═══════════════════════════════════════════════════════════════════════
 // SERVICE DOMAIN TESTS - Model Configuration and Relationships

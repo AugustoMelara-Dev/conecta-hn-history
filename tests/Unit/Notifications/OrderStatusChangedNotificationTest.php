@@ -5,10 +5,8 @@ declare(strict_types=1);
 use App\Models\Order;
 use App\Notifications\OrderStatusChangedNotification;
 use Illuminate\Support\Facades\Log;
-use Tests\TestCase;
 
 // Bootstrap Laravel app — needed because toMail() calls loadMissing()
-uses(TestCase::class);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPER: Build a fully-mocked Order for status-change notification testing

@@ -5,9 +5,6 @@ declare(strict_types=1);
 namespace Tests\Unit\Models;
 
 use App\Models\OrderEvent;
-use Tests\TestCase;
-
-uses(TestCase::class);
 
 /**
  * VC-AUDIT-005 Verification: OrderEvent Mass Assignment Protection

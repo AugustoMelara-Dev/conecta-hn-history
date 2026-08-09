@@ -5,9 +5,6 @@ declare(strict_types=1);
 use App\Application\Security\PrivilegedActionGuard;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Validation\ValidationException;
-use Tests\TestCase;
-
-uses(TestCase::class);
 
 it('requires the current operator password before impersonation', function (): void {
     $guard = new PrivilegedActionGuard;

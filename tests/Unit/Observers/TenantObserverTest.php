@@ -8,9 +8,6 @@ use App\Models\User;
 use App\Observers\TenantObserver;
 use App\Services\TenantCacheManager;
 use Illuminate\Support\Facades\Log;
-use Tests\TestCase;
-
-uses(TestCase::class);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CREATED EVENT: Role Assignment

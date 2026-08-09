@@ -10,6 +10,7 @@ use App\Filament\App\Resources\AppointmentResource\Pages;
 use App\Models\Appointment;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Support\Product\TenantAccessMatrix;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Facades\Filament;
@@ -41,6 +42,16 @@ class AppointmentResource extends Resource
     protected static ?string $pluralModelLabel = 'Citas';
 
     protected static ?int $navigationSort = 1;
+
+    public static function canViewAny(): bool
+    {
+        return TenantAccessMatrix::currentTenantCanAccess(TenantAccessMatrix::MODULE_APPOINTMENTS);
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::canViewAny();
+    }
 
     public static function form(Schema $schema): Schema
     {

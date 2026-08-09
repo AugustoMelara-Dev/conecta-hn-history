@@ -9,10 +9,8 @@ use App\Policies\ProductPolicy;
 use Illuminate\Auth\Access\Response;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Mockery\MockInterface;
-use Tests\TestCase;
 
 // Bootstrap Laravel app — needed for Filament::shouldReceive() in create() tests
-uses(TestCase::class);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPER: Build a User mock with tenant IDs (reuses OrderPolicy pattern)

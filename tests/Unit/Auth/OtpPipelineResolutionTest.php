@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 use App\Application\Auth\Contracts\GenerateOtpHandlerInterface;
 use App\Application\Auth\Handlers\VerifyOtpHandlerInterface;
-use Tests\TestCase;
-
-uses(TestCase::class);
 
 it('resolves both current otp pipelines from the container', function (): void {
     expect(app(GenerateOtpHandlerInterface::class))->toBeInstanceOf(GenerateOtpHandlerInterface::class)

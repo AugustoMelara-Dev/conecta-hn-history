@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 use App\Application\Crm\WinLossAnalysisService;
 use App\Models\Tenant;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+uses(RefreshDatabase::class);
 
 it('WinLossAnalysisService topLostReasons returns array', function () {
     $tenant = Tenant::factory()->create();

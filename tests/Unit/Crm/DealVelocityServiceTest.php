@@ -6,11 +6,26 @@ use App\Application\Crm\DealVelocityService;
 use App\Models\CrmPipeline;
 use App\Models\CrmStage;
 use App\Models\Tenant;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+uses(RefreshDatabase::class);
 
 it('DealVelocityService averageDaysPerStage returns structure', function () {
     $tenant = Tenant::factory()->create();
-    $pipeline = CrmPipeline::create(['tenant_id' => $tenant->id, 'name' => 'Sales']);
-    $stage = CrmStage::create(['pipeline_id' => $pipeline->id, 'name' => 'New', 'sort_order' => 1]);
+    $pipeline = (new CrmPipeline)->forceFill([
+        'tenant_id' => $tenant->id,
+        'name' => 'Sales',
+        'key' => 'sales',
+    ]);
+    $pipeline->save();
+    $stage = (new CrmStage)->forceFill([
+        'tenant_id' => $tenant->id,
+        'crm_pipeline_id' => $pipeline->id,
+        'name' => 'New',
+        'key' => 'new',
+        'sort_order' => 1,
+    ]);
+    $stage->save();
 
     $service = new DealVelocityService;
     $result = $service->averageDaysPerStage($tenant->id, $pipeline->id);
