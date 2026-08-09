@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api;
 
+use App\Application\Markets\HondurasMarketBackfill;
 use App\Domain\Access\Enums\Role;
 use App\Domain\Analytics\Enums\CommercialOutcome;
 use App\Models\Appointment;
@@ -166,6 +167,8 @@ final class TenantPrivateAgentChatTest extends TestCase
             'role' => Role::OWNER,
             'accepted_at' => now(),
         ]);
+
+        app(HondurasMarketBackfill::class)->run();
 
         return [$owner, $tenant];
     }

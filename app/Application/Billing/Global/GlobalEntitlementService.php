@@ -133,7 +133,7 @@ final class GlobalEntitlementService implements EntitlementServiceInterface
             }
         }
 
-        if ($row === null && $rows !== []) {
+        if ($row === null && $rows->isNotEmpty()) {
             $eventOrderVerified = false;
         }
 

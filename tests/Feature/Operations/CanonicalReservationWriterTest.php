@@ -33,6 +33,20 @@ final class CanonicalReservationWriterTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-08-02 12:00:00', 'UTC'));
+    }
+
+    protected function tearDown(): void
+    {
+        CarbonImmutable::setTestNow();
+
+        parent::tearDown();
+    }
+
     public function test_create_snapshots_market_service_time_and_replays_idempotently(): void
     {
         [$tenant, $owner, $location, $service, $provider] = $this->catalog();

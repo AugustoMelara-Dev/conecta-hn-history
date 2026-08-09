@@ -4,13 +4,10 @@ declare(strict_types=1);
 
 namespace App\Application\Ai\Registry;
 
-use App\Application\Ai\PrivateGroundedAgent;
-use App\Application\Ai\PublicGroundedDiscovery;
 use App\Application\Ai\Workforce\AgentRoleCatalog;
 use App\Infrastructure\AI\Security\LaravelAiContentCipher;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use ReflectionClass;
 
 final class AiRegistryBackfill
 {
@@ -54,7 +51,7 @@ final class AiRegistryBackfill
                     visibility: 'platform_public',
                     promptKey: 'public.discovery.system',
                     promptName: 'Public discovery system prompt',
-                    prompt: $this->promptFrom(PublicGroundedDiscovery::class),
+                    prompt: $this->prompt('public_discovery'),
                 );
             }
         }
@@ -83,7 +80,7 @@ final class AiRegistryBackfill
                     visibility: 'tenant_private',
                     promptKey: 'tenant.private_assistant.system',
                     promptName: 'Tenant private assistant system prompt',
-                    prompt: $this->promptFrom(PrivateGroundedAgent::class),
+                    prompt: $this->prompt('private_tenant_agent'),
                 );
             }
         }
@@ -509,13 +506,14 @@ final class AiRegistryBackfill
         return $tenantId;
     }
 
-    private function promptFrom(string $class): string
+    private function prompt(string $key): string
     {
-        $reflection = new ReflectionClass($class);
-        $agent = $reflection->newInstanceWithoutConstructor();
-        $method = $reflection->getMethod('systemPrompt');
+        $prompt = config("ai.registry.prompts.{$key}");
+        if (! is_string($prompt) || trim($prompt) === '') {
+            throw new \LogicException("AI registry prompt [{$key}] is not configured.");
+        }
 
-        return (string) $method->invoke($agent);
+        return trim($prompt);
     }
 
     private function nextVersion(string $table, string $ownerColumn, string $ownerId): int

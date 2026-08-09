@@ -149,12 +149,16 @@ final class DeterministicBillingProviderFake
     private function marketContext(string $marketKey): MarketContext
     {
         $country = strtoupper($marketKey);
-        $book = (new ConfigPriceBookReader)->forMarket(new MarketContext($country, 'en-'.$country, 'USD', 'UTC', 'billing_webhook'));
+        $priceBook = config('dovra_billing.price_books.'.strtolower($marketKey));
+        $currency = is_array($priceBook) ? strtoupper(trim((string) ($priceBook['currency'] ?? ''))) : '';
+        if ($currency === '') {
+            throw new \RuntimeException("No billing price-book currency is configured for market [{$marketKey}].");
+        }
 
         return new MarketContext(
             countryCode: $country,
             localeCode: 'en-'.$country,
-            currencyCode: $book->currencyCode(),
+            currencyCode: $currency,
             timezone: 'UTC',
             source: 'billing_webhook',
         );

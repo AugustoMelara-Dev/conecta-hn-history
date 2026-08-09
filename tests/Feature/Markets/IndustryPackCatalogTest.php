@@ -7,6 +7,7 @@ namespace Tests\Feature\Markets;
 use App\Application\Markets\HondurasMarketBackfill;
 use App\Application\Markets\IndustryPackCatalog;
 use App\Application\Markets\MarketContext;
+use App\Models\City;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -16,6 +17,7 @@ final class IndustryPackCatalogTest extends TestCase
 
     public function test_honduras_is_one_explicit_pack_and_not_a_global_fallback(): void
     {
+        City::factory()->create();
         app(HondurasMarketBackfill::class)->run();
 
         $catalog = app(IndustryPackCatalog::class);

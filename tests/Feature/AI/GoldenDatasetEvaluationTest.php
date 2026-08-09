@@ -7,6 +7,7 @@ namespace Tests\Feature\AI;
 use App\Application\Ai\Contracts\AiGateway;
 use App\Application\Ai\Contracts\AiProviderPool;
 use App\Application\Ai\DTOs\AiProviderResult;
+use App\Application\Discovery\PublishedCommercialProjectionService;
 use App\Application\Markets\HondurasMarketBackfill;
 use App\Infrastructure\AI\ConfiguredAiProviderPool;
 use App\Models\Product;
@@ -79,6 +80,7 @@ final class GoldenDatasetEvaluationTest extends TestCase
             'slug' => 'negocio-ajeno-evaluation',
             'is_active' => true,
             'subscription_status' => 'active',
+            'publication_paused_at' => now(),
         ]);
         $ownedProduct = Product::factory()->forTenant($tenant)->create([
             'name' => 'Cafe local',
@@ -92,9 +94,10 @@ final class GoldenDatasetEvaluationTest extends TestCase
             'description' => 'NO DEBE APARECER',
             'price' => 1,
             'is_active' => true,
-            'is_visible' => true,
+            'is_visible' => false,
         ]);
         app(HondurasMarketBackfill::class)->run();
+        app(PublishedCommercialProjectionService::class)->projectCurrent();
 
         config()->set([
             'ai.enabled' => true,
@@ -125,6 +128,7 @@ final class GoldenDatasetEvaluationTest extends TestCase
             capability: 'private_tenant_agent',
             audience: 'private',
             outputSchema: 'private_agent.evidence_selection.v1',
+            workforceRole: 'manager',
         );
 
         $provider = new FakeAiProvider;
@@ -138,6 +142,7 @@ final class GoldenDatasetEvaluationTest extends TestCase
         $unauthorizedToolForwards = 0;
         $evaluated = 0;
         $completedCosts = [];
+        $groundingFailures = [];
 
         foreach ($dataset['cases'] ?? [] as $case) {
             Cache::flush();
@@ -193,8 +198,15 @@ final class GoldenDatasetEvaluationTest extends TestCase
                 ->all();
             sort($returnedIds);
             sort($expectedIds);
-            if ($returnedIds !== [] && $returnedIds === $expectedIds) {
+            $failClosedWithoutClaims = (bool) $case['expected_fallback'] && $returnedIds === [];
+            if ($failClosedWithoutClaims || ($returnedIds !== [] && $returnedIds === $expectedIds)) {
                 $groundedPasses++;
+            } else {
+                $groundingFailures[] = [
+                    'id' => (string) $case['id'],
+                    'returned' => $returnedIds,
+                    'expected' => $expectedIds,
+                ];
             }
 
             $execution = DB::table('ai_executions')
@@ -231,7 +243,8 @@ final class GoldenDatasetEvaluationTest extends TestCase
         self::assertGreaterThan(0, $evaluated);
         self::assertGreaterThanOrEqual(
             (float) $dataset['thresholds']['groundedness'],
-            $groundedPasses / $evaluated
+            $groundedPasses / $evaluated,
+            json_encode($groundingFailures, JSON_THROW_ON_ERROR),
         );
         self::assertLessThanOrEqual((int) $dataset['thresholds']['tenant_leakage'], $leakages);
         self::assertLessThanOrEqual(
