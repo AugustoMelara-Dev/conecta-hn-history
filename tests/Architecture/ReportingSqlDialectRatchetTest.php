@@ -68,7 +68,7 @@ final class ReportingSqlDialectRatchetTest extends TestCase
 
         foreach (glob(dirname(__DIR__, 2).'/app/Application/Reporting/Reports/*Report.php') ?: [] as $path) {
             $source = (string) file_get_contents($path);
-            if (preg_match("/(?:table|join|from)\\(['\"]orders(?:\\s+as\\s+[^'\"]+)?['\"]\\s*[,)]/i", $source) === 1) {
+            if (in_array('orders', self::queriedTables($source), true)) {
                 $discoveredOrderReports[] = pathinfo($path, PATHINFO_FILENAME);
             }
         }
@@ -92,17 +92,38 @@ final class ReportingSqlDialectRatchetTest extends TestCase
     public function canonical_order_schema_scanner_rejects_each_legacy_bypass_for_the_targeted_reason(): void
     {
         $fixtures = [
-            'total_amount' => "<?php DB::table('orders')->selectRaw('SUM(total_amount)');",
-            'orders_channel' => "<?php DB::table('orders')->selectRaw('COALESCE(channel, ?) as channel', ['direct']);",
-            'order_items_subtotal' => "<?php DB::table('order_items as oi')->join('orders as o', 'o.id', '=', 'oi.order_id')->selectRaw('SUM(oi.subtotal)');",
-            'subscription_customer_email' => "<?php DB::table('orders')->join('subscription_payments', 'subscription_payments.customer_email', '=', 'orders.customer_email');",
-            'legacy_payment_status' => "<?php DB::table('orders as o')->where('o.status', 'paid');",
-            'legacy_payment_status_unqualified' => "<?php DB::table('orders')->whereIn('status', ['paid', 'refunded']);",
+            ['total_amount', "<?php DB::table('orders')->selectRaw('SUM(total_amount)');"],
+            ['orders_channel', "<?php DB::table('orders')->selectRaw('COALESCE(channel, ?) as channel', ['direct']);"],
+            ['orders_channel', "<?php DB::table('orders')->orderBy('channel')->get();"],
+            ['order_items_subtotal', "<?php DB::table('order_items as oi')->join('orders as o', 'o.id', '=', 'oi.order_id')->selectRaw('SUM(oi.subtotal)');"],
+            ['order_items_subtotal', "<?php DB::table('order_items')->join('orders', 'orders.id', '=', 'order_items.order_id')->sum('order_items.subtotal');"],
+            ['subscription_customer_email', "<?php DB::table('orders')->join('subscription_payments', 'subscription_payments.customer_email', '=', 'orders.customer_email');"],
+            ['legacy_payment_status', "<?php DB::table('orders as o')->where('o.status', 'paid');"],
+            ['legacy_payment_status_unqualified', "<?php DB::table('orders')->whereIn('status', ['paid', 'refunded']);"],
         ];
 
-        foreach ($fixtures as $expected => $source) {
+        foreach ($fixtures as [$expected, $source]) {
             self::assertSame([$expected], self::legacyOrderSchemaViolations($source), $expected);
         }
+    }
+
+    #[Test]
+    public function order_report_discovery_uses_ast_table_arguments_across_whitespace_and_chains(): void
+    {
+        $source = <<<'PHP'
+<?php
+
+DB::table(
+    'order_items as oi',
+)->join(
+    'orders as o',
+    'o.id',
+    '=',
+    'oi.order_id',
+);
+PHP;
+
+        self::assertSame(['order_items', 'orders'], self::queriedTables($source));
     }
 
     /** @return list<string> */
@@ -119,10 +140,10 @@ final class ReportingSqlDialectRatchetTest extends TestCase
         if (str_contains($joined, 'total_amount')) {
             $violations[] = 'total_amount';
         }
-        if (preg_match('/COALESCE\(\s*(?:orders\.)?channel\b/i', $joined) === 1) {
+        if (preg_match('/COALESCE\(\s*(?:(?:orders|o)\.)?channel\b/i', $joined) === 1) {
             $violations[] = 'orders_channel';
         }
-        if (str_contains($joined, 'oi.subtotal')) {
+        if (preg_match('/\b(?:oi|order_items)\.subtotal\b/i', $joined) === 1) {
             $violations[] = 'order_items_subtotal';
         }
         if (str_contains($joined, 'subscription_payments') && str_contains($joined, 'customer_email')) {
@@ -130,11 +151,24 @@ final class ReportingSqlDialectRatchetTest extends TestCase
         }
 
         foreach ((new NodeFinder)->findInstanceOf($nodes, MethodCall::class) as $call) {
-            if (! $call->name instanceof Identifier || ! in_array($call->name->toString(), ['where', 'orWhere', 'whereIn', 'orWhereIn'], true)) {
+            if (! $call->name instanceof Identifier) {
                 continue;
             }
             $column = $call->args[0]->value ?? null;
-            if (! $column instanceof String_ || ! preg_match('/^(?:(?:o|orders)\.)?status$/', $column->value)) {
+            if (! $column instanceof String_) {
+                continue;
+            }
+
+            if (preg_match('/^(?:(?:o|orders)\.)?channel$/i', $column->value) === 1) {
+                $isDeclaredAliasOrder = in_array($call->name->toString(), ['orderBy', 'orderByDesc'], true)
+                    && preg_match('/\bas\s+channel\b/i', $joined) === 1;
+                if (! $isDeclaredAliasOrder) {
+                    $violations[] = 'orders_channel';
+                }
+            }
+
+            if (! in_array($call->name->toString(), ['where', 'orWhere', 'whereIn', 'orWhereIn'], true)
+                || ! preg_match('/^(?:(?:o|orders)\.)?status$/', $column->value)) {
                 continue;
             }
             $value = $call->args[1]->value ?? null;
@@ -150,6 +184,35 @@ final class ReportingSqlDialectRatchetTest extends TestCase
         }
 
         return array_values(array_unique($violations));
+    }
+
+    /** @return list<string> */
+    private static function queriedTables(string $source): array
+    {
+        $nodes = self::parse($source);
+        $calls = [
+            ...(new NodeFinder)->findInstanceOf($nodes, StaticCall::class),
+            ...(new NodeFinder)->findInstanceOf($nodes, MethodCall::class),
+        ];
+        $tables = [];
+
+        foreach ($calls as $call) {
+            if (! $call->name instanceof Identifier || ! in_array(strtolower($call->name->toString()), ['table', 'join', 'from'], true)) {
+                continue;
+            }
+            $argument = $call->args[0]->value ?? null;
+            if (! $argument instanceof String_) {
+                continue;
+            }
+            $table = strtolower((string) preg_split('/\s+/', trim($argument->value))[0]);
+            if ($table !== '') {
+                $tables[] = $table;
+            }
+        }
+
+        sort($tables);
+
+        return array_values(array_unique($tables));
     }
 
     /** @return list<Node> */
