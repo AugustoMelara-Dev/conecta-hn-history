@@ -290,6 +290,48 @@ it('proves the AST ratchet detects bypass shapes while ignoring comments and imp
         'app/Tests/Fixtures/UnrelatedFactory.php',
     ))->toBeEmpty('makeImporter on an unrelated object must not create an import-boundary false positive');
 
+    $importScopeIsolation = <<<'PHP'
+        <?php
+        use App\Application\Imports\ImportService;
+        use App\Application\Imports\Imports\ContactsImport as ContactCsv;
+
+        final class ImportScopeA
+        {
+            public function seed(): void
+            {
+                $this->service = app(ImportService::class);
+                $service = app(ImportService::class);
+                $candidate = new ContactCsv('tenant');
+            }
+
+            public function check(): void
+            {
+                $this->service = new stdClass();
+                $service = new stdClass();
+                $candidate = new stdClass();
+                $service->makeImporter('contacts', 'tenant');
+                $candidate->model([]);
+            }
+        }
+
+        final class ImportScopeB
+        {
+            public function check(): void
+            {
+                $this->service = new stdClass();
+                $service = new stdClass();
+                $candidate = new stdClass();
+                $service->makeImporter('companies', 'tenant');
+                $candidate->model([]);
+            }
+        }
+        PHP;
+
+    expect(dovraCrmImportSourceViolations(
+        $importScopeIsolation,
+        'app/Tests/Fixtures/ImportScopeIsolation.php',
+    ))->toBeEmpty('import receiver state must be isolated by class and method scope');
+
     $webToLeadStateBypass = <<<'PHP'
         <?php
         use App\Models\Contact;
@@ -347,6 +389,7 @@ it('proves the AST ratchet detects bypass shapes while ignoring comments and imp
     $webToLeadValidStatic = <<<'PHP'
         <?php
         use App\Models\Contact;
+        use App\Models\CrmCompany;
         use App\Models\CrmActivity;
         use Illuminate\Support\Facades\DB;
 
@@ -354,6 +397,10 @@ it('proves the AST ratchet detects bypass shapes while ignoring comments and imp
         {
             DB::transaction(function (): void {
                 $tenantId = \Filament\Facades\Filament::getTenant()?->getKey();
+                CrmCompany::firstOrCreate(
+                    ['tenant_id' => $tenantId, 'name' => 'Acme'],
+                    ['tenant_id' => $tenantId, 'name' => 'Acme'],
+                );
                 Contact::create(['tenant_id' => $tenantId]);
                 CrmActivity::create(['tenant_id' => $tenantId]);
             });
@@ -363,13 +410,20 @@ it('proves the AST ratchet detects bypass shapes while ignoring comments and imp
     $webToLeadInvalidInstance = <<<'PHP'
         <?php
         use App\Models\Contact;
+        use App\Models\CrmCompany;
+        use App\Models\CrmActivity;
         use Illuminate\Support\Facades\DB;
 
         function submit(): void
         {
             DB::transaction(function (): void {
                 $tenantId = \Filament\Facades\Filament::getTenant()?->getKey();
+                CrmCompany::firstOrCreate(
+                    ['tenant_id' => $tenantId, 'name' => 'Acme'],
+                    ['tenant_id' => $tenantId, 'name' => 'Acme'],
+                );
                 Contact::create(['tenant_id' => $tenantId]);
+                CrmActivity::create(['tenant_id' => $tenantId]);
                 $contact = Contact::find($id);
                 $contact->update(['job_title' => 'drift']);
             });
@@ -379,13 +433,20 @@ it('proves the AST ratchet detects bypass shapes while ignoring comments and imp
     $webToLeadInvalidQuery = <<<'PHP'
         <?php
         use App\Models\Contact;
+        use App\Models\CrmCompany;
+        use App\Models\CrmActivity;
         use Illuminate\Support\Facades\DB;
 
         function submit(): void
         {
             DB::transaction(function (): void {
                 $tenantId = \Filament\Facades\Filament::getTenant()?->getKey();
+                CrmCompany::firstOrCreate(
+                    ['tenant_id' => $tenantId, 'name' => 'Acme'],
+                    ['tenant_id' => $tenantId, 'name' => 'Acme'],
+                );
                 Contact::create(['tenant_id' => $tenantId]);
+                CrmActivity::create(['tenant_id' => $tenantId]);
                 $query = Contact::query()->where('id', $id);
                 $query->update(['job_title' => 'drift']);
             });
@@ -395,13 +456,20 @@ it('proves the AST ratchet detects bypass shapes while ignoring comments and imp
     $webToLeadInvalidTable = <<<'PHP'
         <?php
         use App\Models\Contact;
+        use App\Models\CrmCompany;
+        use App\Models\CrmActivity;
         use Illuminate\Support\Facades\DB;
 
         function submit(): void
         {
             DB::transaction(function (): void {
                 $tenantId = \Filament\Facades\Filament::getTenant()?->getKey();
+                CrmCompany::firstOrCreate(
+                    ['tenant_id' => $tenantId, 'name' => 'Acme'],
+                    ['tenant_id' => $tenantId, 'name' => 'Acme'],
+                );
                 Contact::create(['tenant_id' => $tenantId]);
+                CrmActivity::create(['tenant_id' => $tenantId]);
                 DB::table('crm_contacts')->where('id', $id)->update(['job_title' => 'drift']);
             });
         }
@@ -410,13 +478,20 @@ it('proves the AST ratchet detects bypass shapes while ignoring comments and imp
     $webToLeadInvalidRelation = <<<'PHP'
         <?php
         use App\Models\Contact;
+        use App\Models\CrmCompany;
+        use App\Models\CrmActivity;
         use Illuminate\Support\Facades\DB;
 
         function submit(): void
         {
             DB::transaction(function (): void {
                 $tenantId = \Filament\Facades\Filament::getTenant()?->getKey();
+                CrmCompany::firstOrCreate(
+                    ['tenant_id' => $tenantId, 'name' => 'Acme'],
+                    ['tenant_id' => $tenantId, 'name' => 'Acme'],
+                );
                 Contact::create(['tenant_id' => $tenantId]);
+                CrmActivity::create(['tenant_id' => $tenantId]);
                 $contact = Contact::find($id);
                 $contact->tags()->sync($tagIds);
             });
@@ -428,6 +503,55 @@ it('proves the AST ratchet detects bypass shapes while ignoring comments and imp
     expect(dovraCrmWebToLeadSentinel($webToLeadInvalidQuery, true)['ok'])->toBeFalse();
     expect(dovraCrmWebToLeadSentinel($webToLeadInvalidTable, true)['ok'])->toBeFalse();
     expect(dovraCrmWebToLeadSentinel($webToLeadInvalidRelation, true)['ok'])->toBeFalse();
+
+    $webToLeadMaskedDelete = <<<'PHP'
+        <?php
+        use App\Models\Contact;
+        use App\Models\CrmCompany;
+        use App\Models\CrmActivity;
+        use Illuminate\Support\Facades\DB;
+
+        function submit(): void
+        {
+            DB::transaction(function (): void {
+                $tenantId = \Filament\Facades\Filament::getTenant()?->getKey();
+                CrmCompany::firstOrCreate(
+                    ['tenant_id' => $tenantId, 'name' => 'Acme'],
+                    ['tenant_id' => $tenantId, 'name' => 'Acme'],
+                );
+                Contact::create(['tenant_id' => $tenantId]);
+                CrmActivity::create(['tenant_id' => $tenantId]);
+                $contact = Contact::find($id);
+                $contact->delete();
+            });
+        }
+        PHP;
+
+    $webToLeadScopedRelation = <<<'PHP'
+        <?php
+        use App\Models\Contact;
+        use App\Models\CrmCompany;
+        use App\Models\CrmActivity;
+        use Illuminate\Support\Facades\DB;
+
+        function submit(): void
+        {
+            DB::transaction(function (): void {
+                $tenantId = \Filament\Facades\Filament::getTenant()?->getKey();
+                CrmCompany::firstOrCreate(
+                    ['tenant_id' => $tenantId, 'name' => 'Acme'],
+                    ['tenant_id' => $tenantId, 'name' => 'Acme'],
+                );
+                Contact::create(['tenant_id' => $tenantId]);
+                CrmActivity::create(['tenant_id' => $tenantId]);
+                $contact = Contact::find($id);
+                $contact->tags()->where('tenant_id', $tenantId)->sync($tagIds);
+            });
+        }
+        PHP;
+
+    expect(dovraCrmWebToLeadSentinel($webToLeadMaskedDelete, true)['ok'])->toBeFalse();
+    expect(dovraCrmWebToLeadSentinel($webToLeadScopedRelation, true)['ok'])->toBeFalse();
 });
 
 /** @return list<string> */
@@ -755,7 +879,21 @@ function dovraCrmWebToLeadSentinel(string $sourceOrPath, bool $sourceInput = fal
     $traverser->addVisitor($visitor);
     $traverser->traverse($ast);
 
-    if ($collector->transactions !== 1 || $collector->operationContexts === []) {
+    $approvedWrites = [
+        'crm_companies:firstOrCreate' => 1,
+        'crm_contacts:create' => 1,
+        'crm_activities:create' => 1,
+    ];
+    $actualWrites = [];
+    foreach ($collector->operationContexts as $operation) {
+        $key = $operation['receiver'].':'.$operation['operation'];
+        $actualWrites[$key] = ($actualWrites[$key] ?? 0) + 1;
+    }
+
+    if ($collector->transactions !== 1 || $actualWrites !== $approvedWrites) {
+        return ['ok' => false, 'reason' => 'WebToLead canonical mutation shape drifted from the approved company/contact/activity create signatures'];
+    }
+    if ($collector->operationContexts === []) {
         return ['ok' => false, 'reason' => 'expected canonical intake operations inside one transaction'];
     }
     foreach ($collector->operationContexts as $operation) {
@@ -1184,6 +1322,12 @@ function dovraCrmImportSourceViolations(string $source, string $relative): array
         private array $serviceProperties = [];
 
         /** @var array<string, bool> */
+        private array $importProperties = [];
+
+        /** @var array<string, bool> */
+        private array $templateProperties = [];
+
+        /** @var array<string, bool> */
         private array $importReceivers = [];
 
         /** @var array<string, bool> */
@@ -1192,6 +1336,35 @@ function dovraCrmImportSourceViolations(string $source, string $relative): array
         private string $method = '';
 
         private bool $templateHeadersSeen = false;
+
+        /**
+         * Receiver maps are method-local. Property maps are class-local. The
+         * explicit stacks make nested classes/methods restore their prior
+         * state instead of leaking symbols into sibling scopes.
+         *
+         * @var list<array{
+         *     serviceProperties: array<string, bool>,
+         *     importProperties: array<string, bool>,
+         *     templateProperties: array<string, bool>,
+         *     serviceReceivers: array<string, bool>,
+         *     importReceivers: array<string, bool>,
+         *     templateReceivers: array<string, bool>,
+         *     method: string,
+         *     templateHeadersSeen: bool
+         * }>
+         */
+        private array $classScopes = [];
+
+        /**
+         * @var list<array{
+         *     serviceReceivers: array<string, bool>,
+         *     importReceivers: array<string, bool>,
+         *     templateReceivers: array<string, bool>,
+         *     method: string,
+         *     templateHeadersSeen: bool
+         * }>
+         */
+        private array $methodScopes = [];
 
         public function __construct(private readonly string $relative) {}
 
@@ -1203,8 +1376,39 @@ function dovraCrmImportSourceViolations(string $source, string $relative): array
                 }
             }
 
+            if ($node instanceof Node\Stmt\Class_) {
+                $this->classScopes[] = [
+                    'serviceProperties' => $this->serviceProperties,
+                    'importProperties' => $this->importProperties,
+                    'templateProperties' => $this->templateProperties,
+                    'serviceReceivers' => $this->serviceReceivers,
+                    'importReceivers' => $this->importReceivers,
+                    'templateReceivers' => $this->templateReceivers,
+                    'method' => $this->method,
+                    'templateHeadersSeen' => $this->templateHeadersSeen,
+                ];
+                $this->serviceProperties = [];
+                $this->importProperties = [];
+                $this->templateProperties = [];
+                $this->serviceReceivers = [];
+                $this->importReceivers = [];
+                $this->templateReceivers = [];
+                $this->method = '';
+                $this->templateHeadersSeen = false;
+            }
+
             if ($node instanceof Node\Stmt\ClassMethod) {
+                $this->methodScopes[] = [
+                    'serviceReceivers' => $this->serviceReceivers,
+                    'importReceivers' => $this->importReceivers,
+                    'templateReceivers' => $this->templateReceivers,
+                    'method' => $this->method,
+                    'templateHeadersSeen' => $this->templateHeadersSeen,
+                ];
                 $this->method = $node->name->toString();
+                $this->serviceReceivers = [];
+                $this->importReceivers = [];
+                $this->templateReceivers = [];
                 $this->templateHeadersSeen = false;
                 foreach ($node->params as $parameter) {
                     if ($parameter->var instanceof Node\Expr\Variable
@@ -1263,16 +1467,16 @@ function dovraCrmImportSourceViolations(string $source, string $relative): array
             if ($node instanceof Node\Expr\Assign) {
                 $symbol = $this->symbol($node->var);
                 if ($symbol !== null) {
-                    if ($this->isServiceReceiver($node->expr)) {
-                        $this->serviceReceivers[$symbol] = true;
-                    }
-                    if ($this->isImportReceiver($node->expr)) {
-                        $this->importReceivers[$symbol] = true;
-                    }
-                    if ($this->isTemplateReceiver($node->expr)) {
-                        $this->importReceivers[$symbol] = true;
-                        $this->templateReceivers[$symbol] = true;
-                    }
+                    $isServiceReceiver = $this->isServiceReceiver($node->expr);
+                    $isImportReceiver = $this->isImportReceiver($node->expr);
+                    $isTemplateReceiver = $this->isTemplateReceiver($node->expr);
+
+                    $this->assignReceiverState(
+                        $symbol,
+                        $isServiceReceiver,
+                        $isImportReceiver || $isTemplateReceiver,
+                        $isTemplateReceiver,
+                    );
                 }
             }
 
@@ -1282,11 +1486,81 @@ function dovraCrmImportSourceViolations(string $source, string $relative): array
                     && ! $this->templateHeadersSeen) {
                     $this->violations[] = $this->relative.':template path lacks templateHeaders';
                 }
-                $this->method = '';
-                $this->templateHeadersSeen = false;
+
+                $scope = array_pop($this->methodScopes);
+                if ($scope !== null) {
+                    $this->serviceReceivers = $scope['serviceReceivers'];
+                    $this->importReceivers = $scope['importReceivers'];
+                    $this->templateReceivers = $scope['templateReceivers'];
+                    $this->method = $scope['method'];
+                    $this->templateHeadersSeen = $scope['templateHeadersSeen'];
+                } else {
+                    $this->serviceReceivers = [];
+                    $this->importReceivers = [];
+                    $this->templateReceivers = [];
+                    $this->method = '';
+                    $this->templateHeadersSeen = false;
+                }
+            }
+
+            if ($node instanceof Node\Stmt\Class_) {
+                $scope = array_pop($this->classScopes);
+                if ($scope !== null) {
+                    $this->serviceProperties = $scope['serviceProperties'];
+                    $this->importProperties = $scope['importProperties'];
+                    $this->templateProperties = $scope['templateProperties'];
+                    $this->serviceReceivers = $scope['serviceReceivers'];
+                    $this->importReceivers = $scope['importReceivers'];
+                    $this->templateReceivers = $scope['templateReceivers'];
+                    $this->method = $scope['method'];
+                    $this->templateHeadersSeen = $scope['templateHeadersSeen'];
+                }
             }
 
             return null;
+        }
+
+        private function assignReceiverState(
+            string $symbol,
+            bool $isServiceReceiver,
+            bool $isImportReceiver,
+            bool $isTemplateReceiver,
+        ): void {
+            if (str_starts_with($symbol, '$this->')) {
+                if ($isServiceReceiver) {
+                    $this->serviceProperties[$symbol] = true;
+                } else {
+                    unset($this->serviceProperties[$symbol]);
+                }
+                if ($isImportReceiver) {
+                    $this->importProperties[$symbol] = true;
+                } else {
+                    unset($this->importProperties[$symbol]);
+                }
+                if ($isTemplateReceiver) {
+                    $this->templateProperties[$symbol] = true;
+                } else {
+                    unset($this->templateProperties[$symbol]);
+                }
+
+                return;
+            }
+
+            if ($isServiceReceiver) {
+                $this->serviceReceivers[$symbol] = true;
+            } else {
+                unset($this->serviceReceivers[$symbol]);
+            }
+            if ($isImportReceiver) {
+                $this->importReceivers[$symbol] = true;
+            } else {
+                unset($this->importReceivers[$symbol]);
+            }
+            if ($isTemplateReceiver) {
+                $this->templateReceivers[$symbol] = true;
+            } else {
+                unset($this->templateReceivers[$symbol]);
+            }
         }
 
         private function symbol(Node $node): ?string
@@ -1328,7 +1602,7 @@ function dovraCrmImportSourceViolations(string $source, string $relative): array
         {
             $symbol = $this->symbol($node);
             if ($symbol !== null) {
-                return isset($this->templateReceivers[$symbol]);
+                return isset($this->templateReceivers[$symbol]) || isset($this->templateProperties[$symbol]);
             }
 
             return $this->isMakeImporterExpression($node);
@@ -1346,7 +1620,7 @@ function dovraCrmImportSourceViolations(string $source, string $relative): array
         {
             $symbol = $this->symbol($node);
             if ($symbol !== null) {
-                return isset($this->importReceivers[$symbol]);
+                return isset($this->importReceivers[$symbol]) || isset($this->importProperties[$symbol]);
             }
             if ($this->isMakeImporterExpression($node)) {
                 return true;
@@ -1371,7 +1645,8 @@ function dovraCrmImportSourceViolations(string $source, string $relative): array
 
             $symbol = $this->symbol($node);
 
-            return $symbol !== null && isset($this->templateReceivers[$symbol]);
+            return $symbol !== null
+                && (isset($this->templateReceivers[$symbol]) || isset($this->templateProperties[$symbol]));
         }
     };
 
@@ -1501,9 +1776,12 @@ final class DovraCrmCanonicalAstCollector extends NodeVisitorAbstract
     private array $scopes = [];
 
     private const PERSISTENCE = [
-        'create', 'createOrFirst', 'firstOrCreate', 'updateOrCreate', 'forceCreate', 'update', 'save',
-        'fill', 'forceFill', 'upsert', 'insert', 'insertOrIgnore', 'associate', 'sync',
-        'syncWithoutDetaching', 'attach', 'detach',
+        'create', 'createOrFirst', 'firstOrCreate', 'updateOrCreate', 'forceCreate', 'createQuietly',
+        'update', 'updateQuietly', 'save', 'saveQuietly', 'delete', 'deleteQuietly', 'forceDelete',
+        'forceDeleteQuietly', 'restore', 'restoreQuietly', 'push', 'pushQuietly', 'increment', 'decrement',
+        'incrementQuietly', 'decrementQuietly', 'touch', 'touchQuietly', 'fill', 'forceFill', 'upsert',
+        'insert', 'insertGetId', 'insertOrIgnore', 'truncate', 'associate', 'sync', 'syncWithoutDetaching',
+        'attach', 'detach',
     ];
 
     private const SENSITIVE = ['tenant_id', 'company_id', 'contact_id', 'deal_id', 'owner_id', 'tag_id'];
@@ -1858,6 +2136,14 @@ final class DovraCrmCanonicalAstCollector extends NodeVisitorAbstract
     /** @param list<string> $keys */
     private function isSensitive(string $method, array $keys, string $receiver): bool
     {
+        if (in_array($method, [
+            'delete', 'deleteQuietly', 'forceDelete', 'forceDeleteQuietly', 'restore', 'restoreQuietly',
+        ], true)) {
+            // Delete/restore remain policy-scoped outside this writer contract;
+            // WebToLead still rejects them through its exact operation shape.
+            return false;
+        }
+
         // Every canonical persistence call is a writer boundary. Retained
         // lifecycle/delete/tag mutations are filtered by isRetainedBulkMutation
         // after this strict classification; safe-looking fields must not hide a
