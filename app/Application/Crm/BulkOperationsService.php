@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace App\Application\Crm;
 
 use App\Models\Contact;
-use App\Models\CrmActivity;
-use App\Models\CrmDeal;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -22,15 +20,14 @@ class BulkOperationsService
     /**
      * @param array<int, string> $contactIds
      */
-    public function bulkAssignOwner(array $contactIds, string $ownerId, string $tenantId): int
+    public function bulkAssignOwner(array $contactIds, string $ownerId, string $tenantId, string $actorId): int
     {
-        return DB::table('crm_contacts')
-            ->whereIn('id', $contactIds)
-            ->where('tenant_id', $tenantId)
-            ->update([
-                'owner_id' => $ownerId,
-                'updated_at' => now(),
-            ]);
+        return app(CanonicalCrmEntityWriter::class)->bulkAssignContactOwner(
+            tenantId: $tenantId,
+            actorId: $actorId,
+            contactIds: $contactIds,
+            ownerId: $ownerId,
+        );
     }
 
     /**

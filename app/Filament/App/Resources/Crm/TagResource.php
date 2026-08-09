@@ -23,6 +23,7 @@ use Filament\Tables\Columns\ColorColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Validation\Rules\Unique;
 
 class TagResource extends Resource
 {
@@ -54,7 +55,13 @@ class TagResource extends Resource
                             ->label('Slug')
                             ->required()
                             ->maxLength(100)
-                            ->unique(ignoreRecord: true),
+                            ->unique(
+                                ignoreRecord: true,
+                                modifyRuleUsing: fn (Unique $rule): Unique => $rule->where(
+                                    'tenant_id',
+                                    Filament::getTenant()?->getKey(),
+                                ),
+                            ),
                         ColorPicker::make('color')->label('Color')->default('#4F46E5'),
                         Select::make('type')
                             ->label('Tipo')

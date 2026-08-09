@@ -4,19 +4,38 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources\Crm\ActivityResource\Pages;
 
+use App\Application\Crm\CanonicalCrmEntityWriter;
 use App\Filament\App\Resources\Crm\ActivityResource;
+use App\Models\Tenant;
+use App\Models\User;
+use Filament\Facades\Filament;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Database\Eloquent\Model;
 
 class CreateActivity extends CreateRecord
 {
     protected static string $resource = ActivityResource::class;
 
-    protected function mutateFormDataBeforeCreate(array $data): array
+    protected function handleRecordCreation(array $data): Model
     {
-        $tenant = \Filament\Facades\Filament::getTenant();
-        if ($tenant) {
-            $data['tenant_id'] = $tenant->getKey();
+        [$tenant, $actor] = $this->authority();
+
+        return app(CanonicalCrmEntityWriter::class)->createActivity(
+            (string) $tenant->getKey(),
+            (string) $actor->getKey(),
+            $data,
+        );
+    }
+
+    /** @return array{Tenant, User} */
+    private function authority(): array
+    {
+        $tenant = Filament::getTenant();
+        $actor = Filament::auth()->user();
+        if (! $tenant instanceof Tenant || ! $actor instanceof User) {
+            throw new \RuntimeException('CRM activity mutation requires tenant and actor context.');
         }
-        return $data;
+
+        return [$tenant, $actor];
     }
 }
