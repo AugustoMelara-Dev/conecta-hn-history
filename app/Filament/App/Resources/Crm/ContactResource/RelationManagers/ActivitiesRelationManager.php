@@ -17,11 +17,10 @@ use Filament\Actions\EditAction;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
-use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
@@ -33,7 +32,7 @@ class ActivitiesRelationManager extends RelationManager
 
     protected static ?string $title = 'Actividades';
 
-    protected static string | \BackedEnum | null $icon = 'heroicon-o-calendar-days';
+    protected static string|\BackedEnum|null $icon = 'heroicon-o-calendar-days';
 
     public function form(Schema $schema): Schema
     {

@@ -3,12 +3,23 @@
 declare(strict_types=1);
 
 use App\Application\Crm\BulkOperationsService;
+use App\Domain\Access\Enums\Role;
 use App\Models\Contact;
 use App\Models\Tenant;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+uses(RefreshDatabase::class);
 
 it('BulkOperationsService can assign owner to multiple contacts', function () {
-    $tenant = Tenant::factory()->create();
-    $owner = \App\Models\User::factory()->create(['tenant_id' => $tenant->id]);
+    $actor = User::factory()->tenantOwner()->create();
+    $tenant = Tenant::factory()->forUser($actor)->create();
+    $tenant->memberships()->create([
+        'user_id' => $actor->getKey(),
+        'role' => Role::OWNER,
+        'status' => 'active',
+        'accepted_at' => now(),
+    ]);
 
     $contacts = collect([
         Contact::create(['tenant_id' => $tenant->id, 'first_name' => 'A']),
@@ -16,16 +27,17 @@ it('BulkOperationsService can assign owner to multiple contacts', function () {
         Contact::create(['tenant_id' => $tenant->id, 'first_name' => 'C']),
     ]);
 
-    $count = (new BulkOperationsService())->bulkAssignOwner(
+    $count = (new BulkOperationsService)->bulkAssignOwner(
         $contacts->pluck('id')->toArray(),
-        $owner->id,
-        $tenant->id,
+        $actor->getKey(),
+        $tenant->getKey(),
+        $actor->getKey(),
     );
 
     expect($count)->toBe(3);
     foreach ($contacts as $c) {
         $c->refresh();
-        expect($c->owner_id)->toBe($owner->id);
+        expect($c->owner_id)->toBe($actor->getKey());
     }
 });
 
@@ -37,7 +49,7 @@ it('BulkOperationsService bulk update lifecycle stage', function () {
         Contact::create(['tenant_id' => $tenant->id, 'first_name' => 'B', 'lifecycle_stage' => 'lead']),
     ]);
 
-    $count = (new BulkOperationsService())->bulkUpdateLifecycleStage(
+    $count = (new BulkOperationsService)->bulkUpdateLifecycleStage(
         $contacts->pluck('id')->toArray(),
         'qualified',
         $tenant->id,
@@ -56,7 +68,7 @@ it('BulkOperationsService bulk add tag works idempotently', function () {
         'tags' => ['vip'],
     ]);
 
-    $service = new BulkOperationsService();
+    $service = new BulkOperationsService;
 
     // Adding same tag twice should only count once
     $count1 = $service->bulkAddTag([$contact->id], 'vip', $tenant->id);

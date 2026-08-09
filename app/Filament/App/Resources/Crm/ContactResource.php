@@ -34,6 +34,8 @@ use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema as DatabaseSchema;
 
 class ContactResource extends Resource
 {
@@ -338,21 +340,21 @@ class ContactResource extends Resource
             ->where(function (Builder $users) use ($tenant): void {
                 $users->where('users.id', $tenant->user_id);
 
-                if (! \Illuminate\Support\Facades\Schema::hasTable('tenant_memberships')) {
+                if (! DatabaseSchema::hasTable('tenant_memberships')) {
                     return;
                 }
 
-                $users->orWhereExists(function ($membership) use ($tenant): void {
-                    $membership
-                        ->selectRaw('1')
-                        ->from('tenant_memberships')
-                        ->whereColumn('tenant_memberships.user_id', 'users.id')
-                        ->where('tenant_memberships.tenant_id', $tenant->getKey())
-                        ->where('tenant_memberships.status', 'active')
-                        ->whereNotNull('tenant_memberships.accepted_at')
-                        ->whereNull('tenant_memberships.suspended_at')
-                        ->whereNull('tenant_memberships.revoked_at');
-                });
+                $eligibleMemberships = DB::table('tenant_memberships')
+                    ->select('user_id')
+                    ->where('tenant_id', $tenant->getKey())
+                    ->where('status', 'active')
+                    ->whereNotNull('accepted_at')
+                    ->whereNull('suspended_at')
+                    ->whereNull('revoked_at')
+                    ->groupBy('user_id')
+                    ->havingRaw('COUNT(*) = 1');
+
+                $users->orWhereIn('users.id', $eligibleMemberships);
             })
             ->orderBy('name');
 

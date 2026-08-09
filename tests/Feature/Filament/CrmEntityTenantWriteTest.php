@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Filament;
 
-use App\Domain\Crm\Enums\DealStatus;
+use App\Application\Crm\BulkOperationsService;
 use App\Domain\Access\Enums\Role;
+use App\Domain\Crm\Enums\DealStatus;
 use App\Domain\Shared\Services\TenantContext;
 use App\Filament\App\Resources\Crm\ActivityResource\Pages\CreateActivity;
 use App\Filament\App\Resources\Crm\ActivityResource\Pages\EditActivity;
@@ -16,21 +17,22 @@ use App\Filament\App\Resources\Crm\ContactResource\Pages\EditContact;
 use App\Filament\App\Resources\Crm\ContactResource\RelationManagers\ActivitiesRelationManager;
 use App\Filament\App\Resources\Crm\TagResource\Pages\CreateTag;
 use App\Filament\App\Resources\Crm\TagResource\Pages\EditTag;
-use App\Application\Crm\BulkOperationsService;
 use App\Models\Contact;
+use App\Models\CrmActivity;
 use App\Models\CrmCompany;
 use App\Models\CrmDeal;
 use App\Models\CrmPipeline;
 use App\Models\CrmStage;
-use App\Models\Tenant;
 use App\Models\Tag;
+use App\Models\Tenant;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Tests\TestCase;
-use Illuminate\Validation\ValidationException;
 
 final class CrmEntityTenantWriteTest extends TestCase
 {
@@ -184,7 +186,7 @@ final class CrmEntityTenantWriteTest extends TestCase
             'first_name' => 'Bulk contact',
             'lifecycle_stage' => 'lead',
         ]);
-        $activity = \App\Models\CrmActivity::query()->forceCreate([
+        $activity = CrmActivity::query()->forceCreate([
             'tenant_id' => $tenant->getKey(),
             'type' => 'call',
             'subject' => 'Before edit',
@@ -227,6 +229,62 @@ final class CrmEntityTenantWriteTest extends TestCase
         }
     }
 
+    public function test_bulk_owner_assignment_rejects_inactive_foreign_malformed_and_mixed_inputs_atomically(): void
+    {
+        [$actor, $tenant] = $this->ownerTenant('tenant-a');
+        [$foreignOwner, $foreignTenant] = $this->ownerTenant('tenant-b');
+        $inactiveOwner = User::factory()->create();
+        $tenant->memberships()->create([
+            'user_id' => $inactiveOwner->getKey(),
+            'role' => Role::OPERATOR,
+            'status' => 'active',
+            'accepted_at' => now(),
+            'suspended_at' => now(),
+        ]);
+        $localContact = Contact::query()->forceCreate([
+            'tenant_id' => $tenant->getKey(),
+            'first_name' => 'Atomic bulk contact',
+            'lifecycle_stage' => 'lead',
+        ]);
+        $foreignContact = Contact::query()->forceCreate([
+            'tenant_id' => $foreignTenant->getKey(),
+            'first_name' => 'Foreign atomic bulk contact',
+            'lifecycle_stage' => 'lead',
+        ]);
+        $service = app(BulkOperationsService::class);
+
+        foreach ([
+            [$inactiveOwner->getKey(), 'inactive owner'],
+            [$foreignOwner->getKey(), 'foreign owner'],
+            ['malformed-owner', 'malformed owner'],
+        ] as [$ownerId, $label]) {
+            try {
+                $service->bulkAssignOwner(
+                    [$localContact->getKey()],
+                    (string) $ownerId,
+                    (string) $tenant->getKey(),
+                    (string) $actor->getKey(),
+                );
+                self::fail("Bulk assignment must reject {$label}.");
+            } catch (ValidationException) {
+                self::assertNull($localContact->fresh()->owner_id);
+            }
+        }
+
+        try {
+            $service->bulkAssignOwner(
+                [$localContact->getKey(), $foreignContact->getKey()],
+                (string) $actor->getKey(),
+                (string) $tenant->getKey(),
+                (string) $actor->getKey(),
+            );
+            self::fail('Mixed-tenant bulk assignment must reject all rows atomically.');
+        } catch (ValidationException) {
+            self::assertNull($localContact->fresh()->owner_id);
+            self::assertNull($foreignContact->fresh()->owner_id);
+        }
+    }
+
     public function test_relationship_and_owner_options_are_current_tenant_scoped(): void
     {
         [$actor, $tenant] = $this->ownerTenant('tenant-a');
@@ -239,10 +297,23 @@ final class CrmEntityTenantWriteTest extends TestCase
             'tenant_id' => $foreignTenant->getKey(),
             'name' => 'Foreign option',
         ]);
+        $localContact = Contact::query()->forceCreate([
+            'tenant_id' => $tenant->getKey(),
+            'first_name' => 'Local activity option',
+            'lifecycle_stage' => 'lead',
+        ]);
+        $foreignContact = Contact::query()->forceCreate([
+            'tenant_id' => $foreignTenant->getKey(),
+            'first_name' => 'Foreign activity option',
+            'lifecycle_stage' => 'lead',
+        ]);
+        $localDeal = $this->deal($tenant, 'Local activity deal');
+        $foreignDeal = $this->deal($foreignTenant, 'Foreign activity deal');
         $accepted = User::factory()->create();
         $pending = User::factory()->create();
         $suspended = User::factory()->create();
         $revoked = User::factory()->create();
+        $ambiguous = User::factory()->create();
         foreach ([
             [$accepted, ['accepted_at' => now()]],
             [$pending, ['accepted_at' => null]],
@@ -256,6 +327,21 @@ final class CrmEntityTenantWriteTest extends TestCase
                 ...$state,
             ]);
         }
+        try {
+            foreach (range(1, 2) as $_) {
+                $tenant->memberships()->create([
+                    'user_id' => $ambiguous->getKey(),
+                    'role' => Role::OPERATOR,
+                    'status' => 'active',
+                    'accepted_at' => now(),
+                ]);
+            }
+        } catch (QueryException) {
+            // The local schema's unique membership key prevents this ambiguity fixture;
+            // production preflight still requires the exact-one guard.
+            $tenant->memberships()->where('user_id', $ambiguous->getKey())->delete();
+            $ambiguous = null;
+        }
         $this->setPanelContext($actor, $tenant);
 
         Livewire::test(CreateContact::class)
@@ -265,14 +351,15 @@ final class CrmEntityTenantWriteTest extends TestCase
                 return isset($options[$localCompany->getKey()])
                     && ! isset($options[$foreignCompany->getKey()]);
             })
-            ->assertFormFieldExists('owner_id', null, function (Select $field) use ($actor, $accepted, $pending, $suspended, $revoked): bool {
+            ->assertFormFieldExists('owner_id', null, function (Select $field) use ($actor, $accepted, $pending, $suspended, $revoked, $ambiguous): bool {
                 $options = $field->getOptions() ?? [];
 
                 return isset($options[$actor->getKey()])
                     && isset($options[$accepted->getKey()])
                     && ! isset($options[$pending->getKey()])
                     && ! isset($options[$suspended->getKey()])
-                    && ! isset($options[$revoked->getKey()]);
+                    && ! isset($options[$revoked->getKey()])
+                    && ($ambiguous === null || ! isset($options[$ambiguous->getKey()]));
             });
 
         Livewire::test(CreateContact::class)
@@ -288,17 +375,83 @@ final class CrmEntityTenantWriteTest extends TestCase
             'tenant_id' => $tenant->getKey(),
             'first_name' => 'Inactive owner',
         ]);
+
+        Livewire::test(CreateActivity::class)
+            ->assertFormFieldExists('contact_id', null, function (Select $field) use ($localContact, $foreignContact): bool {
+                $options = $field->getOptions() ?? [];
+
+                return isset($options[$localContact->getKey()])
+                    && ! isset($options[$foreignContact->getKey()]);
+            })
+            ->assertFormFieldExists('deal_id', null, function (Select $field) use ($localDeal, $foreignDeal): bool {
+                $options = $field->getOptions() ?? [];
+
+                return $field->getLabel() === 'Deal'
+                    && isset($options[$localDeal->getKey()])
+                    && $options[$localDeal->getKey()] === 'Local activity deal'
+                    && ! isset($options[$foreignDeal->getKey()]);
+            })
+            ->assertFormFieldExists('owner_id', null, function (Select $field) use ($actor, $accepted, $pending, $suspended, $revoked, $ambiguous): bool {
+                $options = $field->getOptions() ?? [];
+
+                return isset($options[$actor->getKey()])
+                    && isset($options[$accepted->getKey()])
+                    && ! isset($options[$pending->getKey()])
+                    && ! isset($options[$suspended->getKey()])
+                    && ! isset($options[$revoked->getKey()])
+                    && ($ambiguous === null || ! isset($options[$ambiguous->getKey()]));
+            });
     }
 
     public function test_contact_activity_relation_manager_forces_parent_contact(): void
     {
         [$actor, $tenant] = $this->ownerTenant('tenant-a');
+        [, $foreignTenant] = $this->ownerTenant('tenant-b');
         $contact = Contact::query()->forceCreate([
             'tenant_id' => $tenant->getKey(),
             'first_name' => 'Parent contact',
             'lifecycle_stage' => 'lead',
         ]);
+        $foreignContact = Contact::query()->forceCreate([
+            'tenant_id' => $foreignTenant->getKey(),
+            'first_name' => 'Foreign parent override',
+            'lifecycle_stage' => 'lead',
+        ]);
         $this->setPanelContext($actor, $tenant);
+
+        $relationManager = Livewire::test(ActivitiesRelationManager::class, [
+            'ownerRecord' => $contact,
+            'pageClass' => EditContact::class,
+        ]);
+
+        $activityData = new \ReflectionMethod(ActivitiesRelationManager::class, 'activityData');
+        $activityData->setAccessible(true);
+
+        try {
+            $activityData->invoke($relationManager->instance(), [
+                'type' => 'call',
+                'subject' => 'Tenant override',
+                'tenant_id' => $foreignTenant->getKey(),
+            ], $contact);
+            self::fail('Relation manager must reject submitted tenant overrides.');
+        } catch (\InvalidArgumentException) {
+            self::assertDatabaseMissing('crm_activities', [
+                'subject' => 'Tenant override',
+            ]);
+        }
+
+        try {
+            $activityData->invoke($relationManager->instance(), [
+                'type' => 'call',
+                'subject' => 'Contact override',
+                'contact_id' => $foreignContact->getKey(),
+            ], $contact);
+            self::fail('Relation manager must reject submitted contact overrides.');
+        } catch (ValidationException) {
+            self::assertDatabaseMissing('crm_activities', [
+                'subject' => 'Contact override',
+            ]);
+        }
 
         Livewire::test(ActivitiesRelationManager::class, [
             'ownerRecord' => $contact,
@@ -315,6 +468,24 @@ final class CrmEntityTenantWriteTest extends TestCase
             'contact_id' => $contact->getKey(),
             'subject' => 'Child activity',
         ]);
+
+        $activity = CrmActivity::query()
+            ->where('subject', 'Child activity')
+            ->firstOrFail();
+
+        Livewire::test(ActivitiesRelationManager::class, [
+            'ownerRecord' => $contact,
+            'pageClass' => EditContact::class,
+        ])
+            ->callTableAction('edit', record: $activity->getKey(), data: [
+                'type' => 'call',
+                'subject' => 'Edited child activity',
+            ])
+            ->assertHasNoTableActionErrors();
+
+        $activity->refresh();
+        self::assertSame('Edited child activity', $activity->subject);
+        self::assertSame((string) $contact->getKey(), (string) $activity->contact_id);
     }
 
     public function test_missing_filament_tenant_fails_closed_before_entity_creation(): void
