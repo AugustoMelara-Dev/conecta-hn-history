@@ -79,7 +79,12 @@ class ChurnRateReport implements ReportInterface
                 new ReportRow('Clientes perdidos', $lostCustomers),
             ],
             series: [],
-            summary: ['start' => $startCustomers, 'retained' => $retainedCustomers, 'lost' => $lostCustomers],
+            summary: [
+                'churn_rate' => round($churnRate, 2),
+                'start' => $startCustomers,
+                'retained' => $retainedCustomers,
+                'lost' => $lostCustomers,
+            ],
             metadata: ['range' => $range->toArray()],
         );
     }

@@ -123,7 +123,7 @@ final class ReportSqlPortabilityTest extends TestCase
         $data = $report->getData($this->tenant->id, $this->range);
 
         self::assertStringContainsString('no regresaron', mb_strtolower($report->getDescription()));
-        self::assertSame(['start' => 2, 'retained' => 1, 'lost' => 1], $data->summary);
+        self::assertSame(['churn_rate' => 50.0, 'start' => 2, 'retained' => 1, 'lost' => 1], $data->summary);
         self::assertSame(50.0, $data->rows[0]->value);
     }
 
