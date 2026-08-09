@@ -28,7 +28,7 @@ class WorkflowResource extends Resource
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-arrows-pointing-out';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'AutomatizaciÃ³n';
+    protected static string|\UnitEnum|null $navigationGroup = 'Automatización';
 
     protected static ?string $navigationLabel = 'Workflows';
 
