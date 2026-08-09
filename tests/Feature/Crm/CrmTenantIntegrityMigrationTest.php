@@ -759,6 +759,221 @@ final class CrmTenantIntegrityMigrationTest extends TestCase
         self::assertSame(1, DB::table('contact_tag')->whereNotNull('tenant_id')->count());
     }
 
+    public function test_backfill_derives_only_identical_endpoint_tenants_for_both_pivots(): void
+    {
+        $this->prepareBackfillFixture();
+        $service = app(CrmTenantIntegrity::class);
+
+        $report = $service->backfill(limit: 500);
+
+        self::assertSame('BACKFILLED', $report->status);
+        self::assertTrue($report->writesPerformed);
+        self::assertSame(2, $report->details['counts']['updated'] ?? null);
+        self::assertSame('00000000-0000-0000-0000-000000000001', DB::table('contact_tag')->value('tenant_id'));
+        self::assertSame('00000000-0000-0000-0000-000000000001', DB::table('deal_tag')->value('tenant_id'));
+    }
+
+    public function test_backfill_blocks_mismatch_orphan_and_duplicate_pivots_without_writes(): void
+    {
+        $fixture = $this->prepareBackfillFixture(includeValidRows: false, contactRows: 2);
+        DB::table('tags')->where('id', $fixture['tag_b'])->update(['tenant_id' => $fixture['tenant_b']]);
+        Schema::disableForeignKeyConstraints();
+        Schema::dropIfExists('contact_tag');
+        Schema::dropIfExists('deal_tag');
+        Schema::create('contact_tag', function (Blueprint $table): void {
+            $table->uuid('contact_id');
+            $table->uuid('tag_id');
+            $table->uuid('tenant_id')->nullable();
+        });
+        Schema::create('deal_tag', function (Blueprint $table): void {
+            $table->unsignedBigInteger('deal_id');
+            $table->uuid('tag_id');
+            $table->uuid('tenant_id')->nullable();
+        });
+        Schema::enableForeignKeyConstraints();
+        DB::table('contact_tag')->insert([
+            ['contact_id' => $fixture['contact_a'], 'tag_id' => $fixture['tag_b'], 'tenant_id' => null],
+            ['contact_id' => $fixture['contact_a'], 'tag_id' => $fixture['tag_a'], 'tenant_id' => null],
+            ['contact_id' => $fixture['contact_a'], 'tag_id' => $fixture['tag_a'], 'tenant_id' => null],
+        ]);
+        DB::table('deal_tag')->insert([
+            ['deal_id' => $fixture['deal_a'], 'tag_id' => $fixture['tag_b'], 'tenant_id' => null],
+            ['deal_id' => $fixture['deal_a'], 'tag_id' => '00000000-0000-0000-0000-000000009999', 'tenant_id' => null],
+        ]);
+        $before = $this->databaseHash();
+
+        $report = app(CrmTenantIntegrity::class)->backfill(limit: 500);
+
+        self::assertSame('BLOCKED_ANOMALIES', $report->status);
+        self::assertFalse($report->writesPerformed);
+        self::assertSame($before, $this->databaseHash());
+        self::assertGreaterThan(0, $report->anomalies['cross_tenant_contact_tag'] ?? 0);
+        self::assertGreaterThan(0, $report->anomalies['orphan_deal_tag_tag_id'] ?? 0);
+        self::assertGreaterThan(0, $report->anomalies['duplicate_pivot_contact_tag'] ?? 0);
+    }
+
+    public function test_backfill_resume_is_bounded_and_replay_is_idempotent(): void
+    {
+        $fixture = $this->prepareBackfillFixture(includeValidRows: false, contactRows: 3, dealRows: 0);
+        $checkpoint = tempnam(sys_get_temp_dir(), 'crm-tenant-integrity-');
+        self::assertNotFalse($checkpoint);
+        @unlink($checkpoint);
+        for ($i = 0; $i < 3; $i++) {
+            DB::table('contact_tag')->insert([
+                'contact_id' => $fixture['contacts'][$i],
+                'tag_id' => $fixture['tags'][$i],
+                'tenant_id' => null,
+            ]);
+        }
+
+        $first = app(CrmTenantIntegrity::class)->backfill(limit: 2, checkpoint: $checkpoint);
+        self::assertSame('BACKFILLED', $first->status);
+        self::assertSame(2, $first->details['counts']['updated'] ?? null);
+        self::assertSame(1, DB::table('contact_tag')->whereNull('tenant_id')->count());
+
+        $second = app(CrmTenantIntegrity::class)->backfill(limit: 2, checkpoint: $checkpoint, resume: true);
+        self::assertSame('BACKFILLED', $second->status);
+        self::assertSame(1, $second->details['counts']['updated'] ?? null);
+        self::assertSame(0, DB::table('contact_tag')->whereNull('tenant_id')->count());
+
+        $replay = app(CrmTenantIntegrity::class)->backfill(limit: 2, checkpoint: $checkpoint, resume: true);
+        self::assertSame('BACKFILLED_NOOP', $replay->status);
+        self::assertSame(0, $replay->details['counts']['updated'] ?? null);
+        self::assertSame(3, DB::table('contact_tag')->whereNotNull('tenant_id')->count());
+        @unlink($checkpoint);
+    }
+
+    public function test_backfill_dry_run_rolls_back_rows_and_checkpoint(): void
+    {
+        $this->prepareBackfillFixture();
+        $checkpoint = tempnam(sys_get_temp_dir(), 'crm-tenant-integrity-dry-');
+        self::assertNotFalse($checkpoint);
+        $sentinel = '{"untouched":true}';
+        file_put_contents($checkpoint, $sentinel);
+
+        $report = app(CrmTenantIntegrity::class)->backfill(limit: 500, checkpoint: $checkpoint, dryRun: true);
+
+        self::assertSame('BACKFILL_DRY_RUN', $report->status);
+        self::assertFalse($report->writesPerformed);
+        self::assertSame(2, $report->details['counts']['updated'] ?? null);
+        self::assertSame(1, DB::table('contact_tag')->whereNull('tenant_id')->count());
+        self::assertSame(1, DB::table('deal_tag')->whereNull('tenant_id')->count());
+        self::assertSame($sentinel, file_get_contents($checkpoint));
+        @unlink($checkpoint);
+    }
+
+    public function test_backfill_rejects_tampered_checkpoint_and_source_drift_without_writes(): void
+    {
+        $fixture = $this->prepareBackfillFixture();
+        $checkpoint = tempnam(sys_get_temp_dir(), 'crm-tenant-integrity-drift-');
+        self::assertNotFalse($checkpoint);
+        @unlink($checkpoint);
+
+        $first = app(CrmTenantIntegrity::class)->backfill(limit: 1, checkpoint: $checkpoint);
+        self::assertSame('BACKFILLED', $first->status);
+        $original = (string) file_get_contents($checkpoint);
+        $tampered = json_decode($original, true, 512, JSON_THROW_ON_ERROR);
+        $tampered['sequence'] = 999;
+        file_put_contents($checkpoint, json_encode($tampered, JSON_THROW_ON_ERROR));
+
+        $invalid = app(CrmTenantIntegrity::class)->backfill(limit: 1, checkpoint: $checkpoint, resume: true);
+        self::assertSame('BLOCKED_CHECKPOINT', $invalid->status);
+        self::assertSame(1, DB::table('contact_tag')->whereNotNull('tenant_id')->count());
+
+        file_put_contents($checkpoint, $original);
+        DB::table('crm_contacts')->where('id', $fixture['contact_a'])->update(['tenant_id' => $fixture['tenant_b']]);
+        $drift = app(CrmTenantIntegrity::class)->backfill(limit: 1, checkpoint: $checkpoint, resume: true);
+        self::assertSame('BLOCKED_SOURCE_DRIFT', $drift->status);
+        self::assertSame(1, DB::table('contact_tag')->whereNotNull('tenant_id')->count());
+        @unlink($checkpoint);
+    }
+
+    /** @return array<string, mixed> */
+    private function prepareBackfillFixture(bool $includeValidRows = true, int $contactRows = 1, int $dealRows = 1): array
+    {
+        $this->canonicalDealsTable();
+        $service = app(CrmTenantIntegrity::class);
+        $preflight = $service->preflight();
+        $expanded = $service->expand($preflight->schemaFingerprint);
+        self::assertSame('EXPANDED', $expanded->status);
+
+        $tenantA = '00000000-0000-0000-0000-000000000001';
+        $tenantB = '00000000-0000-0000-0000-000000000002';
+        DB::table('tenants')->insert([
+            ['id' => $tenantA, 'name' => 'Tenant A', 'slug' => 'tenant-a', 'created_at' => now(), 'updated_at' => now()],
+            ['id' => $tenantB, 'name' => 'Tenant B', 'slug' => 'tenant-b', 'created_at' => now(), 'updated_at' => now()],
+        ]);
+        DB::table('crm_pipelines')->insert([
+            ['id' => 1, 'tenant_id' => $tenantA, 'name' => 'Pipeline A', 'key' => 'pipeline-a', 'created_at' => now(), 'updated_at' => now()],
+        ]);
+        DB::table('crm_stages')->insert([
+            ['id' => 1, 'tenant_id' => $tenantA, 'crm_pipeline_id' => 1, 'name' => 'Stage A', 'key' => 'stage-a', 'created_at' => now(), 'updated_at' => now()],
+        ]);
+        $contacts = [];
+        $tags = [];
+        for ($i = 0; $i < max($contactRows, $dealRows, 1); $i++) {
+            $contact = sprintf('00000000-0000-0000-0000-000000003%03d', $i + 1);
+            $tag = sprintf('00000000-0000-0000-0000-000000004%03d', $i + 1);
+            DB::table('crm_contacts')->insert([
+                'id' => $contact,
+                'tenant_id' => $tenantA,
+                'company_id' => null,
+                'owner_id' => null,
+                'first_name' => 'Fixture',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            DB::table('tags')->insert([
+                'id' => $tag,
+                'tenant_id' => $tenantA,
+                'name' => 'Fixture',
+                'slug' => 'fixture-'.$i,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            $contacts[] = $contact;
+            $tags[] = $tag;
+        }
+        $dealIds = [];
+        for ($i = 0; $i < $dealRows; $i++) {
+            $deal = 9800 + $i;
+            DB::table('crm_deals')->insert([
+                'id' => $deal,
+                'tenant_id' => $tenantA,
+                'crm_pipeline_id' => 1,
+                'crm_stage_id' => 1,
+                'customer_profile_id' => null,
+                'lead_id' => null,
+                'location_id' => null,
+                'owner_user_id' => null,
+                'title' => 'Fixture deal',
+                'value' => 0,
+                'currency' => 'HNL',
+                'status' => 'open',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            $dealIds[] = $deal;
+        }
+        if ($includeValidRows) {
+            DB::table('contact_tag')->insert(['contact_id' => $contacts[0], 'tag_id' => $tags[0], 'tenant_id' => null]);
+            if ($dealIds !== []) {
+                DB::table('deal_tag')->insert(['deal_id' => $dealIds[0], 'tag_id' => $tags[0], 'tenant_id' => null]);
+            }
+        }
+
+        return [
+            'tenant_a' => $tenantA,
+            'tenant_b' => $tenantB,
+            'contact_a' => $contacts[0],
+            'contacts' => $contacts,
+            'tags' => $tags,
+            'tag_a' => $tags[0],
+            'tag_b' => $tags[1] ?? $tags[0],
+            'deal_a' => $dealIds[0] ?? 9800,
+        ];
+    }
+
     private function canonicalDealsTable(): void
     {
         $this->resetExpansionArtifacts();
@@ -878,6 +1093,7 @@ final class CrmTenantIntegrityMigrationTest extends TestCase
             $rows = DB::table($name)->get()->map(static function (object $row): array {
                 $values = (array) $row;
                 ksort($values);
+
                 return $values;
             })->all();
             usort($rows, static fn (array $left, array $right): int => strcmp(json_encode($left), json_encode($right)));

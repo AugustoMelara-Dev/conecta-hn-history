@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Crm;
 
+use App\Application\Crm\TenantIntegrity\CrmTenantIntegrity;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use App\Application\Crm\TenantIntegrity\CrmTenantIntegrity;
 use Tests\TestCase;
 
 final class CrmTenantIntegrityCommandTest extends TestCase
@@ -45,6 +46,162 @@ final class CrmTenantIntegrityCommandTest extends TestCase
     {
         $this->artisan('crm:reconcile-tenant-integrity', ['phase' => 'nonsense', '--json' => true])
             ->assertExitCode(2);
+    }
+
+    public function test_backfill_command_writes_redacted_checkpoint_and_resumes_bounded_rows(): void
+    {
+        $fixture = $this->prepareBackfillFixture(contactRows: 1, dealRows: 1);
+        $checkpoint = tempnam(sys_get_temp_dir(), 'crm-tenant-integrity-command-');
+        self::assertNotFalse($checkpoint);
+        @unlink($checkpoint);
+
+        $this->artisan('crm:reconcile-tenant-integrity', [
+            'phase' => 'backfill',
+            '--limit' => 1,
+            '--checkpoint' => $checkpoint,
+            '--json' => true,
+        ])->expectsOutputToContain('"status": "BACKFILLED"')->assertSuccessful();
+
+        $checkpointPayload = json_decode((string) file_get_contents($checkpoint), true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame(1, $checkpointPayload['schema']);
+        self::assertSame(1, $checkpointPayload['version']);
+        self::assertSame('crm:reconcile-tenant-integrity', $checkpointPayload['command']);
+        self::assertSame('backfill', $checkpointPayload['phase']);
+        self::assertSame(1, $checkpointPayload['sequence']);
+        self::assertTrue($checkpointPayload['has_more']);
+        foreach (['schema_hash', 'data_hash', 'source_hash', 'validation_chain', 'checksum'] as $key) {
+            self::assertMatchesRegularExpression('/^[a-f0-9]{64}$/', (string) ($checkpointPayload[$key] ?? ''));
+        }
+        self::assertStringNotContainsString($fixture['contact_a'], (string) file_get_contents($checkpoint));
+        self::assertStringNotContainsString($fixture['tag_a'], (string) file_get_contents($checkpoint));
+
+        $this->artisan('crm:reconcile-tenant-integrity', [
+            'phase' => 'backfill',
+            '--limit' => 1,
+            '--checkpoint' => $checkpoint,
+            '--resume' => true,
+            '--json' => true,
+        ])->expectsOutputToContain('"status": "BACKFILLED"')->assertSuccessful();
+
+        self::assertSame(0, DB::table('contact_tag')->whereNull('tenant_id')->count());
+        self::assertSame(0, DB::table('deal_tag')->whereNull('tenant_id')->count());
+        @unlink($checkpoint);
+    }
+
+    public function test_backfill_command_dry_run_preserves_database_and_checkpoint(): void
+    {
+        $this->prepareBackfillFixture(contactRows: 1, dealRows: 0);
+        $checkpoint = tempnam(sys_get_temp_dir(), 'crm-tenant-integrity-command-dry-');
+        self::assertNotFalse($checkpoint);
+        $sentinel = '{"untouched":true}';
+        file_put_contents($checkpoint, $sentinel);
+
+        $this->artisan('crm:reconcile-tenant-integrity', [
+            'phase' => 'backfill',
+            '--limit' => 1,
+            '--checkpoint' => $checkpoint,
+            '--dry-run' => true,
+            '--json' => true,
+        ])->expectsOutputToContain('"status": "BACKFILL_DRY_RUN"')->assertSuccessful();
+
+        self::assertSame(1, DB::table('contact_tag')->whereNull('tenant_id')->count());
+        self::assertSame($sentinel, file_get_contents($checkpoint));
+        @unlink($checkpoint);
+    }
+
+    public function test_backfill_command_fails_closed_for_tampered_checkpoint(): void
+    {
+        $this->prepareBackfillFixture(contactRows: 1, dealRows: 0);
+        $checkpoint = tempnam(sys_get_temp_dir(), 'crm-tenant-integrity-command-tamper-');
+        self::assertNotFalse($checkpoint);
+        @unlink($checkpoint);
+        $this->artisan('crm:reconcile-tenant-integrity', [
+            'phase' => 'backfill',
+            '--limit' => 1,
+            '--checkpoint' => $checkpoint,
+            '--json' => true,
+        ])->assertSuccessful();
+        $payload = json_decode((string) file_get_contents($checkpoint), true, 512, JSON_THROW_ON_ERROR);
+        $payload['sequence'] = 99;
+        file_put_contents($checkpoint, json_encode($payload, JSON_THROW_ON_ERROR));
+
+        $this->artisan('crm:reconcile-tenant-integrity', [
+            'phase' => 'backfill',
+            '--limit' => 1,
+            '--checkpoint' => $checkpoint,
+            '--resume' => true,
+            '--json' => true,
+        ])->expectsOutputToContain('"status": "BLOCKED_CHECKPOINT"')->assertExitCode(5);
+        self::assertSame(0, DB::table('contact_tag')->whereNull('tenant_id')->count());
+        @unlink($checkpoint);
+    }
+
+    public function test_backfill_command_blocks_unproved_non_sqlite_engine_without_writes(): void
+    {
+        $original = (string) config('database.default');
+        config(['database.default' => 'mysql']);
+        DB::purge('mysql');
+        try {
+            $this->artisan('crm:reconcile-tenant-integrity', [
+                'phase' => 'backfill',
+                '--json' => true,
+            ])->expectsOutputToContain('"status": "EXTERNAL_BLOCKED_ENGINE_PROOF_REQUIRED"')->assertExitCode(5);
+        } finally {
+            config(['database.default' => $original]);
+            DB::purge('mysql');
+            DB::reconnect('sqlite');
+        }
+    }
+
+    /** @return array<string, string> */
+    private function prepareBackfillFixture(int $contactRows = 2, int $dealRows = 1): array
+    {
+        $this->canonicalDealsTable();
+        $service = app(CrmTenantIntegrity::class);
+        $preflight = $service->preflight();
+        self::assertSame('EXPANDED', $service->expand($preflight->schemaFingerprint)->status);
+        $tenantA = '00000000-0000-0000-0000-000000000001';
+        $tenantB = '00000000-0000-0000-0000-000000000002';
+        DB::table('tenants')->insert([
+            ['id' => $tenantA, 'name' => 'Tenant A', 'slug' => 'tenant-a', 'created_at' => now(), 'updated_at' => now()],
+            ['id' => $tenantB, 'name' => 'Tenant B', 'slug' => 'tenant-b', 'created_at' => now(), 'updated_at' => now()],
+        ]);
+        DB::table('crm_pipelines')->insert(['id' => 1, 'tenant_id' => $tenantA, 'name' => 'Pipeline A', 'key' => 'pipeline-a', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('crm_stages')->insert(['id' => 1, 'tenant_id' => $tenantA, 'crm_pipeline_id' => 1, 'name' => 'Stage A', 'key' => 'stage-a', 'created_at' => now(), 'updated_at' => now()]);
+        $contacts = [];
+        $tags = [];
+        for ($i = 0; $i < max($contactRows, $dealRows, 1); $i++) {
+            $contact = sprintf('00000000-0000-0000-0000-000000003%03d', $i + 1);
+            $tag = sprintf('00000000-0000-0000-0000-000000004%03d', $i + 1);
+            DB::table('crm_contacts')->insert(['id' => $contact, 'tenant_id' => $tenantA, 'company_id' => null, 'owner_id' => null, 'first_name' => 'Fixture', 'created_at' => now(), 'updated_at' => now()]);
+            DB::table('tags')->insert(['id' => $tag, 'tenant_id' => $tenantA, 'name' => 'Fixture', 'slug' => 'fixture-'.$i, 'created_at' => now(), 'updated_at' => now()]);
+            $contacts[] = $contact;
+            $tags[] = $tag;
+        }
+        DB::table('crm_deals')->insert(array_map(static fn (int $i): array => [
+            'id' => 9900 + $i,
+            'tenant_id' => $tenantA,
+            'crm_pipeline_id' => 1,
+            'crm_stage_id' => 1,
+            'customer_profile_id' => null,
+            'lead_id' => null,
+            'location_id' => null,
+            'owner_user_id' => null,
+            'title' => 'Fixture deal',
+            'value' => 0,
+            'currency' => 'HNL',
+            'status' => 'open',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ], range(0, max(0, $dealRows - 1))));
+        for ($i = 0; $i < $contactRows; $i++) {
+            DB::table('contact_tag')->insert(['contact_id' => $contacts[$i], 'tag_id' => $tags[$i], 'tenant_id' => null]);
+        }
+        for ($i = 0; $i < $dealRows; $i++) {
+            DB::table('deal_tag')->insert(['deal_id' => 9900 + $i, 'tag_id' => $tags[$i], 'tenant_id' => null]);
+        }
+
+        return ['contact_a' => $contacts[0], 'tag_a' => $tags[0]];
     }
 
     private function canonicalDealsTable(): void

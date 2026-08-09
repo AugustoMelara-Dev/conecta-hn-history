@@ -13,28 +13,88 @@ use Throwable;
 final class CrmTenantIntegrity
 {
     public const SHAPE_CANONICAL = 'canonical_bigint';
+
     public const SHAPE_LEGACY = 'legacy_uuid';
+
     public const SHAPE_UNKNOWN = 'mixed_or_unknown';
 
     public const STATUS_READY = 'READY';
+
     public const STATUS_BLOCKED_ANOMALIES = 'BLOCKED_ANOMALIES';
+
     public const STATUS_BLOCKED_MISSING_REQUIRED_TABLE = 'BLOCKED_MISSING_REQUIRED_TABLE';
+
     public const STATUS_BLOCKED_LEGACY = 'BLOCKED_LEGACY_UUID_CONTRACT';
+
     public const STATUS_BLOCKED_UNKNOWN = 'BLOCKED_UNKNOWN_SHAPE';
+
     public const STATUS_EXPANDED = 'EXPANDED';
+
     public const STATUS_EXPANDED_NOOP = 'EXPANDED_NOOP';
+
     public const STATUS_BLOCKED_FINGERPRINT = 'BLOCKED_FINGERPRINT_MISMATCH';
+
     public const STATUS_BLOCKED_FINGERPRINT_REQUIRED = 'BLOCKED_FINGERPRINT_REQUIRED';
+
     public const STATUS_BLOCKED_REQUIRED_SCHEMA = 'BLOCKED_REQUIRED_SCHEMA';
+
     public const STATUS_BLOCKED_METADATA_FAILURE = 'BLOCKED_METADATA_FAILURE';
+
     public const STATUS_EXPAND_FAILED = 'EXPAND_FAILED';
+
     public const STATUS_RECOVERY_REQUIRED_PARTIAL_WRITE = 'RECOVERY_REQUIRED_PARTIAL_WRITE';
+
     public const STATUS_EXTERNAL_BLOCKED_ENGINE_PROOF_REQUIRED = 'EXTERNAL_BLOCKED_ENGINE_PROOF_REQUIRED';
+
     public const STATUS_BLOCKED_PARTIAL_WRITE = 'RECOVERY_REQUIRED_PARTIAL_WRITE';
+
     public const STATUS_BLOCKED_NOT_IMPLEMENTED = 'BLOCKED_NOT_IMPLEMENTED';
+
     public const STATUS_BLOCKED_EXTERNAL = 'BLOCKED_EXTERNAL';
 
+    public const STATUS_BACKFILLED = 'BACKFILLED';
+
+    public const STATUS_BACKFILLED_NOOP = 'BACKFILLED_NOOP';
+
+    public const STATUS_BACKFILL_DRY_RUN = 'BACKFILL_DRY_RUN';
+
+    public const STATUS_BLOCKED_CHECKPOINT = 'BLOCKED_CHECKPOINT';
+
+    public const STATUS_BLOCKED_SOURCE_DRIFT = 'BLOCKED_SOURCE_DRIFT';
+
+    public const STATUS_CHECKPOINT_WRITE_FAILED = 'CHECKPOINT_WRITE_FAILED';
+
     private const MIGRATION = '2026_08_22_000001_expand_crm_tenant_integrity.php';
+
+    private const BACKFILL_COMMAND = 'crm:reconcile-tenant-integrity';
+
+    private const BACKFILL_CHECKPOINT_SCHEMA = 1;
+
+    private const BACKFILL_CHECKPOINT_VERSION = 1;
+
+    /** @var list<string> */
+    private const BACKFILL_REPAIRABLE_ANOMALIES = [
+        'null_pivot_tenant_contact_tag',
+        'null_pivot_tenant_deal_tag',
+    ];
+
+    /** @var list<array{pivot:string,left:string,left_table:string,right:string,right_table:string}> */
+    private const BACKFILL_PIVOTS = [
+        [
+            'pivot' => 'contact_tag',
+            'left' => 'contact_id',
+            'left_table' => 'crm_contacts',
+            'right' => 'tag_id',
+            'right_table' => 'tags',
+        ],
+        [
+            'pivot' => 'deal_tag',
+            'left' => 'deal_id',
+            'left_table' => 'crm_deals',
+            'right' => 'tag_id',
+            'right_table' => 'tags',
+        ],
+    ];
 
     /** @var list<string> */
     private const REQUIRED_TABLES = [
@@ -110,12 +170,18 @@ final class CrmTenantIntegrity
         'tenant_memberships' => ['tenant_id', 'user_id'],
     ];
 
-    public function run(string $phase = 'preflight', ?string $fingerprint = null): CrmTenantIntegrityReport
-    {
+    public function run(
+        string $phase = 'preflight',
+        ?string $fingerprint = null,
+        int $limit = 500,
+        ?string $checkpoint = null,
+        bool $resume = false,
+        bool $dryRun = false,
+    ): CrmTenantIntegrityReport {
         return match (strtolower(trim($phase))) {
             'preflight', 'validate' => $this->preflight(strtolower(trim($phase))),
             'expand' => $this->expand($fingerprint),
-            'backfill' => $this->blockedPhase('backfill', self::STATUS_BLOCKED_NOT_IMPLEMENTED, ['TASK_2_BACKFILL_NOT_AUTHORIZED']),
+            'backfill' => $this->backfill($limit, $checkpoint, $resume, $dryRun, $fingerprint),
             'contract' => $this->blockedPhase('contract', self::STATUS_BLOCKED_EXTERNAL, ['TASK_3_CONTRACT_NOT_AUTHORIZED']),
             default => throw new InvalidArgumentException('CRM tenant-integrity phase must be preflight, expand, backfill, validate, or contract.'),
         };
@@ -254,6 +320,7 @@ final class CrmTenantIntegrity
                     blockingIssues: ['expand_failed'],
                     details: [...$preflight->details, 'error_code' => get_class($exception), 'writes_performed' => false]);
             }
+
             return $this->copyReport($afterFailure, self::STATUS_RECOVERY_REQUIRED_PARTIAL_WRITE,
                 writesPerformed: true,
                 blockingIssues: ['expand_failed', 'schema_fingerprint_changed_after_failure'],
@@ -277,6 +344,205 @@ final class CrmTenantIntegrity
             ]);
     }
 
+    public function backfill(
+        int $limit = 500,
+        ?string $checkpoint = null,
+        bool $resume = false,
+        bool $dryRun = false,
+        ?string $expectedFingerprint = null,
+    ): CrmTenantIntegrityReport {
+        if ($limit < 1 || $limit > 2000) {
+            throw new InvalidArgumentException('CRM tenant-integrity backfill limit must be between 1 and 2000.');
+        }
+
+        // The local contract deliberately proves only SQLite.  In particular,
+        // do not treat a configured MySQL connection as a fake success seam.
+        if (DB::getDriverName() !== 'sqlite') {
+            return $this->report(
+                'backfill',
+                self::STATUS_EXTERNAL_BLOCKED_ENGINE_PROOF_REQUIRED,
+                self::SHAPE_UNKNOWN,
+                '',
+                writesPerformed: false,
+                blockingIssues: ['EXTERNAL_BLOCKED_ENGINE_PROOF_REQUIRED'],
+                details: [
+                    'engine' => DB::getDriverName(),
+                    'limit' => $limit,
+                    'writes_performed' => false,
+                ],
+            );
+        }
+
+        $preflight = $this->preflight('backfill');
+        if ($expectedFingerprint !== null
+            && trim($expectedFingerprint) !== ''
+            && ! hash_equals($preflight->schemaFingerprint, trim($expectedFingerprint))) {
+            return $this->copyReport($preflight, self::STATUS_BLOCKED_FINGERPRINT,
+                blockingIssues: ['schema_fingerprint_mismatch'],
+                details: [...$preflight->details, 'writes_performed' => false]);
+        }
+        if ($preflight->shape !== self::SHAPE_CANONICAL
+            || $preflight->schemaFingerprint === ''
+            || $preflight->missingRequiredTables !== []
+            || $preflight->missingRequiredColumns !== []) {
+            return $this->copyReport($preflight, $preflight->status,
+                blockingIssues: $preflight->blockingIssues,
+                details: [...$preflight->details, 'writes_performed' => false]);
+        }
+        foreach (self::BACKFILL_PIVOTS as $definition) {
+            if (! Schema::hasColumn($definition['pivot'], 'tenant_id')) {
+                return $this->copyReport($preflight, self::STATUS_BLOCKED_REQUIRED_SCHEMA,
+                    blockingIssues: ['missing_required_column:'.$definition['pivot'].'.tenant_id'],
+                    details: [...$preflight->details, 'writes_performed' => false]);
+            }
+        }
+
+        $sourceHash = $this->backfillSourceFingerprint();
+        $checkpointState = null;
+        if ($resume) {
+            [$checkpointState, $checkpointError] = $this->readBackfillCheckpoint($checkpoint);
+            if ($checkpointError !== null) {
+                return $this->copyReport($preflight, self::STATUS_BLOCKED_CHECKPOINT,
+                    blockingIssues: ['checkpoint_invalid'],
+                    details: [...$preflight->details, 'checkpoint_error' => $checkpointError, 'writes_performed' => false]);
+            }
+            if (! hash_equals((string) ($checkpointState['schema_hash'] ?? ''), $preflight->schemaFingerprint)
+                || ! hash_equals((string) ($checkpointState['data_hash'] ?? ''), $preflight->dataFingerprint)
+                || ! hash_equals((string) ($checkpointState['source_hash'] ?? ''), $sourceHash)) {
+                return $this->copyReport($preflight, self::STATUS_BLOCKED_SOURCE_DRIFT,
+                    blockingIssues: ['checkpoint_lineage_drift'],
+                    details: [
+                        ...$preflight->details,
+                        'checkpoint_schema_hash' => (string) ($checkpointState['schema_hash'] ?? ''),
+                        'checkpoint_data_hash' => (string) ($checkpointState['data_hash'] ?? ''),
+                        'checkpoint_source_hash' => (string) ($checkpointState['source_hash'] ?? ''),
+                        'source_hash' => $sourceHash,
+                        'writes_performed' => false,
+                    ]);
+            }
+        }
+
+        $blockingAnomalies = array_values(array_filter(
+            array_keys(array_filter($preflight->anomalies, static fn (int $count): bool => $count > 0)),
+            static fn (string $code): bool => ! in_array($code, self::BACKFILL_REPAIRABLE_ANOMALIES, true),
+        ));
+        sort($blockingAnomalies);
+        if ($blockingAnomalies !== []) {
+            return $this->copyReport($preflight, self::STATUS_BLOCKED_ANOMALIES,
+                blockingIssues: $blockingAnomalies,
+                details: [
+                    ...$preflight->details,
+                    'backfill_gate' => 'only_null_pivot_provenance_is_repairable',
+                    'writes_performed' => false,
+                ]);
+        }
+
+        $counts = [
+            'selected' => 0,
+            'updated' => 0,
+            'contact_tag_updated' => 0,
+            'deal_tag_updated' => 0,
+        ];
+        $transactionFailure = null;
+        $dryRunRolledBack = false;
+        try {
+            DB::beginTransaction();
+            $rows = $this->selectBackfillRows($limit);
+            foreach ($rows as $row) {
+                $counts['selected']++;
+                $leftTenant = DB::table($row['left_table'])->where('id', $row['left_id'])->value('tenant_id');
+                $rightTenant = DB::table($row['right_table'])->where('id', $row['right_id'])->value('tenant_id');
+                if ($leftTenant === null
+                    || $rightTenant === null
+                    || (string) $leftTenant !== (string) $rightTenant
+                    || (string) $row['left_tenant_id'] !== (string) $leftTenant
+                    || (string) $row['right_tenant_id'] !== (string) $rightTenant) {
+                    throw new RuntimeException('backfill_changed_endpoint');
+                }
+                $affected = DB::table($row['pivot'])
+                    ->where($row['left'], $row['left_id'])
+                    ->where($row['right'], $row['right_id'])
+                    ->whereNull('tenant_id')
+                    ->update(['tenant_id' => $leftTenant]);
+                if ($affected !== 1) {
+                    throw new RuntimeException('backfill_compare_and_set_failed');
+                }
+                $counts['updated']++;
+                $counts[$row['pivot'].'_updated']++;
+            }
+            if ($dryRun) {
+                DB::rollBack();
+                $dryRunRolledBack = true;
+            } else {
+                DB::commit();
+            }
+        } catch (Throwable $exception) {
+            $transactionFailure = $exception;
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
+        }
+
+        if ($transactionFailure !== null) {
+            $status = str_contains($transactionFailure->getMessage(), 'changed_endpoint')
+                ? self::STATUS_BLOCKED_SOURCE_DRIFT
+                : self::STATUS_BLOCKED_ANOMALIES;
+
+            return $this->copyReport($preflight, $status,
+                blockingIssues: [$status === self::STATUS_BLOCKED_SOURCE_DRIFT ? 'endpoint_changed_during_batch' : 'compare_and_set_failed'],
+                details: [
+                    ...$preflight->details,
+                    'counts' => $counts,
+                    'source_hash' => $sourceHash,
+                    'error_code' => get_class($transactionFailure),
+                    'writes_performed' => false,
+                ]);
+        }
+
+        $hasMore = $this->backfillRemaining();
+        $status = $dryRunRolledBack
+            ? self::STATUS_BACKFILL_DRY_RUN
+            : ($counts['updated'] === 0 ? self::STATUS_BACKFILLED_NOOP : self::STATUS_BACKFILLED);
+        $checkpointPayload = null;
+        if (! $dryRunRolledBack && $checkpoint !== null && trim($checkpoint) !== '') {
+            $checkpointPayload = $this->buildBackfillCheckpoint(
+                $preflight,
+                $sourceHash,
+                $counts,
+                $hasMore,
+                $checkpointState,
+            );
+            if (! $this->writeBackfillCheckpoint($checkpoint, $checkpointPayload)) {
+                return $this->copyReport($preflight, self::STATUS_CHECKPOINT_WRITE_FAILED,
+                    writesPerformed: $counts['updated'] > 0,
+                    blockingIssues: ['checkpoint_write_failed'],
+                    details: [
+                        ...$preflight->details,
+                        'counts' => $counts,
+                        'has_more' => $hasMore,
+                        'checkpoint' => ['written' => false],
+                        'writes_performed' => $counts['updated'] > 0,
+                    ]);
+            }
+        }
+
+        return $this->copyReport($preflight, $status,
+            writesPerformed: ! $dryRunRolledBack && $counts['updated'] > 0,
+            blockingIssues: [],
+            details: [
+                ...$preflight->details,
+                'limit' => $limit,
+                'counts' => $counts,
+                'has_more' => $hasMore,
+                'source_hash' => $sourceHash,
+                'checkpoint' => $checkpointPayload === null
+                    ? ['written' => false]
+                    : ['written' => true, 'sequence' => $checkpointPayload['sequence']],
+                'dry_run' => $dryRun,
+                'writes_performed' => ! $dryRunRolledBack && $counts['updated'] > 0,
+            ]);
+    }
+
     /** @param list<string> $blockingIssues */
     private function blockedPhase(string $phase, string $status, array $blockingIssues): CrmTenantIntegrityReport
     {
@@ -284,6 +550,229 @@ final class CrmTenantIntegrity
 
         return $this->copyReport($preflight, $status, blockingIssues: $blockingIssues,
             details: [...$preflight->details, 'writes_performed' => false]);
+    }
+
+    /** @return list<array<string,mixed>> */
+    private function selectBackfillRows(int $limit): array
+    {
+        $rows = [];
+        $remaining = $limit;
+        foreach (self::BACKFILL_PIVOTS as $definition) {
+            if ($remaining < 1) {
+                break;
+            }
+            $selected = DB::table($definition['pivot'].' as pivot')
+                ->join($definition['left_table'].' as left_endpoint', 'left_endpoint.id', '=', 'pivot.'.$definition['left'])
+                ->join($definition['right_table'].' as right_endpoint', 'right_endpoint.id', '=', 'pivot.'.$definition['right'])
+                ->whereNull('pivot.tenant_id')
+                ->orderBy('pivot.'.$definition['left'])
+                ->orderBy('pivot.'.$definition['right'])
+                ->limit($remaining)
+                ->lockForUpdate()
+                ->get([
+                    'pivot.'.$definition['left'].' as left_id',
+                    'pivot.'.$definition['right'].' as right_id',
+                    'left_endpoint.tenant_id as left_tenant_id',
+                    'right_endpoint.tenant_id as right_tenant_id',
+                ]);
+            foreach ($selected as $row) {
+                $rows[] = [
+                    ...$definition,
+                    'left_id' => $row->left_id,
+                    'right_id' => $row->right_id,
+                    'left_tenant_id' => $row->left_tenant_id,
+                    'right_tenant_id' => $row->right_tenant_id,
+                ];
+            }
+            $remaining -= $selected->count();
+        }
+
+        return $rows;
+    }
+
+    private function backfillRemaining(): bool
+    {
+        foreach (self::BACKFILL_PIVOTS as $definition) {
+            if (DB::table($definition['pivot'])->whereNull('tenant_id')->exists()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function backfillSourceFingerprint(): string
+    {
+        $payload = [];
+        foreach (self::BACKFILL_PIVOTS as $definition) {
+            foreach ([$definition['left_table'], $definition['right_table']] as $table) {
+                $rows = DB::table($table)->select(['id', 'tenant_id'])->orderBy('id')->get()->map(
+                    fn (object $row): array => [
+                        'id' => $this->opaqueValue($row->id ?? null),
+                        'tenant' => $this->opaqueValue($row->tenant_id ?? null),
+                    ],
+                )->all();
+                $payload[$table] = $rows;
+            }
+            $pivotRows = DB::table($definition['pivot'])
+                ->select([$definition['left'], $definition['right']])
+                ->orderBy($definition['left'])
+                ->orderBy($definition['right'])
+                ->get()
+                ->map(fn (object $row): array => [
+                    'left' => $this->opaqueValue($row->{$definition['left']} ?? null),
+                    'right' => $this->opaqueValue($row->{$definition['right']} ?? null),
+                ])->all();
+            $payload[$definition['pivot']] = $pivotRows;
+        }
+        ksort($payload);
+
+        return hash('sha256', json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
+    }
+
+    /** @return array{0: array<string,mixed>|null, 1: string|null} */
+    private function readBackfillCheckpoint(?string $path): array
+    {
+        if ($path === null || trim($path) === '') {
+            return [null, 'resume_requires_checkpoint'];
+        }
+        $resolved = $this->resolveBackfillPath($path);
+        if (! is_file($resolved)) {
+            return [null, 'checkpoint_missing'];
+        }
+        $contents = file_get_contents($resolved);
+        $decoded = is_string($contents) ? json_decode($contents, true) : null;
+        if (! is_array($decoded)) {
+            return [null, 'checkpoint_invalid_json'];
+        }
+        if (($decoded['schema'] ?? null) !== self::BACKFILL_CHECKPOINT_SCHEMA
+            || ($decoded['version'] ?? null) !== self::BACKFILL_CHECKPOINT_VERSION
+            || ($decoded['command'] ?? null) !== self::BACKFILL_COMMAND
+            || ($decoded['phase'] ?? null) !== 'backfill'
+            || ! in_array($decoded['status'] ?? null, ['partial', 'exhausted'], true)
+            || ! is_int($decoded['sequence'] ?? null)
+            || $decoded['sequence'] < 1
+            || ! is_bool($decoded['has_more'] ?? null)
+            || ! is_array($decoded['counts'] ?? null)
+            || ! is_string($decoded['schema_hash'] ?? null)
+            || ! is_string($decoded['data_hash'] ?? null)
+            || ! is_string($decoded['source_hash'] ?? null)
+            || ! is_string($decoded['validation_chain'] ?? null)) {
+            return [null, 'checkpoint_lineage_invalid'];
+        }
+        foreach (['schema_hash', 'data_hash', 'source_hash', 'validation_chain'] as $hash) {
+            if (preg_match('/^[a-f0-9]{64}$/', (string) $decoded[$hash]) !== 1) {
+                return [null, 'checkpoint_hash_invalid'];
+            }
+        }
+        foreach ($decoded['counts'] as $value) {
+            if (! is_int($value) || $value < 0) {
+                return [null, 'checkpoint_counts_invalid'];
+            }
+        }
+        $checksum = $decoded['checksum'] ?? ($decoded['checkpoint_checksum'] ?? ($decoded['checkpoint_sha256'] ?? null));
+        if (! is_string($checksum)
+            || preg_match('/^[a-f0-9]{64}$/', $checksum) !== 1
+            || ! hash_equals($checksum, $this->backfillCheckpointChecksum($decoded))) {
+            return [null, 'checkpoint_checksum_invalid'];
+        }
+        if ($decoded['status'] === 'partial' && ! $decoded['has_more']) {
+            return [null, 'checkpoint_status_invalid'];
+        }
+
+        return [$decoded, null];
+    }
+
+    /** @param array<string,mixed>|null $previous @return array<string,mixed> */
+    private function buildBackfillCheckpoint(
+        CrmTenantIntegrityReport $preflight,
+        string $sourceHash,
+        array $counts,
+        bool $hasMore,
+        ?array $previous,
+    ): array {
+        $previousCounts = is_array($previous['counts'] ?? null) ? $previous['counts'] : [];
+        $cumulative = $counts;
+        foreach ($counts as $key => $value) {
+            $cumulative[$key] = (int) ($previousCounts[$key] ?? 0) + (int) $value;
+        }
+        $sequence = ((int) ($previous['sequence'] ?? 0)) + 1;
+        $status = $hasMore ? 'partial' : 'exhausted';
+        $previousChain = (string) ($previous['validation_chain'] ?? hash('sha256', self::BACKFILL_COMMAND.'|backfill|genesis'));
+        $validationChain = hash('sha256', implode('|', [
+            $previousChain,
+            (string) $sequence,
+            $preflight->schemaFingerprint,
+            $preflight->dataFingerprint,
+            $sourceHash,
+            $status,
+            json_encode($cumulative, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
+        ]));
+        $payload = [
+            'schema' => self::BACKFILL_CHECKPOINT_SCHEMA,
+            'version' => self::BACKFILL_CHECKPOINT_VERSION,
+            'command' => self::BACKFILL_COMMAND,
+            'phase' => 'backfill',
+            'sequence' => $sequence,
+            'counts' => $cumulative,
+            'has_more' => $hasMore,
+            'status' => $status,
+            'schema_hash' => $preflight->schemaFingerprint,
+            'data_hash' => $preflight->dataFingerprint,
+            'source_hash' => $sourceHash,
+            'validation_chain' => $validationChain,
+        ];
+        $checksum = $this->backfillCheckpointChecksum($payload);
+        $payload['checksum'] = $checksum;
+        $payload['checkpoint_checksum'] = $checksum;
+        $payload['checkpoint_sha256'] = $checksum;
+
+        return $payload;
+    }
+
+    /** @param array<string,mixed> $payload */
+    private function backfillCheckpointChecksum(array $payload): string
+    {
+        unset($payload['checksum'], $payload['checkpoint_checksum'], $payload['checkpoint_sha256']);
+
+        return hash('sha256', json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+    }
+
+    /** @param array<string,mixed> $payload */
+    private function writeBackfillCheckpoint(string $path, array $payload): bool
+    {
+        $resolved = $this->resolveBackfillPath($path);
+        $directory = dirname($resolved);
+        if (! is_dir($directory)) {
+            return false;
+        }
+        $temporary = $resolved.'.'.bin2hex(random_bytes(6)).'.tmp';
+        try {
+            $written = file_put_contents($temporary, json_encode(
+                $payload,
+                JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE,
+            ), LOCK_EX);
+            if ($written === false || ! rename($temporary, $resolved)) {
+                @unlink($temporary);
+
+                return false;
+            }
+
+            return true;
+        } catch (Throwable) {
+            @unlink($temporary);
+
+            return false;
+        }
+    }
+
+    private function resolveBackfillPath(string $path): string
+    {
+        if (preg_match('/^(?:[A-Za-z]:[\\\\\/]|[\\\\\/])/', $path) === 1) {
+            return $path;
+        }
+
+        return base_path($path);
     }
 
     /** @param list<string> $missingRequiredTables @param list<string> $missingRequiredColumns @param array<string,int> $anomalies @param array<string,array<string,mixed>> $inventory @param list<string> $blockingIssues @param array<string,mixed> $details */
@@ -318,7 +807,7 @@ final class CrmTenantIntegrity
     }
 
     /** @param list<string> $blockingIssues @param array<string,mixed> $details */
-    private function copyReport(CrmTenantIntegrityReport $report, string $status, bool $writesPerformed = false, array $blockingIssues = [], array $details = []): CrmTenantIntegrityReport
+    private function copyReport(CrmTenantIntegrityReport $report, string $status, bool $writesPerformed = false, ?array $blockingIssues = null, ?array $details = null): CrmTenantIntegrityReport
     {
         return new CrmTenantIntegrityReport(
             phase: $report->phase,
@@ -331,8 +820,8 @@ final class CrmTenantIntegrity
             missingRequiredColumns: $report->missingRequiredColumns,
             anomalies: $report->anomalies,
             inventory: $report->inventory,
-            blockingIssues: $blockingIssues === [] ? $report->blockingIssues : $blockingIssues,
-            details: $details === [] ? $report->details : $details,
+            blockingIssues: $blockingIssues ?? $report->blockingIssues,
+            details: $details ?? $report->details,
         );
     }
 
@@ -386,11 +875,13 @@ final class CrmTenantIntegrity
                 $this->addAnomaly($counts, 'cross_tenant_'.$pivot, $this->pivotMismatch($pivot, $leftColumn, $leftTable, $rightColumn, $rightTable));
                 $this->addAnomaly($counts, 'pivot_tenant_left_mismatch_'.$pivot, $this->pivotTenantMismatch($pivot, $leftColumn, $leftTable));
                 $this->addAnomaly($counts, 'pivot_tenant_right_mismatch_'.$pivot, $this->pivotTenantMismatch($pivot, $rightColumn, $rightTable));
+                $this->addAnomaly($counts, 'null_endpoint_tenant_'.$pivot, $this->pivotNullEndpointTenant($pivot, $leftColumn, $leftTable, $rightColumn, $rightTable));
             } else {
                 $this->addAnomaly($counts, 'cross_tenant_'.$pivot, $this->pivotEndpointMismatch($pivot, $leftColumn, $leftTable, $rightColumn, $rightTable));
             }
             $this->addAnomaly($counts, 'orphan_'.$pivot.'_'.$leftColumn, $this->pivotOrphans($pivot, $leftColumn, $leftTable));
             $this->addAnomaly($counts, 'orphan_'.$pivot.'_'.$rightColumn, $this->pivotOrphans($pivot, $rightColumn, $rightTable));
+            $this->addAnomaly($counts, 'duplicate_pivot_'.$pivot, $this->duplicatePivot($pivot, $leftColumn, $rightColumn));
         }
         $this->ownerAnomalies($counts);
         $this->duplicateCandidateAnomalies($counts);
@@ -534,6 +1025,7 @@ final class CrmTenantIntegrity
         if (! $this->relationAvailable($childTable, $foreignColumn, $parentTable)) {
             return 0;
         }
+
         return (int) DB::table($childTable.' as child')->join($parentTable.' as parent', 'parent.id', '=', 'child.'.$foreignColumn)
             ->whereNotNull('child.'.$foreignColumn)->whereColumn('child.tenant_id', '<>', 'parent.tenant_id')->count();
     }
@@ -543,6 +1035,7 @@ final class CrmTenantIntegrity
         if (! $this->relationAvailable($childTable, $foreignColumn, $parentTable)) {
             return 0;
         }
+
         return (int) DB::table($childTable.' as child')->leftJoin($parentTable.' as parent', 'parent.id', '=', 'child.'.$foreignColumn)
             ->whereNotNull('child.'.$foreignColumn)->whereNull('parent.id')->count();
     }
@@ -552,6 +1045,7 @@ final class CrmTenantIntegrity
         if (! $this->hasColumns('crm_deals', ['crm_pipeline_id', 'crm_stage_id']) || ! $this->hasColumns('crm_stages', ['id', 'crm_pipeline_id'])) {
             return 0;
         }
+
         return (int) DB::table('crm_deals as deal')->join('crm_stages as stage', 'stage.id', '=', 'deal.crm_stage_id')
             ->whereColumn('deal.crm_pipeline_id', '<>', 'stage.crm_pipeline_id')->count();
     }
@@ -561,6 +1055,7 @@ final class CrmTenantIntegrity
         if (! $this->hasColumns($pivot, [$leftColumn, $rightColumn, 'tenant_id'])) {
             return 0;
         }
+
         return (int) DB::table($pivot.' as pivot')
             ->join($leftTable.' as left_endpoint', 'left_endpoint.id', '=', 'pivot.'.$leftColumn)
             ->join($rightTable.' as right_endpoint', 'right_endpoint.id', '=', 'pivot.'.$rightColumn)
@@ -571,11 +1066,41 @@ final class CrmTenantIntegrity
             })->count();
     }
 
+    private function pivotNullEndpointTenant(string $pivot, string $leftColumn, string $leftTable, string $rightColumn, string $rightTable): int
+    {
+        if (! $this->hasColumns($pivot, [$leftColumn, $rightColumn, 'tenant_id'])
+            || ! $this->hasColumns($leftTable, ['id', 'tenant_id'])
+            || ! $this->hasColumns($rightTable, ['id', 'tenant_id'])) {
+            return 0;
+        }
+
+        return (int) DB::table($pivot.' as pivot')
+            ->join($leftTable.' as left_endpoint', 'left_endpoint.id', '=', 'pivot.'.$leftColumn)
+            ->join($rightTable.' as right_endpoint', 'right_endpoint.id', '=', 'pivot.'.$rightColumn)
+            ->where(function ($query): void {
+                $query->whereNull('left_endpoint.tenant_id')->orWhereNull('right_endpoint.tenant_id');
+            })->count();
+    }
+
+    private function duplicatePivot(string $pivot, string $leftColumn, string $rightColumn): int
+    {
+        if (! $this->hasColumns($pivot, [$leftColumn, $rightColumn])) {
+            return 0;
+        }
+
+        return (int) DB::table($pivot)
+            ->select([$leftColumn, $rightColumn])
+            ->groupBy([$leftColumn, $rightColumn])
+            ->havingRaw('COUNT(*) > 1')
+            ->count();
+    }
+
     private function pivotEndpointMismatch(string $pivot, string $leftColumn, string $leftTable, string $rightColumn, string $rightTable): int
     {
         if (! $this->hasColumns($pivot, [$leftColumn, $rightColumn])) {
             return 0;
         }
+
         return (int) DB::table($pivot.' as pivot')
             ->join($leftTable.' as left_endpoint', 'left_endpoint.id', '=', 'pivot.'.$leftColumn)
             ->join($rightTable.' as right_endpoint', 'right_endpoint.id', '=', 'pivot.'.$rightColumn)
@@ -587,6 +1112,7 @@ final class CrmTenantIntegrity
         if (! $this->hasColumns($pivot, [$column, 'tenant_id'])) {
             return 0;
         }
+
         return (int) DB::table($pivot.' as pivot')->join($parentTable.' as parent', 'parent.id', '=', 'pivot.'.$column)
             ->whereNotNull('pivot.tenant_id')->whereColumn('pivot.tenant_id', '<>', 'parent.tenant_id')->count();
     }
@@ -596,6 +1122,7 @@ final class CrmTenantIntegrity
         if (! $this->hasColumns($pivot, [$column])) {
             return 0;
         }
+
         return (int) DB::table($pivot.' as pivot')->leftJoin($parentTable.' as parent', 'parent.id', '=', 'pivot.'.$column)
             ->whereNull('parent.id')->count();
     }
@@ -615,6 +1142,7 @@ final class CrmTenantIntegrity
                 return false;
             }
         }
+
         return true;
     }
 
@@ -626,6 +1154,7 @@ final class CrmTenantIntegrity
                 return false;
             }
         }
+
         return true;
     }
 
@@ -696,6 +1225,7 @@ final class CrmTenantIntegrity
         $query = DB::table($table)->select($idColumn)->orderBy($idColumn);
         $first = $query->first();
         $last = (clone $query)->reorder($idColumn, 'desc')->first();
+
         return [
             'count' => $this->aggregateCount($table),
             'hash' => hash('sha256', json_encode([
@@ -728,6 +1258,7 @@ final class CrmTenantIntegrity
             $catalog[$name] = ['columns' => $this->columns($name), 'indexes' => $this->indexes($name), 'foreign_keys' => $this->foreignKeys($name)];
         }
         ksort($catalog);
+
         return hash('sha256', json_encode($catalog, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
     }
 
@@ -736,6 +1267,7 @@ final class CrmTenantIntegrity
     {
         $columns = Schema::getColumns($table);
         usort($columns, static fn (array $a, array $b): int => strcmp((string) ($a['name'] ?? ''), (string) ($b['name'] ?? '')));
+
         return array_map(static fn (array $column): array => [
             'name' => (string) ($column['name'] ?? ''),
             'type' => strtolower((string) ($column['type_name'] ?? $column['type'] ?? '')),
@@ -750,6 +1282,7 @@ final class CrmTenantIntegrity
     {
         $indexes = Schema::getIndexes($table);
         usort($indexes, static fn (array $a, array $b): int => strcmp((string) ($a['name'] ?? ''), (string) ($b['name'] ?? '')));
+
         return array_map(static fn (array $index): array => [
             'name' => (string) ($index['name'] ?? ''),
             'columns' => array_values(array_map('strval', is_array($index['columns'] ?? null) ? $index['columns'] : [])),
@@ -763,6 +1296,7 @@ final class CrmTenantIntegrity
     {
         $keys = Schema::getForeignKeys($table);
         usort($keys, static fn (array $a, array $b): int => strcmp(json_encode($a), json_encode($b)));
+
         return array_map(static fn (array $key): array => [
             'name' => (string) ($key['name'] ?? ''),
             'columns' => array_values(array_map('strval', is_array($key['columns'] ?? null) ? $key['columns'] : [])),
@@ -800,6 +1334,7 @@ final class CrmTenantIntegrity
             $details[$name] = ['table' => $table, 'columns' => $columns, 'present' => Schema::hasTable($table) && $this->hasCompatibleIndex($table, $columns)];
         }
         ksort($details);
+
         return $details;
     }
 
@@ -811,6 +1346,7 @@ final class CrmTenantIntegrity
                 return true;
             }
         }
+
         return false;
     }
 
@@ -829,6 +1365,7 @@ final class CrmTenantIntegrity
             }
         }
         ksort($hashes);
+
         return $hashes;
     }
 }

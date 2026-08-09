@@ -16,12 +16,12 @@ use JsonSerializable;
 final readonly class CrmTenantIntegrityReport implements JsonSerializable
 {
     /**
-     * @param list<string> $missingRequiredTables
-     * @param list<string> $missingRequiredColumns
-     * @param array<string, int> $anomalies
-     * @param array<string, array<string, mixed>> $inventory
-     * @param array<string, mixed> $details
-     * @param list<string> $blockingIssues
+     * @param  list<string>  $missingRequiredTables
+     * @param  list<string>  $missingRequiredColumns
+     * @param  array<string, int>  $anomalies
+     * @param  array<string, array<string, mixed>>  $inventory
+     * @param  array<string, mixed>  $details
+     * @param  list<string>  $blockingIssues
      */
     public function __construct(
         public string $phase,

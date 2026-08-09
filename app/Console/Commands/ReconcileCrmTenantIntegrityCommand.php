@@ -16,9 +16,13 @@ final class ReconcileCrmTenantIntegrityCommand extends Command
         {--fingerprint= : Schema fingerprint returned by preflight}
         {--schema-fingerprint= : Alias for --fingerprint}
         {--expected-fingerprint= : Alias for --fingerprint}
+        {--limit=500 : Maximum pivot rows to backfill (1-2000)}
+        {--checkpoint= : JSON checkpoint file to update atomically}
+        {--resume : Resume from the checkpoint lineage}
+        {--dry-run : Execute and roll back the transactional batch}
         {--json : Emit the complete deterministic report as JSON}';
 
-    protected $description = 'Preflight or expand canonical CRM tenant-integrity structures without backfill or contract writes.';
+    protected $description = 'Preflight, expand, or deterministically backfill canonical CRM tenant-integrity structures.';
 
     public function handle(CrmTenantIntegrity $integrity): int
     {
@@ -30,11 +34,22 @@ final class ReconcileCrmTenantIntegrityCommand extends Command
             ?: $this->option('schema-fingerprint')
             ?: $this->option('expected-fingerprint');
         $fingerprint = is_string($fingerprint) && trim($fingerprint) !== '' ? trim($fingerprint) : null;
+        $limit = (int) $this->option('limit');
+        $checkpoint = $this->option('checkpoint');
+        $checkpoint = is_string($checkpoint) && trim($checkpoint) !== '' ? trim($checkpoint) : null;
 
         try {
-            $report = $integrity->run($phase, $fingerprint);
+            $report = $integrity->run(
+                phase: $phase,
+                fingerprint: $fingerprint,
+                limit: $limit,
+                checkpoint: $checkpoint,
+                resume: (bool) $this->option('resume'),
+                dryRun: (bool) $this->option('dry-run'),
+            );
         } catch (InvalidArgumentException $exception) {
             $this->error($exception->getMessage());
+
             return self::INVALID;
         }
 
@@ -51,7 +66,10 @@ final class ReconcileCrmTenantIntegrityCommand extends Command
         return match ($report->status) {
             CrmTenantIntegrity::STATUS_READY,
             CrmTenantIntegrity::STATUS_EXPANDED,
-            CrmTenantIntegrity::STATUS_EXPANDED_NOOP => self::SUCCESS,
+            CrmTenantIntegrity::STATUS_EXPANDED_NOOP,
+            CrmTenantIntegrity::STATUS_BACKFILLED,
+            CrmTenantIntegrity::STATUS_BACKFILLED_NOOP,
+            CrmTenantIntegrity::STATUS_BACKFILL_DRY_RUN => self::SUCCESS,
             CrmTenantIntegrity::STATUS_BLOCKED_UNKNOWN => 6,
             default => 5,
         };
