@@ -355,6 +355,12 @@ final class ProcessCatalogImportItemTest extends TestCase
         self::assertSame('image/png', $provider->image->mimeType);
         self::assertSame('fake-image-bytes', $provider->image->contents);
         self::assertNotSame($item->original_name, $provider->image->originalName);
+
+        $item->refresh();
+        self::assertSame(CatalogImportStatus::Failed, $item->status);
+        self::assertSame('analysis_failed', $item->error_code);
+        self::assertSame('Catalog image analysis failed.', $item->error_message);
+        self::assertStringNotContainsString('RAW_PROVIDER_SECRET', (string) $item->error_message);
     }
 
     /** @return array{Tenant, CatalogImportItem} */
@@ -408,7 +414,7 @@ final class CatalogVisionRecordingProvider implements CatalogVisionProviderInter
         $this->calls++;
         $this->image = $image;
 
-        throw new \RuntimeException('Provider recording stop.');
+        throw new \RuntimeException('RAW_PROVIDER_SECRET');
     }
 }
 

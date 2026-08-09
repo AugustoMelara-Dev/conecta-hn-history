@@ -311,6 +311,64 @@ final class DovraSecurityRatchetTest extends TestCase
     }
 
     #[Test]
+    public function catalog_vision_ratchet_rejects_a_second_provider_sink_using_raw_metadata(): void
+    {
+        $guard = <<<'PHP'
+            <?php
+            final class CatalogVisionIngressGuard {
+                private const DOVRA_SOURCE = 'upload';
+                private const CHANNEL = 'catalog_vision_queue';
+                public function inspect($tenantId, $actorId, $descriptor) {
+                    return $this->ingress->inspect(new DataEnvelope(
+                        sourceSystem: self::DOVRA_SOURCE, payload: $descriptor, tenantId: $tenantId,
+                        actorId: $actorId, channel: self::CHANNEL, context: [],
+                    ));
+                }
+            }
+            PHP;
+        $job = <<<'PHP'
+            <?php
+            final class ProcessCatalogImportItem {
+                public function handle($provider, $catalogIngress) {
+                    $work = DB::transaction(function () {
+                        return ['item' => $item, 'actor_id' => (string) $batch->created_by];
+                    });
+                    $item = $work['item'];
+                    $descriptor = [
+                        'filename' => $item->original_name,
+                        'mime' => $item->mime_type,
+                        'size_bytes' => $item->size_bytes,
+                        'sha256' => $item->sha256,
+                    ];
+                    $decision = $catalogIngress->inspect($this->tenantId, $work['actor_id'], $descriptor);
+                    $redactedDescriptor = $catalogIngress->validatedDescriptor($decision);
+                    $contents = Storage::disk($item->source_disk)->get($item->source_path);
+                    $provider->analyze(new CatalogVisionImage(
+                        tenantId: $this->tenantId, itemId: $this->itemId,
+                        originalName: $redactedDescriptor['filename'], mimeType: $redactedDescriptor['mime'],
+                        contents: $contents,
+                    ));
+                    $provider->analyze(new CatalogVisionImage(
+                        tenantId: $this->tenantId, itemId: $this->itemId,
+                        originalName: $item->original_name, mimeType: $item->mime_type,
+                        contents: $contents,
+                    ));
+                }
+            }
+            PHP;
+
+        try {
+            self::assertSecureCatalogVisionJob($job, $guard);
+            self::fail('A second catalog provider sink unexpectedly satisfied the ratchet.');
+        } catch (AssertionFailedError $exception) {
+            self::assertSame(
+                'Catalog vision worker must have exactly one provider analyze sink.',
+                $exception->getMessage(),
+            );
+        }
+    }
+
+    #[Test]
     public function dovra_rls_contract_cannot_pass_by_missing_tables_or_unregistered_inventory(): void
     {
         $root = dirname(__DIR__, 2);
@@ -389,18 +447,30 @@ final class DovraSecurityRatchetTest extends TestCase
         $descriptorAssignments = [];
         $redactedAssignments = [];
         $inspectionAssignments = [];
+        $inspectCalls = [];
+        $storageReads = [];
+        $providerCalls = [];
 
         foreach ($nodes as $index => $node) {
-            if ($inspectIndex === null && self::isVariableReceiverCall($node, 'catalogIngress', 'inspect')) {
-                $inspectIndex = $index;
-                $inspect = $node;
+            if (self::isVariableReceiverCall($node, 'catalogIngress', 'inspect')) {
+                $inspectCalls[] = $node;
+                if ($inspectIndex === null) {
+                    $inspectIndex = $index;
+                    $inspect = $node;
+                }
             }
-            if ($storageIndex === null && self::isStorageRead($node)) {
-                $storageIndex = $index;
+            if (self::isStorageRead($node)) {
+                $storageReads[] = $node;
+                if ($storageIndex === null) {
+                    $storageIndex = $index;
+                }
             }
-            if ($providerIndex === null && self::isVariableReceiverCall($node, 'provider', 'analyze')) {
-                $providerIndex = $index;
-                $provider = $node;
+            if (self::isVariableReceiverCall($node, 'provider', 'analyze')) {
+                $providerCalls[] = $node;
+                if ($providerIndex === null) {
+                    $providerIndex = $index;
+                    $provider = $node;
+                }
             }
             if ($node instanceof Assign && self::isVariable($node->var, 'descriptor')) {
                 $descriptorAssignments[] = $node;
@@ -434,6 +504,15 @@ final class DovraSecurityRatchetTest extends TestCase
             }
         }
 
+        if (count($inspectCalls) !== 1) {
+            self::fail('Catalog vision worker must have exactly one ingress inspect call.');
+        }
+        if (count($storageReads) !== 1) {
+            self::fail('Catalog vision worker must have exactly one storage read.');
+        }
+        if (count($providerCalls) !== 1) {
+            self::fail('Catalog vision worker must have exactly one provider analyze sink.');
+        }
         self::assertIsInt($inspectIndex, 'A real $catalogIngress->inspect() call is required.');
         self::assertIsInt($storageIndex, 'A real Storage::disk()->get() call is required.');
         self::assertIsInt($providerIndex, 'A real $provider->analyze() call is required.');

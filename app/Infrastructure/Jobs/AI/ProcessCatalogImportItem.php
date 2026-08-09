@@ -184,7 +184,7 @@ final class ProcessCatalogImportItem implements ShouldQueue
 
                 return true;
             });
-        } catch (Throwable $exception) {
+        } catch (Throwable) {
             /** @var array<string, mixed> $failureTelemetry */
             $failureTelemetry = [];
             if ($result instanceof CatalogVisionProviderResult) {
@@ -202,7 +202,7 @@ final class ProcessCatalogImportItem implements ShouldQueue
                 ];
             }
 
-            $persisted = DB::transaction(function () use ($exception, $failureTelemetry, $item): bool {
+            $persisted = DB::transaction(function () use ($failureTelemetry, $item): bool {
                 $current = CatalogImportItem::query()
                     ->where('tenant_id', $this->tenantId)
                     ->whereKey($this->itemId)
@@ -224,7 +224,7 @@ final class ProcessCatalogImportItem implements ShouldQueue
                 $current->forceFill(array_merge([
                     'status' => CatalogImportStatus::Failed,
                     'error_code' => 'analysis_failed',
-                    'error_message' => Str::limit($exception->getMessage(), 1000, ''),
+                    'error_message' => 'Catalog image analysis failed.',
                     'processed_at' => now(),
                 ], $failureTelemetry))->save();
 
