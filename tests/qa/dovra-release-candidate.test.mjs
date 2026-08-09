@@ -196,6 +196,64 @@ test("non-config password prose with Unicode whitespace is indexed byte for byte
     assert.equal(readFileSync(join(output, "source", unicodePath), "utf8"), unicodeContent);
 });
 
+test("non-config file locator literals are indexed byte for byte", (t) => {
+    const source = createFixture();
+    const outputParent = mkdtempSync(join(tmpdir(), "dovra-rc-output-"));
+    const output = join(outputParent, "bundle");
+    const path = "tests/file-locator-fixture.js";
+    const content = [
+        "const forgotPasswordPath = \"resources/js/lib/i18n.js\";",
+        "const passwordTemplate = \"./resources/views/auth/forgot-password.blade.php\";",
+        "const passwordFixture = \"../tests/fixtures/auth/forgot-password.json\";",
+        "const passwordConfig = \"/var/lib/dovra/auth/forgot-password.properties\";",
+        "const passwordArchive = \"C:\\\\Dovra\\\\fixtures\\\\forgot-password.json\";",
+    ].join("\n");
+    writeFixtureFile(source, path, content);
+    t.after(() => {
+        rmSync(source, { recursive: true, force: true });
+        rmSync(outputParent, { recursive: true, force: true });
+    });
+
+    const result = assemble(source, output);
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    assert.equal(readFileSync(join(output, "source", path), "utf8"), content);
+});
+
+test("file locator exemption does not cover atoms missing extensions providers or config", (t) => {
+    const source = createFixture();
+    const outputParent = mkdtempSync(join(tmpdir(), "dovra-rc-output-"));
+    const output = join(outputParent, "bundle");
+    const atomic = "aB3dE5fG7hJ9kL2mN4pQ6rS8";
+    const provider = ["github", "_pat_11AA22BB33CC44DD55EE66FF77GG88HH"].join("");
+    const configPath = "resources/js/lib/i18n.js";
+    writeFixtureFile(source, "app/atomic.js", `const forgotPassword = "${atomic}";\n`);
+    writeFixtureFile(source, "app/no-extension.js", `const forgotPasswordPath = "fixtures/${atomic}";\n`);
+    writeFixtureFile(source, "app/provider-path.js", `const forgotPasswordPath = "fixtures/${provider}.txt";\n`);
+    writeFixtureFile(source, "app/invalid-locators.js", [
+        "const forgotPasswordPath = \"https://example.invalid/forgot-password.json\";",
+        "const passwordTemplate = \"fixtures/forgot-password.json?download=1\";",
+        "const passwordFixture = \"fixtures/forgot-password.json#example\";",
+    ].join("\n"));
+    writeFixtureFile(source, ".env.example", `PASSWORD='${configPath}'\n`);
+    t.after(() => {
+        rmSync(source, { recursive: true, force: true });
+        rmSync(outputParent, { recursive: true, force: true });
+    });
+
+    const result = assemble(source, output);
+    const diagnostics = `${result.stdout}\n${result.stderr}`;
+    assert.notEqual(result.status, 0);
+    assert.match(diagnostics, /app\/atomic\.js:1:sensitive-literal/u);
+    assert.match(diagnostics, /app\/no-extension\.js:1:sensitive-literal/u);
+    assert.match(diagnostics, /app\/provider-path\.js:1:github-token/u);
+    assert.match(diagnostics, /app\/invalid-locators\.js:1:sensitive-literal/u);
+    assert.match(diagnostics, /app\/invalid-locators\.js:2:sensitive-literal/u);
+    assert.match(diagnostics, /app\/invalid-locators\.js:3:sensitive-literal/u);
+    assert.match(diagnostics, /\.env\.example:1:sensitive-literal/u);
+    for (const value of [atomic, provider, configPath]) assert.ok(!diagnostics.includes(value));
+    assert.ok(!existsSync(join(output, "manifest.json")));
+});
+
 test("verifier rejects tampered and unexpected source files", (t) => {
     const source = createFixture();
     const output = join(mkdtempSync(join(tmpdir(), "dovra-rc-output-")), "bundle");

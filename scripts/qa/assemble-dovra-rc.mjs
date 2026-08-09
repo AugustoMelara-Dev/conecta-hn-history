@@ -330,6 +330,39 @@ function isHighEntropyCredential(value) {
         && shannonEntropy(value) >= 3.5;
 }
 
+function isFileLocatorLiteral(value) {
+    if (/[\p{White_Space}\p{Cc}]/u.test(value) || /[?#]/u.test(value)) {
+        return false;
+    }
+    const locator = value.replace(/\\\\/gu, "\\");
+    if (!/[\\/]/u.test(locator)) {
+        return false;
+    }
+    let remainder = locator;
+    const drivePrefix = remainder.match(/^[A-Za-z]:[\\/]/u);
+    if (drivePrefix) {
+        remainder = remainder.slice(drivePrefix[0].length);
+    } else if (/^[A-Za-z][A-Za-z0-9+.-]*:/u.test(remainder)) {
+        return false;
+    } else if (/^\.\.[\\/]/u.test(remainder)) {
+        remainder = remainder.slice(3);
+    } else if (/^\.[\\/]/u.test(remainder)) {
+        remainder = remainder.slice(2);
+    } else if (/^[\\/]/u.test(remainder)) {
+        remainder = remainder.slice(1);
+    }
+    const segments = remainder.split(/[\\/]/u);
+    if (segments.length === 0 || segments.some((segment) => segment.length === 0
+        || segment === "."
+        || segment === ".."
+        || !/^[A-Za-z0-9._-]+$/u.test(segment))) {
+        return false;
+    }
+    const basename = segments.at(-1);
+    const extension = basename.match(/^(.+)\.([A-Za-z0-9]{1,10})$/u);
+    return extension !== null && extension[1].length > 0;
+}
+
 function hasProductionEntropy(value) {
     return characterClassCount(value) >= 2 && shannonEntropy(value) >= 3.5;
 }
@@ -431,7 +464,7 @@ function secretSignatures(content, path) {
             continue;
         }
         const quotedName = match[1] !== undefined;
-        if (configSurface || (!quotedName && isHighEntropyCredential(value))) {
+        if (configSurface || (!quotedName && isHighEntropyCredential(value) && !isFileLocatorLiteral(value))) {
             detections.push({ line: index + 1, name: "sensitive-literal" });
         }
     }
