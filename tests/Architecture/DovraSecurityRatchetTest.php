@@ -624,6 +624,42 @@ final class DovraSecurityRatchetTest extends TestCase
     }
 
     #[Test]
+    public function otp_provider_failure_ratchet_rejects_a_second_notifier_send(): void
+    {
+        $fixture = <<<'PHP'
+            <?php
+            final class SendOtpNotificationListener {
+                public function handle($event) {
+                    $serviceName = 'sms_provider';
+                    $maskedIdentifier = $this->maskIdentifier($event->identifier);
+                    try {
+                        $this->notifier->send($event);
+                        $this->notifier->send($event);
+                    } catch (Throwable $failure) {
+                        $this->circuitBreaker->reportFailure($serviceName);
+                        Log::error('OTP notification delivery failed', [
+                            'error_code' => 'otp_notification_provider_unavailable',
+                            'identifier' => $maskedIdentifier,
+                            'tenant_id' => $event->tenantId,
+                        ]);
+                        throw $failure;
+                    }
+                }
+            }
+            PHP;
+
+        try {
+            self::assertSecureOtpProviderFailure($fixture);
+            self::fail('A second OTP notifier send unexpectedly satisfied the ratchet.');
+        } catch (AssertionFailedError $exception) {
+            self::assertSame(
+                'OTP notifier send must occur exactly once.',
+                $exception->getMessage(),
+            );
+        }
+    }
+
+    #[Test]
     public function dovra_rls_contract_cannot_pass_by_missing_tables_or_unregistered_inventory(): void
     {
         $root = dirname(__DIR__, 2);
@@ -1068,11 +1104,14 @@ final class DovraSecurityRatchetTest extends TestCase
                 static fn (Node $node): bool => self::isThisReceiverCall($node, 'notifier', 'send'),
             ));
             if ($notifierCalls !== []) {
-                $providerTries[] = $tryCatch;
+                $providerTries[] = [$tryCatch, $notifierCalls];
             }
         }
         self::assertCount(1, $providerTries, 'OTP notifier must have one provider try/catch boundary.');
-        $providerTry = $providerTries[0];
+        [$providerTry, $notifierCalls] = $providerTries[0];
+        if (count($notifierCalls) !== 1) {
+            self::fail('OTP notifier send must occur exactly once.');
+        }
         self::assertCount(1, $providerTry->catches);
         $catch = $providerTry->catches[0];
         self::assertCount(1, $catch->types);
