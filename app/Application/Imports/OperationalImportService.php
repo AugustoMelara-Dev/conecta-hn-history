@@ -318,11 +318,11 @@ final readonly class OperationalImportService
                     'error_code' => null,
                     'error_message' => null,
                 ])->save();
-            } catch (\Throwable $exception) {
+            } catch (\Throwable) {
                 $item->forceFill([
                     'status' => CatalogImportStatus::Failed,
                     'error_code' => 'publication_failed',
-                    'error_message' => mb_substr($exception->getMessage(), 0, 2000),
+                    'error_message' => 'Operational import item could not be published.',
                 ])->save();
             }
         }

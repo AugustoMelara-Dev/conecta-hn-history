@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Application\Reporting\Reports;
 
+use App\Application\Reporting\Contracts\ReportInterface;
+use App\Application\Reporting\ValueObjects\ReportData;
 use App\Domain\Reporting\Enums\ReportKey;
-use App\Domain\Reporting\ValueObjects\ReportData;
 use App\Domain\Reporting\ValueObjects\ReportRange;
 use App\Domain\Reporting\ValueObjects\ReportRow;
+use Illuminate\Support\Facades\DB;
 
 class ChannelPerformanceReport implements ReportInterface
 {
@@ -43,10 +45,10 @@ class ChannelPerformanceReport implements ReportInterface
 
     public function getData(string $tenantId, ReportRange $range): ReportData
     {
-        $channels = DB::table('orders')->where('tenant_id', $tenantId)->where('status', 'paid')
+        $channels = DB::table('orders')->where('tenant_id', $tenantId)->where('payment_status', 'paid')
             ->whereBetween('created_at', [$range->start, $range->end])
-            ->selectRaw('COALESCE(channel, "direct") as channel, SUM(total_amount) as revenue, COUNT(*) as cnt')
-            ->groupBy('channel')->get();
+            ->selectRaw('COALESCE(source, ?) as channel, SUM(total) as revenue, COUNT(*) as cnt', ['direct'])
+            ->groupBy('source')->orderBy('channel')->get();
         $rows = [];
         foreach ($channels as $c) {
             $rows[] = new ReportRow($c->channel, (float) $c->revenue, unit: 'HNL', metadata: ['count' => (int) $c->cnt]);

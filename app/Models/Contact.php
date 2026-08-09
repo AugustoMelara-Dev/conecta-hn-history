@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Domain\Crm\ValueObjects\DealScore;
+use App\Models\Concerns\HasImmutableTenantId;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Carbon;
 
 /**
  * Contact - Contacto del CRM (lead, prospect, customer).
@@ -25,13 +26,13 @@ use Illuminate\Support\Carbon;
  * @property string|null $job_title
  * @property string|null $source
  * @property string $lifecycle_stage
- * @property Carbon|null $last_contact_at
+ * @property \Illuminate\Support\Carbon|null $last_contact_at
  * @property array|null $tags
  * @property array|null $custom_fields
  */
 class Contact extends Model
 {
-    use HasUuids, SoftDeletes;
+    use HasImmutableTenantId, HasUuids, SoftDeletes;
 
     protected $table = 'crm_contacts';
 
@@ -68,32 +69,32 @@ class Contact extends Model
 
     public function tenant(): BelongsTo
     {
-        return $this->belongsTo(Tenant::class);
+        return $this->belongsTo(\App\Models\Tenant::class);
     }
 
     public function company(): BelongsTo
     {
-        return $this->belongsTo(CrmCompany::class, 'company_id');
+        return $this->belongsTo(\App\Models\CrmCompany::class, 'company_id');
     }
 
     public function owner(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'owner_id');
+        return $this->belongsTo(\App\Models\User::class, 'owner_id');
     }
 
     public function deals(): HasMany
     {
-        return $this->hasMany(CrmDeal::class, 'contact_id');
+        return $this->hasMany(\App\Models\CrmDeal::class, 'contact_id');
     }
 
     public function activities(): HasMany
     {
-        return $this->hasMany(CrmActivity::class, 'contact_id');
+        return $this->hasMany(\App\Models\CrmActivity::class, 'contact_id');
     }
 
     public function getFullNameAttribute(): string
     {
-        return trim(($this->first_name ?? '').' '.($this->last_name ?? ''));
+        return trim(($this->first_name ?? '') . ' ' . ($this->last_name ?? ''));
     }
 
     public function getDisplayNameAttribute(): string
@@ -102,8 +103,7 @@ class Contact extends Model
         if ($full !== '') {
             return $full;
         }
-
-        return $this->email ?? 'Contacto #'.$this->id;
+        return $this->email ?? 'Contacto #' . $this->id;
     }
 
     /**

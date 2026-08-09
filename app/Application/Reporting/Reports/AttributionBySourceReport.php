@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Application\Reporting\Reports;
 
+use App\Application\Reporting\Contracts\ReportInterface;
+use App\Application\Reporting\ValueObjects\ReportData;
 use App\Domain\Reporting\Enums\ReportKey;
-use App\Domain\Reporting\ValueObjects\ReportData;
 use App\Domain\Reporting\ValueObjects\ReportRange;
 use App\Domain\Reporting\ValueObjects\ReportRow;
+use Illuminate\Support\Facades\DB;
 
 class AttributionBySourceReport implements ReportInterface
 {
@@ -43,11 +45,14 @@ class AttributionBySourceReport implements ReportInterface
 
     public function getData(string $tenantId, ReportRange $range): ReportData
     {
-        $sources = DB::table('orders as o')->join('crm_contacts as c', 'c.email', '=', 'o.customer_email')
-            ->where('o.tenant_id', $tenantId)->where('o.status', 'paid')
+        $sources = DB::table('orders as o')->join('crm_contacts as c', function ($join): void {
+            $join->on('c.email', '=', 'o.customer_email')
+                ->on('c.tenant_id', '=', 'o.tenant_id');
+        })
+            ->where('o.tenant_id', $tenantId)->where('o.payment_status', 'paid')
             ->whereBetween('o.created_at', [$range->start, $range->end])
-            ->selectRaw('COALESCE(c.source, "unknown") as source, SUM(o.total_amount) as revenue')
-            ->groupBy('source')->get();
+            ->selectRaw('COALESCE(c.source, ?) as source, SUM(o.total) as revenue', ['direct'])
+            ->groupBy('c.source')->orderBy('source')->get();
         $total = (float) $sources->sum('revenue');
         $rows = [];
         foreach ($sources as $s) {

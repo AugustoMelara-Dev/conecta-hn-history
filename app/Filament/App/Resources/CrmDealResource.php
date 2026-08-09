@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
+use Filament\Schemas\Schema as FilamentSchema;
 use App\Application\Access\Contracts\TenantPermissionGuardInterface;
 use App\Application\Crm\CanonicalOpportunityWriter;
 use App\Application\Markets\TenantMarketResolver;
@@ -21,18 +22,19 @@ use App\Models\Lead;
 use App\Models\Location;
 use App\Models\Tenant;
 use App\Models\User;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\EditAction;
 use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Resources\Resource;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
+use Filament\Resources\Resource;
 use Filament\Tables;
-use Filament\Tables\Actions\DeleteAction;
-use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+
 
 class CrmDealResource extends Resource
 {
@@ -40,7 +42,7 @@ class CrmDealResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'title';
 
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-currency-dollar';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-currency-dollar';
 
     public static function getNavigationLabel(): string
     {
@@ -111,7 +113,7 @@ class CrmDealResource extends Resource
         return static::allows(Permission::CRM_DEALS_MOVE_STAGE);
     }
 
-    public static function form(Schema $schema): Schema
+    public static function form(FilamentSchema $schema): FilamentSchema
     {
         return $schema
             ->components([

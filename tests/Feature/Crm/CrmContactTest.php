@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 use App\Models\Contact;
 use App\Models\CrmActivity;
-use App\Models\CrmDeal;
-use App\Models\CrmPipeline;
-use App\Models\CrmStage;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Validation\Factory;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+uses(RefreshDatabase::class);
 
 it('can create a contact happy-path', function () {
     $tenant = Tenant::factory()->create();
@@ -31,7 +30,7 @@ it('can create a contact happy-path', function () {
 it('contact validation fails with bad email', function () {
     $tenant = Tenant::factory()->create();
 
-    $request = Factory::class;
+    $request = \Illuminate\Validation\Factory::class;
     $validator = validator(
         ['email' => 'not-an-email'],
         ['email' => 'email'],
@@ -40,11 +39,9 @@ it('contact validation fails with bad email', function () {
     expect($validator->fails())->toBeTrue();
 });
 
-it('contact can have activities and deals', function () {
+it('contact can have activities without an automatic opportunity', function () {
     $tenant = Tenant::factory()->create();
     $user = User::factory()->create(['tenant_id' => $tenant->id]);
-    $pipeline = CrmPipeline::create(['tenant_id' => $tenant->id, 'name' => 'Sales', 'is_default' => true]);
-    $stage = CrmStage::create(['pipeline_id' => $pipeline->id, 'name' => 'Qualified', 'probability' => 25, 'sort_order' => 1]);
 
     $contact = Contact::create([
         'tenant_id' => $tenant->id,
@@ -60,19 +57,7 @@ it('contact can have activities and deals', function () {
         'subject' => 'Discovery call',
     ]);
 
-    $deal = CrmDeal::create([
-        'tenant_id' => $tenant->id,
-        'pipeline_id' => $pipeline->id,
-        'stage_id' => $stage->id,
-        'contact_id' => $contact->id,
-        'name' => 'Q4 opportunity',
-        'value' => 50000,
-        'currency' => 'HNL',
-    ]);
-
     expect($contact->activities()->count())->toBe(1);
-    expect($contact->deals()->count())->toBe(1);
-    expect((float) $deal->weighted_value)->toBeGreaterThan(0);
 });
 
 it('contact scopeForTenant filters correctly', function () {

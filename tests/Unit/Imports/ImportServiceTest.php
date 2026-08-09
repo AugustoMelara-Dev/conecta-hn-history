@@ -12,7 +12,7 @@ it('ImportService has 8 entities registered', function () {
 
     expect($entities)->toContain('contacts');
     expect($entities)->toContain('companies');
-    expect($entities)->toContain('deals');
+    expect($entities)->not->toContain('deals');
     expect($entities)->toContain('products');
     expect($entities)->toContain('orders');
     expect($entities)->toContain('users');

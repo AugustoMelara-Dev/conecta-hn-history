@@ -4,15 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
-use App\Models\Campaign;
-use App\Models\Coupon;
-use App\Models\Lead;
-use App\Models\MenuSection;
-use App\Models\Order;
-use App\Models\Product;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -46,18 +40,18 @@ class EnsureTenantOwnership
      * Only models with tenant_id column are checked.
      */
     protected array $tenantBoundModels = [
-        'product' => Product::class,
-        'order' => Order::class,
-        'coupon' => Coupon::class,
-        'menuSection' => MenuSection::class,
-        'lead' => Lead::class,
-        'campaign' => Campaign::class,
+        'product' => \App\Models\Product::class,
+        'order' => \App\Models\Order::class,
+        'coupon' => \App\Models\Coupon::class,
+        'menuSection' => \App\Models\MenuSection::class,
+        'lead' => \App\Models\Lead::class,
+        'campaign' => \App\Models\Campaign::class,
     ];
 
     /**
      * Handle an incoming request.
      *
-     * @param  Closure(Request): (Response)  $next
+     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
@@ -111,8 +105,25 @@ class EnsureTenantOwnership
     {
         $user = auth()->user();
 
-        // User->tenants() returns HasMany
-        return $user->tenants()->pluck('id')->toArray();
+        $ownedTenantIds = $user->tenants()->pluck('id');
+
+        if (! Schema::hasTable('tenant_memberships')) {
+            return $ownedTenantIds->all();
+        }
+
+        $memberTenantIds = $user->tenantMemberships()
+            ->whereNotNull('accepted_at')
+            ->where('status', 'active')
+            ->whereNull('suspended_at')
+            ->whereNull('revoked_at')
+            ->pluck('tenant_id');
+
+        return $ownedTenantIds
+            ->merge($memberTenantIds)
+            ->map(static fn (mixed $tenantId): string => (string) $tenantId)
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /**
@@ -160,19 +171,19 @@ class EnsureTenantOwnership
         // Log to security channel if available, fallback to default
         try {
             if (config('logging.channels.security')) {
-                Log::channel('security')->warning(
+                \Illuminate\Support\Facades\Log::channel('security')->warning(
                     'SECURITY: Cross-tenant access attempt detected',
                     $data
                 );
             } else {
-                Log::warning(
+                \Illuminate\Support\Facades\Log::warning(
                     'SECURITY: Cross-tenant access attempt detected',
                     $data
                 );
             }
         } catch (\Throwable $e) {
             // Fallback to default log if any error
-            Log::warning(
+            \Illuminate\Support\Facades\Log::warning(
                 'SECURITY: Cross-tenant access attempt detected',
                 $data
             );

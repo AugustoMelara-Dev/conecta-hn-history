@@ -244,15 +244,14 @@ final class RegisterTenantController extends Controller
 
             return redirect()->to($normalizedPanelUrl);
 
-        } catch (\Exception $e) {
+        } catch (\Exception) {
             Log::error('tenant_registration_failed', [
-                'email' => $request->validated('email'),
-                'error' => $e->getMessage(),
+                'error_code' => 'tenant_registration_unavailable',
             ]);
 
             return back()
-                ->withInput($request->except('password', 'password_confirmation'))
-                ->withErrors(['email' => 'Error: '.$e->getMessage()]);
+                ->withInput(request()->except('password', 'password_confirmation'))
+                ->withErrors(['email' => 'No pudimos completar el registro. Inténtalo de nuevo.']);
         }
     }
 }

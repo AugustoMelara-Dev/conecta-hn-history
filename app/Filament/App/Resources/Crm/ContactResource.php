@@ -9,8 +9,10 @@ use App\Application\Crm\ContactEnrichmentService;
 use App\Domain\Crm\Enums\LifecycleStage;
 use App\Filament\App\Resources\Crm\ContactResource\Pages;
 use App\Filament\App\Resources\Crm\ContactResource\RelationManagers\ActivitiesRelationManager;
-use App\Filament\App\Resources\Crm\ContactResource\RelationManagers\DealsRelationManager;
 use App\Models\Contact;
+use App\Models\CrmCompany;
+use App\Models\Tenant;
+use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
@@ -31,8 +33,11 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema as DatabaseSchema;
 
 class ContactResource extends Resource
 {
@@ -106,15 +111,17 @@ class ContactResource extends Resource
 
                                 Select::make('company_id')
                                     ->label('Empresa')
-                                    ->relationship('company', 'name')
+                                    ->options(fn (): array => self::companyOptions())
                                     ->searchable()
-                                    ->preload(),
+                                    ->preload()
+                                    ->native(false),
 
                                 Select::make('owner_id')
                                     ->label('Responsable')
-                                    ->relationship('owner', 'name')
+                                    ->options(fn (): array => self::ownerOptions())
                                     ->searchable()
-                                    ->preload(),
+                                    ->preload()
+                                    ->native(false),
                             ]),
 
                         DateTimePicker::make('last_contact_at')
@@ -195,7 +202,7 @@ class ContactResource extends Resource
 
                 SelectFilter::make('owner_id')
                     ->label('Responsable')
-                    ->relationship('owner', 'name'),
+                    ->options(fn (): array => self::ownerOptions()),
 
                 TernaryFilter::make('has_deals')
                     ->label('Con deals')
@@ -218,17 +225,28 @@ class ContactResource extends Resource
                     ->icon('heroicon-o-sparkles')
                     ->color('info')
                     ->action(function (Contact $record) {
+                        $tenant = Filament::getTenant();
+                        $actor = Filament::auth()->user();
+
+                        if (! $tenant instanceof Tenant || ! $actor instanceof User) {
+                            throw new \RuntimeException('CRM enrichment requires tenant and actor context.');
+                        }
+
+                        if ((string) $record->getAttribute('tenant_id') !== (string) $tenant->getKey()) {
+                            throw new AuthorizationException('CRM enrichment requires tenant and actor context.');
+                        }
+
+                        if (($record->email ?? $record->phone ?? '') === '') {
+                            return;
+                        }
+
                         app(ContactEnrichmentService::class)
-                            ->applyToContact($record);
+                            ->applyToContact($record, (string) $tenant->getKey(), (string) $actor->getKey());
                         Notification::make()
                             ->title('Contacto enriquecido')
                             ->success()
                             ->send();
                     }),
-                Action::make('view_deals')
-                    ->label('Ver deals')
-                    ->icon('heroicon-o-currency-dollar')
-                    ->url(fn (Contact $record) => DealResource::getUrl('index', ['tableFilters[contact_id][value]' => $record->id])),
                 DeleteAction::make(),
             ])
             ->bulkActions([
@@ -239,15 +257,20 @@ class ContactResource extends Resource
                         ->form([
                             Select::make('owner_id')
                                 ->label('Responsable')
-                                ->relationship('owner', 'name')
+                                ->options(fn (): array => self::ownerOptions())
                                 ->required(),
                         ])
                         ->action(function (array $data, Collection $records) {
-                            $tenantId = Filament::getTenant()->getKey();
+                            $tenant = Filament::getTenant();
+                            $actor = Filament::auth()->user();
+                            if (! $tenant instanceof Tenant || ! $actor instanceof User) {
+                                throw new \RuntimeException('CRM bulk ownership requires tenant and actor context.');
+                            }
                             app(BulkOperationsService::class)->bulkAssignOwner(
                                 $records->pluck('id')->toArray(),
                                 $data['owner_id'],
-                                $tenantId,
+                                (string) $tenant->getKey(),
+                                (string) $actor->getKey(),
                             );
                             Notification::make()->title('Contactos reasignados')->success()->send();
                         }),
@@ -293,7 +316,6 @@ class ContactResource extends Resource
     public static function getRelations(): array
     {
         return [
-            DealsRelationManager::class,
             ActivitiesRelationManager::class,
         ];
     }
@@ -305,5 +327,54 @@ class ContactResource extends Resource
             'create' => Pages\CreateContact::route('/create'),
             'edit' => Pages\EditContact::route('/{record}/edit'),
         ];
+    }
+
+    /** @return array<string, string> */
+    private static function companyOptions(): array
+    {
+        $tenant = Filament::getTenant();
+        if (! $tenant instanceof Tenant) {
+            return [];
+        }
+
+        return CrmCompany::query()
+            ->where('tenant_id', $tenant->getKey())
+            ->whereNull('deleted_at')
+            ->orderBy('name')
+            ->pluck('name', 'id')
+            ->all();
+    }
+
+    /** @return array<string, string> */
+    private static function ownerOptions(): array
+    {
+        $tenant = Filament::getTenant();
+        if (! $tenant instanceof Tenant) {
+            return [];
+        }
+
+        $query = User::query()
+            ->where(function (Builder $users) use ($tenant): void {
+                $users->where('users.id', $tenant->user_id);
+
+                if (! DatabaseSchema::hasTable('tenant_memberships')) {
+                    return;
+                }
+
+                $eligibleMemberships = DB::table('tenant_memberships')
+                    ->select('user_id')
+                    ->where('tenant_id', $tenant->getKey())
+                    ->where('status', 'active')
+                    ->whereNotNull('accepted_at')
+                    ->whereNull('suspended_at')
+                    ->whereNull('revoked_at')
+                    ->groupBy('user_id')
+                    ->havingRaw('COUNT(*) = 1');
+
+                $users->orWhereIn('users.id', $eligibleMemberships);
+            })
+            ->orderBy('name');
+
+        return $query->pluck('name', 'id')->all();
     }
 }

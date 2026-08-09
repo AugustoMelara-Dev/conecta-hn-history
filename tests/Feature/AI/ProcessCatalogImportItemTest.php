@@ -5,12 +5,17 @@ declare(strict_types=1);
 namespace Tests\Feature\AI;
 
 use App\Application\Ai\Catalog\CatalogVisionImage;
+use App\Application\Ai\Catalog\CatalogVisionIngressGuard;
 use App\Application\Ai\Catalog\CatalogVisionProviderInterface;
 use App\Application\Ai\Catalog\CatalogVisionProviderResult;
+use App\Application\Privacy\Dovra\DataClassificationPolicy;
+use App\Application\Privacy\Dovra\DovraDataIngressGuard;
 use App\Application\Shared\Contracts\SchemaValidatorInterface;
 use App\Domain\Catalog\Enums\CatalogImportStatus;
+use App\Domain\Privacy\Dovra\SensitivePayloadRedactor;
 use App\Domain\Shared\Services\TenantContext;
 use App\Infrastructure\Jobs\AI\ProcessCatalogImportItem;
+use App\Infrastructure\Privacy\Dovra\DovraIntegrationSeamRegistry;
 use App\Models\CatalogImportBatch;
 use App\Models\CatalogImportItem;
 use App\Models\Product;
@@ -84,6 +89,7 @@ final class ProcessCatalogImportItemTest extends TestCase
         (new ProcessCatalogImportItem((string) $tenant->id, (string) $item->id))->handle(
             $provider,
             app(SchemaValidatorInterface::class),
+            app(CatalogVisionIngressGuard::class),
         );
 
         $item->refresh();
@@ -175,6 +181,7 @@ final class ProcessCatalogImportItemTest extends TestCase
         (new ProcessCatalogImportItem((string) $tenant->id, (string) $item->id))->handle(
             $provider,
             app(SchemaValidatorInterface::class),
+            app(CatalogVisionIngressGuard::class),
         );
 
         $item->refresh();
@@ -205,6 +212,7 @@ final class ProcessCatalogImportItemTest extends TestCase
         (new ProcessCatalogImportItem((string) $otherTenant->id, (string) $item->id))->handle(
             $provider,
             app(SchemaValidatorInterface::class),
+            app(CatalogVisionIngressGuard::class),
         );
 
         $item->refresh();
@@ -237,6 +245,7 @@ final class ProcessCatalogImportItemTest extends TestCase
         (new ProcessCatalogImportItem((string) $tenant->id, (string) $item->id))->handle(
             $provider,
             app(SchemaValidatorInterface::class),
+            app(CatalogVisionIngressGuard::class),
         );
 
         $item->refresh();
@@ -252,6 +261,106 @@ final class ProcessCatalogImportItemTest extends TestCase
         self::assertNull($item->normalized_payload);
         self::assertSame(0, Product::withoutGlobalScopes()->count());
         self::assertSame(CatalogImportStatus::Failed, $item->batch()->firstOrFail()->status);
+    }
+
+    public function test_prohibited_descriptor_fails_generically_before_storage_or_provider(): void
+    {
+        [$tenant, $item] = $this->queuedItem();
+        $item->forceFill(['original_name' => 'sk-private-catalog-secret.jpg'])->save();
+        Storage::disk('local')->delete($item->source_path);
+        $provider = new CatalogVisionRecordingProvider;
+
+        (new ProcessCatalogImportItem((string) $tenant->id, (string) $item->id))->handle(
+            $provider,
+            app(SchemaValidatorInterface::class),
+            app(CatalogVisionIngressGuard::class),
+        );
+
+        $item->refresh();
+        self::assertSame(0, $provider->calls);
+        self::assertSame(CatalogImportStatus::Failed, $item->status);
+        self::assertSame('catalog_vision_input_not_allowed', $item->error_code);
+        self::assertSame('Catalog image input is not allowed.', $item->error_message);
+        self::assertStringNotContainsString('sk-private', (string) $item->error_message);
+        self::assertStringNotContainsString('secret_prohibited', (string) $item->error_message);
+    }
+
+    public function test_guard_exception_and_malformed_redaction_fail_unavailable_without_provider(): void
+    {
+        foreach ([
+            new CatalogIngressRedactorStub(throwOnScrub: true),
+            new CatalogIngressRedactorStub([
+                'filename' => 'item.jpg',
+                'mime' => 'image/jpeg',
+                'size_bytes' => 16,
+                'sha256' => hash('sha256', 'fake-image-bytes'),
+                'unexpected' => 'raw-fallback',
+            ]),
+        ] as $redactor) {
+            [$tenant, $item] = $this->queuedItem();
+            Storage::disk('local')->delete($item->source_path);
+            $provider = new CatalogVisionRecordingProvider;
+            $ingress = new CatalogVisionIngressGuard(
+                new DovraDataIngressGuard(
+                    new DataClassificationPolicy($redactor),
+                    new DovraIntegrationSeamRegistry,
+                ),
+            );
+
+            (new ProcessCatalogImportItem((string) $tenant->id, (string) $item->id))->handle(
+                $provider,
+                app(SchemaValidatorInterface::class),
+                $ingress,
+            );
+
+            $item->refresh();
+            self::assertSame(0, $provider->calls);
+            self::assertSame(CatalogImportStatus::Failed, $item->status);
+            self::assertSame('catalog_vision_ingress_unavailable', $item->error_code);
+            self::assertSame('Catalog image validation is not available.', $item->error_message);
+            self::assertStringNotContainsString('RAW_INGRESS_EXCEPTION', (string) $item->error_message);
+            self::assertStringNotContainsString('raw-fallback', (string) $item->error_message);
+
+            CatalogImportItem::query()->whereKey($item->id)->delete();
+            CatalogImportBatch::query()->whereKey($item->batch_id)->delete();
+        }
+    }
+
+    public function test_provider_receives_only_redacted_descriptor_name_and_mime_with_stored_bytes(): void
+    {
+        [$tenant, $item] = $this->queuedItem();
+        $provider = new CatalogVisionRecordingProvider;
+        $redacted = [
+            'filename' => 'redacted-name.jpg',
+            'mime' => 'image/png',
+            'size_bytes' => 16,
+            'sha256' => hash('sha256', 'fake-image-bytes'),
+        ];
+        $ingress = new CatalogVisionIngressGuard(
+            new DovraDataIngressGuard(
+                new DataClassificationPolicy(new CatalogIngressRedactorStub($redacted)),
+                new DovraIntegrationSeamRegistry,
+            ),
+        );
+
+        (new ProcessCatalogImportItem((string) $tenant->id, (string) $item->id))->handle(
+            $provider,
+            app(SchemaValidatorInterface::class),
+            $ingress,
+        );
+
+        self::assertSame(1, $provider->calls);
+        self::assertInstanceOf(CatalogVisionImage::class, $provider->image);
+        self::assertSame('redacted-name.jpg', $provider->image->originalName);
+        self::assertSame('image/png', $provider->image->mimeType);
+        self::assertSame('fake-image-bytes', $provider->image->contents);
+        self::assertNotSame($item->original_name, $provider->image->originalName);
+
+        $item->refresh();
+        self::assertSame(CatalogImportStatus::Failed, $item->status);
+        self::assertSame('analysis_failed', $item->error_code);
+        self::assertSame('Catalog image analysis failed.', $item->error_message);
+        self::assertStringNotContainsString('RAW_PROVIDER_SECRET', (string) $item->error_message);
     }
 
     /** @return array{Tenant, CatalogImportItem} */
@@ -291,5 +400,39 @@ final class ProcessCatalogImportItemTest extends TestCase
         self::assertSame(1, DB::table('catalog_import_items')->count());
 
         return [$tenant, $item];
+    }
+}
+
+final class CatalogVisionRecordingProvider implements CatalogVisionProviderInterface
+{
+    public int $calls = 0;
+
+    public ?CatalogVisionImage $image = null;
+
+    public function analyze(CatalogVisionImage $image): CatalogVisionProviderResult
+    {
+        $this->calls++;
+        $this->image = $image;
+
+        throw new \RuntimeException('RAW_PROVIDER_SECRET');
+    }
+}
+
+final class CatalogIngressRedactorStub implements SensitivePayloadRedactor
+{
+    /** @param array<string, mixed>|null $replacement */
+    public function __construct(
+        private readonly ?array $replacement = null,
+        private readonly bool $throwOnScrub = false,
+    ) {}
+
+    /** @param array<string, mixed> $payload @return array<string, mixed> */
+    public function scrub(array $payload): array
+    {
+        if ($this->throwOnScrub) {
+            throw new \RuntimeException('RAW_INGRESS_EXCEPTION');
+        }
+
+        return $this->replacement ?? $payload;
     }
 }

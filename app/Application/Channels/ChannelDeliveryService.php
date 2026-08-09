@@ -70,7 +70,7 @@ final class ChannelDeliveryService
 
         try {
             $receipt = $adapter->send($providerMessage)->withProviderIdempotencyKey($providerKey);
-        } catch (Throwable $exception) {
+        } catch (Throwable) {
             $receipt = new DeliveryReceipt(
                 tenantId: $context->tenantId,
                 channel: $context->channel,
@@ -87,7 +87,7 @@ final class ChannelDeliveryService
                     'market_country_code' => $context->marketCountryCode,
                 ],
             );
-            $this->finalizeIntent($context, $message, $intent, $payloadHash, $receipt, $exception->getMessage());
+            $this->finalizeIntent($context, $message, $intent, $payloadHash, $receipt, 'provider_unavailable');
 
             return $receipt;
         }

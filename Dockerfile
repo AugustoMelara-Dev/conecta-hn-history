@@ -38,7 +38,14 @@ COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 COPY . .
 COPY --from=frontend /app/public/build ./public/build
 
-RUN composer install \
+RUN mkdir -p \
+      bootstrap/cache \
+      storage/app/private \
+      storage/framework/cache \
+      storage/framework/sessions \
+      storage/framework/views \
+      storage/logs \
+    && composer install \
       --prefer-dist \
       --no-interaction \
       --no-progress \
@@ -48,14 +55,8 @@ RUN composer install \
     && php artisan route:clear --quiet \
     && php artisan view:clear --quiet \
     && mkdir -p \
-      bootstrap/cache \
       /config/caddy \
       /data/caddy \
-      storage/app/private \
-      storage/framework/cache \
-      storage/framework/sessions \
-      storage/framework/views \
-      storage/logs \
     && chown -R www-data:www-data /config/caddy /data/caddy bootstrap/cache storage
 
 COPY docker/Caddyfile /etc/caddy/Caddyfile

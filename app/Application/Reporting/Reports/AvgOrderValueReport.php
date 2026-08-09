@@ -47,15 +47,15 @@ class AvgOrderValueReport implements ReportInterface
     {
         $aov = DB::table('orders')
             ->where('tenant_id', $tenantId)
-            ->where('status', 'paid')
+            ->where('payment_status', 'paid')
             ->whereBetween('created_at', [$range->start, $range->end])
-            ->avg('total_amount') ?? 0;
+            ->avg('total') ?? 0;
 
         $previousAov = DB::table('orders')
             ->where('tenant_id', $tenantId)
-            ->where('status', 'paid')
+            ->where('payment_status', 'paid')
             ->whereBetween('created_at', [$range->comparisonStart ?? now()->subDays(60), $range->comparisonEnd ?? now()->subDays(30)])
-            ->avg('total_amount') ?? 0;
+            ->avg('total') ?? 0;
 
         return new ReportData(
             rows: [new ReportRow('AOV', round((float) $aov, 2), previousValue: round((float) $previousAov, 2), unit: 'HNL')],

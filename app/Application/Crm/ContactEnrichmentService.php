@@ -14,6 +14,8 @@ use App\Models\Contact;
  */
 class ContactEnrichmentService
 {
+    public function __construct(private CanonicalCrmEntityWriter $writer) {}
+
     /**
      * @return array{
      *     job_title?: string,
@@ -53,8 +55,12 @@ class ContactEnrichmentService
     /**
      * Aplica enrichment al contacto.
      */
-    public function applyToContact(Contact $contact): Contact
+    public function applyToContact(Contact $contact, string $tenantId, string $actorId): Contact
     {
+        if (trim($tenantId) === '' || trim($actorId) === '') {
+            throw new \InvalidArgumentException('CRM enrichment requires explicit tenant and actor identifiers.');
+        }
+
         $identifier = $contact->email ?? $contact->phone ?? '';
 
         if ($identifier === '') {
@@ -63,10 +69,15 @@ class ContactEnrichmentService
 
         $data = $this->enrich($identifier);
 
-        $contact->job_title = $data['job_title'] ?? $contact->job_title;
-        // company_name would create/lookup CrmCompany
-        $contact->save();
+        if (! array_key_exists('job_title', $data) || $data['job_title'] === null) {
+            return $contact;
+        }
 
-        return $contact;
+        return $this->writer->updateContact(
+            $tenantId,
+            $actorId,
+            (string) $contact->getKey(),
+            ['job_title' => $data['job_title']],
+        );
     }
 }

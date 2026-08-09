@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Reporting\Reports;
 
 use App\Application\Reporting\Contracts\ReportInterface;
+use App\Application\Reporting\SqlMonthBucket;
 use App\Application\Reporting\ValueObjects\ReportData;
 use App\Domain\Reporting\Enums\ReportKey;
 use App\Domain\Reporting\ValueObjects\ReportRange;
@@ -15,7 +16,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * RevenueByMonthReport - Ingresos agregados por mes.
  *
- * Datos: sum de total_amount por mes, agrupados por created_at.
+ * Datos: sum de total por mes, agrupados por created_at.
  */
 class RevenueByMonthReport implements ReportInterface
 {
@@ -51,11 +52,12 @@ class RevenueByMonthReport implements ReportInterface
 
     public function getData(string $tenantId, ReportRange $range): ReportData
     {
+        $monthBucket = SqlMonthBucket::expression(DB::connection()->getDriverName());
         $currentRows = DB::table('orders')
             ->where('tenant_id', $tenantId)
-            ->where('status', 'paid')
+            ->where('payment_status', 'paid')
             ->whereBetween('created_at', [$range->start, $range->end])
-            ->selectRaw("TO_CHAR(created_at, 'YYYY-MM') as month, SUM(total_amount) as revenue, COUNT(*) as order_count")
+            ->selectRaw($monthBucket.' as month, SUM(total) as revenue, COUNT(*) as order_count')
             ->groupBy('month')
             ->orderBy('month')
             ->get();
@@ -87,7 +89,10 @@ class RevenueByMonthReport implements ReportInterface
 
         $summary = [
             'total_revenue' => array_sum($values),
-            'total_orders' => array_sum(array_column($rows, 'metadata')),
+            'total_orders' => array_sum(array_map(
+                static fn (ReportRow $row): int => (int) ($row->metadata['order_count'] ?? 0),
+                $rows,
+            )),
             'avg_per_month' => count($values) > 0 ? array_sum($values) / count($values) : 0,
         ];
 

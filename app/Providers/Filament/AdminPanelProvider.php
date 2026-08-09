@@ -80,8 +80,6 @@ class AdminPanelProvider extends PanelProvider
                 'info' => Color::Sky,
             ])
 
-            // FILAMENT 4: viteTheme
-            ->viteTheme('resources/css/filament/admin/theme.css')
 
             // FILAMENT 4: database notifications
             ->databaseNotifications()

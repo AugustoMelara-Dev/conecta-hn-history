@@ -12,6 +12,7 @@ use App\Domain\Shared\Services\TenantContext;
 use App\Infrastructure\Auth\Listeners\SendOtpNotificationListener;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Log;
 use PHPUnit\Framework\Attributes\Test;
 use stdClass;
 use Tests\TestCase;
@@ -57,5 +58,47 @@ final class OtpOutboxDeliveryContractTest extends TestCase
 
         self::assertFalse(app(TenantContext::class)->isInitialized());
         self::assertFalse(app()->bound('currentTenant'));
+    }
+
+    #[Test]
+    public function provider_failure_logs_only_stable_context_and_rethrows_the_same_throwable(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $failure = new \RuntimeException('RAW_OTP_PROVIDER_SECRET');
+        $cipher = $this->createMock(SensitivePayloadCipherInterface::class);
+        $cipher->expects(self::once())->method('decrypt')->with('ciphertext')->willReturn('123456');
+        $circuit = $this->createMock(CircuitBreakerInterface::class);
+        $circuit->expects(self::once())->method('isAvailable')->with('sms_provider')->willReturn(true);
+        $circuit->expects(self::once())->method('reportFailure')->with('sms_provider');
+        $circuit->expects(self::never())->method('reportSuccess');
+        $notifier = $this->createMock(OtpNotifierInterface::class);
+        $notifier->expects(self::once())->method('send')->willThrowException($failure);
+        $event = OtpGenerated::now(
+            otpId: 'otp-failure-1',
+            userId: null,
+            tenantId: (string) $tenant->getKey(),
+            encryptedCode: 'ciphertext',
+            identifier: 'otp@example.test',
+            recipientName: 'Cliente',
+            expiryMinutes: 15,
+        );
+        Log::spy();
+        $caught = null;
+
+        try {
+            (new SendOtpNotificationListener($notifier, $circuit, $cipher))->handle($event);
+        } catch (\Throwable $exception) {
+            $caught = $exception;
+        }
+
+        self::assertSame($failure, $caught);
+        Log::shouldHaveReceived('error')->once()->with(
+            'OTP notification delivery failed',
+            [
+                'error_code' => 'otp_notification_provider_unavailable',
+                'identifier' => 'ot***@example.test',
+                'tenant_id' => (string) $tenant->getKey(),
+            ],
+        );
     }
 }

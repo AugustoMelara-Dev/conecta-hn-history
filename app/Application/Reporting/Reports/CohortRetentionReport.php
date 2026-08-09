@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Application\Reporting\Reports;
 
+use App\Application\Reporting\Contracts\ReportInterface;
+use App\Application\Reporting\ValueObjects\ReportData;
 use App\Domain\Reporting\Enums\ReportKey;
-use App\Domain\Reporting\ValueObjects\ReportData;
 use App\Domain\Reporting\ValueObjects\ReportRange;
 
 class CohortRetentionReport implements ReportInterface

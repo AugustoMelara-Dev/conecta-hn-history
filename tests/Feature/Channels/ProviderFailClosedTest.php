@@ -16,6 +16,7 @@ use App\Infrastructure\Channels\WhatsApp\FailClosedWhatsAppAdapter;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\Support\GlobalMarketFixture;
 use Tests\TestCase;
 
@@ -114,34 +115,50 @@ final class ProviderFailClosedTest extends TestCase
         $connectionService = new ChannelConnectionService;
         $connectionService->connect($context);
         $delivery = new ChannelDeliveryService($connectionService);
+        $provider = new class implements VoiceProviderInterface
+        {
+            public int $calls = 0;
+
+            public function send(array $payload): array
+            {
+                $this->calls++;
+
+                throw new \RuntimeException('RAW_PROVIDER_TOKEN recipient +819012345678');
+            }
+        };
         $adapter = new FailClosedVoiceAdapter(
             credentialsConfigured: true,
-            provider: new class implements VoiceProviderInterface
-            {
-                public function send(array $payload): array
-                {
-                    throw new \RuntimeException('provider outage');
-                }
-            },
+            provider: $provider,
         );
-
-        $receipt = $delivery->send(
-            $adapter,
-            $context,
-            new ChannelOutboundMessage(
-                tenantId: (string) $tenant->id,
-                channel: 'voice',
-                connectionKey: 'voice-jp',
-                idempotencyKey: 'voice-out-001',
-                externalThreadReference: 'call-thread-001',
-                recipient: '+819012345678',
-                content: 'Agent follow-up call',
-            ),
+        $message = new ChannelOutboundMessage(
+            tenantId: (string) $tenant->id,
+            channel: 'voice',
+            connectionKey: 'voice-jp',
+            idempotencyKey: 'voice-out-001',
+            externalThreadReference: 'call-thread-001',
+            recipient: '+819012345678',
+            content: 'Agent follow-up call',
         );
+        $receipt = $delivery->send($adapter, $context, $message);
+        $retry = $delivery->send($adapter, $context, $message);
 
         self::assertSame('provider_unavailable', $receipt->deliveryState);
+        self::assertSame('provider_unavailable', $retry->deliveryState);
+        self::assertSame($receipt->providerIdempotencyKey, $retry->providerIdempotencyKey);
         self::assertSame('JP', $receipt->metadata['market_country_code'] ?? null);
         self::assertSame('provider_unavailable', $receipt->metadata['reason'] ?? null);
         self::assertNotSame('HN', $receipt->metadata['market_country_code'] ?? null);
+        self::assertSame(2, $provider->calls);
+
+        $outbox = DB::table('channel_delivery_outbox')->where('idempotency_key', 'voice-out-001')->first();
+        $attempt = DB::table('channel_delivery_attempts')->where('idempotency_key', 'voice-out-001')->first();
+        self::assertNotNull($outbox);
+        self::assertNotNull($attempt);
+        self::assertSame('provider_unavailable', $outbox->last_error);
+        self::assertSame('provider_unavailable', $attempt->last_error);
+        self::assertSame(2, (int) $outbox->attempt_count);
+        self::assertSame(2, (int) $attempt->attempt_count);
+        self::assertStringNotContainsString('RAW_PROVIDER_TOKEN', (string) $outbox->last_error);
+        self::assertStringNotContainsString('+819012345678', (string) $attempt->last_error);
     }
 }

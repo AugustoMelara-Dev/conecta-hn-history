@@ -4,34 +4,27 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources\Automation;
 
-use App\Domain\Automation\Enums\TriggerType;
-use App\Domain\Automation\Enums\WorkflowStatus;
+use App\Application\Automation\WorkflowDefinitionService;
 use App\Filament\App\Resources\Automation\WorkflowResource\Pages;
-use App\Models\WorkflowDefinition;
+use App\Jobs\RunWorkflowJob;
+use App\Models\AutomationWorkflowDefinition;
 use Filament\Actions\Action;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Facades\Filament;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
 
 class WorkflowResource extends Resource
 {
-    protected static ?string $model = WorkflowDefinition::class;
+    protected static ?string $model = AutomationWorkflowDefinition::class;
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-arrows-pointing-out';
 
@@ -49,39 +42,23 @@ class WorkflowResource extends Resource
     {
         return $schema
             ->components([
-                Section::make('InformaciÃ³n')
+                Section::make('Información')
                     ->components([
-                        Grid::make(2)
-                            ->components([
-                                TextInput::make('name')
-                                    ->label('Nombre')
-                                    ->required()
-                                    ->maxLength(200),
-                                Select::make('status')
-                                    ->label('Estado')
-                                    ->options(WorkflowStatus::options())
-                                    ->default(WorkflowStatus::Draft->value)
-                                    ->required(),
-                                Select::make('trigger_type')
-                                    ->label('Trigger')
-                                    ->options(TriggerType::options())
-                                    ->required(),
-                                TextInput::make('description')
-                                    ->label('DescripciÃ³n')
-                                    ->maxLength(500),
-                                Toggle::make('is_active')
-                                    ->label('Activo')
-                                    ->default(false),
-                            ]),
+                        TextInput::make('workflow_key')
+                            ->label('Clave del workflow')
+                            ->required()
+                            ->disabled(fn (?AutomationWorkflowDefinition $record): bool => $record !== null)
+                            ->maxLength(100),
                     ]),
 
-                Section::make('Grafo del workflow (JSON)')
-                    ->description('Define el DAG del workflow en formato JSON.')
+                Section::make('Definición del workflow (JSON)')
+                    ->description('Define los pasos de la versión borrador canónica.')
                     ->components([
-                        Textarea::make('graph_json')
-                            ->label('Graph JSON')
+                        Textarea::make('definition_json')
+                            ->label('Definición JSON')
                             ->rows(15)
-                            ->placeholder('{"nodes": [...], "edges": [...]}')
+                            ->rules(['json'])
+                            ->placeholder('{"steps": [...]}')
                             ->columnSpanFull(),
                     ]),
             ]);
@@ -91,80 +68,86 @@ class WorkflowResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('name')
-                    ->label('Nombre')
+                TextColumn::make('workflow_key')
+                    ->label('Clave')
                     ->searchable()
                     ->sortable()
                     ->weight('medium'),
-                TextColumn::make('trigger_type')
-                    ->label('Trigger')
-                    ->badge()
-                    ->formatStateUsing(fn (string $state): string => TriggerType::tryFrom($state)?->label() ?? $state),
-                TextColumn::make('status')
-                    ->label('Estado')
-                    ->badge()
-                    ->color(fn (string $state): string => WorkflowStatus::tryFrom($state)?->color() ?? 'gray'),
-                IconColumn::make('is_active')
-                    ->label('Activo')
-                    ->boolean(),
-                TextColumn::make('executions_count')
-                    ->label('Ejecuciones')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('last_run_at')
-                    ->label('Ãšltima ejecuciÃ³n')
+                TextColumn::make('currentDraftVersion.version')
+                    ->label('Borrador')
+                    ->placeholder('Sin borrador'),
+                TextColumn::make('currentPublishedVersion.version')
+                    ->label('Publicada')
+                    ->placeholder('Sin publicar'),
+                TextColumn::make('created_at')
+                    ->label('Creado')
                     ->dateTime('d/m/Y H:i')
-                    ->placeholder('Nunca'),
+                    ->sortable(),
             ])
-            ->filters([
-                SelectFilter::make('status')->label('Estado')->options(WorkflowStatus::options()),
-                SelectFilter::make('trigger_type')->label('Trigger')->options(TriggerType::options()),
-            ])
+            ->filters([])
             ->actions([
-                EditAction::make(),
                 Action::make('run_now')
                     ->label('Ejecutar ahora')
                     ->icon('heroicon-o-play')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->action(function ($record) {
-                        Notification::make()->title('Accion pendiente de integracion con el job de ejecucion')->warning()->send();
-                        Notification::make()->title('Workflow encolado para ejecuciÃ³n')->success()->send();
-                    }),
-                Action::make('pause')
-                    ->label('Pausar')
-                    ->icon('heroicon-o-pause')
-                    ->color('warning')
-                    ->visible(fn ($record) => $record->is_active)
-                    ->action(function ($record) {
-                        $record->update(['is_active' => false, 'status' => 'paused']);
-                        Notification::make()->title('Workflow pausado')->success()->send();
-                    }),
-                Action::make('clone')
-                    ->label('Clonar')
-                    ->icon('heroicon-o-document-duplicate')
-                    ->color('info')
-                    ->action(function ($record) {
-                        $clone = $record->replicate();
-                        $clone->name = $record->name.' (copia)';
-                        $clone->is_active = false;
-                        $clone->status = 'draft';
-                        $clone->save();
-                        Notification::make()->title('Workflow clonado')->success()->send();
-                    }),
-                Action::make('export_json')
-                    ->label('Exportar JSON')
-                    ->icon('heroicon-o-arrow-down-tray')
-                    ->action(function ($record) {
-                        return response()->streamDownload(
-                            fn () => print (json_encode(['graph' => $record->graph_json], JSON_PRETTY_PRINT)),
-                            "{$record->slug}.json",
-                            ['Content-Type' => 'application/json'],
+                    ->visible(fn (AutomationWorkflowDefinition $record): bool => $record->current_published_version_id !== null)
+                    ->action(function (AutomationWorkflowDefinition $record): void {
+                        $tenant = Filament::getTenant();
+                        $actor = auth()->user();
+                        if ($tenant === null || $actor === null || (string) $record->tenant_id !== (string) $tenant->getKey()) {
+                            abort(403);
+                        }
+
+                        $published = $record->currentPublishedVersion;
+                        if ($published === null) {
+                            abort(409, 'Published workflow version not found.');
+                        }
+
+                        $role = $actor->getAttribute('role');
+                        RunWorkflowJob::dispatch(
+                            tenantId: (string) $tenant->getKey(),
+                            workflowKey: (string) $record->workflow_key,
+                            workflowVersion: (string) $published->version,
+                            actorId: (string) $actor->getAuthIdentifier(),
+                            actorRoles: [(string) ($role instanceof \BackedEnum ? $role->value : $role)],
+                            plan: (string) ($tenant->getRawOriginal('plan_type') ?? 'semilla'),
+                            idempotencyKey: (string) Str::uuid(),
                         );
+
+                        Notification::make()->title('Workflow encolado para ejecución')->success()->send();
                     }),
-                DeleteAction::make(),
+                Action::make('publish')
+                    ->label('Publicar')
+                    ->icon('heroicon-o-paper-airplane')
+                    ->color('success')
+                    ->visible(fn (AutomationWorkflowDefinition $record): bool => $record->current_draft_version_id !== null)
+                    ->form([
+                        TextInput::make('published_version')
+                            ->label('Versión')
+                            ->required()
+                            ->maxLength(100),
+                    ])
+                    ->action(function (AutomationWorkflowDefinition $record, array $data): void {
+                        $tenant = Filament::getTenant();
+                        $actor = auth()->user();
+                        if ($tenant === null || $actor === null || (string) $record->tenant_id !== (string) $tenant->getKey()) {
+                            abort(403);
+                        }
+
+                        app(WorkflowDefinitionService::class)->publishDraft(
+                            (string) $tenant->getKey(),
+                            (string) $record->workflow_key,
+                            (string) $record->current_draft_version_id,
+                            (string) $data['published_version'],
+                            (string) $actor->getAuthIdentifier(),
+                        );
+
+                        Notification::make()->title('Workflow publicado')->success()->send();
+                    }),
+                EditAction::make(),
             ])
-            ->bulkActions([BulkActionGroup::make([DeleteBulkAction::make()])])
+            ->bulkActions([])
             ->defaultSort('created_at', 'desc');
     }
 

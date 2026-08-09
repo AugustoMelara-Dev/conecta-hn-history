@@ -68,12 +68,12 @@ final class ProductMediaCleanupQueue
 
                 DB::table('product_media_cleanup_tasks')->where('id', $task->id)->delete();
                 $processed++;
-            } catch (Throwable $exception) {
+            } catch (Throwable) {
                 $attempts = (int) $task->attempts + 1;
                 DB::table('product_media_cleanup_tasks')->where('id', $task->id)->update([
                     'attempts' => $attempts,
                     'available_at' => now()->addMinutes(min(60, 2 ** min($attempts, 5))),
-                    'last_error' => mb_substr($exception->getMessage(), 0, 2000),
+                    'last_error' => 'product_media_cleanup_unavailable',
                     'updated_at' => now(),
                 ]);
                 Log::warning('Product media cleanup task failed and will be retried.', [
@@ -81,7 +81,7 @@ final class ProductMediaCleanupQueue
                     'tenant_id' => $task->tenant_id,
                     'disk' => $task->disk,
                     'attempts' => $attempts,
-                    'exception' => $exception::class,
+                    'error_code' => 'product_media_cleanup_unavailable',
                 ]);
                 $failed++;
             }

@@ -15,32 +15,13 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { releaseCandidatePathExclusion } from "./dovra-rc-path-policy.mjs";
+import { secretSignatureDetections } from "./dovra-rc-secret-policy.mjs";
 
 export const RELEASE_CANDIDATE_SCHEMA = 1;
 export const STATUS_VALUES = Object.freeze(["PASS", "BLOCKED", "NOT_RUN", "EXTERNAL_BLOCKED"]);
 
 const scriptRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const generatedDirectoryNames = new Set([
-    "build",
-    "coverage",
-    "dist",
-    "out",
-    "playwright-report",
-    "reports",
-    "results",
-    "test-results",
-]);
-const excludedDirectoryNames = new Set([
-    ".git",
-    ".worktrees",
-    "node_modules",
-    "storage",
-    "vendor",
-    "secrets",
-    "keys",
-    "private-keys",
-    "credentials",
-]);
 const criticalFiles = ["composer.lock", "package-lock.json", "Dockerfile", ".env.example"];
 const strictRequirements = [
     "PHP 8.4/Laravel backend bootstrap and dependency certification",
@@ -180,71 +161,6 @@ function isInside(parent, child) {
     return fromParent === "" || (!fromParent.startsWith("..") && !isAbsolute(fromParent));
 }
 
-function hasSensitivePath(relativePath) {
-    const normalized = toPosixPath(relativePath);
-    const segments = normalized.split("/").filter(Boolean);
-    const basename = segments.at(-1)?.toLowerCase() ?? "";
-    if (basename === ".env" || (basename.startsWith(".env.") && basename !== ".env.example")) {
-        return { excluded: true, reason: "environment-secret" };
-    }
-    if (segments.some((segment) => excludedDirectoryNames.has(segment.toLowerCase()))) {
-        return { excluded: true, reason: "sensitive-or-runtime-directory" };
-    }
-    for (let index = 0; index < segments.length - 1; index += 1) {
-        if (segments[index].toLowerCase() === "artifacts" && segments[index + 1].toLowerCase() === "releases") {
-            return { excluded: true, reason: "release-artifact" };
-        }
-    }
-    if (segments.some((segment) => generatedDirectoryNames.has(segment.toLowerCase()))) {
-        return { excluded: true, reason: "generated-output" };
-    }
-    if (
-        basename === "secret" ||
-        basename === "secrets" ||
-        basename === "credentials" ||
-        basename === "credential" ||
-        basename === "passwords" ||
-        basename === "password" ||
-        basename === "id_rsa" ||
-        basename === "id_dsa" ||
-        basename === "id_ed25519" ||
-        /\.(?:pem|key|p12|pfx|jks|keystore|secret|secrets|credentials)$/iu.test(basename)
-    ) {
-        return { excluded: true, reason: "secret-or-private-key" };
-    }
-    return { excluded: false, reason: null };
-}
-
-function hasPrivateKeySignature(content) {
-    return /-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----/u.test(content.toString("utf8"));
-}
-
-function hasSecretSignature(content) {
-    const text = content.toString("utf8");
-    for (const line of text.split(/\r?\n/u)) {
-        const match = line.match(/^[ \t]*([A-Za-z_][A-Za-z0-9_]*)[ \t]*[:=][ \t]*["']?([^#\r\n]*)/u);
-        if (!match) {
-            continue;
-        }
-        const name = match[1].toUpperCase();
-        const value = match[2].trim().replace(/["'][ \t]*$/u, "").trim();
-        if (!/(?:SECRET|TOKEN|API_KEY|PRIVATE_KEY|PASSWORD|ACCESS_KEY)/u.test(name)) {
-            continue;
-        }
-        if (/(?:_TTL(?:_|$)|_DAYS(?:_|$)|_SECONDS(?:_|$)|_MINUTES(?:_|$)|_HOURS(?:_|$)|_REFERENCE$|_REF$)/u.test(name)) {
-            continue;
-        }
-        if (value.length === 0 || /^\$\{[^}]+\}$/u.test(value) || /^\{\{[^}]+\}\}$/u.test(value) || /^<(?:[^>]+)>$/u.test(value) || /^(?:env|getenv)\s*\(/iu.test(value) || /^process\.env(?:\.|$)/iu.test(value) || /^(?:change|replace|example|dummy|test|your)[-_ ]?/iu.test(value)) {
-            continue;
-        }
-        if (/(?:^|[_-])(?:dummy|placeholder|example|local|test)(?:$|[_-])/iu.test(value) || /^(?:null|none|false|true)$/iu.test(value)) {
-            continue;
-        }
-        return true;
-    }
-    return false;
-}
-
 function envNamesFromContent(content) {
     const names = new Set();
     for (const line of content.toString("utf8").split(/\r?\n/u)) {
@@ -339,14 +255,15 @@ function copyVisibleFiles(source, sourceOutput, visiblePaths) {
     const entries = [];
     const excludedCounts = new Map();
     const envNamesSet = new Set();
+    const secretDetections = [];
 
     for (const candidate of visiblePaths.map(toPosixPath).sort()) {
         if (!isSafeRelativePath(candidate)) {
             throw new Error(`Unsafe Git path cannot be copied: ${candidate}`);
         }
-        const pathDecision = hasSensitivePath(candidate);
-        if (pathDecision.excluded) {
-            excludedCounts.set(pathDecision.reason, (excludedCounts.get(pathDecision.reason) ?? 0) + 1);
+        const pathExclusion = releaseCandidatePathExclusion(candidate);
+        if (pathExclusion !== null) {
+            excludedCounts.set(pathExclusion, (excludedCounts.get(pathExclusion) ?? 0) + 1);
             continue;
         }
 
@@ -384,15 +301,9 @@ function copyVisibleFiles(source, sourceOutput, visiblePaths) {
                 }
             }
         }
-        if (hasPrivateKeySignature(content)) {
-            excludedCounts.set("private-key-signature", (excludedCounts.get("private-key-signature") ?? 0) + 1);
-            continue;
-        }
-        if (hasSecretSignature(content)) {
-            if (candidate.split("/").at(-1) === ".env.example") {
-                throw new Error(".env.example contains a non-placeholder secret value; refusing to assemble.");
-            }
-            excludedCounts.set("secret-signature", (excludedCounts.get("secret-signature") ?? 0) + 1);
+        const detected = secretSignatureDetections(content, candidate);
+        if (detected.length > 0) {
+            secretDetections.push(...detected.map(({ line, type }) => ({ path: candidate, line, type })));
             continue;
         }
 
@@ -410,6 +321,13 @@ function copyVisibleFiles(source, sourceOutput, visiblePaths) {
                 envNamesSet.add(name);
             }
         }
+    }
+
+    if (secretDetections.length > 0) {
+        const diagnostics = secretDetections
+            .map(({ path, line, type }) => `${path}:${line}:${type}`)
+            .join("\n");
+        throw new Error(`Static literal secrets detected; refusing to assemble:\n${diagnostics}`);
     }
 
     entries.sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0);

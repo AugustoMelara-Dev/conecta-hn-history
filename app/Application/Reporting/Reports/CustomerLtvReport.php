@@ -47,9 +47,10 @@ class CustomerLtvReport implements ReportInterface
     {
         $ltvData = DB::table('orders')
             ->where('tenant_id', $tenantId)
-            ->where('status', 'paid')
-            ->selectRaw('customer_email, COUNT(*) as order_count, SUM(total_amount) as total_spent')
+            ->where('payment_status', 'paid')
+            ->selectRaw('customer_email, COUNT(*) as order_count, SUM(total) as total_spent')
             ->groupBy('customer_email')
+            ->orderBy('customer_email')
             ->get();
 
         $segmentLtv = [];

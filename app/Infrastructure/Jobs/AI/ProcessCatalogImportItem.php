@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Jobs\AI;
 
 use App\Application\Ai\Catalog\CatalogVisionImage;
+use App\Application\Ai\Catalog\CatalogVisionIngressGuard;
 use App\Application\Ai\Catalog\CatalogVisionProviderInterface;
 use App\Application\Ai\Catalog\CatalogVisionProviderResult;
 use App\Application\Shared\Contracts\SchemaValidatorInterface;
@@ -42,8 +43,10 @@ final class ProcessCatalogImportItem implements ShouldQueue
     public function handle(
         CatalogVisionProviderInterface $provider,
         SchemaValidatorInterface $schemaValidator,
+        CatalogVisionIngressGuard $catalogIngress,
     ): void {
-        $item = DB::transaction(function (): ?CatalogImportItem {
+        /** @var array{item:CatalogImportItem,actor_id:string}|null $work */
+        $work = DB::transaction(function (): ?array {
             $candidate = CatalogImportItem::query()
                 ->where('tenant_id', $this->tenantId)
                 ->whereKey($this->itemId)
@@ -70,10 +73,59 @@ final class ProcessCatalogImportItem implements ShouldQueue
                 'error_message' => null,
             ])->save();
 
-            return $candidate;
+            return [
+                'item' => $candidate,
+                'actor_id' => (string) $batch->created_by,
+            ];
         });
 
-        if ($item === null) {
+        if ($work === null) {
+            return;
+        }
+        $item = $work['item'];
+        $descriptor = [
+            'filename' => $item->original_name,
+            'mime' => $item->mime_type,
+            'size_bytes' => $item->size_bytes,
+            'sha256' => $item->sha256,
+        ];
+
+        try {
+            $decision = $catalogIngress->inspect(
+                $this->tenantId,
+                $work['actor_id'],
+                $descriptor,
+            );
+        } catch (Throwable) {
+            $this->persistIngressFailure(
+                $item,
+                'catalog_vision_ingress_unavailable',
+                'Catalog image validation is not available.',
+            );
+
+            return;
+        }
+        if (! $decision->allowed) {
+            $unavailable = array_intersect(
+                ['entrypoint_not_registered', 'tenant_context_required'],
+                $decision->reasons,
+            ) !== [];
+            $this->persistIngressFailure(
+                $item,
+                $unavailable ? 'catalog_vision_ingress_unavailable' : 'catalog_vision_input_not_allowed',
+                $unavailable ? 'Catalog image validation is not available.' : 'Catalog image input is not allowed.',
+            );
+
+            return;
+        }
+        $redactedDescriptor = $catalogIngress->validatedDescriptor($decision);
+        if ($redactedDescriptor === null) {
+            $this->persistIngressFailure(
+                $item,
+                'catalog_vision_ingress_unavailable',
+                'Catalog image validation is not available.',
+            );
+
             return;
         }
 
@@ -83,8 +135,8 @@ final class ProcessCatalogImportItem implements ShouldQueue
             $result = $provider->analyze(new CatalogVisionImage(
                 tenantId: $this->tenantId,
                 itemId: $this->itemId,
-                originalName: $item->original_name,
-                mimeType: $item->mime_type,
+                originalName: $redactedDescriptor['filename'],
+                mimeType: $redactedDescriptor['mime'],
                 contents: $contents,
             ));
 
@@ -132,7 +184,7 @@ final class ProcessCatalogImportItem implements ShouldQueue
 
                 return true;
             });
-        } catch (Throwable $exception) {
+        } catch (Throwable) {
             /** @var array<string, mixed> $failureTelemetry */
             $failureTelemetry = [];
             if ($result instanceof CatalogVisionProviderResult) {
@@ -150,7 +202,7 @@ final class ProcessCatalogImportItem implements ShouldQueue
                 ];
             }
 
-            $persisted = DB::transaction(function () use ($exception, $failureTelemetry, $item): bool {
+            $persisted = DB::transaction(function () use ($failureTelemetry, $item): bool {
                 $current = CatalogImportItem::query()
                     ->where('tenant_id', $this->tenantId)
                     ->whereKey($this->itemId)
@@ -172,7 +224,7 @@ final class ProcessCatalogImportItem implements ShouldQueue
                 $current->forceFill(array_merge([
                     'status' => CatalogImportStatus::Failed,
                     'error_code' => 'analysis_failed',
-                    'error_message' => Str::limit($exception->getMessage(), 1000, ''),
+                    'error_message' => 'Catalog image analysis failed.',
                     'processed_at' => now(),
                 ], $failureTelemetry))->save();
 
@@ -185,6 +237,42 @@ final class ProcessCatalogImportItem implements ShouldQueue
         }
 
         $this->refreshBatch((string) $item->batch_id);
+    }
+
+    private function persistIngressFailure(CatalogImportItem $item, string $code, string $message): void
+    {
+        $persisted = DB::transaction(function () use ($code, $item, $message): bool {
+            $current = CatalogImportItem::query()
+                ->where('tenant_id', $this->tenantId)
+                ->whereKey($this->itemId)
+                ->lockForUpdate()
+                ->first();
+            $batch = CatalogImportBatch::query()
+                ->where('tenant_id', $this->tenantId)
+                ->whereKey((string) $item->batch_id)
+                ->lockForUpdate()
+                ->first();
+
+            if ($current === null
+                || $current->status !== CatalogImportStatus::Processing
+                || $batch === null
+                || $batch->cancelled_at !== null) {
+                return false;
+            }
+
+            $current->forceFill([
+                'status' => CatalogImportStatus::Failed,
+                'error_code' => $code,
+                'error_message' => $message,
+                'processed_at' => now(),
+            ])->save();
+
+            return true;
+        });
+
+        if ($persisted) {
+            $this->refreshBatch((string) $item->batch_id);
+        }
     }
 
     /**

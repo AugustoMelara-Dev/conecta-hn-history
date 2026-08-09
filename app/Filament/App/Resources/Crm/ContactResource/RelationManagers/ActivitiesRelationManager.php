@@ -4,18 +4,27 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources\Crm\ContactResource\RelationManagers;
 
+use App\Application\Crm\CanonicalCrmEntityWriter;
+use App\Models\Contact;
+use App\Models\CrmActivity;
+use App\Models\Tenant;
+use App\Models\User;
+use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
-use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Validation\ValidationException;
 
 class ActivitiesRelationManager extends RelationManager
 {
@@ -72,16 +81,78 @@ class ActivitiesRelationManager extends RelationManager
                     ->placeholder('Pendiente'),
             ])
             ->headerActions([
-                CreateAction::make(),
+                CreateAction::make()
+                    ->using(function (array $data): Model {
+                        [$tenant, $actor] = $this->authority();
+                        $contact = $this->ownerContact();
+
+                        return app(CanonicalCrmEntityWriter::class)->createActivity(
+                            (string) $tenant->getKey(),
+                            (string) $actor->getKey(),
+                            $this->activityData($data, $contact),
+                        );
+                    }),
             ])
             ->actions([
-                EditAction::make(),
+                EditAction::make()
+                    ->using(function (array $data, CrmActivity $record): Model {
+                        [$tenant, $actor] = $this->authority();
+                        $contact = $this->ownerContact();
+
+                        return app(CanonicalCrmEntityWriter::class)->updateActivity(
+                            (string) $tenant->getKey(),
+                            (string) $actor->getKey(),
+                            (string) $record->getKey(),
+                            $this->activityData($data, $contact),
+                        );
+                    }),
                 DeleteAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    /** @return array{Tenant, User} */
+    private function authority(): array
+    {
+        $tenant = Filament::getTenant();
+        $actor = Filament::auth()->user();
+        if (! $tenant instanceof Tenant || ! $actor instanceof User) {
+            throw new \RuntimeException('CRM activity relation mutation requires tenant and actor context.');
+        }
+
+        return [$tenant, $actor];
+    }
+
+    private function ownerContact(): Contact
+    {
+        $contact = $this->getOwnerRecord();
+        if (! $contact instanceof Contact) {
+            throw new \RuntimeException('CRM activity relation requires a contact owner record.');
+        }
+
+        return $contact;
+    }
+
+    /** @param array<string, mixed> $data */
+    private function activityData(array $data, Contact $contact): array
+    {
+        if (array_key_exists('tenant_id', $data)) {
+            throw new \InvalidArgumentException('Tenant ownership is controlled by Filament context.');
+        }
+
+        if (array_key_exists('contact_id', $data)
+            && (string) $data['contact_id'] !== (string) $contact->getKey()) {
+            throw ValidationException::withMessages([
+                'contact_id' => ['The activity must belong to its parent contact.'],
+            ]);
+        }
+
+        unset($data['tenant_id'], $data['contact_id']);
+
+        return ['contact_id' => (string) $contact->getKey(), ...$data];
     }
 }

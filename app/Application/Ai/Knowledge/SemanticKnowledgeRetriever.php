@@ -13,6 +13,7 @@ final readonly class SemanticKnowledgeRetriever implements KnowledgeRetriever
     public function __construct(
         private EmbeddingUsageMeter $embeddings,
         private EloquentKnowledgeIndexRepository $index,
+        private KnowledgeQueryIngressGuard $ingress,
     ) {}
 
     public function searchPublic(string $query, int $limit = 12): array
@@ -28,12 +29,17 @@ final readonly class SemanticKnowledgeRetriever implements KnowledgeRetriever
     /** @return list<array<string, mixed>> */
     private function search(string $query, ?string $tenantId, bool $includePublic, int $limit): array
     {
-        $query = trim($query);
-        if (! config('ai.knowledge.enabled', false) || $query === '') {
+        if (! config('ai.knowledge.enabled', false)) {
             return [];
         }
 
         try {
+            $redactedQuery = $tenantId === null
+                ? $this->ingress->inspectPublic($query)
+                : $this->ingress->inspectTenant($query, $tenantId);
+            if ($redactedQuery === null) {
+                return [];
+            }
             $billingTenantId = $tenantId ?? trim((string) config('ai.public.billing_tenant_id', ''));
             if ($billingTenantId === '') {
                 return [];
@@ -41,7 +47,7 @@ final readonly class SemanticKnowledgeRetriever implements KnowledgeRetriever
             $embedding = $this->embeddings->embed(
                 $billingTenantId,
                 $tenantId === null ? 'knowledge.query.public' : 'knowledge.query.private',
-                mb_substr($query, 0, 500),
+                $redactedQuery,
             );
             $minimum = min(1.0, max(-1.0, (float) config('ai.knowledge.minimum_similarity', 0.55)));
             $boundedLimit = min(20, max(1, $limit));

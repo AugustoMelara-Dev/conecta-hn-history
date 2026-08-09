@@ -3,6 +3,7 @@
 use App\Providers\AIAssistantServiceProvider;
 use App\Providers\AppServiceProvider;
 use App\Providers\AuthDomainServiceProvider;
+use App\Providers\AutomationServiceProvider;
 use App\Providers\BusServiceProvider;
 use App\Providers\Domain\AIEnrichmentServiceProvider;
 use App\Providers\Domain\AnalyticsServiceProvider;
@@ -35,6 +36,7 @@ use Laravel\Telescope\TelescopeApplicationServiceProvider;
 $providers = [
     // Framework Providers
     AppServiceProvider::class,
+    AutomationServiceProvider::class,
     BusServiceProvider::class, // Command Bus Middleware Pipeline
     FortifyServiceProvider::class, // Security Actions
     InfrastructureServiceProvider::class,

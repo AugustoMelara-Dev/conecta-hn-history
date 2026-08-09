@@ -25,7 +25,7 @@ class ChurnRateReport implements ReportInterface
 
     public function getDescription(): string
     {
-        return 'Porcentaje de clientes que cancelaron.';
+        return 'Porcentaje de clientes de la cohorte inicial que no regresaron.';
     }
 
     public function getChartType(): string
@@ -45,29 +45,46 @@ class ChurnRateReport implements ReportInterface
 
     public function getData(string $tenantId, ReportRange $range): ReportData
     {
-        $startCustomers = DB::table('orders')
-            ->where('tenant_id', $tenantId)
-            ->where('created_at', '<', $range->start)
-            ->distinct()
-            ->count('customer_email');
+        $cohort = DB::table('orders as cohort')
+            ->where('cohort.tenant_id', $tenantId)
+            ->where('cohort.payment_status', 'paid')
+            ->whereNotNull('cohort.customer_email')
+            ->where('cohort.customer_email', '<>', '')
+            ->where('cohort.created_at', '<', $range->start);
 
-        $churnedCustomers = DB::table('subscription_payments')
-            ->where('tenant_id', $tenantId)
-            ->where('status', 'cancelled')
-            ->whereBetween('updated_at', [$range->start, $range->end])
+        $startCustomers = (clone $cohort)
             ->distinct()
-            ->count('customer_email');
+            ->count('cohort.customer_email');
 
-        $churnRate = $startCustomers > 0 ? ($churnedCustomers / $startCustomers) * 100 : 0;
+        $retainedCustomers = (clone $cohort)
+            ->whereExists(function ($query) use ($tenantId, $range): void {
+                $query->selectRaw('1')
+                    ->from('orders as repeated')
+                    ->whereColumn('repeated.customer_email', 'cohort.customer_email')
+                    ->where('repeated.tenant_id', $tenantId)
+                    ->where('repeated.payment_status', 'paid')
+                    ->whereBetween('repeated.created_at', [$range->start, $range->end]);
+            })
+            ->distinct()
+            ->count('cohort.customer_email');
+
+        $lostCustomers = $startCustomers - $retainedCustomers;
+        $churnRate = $startCustomers > 0 ? ($lostCustomers / $startCustomers) * 100 : 0;
 
         return new ReportData(
             rows: [
                 new ReportRow('Churn rate', round($churnRate, 2), unit: '%'),
                 new ReportRow('Clientes al inicio', $startCustomers),
-                new ReportRow('Clientes perdidos', $churnedCustomers),
+                new ReportRow('Clientes retenidos', $retainedCustomers),
+                new ReportRow('Clientes perdidos', $lostCustomers),
             ],
             series: [],
-            summary: ['churn_rate' => round($churnRate, 2)],
+            summary: [
+                'churn_rate' => round($churnRate, 2),
+                'start' => $startCustomers,
+                'retained' => $retainedCustomers,
+                'lost' => $lostCustomers,
+            ],
             metadata: ['range' => $range->toArray()],
         );
     }
