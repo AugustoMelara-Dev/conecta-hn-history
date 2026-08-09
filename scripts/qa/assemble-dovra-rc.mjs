@@ -244,21 +244,33 @@ function isSensitiveAssignmentName(name) {
 }
 
 function staticAssignmentValue(rawValue, delimiter) {
-    const value = rawValue.replace(/[,;][ \t]*$/u, "").trim();
+    let value = rawValue.replace(/[,;][ \t]*$/u, "").trim();
     if (value.length === 0) {
         return "";
     }
     const quote = value[0];
     if ((quote === "\"" || quote === "'") && value.at(-1) === quote) {
-        return value.slice(1, -1).trim();
+        value = value.slice(1, -1).trim();
     }
     if (/^(?:\$|\$\{|\{\{|<)|^(?:env|getenv)\s*\(|^process\.env(?:\.|\[|$)/iu.test(value)) {
         return null;
     }
-    if (delimiter !== "=") {
+    if (delimiter === "=>" && quote !== "\"" && quote !== "'") {
         return null;
     }
     return value;
+}
+
+function isKnownLocalDatabaseSentinel(name, value) {
+    const sentinels = new Map([
+        ["PGPASSWORD", new Set(["postgres"])],
+        ["POSTGRES_PASSWORD", new Set(["postgres"])],
+        ["DB_PASSWORD", new Set(["postgres", "rls-test-password"])],
+        ["DB_PLATFORM_PASSWORD", new Set(["rls-platform-password"])],
+        ["MYSQL_PASSWORD", new Set(["conecta"])],
+        ["MYSQL_ROOT_PASSWORD", new Set(["root"])],
+    ]);
+    return sentinels.get(name)?.has(value) ?? false;
 }
 
 function isPlaceholderSecret(value) {
@@ -276,6 +288,9 @@ function hasSecretSignature(content) {
             continue;
         }
         const name = normalizeAssignmentName(match[2] ?? match[3]);
+        if (name === "MYSQL_ALLOW_EMPTY_PASSWORD") {
+            continue;
+        }
         if (!isSensitiveAssignmentName(name)) {
             continue;
         }
@@ -287,6 +302,9 @@ function hasSecretSignature(content) {
             continue;
         }
         if (isPlaceholderSecret(value)) {
+            continue;
+        }
+        if (isKnownLocalDatabaseSentinel(name, value)) {
             continue;
         }
         return true;

@@ -287,6 +287,11 @@ test("assembler fails closed on static literal secrets without echoing their val
     const fixtures = [
         ["config/leaked.txt", "API_KEY: \"rc-api-key-marker\",\n", "rc-api-key-marker"],
         ["config/leaked.txt", "'password' => 'rc-password-marker',\n", "rc-password-marker"],
+        ["config/leaked.yml", "API_KEY: postgres\n", "postgres"],
+        ["config/leaked.yml", "PASSWORD: production-value\n", "production-value"],
+        ["config/leaked.yml", "ACCESS_TOKEN: root\n", "root"],
+        ["config/leaked.yml", "PRIVATE_KEY: conecta\n", "conecta"],
+        ["config/leaked.yml", "DB_PASSWORD: production-value\n", "production-value"],
     ];
     const cleanup = [];
     t.after(() => {
@@ -306,6 +311,34 @@ test("assembler fails closed on static literal secrets without echoing their val
         assert.notEqual(result.status, 0, `static literal secret in ${path} must fail assembly`);
         assert.ok(!`${result.stdout}\n${result.stderr}`.includes(marker), "scanner failure must not echo the secret value");
     }
+});
+
+test("assembler indexes only the verified local database controls and sentinels", (t) => {
+    const source = createFixture();
+    const outputParent = mkdtempSync(join(tmpdir(), "dovra-rc-output-"));
+    const output = join(outputParent, "bundle");
+    const fragmentPath = ".github/workflows/local-database-fixture.yml";
+    writeFixtureFile(source, fragmentPath, [
+        "MYSQL_ALLOW_EMPTY_PASSWORD: \"yes\"",
+        "PGPASSWORD: postgres",
+        "POSTGRES_PASSWORD: postgres",
+        "DB_PASSWORD: postgres",
+        "DB_PLATFORM_PASSWORD: rls-platform-password",
+        "DB_PASSWORD: rls-test-password",
+        "MYSQL_PASSWORD: conecta",
+        "MYSQL_ROOT_PASSWORD: root",
+        "DB_PASSWORD: \"${DB_PASSWORD:-conecta}\"",
+    ].join("\n"));
+    t.after(() => {
+        rmSync(source, { recursive: true, force: true });
+        rmSync(outputParent, { recursive: true, force: true });
+    });
+
+    const result = assemble(source, output);
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    const index = JSON.parse(readFileSync(join(output, "index.json"), "utf8"));
+    assert.ok(index.entries.some((entry) => entry.path === fragmentPath));
+    assert.equal(readFileSync(join(output, "source", fragmentPath), "utf8").includes("${DB_PASSWORD:-conecta}"), true);
 });
 
 test("verifier rejects a symlinked source component and supports --bundle alias", (t) => {
