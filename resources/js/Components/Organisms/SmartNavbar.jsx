@@ -12,6 +12,7 @@ import LiveSearch from '@/Components/Organisms/LiveSearch';
 export default function SmartNavbar() {
     const { auth } = usePage().props;
     const scrollDirection = useScrollDirection(10);
+    const panelUrl = auth?.panel_url || auth?.user?.panel_url || '/registrar-negocio';
 
     return (
         <nav
@@ -36,12 +37,12 @@ export default function SmartNavbar() {
                     <div className="md:hidden flex-1 flex justify-end mr-2">
                         <Sheet>
                             <SheetTrigger asChild>
-                                <Button variant="outline" size="sm" className="gap-2 rounded-full border-border bg-background/50 backdrop-blur-sm">
+                                <Button variant="outline" size="sm" className="gap-2 border-border bg-background/50 backdrop-blur-sm">
                                     <SlidersHorizontal className="w-4 h-4" />
                                     <span className="text-xs font-medium">Filtros</span>
                                 </Button>
                             </SheetTrigger>
-                            <SheetContent side="top" className="w-full h-[80vh] rounded-b-2xl">
+                            <SheetContent side="top" className="h-[80vh] w-full rounded-b-xl">
                                 <SheetHeader className="mb-4">
                                     <SheetTitle>Explorar Dovra AI</SheetTitle>
                                 </SheetHeader>
@@ -78,7 +79,7 @@ export default function SmartNavbar() {
                             <div className="flex items-center gap-2">
                                 {/* Dropdown Menu Replacement */}
                                 <div className="relative group">
-                                    <button className="flex items-center gap-2 p-2 rounded-full hover:bg-muted/50 transition-colors focus:outline-none">
+                                    <button className="flex items-center gap-2 rounded-lg p-2 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                                         <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
                                             <span className="text-primary text-sm font-semibold">
                                                 {auth.user.name.charAt(0).toUpperCase()}
@@ -111,7 +112,7 @@ export default function SmartNavbar() {
                                             {/* Seller Links */}
                                             {auth.user.role === 'seller' && (
                                                 <>
-                                                    <a href="/app" data-turbo="false" className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-primary hover:bg-primary/5 transition-colors">
+                                                    <a href={panelUrl} data-turbo="false" className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-primary hover:bg-primary/5 transition-colors">
                                                         <Icons.Store className="w-4 h-4" />
                                                         Mi Negocio
                                                     </a>

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Providers\Filament;
 
 use App\Filament\App\Pages\EditTenantProfile;
+use App\Filament\App\Pages\Dashboard as AppDashboard;
 use App\Filament\App\Widgets\OperationalCockpitWidget;
 use App\Filament\App\Widgets\OrdersChart;
 use App\Filament\App\Widgets\QuickActionsWidget;
@@ -19,7 +20,6 @@ use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Navigation\NavigationGroup;
-use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Assets\Css;
@@ -135,7 +135,7 @@ class AppPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/App/Widgets'), for: 'App\\Filament\\App\\Widgets')
 
             ->pages([
-                Dashboard::class,
+                AppDashboard::class,
             ])
 
             // WIDGETS DEL DASHBOARD

@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { Home, Search, Heart, User, PlusCircle, Store } from 'lucide-react';
+import { Home, Search, User, PlusCircle, Store } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -12,6 +12,7 @@ export default function MobileBottomNav() {
     const { url, props } = usePage();
     const auth = props.auth || {};
     const user = auth.user;
+    const panelUrl = auth.panel_url || user?.panel_url || '/registrar-negocio';
 
     // ═══════════════════════════════════════════════════════════════════════
     // FAB VISIBILITY LOGIC: Only show to authenticated users with tenants
@@ -39,7 +40,7 @@ export default function MobileBottomNav() {
     // FAB item (conditionally added)
     const fabItem = {
         label: 'Publicar',
-        href: '/admin/products/create',
+        href: `${panelUrl.replace(/\/$/, '')}/products/create`,
         icon: PlusCircle,
         active: false,
         isFab: true,
@@ -48,16 +49,10 @@ export default function MobileBottomNav() {
     // Post-FAB items
     const endNavItems = [
         {
-            label: 'Favoritos',
-            href: '/favoritos',
-            icon: Heart,
-            active: url === '/favoritos',
-        },
-        {
             label: isAuthenticated ? 'Mi Tienda' : 'Perfil',
-            href: isAuthenticated ? (hasTenant ? '/admin' : '/registrar-negocio') : '/login',
+            href: isAuthenticated ? (hasTenant ? panelUrl : '/registrar-negocio') : '/login',
             icon: isAuthenticated ? Store : User,
-            active: url.startsWith('/perfil') || url.startsWith('/mi-cuenta') || url.startsWith('/admin'),
+            active: url.startsWith('/perfil') || url.startsWith('/mi-cuenta') || url.startsWith('/app/'),
         },
     ];
 
@@ -67,7 +62,7 @@ export default function MobileBottomNav() {
         : [...baseNavItems, ...endNavItems];
 
     // Grid columns: 5 with FAB, 4 without
-    const gridCols = showFAB ? 'grid-cols-5' : 'grid-cols-4';
+    const gridCols = showFAB ? 'grid-cols-4' : 'grid-cols-3';
 
     return (
         <div className={cn("grid h-16 items-center justify-items-center px-2 pb-safe", gridCols)}>

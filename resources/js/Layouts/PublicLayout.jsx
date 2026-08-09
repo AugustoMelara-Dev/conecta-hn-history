@@ -74,7 +74,7 @@ function SearchForm({ className = '', inputId = 'public-search' }) {
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
                     placeholder="Buscar negocios, servicios o productos"
-                    className="h-10 rounded-full border-border bg-background pl-9 shadow-none"
+                    className="h-10 rounded-lg border-border bg-background pl-9 shadow-none"
                 />
             </div>
         </form>

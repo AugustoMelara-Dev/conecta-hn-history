@@ -44,7 +44,7 @@ final class FilamentAdminNotifier implements AdminNotifier, AdminNotifierInterfa
             ->actions([
                 Action::make('view')
                     ->label('Ver Lead')
-                    ->url("/admin/leads/{$lead->id}")
+                    ->url($this->tenantPanelUrl((string) $tenantId, "leads/{$lead->id}/edit"))
                     ->markAsRead(),
             ])
             ->sendToDatabase($tenantOwner);
@@ -72,7 +72,7 @@ final class FilamentAdminNotifier implements AdminNotifier, AdminNotifierInterfa
             ->actions([
                 Action::make('view')
                     ->label('Ver Reseña')
-                    ->url("/admin/reviews/{$review->id}")
+                    ->url($this->tenantPanelUrl((string) $review->tenant_id))
                     ->markAsRead(),
             ])
             ->sendToDatabase($tenantOwner);
@@ -96,7 +96,7 @@ final class FilamentAdminNotifier implements AdminNotifier, AdminNotifierInterfa
             ->actions([
                 Action::make('view')
                     ->label('Ver Orden')
-                    ->url("/admin/orders/{$orderId}")
+                    ->url($this->tenantPanelUrl($tenantId, "orders/{$orderId}"))
                     ->markAsRead(),
             ])
             ->sendToDatabase($tenantOwner);
@@ -119,5 +119,18 @@ final class FilamentAdminNotifier implements AdminNotifier, AdminNotifierInterfa
         $owner = $tenant?->user;
 
         return $owner instanceof User ? $owner : null;
+    }
+
+    private function tenantPanelUrl(string $tenantId, string $path = ''): string
+    {
+        $slug = Tenant::query()->whereKey($tenantId)->value('slug');
+
+        if (! is_string($slug) || $slug === '') {
+            return '/dashboard';
+        }
+
+        $base = '/app/'.rawurlencode($slug);
+
+        return $path === '' ? $base : $base.'/'.ltrim($path, '/');
     }
 }

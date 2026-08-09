@@ -52,18 +52,22 @@ class AiRegistry extends Page
 
     public function getAssistants(): array
     {
-        $executor = app(AssistantExecutor::class);
-        $assistants = [];
-        foreach ($executor->all() as $assistant) {
-            $assistants[] = [
-                'key' => $assistant->key(),
-                'name' => $assistant->name(),
-                'category' => $assistant->category(),
-                'cost' => $assistant->estimateCost(),
-            ];
-        }
+        try {
+            $executor = app(AssistantExecutor::class);
+            $assistants = [];
+            foreach ($executor->all() as $assistant) {
+                $assistants[] = [
+                    'key' => $assistant->key(),
+                    'name' => $assistant->name(),
+                    'category' => $assistant->category(),
+                    'cost' => $assistant->estimateCost(),
+                ];
+            }
 
-        return $assistants;
+            return $assistants;
+        } catch (\Throwable) {
+            return [];
+        }
     }
 
     public function save(): void

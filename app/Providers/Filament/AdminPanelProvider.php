@@ -12,22 +12,24 @@ use App\Filament\Admin\Widgets\RecentIncidentsWidget;
 use App\Filament\Admin\Widgets\SystemHealthWidget;
 use App\Filament\Admin\Widgets\TenantsOverviewWidget;
 use App\Filament\Admin\Widgets\TopTenantsTableWidget;
+use App\Filament\Pages\Dashboard as AdminDashboard;
 use Filament\AvatarProviders\UiAvatarsProvider;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Navigation\NavigationGroup;
-use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\Support\Assets\Css;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Illuminate\Support\Facades\Vite;
 
 /**
  * AdminPanelProvider - Centro de Comando Super Admin - Filament 4.
@@ -80,6 +82,13 @@ class AdminPanelProvider extends PanelProvider
                 'info' => Color::Sky,
             ])
 
+            ->assets([
+                Css::make(
+                    'admin-business-components',
+                    resource_path('css/filament/app/business-components.css'),
+                )->html(fn () => Vite::asset('resources/css/filament/app/business-components.css')),
+            ])
+
 
             // FILAMENT 4: database notifications
             ->databaseNotifications()
@@ -110,10 +119,11 @@ class AdminPanelProvider extends PanelProvider
             // DISCOVERY
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
+            ->discoverPages(in: app_path('Filament/Admin/Pages'), for: 'App\\Filament\\Admin\\Pages')
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
 
             ->pages([
-                Dashboard::class,
+                AdminDashboard::class,
             ])
 
             ->widgets([

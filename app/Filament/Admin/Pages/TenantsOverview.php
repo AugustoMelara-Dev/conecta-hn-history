@@ -6,6 +6,7 @@ namespace App\Filament\Admin\Pages;
 
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * TenantsOverview - Top-level tenant dashboard.
@@ -26,6 +27,10 @@ class TenantsOverview extends Page
 
     public function getTopTenants(): array
     {
+        if (! Schema::hasTable('orders') || ! Schema::hasTable('tenants')) {
+            return [];
+        }
+
         return DB::table('orders')
             ->selectRaw('tenant_id, COUNT(*) as orders_count, SUM(total_amount) as revenue')
             ->where('status', 'paid')

@@ -68,7 +68,7 @@ export default function LocationPicker({ defaultCity = 'Tegucigalpa' }) {
                 <Button
                     variant="outline"
                     size="sm"
-                    className="rounded-full border-slate-200 bg-slate-50/50 hover:bg-slate-100 text-slate-700 gap-2"
+                    className="gap-2 rounded-lg border-slate-200 bg-slate-50/50 text-slate-700 hover:bg-slate-100"
                 >
                     <MapPin className="h-3.5 w-3.5 text-primary" />
                     <span className="hidden sm:inline">Ubicación:</span>

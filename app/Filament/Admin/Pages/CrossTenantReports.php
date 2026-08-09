@@ -9,6 +9,7 @@ use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema as DatabaseSchema;
 
 /**
  * CrossTenantReports - Aggregate over tenants.
@@ -50,14 +51,23 @@ class CrossTenantReports extends Page
 
     public function getAggregateData(): array
     {
+        $contactsTable = DatabaseSchema::hasTable('contacts') ? 'contacts' : 'crm_contacts';
+
         return [
-            'total_orders' => DB::table('orders')->count(),
-            'total_revenue' => DB::table('orders')->where('status', 'paid')->sum('total_amount') ?? 0,
-            'total_users' => DB::table('users')->count(),
-            'total_ai_calls' => DB::table('ai_assistant_runs')->count(),
-            'total_tenants' => DB::table('tenants')->count(),
-            'total_crm_contacts' => DB::table('crm_contacts')->count(),
-            'total_crm_deals' => DB::table('crm_deals')->count(),
+            'total_orders' => $this->countTable('orders'),
+            'total_revenue' => DatabaseSchema::hasTable('orders')
+                ? (float) DB::table('orders')->where('status', 'paid')->sum('total_amount')
+                : 0.0,
+            'total_users' => $this->countTable('users'),
+            'total_ai_calls' => $this->countTable('ai_assistant_runs'),
+            'total_tenants' => $this->countTable('tenants'),
+            'total_crm_contacts' => $this->countTable($contactsTable),
+            'total_crm_deals' => $this->countTable('crm_deals'),
         ];
+    }
+
+    private function countTable(string $table): int
+    {
+        return DatabaseSchema::hasTable($table) ? DB::table($table)->count() : 0;
     }
 }

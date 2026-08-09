@@ -108,7 +108,7 @@ class NewOrderNotification extends Notification implements ShouldBroadcast, Shou
         $tenantName = $this->order->tenant?->name ?? 'Tu Negocio';
 
         // Deep link to Filament Order Resource
-        $orderUrl = url("/admin/orders/{$this->order->id}/edit");
+        $orderUrl = url($this->orderPath());
 
         return (new MailMessage)
             ->subject("🛒 Nuevo Pedido {$orderNumber} - {$tenantName}")
@@ -146,8 +146,18 @@ class NewOrderNotification extends Notification implements ShouldBroadcast, Shou
             'formatted_total' => $this->order->formatted_total,
             'customer_name' => $this->order->customer_name ?? 'Cliente',
             'items_count' => $this->order->items->count(),
-            'action_url' => "/admin/orders/{$this->order->id}/edit",
+            'action_url' => $this->orderPath(),
             'message' => "Nuevo pedido {$this->order->order_number} de {$this->order->customer_name} por {$this->order->formatted_total}",
         ];
+    }
+
+    private function orderPath(): string
+    {
+        $this->order->loadMissing('tenant');
+        $slug = rawurlencode((string) ($this->order->tenant?->slug ?? ''));
+
+        return $slug !== ''
+            ? "/app/{$slug}/orders/{$this->order->getKey()}"
+            : '/dashboard';
     }
 }

@@ -46,7 +46,7 @@ final class CanonicalPanelUrlResolver
             'billing' => $baseUrl.'/manage-billing',
             'settings' => $baseUrl.'/settings',
             'marketing' => $baseUrl.'/manage-marketing',
-            'reports' => $baseUrl,
+            'reports' => $baseUrl.'/reports-overview',
             'upgrade' => $baseUrl.'/upgrade-to-pro',
             default => $baseUrl,
         };

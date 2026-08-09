@@ -82,7 +82,7 @@ export default function LiveSearch() {
                                 {results.tenants.map((tenant) => (
                                     <Link
                                         key={tenant.id}
-                                        href={route('tenant.show', tenant.slug)}
+                                        href={`/t/${encodeURIComponent(tenant.slug)}`}
                                         className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors group"
                                         onClick={() => setIsOpen(false)}
                                     >
@@ -112,7 +112,7 @@ export default function LiveSearch() {
                                 {results.products.map((product) => (
                                     <Link
                                         key={product.id}
-                                        href={route('tenant.show', product.tenant.slug)}
+                                        href={`/t/${encodeURIComponent(product.tenant.slug)}`}
                                         className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors group"
                                         onClick={() => setIsOpen(false)}
                                     >

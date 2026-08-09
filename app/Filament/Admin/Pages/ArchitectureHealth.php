@@ -22,6 +22,8 @@ class ArchitectureHealth extends Page
 
     protected static ?int $navigationSort = 5;
 
+    protected static ?string $slug = 'system-health';
+
     protected string $view = 'filament.admin.pages.architecture-health';
 
     public function getHealthResults(): array

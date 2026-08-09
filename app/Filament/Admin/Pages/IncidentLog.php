@@ -12,6 +12,7 @@ use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema as DatabaseSchema;
 
 /**
  * IncidentLog - Manual incident log.
@@ -50,6 +51,15 @@ class IncidentLog extends Page
 
     public function logIncident(): void
     {
+        if (! DatabaseSchema::hasTable('activity_log')) {
+            Notification::make()
+                ->title('El registro de auditoría aún no está disponible')
+                ->danger()
+                ->send();
+
+            return;
+        }
+
         $state = $this->form->getState();
         DB::table('activity_log')->insert([
             'log_name' => 'incident',
@@ -65,6 +75,10 @@ class IncidentLog extends Page
 
     public function getRecentIncidents(): array
     {
+        if (! DatabaseSchema::hasTable('activity_log')) {
+            return [];
+        }
+
         return DB::table('activity_log')
             ->where('log_name', 'incident')
             ->orderBy('created_at', 'desc')->limit(20)->get()->toArray();

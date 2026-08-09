@@ -1,10 +1,14 @@
 import { Link, usePage } from '@inertiajs/react';
-import { Home, Search, Heart, User, Store, Eye } from 'lucide-react';
+import { Home, Search, User, Store, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function MobileBottomNav() {
     const { auth } = usePage().props;
     const user = auth.user;
+    const panelUrl = auth?.panel_url || user?.panel_url || '/registrar-negocio';
+    const publicUrl = user?.tenant?.slug
+        ? `/t/${encodeURIComponent(user.tenant.slug)}`
+        : '/directorio';
 
     const navItems = [
         {
@@ -22,16 +26,9 @@ export default function MobileBottomNav() {
             show: !user
         },
         {
-            label: 'Favoritos',
-            icon: Heart,
-            href: '#', // TODO: Implement favorites route
-            active: false,
-            show: user && user.role === 'buyer'
-        },
-        {
             label: 'Mi Negocio',
             icon: Store,
-            href: '/app', // Native link for hard reload
+            href: panelUrl,
             active: false,
             show: user && user.role === 'seller',
             native: true
@@ -39,8 +36,8 @@ export default function MobileBottomNav() {
         {
             label: 'Vista Previa',
             icon: Eye,
-            href: user && user.tenant ? route('tenant.show', user.tenant.slug) : '#',
-            active: route().current('tenant.show'),
+            href: publicUrl,
+            active: route().current('tenant.public.show'),
             show: user && user.role === 'seller' && user.tenant
         },
         {
