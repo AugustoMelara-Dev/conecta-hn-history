@@ -11,6 +11,7 @@ use PhpParser\Node\Expr\Array_;
 use PhpParser\Node\Expr\ArrayDimFetch;
 use PhpParser\Node\Expr\Assign;
 use PhpParser\Node\Expr\AssignOp;
+use PhpParser\Node\Expr\Cast\String_ as StringCast;
 use PhpParser\Node\Expr\ClassConstFetch;
 use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\New_;
@@ -231,6 +232,85 @@ final class DovraSecurityRatchetTest extends TestCase
     }
 
     #[Test]
+    public function catalog_vision_worker_guards_stored_descriptor_before_io_and_provider(): void
+    {
+        $root = dirname(__DIR__, 2);
+        self::assertSecureCatalogVisionJob(
+            (string) file_get_contents($root.'/app/Infrastructure/Jobs/AI/ProcessCatalogImportItem.php'),
+            (string) file_get_contents($root.'/app/Application/Ai/Catalog/CatalogVisionIngressGuard.php'),
+        );
+    }
+
+    #[Test]
+    public function catalog_vision_ratchet_rejects_comment_bait_io_before_guard_and_raw_provider_alias(): void
+    {
+        $guard = <<<'PHP'
+            <?php
+            final class CatalogVisionIngressGuard {
+                private const DOVRA_SOURCE = 'upload';
+                private const CHANNEL = 'catalog_vision_queue';
+                public function inspect($tenantId, $actorId, $descriptor) {
+                    return $this->ingress->inspect(new DataEnvelope(
+                        sourceSystem: self::DOVRA_SOURCE, payload: $descriptor, tenantId: $tenantId,
+                        actorId: $actorId, channel: self::CHANNEL, context: [],
+                    ));
+                }
+            }
+            PHP;
+        $fixtures = [
+            <<<'PHP'
+                <?php
+                final class ProcessCatalogImportItem {
+                    public function handle($provider, $catalogIngress) {
+                        // $decision = $catalogIngress->inspect($tenantId, $actorId, $descriptor);
+                        $bait = 'Storage::disk()->get(); $provider->analyze(new CatalogVisionImage)';
+                    }
+                }
+                PHP,
+            <<<'PHP'
+                <?php
+                final class ProcessCatalogImportItem {
+                    public function handle($provider, $catalogIngress) {
+                        $contents = Storage::disk($item->source_disk)->get($item->source_path);
+                        $decision = $catalogIngress->inspect($tenantId, $actorId, $descriptor);
+                        $redactedDescriptor = $catalogIngress->validatedDescriptor($decision);
+                        $provider->analyze(new CatalogVisionImage(
+                            originalName: $redactedDescriptor['filename'], mimeType: $redactedDescriptor['mime'],
+                            contents: $contents,
+                        ));
+                    }
+                }
+                PHP,
+            <<<'PHP'
+                <?php
+                final class ProcessCatalogImportItem {
+                    public function handle($provider, $catalogIngress) {
+                        $decision = $catalogIngress->inspect($tenantId, $actorId, $descriptor);
+                        $redactedDescriptor = $catalogIngress->validatedDescriptor($decision);
+                        $contents = Storage::disk($item->source_disk)->get($item->source_path);
+                        $rawAlias = $item;
+                        $provider->analyze(new CatalogVisionImage(
+                            originalName: $rawAlias->original_name, mimeType: $rawAlias->mime_type,
+                            contents: $contents,
+                        ));
+                    }
+                }
+                PHP,
+        ];
+
+        foreach ($fixtures as $fixture) {
+            $rejected = false;
+            try {
+                self::assertSecureCatalogVisionJob($fixture, $guard);
+            } catch (AssertionFailedError) {
+                $rejected = true;
+            }
+
+            self::assertTrue($rejected, 'Adversarial catalog vision worker must not satisfy the ingress ratchet.');
+        }
+    }
+
+    #[Test]
     public function dovra_rls_contract_cannot_pass_by_missing_tables_or_unregistered_inventory(): void
     {
         $root = dirname(__DIR__, 2);
@@ -280,6 +360,229 @@ final class DovraSecurityRatchetTest extends TestCase
         }
 
         self::assertSame([], $violations, implode(PHP_EOL, $violations));
+    }
+
+    private static function assertSecureCatalogVisionJob(string $jobSource, string $guardSource): void
+    {
+        $guard = self::parsedClass($guardSource, 'CatalogVisionIngressGuard');
+        self::assertStringClassConstant($guard, 'DOVRA_SOURCE', 'upload');
+        self::assertStringClassConstant($guard, 'CHANNEL', 'catalog_vision_queue');
+        $guardMethod = $guard->getMethod('inspect');
+        self::assertInstanceOf(ClassMethod::class, $guardMethod);
+        $guardCalls = array_values(array_filter(
+            self::flattenExecutableNodes($guardMethod->stmts),
+            static fn (Node $node): bool => self::isThisReceiverCall($node, 'ingress', 'inspect'),
+        ));
+        self::assertCount(1, $guardCalls, 'Catalog ingress must call the real Dovra guard exactly once.');
+        self::assertInstanceOf(MethodCall::class, $guardCalls[0]);
+        self::assertCatalogGuardEnvelope($guardCalls[0]);
+
+        $job = self::parsedClass($jobSource, 'ProcessCatalogImportItem');
+        $handle = $job->getMethod('handle');
+        self::assertInstanceOf(ClassMethod::class, $handle);
+        $nodes = self::flattenExecutableNodes($handle->stmts);
+        $inspectIndex = null;
+        $storageIndex = null;
+        $providerIndex = null;
+        $inspect = null;
+        $provider = null;
+        $descriptorAssignments = [];
+        $redactedAssignments = [];
+        $inspectionAssignments = [];
+
+        foreach ($nodes as $index => $node) {
+            if ($inspectIndex === null && self::isVariableReceiverCall($node, 'catalogIngress', 'inspect')) {
+                $inspectIndex = $index;
+                $inspect = $node;
+            }
+            if ($storageIndex === null && self::isStorageRead($node)) {
+                $storageIndex = $index;
+            }
+            if ($providerIndex === null && self::isVariableReceiverCall($node, 'provider', 'analyze')) {
+                $providerIndex = $index;
+                $provider = $node;
+            }
+            if ($node instanceof Assign && self::isVariable($node->var, 'descriptor')) {
+                $descriptorAssignments[] = $node;
+            }
+            if ($node instanceof Assign && self::isVariable($node->var, 'redactedDescriptor')) {
+                $redactedAssignments[] = $node;
+            }
+            if ($inspectIndex !== null
+                && $index > $inspectIndex
+                && ($node instanceof Assign || $node instanceof AssignOp)
+                && self::isVariable($node->var, 'decision')) {
+                self::fail('$decision must not be overwritten after catalog ingress inspection.');
+            }
+            if (($node instanceof Assign || $node instanceof AssignOp)
+                && $node->var instanceof ArrayDimFetch
+                && (self::arrayRootIsVariable($node->var, 'descriptor')
+                    || self::arrayRootIsVariable($node->var, 'redactedDescriptor'))) {
+                self::fail('Catalog descriptors must not be mutated after their closed assignment.');
+            }
+            if ($node instanceof AssignOp
+                && (self::isVariable($node->var, 'descriptor')
+                    || self::isVariable($node->var, 'redactedDescriptor'))) {
+                self::fail('Catalog descriptors must not be mutated with assignment operators.');
+            }
+        }
+        if ($inspect !== null) {
+            foreach ($nodes as $node) {
+                if ($node instanceof Assign && $node->expr === $inspect) {
+                    $inspectionAssignments[] = $node;
+                }
+            }
+        }
+
+        self::assertIsInt($inspectIndex, 'A real $catalogIngress->inspect() call is required.');
+        self::assertIsInt($storageIndex, 'A real Storage::disk()->get() call is required.');
+        self::assertIsInt($providerIndex, 'A real $provider->analyze() call is required.');
+        self::assertLessThan($storageIndex, $inspectIndex, 'Catalog ingress must run before storage reads.');
+        self::assertLessThan($providerIndex, $storageIndex, 'Storage read must precede provider analysis.');
+        self::assertInstanceOf(MethodCall::class, $inspect);
+        self::assertInstanceOf(MethodCall::class, $provider);
+        self::assertCount(1, $inspectionAssignments, 'Catalog inspect() must have one parent assignment.');
+        self::assertTrue(
+            self::isVariable($inspectionAssignments[0]->var, 'decision'),
+            'Catalog inspect() must be assigned directly to $decision.',
+        );
+        self::assertCount(1, $descriptorAssignments, 'The stored descriptor must have one closed assignment.');
+        self::assertStoredCatalogDescriptor($descriptorAssignments[0]->expr);
+        self::assertCount(1, $redactedAssignments, 'The redacted descriptor must have one assignment.');
+        self::assertTrue(self::isValidatedCatalogDescriptorCall($redactedAssignments[0]->expr));
+        self::assertCatalogInspectArguments($inspect);
+        self::assertCatalogProviderArguments($provider);
+        self::assertBatchActorSource($handle->stmts ?? []);
+    }
+
+    private static function assertCatalogGuardEnvelope(MethodCall $inspection): void
+    {
+        self::assertCount(1, $inspection->args);
+        $envelope = $inspection->args[0]->value;
+        self::assertInstanceOf(New_::class, $envelope);
+        self::assertInstanceOf(Name::class, $envelope->class);
+        self::assertSame('DataEnvelope', $envelope->class->getLast());
+        $arguments = self::namedArguments($envelope->args);
+        self::assertSame(['sourceSystem', 'payload', 'tenantId', 'actorId', 'channel', 'context'], array_keys($arguments));
+        self::assertTrue(self::isSelfConstant($arguments['sourceSystem'], 'DOVRA_SOURCE'));
+        self::assertTrue(self::isVariable($arguments['payload'], 'descriptor'));
+        self::assertTrue(self::isVariable($arguments['tenantId'], 'tenantId'));
+        self::assertTrue(self::isVariable($arguments['actorId'], 'actorId'));
+        self::assertTrue(self::isSelfConstant($arguments['channel'], 'CHANNEL'));
+        self::assertInstanceOf(Array_::class, $arguments['context']);
+        self::assertSame([], $arguments['context']->items);
+    }
+
+    private static function assertCatalogInspectArguments(MethodCall $inspect): void
+    {
+        self::assertCount(3, $inspect->args);
+        self::assertTrue(self::isThisProperty($inspect->args[0]->value, 'tenantId'));
+        self::assertTrue(self::isArrayRead($inspect->args[1]->value, 'work', 'actor_id'));
+        self::assertTrue(self::isVariable($inspect->args[2]->value, 'descriptor'));
+    }
+
+    private static function assertStoredCatalogDescriptor(Node $descriptor): void
+    {
+        self::assertInstanceOf(Array_::class, $descriptor);
+        $fields = [];
+        foreach ($descriptor->items as $item) {
+            self::assertNotNull($item);
+            self::assertInstanceOf(String_::class, $item->key);
+            self::assertInstanceOf(PropertyFetch::class, $item->value);
+            self::assertTrue(self::isVariable($item->value->var, 'item'));
+            self::assertInstanceOf(Identifier::class, $item->value->name);
+            $fields[$item->key->value] = $item->value->name->toString();
+        }
+        self::assertSame([
+            'filename' => 'original_name',
+            'mime' => 'mime_type',
+            'size_bytes' => 'size_bytes',
+            'sha256' => 'sha256',
+        ], $fields);
+    }
+
+    private static function assertCatalogProviderArguments(MethodCall $provider): void
+    {
+        self::assertCount(1, $provider->args);
+        $image = $provider->args[0]->value;
+        self::assertInstanceOf(New_::class, $image);
+        self::assertInstanceOf(Name::class, $image->class);
+        self::assertSame('CatalogVisionImage', $image->class->getLast());
+        $arguments = self::namedArguments($image->args);
+        self::assertSame(['tenantId', 'itemId', 'originalName', 'mimeType', 'contents'], array_keys($arguments));
+        self::assertTrue(self::isThisProperty($arguments['tenantId'], 'tenantId'));
+        self::assertTrue(self::isThisProperty($arguments['itemId'], 'itemId'));
+        self::assertTrue(self::isArrayRead($arguments['originalName'], 'redactedDescriptor', 'filename'));
+        self::assertTrue(self::isArrayRead($arguments['mimeType'], 'redactedDescriptor', 'mime'));
+        self::assertTrue(self::isVariable($arguments['contents'], 'contents'));
+    }
+
+    /** @param list<Node\Stmt> $statements */
+    private static function assertBatchActorSource(array $statements): void
+    {
+        foreach ((new NodeFinder)->findInstanceOf($statements, Array_::class) as $node) {
+            foreach ($node->items as $item) {
+                if ($item?->key instanceof String_
+                    && $item->key->value === 'actor_id'
+                    && $item->value instanceof StringCast
+                    && self::isPropertyRead($item->value->expr, 'batch', 'created_by')) {
+                    return;
+                }
+            }
+        }
+
+        self::fail('Catalog actor_id must come from the same-tenant batch.created_by value.');
+    }
+
+    private static function isValidatedCatalogDescriptorCall(Node $node): bool
+    {
+        return $node instanceof MethodCall
+            && self::isVariable($node->var, 'catalogIngress')
+            && $node->name instanceof Identifier
+            && $node->name->toString() === 'validatedDescriptor'
+            && count($node->args) === 1
+            && self::isVariable($node->args[0]->value, 'decision');
+    }
+
+    private static function isStorageRead(Node $node): bool
+    {
+        return $node instanceof MethodCall
+            && $node->name instanceof Identifier
+            && $node->name->toString() === 'get'
+            && $node->var instanceof StaticCall
+            && $node->var->class instanceof Name
+            && $node->var->class->getLast() === 'Storage'
+            && $node->var->name instanceof Identifier
+            && $node->var->name->toString() === 'disk';
+    }
+
+    private static function parsedClass(string $source, string $name): Class_
+    {
+        $statements = (new ParserFactory)->createForNewestSupportedVersion()->parse($source);
+        self::assertIsArray($statements);
+        $class = (new NodeFinder)->findFirst(
+            $statements,
+            static fn (Node $node): bool => $node instanceof Class_ && $node->name?->toString() === $name,
+        );
+        self::assertInstanceOf(Class_::class, $class, "{$name} AST is required.");
+
+        return $class;
+    }
+
+    private static function assertStringClassConstant(Class_ $class, string $name, string $expected): void
+    {
+        $values = [];
+        foreach ($class->getConstants() as $declaration) {
+            foreach ($declaration->consts as $constant) {
+                if ($constant->name->toString() === $name) {
+                    self::assertTrue($declaration->isPrivate());
+                    $values[] = $constant->value;
+                }
+            }
+        }
+        self::assertCount(1, $values);
+        self::assertInstanceOf(String_::class, $values[0]);
+        self::assertSame($expected, $values[0]->value);
     }
 
     private static function assertSecureProfileOptimizationMethod(string $source): void
@@ -598,6 +901,19 @@ final class DovraSecurityRatchetTest extends TestCase
     private static function isVariable(Node $node, string $name): bool
     {
         return $node instanceof Variable && $node->name === $name;
+    }
+
+    private static function isThisProperty(Node $node, string $property): bool
+    {
+        return self::isPropertyRead($node, 'this', $property);
+    }
+
+    private static function isPropertyRead(Node $node, string $variable, string $property): bool
+    {
+        return $node instanceof PropertyFetch
+            && self::isVariable($node->var, $variable)
+            && $node->name instanceof Identifier
+            && $node->name->toString() === $property;
     }
 
     private static function isArrayRead(Node $node, string $variable, string $key): bool
