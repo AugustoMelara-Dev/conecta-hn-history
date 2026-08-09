@@ -278,6 +278,7 @@ use App\Models\CustomerTask;
 use App\Models\Lead;
 use App\Models\MenuSection;
 use App\Models\Order;
+use App\Models\Payment;
 use App\Models\Product;
 use App\Models\Quote;
 use App\Models\Review;
@@ -1189,6 +1190,7 @@ class AppServiceProvider extends ServiceProvider
             'customer_task' => CustomerTask::class,
             'service' => Service::class,
             'service_provider' => ServiceProviderModel::class,
+            'payment' => Payment::class,
         ]);
 
         // ═══════════════════════════════════════════════════════════════════════
