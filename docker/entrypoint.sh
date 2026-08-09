@@ -3,6 +3,8 @@ set -e
 
 cd /app
 
+php artisan config:clear --quiet
+
 case "${APP_ENV:-local}" in
   production|staging)
     if [ "${RUN_PRODUCTION_GUARD:-true}" = "true" ]; then
@@ -35,4 +37,18 @@ php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 
-exec php artisan serve --host=0.0.0.0 --port="${PORT:-8080}"
+case "${CONTAINER_ROLE:-web}" in
+  web)
+    exec frankenphp run --config /etc/caddy/Caddyfile
+    ;;
+  worker)
+    exec php artisan horizon
+    ;;
+  scheduler)
+    exec php artisan schedule:work
+    ;;
+  *)
+    echo "Unsupported CONTAINER_ROLE: ${CONTAINER_ROLE}" >&2
+    exit 64
+    ;;
+esac

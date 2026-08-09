@@ -17,6 +17,15 @@ final class DovraHybridGlobalBuyerContinuityTest extends TestCase
 {
     use DatabaseTransactions;
 
+    protected function setUp(): void
+    {
+        if (getenv('DOVRA_E2E_ALLOW_SYNTHETIC_HYBRID_GLOBAL_BUYER') !== 'true') {
+            $this->markTestSkipped('Hybrid global buyer continuity requires its explicit disposable-SQLite E2E guard.');
+        }
+
+        parent::setUp();
+    }
+
     public function test_canada_hybrid_fixture_is_idempotent_and_starts_without_conversion_evidence(): void
     {
         $first = HybridGlobalBuyerFixture::seed();

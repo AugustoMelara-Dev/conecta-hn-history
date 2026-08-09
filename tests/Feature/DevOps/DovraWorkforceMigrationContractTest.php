@@ -47,7 +47,7 @@ final class DovraWorkforceMigrationContractTest extends TestCase
         self::assertStringContainsString('dovra_workforce_activation_release_fk', $migration);
         self::assertStringNotContainsString('nullOnDelete()', $migration);
         self::assertStringContainsString("'candidate_status' => \$candidate?->lifecycle_status ?? 'not_created'", $controller);
-        self::assertStringContainsString("'state' => $state", $controller);
+        self::assertStringContainsString("'state' => \$state", $controller);
         self::assertStringContainsString("'simulation'", $controller);
         self::assertStringNotContainsString("DB::table('ai_agent_activations')->insert", $controller);
     }
@@ -90,6 +90,6 @@ final class DovraWorkforceMigrationContractTest extends TestCase
 
         self::assertIsString($contents, 'Expected migration or controller to be readable: '.$relativePath);
 
-        return $contents;
+        return str_replace("\\'", "'", $contents);
     }
 }

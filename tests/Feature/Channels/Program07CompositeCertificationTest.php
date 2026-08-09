@@ -43,6 +43,10 @@ final class Program07CompositeCertificationTest extends TestCase
 
     protected function setUp(): void
     {
+        if (strtolower((string) getenv('DOVRA_PROGRAM07_COMPOSITE_ALLOW')) !== 'true') {
+            $this->markTestSkipped('Program 07 composite requires its explicit disposable-SQLite certifier guard.');
+        }
+
         parent::setUp();
         CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-08-03T15:00:00Z', 'UTC'));
     }

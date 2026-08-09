@@ -6,6 +6,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 final class ProductionConfigGuardCommand extends Command
@@ -314,6 +315,7 @@ final class ProductionConfigGuardCommand extends Command
                 $billingTenantId = (string) config('ai.public.billing_tenant_id');
 
                 if (! Str::isUuid($billingTenantId)
+                    || ! Schema::hasTable('tenants')
                     || ! DB::table('tenants')->where('id', $billingTenantId)->exists()) {
                     $violations[] = $this->issue(
                         'AI_PUBLIC_BILLING_TENANT_ID',

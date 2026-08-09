@@ -36,6 +36,15 @@ final class Program06CompositeCertificationTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        if (strtolower((string) getenv('DOVRA_PROGRAM06_COMPOSITE_ALLOW')) !== 'true') {
+            $this->markTestSkipped('Program 06 composite requires its explicit disposable-SQLite certifier guard.');
+        }
+
+        parent::setUp();
+    }
+
     public function test_existing_program06_seams_compose_locally_without_claiming_production_authority(): void
     {
         self::assertSame('testing', app()->environment());

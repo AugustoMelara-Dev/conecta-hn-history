@@ -46,14 +46,14 @@ final class DovraArtifactManifestTest extends TestCase
     public function test_manifest_fails_when_claim_scan_finds_unsupported_marketing_language(): void
     {
         $head = $this->repositoryHeadOrSkip();
-        $tempPath = tempnam(sys_get_temp_dir(), 'dovra-claims-');
-        self::assertNotFalse($tempPath);
+        $tempPath = storage_path('framework/testing/dovra-claims-'.\Illuminate\Support\Str::uuid().'.md');
         file_put_contents($tempPath, 'This artifact is production-ready and investment ready.');
+        $relativeTempPath = 'storage/framework/testing/'.basename($tempPath);
 
         try {
             [$exitCode, $output] = $this->runManifest(
                 '--expected-head='.$head,
-                '--claims-scan-path='.$tempPath,
+                '--claims-scan-path='.$relativeTempPath,
             );
 
             self::assertSame(4, $exitCode, $output);

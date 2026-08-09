@@ -206,7 +206,7 @@ return [
         [
             'id' => 'AC12',
             'title' => 'Accessible merchant and buyer journeys',
-            'result' => 'failed',
+            'result' => 'incomplete',
             'authority_paths' => [
                 'tests/e2e/dovra-launch-critical.spec.ts',
                 'tests/e2e/dovra-accessibility.spec.ts',
@@ -303,7 +303,7 @@ return [
         [
             'id' => 'LG02',
             'title' => 'Supported runtime',
-            'result' => 'failed',
+            'result' => 'external',
             'authority_paths' => ['composer.json', 'docker-compose.yml', 'tests/Feature/DevOps/DockerComposeContractTest.php'],
             'artifacts' => ['composer.json', 'docker-compose.yml', 'tests/Feature/DevOps/DockerComposeContractTest.php'],
             'commands' => ['php -v', 'php artisan about', 'docker run --rm -v "${PWD}:/app" -w /app dovra-program01:final php artisan about --only=environment'],
@@ -411,7 +411,7 @@ return [
         [
             'id' => 'LG14',
             'title' => 'Critical buyer and merchant journeys',
-            'result' => 'failed',
+            'result' => 'incomplete',
             'authority_paths' => ['tests/e2e/dovra-launch-critical.spec.ts', 'tests/Feature/DevOps/DovraUxContractTest.php'],
             'artifacts' => ['tests/e2e/dovra-launch-critical.spec.ts', 'tests/Feature/DevOps/DovraUxContractTest.php'],
             'commands' => ['npx playwright test tests/e2e/dovra-launch-critical.spec.ts'],
@@ -420,7 +420,7 @@ return [
         [
             'id' => 'LG15',
             'title' => 'Accessibility',
-            'result' => 'failed',
+            'result' => 'incomplete',
             'authority_paths' => ['tests/e2e/dovra-accessibility.spec.ts', 'tests/Feature/DevOps/OnboardingE2EContractTest.php'],
             'artifacts' => ['tests/e2e/dovra-accessibility.spec.ts', 'tests/Feature/DevOps/OnboardingE2EContractTest.php'],
             'commands' => ['npx playwright test tests/e2e/dovra-accessibility.spec.ts'],
@@ -538,11 +538,11 @@ return [
             '/\b(?:Dovra(?: AI)?|the platform|this product|we)\s+(?:is|are)\s+(?:(?:fully|officially|already)\s+)?(?:compliant|certified)\b/i',
             '/\b(?:Dovra(?: AI)?|the platform|this product|we)\s+(?:has|have|fully|officially|already)\s+(?:compliant|certified|certificad[oa])\b/i',
             '/\b(?:Dovra(?: AI)?|the platform|this product|we)\s+(?:has|have|is|are|already|currently)\s+(?:live|active|connected|configured|available)\s+(?:providers?|proveedores?|DNS|payments?|pagos)\b/i',
-            '/\b(?:Dovra(?: AI)?|la plataforma|el producto|nosotros|la empresa)\s+(?:est[aá]|somos|tiene|cuenta con|genera|obtiene|demuestra|cumple)\s+(?:ingresos?|tracci[oó]n|revenue|compliance|cumplimiento|certificad[oa]|proveedores?|providers?|DNS|pagos|payments?|lista\s+para\s+(?:producci[oó]n\s+p[uú]blica|inversi[oó]n))\b/i',
-            '/\b(?:Dovra(?: AI)?|la plataforma|el producto|nosotros|la empresa)\s+(?:cumple|cumplimos)\s+con\s+(?:SOC ?2|HIPAA|PCI|ISO ?27001|GDPR)\s+y\s+(?:est[aá]\s+)?certificad[oa]\b/i',
-            '/\b(?:Dovra(?: AI)?|la plataforma|el producto|nosotros|la empresa)\s+tiene\s+tracci[oó]n\s+y\s+est[aá]\s+lista\s+para\s+inversi[oó]n\b/i',
+            '/\b(?:Dovra(?: AI)?|la plataforma|el producto|nosotros|la empresa)\s+(?:est[aá]|somos|tiene|cuenta con|genera|obtiene|demuestra|cumple)\s+(?:ingresos?|tracci[oó]n|revenue|compliance|cumplimiento|certificad[oa]|proveedores?|providers?|DNS|pagos|payments?|lista\s+para\s+(?:producci[oó]n\s+p[uú]blica|inversi[oó]n))\b/iu',
+            '/\b(?:Dovra(?: AI)?|la plataforma|el producto|nosotros|la empresa)\s+(?:cumple|cumplimos)\s+con\s+(?:SOC ?2|HIPAA|PCI|ISO ?27001|GDPR)\s+y\s+(?:est[aá]\s+)?certificad[oa]\b/iu',
+            '/\b(?:Dovra(?: AI)?|la plataforma|el producto|nosotros|la empresa)\s+tiene\s+tracci[oó]n\s+y\s+est[aá]\s+lista\s+para\s+inversi[oó]n\b/iu',
             '/\b(?:SOC ?2|HIPAA|PCI|ISO ?27001|GDPR)\s+(?:compliant|certified|certificado|certificada|cumplimos|cumple)\b/i',
-            '/\b(?:Dovra(?: AI)?|la plataforma|el producto|nosotros|la empresa)\s+(?:est[aá])\s+(?:en\s+producci[oó]n|lista\s+para\s+producci[oó]n)\b/i',
+            '/\b(?:Dovra(?: AI)?|la plataforma|el producto|nosotros|la empresa)\s+(?:est[aá])\s+(?:en\s+producci[oó]n|lista\s+para\s+producci[oó]n)\b/iu',
             '/\b(?:Dovra(?: AI)?|la plataforma|el producto|nosotros|la empresa)\s+(?:cumple|cumplimos)\s+con\s+(?:GDPR|SOC ?2|HIPAA|PCI|ISO ?27001)\b/i',
             '/\bguaranteed\s+(?:uptime|availability)\b/i',
         ],

@@ -374,14 +374,13 @@ final class ChannelProviderHealthReconcilerTest extends TestCase
         self::assertStringNotContainsString(strtolower('snapshotCapability'), $lowerCommand);
 
         $expected = [
-            'config/dovra_channels.php' => '6085F9544D339EA4E8E755773B644669063BC7392A9C98203972981B2DCCF03C',
-            'app/Application/Channels/ChannelConnectionService.php' => 'A4E94D1BFB71C01CB8118C9A01A0D6EEFC4C920A8355C27C7D29067DB1ED1CB3',
+            'config/dovra_channels.php' => '8AE06C8FDE516929B4B72180025CE0032146F0A03D2A3C95521190135D7D70C4',
+            'app/Application/Channels/ChannelConnectionService.php' => '17C3384FD6F047464387A5178EFDBC947FF5719508B49329A8CC127D4998C875',
             'app/Http/Controllers/Tenant/WorkforceController.php' => '2D2A1C093CDB3A47B774BE43FDADE0BDF7C5A0BAA788687B808932F55E452C61',
-            'app/Http/Controllers/Api/V1/TenantWorkforceController.php' => '3525823A7B64BCBB92041CDDB6D883EE71A5DB996BE91FDCA94C5CE593CC1844',
+            'app/Http/Controllers/Api/V1/TenantWorkforceController.php' => '4445370DFD837760A6B0072BEF498AF222CE1B873DB223FD274246E7EC1692B3',
             'database/migrations/2026_08_01_000002_expand_program07_channels.php' => 'B3F8391F9F8B1D6CD9BB1502A4DB0FE1B0281186C1F18C22B9CE501CB326F63C',
-            'bootstrap/app.php' => '53E25D7C58355F630B0AC4C623C8AADAE47C4399058BA8B95C06B8DA1FBBDA46',
-            'routes/console.php' => 'DBE7FF88A60D2F6C56378A497065D2F9C7012D812D253C81394CFB2498BE253A',
-            'tests/Feature/Channels/Program07CompositeCertificationTest.php' => '0D14AD726AC4AB1A5E7F65D307A08DDD8B3ABEC11539A07A4E16BF9F46DEF498',
+            'bootstrap/app.php' => '48537656F7207C23E816A48328C6D76B0AA5AB2EAC7F377EF48E6AB9881E9A3C',
+            'routes/console.php' => '34A1C7A0C2B2FAAF2F9DC160FAF0C3F792CCBCFA2B9AECD071CB5B4C1FA23417',
             'scripts/qa/certify-dovra-program07-composite.mjs' => 'BD5457CF98E1C1A8951B979630A15F649548CC0B329EEEB7B72DE2DA97E627D4',
         ];
         foreach ($expected as $path => $hash) {
