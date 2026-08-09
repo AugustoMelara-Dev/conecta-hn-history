@@ -32,6 +32,8 @@ use PhpParser\Node\Stmt\Catch_;
 use PhpParser\Node\Stmt\Class_;
 use PhpParser\Node\Stmt\ClassConst;
 use PhpParser\Node\Stmt\ClassMethod;
+use PhpParser\Node\Stmt\Expression;
+use PhpParser\Node\Stmt\Return_;
 use PhpParser\Node\Stmt\TryCatch;
 use PhpParser\NodeFinder;
 use PhpParser\ParserFactory;
@@ -660,6 +662,80 @@ final class DovraSecurityRatchetTest extends TestCase
     }
 
     #[Test]
+    public function tenant_registration_failure_is_generic_and_preserves_the_dispatch_boundary(): void
+    {
+        $root = dirname(__DIR__, 2);
+
+        self::assertSecureTenantRegistrationFailure(
+            (string) file_get_contents($root.'/app/Http/Controllers/Auth/RegisterTenantController.php'),
+        );
+    }
+
+    #[Test]
+    public function tenant_registration_failure_ratchet_rejects_non_vacuous_raw_failure_paths(): void
+    {
+        $fixtures = [
+            [
+                <<<'PHP'
+                    <?php
+                    final class RegisterTenantController {
+                        public function store($request, $bus) {
+                            try {
+                                $bus->dispatch($command);
+                            } catch (\Exception) {
+                                Log::error('tenant_registration_failed', [
+                                    'error_code' => 'tenant_registration_unavailable',
+                                ]);
+                                Log::error('tenant_registration_failed', [
+                                    'email' => $request->validated('email'),
+                                ]);
+
+                                return back()
+                                    ->withInput(request()->except('password', 'password_confirmation'))
+                                    ->withErrors(['email' => 'No pudimos completar el registro. Inténtalo de nuevo.']);
+                            }
+                        }
+                    }
+                    PHP,
+                'Tenant registration catch must emit exactly one error log.',
+            ],
+            [
+                <<<'PHP'
+                    <?php
+                    final class RegisterTenantController {
+                        public function store($request, $bus) {
+                            try {
+                                $bus->dispatch($command);
+                            } catch (\Exception $exception) {
+                                Log::error('tenant_registration_failed', [
+                                    'error_code' => 'tenant_registration_unavailable',
+                                ]);
+
+                                return back()
+                                    ->withInput(request()->except('password', 'password_confirmation'))
+                                    ->withErrors(['email' => $exception->getMessage()]);
+                            }
+                        }
+                    }
+                    PHP,
+                'Tenant registration catch must remain unbound.',
+            ],
+        ];
+
+        $failures = [];
+        foreach ($fixtures as [$fixture]) {
+            try {
+                self::assertSecureTenantRegistrationFailure($fixture);
+                $failures[] = 'A raw tenant registration failure unexpectedly satisfied the ratchet.';
+            } catch (AssertionFailedError $exception) {
+                $failures[] = $exception->getMessage();
+            }
+        }
+
+        self::assertSame(array_column($fixtures, 1), $failures);
+    }
+
+    #[Test]
     public function dovra_rls_contract_cannot_pass_by_missing_tables_or_unregistered_inventory(): void
     {
         $root = dirname(__DIR__, 2);
@@ -1165,6 +1241,111 @@ final class DovraSecurityRatchetTest extends TestCase
         self::assertIsInt($throwIndex);
         self::assertLessThan($logIndex, $failureReportIndex, 'Circuit failure must be reported before logging.');
         self::assertLessThan($throwIndex, $logIndex, 'Stable logging must precede the exact rethrow.');
+    }
+
+    private static function assertSecureTenantRegistrationFailure(string $source): void
+    {
+        $controller = self::parsedClass($source, 'RegisterTenantController');
+        $store = $controller->getMethod('store');
+        self::assertInstanceOf(ClassMethod::class, $store, 'RegisterTenantController::store AST is required.');
+
+        $registrationBoundaries = [];
+        foreach ((new NodeFinder)->findInstanceOf($store->stmts ?? [], TryCatch::class) as $tryCatch) {
+            $dispatches = array_values(array_filter(
+                self::flattenExecutableNodes($tryCatch->stmts),
+                static fn (Node $node): bool => self::isVariableReceiverCall($node, 'bus', 'dispatch'),
+            ));
+            if ($dispatches !== []) {
+                $registrationBoundaries[] = [$tryCatch, $dispatches];
+            }
+        }
+
+        self::assertCount(1, $registrationBoundaries, 'Tenant registration must have one dispatch try/catch boundary.');
+        [$registrationTry, $dispatches] = $registrationBoundaries[0];
+        self::assertCount(1, $dispatches, 'Tenant registration command dispatch must occur exactly once.');
+        self::assertCount(1, $dispatches[0]->args);
+        self::assertTrue(self::isVariable($dispatches[0]->args[0]->value, 'command'));
+        self::assertCount(1, $registrationTry->catches, 'Tenant registration dispatch must have one failure catch.');
+
+        $catch = $registrationTry->catches[0];
+        self::assertCount(1, $catch->types);
+        self::assertSame('Exception', $catch->types[0]->getLast());
+        if ($catch->var !== null) {
+            self::fail('Tenant registration catch must remain unbound.');
+        }
+
+        $catchNodes = self::flattenExecutableNodes($catch->stmts);
+        $logs = array_values(array_filter(
+            $catchNodes,
+            static fn (Node $node): bool => self::isStaticCall($node, 'Log', 'error'),
+        ));
+        if (count($logs) !== 1) {
+            self::fail('Tenant registration catch must emit exactly one error log.');
+        }
+        self::assertTenantRegistrationFailureLog($logs[0]);
+
+        $requestReads = array_values(array_filter(
+            $catchNodes,
+            static fn (Node $node): bool => self::isVariable($node, 'request'),
+        ));
+        self::assertCount(0, $requestReads, 'Tenant registration catch must not read the request parameter.');
+        self::assertCount(2, $catch->stmts, 'Tenant registration catch must contain only the stable log and redirect.');
+        self::assertInstanceOf(Expression::class, $catch->stmts[0]);
+        self::assertSame($logs[0], $catch->stmts[0]->expr);
+        self::assertInstanceOf(Return_::class, $catch->stmts[1]);
+        self::assertTenantRegistrationFailureRedirect($catch->stmts[1]);
+    }
+
+    private static function assertTenantRegistrationFailureLog(StaticCall $log): void
+    {
+        self::assertCount(2, $log->args);
+        self::assertInstanceOf(String_::class, $log->args[0]->value);
+        self::assertSame('tenant_registration_failed', $log->args[0]->value->value);
+        self::assertInstanceOf(Array_::class, $log->args[1]->value);
+        self::assertCount(1, $log->args[1]->value->items);
+        $context = self::namedArrayItems($log->args[1]->value);
+        self::assertSame(['error_code'], array_keys($context));
+        self::assertInstanceOf(String_::class, $context['error_code']);
+        self::assertSame('tenant_registration_unavailable', $context['error_code']->value);
+    }
+
+    private static function assertTenantRegistrationFailureRedirect(Return_ $return): void
+    {
+        $withErrors = $return->expr;
+        self::assertInstanceOf(MethodCall::class, $withErrors);
+        self::assertInstanceOf(Identifier::class, $withErrors->name);
+        self::assertSame('withErrors', $withErrors->name->toString());
+        self::assertCount(1, $withErrors->args);
+        self::assertInstanceOf(Array_::class, $withErrors->args[0]->value);
+        self::assertCount(1, $withErrors->args[0]->value->items);
+        $errors = self::namedArrayItems($withErrors->args[0]->value);
+        self::assertSame(['email'], array_keys($errors));
+        self::assertInstanceOf(String_::class, $errors['email']);
+        self::assertSame('No pudimos completar el registro. Inténtalo de nuevo.', $errors['email']->value);
+
+        $withInput = $withErrors->var;
+        self::assertInstanceOf(MethodCall::class, $withInput);
+        self::assertInstanceOf(Identifier::class, $withInput->name);
+        self::assertSame('withInput', $withInput->name->toString());
+        self::assertCount(1, $withInput->args);
+        $except = $withInput->args[0]->value;
+        self::assertInstanceOf(MethodCall::class, $except);
+        self::assertInstanceOf(Identifier::class, $except->name);
+        self::assertSame('except', $except->name->toString());
+        self::assertCount(2, $except->args);
+        self::assertInstanceOf(String_::class, $except->args[0]->value);
+        self::assertSame('password', $except->args[0]->value->value);
+        self::assertInstanceOf(String_::class, $except->args[1]->value);
+        self::assertSame('password_confirmation', $except->args[1]->value->value);
+        self::assertInstanceOf(FuncCall::class, $except->var);
+        self::assertInstanceOf(Name::class, $except->var->name);
+        self::assertSame('request', $except->var->name->toString());
+        self::assertCount(0, $except->var->args);
+
+        self::assertInstanceOf(FuncCall::class, $withInput->var);
+        self::assertInstanceOf(Name::class, $withInput->var->name);
+        self::assertSame('back', $withInput->var->name->toString());
+        self::assertCount(0, $withInput->var->args);
     }
 
     private static function assertOtpFailureLog(StaticCall $log): void

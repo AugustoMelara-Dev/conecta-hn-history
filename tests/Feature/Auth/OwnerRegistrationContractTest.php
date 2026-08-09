@@ -4,16 +4,20 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Auth;
 
+use App\Application\Shared\Contracts\CommandBusInterface;
 use App\Domain\Billing\Repositories\PaymentRepositoryInterface;
+use App\Domain\Shared\OutboxRepositoryInterface;
 use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Domain\TenantGovernance\Enums\CommercialMode;
 use App\Models\Category;
 use App\Models\City;
 use App\Models\Payment;
 use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -27,7 +31,7 @@ final class OwnerRegistrationContractTest extends TestCase
 
         $this->withoutMiddleware();
         $this->seedGeneralSettings();
-        $this->app->bind(\App\Domain\Shared\OutboxRepositoryInterface::class, fn () => new class implements \App\Domain\Shared\OutboxRepositoryInterface
+        $this->app->bind(OutboxRepositoryInterface::class, fn () => new class implements OutboxRepositoryInterface
         {
             public function append(object $event): void
             {
@@ -71,6 +75,50 @@ final class OwnerRegistrationContractTest extends TestCase
 
         $this->postWithCsrf(route('tenant.register.store'), $payload)
             ->assertSessionHasErrors(['commercial_mode', 'terms_accepted', 'privacy_accepted']);
+    }
+
+    public function test_registration_failure_is_redacted_and_leaves_no_registration_state(): void
+    {
+        $rawMarker = 'RAW_TENANT_REGISTRATION_SECRET';
+        $originalBus = $this->app->make(CommandBusInterface::class);
+        $originalLogger = Log::getFacadeRoot();
+        $bus = $this->createMock(CommandBusInterface::class);
+        $bus->method('dispatch')->willThrowException(new \RuntimeException($rawMarker));
+        $this->app->instance(CommandBusInterface::class, $bus);
+        Log::spy();
+
+        try {
+            $response = $this
+                ->from(route('tenant.register'))
+                ->postWithCsrf(route('tenant.register.store'), $this->validPayload([
+                    'slug' => 'failed-registration',
+                    'email' => 'failed.registration@example.com',
+                ]));
+
+            $response
+                ->assertRedirect(route('tenant.register'))
+                ->assertSessionHasErrors([
+                    'email' => 'No pudimos completar el registro. Inténtalo de nuevo.',
+                ]);
+
+            $oldInput = session()->getOldInput();
+            self::assertSame('failed.registration@example.com', $oldInput['email']);
+            self::assertArrayNotHasKey('password', $oldInput);
+            self::assertArrayNotHasKey('password_confirmation', $oldInput);
+            self::assertStringNotContainsString($rawMarker, json_encode(session()->all(), JSON_THROW_ON_ERROR));
+            self::assertSame(0, Tenant::withoutGlobalScopes()->count());
+            self::assertSame(0, User::withoutGlobalScopes()->count());
+            self::assertSame(0, Payment::withoutGlobalScopes()->count());
+
+            Log::shouldHaveReceived('error')
+                ->once()
+                ->with('tenant_registration_failed', [
+                    'error_code' => 'tenant_registration_unavailable',
+                ]);
+        } finally {
+            $this->app->instance(CommandBusInterface::class, $originalBus);
+            Log::swap($originalLogger);
+        }
     }
 
     public function test_products_registration_persists_derived_retail_contract(): void
