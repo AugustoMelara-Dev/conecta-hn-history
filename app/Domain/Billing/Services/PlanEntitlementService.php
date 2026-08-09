@@ -70,12 +70,17 @@ final class PlanEntitlementService
             static fn (mixed $feature): bool => is_string($feature) && trim($feature) !== '',
         ));
 
+        $currency = strtoupper(trim((string) ($definition['currency'] ?? '')));
+        if (preg_match('/\A[A-Z]{3}\z/D', $currency) !== 1) {
+            throw new \LogicException("Missing or invalid subscription currency for [{$plan->value}].");
+        }
+
         return new PlanEntitlementSnapshot(
             plan: $plan,
             name: (string) ($definition['name'] ?? ucfirst($plan->value)),
             description: (string) ($definition['description'] ?? ''),
             priceMinor: (int) ($definition['price'] ?? 0),
-            currency: strtoupper((string) ($definition['currency'] ?? 'HNL')),
+            currency: $currency,
             limits: $limits,
             capabilities: array_values(array_unique($capabilities, SORT_REGULAR)),
             features: $features,

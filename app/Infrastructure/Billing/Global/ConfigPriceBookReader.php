@@ -27,6 +27,12 @@ final class ConfigPriceBookReader implements PriceBookReaderInterface
         if ($version === '' || $currency === '' || ! is_array($plans)) {
             throw new \RuntimeException("Market [{$marketKey}] price book is invalid.");
         }
+        if (! preg_match('/\A[A-Z]{3}\z/D', $currency)) {
+            throw new \RuntimeException("Market [{$marketKey}] price book currency is invalid.");
+        }
+        if (! hash_equals(strtoupper(trim($market->currencyCode)), $currency)) {
+            throw new \RuntimeException("Market [{$marketKey}] price book currency does not match the tenant market.");
+        }
 
         $resolvedPlans = [];
         foreach ($plans as $key => $plan) {

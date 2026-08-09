@@ -15,6 +15,17 @@ Schedule::command('workflows:resume-due')->everyMinute()->withoutOverlapping();
 // Claim due marketing campaigns and enqueue tenant-scoped recipient deliveries.
 Schedule::command('campaigns:dispatch-due')->everyMinute()->withoutOverlapping();
 
+// Read-only internal/runtime policy audit. External providers remain explicitly blocked until live verification.
+Schedule::command('dovra:operations-readiness --json')
+    ->dailyAt('02:45')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/operations-readiness.log'));
+
+Schedule::command('dovra:validate-workforce --dry-run --json')
+    ->dailyAt('02:50')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/workforce-readiness.log'));
+
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');

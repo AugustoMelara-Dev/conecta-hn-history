@@ -42,7 +42,10 @@ final class ConfigPlanRepository implements PlanRepositoryInterface
         $configuredPlan = $this->configuredPlan($plan);
 
         $amount = (int) ($configuredPlan['price'] ?? 0);
-        $currency = strtoupper((string) ($configuredPlan['currency'] ?? 'HNL'));
+        $currency = strtoupper(trim((string) ($configuredPlan['currency'] ?? '')));
+        if (preg_match('/\A[A-Z]{3}\z/D', $currency) !== 1) {
+            throw new \LogicException("Subscription plan [{$plan->value}] requires an ISO 4217 currency.");
+        }
         $externalGatewayId = (string) ($configuredPlan['stripe_price_id'] ?? '');
 
         if ($externalGatewayId === '' && $plan === TenantPlan::PRO) {

@@ -34,7 +34,7 @@ final class ImpersonationLifecycleTest extends TestCase
             ->withSession($this->mfaSession($admin))
             ->post('/_test/impersonation/'.$tenant->getKey().'/'.$target->getKey(), [
                 'current_password' => 'password',
-                'reason' => 'Diagn�stico solicitado por soporte autorizado.',
+                'reason' => 'Diagnóstico solicitado por soporte autorizado.',
             ]);
 
         $start->assertRedirect('/app');
@@ -120,7 +120,7 @@ final class ImpersonationLifecycleTest extends TestCase
             ->withSession($this->mfaSession($admin))
             ->post('/_test/impersonation/'.$tenant->getKey().'/'.$target->getKey(), [
                 'current_password' => 'password',
-                'reason' => 'Validar configuraci�n solicitada por el cliente.',
+                'reason' => 'Validar configuración solicitada por el cliente.',
             ]);
         $grant = ImpersonationGrant::query()->findOrFail(
             (string) session(ImpersonationGrantService::SESSION_GRANT_ID),
@@ -130,7 +130,7 @@ final class ImpersonationLifecycleTest extends TestCase
             $admin,
             $grant,
             request(),
-            'Revocaci�n inmediata solicitada por seguridad.',
+            'Revocación inmediata solicitada por seguridad.',
         );
         $this->assertDatabaseHas('activity_log', [
             'description' => 'admin_impersonation_revoked',
@@ -159,7 +159,7 @@ final class ImpersonationLifecycleTest extends TestCase
         $this->actingAs($admin)
             ->post('/_test/impersonation/'.$tenant->getKey().'/'.$target->getKey(), [
                 'current_password' => 'password',
-                'reason' => 'Investigar incidente con autorizaci�n del cliente.',
+                'reason' => 'Investigar incidente con autorización del cliente.',
             ])
             ->assertSessionHasErrors('current_password');
 
@@ -167,7 +167,7 @@ final class ImpersonationLifecycleTest extends TestCase
             ->withSession($this->mfaSession($admin))
             ->post('/_test/impersonation/'.$otherTenant->getKey().'/'.$target->getKey(), [
                 'current_password' => 'password',
-                'reason' => 'Investigar incidente con autorizaci�n del cliente.',
+                'reason' => 'Investigar incidente con autorización del cliente.',
             ])
             ->assertServerError();
 
