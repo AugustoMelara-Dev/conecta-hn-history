@@ -65,7 +65,7 @@ final class DashboardBridgeContractTest extends TestCase
             ->assertRedirect('/registrar-negocio');
     }
 
-    public function test_legacy_workspace_get_actions_redirect_to_canonical_panel(): void
+    public function test_order_print_route_no_longer_redirects_to_a_placeholder(): void
     {
         $owner = User::factory()->create();
         $tenant = Tenant::factory()->forUser($owner)->create([
@@ -75,8 +75,8 @@ final class DashboardBridgeContractTest extends TestCase
         $owner->forceFill(['tenant_id' => $tenant->id])->save();
 
         $this->actingAs($owner)
-            ->get('/workspace/orders/order-123/print-ticket')
-            ->assertRedirect('/app/cafeteria-norte/orders');
+            ->get('/workspace/orders/999999/print-ticket')
+            ->assertNotFound();
     }
 
     public function test_legacy_workspace_mutations_remain_gone(): void

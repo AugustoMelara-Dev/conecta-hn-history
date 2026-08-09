@@ -18,6 +18,7 @@
 
 use App\Http\Controllers\Tenant\CatalogImportWorkspaceController;
 use App\Http\Controllers\Tenant\LegacyWorkspaceActionController;
+use App\Http\Controllers\Tenant\OrderReceiptController;
 use App\Http\Controllers\Tenant\WorkforceController;
 use App\Http\Controllers\Tenant\WorkspaceRedirectController;
 use App\Infrastructure\Http\Middleware\IdentifyTenantMiddleware;
@@ -61,11 +62,11 @@ Route::middleware(['auth', 'verified', IdentifyTenantMiddleware::class])->prefix
     Route::prefix('orders')->group(function () {
         Route::get('/', [WorkspaceRedirectController::class, 'orders'])->name('tenant.orders.index');
         Route::put('/{order}/status', LegacyWorkspaceActionController::class)->name('tenant.orders.update-status');
-        Route::get('/{order}/print-ticket', LegacyWorkspaceActionController::class)->name('orders.print-ticket');
+        Route::get('/{order}/print-ticket', [OrderReceiptController::class, 'print'])->whereNumber('order')->name('orders.print-ticket');
     });
 
     // Receipt download (Order detail PDF)
-    Route::get('/orders/{order}/receipt', LegacyWorkspaceActionController::class)
+    Route::get('/orders/{order}/receipt', [OrderReceiptController::class, 'receipt'])->whereNumber('order')
         ->name('receipt.download');
 
     // ─────────────────────────────────────────────────────────────────────────

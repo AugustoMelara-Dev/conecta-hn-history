@@ -296,10 +296,10 @@ class OrderResource extends Resource
     }
 
     // ═══ VISTA DETALLADA CON INFOLIST ═══
-    public static function deprecated_infolist(Infolist $infolist): Infolist
+    public static function infolist(Schema $schema): Schema
     {
         return $schema
-            ->schema([
+            ->components([
                 Infolists\Components\Grid::make(3)
                     ->schema([
                         // ═══ COLUMNA 1: CLIENTE ═══
@@ -483,7 +483,7 @@ class OrderResource extends Resource
     public static function form(Schema $schema): Schema
     {
         // No usamos form para edición, solo infolist para vista
-        return $form->components([]);
+        return $schema->components([]);
     }
 
     private static function recordCurrency(mixed $record): string

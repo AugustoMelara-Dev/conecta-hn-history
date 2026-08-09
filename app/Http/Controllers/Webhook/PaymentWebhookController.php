@@ -81,15 +81,18 @@ final class PaymentWebhookController extends Controller
 
             return response()->json($result, $status);
 
-        } catch (InvalidArgumentException $e) {
-            $this->logger->warning('PaymentWebhook: Invalid payload', ['error' => $e->getMessage()]);
+        } catch (InvalidArgumentException) {
+            $this->logger->warning('PaymentWebhook: Invalid payload', ['reason' => 'invalid_payload']);
 
             return response()->json([
                 'status' => 'invalid',
-                'message' => $e->getMessage(),
+                'message' => 'Invalid webhook payload.',
             ], 422);
         } catch (\Throwable $e) {
-            $this->logger->error('PaymentWebhook: Processing Error', ['error' => $e->getMessage()]);
+            $this->logger->error('PaymentWebhook: Processing Error', [
+                'exception' => $e::class,
+                'provider_event_id' => is_string($payload['id'] ?? null) ? $payload['id'] : null,
+            ]);
 
             return response()->json(['status' => 'error'], 500);
         }
@@ -133,7 +136,7 @@ final class PaymentWebhookController extends Controller
             $payload = json_decode($request->getContent(), true, flags: JSON_THROW_ON_ERROR);
         } catch (UnexpectedValueException|\JsonException $exception) {
             $this->logger->warning('PaymentWebhook: Stripe verification failed', [
-                'error' => $exception->getMessage(),
+                'reason' => $exception::class,
             ]);
 
             return null;

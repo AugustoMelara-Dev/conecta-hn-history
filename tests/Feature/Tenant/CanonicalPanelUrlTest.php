@@ -161,8 +161,6 @@ final class CanonicalPanelUrlTest extends TestCase
             'tenant.coupons.store',
             'tenant.coupons.toggle',
             'tenant.landing-page.update',
-            'orders.print-ticket',
-            'receipt.download',
             'reports.sales-pdf',
             'reports.inventory-pdf',
         ];

@@ -31,9 +31,15 @@ use Stripe\Stripe;
  */
 final class StripePaymentGateway implements PaymentGatewayInterface
 {
+    private bool $configured;
+
     public function __construct()
     {
-        Stripe::setApiKey(config('services.stripe.secret'));
+        $secret = trim((string) config('services.stripe.secret', ''));
+        $this->configured = $secret !== '';
+        if ($this->configured) {
+            Stripe::setApiKey($secret);
+        }
     }
 
     /**
@@ -45,6 +51,8 @@ final class StripePaymentGateway implements PaymentGatewayInterface
         string $paymentMethodId,
         array $metadata = []
     ): ChargeResult {
+        $this->assertConfigured();
+
         try {
             $intent = PaymentIntent::create([
                 'amount' => $amountInCents,
@@ -62,14 +70,13 @@ final class StripePaymentGateway implements PaymentGatewayInterface
             if ($intent->status === 'requires_action') {
                 Log::info('Payment requires additional authentication', [
                     'intent_id' => $intent->id,
-                    'client_secret' => $intent->client_secret,
                 ]);
 
                 return ChargeResult::failure('Payment requires additional authentication');
             }
 
             if ($intent->status !== 'succeeded') {
-                return ChargeResult::failure("Payment status: {$intent->status}");
+                return ChargeResult::failure('Payment was not settled by the provider.');
             }
 
             return ChargeResult::success(
@@ -81,19 +88,19 @@ final class StripePaymentGateway implements PaymentGatewayInterface
             // Card was declined
             Log::warning('Payment declined', [
                 'decline_code' => $e->getDeclineCode(),
-                'message' => $e->getMessage(),
+                'exception' => $e::class,
             ]);
 
             throw new PaymentDeclinedException(
                 declineCode: $e->getDeclineCode() ?? 'unknown',
-                message: $e->getMessage(),
+                message: 'Payment was declined by the provider.',
                 previous: $e
             );
 
         } catch (RateLimitException $e) {
             // Too many requests to Stripe
             Log::error('Stripe rate limit exceeded', [
-                'message' => $e->getMessage(),
+                'exception' => $e::class,
             ]);
 
             throw new PaymentGatewayUnavailableException(
@@ -104,7 +111,7 @@ final class StripePaymentGateway implements PaymentGatewayInterface
         } catch (InvalidRequestException $e) {
             // Invalid parameters sent to Stripe
             Log::error('Invalid Stripe request', [
-                'message' => $e->getMessage(),
+                'exception' => $e::class,
                 'param' => $e->getStripeParam(),
             ]);
 
@@ -116,7 +123,7 @@ final class StripePaymentGateway implements PaymentGatewayInterface
         } catch (AuthenticationException $e) {
             // API key issues
             Log::critical('Stripe authentication failed - check API keys', [
-                'message' => $e->getMessage(),
+                'exception' => $e::class,
             ]);
 
             throw new PaymentGatewayUnavailableException(
@@ -127,7 +134,7 @@ final class StripePaymentGateway implements PaymentGatewayInterface
         } catch (ApiConnectionException $e) {
             // Network issues
             Log::error('Stripe connection failed', [
-                'message' => $e->getMessage(),
+                'exception' => $e::class,
             ]);
 
             throw new PaymentGatewayUnavailableException(
@@ -138,9 +145,7 @@ final class StripePaymentGateway implements PaymentGatewayInterface
         } catch (\Throwable $e) {
             // Catch-all for any unexpected errors
             Log::error('Unexpected payment error', [
-                'exception' => get_class($e),
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+                'exception' => $e::class,
             ]);
 
             throw new UnknownPaymentException(
@@ -158,6 +163,8 @@ final class StripePaymentGateway implements PaymentGatewayInterface
         ?int $amountInCents = null,
         ?string $idempotencyKey = null,
     ): ChargeResult {
+        $this->assertConfigured();
+
         try {
             $params = ['payment_intent' => $transactionId];
 
@@ -172,16 +179,16 @@ final class StripePaymentGateway implements PaymentGatewayInterface
                 return ChargeResult::success(transactionId: $refund->id);
             }
 
-            return ChargeResult::failure("Refund status: {$refund->status}");
+            return ChargeResult::failure('Refund is pending or unavailable at the provider.');
 
         } catch (InvalidRequestException $e) {
             Log::error('Invalid refund request', [
                 'transaction_id' => $transactionId,
-                'message' => $e->getMessage(),
+                'exception' => $e::class,
             ]);
 
             throw new UnknownPaymentException(
-                message: 'Unable to process refund: '.$e->getMessage(),
+                message: 'Unable to process the refund request.',
                 previous: $e
             );
 
@@ -193,14 +200,20 @@ final class StripePaymentGateway implements PaymentGatewayInterface
 
         } catch (\Throwable $e) {
             Log::error('Unexpected refund error', [
-                'exception' => get_class($e),
-                'message' => $e->getMessage(),
+                'exception' => $e::class,
             ]);
 
             throw new UnknownPaymentException(
                 message: 'An unexpected error occurred during refund processing',
                 previous: $e
             );
+        }
+    }
+
+    private function assertConfigured(): void
+    {
+        if (! $this->configured) {
+            throw new PaymentGatewayUnavailableException('Payment provider is not configured.');
         }
     }
 }

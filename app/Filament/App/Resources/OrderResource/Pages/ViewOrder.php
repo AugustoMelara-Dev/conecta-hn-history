@@ -16,17 +16,20 @@ class ViewOrder extends ViewRecord
     {
         return [
             Actions\Action::make('whatsapp')
-                ->label('Contactar Cliente')
+                ->label('Contactar cliente')
                 ->icon('heroicon-o-chat-bubble-left-ellipsis')
                 ->color('success')
-                ->url(fn () => 'https://wa.me/'.preg_replace('/[^0-9]/', '', $this->record->customer_phone))
+                ->url(fn (): string => 'https://wa.me/'.preg_replace('/[^0-9]/', '', (string) $this->record->customer_phone))
                 ->openUrlInNewTab(),
-
             Actions\Action::make('print')
-                ->label('Imprimir Ticket')
+                ->label('Imprimir ticket')
                 ->icon('heroicon-o-printer')
-                ->color('gray')
-                ->action(fn () => null), // TODO: Implementar impresión
+                ->url(fn (): string => route('orders.print-ticket', ['order' => $this->record->getKey()]))
+                ->openUrlInNewTab(),
+            Actions\Action::make('receipt')
+                ->label('Descargar recibo')
+                ->icon('heroicon-o-arrow-down-tray')
+                ->url(fn (): string => route('receipt.download', ['order' => $this->record->getKey()])),
         ];
     }
 

@@ -28,8 +28,6 @@ final class LegacyWorkspaceActionAuthorizationTest extends TestCase
         'tenant.products.destroy' => ['product' => 'hostile-product'],
         'tenant.products.toggle-visibility' => ['product' => 'hostile-product'],
         'tenant.orders.update-status' => ['order' => 'hostile-order'],
-        'orders.print-ticket' => ['order' => 'hostile-order'],
-        'receipt.download' => ['order' => 'hostile-order'],
         'tenant.billing.report-payment' => [],
         'tenant.billing.upgrade' => [],
         'tenant.settings.update-profile' => [],
@@ -92,14 +90,6 @@ final class LegacyWorkspaceActionAuthorizationTest extends TestCase
     public function test_retired_downloads_redirect_to_read_only_canonical_sections_for_html(): void
     {
         [$user] = $this->tenantUser('redirect-owner');
-
-        $this->actingAs($user)
-            ->get(route('orders.print-ticket', ['order' => 'any-order'], false))
-            ->assertRedirect('/app/redirect-owner/orders');
-
-        $this->actingAs($user)
-            ->get(route('receipt.download', ['order' => 'any-order'], false))
-            ->assertRedirect('/app/redirect-owner/orders');
 
         $this->actingAs($user)
             ->get(route('reports.sales-pdf', absolute: false))

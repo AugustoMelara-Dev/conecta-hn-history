@@ -59,7 +59,7 @@ final class EloquentWebhookLogRepository implements BillingWebhookLogRepositoryI
             'provider' => $provider,
             'external_event_id' => $externalEventId,
             'event_type' => $eventType,
-            'payload' => $payload,
+            'payload' => $this->auditPayload($payload),
             'status' => 'processed',
             'attempts' => 1,
             'processing_started_at' => now(),
@@ -79,7 +79,7 @@ final class EloquentWebhookLogRepository implements BillingWebhookLogRepositoryI
                     'provider' => $provider,
                     'external_event_id' => $externalEventId,
                     'event_type' => $eventType,
-                    'payload' => $payload,
+                    'payload' => $this->auditPayload($payload),
                     'status' => 'processing',
                     'attempts' => 1,
                     'processing_started_at' => now(),
@@ -184,6 +184,29 @@ final class EloquentWebhookLogRepository implements BillingWebhookLogRepositoryI
     private function payloadHash(array $payload): string
     {
         return hash('sha256', json_encode($payload, JSON_THROW_ON_ERROR));
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function auditPayload(array $payload): array
+    {
+        $object = is_array($payload['data']['object'] ?? null) ? $payload['data']['object'] : [];
+        $metadata = is_array($object['metadata'] ?? null)
+            ? $object['metadata']
+            : (is_array($payload['meta'] ?? null) ? $payload['meta'] : []);
+
+        return [
+            'id' => is_scalar($payload['id'] ?? null) ? (string) $payload['id'] : null,
+            'type' => is_scalar($payload['type'] ?? $payload['event'] ?? null)
+                ? (string) ($payload['type'] ?? $payload['event'])
+                : null,
+            'object_id' => is_scalar($object['id'] ?? null) ? (string) $object['id'] : null,
+            'tenant_id' => is_scalar($metadata['tenant_id'] ?? null) ? (string) $metadata['tenant_id'] : null,
+            'subscription_intent_id' => is_scalar($metadata['subscription_intent_id'] ?? null)
+                ? (string) $metadata['subscription_intent_id']
+                : null,
+            'order_id' => is_scalar($metadata['order_id'] ?? null) ? (string) $metadata['order_id'] : null,
+            'raw_payload_retained' => false,
+        ];
     }
 
     private function assertEventIsCompatible(WebhookLog $webhookLog, string $eventType, string $payloadHash): void

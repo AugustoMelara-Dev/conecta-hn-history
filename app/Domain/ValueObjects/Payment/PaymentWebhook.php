@@ -159,6 +159,20 @@ final readonly class PaymentWebhook
         return is_string($value) && trim($value) !== '' ? trim($value) : null;
     }
 
+    public function orderId(): ?int
+    {
+        $value = $this->metadata()['order_id'] ?? null;
+
+        return is_numeric($value) && (int) $value > 0 ? (int) $value : null;
+    }
+
+    public function orderIdempotencyKey(): ?string
+    {
+        $value = $this->metadata()['order_idempotency_key'] ?? null;
+
+        return is_string($value) && trim($value) !== '' ? trim($value) : null;
+    }
+
     public function providerCustomerId(): ?string
     {
         $value = $this->payload['data']['object']['customer']

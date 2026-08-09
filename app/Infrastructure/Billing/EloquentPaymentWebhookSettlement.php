@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Infrastructure\Billing;
 
 use App\Application\Billing\Contracts\PaymentWebhookSettlementInterface;
+use App\Application\Payments\Actions\RefundOrderPaymentAction;
 use App\Application\Shared\Contracts\LoggerInterface;
 use App\Domain\Billing\Enums\CanonicalPaymentState;
 use App\Domain\Billing\Mappers\CanonicalPaymentStateMapper;
 use App\Domain\Billing\Repositories\PlanRepositoryInterface;
 use App\Domain\ValueObjects\Payment\PaymentWebhook;
+use App\Models\Order;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -22,6 +24,7 @@ final readonly class EloquentPaymentWebhookSettlement implements PaymentWebhookS
     public function __construct(
         private LoggerInterface $logger,
         private PlanRepositoryInterface $planRepository,
+        private RefundOrderPaymentAction $refundOrderPayment,
     ) {}
 
     public function settle(PaymentWebhook $webhook): void
@@ -47,6 +50,15 @@ final readonly class EloquentPaymentWebhookSettlement implements PaymentWebhookS
                 'provider_id' => $webhook->providerId,
                 'payment_reference' => $webhook->paymentReference(),
             ]);
+
+            return;
+        }
+
+        $orderSettlement = $this->settleOrderIfAddressed($webhook);
+        if ($orderSettlement !== null) {
+            if ($orderSettlement['refund_required']) {
+                $this->refundOrderPayment->execute($webhook->tenantId, $orderSettlement['order_id']);
+            }
 
             return;
         }
@@ -113,6 +125,59 @@ final readonly class EloquentPaymentWebhookSettlement implements PaymentWebhookS
             'idempotency_key' => $settlement['idempotency_key'],
             'recovered' => $settlement['recovered'],
         ]);
+    }
+
+    /** @return array{order_id:int,refund_required:bool}|null */
+    private function settleOrderIfAddressed(PaymentWebhook $webhook): ?array
+    {
+        $orderId = $webhook->orderId();
+        if ($orderId === null) {
+            return null;
+        }
+        $idempotencyKey = $webhook->orderIdempotencyKey();
+        if ($idempotencyKey === null) {
+            throw new \InvalidArgumentException('Order payment metadata is incomplete.');
+        }
+
+        return DB::transaction(function () use ($webhook, $orderId, $idempotencyKey): array {
+            $order = Order::query()
+                ->withoutGlobalScopes()
+                ->where('tenant_id', $webhook->tenantId)
+                ->lockForUpdate()
+                ->findOrFail($orderId);
+            if (! hash_equals((string) $order->idempotency_key, $idempotencyKey)) {
+                throw new \InvalidArgumentException('Order payment metadata does not match the local checkout.');
+            }
+            $expectedAmount = (int) round(((float) $order->total) * 100);
+            if ($expectedAmount !== $webhook->amountInCents()
+                || ! hash_equals(strtoupper((string) $order->currency), $webhook->currency())) {
+                throw new \InvalidArgumentException('Order payment amount or currency does not match checkout.');
+            }
+            $reference = $webhook->paymentReference();
+            $status = (string) $order->payment_status;
+            if ($status === 'paid' && hash_equals((string) $order->payment_transaction_id, $reference)) {
+                return ['order_id' => (int) $order->getKey(), 'refund_required' => false];
+            }
+            if (! in_array($status, ['pending', 'paid'], true)) {
+                throw new \LogicException('Order payment state cannot accept settlement.');
+            }
+            if ($status === 'paid') {
+                throw new \LogicException('Order was already paid by another provider transaction.');
+            }
+
+            $cancelled = $order->status === Order::STATUS_CANCELLED;
+            $order->forceFill([
+                'payment_status' => $cancelled ? 'refund_pending' : 'paid',
+                'payment_reference' => $reference,
+                'payment_transaction_id' => $reference,
+                'payment_confirmed_at' => now(),
+                'paid_at' => now(),
+                'status' => $cancelled ? Order::STATUS_CANCELLED : Order::STATUS_CONFIRMED,
+                'confirmed_at' => $cancelled ? $order->confirmed_at : ($order->confirmed_at ?? now()),
+            ])->save();
+
+            return ['order_id' => (int) $order->getKey(), 'refund_required' => $cancelled];
+        }, 3);
     }
 
     private function createPayment(PaymentWebhook $webhook): object

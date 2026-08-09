@@ -158,4 +158,27 @@ final class WebhookLogRepositoryTest extends TestCase
         self::assertNull($repository->claim('stripe', 'evt_legacy', 'payment_intent.succeeded', ['different' => 'representation']));
         self::assertTrue($repository->hasBeenProcessed('stripe', 'evt_legacy'));
     }
+
+    #[Test]
+    public function it_hashes_the_full_payload_but_does_not_retain_raw_customer_or_secret_data(): void
+    {
+        $repository = new EloquentWebhookLogRepository;
+        $payload = [
+            'id' => 'evt_private',
+            'event' => 'payment.success',
+            'data' => ['object' => [
+                'id' => 'pi_private',
+                'receipt_email' => 'customer@example.test',
+                'client_secret' => 'secret-value',
+                'metadata' => ['tenant_id' => 'tenant-safe', 'order_id' => 42],
+            ]],
+        ];
+
+        self::assertNotNull($repository->claim('stripe', 'evt_private', 'payment.success', $payload));
+        $stored = (string) DB::table('webhook_logs')->where('external_event_id', 'evt_private')->value('payload');
+
+        self::assertStringContainsString('raw_payload_retained', $stored);
+        self::assertStringNotContainsString('customer@example.test', $stored);
+        self::assertStringNotContainsString('secret-value', $stored);
+    }
 }
