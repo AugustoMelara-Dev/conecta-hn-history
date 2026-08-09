@@ -52,7 +52,7 @@ const productEngines = [
         name: 'Dovra Agents',
         role: 'Empleados de IA',
         icon: MessageCircleMore,
-        content: 'AI employees by job use authorized context, prepare governed actions and hand the conversation to your team when needed.',
+        content: 'Los empleados de IA usan el contexto autorizado, preparan acciones gobernadas y entregan la conversación a tu equipo cuando es necesario.',
         outcome: 'Conversaciones convertidas en trabajo medible.',
     },
     {
@@ -133,20 +133,9 @@ const faqs = [
     },
 ];
 
-function sameOriginHref(href) {
-    if (!href || typeof window === 'undefined') return href;
-
-    try {
-        const url = new URL(href, window.location.origin);
-        return url.origin === window.location.origin ? `${url.pathname}${url.search}${url.hash}` : href;
-    } catch {
-        return href;
-    }
-}
-
 function appRoute(name, params, fallback = '/') {
     try {
-        return sameOriginHref(route(name, params));
+        return route(name, params, false);
     } catch {
         return fallback;
     }
@@ -387,7 +376,7 @@ function Hero({ auth, canRegister }) {
                          </Link>
                      </div>
                      <div className="mt-5 grid w-full max-w-2xl gap-2 text-left text-xs text-zinc-600 dark:text-zinc-400 sm:grid-cols-2">
-                         <p className="rounded-lg border border-zinc-300/70 bg-white/25 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-900/25"><strong className="text-zinc-900 dark:text-zinc-100">Para negocios:</strong> prepare context, simulate a role and request evidence-gated activation.</p>
+                         <p className="rounded-lg border border-zinc-300/70 bg-white/25 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-900/25"><strong className="text-zinc-900 dark:text-zinc-100">Para negocios:</strong> prepara el contexto, simula un rol y solicita una activación basada en evidencia.</p>
                          <p className="rounded-lg border border-zinc-300/70 bg-white/25 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-900/25"><strong className="text-zinc-900 dark:text-zinc-100">Para compradores:</strong> encuentra oferta publicada y prepara la siguiente acción.</p>
                      </div>
                      <p className="mt-4 text-xs text-zinc-600 dark:text-zinc-400">Suscripción sin comisión por transacción · IA y canales en vivo según disponibilidad del proveedor y del mercado</p>
@@ -431,7 +420,7 @@ function ProductEngines() {
                         </h2>
                     </div>
                     <p className="max-w-xl text-sm leading-7 text-zinc-600 dark:text-zinc-400 sm:text-base">
-                        Dovra does not connect a prompt to an isolated tool. It connects context → conversation → action → approval → outcome under one governed permission boundary.
+                        Dovra no conecta un prompt con una herramienta aislada. Conecta contexto → conversación → acción → aprobación → resultado bajo un mismo límite gobernado de permisos.
                     </p>
                 </motion.div>
 
