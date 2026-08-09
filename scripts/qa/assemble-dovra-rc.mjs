@@ -219,25 +219,74 @@ function hasPrivateKeySignature(content) {
     return /-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----/u.test(content.toString("utf8"));
 }
 
+function normalizeAssignmentName(name) {
+    return name
+        .replace(/([A-Z]+)([A-Z][a-z])/gu, "$1_$2")
+        .replace(/([a-z0-9])([A-Z])/gu, "$1_$2")
+        .replace(/[^A-Za-z0-9]+/gu, "_")
+        .replace(/^_+|_+$/gu, "")
+        .toUpperCase();
+}
+
+function isSensitiveAssignmentName(name) {
+    const normalized = normalizeAssignmentName(name);
+    const parts = normalized.split("_").filter(Boolean);
+    if (parts.includes("SECRET") || parts.includes("TOKEN") || parts.includes("PASSWORD")) {
+        return true;
+    }
+    for (let index = 0; index < parts.length - 1; index += 1) {
+        const pair = `${parts[index]}_${parts[index + 1]}`;
+        if (["API_KEY", "PRIVATE_KEY", "ACCESS_KEY"].includes(pair)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function staticAssignmentValue(rawValue, delimiter) {
+    const value = rawValue.replace(/[,;][ \t]*$/u, "").trim();
+    if (value.length === 0) {
+        return "";
+    }
+    const quote = value[0];
+    if ((quote === "\"" || quote === "'") && value.at(-1) === quote) {
+        return value.slice(1, -1).trim();
+    }
+    if (/^(?:\$|\$\{|\{\{|<)|^(?:env|getenv)\s*\(|^process\.env(?:\.|\[|$)/iu.test(value)) {
+        return null;
+    }
+    if (delimiter !== "=") {
+        return null;
+    }
+    return value;
+}
+
+function isPlaceholderSecret(value) {
+    return value.length === 0
+        || /^(?:change|replace|example|dummy|test|fake|fixture|your)[-_ ]?/iu.test(value)
+        || /(?:^|[_-])(?:dummy|placeholder|example|local|test|fake|fixture)(?:$|[_-])/iu.test(value)
+        || /^(?:null|none|false|true)$/iu.test(value);
+}
+
 function hasSecretSignature(content) {
     const text = content.toString("utf8");
     for (const line of text.split(/\r?\n/u)) {
-        const match = line.match(/^[ \t]*([A-Za-z_][A-Za-z0-9_]*)[ \t]*[:=][ \t]*["']?([^#\r\n]*)/u);
+        const match = line.match(/^[ \t]*(?:(?:export[ \t]+)?(?:const|let|var)[ \t]+)?(?:(['"])([A-Za-z_][A-Za-z0-9_]*)\1|([A-Za-z_][A-Za-z0-9_]*))[ \t]*(=>|:|=)[ \t]*([^#\r\n]*)/u);
         if (!match) {
             continue;
         }
-        const name = match[1].toUpperCase();
-        const value = match[2].trim().replace(/["'][ \t]*$/u, "").trim();
-        if (!/(?:SECRET|TOKEN|API_KEY|PRIVATE_KEY|PASSWORD|ACCESS_KEY)/u.test(name)) {
+        const name = normalizeAssignmentName(match[2] ?? match[3]);
+        if (!isSensitiveAssignmentName(name)) {
+            continue;
+        }
+        const value = staticAssignmentValue(match[5], match[4]);
+        if (value === null) {
             continue;
         }
         if (/(?:_TTL(?:_|$)|_DAYS(?:_|$)|_SECONDS(?:_|$)|_MINUTES(?:_|$)|_HOURS(?:_|$)|_REFERENCE$|_REF$)/u.test(name)) {
             continue;
         }
-        if (value.length === 0 || /^\$\{[^}]+\}$/u.test(value) || /^\{\{[^}]+\}\}$/u.test(value) || /^<(?:[^>]+)>$/u.test(value) || /^(?:env|getenv)\s*\(/iu.test(value) || /^process\.env(?:\.|$)/iu.test(value) || /^(?:change|replace|example|dummy|test|your)[-_ ]?/iu.test(value)) {
-            continue;
-        }
-        if (/(?:^|[_-])(?:dummy|placeholder|example|local|test)(?:$|[_-])/iu.test(value) || /^(?:null|none|false|true)$/iu.test(value)) {
+        if (isPlaceholderSecret(value)) {
             continue;
         }
         return true;
@@ -389,11 +438,7 @@ function copyVisibleFiles(source, sourceOutput, visiblePaths) {
             continue;
         }
         if (hasSecretSignature(content)) {
-            if (candidate.split("/").at(-1) === ".env.example") {
-                throw new Error(".env.example contains a non-placeholder secret value; refusing to assemble.");
-            }
-            excludedCounts.set("secret-signature", (excludedCounts.get("secret-signature") ?? 0) + 1);
-            continue;
+            throw new Error(`Static literal secret detected in ${candidate}; refusing to assemble.`);
         }
 
         const destination = resolve(sourceOutput, candidate);

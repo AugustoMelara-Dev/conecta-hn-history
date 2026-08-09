@@ -39,7 +39,18 @@ function createFixture() {
     writeFixtureFile(root, "build/app.js", "generated\n");
     writeFixtureFile(root, "private-key.pem", "-----BEGIN PRIVATE KEY-----\nnot copied\n-----END PRIVATE KEY-----\n");
     writeFixtureFile(root, "secrets/api.txt", "TOKEN=supersecret-value\n");
-    writeFixtureFile(root, "config/leaked.txt", "SECRET_KEY=supersecret-value\n");
+    writeFixtureFile(root, "config/leaked.txt", "SECRET_KEY=test-secret\n");
+    writeFixtureFile(root, "app/static-secret-scanner-fixture.txt", [
+        "'password' => \"\",",
+        "'password' => $input,",
+        "'apiKey' => process.env.API_KEY,",
+        "'showPassword' => true,",
+        "'maxOutputTokens' => 500,",
+        "'API_KEY' => \"test-api-key\",",
+        "'PASSWORD' => \"fake-password\",",
+        "'ACCESS_TOKEN' => \"example-token\",",
+        "'PRIVATE_KEY' => \"fixture-private-key\",",
+    ].join("\n"));
     writeFixtureFile(root, "gone.txt", "deleted after commit\n");
 
     git(root, ["init", "-q"]);
@@ -118,14 +129,19 @@ test("excludes sensitive/generated paths and records environment names without v
     const index = JSON.parse(readFileSync(join(output, "index.json"), "utf8"));
     const paths = index.entries.map((entry) => entry.path);
     assert.ok(paths.includes(".env.example"));
-    for (const forbidden of [".env", "vendor/should-not-copy.php", "node_modules/ignored.js", "storage/logs/laravel.log", "artifacts/releases/old.zip", "build/app.js", "private-key.pem", "secrets/api.txt", "config/leaked.txt"]) {
+    for (const forbidden of [".env", "vendor/should-not-copy.php", "node_modules/ignored.js", "storage/logs/laravel.log", "artifacts/releases/old.zip", "build/app.js", "private-key.pem", "secrets/api.txt"]) {
         assert.ok(!paths.includes(forbidden), `forbidden path copied: ${forbidden}`);
     }
+    assert.ok(paths.includes("config/leaked.txt"));
+    assert.ok(paths.includes("app/static-secret-scanner-fixture.txt"));
     const manifestText = readFileSync(join(output, "manifest.json"), "utf8");
     const manifest = JSON.parse(manifestText);
     assert.deepEqual(manifest.env_example_names, ["APP_ENV", "APP_KEY", "PLACEHOLDER_TOKEN"]);
     assert.ok(!manifestText.includes("replace-me"));
     assert.ok(manifest.git.deleted_paths.includes("gone.txt"));
+    const verified = verify(output);
+    assert.equal(verified.status, 0, verified.stderr || verified.stdout);
+    assert.equal(parseJsonOutput(verified).status, "PASS");
 });
 
 test("verifier rejects tampered and unexpected source files", (t) => {
@@ -265,6 +281,31 @@ test("assembler rejects real secrets in .env.example and missing mandatory criti
     assert.notEqual(secretResult.status, 0, secretResult.stdout);
     const missingResult = assemble(sourceMissingCritical, missingOutput);
     assert.notEqual(missingResult.status, 0, missingResult.stdout);
+});
+
+test("assembler fails closed on static literal secrets without echoing their values", (t) => {
+    const fixtures = [
+        ["config/leaked.txt", "API_KEY: \"rc-api-key-marker\",\n", "rc-api-key-marker"],
+        ["config/leaked.txt", "'password' => 'rc-password-marker',\n", "rc-password-marker"],
+    ];
+    const cleanup = [];
+    t.after(() => {
+        for (const path of cleanup) {
+            rmSync(path, { recursive: true, force: true });
+        }
+    });
+
+    for (const [path, content, marker] of fixtures) {
+        const source = createFixture();
+        const outputParent = mkdtempSync(join(tmpdir(), "dovra-rc-output-"));
+        const output = join(outputParent, "bundle");
+        cleanup.push(source, outputParent);
+        writeFixtureFile(source, path, content);
+
+        const result = assemble(source, output);
+        assert.notEqual(result.status, 0, `static literal secret in ${path} must fail assembly`);
+        assert.ok(!`${result.stdout}\n${result.stderr}`.includes(marker), "scanner failure must not echo the secret value");
+    }
 });
 
 test("verifier rejects a symlinked source component and supports --bundle alias", (t) => {
