@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * RevenueByMonthReport - Ingresos agregados por mes.
  *
- * Datos: sum de total_amount por mes, agrupados por created_at.
+ * Datos: sum de total por mes, agrupados por created_at.
  */
 class RevenueByMonthReport implements ReportInterface
 {
@@ -55,9 +55,9 @@ class RevenueByMonthReport implements ReportInterface
         $monthBucket = SqlMonthBucket::expression(DB::connection()->getDriverName());
         $currentRows = DB::table('orders')
             ->where('tenant_id', $tenantId)
-            ->where('status', 'paid')
+            ->where('payment_status', 'paid')
             ->whereBetween('created_at', [$range->start, $range->end])
-            ->selectRaw($monthBucket.' as month, SUM(total_amount) as revenue, COUNT(*) as order_count')
+            ->selectRaw($monthBucket.' as month, SUM(total) as revenue, COUNT(*) as order_count')
             ->groupBy('month')
             ->orderBy('month')
             ->get();

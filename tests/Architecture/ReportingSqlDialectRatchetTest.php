@@ -48,6 +48,39 @@ final class ReportingSqlDialectRatchetTest extends TestCase
         }
     }
 
+    #[Test]
+    public function canonical_order_reports_cannot_reintroduce_legacy_reporting_columns(): void
+    {
+        $reports = [
+            'RevenueByMonthReport',
+            'AvgOrderValueReport',
+            'AttributionBySourceReport',
+            'ChannelPerformanceReport',
+            'CustomerLtvReport',
+            'TopProductsReport',
+            'RefundRateReport',
+            'ChurnRateReport',
+        ];
+
+        foreach ($reports as $report) {
+            $literals = array_map(
+                static fn (String_ $literal): string => $literal->value,
+                (new NodeFinder)->findInstanceOf(self::nodes($report), String_::class),
+            );
+            $source = implode("\n", $literals);
+
+            self::assertStringNotContainsString('total_amount', $source, "$report cannot query the removed orders.total_amount column.");
+            self::assertStringNotContainsString('orders.channel', $source, "$report cannot query the removed orders.channel column.");
+            self::assertDoesNotMatchRegularExpression('/COALESCE\(\s*(?:orders\.)?channel\b/i', $source, "$report cannot read the removed orders.channel column through an unqualified raw expression.");
+            self::assertStringNotContainsString('oi.subtotal', $source, "$report cannot query the removed order_items.subtotal column.");
+            self::assertFalse(
+                str_contains($source, 'subscription_payments') && str_contains($source, 'customer_email'),
+                "$report cannot invent subscription customer identity.",
+            );
+            self::assertDoesNotMatchRegularExpression('/(?<!payment_)status\n(?:paid|refunded)|(?:paid|refunded)\n(?<!payment_)status/i', $source, "$report must use orders.payment_status for payment state.");
+        }
+    }
+
     /** @return list<Node> */
     private static function nodes(string $report): array
     {

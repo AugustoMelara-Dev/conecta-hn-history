@@ -13,20 +13,44 @@ use Illuminate\Support\Facades\DB;
 
 class CustomerLtvReport implements ReportInterface
 {
-    public function getKey(): ReportKey { return ReportKey::CustomerLtv; }
-    public function getName(): string { return 'LTV del cliente'; }
-    public function getDescription(): string { return 'Customer Lifetime Value promedio.'; }
-    public function getChartType(): string { return 'gauge'; }
-    public function getColumns(): array { return ['Segmento', 'LTV (HNL)', 'Órdenes promedio']; }
-    public function getFilters(): array { return []; }
+    public function getKey(): ReportKey
+    {
+        return ReportKey::CustomerLtv;
+    }
+
+    public function getName(): string
+    {
+        return 'LTV del cliente';
+    }
+
+    public function getDescription(): string
+    {
+        return 'Customer Lifetime Value promedio.';
+    }
+
+    public function getChartType(): string
+    {
+        return 'gauge';
+    }
+
+    public function getColumns(): array
+    {
+        return ['Segmento', 'LTV (HNL)', 'Órdenes promedio'];
+    }
+
+    public function getFilters(): array
+    {
+        return [];
+    }
 
     public function getData(string $tenantId, ReportRange $range): ReportData
     {
         $ltvData = DB::table('orders')
             ->where('tenant_id', $tenantId)
-            ->where('status', 'paid')
-            ->selectRaw('customer_email, COUNT(*) as order_count, SUM(total_amount) as total_spent')
+            ->where('payment_status', 'paid')
+            ->selectRaw('customer_email, COUNT(*) as order_count, SUM(total) as total_spent')
             ->groupBy('customer_email')
+            ->orderBy('customer_email')
             ->get();
 
         $segmentLtv = [];

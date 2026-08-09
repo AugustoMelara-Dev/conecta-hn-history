@@ -17,12 +17,35 @@ use Illuminate\Support\Facades\DB;
  */
 class TopProductsReport implements ReportInterface
 {
-    public function getKey(): ReportKey { return ReportKey::TopProducts; }
-    public function getName(): string { return 'Top productos'; }
-    public function getDescription(): string { return 'Productos más vendidos por ingresos.'; }
-    public function getChartType(): string { return 'table'; }
-    public function getColumns(): array { return ['Producto', 'Unidades vendidas', 'Ingresos (HNL)']; }
-    public function getFilters(): array { return ['limit' => 'int', 'sort_by' => 'string']; }
+    public function getKey(): ReportKey
+    {
+        return ReportKey::TopProducts;
+    }
+
+    public function getName(): string
+    {
+        return 'Top productos';
+    }
+
+    public function getDescription(): string
+    {
+        return 'Productos más vendidos por ingresos.';
+    }
+
+    public function getChartType(): string
+    {
+        return 'table';
+    }
+
+    public function getColumns(): array
+    {
+        return ['Producto', 'Unidades vendidas', 'Ingresos (HNL)'];
+    }
+
+    public function getFilters(): array
+    {
+        return ['limit' => 'int', 'sort_by' => 'string'];
+    }
 
     public function getData(string $tenantId, ReportRange $range): ReportData
     {
@@ -30,9 +53,9 @@ class TopProductsReport implements ReportInterface
             ->join('orders as o', 'o.id', '=', 'oi.order_id')
             ->join('products as p', 'p.id', '=', 'oi.product_id')
             ->where('o.tenant_id', $tenantId)
-            ->where('o.status', 'paid')
+            ->where('o.payment_status', 'paid')
             ->whereBetween('o.created_at', [$range->start, $range->end])
-            ->selectRaw('p.id, p.name, SUM(oi.quantity) as units, SUM(oi.subtotal) as revenue')
+            ->selectRaw('p.id, p.name, SUM(oi.quantity) as units, SUM(oi.line_total) as revenue')
             ->groupBy('p.id', 'p.name')
             ->orderByDesc('revenue')
             ->limit(20)
