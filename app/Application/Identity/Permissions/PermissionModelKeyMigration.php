@@ -109,8 +109,8 @@ final class PermissionModelKeyMigration
             $blocking[] = $issue;
         }
 
-        $source = $this->sourceRows();
         $sourceSnapshots = $this->sourceSnapshots();
+        $source = $this->sourceRows();
 
         $scanned = $this->scanSourceAnomaliesStreaming();
         foreach ($scanned as $code => $count) {
@@ -261,6 +261,9 @@ final class PermissionModelKeyMigration
         if ($this->shadowSchemaIssues() !== []) {
             throw new RuntimeException('SHADOW_SCHEMA_DRIFT');
         }
+        if (! $this->migrationOwnsShadows()) {
+            throw new RuntimeException('ROLLBACK_SHADOW_OWNERSHIP_UNPROVEN');
+        }
         if (DB::table(self::SHADOW_PERMISSION)->count() > 0 || DB::table(self::SHADOW_ROLE)->count() > 0) {
             throw new RuntimeException('ROLLBACK_SHADOW_NOT_EMPTY');
         }
@@ -277,6 +280,17 @@ final class PermissionModelKeyMigration
         }
 
         return true;
+    }
+
+    private function migrationOwnsShadows(): bool
+    {
+        if (! Schema::hasTable('migrations') || ! Schema::hasColumn('migrations', 'migration')) {
+            return false;
+        }
+
+        return DB::table('migrations')
+            ->where('migration', pathinfo(self::MIGRATION, PATHINFO_FILENAME))
+            ->exists();
     }
 
     public function backfill(int $batchSize = 100, ?string $checkpointPath = null, bool $dryRun = false): PermissionModelKeyMigrationReport
@@ -471,6 +485,15 @@ final class PermissionModelKeyMigration
         }
         $blocking = array_keys($anomalies);
 
+        $replayProof = $this->measureReplay();
+        if ($replayProof['error'] !== null) {
+            $anomalies[$replayProof['error']] = ($anomalies[$replayProof['error']] ?? 0) + 1;
+            $blocking[] = $replayProof['error'];
+        } elseif ($replayProof['rows_changed'] > 0) {
+            $anomalies['REPLAY_NOT_IDEMPOTENT'] = $replayProof['rows_changed'];
+            $blocking[] = 'REPLAY_NOT_IDEMPOTENT';
+        }
+
         $sourceAfter = $this->sourceSnapshots();
         $shadowAfter = $this->shadowSnapshots();
         if ($sourceAfter !== $sourceSnapshots) {
@@ -481,8 +504,12 @@ final class PermissionModelKeyMigration
             $anomalies['SHADOW_CHANGED_DURING_VALIDATION'] = 1;
             $blocking[] = 'SHADOW_CHANGED_DURING_VALIDATION';
         }
-        if ($this->foreignKeyIssues() !== []) {
-            $anomalies['FOREIGN_KEY_INTEGRITY'] = count($this->foreignKeyIssues());
+        $foreignKeyIssues = $this->foreignKeyIssues();
+        if (in_array('FOREIGN_KEY_INTROSPECTION_UNAVAILABLE', $foreignKeyIssues, true)) {
+            $anomalies['FOREIGN_KEY_INTROSPECTION_UNAVAILABLE'] = 1;
+            $blocking[] = 'FOREIGN_KEY_INTROSPECTION_UNAVAILABLE';
+        } elseif ($foreignKeyIssues !== []) {
+            $anomalies['FOREIGN_KEY_INTEGRITY'] = count($foreignKeyIssues);
             $blocking[] = 'FOREIGN_KEY_INTEGRITY';
         }
 
@@ -508,10 +535,14 @@ final class PermissionModelKeyMigration
             'anomaly_counts' => $anomalies,
             'blocking_issues' => array_values(array_unique($blocking)),
             'replay_proof' => [
-                'idempotent' => ($anomalies['SHADOW_ASSIGNMENT_MISSING'] ?? 0) === 0
+                'measured' => $replayProof['measured'],
+                'passes' => $replayProof['passes'],
+                'idempotent' => $replayProof['error'] === null
+                    && $replayProof['rows_changed'] === 0
+                    && ($anomalies['SHADOW_ASSIGNMENT_MISSING'] ?? 0) === 0
                     && ($anomalies['SHADOW_ASSIGNMENT_EXTRA'] ?? 0) === 0,
-                'rows_changed_on_replay' => 0,
-                'strategy' => 'exact_sorted_tuple_stream',
+                'rows_changed_on_replay' => $replayProof['rows_changed'],
+                'strategy' => 'transactional_exact_key_insert_or_ignore_rollback',
             ],
         ];
         $artifact = $this->persistOrVerifyArtifact($artifactPath, $payload);
@@ -729,6 +760,9 @@ final class PermissionModelKeyMigration
                 $issues[] = 'CONFIG_TABLE_OR_COLUMN_DRIFT';
             }
             $descriptor = $this->tableDescriptor($table);
+            if (($descriptor['introspection']['foreign_keys'] ?? false) !== true) {
+                $issues[] = 'FOREIGN_KEY_INTROSPECTION_UNAVAILABLE';
+            }
             $lookupName = $table === self::SOURCE_PERMISSION
                 ? 'model_has_permissions_model_id_model_type_index'
                 : 'model_has_roles_model_id_model_type_index';
@@ -804,13 +838,17 @@ final class PermissionModelKeyMigration
         }
 
         $contract = $this->columnContract($table, $column);
-        $type = strtolower((string) ($contract['type'] ?? ''));
+        $type = strtolower((string) ($contract['type_name'] ?? $contract['type'] ?? ''));
         $length = $contract['length'] ?? null;
+        if (($contract['nullable'] ?? true) !== false) {
+            return false;
+        }
         if (DB::getDriverName() === 'pgsql') {
             return $type === 'uuid';
         }
         if (DB::getDriverName() === 'mysql') {
-            return in_array($type, ['char', 'varchar', 'uuid'], true) && ($length === null || (int) $length === 36);
+            return $type === 'uuid'
+                || (in_array($type, ['char', 'varchar'], true) && (int) $length === 36);
         }
 
         // SQLite's Blueprint::uuid() is represented as varchar(36).  Do not
@@ -858,12 +896,27 @@ final class PermissionModelKeyMigration
         $leftType = strtolower((string) ($left['type'] ?? ''));
         $rightType = strtolower((string) ($right['type'] ?? ''));
         if ($this->isIntegerType($leftType) && $this->isIntegerType($rightType)) {
-            return true;
+            if (DB::getDriverName() === 'sqlite') {
+                return ($left['nullable'] ?? null) === ($right['nullable'] ?? null);
+            }
+
+            return $this->integerStorageType($left) === $this->integerStorageType($right)
+                && ($left['unsigned'] ?? null) === ($right['unsigned'] ?? null)
+                && ($left['nullable'] ?? null) === ($right['nullable'] ?? null);
         }
 
         return $leftType === $rightType
             && ($left['length'] ?? null) === ($right['length'] ?? null)
-            && ($left['collation'] ?? null) === ($right['collation'] ?? null);
+            && ($left['collation'] ?? null) === ($right['collation'] ?? null)
+            && ($left['nullable'] ?? null) === ($right['nullable'] ?? null);
+    }
+
+    /** @param array<string, mixed> $column */
+    private function integerStorageType(array $column): string
+    {
+        $type = strtolower((string) ($column['type_name'] ?? $column['type'] ?? ''));
+
+        return trim(str_replace([' unsigned', ' signed'], '', $type));
     }
 
     /** @return array<string, mixed> */
@@ -903,7 +956,7 @@ final class PermissionModelKeyMigration
         return array_values(array_unique($issues));
     }
 
-    /** @param array<string, list<object>> $source */
+    /** @param array<string, array{has_rows: bool, has_invalid: bool}> $source */
     private function classifyShape(array $source, array $schemaIssues, array $cutoverIssues): string
     {
         if ($schemaIssues !== [] || $cutoverIssues !== []) {
@@ -911,13 +964,9 @@ final class PermissionModelKeyMigration
         }
         $hasInvalid = false;
         $hasRows = false;
-        foreach ($source as $rows) {
-            foreach ($rows as $row) {
-                $hasRows = true;
-                if (! $this->isUuid((string) ($row->model_id ?? ''))) {
-                    $hasInvalid = true;
-                }
-            }
+        foreach ($source as $summary) {
+            $hasRows = $hasRows || (bool) ($summary['has_rows'] ?? false);
+            $hasInvalid = $hasInvalid || (bool) ($summary['has_invalid'] ?? false);
         }
 
         $permissionType = Schema::getColumnType(self::SOURCE_PERMISSION, 'model_id');
@@ -940,32 +989,38 @@ final class PermissionModelKeyMigration
         return self::SHAPE_MIXED;
     }
 
-    /** @return array<string, list<object>> */
+    /**
+     * Return only the bounded shape facts needed by classifyShape.
+     *
+     * The source assignment tables can be arbitrarily large. Keep this
+     * cursor-based and select only model_id; never materialize complete rows
+     * just to decide whether the shape is UUID-compatible.
+     *
+     * @return array<string, array{has_rows: bool, has_invalid: bool}>
+     */
     private function sourceRows(): array
     {
-        return [
-            self::SOURCE_PERMISSION => $this->rows(self::SOURCE_PERMISSION),
-            self::SOURCE_ROLE => $this->rows(self::SOURCE_ROLE),
-        ];
-    }
+        $summary = [];
+        foreach ([self::SOURCE_PERMISSION, self::SOURCE_ROLE] as $table) {
+            $hasRows = false;
+            $hasInvalid = false;
+            if (Schema::hasTable($table) && Schema::hasColumn($table, 'model_id')) {
+                foreach (DB::table($table)->select(['model_id'])->cursor() as $row) {
+                    $hasRows = true;
+                    if (! $this->isUuid((string) ($row->model_id ?? ''))) {
+                        $hasInvalid = true;
 
-    /** @return array<string, list<object>> */
-    private function shadowRows(): array
-    {
-        return [
-            self::SHADOW_PERMISSION => $this->rows(self::SHADOW_PERMISSION),
-            self::SHADOW_ROLE => $this->rows(self::SHADOW_ROLE),
-        ];
-    }
-
-    /** @return list<object> */
-    private function rows(string $table): array
-    {
-        if (! Schema::hasTable($table)) {
-            return [];
+                        break;
+                    }
+                }
+            }
+            $summary[$table] = [
+                'has_rows' => $hasRows,
+                'has_invalid' => $hasInvalid,
+            ];
         }
 
-        return DB::table($table)->get()->all();
+        return $summary;
     }
 
     /** @param array<string, list<object>>|null $source */
@@ -1137,6 +1192,55 @@ final class PermissionModelKeyMigration
         return ['missing' => $missing, 'extra' => $extra];
     }
 
+    /** @return array{measured:bool,passes:int,rows_changed:int,error:?string} */
+    private function measureReplay(): array
+    {
+        $passes = 0;
+        $rowsChanged = 0;
+        $baselineLevel = DB::transactionLevel();
+
+        try {
+            for ($pass = 0; $pass < 2; $pass++) {
+                $startingLevel = DB::transactionLevel();
+                DB::beginTransaction();
+                try {
+                    foreach ([self::SOURCE_PERMISSION, self::SOURCE_ROLE] as $table) {
+                        $pivot = $table === self::SOURCE_PERMISSION ? 'permission_id' : 'role_id';
+                        $shadow = $table === self::SOURCE_PERMISSION ? self::SHADOW_PERMISSION : self::SHADOW_ROLE;
+                        foreach ($this->streamRows($table, $pivot) as $row) {
+                            $rowsChanged += DB::table($shadow)->insertOrIgnore([
+                                $pivot => (string) $row->{$pivot},
+                                'model_type' => (string) $row->model_type,
+                                'model_id' => (string) $row->model_id,
+                            ]);
+                        }
+                    }
+                    $passes++;
+                } finally {
+                    DB::rollBack($startingLevel);
+                }
+            }
+        } catch (Throwable) {
+            if (DB::transactionLevel() > $baselineLevel) {
+                DB::rollBack($baselineLevel);
+            }
+
+            return [
+                'measured' => false,
+                'passes' => $passes,
+                'rows_changed' => $rowsChanged,
+                'error' => 'REPLAY_PROOF_UNAVAILABLE',
+            ];
+        }
+
+        return [
+            'measured' => true,
+            'passes' => $passes,
+            'rows_changed' => $rowsChanged,
+            'error' => null,
+        ];
+    }
+
     /** @return list<string> */
     private function rowIssues(object $row, string $table): array
     {
@@ -1293,7 +1397,7 @@ final class PermissionModelKeyMigration
     /** @param array<string, mixed> $checkpoint @param array<string, mixed> $snapshots */
     private function validateCheckpoint(array $checkpoint, int $batchSize, array $snapshots, string $schemaFingerprint): ?string
     {
-        foreach (['command_version', 'phase', 'driver', 'database_version', 'cursor_version', 'batch_size', 'batch_sequence', 'source', 'schema_fingerprint', 'source_schema_fingerprint', 'config_fingerprint', 'cursor_schema', 'cursors', 'has_more', 'previous_chain_sha256', 'batch_payload_sha256', 'chain_sha256', 'checkpoint_sha256'] as $key) {
+        foreach (['command_version', 'phase', 'driver', 'database_version', 'cursor_version', 'batch_size', 'batch_sequence', 'source', 'schema_fingerprint', 'source_schema_fingerprint', 'config_fingerprint', 'cursor_schema', 'cursors', 'rows_examined', 'rows_copied', 'rows_already_present', 'has_more', 'anomaly_counts', 'previous_chain_sha256', 'batch_payload_sha256', 'chain_sha256', 'checkpoint_sha256'] as $key) {
             if (! array_key_exists($key, $checkpoint)) {
                 return 'CHECKPOINT_TAMPERED';
             }
@@ -1311,9 +1415,33 @@ final class PermissionModelKeyMigration
             || ($checkpoint['source_schema_fingerprint'] ?? null) !== $this->sourceSchemaFingerprint()
             || ($checkpoint['config_fingerprint'] ?? null) !== $this->configurationFingerprint()
             || ($checkpoint['cursor_schema'] ?? null) !== $this->cursorSchema()
-            || ! is_array($checkpoint['cursors'] ?? null)
             || ! is_bool($checkpoint['has_more'] ?? null)) {
             return 'SOURCE_CHANGED_SINCE_CHECKPOINT';
+        }
+        $cursors = $checkpoint['cursors'] ?? null;
+        if (! is_array($cursors)
+            || array_keys($cursors) !== [self::SOURCE_PERMISSION, self::SOURCE_ROLE]) {
+            return 'CHECKPOINT_TAMPERED';
+        }
+        foreach ($cursors as $cursor) {
+            if ($cursor !== null
+                && (! is_string($cursor) || preg_match('/^[a-f0-9]{64}$/D', $cursor) !== 1)) {
+                return 'CHECKPOINT_TAMPERED';
+            }
+        }
+        foreach (['rows_examined', 'rows_copied', 'rows_already_present'] as $counter) {
+            if (! is_int($checkpoint[$counter] ?? null) || $checkpoint[$counter] < 0) {
+                return 'CHECKPOINT_TAMPERED';
+            }
+        }
+        $anomalyCounts = $checkpoint['anomaly_counts'] ?? null;
+        if (! is_array($anomalyCounts)) {
+            return 'CHECKPOINT_TAMPERED';
+        }
+        foreach ($anomalyCounts as $code => $count) {
+            if (! is_string($code) || $code === '' || ! is_int($count) || $count < 0) {
+                return 'CHECKPOINT_TAMPERED';
+            }
         }
         if (($checkpoint['checkpoint_sha256'] ?? null) !== $this->checkpointChecksum($checkpoint)
             || ! is_string($checkpoint['chain_sha256'] ?? null)
@@ -1338,6 +1466,7 @@ final class PermissionModelKeyMigration
             'rows_copied' => (int) ($checkpoint['rows_copied'] ?? 0),
             'rows_already_present' => (int) ($checkpoint['rows_already_present'] ?? 0),
             'has_more' => (bool) ($checkpoint['has_more'] ?? false),
+            'anomaly_counts' => is_array($checkpoint['anomaly_counts'] ?? null) ? $checkpoint['anomaly_counts'] : [],
             'chain_sha256' => (string) ($checkpoint['chain_sha256'] ?? ''),
             'checkpoint_sha256' => (string) ($checkpoint['checkpoint_sha256'] ?? ''),
         ];
@@ -1462,6 +1591,9 @@ final class PermissionModelKeyMigration
     {
         $actualHead = $this->gitIdentity('rev-parse HEAD');
         $actualTree = $this->gitIdentity('write-tree');
+        if ($actualHead === null || $actualTree === null) {
+            return ['head' => null, 'tree' => null, 'error' => 'HEAD_TREE_IDENTITY_UNAVAILABLE'];
+        }
         $head = trim((string) ($expectedHead ?? (getenv('DOVRA_GIT_HEAD') !== false ? getenv('DOVRA_GIT_HEAD') : $actualHead)));
         $tree = trim((string) ($expectedTree ?? (getenv('DOVRA_GIT_TREE') !== false ? getenv('DOVRA_GIT_TREE') : $actualTree)));
 
@@ -1483,7 +1615,8 @@ final class PermissionModelKeyMigration
     {
         $output = [];
         $status = 1;
-        @exec('git '.$command, $output, $status);
+        $nullDevice = PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null';
+        @exec('git '.$command.' 2>'.$nullDevice, $output, $status);
 
         return $status === 0 && isset($output[0]) && trim((string) $output[0]) !== ''
             ? trim((string) $output[0])
@@ -1554,21 +1687,33 @@ final class PermissionModelKeyMigration
         if (! Schema::hasTable($table)) {
             return ['missing' => true];
         }
+        $introspection = [
+            'columns' => true,
+            'indexes' => true,
+            'foreign_keys' => true,
+        ];
         $columns = [];
         try {
             foreach (Schema::getColumns($table) as $column) {
+                $type = strtolower((string) ($column['type'] ?? ''));
+                $typeName = strtolower((string) ($column['type_name'] ?? $column['type'] ?? ''));
+                $length = isset($column['length']) && $column['length'] !== null
+                    ? (int) $column['length']
+                    : (preg_match('/\((\d+)\)/', $type, $matches) === 1 ? (int) $matches[1] : null);
                 $columns[] = [
                     'name' => (string) ($column['name'] ?? ''),
-                    'type' => strtolower((string) ($column['type'] ?? '')),
-                    'type_name' => strtolower((string) ($column['type_name'] ?? $column['type'] ?? '')),
-                    'length' => isset($column['length']) && $column['length'] !== null ? (int) $column['length'] : null,
+                    'type' => $type,
+                    'type_name' => $typeName,
+                    'length' => $length,
                     'collation' => $column['collation'] ?? null,
                     'nullable' => (bool) ($column['nullable'] ?? false),
                     'default' => $column['default'] ?? null,
                     'auto_increment' => (bool) ($column['auto_increment'] ?? false),
+                    'unsigned' => (bool) ($column['unsigned'] ?? str_contains($type.' '.$typeName, 'unsigned')),
                 ];
             }
         } catch (Throwable) {
+            $introspection['columns'] = false;
             foreach (Schema::getColumnListing($table) as $name) {
                 $columns[] = [
                     'name' => $name,
@@ -1576,7 +1721,9 @@ final class PermissionModelKeyMigration
                     'type_name' => strtolower((string) Schema::getColumnType($table, $name)),
                     'length' => null,
                     'collation' => null,
+                    'nullable' => null,
                     'auto_increment' => false,
+                    'unsigned' => null,
                 ];
             }
         }
@@ -1592,6 +1739,7 @@ final class PermissionModelKeyMigration
                 ];
             }
         } catch (Throwable) {
+            $introspection['indexes'] = false;
         }
         usort($indexes, static fn (array $left, array $right): int => strcmp((string) $left['name'], (string) $right['name']));
         $foreignKeys = [];
@@ -1606,10 +1754,16 @@ final class PermissionModelKeyMigration
                 ];
             }
         } catch (Throwable) {
+            $introspection['foreign_keys'] = false;
         }
         usort($foreignKeys, static fn (array $left, array $right): int => self::canonicalJson($left) <=> self::canonicalJson($right));
 
-        return ['columns' => $columns, 'indexes' => $indexes, 'foreign_keys' => $foreignKeys];
+        return [
+            'columns' => $columns,
+            'indexes' => $indexes,
+            'foreign_keys' => $foreignKeys,
+            'introspection' => $introspection,
+        ];
     }
 
     /** @return list<string> */
@@ -1638,6 +1792,9 @@ final class PermissionModelKeyMigration
                 $issues[] = 'SHADOW_SCHEMA_DRIFT';
             }
             $descriptor = $this->tableDescriptor($table);
+            if (($descriptor['introspection']['foreign_keys'] ?? false) !== true) {
+                $issues[] = 'FOREIGN_KEY_INTROSPECTION_UNAVAILABLE';
+            }
             $requiredIndex = $table === self::SHADOW_PERMISSION ? 'spatie_mhpu_model_lookup_idx' : 'spatie_mhru_model_lookup_idx';
             $requiredPrimary = $table === self::SHADOW_PERMISSION ? 'spatie_mhpu_assignment_pk' : 'spatie_mhru_assignment_pk';
             $lookupMatches = false;
@@ -1693,7 +1850,7 @@ final class PermissionModelKeyMigration
 
             return array_map(static fn (object $row): string => hash('sha256', self::canonicalJson(get_object_vars($row))), $rows);
         } catch (Throwable) {
-            return [];
+            return ['FOREIGN_KEY_INTROSPECTION_UNAVAILABLE'];
         }
     }
 
@@ -1736,7 +1893,9 @@ final class PermissionModelKeyMigration
 
     private function isIntegerType(string $type): bool
     {
-        return in_array(strtolower($type), ['integer', 'bigint', 'int', 'int unsigned', 'integer unsigned'], true);
+        $normalized = trim(str_replace([' unsigned', ' signed'], '', strtolower($type)));
+
+        return in_array($normalized, ['integer', 'bigint', 'int', 'smallint', 'tinyint', 'mediumint'], true);
     }
 
     private function isUuidType(string $type): bool

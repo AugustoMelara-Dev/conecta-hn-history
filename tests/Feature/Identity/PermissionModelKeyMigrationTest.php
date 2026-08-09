@@ -43,6 +43,129 @@ it('reports the empty legacy bigint shape without writing source or shadow table
         ->and(Schema::hasTable('model_has_roles_uuid_shadow'))->toBeFalse();
 });
 
+it('classifies source shape with a bounded model-id cursor instead of eager rows', function (): void {
+    $source = (string) file_get_contents(app_path('Application/Identity/Permissions/PermissionModelKeyMigration.php'));
+
+    expect($source)->not->toContain('->get()->all()')
+        ->and($source)->toContain("DB::table(\$table)->select(['model_id'])->cursor()");
+
+    $report = app(PermissionModelKeyMigration::class)->preflight()->toArray();
+
+    expect($report['shape'])->toBe('legacy_bigint_empty')
+        ->and($report['source']['model_has_permissions']['count'])->toBe(0)
+        ->and($report['source']['model_has_roles']['count'])->toBe(0);
+});
+
+it('does not drop exact empty foreign shadows on rollback', function (): void {
+    Schema::create('model_has_permissions_uuid_shadow', static function (Blueprint $table): void {
+        $table->unsignedBigInteger('permission_id');
+        $table->string('model_type');
+        $table->uuid('model_id');
+        $table->foreign('permission_id', 'spatie_mhpu_permission_fk')
+            ->references('id')->on('permissions')->onDelete('cascade');
+        $table->primary(['permission_id', 'model_id', 'model_type'], 'spatie_mhpu_assignment_pk');
+        $table->index(['model_id', 'model_type'], 'spatie_mhpu_model_lookup_idx');
+    });
+    Schema::create('model_has_roles_uuid_shadow', static function (Blueprint $table): void {
+        $table->unsignedBigInteger('role_id');
+        $table->string('model_type');
+        $table->uuid('model_id');
+        $table->foreign('role_id', 'spatie_mhru_role_fk')
+            ->references('id')->on('roles')->onDelete('cascade');
+        $table->primary(['role_id', 'model_id', 'model_type'], 'spatie_mhru_assignment_pk');
+        $table->index(['model_id', 'model_type'], 'spatie_mhru_model_lookup_idx');
+    });
+
+    $migrationDefinition = require database_path('migrations/2026_08_23_000001_expand_spatie_uuid_permission_pivots.php');
+
+    expect(fn (): mixed => $migrationDefinition->down())
+        ->toThrow(RuntimeException::class)
+        ->and(Schema::hasTable('model_has_permissions_uuid_shadow'))->toBeTrue()
+        ->and(Schema::hasTable('model_has_roles_uuid_shadow'))->toBeTrue();
+});
+
+it('requires a non-null exact-length uuid primary key and exact numeric key contract', function (): void {
+    Schema::disableForeignKeyConstraints();
+    Schema::drop('users');
+    Schema::enableForeignKeyConstraints();
+    Schema::create('users', static function (Blueprint $table): void {
+        $table->uuid('id')->nullable()->primary();
+    });
+
+    $nullable = app(PermissionModelKeyMigration::class)->preflight()->toArray();
+
+    expect($nullable['status'])->toBe('blocked')
+        ->and($nullable['anomalies']['USER_UUID_SCHEMA_DRIFT'] ?? 0)->toBeGreaterThan(0);
+
+    setUpPermissionFixture();
+    $canonical = app(PermissionModelKeyMigration::class)->preflight()->toArray();
+
+    expect($canonical['status'])->toBe('ready')
+        ->and($canonical['shape'])->toBe('legacy_bigint_empty');
+});
+
+it('reports blank morphs and orphan permission or role assignments', function (): void {
+    Schema::disableForeignKeyConstraints();
+    Schema::drop('model_has_permissions');
+    Schema::drop('model_has_roles');
+    Schema::enableForeignKeyConstraints();
+    Schema::create('model_has_permissions', static function (Blueprint $table): void {
+        $table->unsignedBigInteger('permission_id');
+        $table->string('model_type');
+        $table->unsignedBigInteger('model_id');
+        $table->index(['model_id', 'model_type'], 'model_has_permissions_model_id_model_type_index');
+        $table->primary(['permission_id', 'model_id', 'model_type'], 'model_has_permissions_permission_model_type_primary');
+    });
+    Schema::create('model_has_roles', static function (Blueprint $table): void {
+        $table->unsignedBigInteger('role_id');
+        $table->string('model_type');
+        $table->unsignedBigInteger('model_id');
+        $table->index(['model_id', 'model_type'], 'model_has_roles_model_id_model_type_index');
+        $table->primary(['role_id', 'model_id', 'model_type'], 'model_has_roles_role_model_type_primary');
+    });
+    $permissionId = DB::table('permissions')->insertGetId([
+        'name' => 'crm.orphan.permission',
+        'guard_name' => 'web',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+    DB::table('model_has_permissions')->insert([
+        'permission_id' => 999999,
+        'model_type' => '',
+        'model_id' => '00000000-0000-0000-0000-000000000001',
+    ]);
+    DB::table('model_has_roles')->insert([
+        'role_id' => 999999,
+        'model_type' => 'user',
+        'model_id' => '00000000-0000-0000-0000-000000000002',
+    ]);
+    DB::table('model_has_permissions')->insert([
+        'permission_id' => $permissionId,
+        'model_type' => 'user',
+        'model_id' => '00000000-0000-0000-0000-000000000003',
+    ]);
+
+    $report = app(PermissionModelKeyMigration::class)->preflight()->toArray();
+
+    expect($report['anomalies']['BLANK_MODEL_TYPE'] ?? 0)->toBeGreaterThan(0)
+        ->and($report['anomalies']['ORPHAN_PERMISSION'] ?? 0)->toBeGreaterThan(0)
+        ->and($report['anomalies']['ORPHAN_ROLE'] ?? 0)->toBeGreaterThan(0);
+});
+
+it('blocks a single partial uuid shadow before any expansion or rollback', function (): void {
+    Schema::create('model_has_permissions_uuid_shadow', static function (Blueprint $table): void {
+        $table->unsignedBigInteger('permission_id');
+        $table->string('model_type');
+        $table->uuid('model_id');
+    });
+
+    $report = app(PermissionModelKeyMigration::class)->preflight()->toArray();
+
+    expect($report['status'])->toBe('blocked')
+        ->and($report['anomalies']['PARTIAL_CUTOVER_STATE'] ?? 0)->toBeGreaterThan(0)
+        ->and(Schema::hasTable('model_has_roles_uuid_shadow'))->toBeFalse();
+});
+
 it('fails closed for missing tables, teams mode, and configuration drift', function (): void {
     Schema::disableForeignKeyConstraints();
     Schema::drop('roles');
@@ -125,6 +248,15 @@ it('expands exact uuid shadows and only allows an empty safe rollback', function
         ->and(Schema::getColumnType('model_has_roles_uuid_shadow', 'model_id'))->toBeIn(['string', 'varchar']);
 
     $migrationDefinition = require database_path('migrations/2026_08_23_000001_expand_spatie_uuid_permission_pivots.php');
+    Schema::create('migrations', static function (Blueprint $table): void {
+        $table->increments('id');
+        $table->string('migration');
+        $table->integer('batch');
+    });
+    DB::table('migrations')->insert([
+        'migration' => '2026_08_23_000001_expand_spatie_uuid_permission_pivots',
+        'batch' => 999,
+    ]);
     $migrationDefinition->down();
 
     expect(Schema::hasTable('model_has_permissions_uuid_shadow'))->toBeFalse()
@@ -197,6 +329,8 @@ it('backfills in bounded resumable batches and validates a stable sanitized arti
         ->and($replay['status'])->toBe('complete')
         ->and($replay['copied'])->toBe(0)
         ->and($validated['status'])->toBe('valid')
+        ->and($validated['details']['replay_proof']['measured'] ?? false)->toBeTrue()
+        ->and($validated['details']['replay_proof']['passes'] ?? 0)->toBe(2)
         ->and(DB::table('model_has_permissions')->get()->toArray())->toEqual($sourceBeforeReplay)
         ->and(DB::table('model_has_permissions_uuid_shadow')->count())->toBe(1)
         ->and(DB::table('model_has_roles_uuid_shadow')->count())->toBe(1)
@@ -567,6 +701,98 @@ it('rejects a checkpoint whose chain cannot be recomputed from its previous chai
         ->and($report['anomalies']['CHECKPOINT_TAMPERED'] ?? 0)->toBeGreaterThan(0);
 
     @unlink($checkpoint ?: '');
+});
+
+it('rejects malformed cursor maps and checkpoint counters before array replacement', function (): void {
+    $userId = '00000000-0000-0000-0000-0000000000af';
+    DB::table('users')->insert([
+        'id' => $userId,
+        'name' => 'Malformed checkpoint',
+        'email' => 'malformed-checkpoint@example.test',
+        'password' => 'x',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+    $permissionId = DB::table('permissions')->insertGetId([
+        'name' => 'crm.malformed.checkpoint',
+        'guard_name' => 'web',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+    DB::table('model_has_permissions')->insert([
+        'permission_id' => $permissionId,
+        'model_type' => 'user',
+        'model_id' => $userId,
+    ]);
+
+    $migration = app(PermissionModelKeyMigration::class);
+    $migration->expand();
+    $checkpoint = tempnam(sys_get_temp_dir(), 'permission-key-malformed-');
+    $migration->backfill(1, $checkpoint ?: null, false);
+    $payload = json_decode((string) file_get_contents($checkpoint ?: ''), true, 512, JSON_THROW_ON_ERROR);
+    $payload['cursors']['unexpected'] = null;
+    $payload['cursors']['model_has_permissions'] = 123;
+    $payload['rows_examined'] = '1';
+    $payload['anomaly_counts'] = 'invalid';
+    $batchPayload = new ReflectionMethod(PermissionModelKeyMigration::class, 'batchPayloadChecksum');
+    $batchPayload->setAccessible(true);
+    $payload['batch_payload_sha256'] = $batchPayload->invoke($migration, $payload);
+    $chain = new ReflectionMethod(PermissionModelKeyMigration::class, 'chainChecksum');
+    $chain->setAccessible(true);
+    $payload['chain_sha256'] = $chain->invoke($migration, $payload);
+    $checksum = new ReflectionMethod(PermissionModelKeyMigration::class, 'checkpointChecksum');
+    $checksum->setAccessible(true);
+    $payload['checkpoint_sha256'] = $checksum->invoke($migration, $payload);
+    file_put_contents($checkpoint ?: '', json_encode($payload, JSON_THROW_ON_ERROR));
+
+    $report = null;
+    expect(function () use (&$report, $migration, $checkpoint): void {
+        $report = $migration->backfill(1, $checkpoint ?: null, false)->toArray();
+    })->not->toThrow(Throwable::class);
+
+    expect($report['status'] ?? null)->toBe('blocked')
+        ->and($report['anomalies']['CHECKPOINT_TAMPERED'] ?? 0)->toBeGreaterThan(0);
+
+    @unlink($checkpoint ?: '');
+});
+
+it('blocks validation when the repository identity cannot be observed', function (): void {
+    $migration = app(PermissionModelKeyMigration::class);
+    $migration->expand();
+    $originalDirectory = getcwd();
+
+    try {
+        chdir(sys_get_temp_dir());
+        $report = $migration->validate(
+            expectedHead: str_repeat('a', 40),
+            expectedTree: str_repeat('b', 40),
+        )->toArray();
+    } finally {
+        chdir($originalDirectory ?: base_path());
+    }
+
+    expect($report['status'])->toBe('blocked')
+        ->and($report['anomalies']['HEAD_TREE_IDENTITY_UNAVAILABLE'] ?? 0)->toBeGreaterThan(0);
+});
+
+it('blocks a shadow whose required foreign-key metadata is absent', function (): void {
+    $migration = app(PermissionModelKeyMigration::class);
+    $migration->expand();
+    Schema::disableForeignKeyConstraints();
+    Schema::drop('model_has_roles_uuid_shadow');
+    Schema::enableForeignKeyConstraints();
+    Schema::create('model_has_roles_uuid_shadow', static function (Blueprint $table): void {
+        $table->unsignedBigInteger('role_id');
+        $table->string('model_type');
+        $table->uuid('model_id');
+        $table->primary(['role_id', 'model_id', 'model_type'], 'spatie_mhru_assignment_pk');
+        $table->index(['model_id', 'model_type'], 'spatie_mhru_model_lookup_idx');
+    });
+
+    $report = $migration->preflight()->toArray();
+
+    expect($report['status'])->toBe('blocked')
+        ->and($report['anomalies']['SHADOW_SCHEMA_DRIFT'] ?? 0)->toBeGreaterThan(0);
 });
 
 it('blocks a stale opaque cursor without exposing its source tuple', function (): void {
