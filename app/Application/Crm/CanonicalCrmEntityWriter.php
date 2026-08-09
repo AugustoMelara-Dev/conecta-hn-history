@@ -323,14 +323,14 @@ final readonly class CanonicalCrmEntityWriter
 
         if (DB::table('model_has_permissions')
             ->where('permission_id', $permissionId)
-            ->where('model_type', User::class)
+            ->where('model_type', $actor->getMorphClass())
             ->where('model_id', $actor->getKey())
             ->exists()) {
             return true;
         }
 
         return DB::table('model_has_roles')
-            ->where('model_type', User::class)
+            ->where('model_type', $actor->getMorphClass())
             ->where('model_id', $actor->getKey())
             ->join('role_has_permissions', 'model_has_roles.role_id', '=', 'role_has_permissions.role_id')
             ->where('role_has_permissions.permission_id', $permissionId)

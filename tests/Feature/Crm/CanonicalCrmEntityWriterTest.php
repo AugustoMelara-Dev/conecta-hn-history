@@ -50,22 +50,51 @@ function canonicalWriterMembership(Tenant $tenant, User $user, array $overrides 
     ], $overrides));
 }
 
+function canonicalWriterSpatiePermissionId(string $permission): int
+{
+    $permissionId = DB::table('permissions')
+        ->where('name', $permission)
+        ->where('guard_name', 'web')
+        ->value('id');
+    $permissionId ??= DB::table('permissions')->insertGetId([
+        'name' => $permission,
+        'guard_name' => 'web',
+    ]);
+
+    return (int) $permissionId;
+}
+
 function canonicalWriterGrantSpatie(User $user, string ...$permissions): void
 {
     foreach ($permissions as $permission) {
-        $permissionId = DB::table('permissions')
-            ->where('name', $permission)
-            ->where('guard_name', 'web')
-            ->value('id');
-        $permissionId ??= DB::table('permissions')->insertGetId([
-            'name' => $permission,
-            'guard_name' => 'web',
-        ]);
-
         DB::table('model_has_permissions')->insert([
-            'permission_id' => $permissionId,
-            'model_type' => User::class,
+            'permission_id' => canonicalWriterSpatiePermissionId($permission),
+            'model_type' => $user->getMorphClass(),
             'model_id' => $user->id,
+        ]);
+    }
+}
+
+function canonicalWriterGrantSpatieRole(User $user, string $role, string ...$permissions): void
+{
+    $roleId = DB::table('roles')
+        ->where('name', $role)
+        ->where('guard_name', 'web')
+        ->value('id');
+    $roleId ??= DB::table('roles')->insertGetId([
+        'name' => $role,
+        'guard_name' => 'web',
+    ]);
+    DB::table('model_has_roles')->insert([
+        'role_id' => $roleId,
+        'model_type' => $user->getMorphClass(),
+        'model_id' => $user->id,
+    ]);
+
+    foreach ($permissions as $permission) {
+        DB::table('role_has_permissions')->insert([
+            'permission_id' => canonicalWriterSpatiePermissionId($permission),
+            'role_id' => $roleId,
         ]);
     }
 }
@@ -213,6 +242,19 @@ it('accepts an active member with the exact CRM permission and rejects inactive 
     canonicalWriterMembership($otherTenant, $foreign);
     expect(fn () => $writer->createCompany((string) $tenant->id, (string) $foreign->id, ['name' => 'Foreign']))
         ->toThrow(AuthorizationException::class);
+});
+
+it('authorizes an active member through a canonical Spatie role permission pivot', function (): void {
+    ['tenant' => $tenant] = canonicalWriterTenant();
+    $member = canonicalWriterUser();
+    canonicalWriterMembership($tenant, $member);
+    canonicalWriterGrantSpatieRole($member, 'crm-manager', 'crm.companies.create');
+
+    expect(app(CanonicalCrmEntityWriter::class)->createCompany(
+        (string) $tenant->id,
+        (string) $member->id,
+        ['name' => 'Role member company'],
+    ))->toBeInstanceOf(CrmCompany::class);
 });
 
 it('does not disclose whether a relationship identifier is foreign or absent', function (): void {
