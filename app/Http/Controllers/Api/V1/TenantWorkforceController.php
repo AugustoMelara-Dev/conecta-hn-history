@@ -8,8 +8,8 @@ use App\Application\Access\Contracts\TenantPermissionGuardInterface;
 use App\Application\Ai\Observability\AiFoundationHealth;
 use App\Application\Ai\Registry\AiRegistryQuery;
 use App\Application\Ai\Registry\AiRegistryResolver;
+use App\Application\Ai\Registry\AiWorkforceDraftProvisioner;
 use App\Application\Ai\Workforce\AgentRole;
-use App\Application\Ai\Workforce\AgentRoleCatalog;
 use App\Application\BusinessGraph\Contracts\BusinessGraphRepositoryInterface;
 use App\Application\Markets\TenantMarketResolver;
 use App\Domain\Access\Enums\Permission;
@@ -33,6 +33,7 @@ final class TenantWorkforceController extends Controller
         private readonly BusinessGraphRepositoryInterface $businessGraph,
         private readonly AiFoundationHealth $health,
         private readonly AiRegistryResolver $registry,
+        private readonly AiWorkforceDraftProvisioner $drafts,
         private readonly TenantPermissionGuardInterface $permissions,
     ) {}
 
@@ -88,7 +89,7 @@ final class TenantWorkforceController extends Controller
         }
 
         $role = AgentRole::from($validated['role_key']);
-        $candidate = $this->ensureDraftCandidate($tenantId, $role);
+        $candidate = $this->drafts->ensure($tenantId, $role);
         $selectedChannels = array_values(array_filter(
             $channels,
             static fn (array $channel): bool => in_array($channel['key'], $requestedChannelKeys, true),
@@ -193,101 +194,6 @@ final class TenantWorkforceController extends Controller
         abort_unless($this->tenantContext->isInitialized() && ! $this->tenantContext->isRoot(), 403);
 
         return $this->tenantContext->id();
-    }
-
-    private function ensureDraftCandidate(string $tenantId, AgentRole $role): ?object
-    {
-        return DB::transaction(function () use ($tenantId, $role): ?object {
-            DB::table('tenants')->where('id', $tenantId)->lockForUpdate()->first();
-
-            $candidate = $this->candidate($tenantId, $role);
-            if ($candidate !== null) {
-                return $candidate;
-            }
-
-            $configuration = AgentRoleCatalog::configuration($role);
-            $definitionKey = 'tenant.'.$role->value;
-            $definition = DB::table('ai_agent_definitions')
-                ->where('tenant_id', $tenantId)
-                ->where('key', $definitionKey)
-                ->first();
-            if ($definition === null) {
-                $definitionId = (string) Str::uuid();
-                DB::table('ai_agent_definitions')->insert([
-                    'id' => $definitionId,
-                    'tenant_id' => $tenantId,
-                    'key' => $definitionKey,
-                    'name' => 'Dovra '.ucwords(str_replace('_', ' ', $role->value)).' workforce role',
-                    'visibility' => 'private',
-                    'status' => 'active',
-                    'metadata' => $this->json(['source' => 'dovra_workforce_activation']),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-                $definition = DB::table('ai_agent_definitions')->where('id', $definitionId)->first();
-            }
-            if ($definition === null) {
-                return null;
-            }
-
-            $draftConfiguration = [
-                'workforce_role' => $role->value,
-                'objective' => $configuration->objective,
-                'allowed_jobs' => $configuration->allowedJobs,
-                'risk_profile' => $configuration->riskProfile,
-                'metric_keys' => $configuration->metricKeys,
-                'source' => 'dovra_workforce_activation',
-            ];
-            $checksum = hash('sha256', $this->json([
-                'definition_id' => (string) $definition->id,
-                'configuration' => $draftConfiguration,
-            ]));
-            $version = DB::table('ai_agent_versions')
-                ->where('agent_definition_id', $definition->id)
-                ->where('checksum', $checksum)
-                ->first();
-            if ($version === null) {
-                $versionId = (string) Str::uuid();
-                DB::table('ai_agent_versions')->insert([
-                    'id' => $versionId,
-                    'tenant_id' => $tenantId,
-                    'agent_definition_id' => $definition->id,
-                    'model_version_id' => null,
-                    'version' => ((int) DB::table('ai_agent_versions')->where('agent_definition_id', $definition->id)->max('version')) + 1,
-                    'checksum' => $checksum,
-                    'configuration' => $this->json($draftConfiguration),
-                    'released_at' => null,
-                    'lifecycle_status' => 'draft',
-                    'kill_switch_enabled' => false,
-                    'blocked_at' => null,
-                    'blocked_by' => null,
-                    'blocked_reason' => null,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            }
-
-            return $this->candidate($tenantId, $role);
-        }, 3);
-    }
-
-    private function candidate(string $tenantId, AgentRole $role): ?object
-    {
-        return DB::table('ai_agent_versions')
-            ->join('ai_agent_definitions', function ($join): void {
-                $join->on('ai_agent_definitions.id', '=', 'ai_agent_versions.agent_definition_id')
-                    ->on('ai_agent_definitions.tenant_id', '=', 'ai_agent_versions.tenant_id');
-            })
-            ->where('ai_agent_versions.tenant_id', $tenantId)
-            ->where('ai_agent_versions.lifecycle_status', 'draft')
-            ->orderByRaw("CASE ai_agent_versions.lifecycle_status WHEN 'active' THEN 0 WHEN 'eligible' THEN 1 WHEN 'candidate' THEN 2 WHEN 'draft' THEN 3 ELSE 4 END")
-            ->orderByDesc('ai_agent_versions.created_at')
-            ->get(['ai_agent_versions.id', 'ai_agent_versions.configuration', 'ai_agent_versions.lifecycle_status', 'ai_agent_definitions.key as definition_key'])
-            ->first(function (object $version) use ($role): bool {
-                $configuration = $this->object($version->configuration);
-
-                return AgentRoleCatalog::forAgentKey((string) ($configuration['workforce_role'] ?? $version->definition_key)) === $role;
-            });
     }
 
     /** @return list<array<string, mixed>> */

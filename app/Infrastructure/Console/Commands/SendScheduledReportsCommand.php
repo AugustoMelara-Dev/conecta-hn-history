@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace App\Application\Reporting\Commands;
+namespace App\Infrastructure\Console\Commands;
 
 use App\Application\Reporting\ReportScheduler;
 use Illuminate\Console\Command;
 
-class SendScheduledReportsCommand extends Command
+final class SendScheduledReportsCommand extends Command
 {
     protected $signature = 'reports:send-scheduled';
 

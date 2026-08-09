@@ -1964,7 +1964,7 @@ final class DovraSecurityRatchetTest extends TestCase
     {
         $arguments = self::namedArguments($dispatch->args);
         self::assertSame(
-            ['businessName', 'description', 'userId', 'tenantId', 'targetAudience', 'tone', 'keywords'],
+            ['businessName', 'description', 'userId', 'tenantId', 'targetAudience', 'tone', 'keywords', 'correlationId'],
             array_keys($arguments),
         );
 
@@ -1982,6 +1982,7 @@ final class DovraSecurityRatchetTest extends TestCase
         }
         self::assertTrue(self::isVariable($arguments['userId'], 'actorId'));
         self::assertTrue(self::isVariable($arguments['tenantId'], 'tenantId'));
+        self::assertTrue(self::isVariable($arguments['correlationId'], 'correlationId'));
     }
 
     /** @param list<Arg> $arguments @return array<string, Node\Expr> */

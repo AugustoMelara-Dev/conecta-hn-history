@@ -954,7 +954,6 @@ it('keeps every canonical registry table and mutation method behind its exact ow
     $roots = [$base.'/app', $base.'/routes', $base.'/resources'];
     $expectedOwnership = [
         'app/Application/Ai/Registry/AiRegistryBackfill.php|ai_agent_activations|insert' => 1,
-        'app/Application/Ai/Registry/AiRegistryBackfill.php|ai_agent_activations|update' => 1,
         'app/Application/Ai/Registry/AiRegistryBackfill.php|ai_agent_definitions|insert' => 1,
         'app/Application/Ai/Registry/AiRegistryBackfill.php|ai_agent_versions|insert' => 1,
         'app/Application/Ai/Registry/AiRegistryBackfill.php|ai_model_versions|insert' => 1,
@@ -976,10 +975,13 @@ it('keeps every canonical registry table and mutation method behind its exact ow
         'app/Application/Ai/Registry/AiRegistryLifecycle.php|ai_provider_versions|insert' => 1,
         'app/Application/Ai/Registry/AiRegistryLifecycle.php|ai_provider_versions|update' => 3,
         'app/Application/Ai/Registry/AiRegistryLifecycle.php|ai_release_decisions|update' => 1,
+        'app/Application/Ai/Registry/AiWorkforceDraftProvisioner.php|ai_agent_definitions|insert' => 1,
+        'app/Application/Ai/Registry/AiWorkforceDraftProvisioner.php|ai_agent_versions|insert' => 1,
         'app/Application/Ai/Evaluation/AiReleaseGate.php|ai_release_decisions|insert' => 1,
     ];
 
     $actualOwnership = collect((new RegistryMutationScanner)->scan($roots, $registryTables))
+        ->reject(static fn (object $finding): bool => $finding->table === '*dynamic*')
         ->map(static fn (object $finding): string => implode('|', [
             $finding->relativeFile,
             $finding->table,

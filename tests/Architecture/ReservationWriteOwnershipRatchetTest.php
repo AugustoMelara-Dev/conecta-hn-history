@@ -9,7 +9,6 @@ it('keeps public guest and filament reservation surfaces on the canonical writer
         '/Infrastructure/Booking/GuestAppointmentManagementReader.php',
         '/Filament/App/Resources/AppointmentResource.php',
         '/Filament/App/Resources/AppointmentResource/Pages/CreateAppointment.php',
-        '/Filament/App/Resources/AppointmentResource/Pages/EditAppointment.php',
     ];
 
     foreach ($surfaces as $surface) {
@@ -22,6 +21,8 @@ it('keeps public guest and filament reservation surfaces on the canonical writer
             ->not->toContain('DeleteAction::make(')
             ->not->toContain('DeleteBulkAction::make(');
     }
+
+    expect(is_file($root.'/Filament/App/Resources/AppointmentResource/Pages/EditAppointment.php'))->toBeFalse();
 
     expect((string) file_get_contents($root.'/Infrastructure/Booking/HttpPublicBookingResponder.php'))
         ->toContain('CanonicalReservationWriter')

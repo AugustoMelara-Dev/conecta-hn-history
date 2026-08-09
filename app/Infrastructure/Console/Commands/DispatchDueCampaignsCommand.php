@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Application\Marketing\Commands;
+namespace App\Infrastructure\Console\Commands;
 
 use App\Application\Marketing\CampaignDispatchService;
 use Illuminate\Console\Command;

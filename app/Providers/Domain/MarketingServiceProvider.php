@@ -12,8 +12,8 @@ declare(strict_types=1);
 namespace App\Providers\Domain;
 
 use App\Application\Channels\Contracts\ChannelAdapterResolverInterface;
-use App\Application\Marketing\Commands\DispatchDueCampaignsCommand;
 use App\Infrastructure\Channels\ConfigChannelAdapterResolver;
+use App\Infrastructure\Console\Commands\DispatchDueCampaignsCommand;
 use Illuminate\Support\ServiceProvider;
 
 final class MarketingServiceProvider extends ServiceProvider

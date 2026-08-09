@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
-use App\Application\Reporting\Commands\RunReportCommand;
-use App\Application\Reporting\Commands\SendScheduledReportsCommand;
 use App\Application\Reporting\ReportRegistry;
 use App\Application\Reporting\Reports\ActivityVolumeReport;
 use App\Application\Reporting\Reports\AttributionBySourceReport;
@@ -32,6 +30,8 @@ use App\Application\Reporting\Reports\RevenueByMonthReport;
 use App\Application\Reporting\Reports\SlowMoversReport;
 use App\Application\Reporting\Reports\TopProductsReport;
 use App\Application\Reporting\Reports\WinRateReport;
+use App\Infrastructure\Console\Commands\RunReportCommand;
+use App\Infrastructure\Console\Commands\SendScheduledReportsCommand;
 use Illuminate\Support\ServiceProvider;
 
 /**

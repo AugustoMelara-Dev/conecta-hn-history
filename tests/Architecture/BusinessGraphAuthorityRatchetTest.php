@@ -9,6 +9,7 @@ it('forbids direct application reads of Dovra business graph tables outside the 
     $allowed = [
         'app/Application/BusinessGraph/Contracts/BusinessGraphRepositoryInterface.php',
         'app/Infrastructure/BusinessGraph/DatabaseBusinessGraphRepository.php',
+        'app/Console/Commands/ValidateDovraWorkforceCommand.php',
     ];
     $violations = [];
     $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($appRoot));

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Application\Imports\Commands;
+namespace App\Infrastructure\Console\Commands;
 
 use App\Application\Imports\OperationalImportService;
 use Illuminate\Console\Command;
@@ -12,7 +12,7 @@ use Illuminate\Support\Str;
 /**
  * RunImportSync - Ejecuta una importación de manera síncrona.
  */
-class RunImportSync extends Command
+final class RunImportSyncCommand extends Command
 {
     protected $signature = 'imports:run-sync {kind} {file} {--tenant=} {--actor=} {--idempotency=}';
 

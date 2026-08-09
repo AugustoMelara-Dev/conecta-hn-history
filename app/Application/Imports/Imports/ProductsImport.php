@@ -7,6 +7,7 @@ namespace App\Application\Imports\Imports;
 use App\Application\Imports\Concerns\HasImportTemplate;
 use App\Application\Imports\Concerns\Importable;
 use App\Models\Product;
+use LogicException;
 use Maatwebsite\Excel\Concerns\Importable as ExcelImportable;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithBatchInserts;
@@ -54,18 +55,11 @@ class ProductsImport implements Importable, ToModel, WithBatchInserts, WithChunk
         return ['name', 'sku', 'price', 'currency', 'stock', 'description', 'is_active'];
     }
 
-    public function model(array $row): ?Product
+    public function model(array $row): never
     {
-        return Product::create([
-            'tenant_id' => $this->tenantId,
-            'name' => $row['name'],
-            'sku' => $row['sku'] ?? null,
-            'price' => $row['price'],
-            'currency' => $row['currency'] ?? 'HNL',
-            'stock' => $row['stock'] ?? 0,
-            'description' => $row['description'] ?? null,
-            'is_active' => (bool) ($row['is_active'] ?? true),
-        ]);
+        throw new LogicException(
+            'Product spreadsheet ingestion is unavailable because rows must pass the canonical catalog validation and media workflow.'
+        );
     }
 
     public function chunkSize(): int

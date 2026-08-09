@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
-use App\Application\Imports\Commands\GenerateImportTemplate;
-use App\Application\Imports\Commands\RunImportAsync;
-use App\Application\Imports\Commands\RunImportSync;
+use App\Infrastructure\Console\Commands\GenerateImportTemplateCommand;
+use App\Infrastructure\Console\Commands\RunImportAsyncCommand;
+use App\Infrastructure\Console\Commands\RunImportSyncCommand;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -23,9 +23,9 @@ class ImportExportServiceProvider extends ServiceProvider
     {
         if ($this->app->runningInConsole()) {
             $this->commands([
-                GenerateImportTemplate::class,
-                RunImportAsync::class,
-                RunImportSync::class,
+                GenerateImportTemplateCommand::class,
+                RunImportAsyncCommand::class,
+                RunImportSyncCommand::class,
             ]);
         }
     }

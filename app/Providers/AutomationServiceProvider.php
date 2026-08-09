@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
-use App\Application\Automation\Commands\ResumeDueWorkflowRuns;
-use App\Application\Automation\Commands\RunWorkflowManual;
 use App\Application\Automation\Contracts\ToolPolicyEngineInterface;
 use App\Application\Automation\Contracts\WorkflowRepositoryInterface;
 use App\Application\Automation\Contracts\WorkflowRuntimeInterface;
 use App\Application\Automation\ToolPolicyEngine;
 use App\Application\Automation\WorkflowRuntime;
 use App\Infrastructure\Automation\DatabaseWorkflowRepository;
+use App\Infrastructure\Console\Commands\ResumeDueWorkflowRunsCommand;
+use App\Infrastructure\Console\Commands\RunWorkflowManualCommand;
 use Illuminate\Support\ServiceProvider;
 
 final class AutomationServiceProvider extends ServiceProvider
@@ -30,8 +30,8 @@ final class AutomationServiceProvider extends ServiceProvider
     {
         if ($this->app->runningInConsole()) {
             $this->commands([
-                ResumeDueWorkflowRuns::class,
-                RunWorkflowManual::class,
+                ResumeDueWorkflowRunsCommand::class,
+                RunWorkflowManualCommand::class,
             ]);
         }
     }

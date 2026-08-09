@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace App\Application\Imports\Commands;
+namespace App\Infrastructure\Console\Commands;
 
 use App\Application\Imports\Exports\TemplateExport;
 use App\Application\Imports\OperationalImportService;
 use Illuminate\Console\Command;
 use Maatwebsite\Excel\Facades\Excel;
 
-class GenerateImportTemplate extends Command
+final class GenerateImportTemplateCommand extends Command
 {
     protected $signature = 'imports:generate-template {kind} {--output=}';
 

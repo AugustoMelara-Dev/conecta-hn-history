@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Application\Automation\Commands;
+namespace App\Infrastructure\Console\Commands;
 
 // @withoutGlobalScopes-safety JOB_GLOBAL_POLL: scans due runs globally and carries each selected tenant ID into the queued job.
 
@@ -10,7 +10,7 @@ use App\Jobs\ResumeWorkflowJob;
 use App\Models\AutomationWorkflowRun;
 use Illuminate\Console\Command;
 
-final class ResumeDueWorkflowRuns extends Command
+final class ResumeDueWorkflowRunsCommand extends Command
 {
     protected $signature = 'workflows:resume-due {--limit=500}';
 

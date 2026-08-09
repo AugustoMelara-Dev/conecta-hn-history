@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Application\Reporting\Commands;
+namespace App\Infrastructure\Console\Commands;
 
 use App\Application\Reporting\ReportExecutor;
 use App\Application\Reporting\ReportRegistry;
@@ -10,7 +10,7 @@ use App\Domain\Reporting\Enums\ReportKey;
 use App\Domain\Reporting\ValueObjects\ReportRange;
 use Illuminate\Console\Command;
 
-class RunReportCommand extends Command
+final class RunReportCommand extends Command
 {
     protected $signature = 'reports:run {key} {--tenant=} {--range=30d}';
 

@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Common\Exceptions\TooManyRequestsException;
 use App\Domain\TenantGovernance\Exceptions\TenantNotFoundException;
 use App\Http\Middleware\ApiLifecycleHeaders;
 use App\Http\Middleware\CheckMaintenanceMode;
@@ -187,6 +188,15 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             return response()->view('errors.404', [], 404);
+        });
+
+        $exceptions->render(function (TooManyRequestsException $exception, Request $request) {
+            return response()->json([
+                'error' => 'Too Many Requests',
+                'message' => 'Rate limit exceeded. Please try again later.',
+            ], 429, [
+                'Retry-After' => 60,
+            ]);
         });
 
         $exceptions->render(function (TokenMismatchException $exception, Request $request) {

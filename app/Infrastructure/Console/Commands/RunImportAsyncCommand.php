@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Application\Imports\Commands;
+namespace App\Infrastructure\Console\Commands;
 
 use App\Application\Imports\OperationalImportService;
 use Illuminate\Console\Command;
@@ -12,7 +12,7 @@ use Illuminate\Support\Str;
 /**
  * RunImportAsync - Encola una importación para ejecutarse async.
  */
-class RunImportAsync extends Command
+final class RunImportAsyncCommand extends Command
 {
     protected $signature = 'imports:run-async {kind} {file} {--tenant=} {--actor=} {--idempotency=}';
 

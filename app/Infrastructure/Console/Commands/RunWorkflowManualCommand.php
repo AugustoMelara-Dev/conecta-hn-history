@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Application\Automation\Commands;
+namespace App\Infrastructure\Console\Commands;
 
 // @withoutGlobalScopes-safety ADMIN_CROSS_TENANT: manual lookup is followed by actor-to-workflow-tenant authorization before dispatch.
 
@@ -12,7 +12,7 @@ use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Str;
 
-class RunWorkflowManual extends Command
+final class RunWorkflowManualCommand extends Command
 {
     protected $signature = 'workflows:run {workflowId} {--actor=} {--payload=}';
 

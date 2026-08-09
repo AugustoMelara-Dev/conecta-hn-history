@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\Shared\DTOs;
 
-use Illuminate\Http\UploadedFile;
-
 /**
  * FileTransferObject - HTTP-Agnostic File Representation
  *
@@ -51,7 +49,7 @@ final readonly class FileTransferObject
     /**
      * Create from Laravel UploadedFile (Controller layer only).
      *
-     * @param  UploadedFile  $uploadedFile
+     * The HTTP layer maps its upload object into this transport-neutral DTO.
      */
     public static function fromUploadedFile(object $uploadedFile): self
     {

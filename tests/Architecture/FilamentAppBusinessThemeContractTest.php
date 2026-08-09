@@ -16,18 +16,16 @@ use PhpParser\ParserFactory;
 const BUSINESS_COMPONENTS_CSS = 'resources/css/filament/app/business-components.css';
 const REPOSITORY_ROOT = __DIR__.'/../..';
 
-it('loads the native business component stylesheet only in the app panel', function (): void {
+it('loads the native business component stylesheet in both first-party panels', function (): void {
     $provider = file_get_contents(REPOSITORY_ROOT.'/app/Providers/Filament/AppPanelProvider.php');
     $adminProvider = file_get_contents(REPOSITORY_ROOT.'/app/Providers/Filament/AdminPanelProvider.php');
     $vite = file_get_contents(REPOSITORY_ROOT.'/vite.config.js');
 
     assertAppBusinessComponentsAssetRegistration($provider);
+    assertAppBusinessComponentsAssetRegistration($adminProvider, 'admin-business-components');
 
     expect($provider)
         ->not->toContain('->viteTheme(')
-        ->and($adminProvider)
-        ->not->toContain('app-business-components')
-        ->not->toContain(BUSINESS_COMPONENTS_CSS)
         ->and($vite)->toContain('"'.BUSINESS_COMPONENTS_CSS.'"');
 });
 
@@ -119,7 +117,7 @@ it('defines every business component token used by app panel blade views', funct
     }
 });
 
-function assertAppBusinessComponentsAssetRegistration(string $source): void
+function assertAppBusinessComponentsAssetRegistration(string $source, string $assetId = 'app-business-components'): void
 {
     $statements = (new ParserFactory)->createForNewestSupportedVersion()->parse($source) ?? [];
     $finder = new NodeFinder;
@@ -141,7 +139,7 @@ function assertAppBusinessComponentsAssetRegistration(string $source): void
         throw new RuntimeException('Css::make for the App business stylesheet must receive exactly two arguments.');
     }
 
-    if (! $make->args[0]->value instanceof String_ || $make->args[0]->value->value !== 'app-business-components') {
+    if (! $make->args[0]->value instanceof String_ || $make->args[0]->value->value !== $assetId) {
         throw new RuntimeException('Css::make must use the canonical App business stylesheet id.');
     }
 
