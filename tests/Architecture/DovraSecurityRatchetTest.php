@@ -11,6 +11,7 @@ use PhpParser\Node\Expr\Array_;
 use PhpParser\Node\Expr\ArrayDimFetch;
 use PhpParser\Node\Expr\Assign;
 use PhpParser\Node\Expr\AssignOp;
+use PhpParser\Node\Expr\BinaryOp\Identical;
 use PhpParser\Node\Expr\Cast\String_ as StringCast;
 use PhpParser\Node\Expr\ClassConstFetch;
 use PhpParser\Node\Expr\ConstFetch;
@@ -19,6 +20,7 @@ use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\New_;
 use PhpParser\Node\Expr\PropertyFetch;
 use PhpParser\Node\Expr\StaticCall;
+use PhpParser\Node\Expr\Ternary;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\FunctionLike;
 use PhpParser\Node\Identifier;
@@ -453,29 +455,7 @@ final class DovraSecurityRatchetTest extends TestCase
     #[Test]
     public function semantic_knowledge_ratchet_rejects_additional_embedding_and_index_sinks(): void
     {
-        $guard = <<<'PHP'
-            <?php
-            final class KnowledgeQueryIngressGuard {
-                private const PUBLIC_SOURCE = 'directory_guide_chat';
-                private const PRIVATE_SOURCE = 'tenant_agent_chat';
-                private const CHANNEL = 'knowledge_query_runtime';
-                public function inspectPublic($query) {
-                    return $this->inspect($query, self::PUBLIC_SOURCE, null, []);
-                }
-                public function inspectTenant($query, $tenantId) {
-                    $businessType = $this->businessContext->resolvePolicyBusinessType($tenantId);
-                    return $this->inspect($query, self::PRIVATE_SOURCE, $tenantId, ['business_type' => $businessType]);
-                }
-                private function inspect($query, $source, $tenantId, $context) {
-                    $normalized = $this->normalize($query);
-                    $normalized = mb_substr($normalized, 0, 500);
-                    return $this->ingress->inspect(new DataEnvelope(
-                        sourceSystem: $source, payload: ['query' => $normalized], tenantId: $tenantId,
-                        actorId: null, channel: self::CHANNEL, context: $context,
-                    ));
-                }
-            }
-            PHP;
+        $guard = self::knowledgeQueryGuardFixture();
         $base = <<<'PHP'
             <?php
             final class SemanticKnowledgeRetriever {
@@ -508,6 +488,51 @@ final class DovraSecurityRatchetTest extends TestCase
                 self::assertSame($message, $exception->getMessage());
             }
         }
+    }
+
+    #[Test]
+    public function semantic_knowledge_ratchet_rejects_guard_bait_raw_provenance_and_post_guard_overwrite(): void
+    {
+        $base = <<<'PHP'
+            <?php
+            final class SemanticKnowledgeRetriever {
+                private function search($query, $tenantId, $includePublic, $limit) {
+                    REPLACE_ASSIGNMENT
+                    $embedding = $this->embeddings->embed($billingTenantId, $operation, $redactedQuery);
+                    return $this->index->search($embedding->vector, $tenantId, $includePublic, $boundedLimit);
+                }
+            }
+            PHP;
+        $fixtures = [
+            [
+                str_replace('REPLACE_ASSIGNMENT', <<<'PHP'
+                    $publicBait = $this->ingress->inspectPublic($query);
+                    $privateBait = $this->ingress->inspectTenant($query, $tenantId);
+                    $redactedQuery = $query;
+                    PHP, $base),
+                'Semantic redacted query must come from the exact tenant ternary.',
+            ],
+            [
+                str_replace('REPLACE_ASSIGNMENT', <<<'PHP'
+                    $redactedQuery = $tenantId === null
+                        ? $this->ingress->inspectPublic($query)
+                        : $this->ingress->inspectTenant($query, $tenantId);
+                    $redactedQuery = $query;
+                    PHP, $base),
+                '$redactedQuery must not be overwritten after query ingress.',
+            ],
+        ];
+
+        $failures = [];
+        foreach ($fixtures as [$source]) {
+            try {
+                self::assertSecureKnowledgeRetriever($source, self::knowledgeQueryGuardFixture());
+                $failures[] = 'Raw semantic query provenance unexpectedly satisfied the ratchet.';
+            } catch (AssertionFailedError $exception) {
+                $failures[] = $exception->getMessage();
+            }
+        }
+        self::assertSame(array_column($fixtures, 1), $failures);
     }
 
     #[Test]
@@ -813,8 +838,13 @@ final class DovraSecurityRatchetTest extends TestCase
         $privateIndex = null;
         $embeddingIndex = null;
         $indexSearchIndex = null;
+        $redactedAssignments = [];
 
         foreach ($nodes as $index => $node) {
+            if (($node instanceof Assign || $node instanceof AssignOp)
+                && self::isVariable($node->var, 'redactedQuery')) {
+                $redactedAssignments[] = [$index, $node];
+            }
             if ($node instanceof MethodCall && $node->name instanceof Identifier) {
                 $method = $node->name->toString();
                 if ($method === 'inspectPublic') {
@@ -842,6 +872,25 @@ final class DovraSecurityRatchetTest extends TestCase
         if (count($indexSinks) !== 1) {
             self::fail('Semantic retriever must have exactly one index search sink.');
         }
+        $canonicalAssignments = array_values(array_filter(
+            $redactedAssignments,
+            static fn (array $entry): bool => $entry[1] instanceof Assign
+                && self::isExactSemanticQueryTernary($entry[1]->expr),
+        ));
+        if (count($canonicalAssignments) !== 1) {
+            self::fail('Semantic redacted query must come from the exact tenant ternary.');
+        }
+        [$canonicalIndex, $canonicalAssignment] = $canonicalAssignments[0];
+        foreach ($redactedAssignments as [$assignmentIndex, $assignment]) {
+            if ($assignment === $canonicalAssignment) {
+                continue;
+            }
+            if ($assignmentIndex > $canonicalIndex) {
+                self::fail('$redactedQuery must not be overwritten after query ingress.');
+            }
+
+            self::fail('Semantic redacted query must come from the exact tenant ternary.');
+        }
         self::assertIsInt($publicIndex);
         self::assertIsInt($privateIndex);
         self::assertIsInt($embeddingIndex);
@@ -856,6 +905,58 @@ final class DovraSecurityRatchetTest extends TestCase
         self::assertSemanticGuardArguments($publicGuards[0], $privateGuards[0]);
         self::assertSemanticEmbeddingArguments($embeddingSinks[0]);
         self::assertSemanticIndexArguments($indexSinks[0]);
+    }
+
+    private static function isExactSemanticQueryTernary(Node $node): bool
+    {
+        if (! $node instanceof Ternary
+            || ! $node->cond instanceof Identical
+            || ! self::isVariable($node->cond->left, 'tenantId')
+            || ! self::isNullConstant($node->cond->right)
+            || ! $node->if instanceof MethodCall
+            || ! $node->else instanceof MethodCall
+            || ! self::isThisReceiverCall($node->if, 'ingress', 'inspectPublic')
+            || ! self::isThisReceiverCall($node->else, 'ingress', 'inspectTenant')) {
+            return false;
+        }
+
+        return count($node->if->args) === 1
+            && self::isVariable($node->if->args[0]->value, 'query')
+            && count($node->else->args) === 2
+            && self::isVariable($node->else->args[0]->value, 'query')
+            && self::isVariable($node->else->args[1]->value, 'tenantId');
+    }
+
+    private static function isNullConstant(Node $node): bool
+    {
+        return $node instanceof ConstFetch && strtolower($node->name->toString()) === 'null';
+    }
+
+    private static function knowledgeQueryGuardFixture(): string
+    {
+        return <<<'PHP'
+            <?php
+            final class KnowledgeQueryIngressGuard {
+                private const PUBLIC_SOURCE = 'directory_guide_chat';
+                private const PRIVATE_SOURCE = 'tenant_agent_chat';
+                private const CHANNEL = 'knowledge_query_runtime';
+                public function inspectPublic($query) {
+                    return $this->inspect($query, self::PUBLIC_SOURCE, null, []);
+                }
+                public function inspectTenant($query, $tenantId) {
+                    $businessType = $this->businessContext->resolvePolicyBusinessType($tenantId);
+                    return $this->inspect($query, self::PRIVATE_SOURCE, $tenantId, ['business_type' => $businessType]);
+                }
+                private function inspect($query, $source, $tenantId, $context) {
+                    $normalized = $this->normalize($query);
+                    $normalized = mb_substr($normalized, 0, 500);
+                    return $this->ingress->inspect(new DataEnvelope(
+                        sourceSystem: $source, payload: ['query' => $normalized], tenantId: $tenantId,
+                        actorId: null, channel: self::CHANNEL, context: $context,
+                    ));
+                }
+            }
+            PHP;
     }
 
     /** @return list<MethodCall> */
