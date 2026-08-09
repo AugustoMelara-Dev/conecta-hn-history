@@ -371,12 +371,14 @@ final class ValidateDovraWorkforceCommand extends Command
                 $path = base_path($file);
                 if (! is_file($path)) {
                     $missingFiles[] = $file;
+
                     continue;
                 }
 
                 $fileContents = file_get_contents($path);
                 if (! is_string($fileContents)) {
                     $missingFiles[] = $file;
+
                     continue;
                 }
                 $contents .= "\n".$fileContents;
@@ -435,6 +437,7 @@ final class ValidateDovraWorkforceCommand extends Command
             $path = base_path($file);
             if (! is_file($path)) {
                 $missingFiles[] = $file;
+
                 continue;
             }
             $fileContents = file_get_contents($path);

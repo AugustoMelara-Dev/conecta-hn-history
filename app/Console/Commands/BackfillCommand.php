@@ -257,7 +257,6 @@ abstract class BackfillCommand extends Command
         return $payload;
     }
 
-    /** @return int|null */
     private function integerOption(string $name, int $default, int $minimum, int $maximum): ?int
     {
         $value = $this->option($name);

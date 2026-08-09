@@ -52,6 +52,7 @@ final class OnboardingE2EContractTest extends TestCase
         $this->assertStringContainsString('await expect(firstRunWizard).toBeVisible', $spec);
         $this->assertStringNotContainsString('if (wizardVisible)', $spec);
     }
+
     public function test_accessibility_gates_fail_on_every_detected_wcag_a_aa_violation(): void
     {
         $sources = [

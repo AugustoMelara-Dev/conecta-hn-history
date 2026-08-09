@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Pages;
 
+use App\Domain\TenantGovernance\Services\SubscriptionPricingService;
 use App\Models\MenuSection;
 use App\Services\QrCodeService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -12,9 +13,9 @@ use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
-use Filament\Schemas\Schema;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
@@ -28,7 +29,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
 
     protected string $view = 'filament.app.pages.manage-marketing';
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-megaphone';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-megaphone';
 
     public bool $isPro = false;
 
@@ -60,7 +61,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
     public function mount(): void
     {
         $this->formattedProPrice = 'L. '.number_format(
-            \App\Domain\TenantGovernance\Services\SubscriptionPricingService::canonicalProPriceInMajorUnits(),
+            SubscriptionPricingService::canonicalProPriceInMajorUnits(),
             2
         );
         $tenant = Filament::getTenant();

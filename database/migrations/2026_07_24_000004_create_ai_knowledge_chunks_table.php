@@ -59,7 +59,7 @@ return new class extends Migration
         DB::statement('ALTER TABLE ai_knowledge_chunks ENABLE ROW LEVEL SECURITY');
         DB::statement('ALTER TABLE ai_knowledge_chunks FORCE ROW LEVEL SECURITY');
         DB::statement(
-            "CREATE POLICY ai_knowledge_chunks_select ON ai_knowledge_chunks FOR SELECT "
+            'CREATE POLICY ai_knowledge_chunks_select ON ai_knowledge_chunks FOR SELECT '
             ."USING (visibility = 'public' OR tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid)",
         );
         DB::statement(

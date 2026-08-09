@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Application\Auth\Commands;
 
+use App\Application\Common\Contracts\HashableCommandInterface;
+
 /**
  * VerifyOtpCommand - Immutable OTP Verification Credentials
  *
@@ -13,7 +15,7 @@ namespace App\Application\Auth\Commands;
  * ║  TENANT AWARE: Mandatory tenantId to prevent cross-tenant verification. ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class VerifyOtpCommand implements \App\Application\Common\Contracts\HashableCommandInterface
+final readonly class VerifyOtpCommand implements HashableCommandInterface
 {
     public function __construct(
         /** Mandatory Tenant Context (Axiom A) */

@@ -93,7 +93,7 @@ final readonly class AgentActionRequest
     }
 
     /** @param array<string, mixed> $value
-     *  @return array<string, mixed>
+     * @return array<string, mixed>
      */
     private static function sort(array $value): array
     {

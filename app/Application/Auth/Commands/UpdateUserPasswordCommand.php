@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Application\Auth\Commands;
 
+use App\Application\Common\Contracts\HashableCommandInterface;
+
 /**
  * UpdateUserPasswordCommand - Secure Password Change Contract
  *
@@ -13,7 +15,7 @@ namespace App\Application\Auth\Commands;
  * ║  IMMUTABLE: final readonly prevents tampering after dispatch.           ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class UpdateUserPasswordCommand implements \App\Application\Common\Contracts\HashableCommandInterface
+final readonly class UpdateUserPasswordCommand implements HashableCommandInterface
 {
     public function __construct(
         /** User ID to update (UUID string) */

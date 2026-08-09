@@ -16,6 +16,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 /**
@@ -67,7 +68,7 @@ final class SendCampaignEmail implements ShouldBeUnique, ShouldQueue
         // 3. Guard Clause: Fail Silently if resources are gone (prevent retry spirals)
         if (! $campaign || ! $user) {
             // Log warning to avoid total silence, but return success to queue to stop retries
-            \Illuminate\Support\Facades\Log::warning('SendCampaignEmail: Aborted - Resource missing', [
+            Log::warning('SendCampaignEmail: Aborted - Resource missing', [
                 'campaign_id' => $this->campaignId,
                 'user_id' => $this->userId,
                 'campaign_found' => (bool) $campaign,

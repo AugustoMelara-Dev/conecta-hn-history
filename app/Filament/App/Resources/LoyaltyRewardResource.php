@@ -7,8 +7,8 @@ namespace App\Filament\App\Resources;
 use App\Filament\App\Resources\LoyaltyRewardResource\Pages;
 use App\Models\LoyaltyReward;
 use Filament\Forms;
-use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 
@@ -16,9 +16,9 @@ class LoyaltyRewardResource extends Resource
 {
     protected static ?string $model = LoyaltyReward::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-gift';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-gift';
 
-    protected static string | \UnitEnum | null $navigationGroup = 'Fidelización';
+    protected static string|\UnitEnum|null $navigationGroup = 'Fidelización';
 
     protected static ?string $navigationLabel = 'Recompensas';
 

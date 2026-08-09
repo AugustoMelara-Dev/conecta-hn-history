@@ -4,21 +4,22 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Widgets\Reports;
 
-use Illuminate\Support\Facades\DB;
-
 use Filament\Facades\Filament;
-
 use Filament\Widgets\ChartWidget;
+use Illuminate\Support\Facades\DB;
 
 class RevenueChartWidget extends ChartWidget
 {
     protected ?string $heading = 'Ingresos por mes';
+
     protected static ?int $sort = 1;
 
     protected function getData(): array
     {
         $tenantId = Filament::getTenant()?->getKey();
-        if (! $tenantId) return ['datasets' => [], 'labels' => []];
+        if (! $tenantId) {
+            return ['datasets' => [], 'labels' => []];
+        }
 
         $data = DB::table('orders')
             ->where('tenant_id', $tenantId)
@@ -40,5 +41,8 @@ class RevenueChartWidget extends ChartWidget
         ];
     }
 
-    protected function getType(): string { return 'line'; }
+    protected function getType(): string
+    {
+        return 'line';
+    }
 }

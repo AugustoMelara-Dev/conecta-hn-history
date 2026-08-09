@@ -7,13 +7,13 @@ namespace App\Filament\App\Resources\Crm;
 use App\Filament\App\Resources\Crm\TaskResource\Pages;
 use App\Models\CustomerTask;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\CreateAction;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
@@ -32,9 +32,9 @@ class TaskResource extends Resource
 {
     protected static ?string $model = CustomerTask::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-clipboard-document-check';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-clipboard-document-check';
 
-    protected static string | \UnitEnum | null $navigationGroup = 'CRM';
+    protected static string|\UnitEnum|null $navigationGroup = 'CRM';
 
     protected static ?string $navigationLabel = 'Tareas';
 
@@ -82,7 +82,7 @@ class TaskResource extends Resource
                             ->label('Completada')
                             ->default(false),
                     ]),
-                    \Filament\Forms\Components\Textarea::make('description')
+                    Textarea::make('description')
                         ->label('Descripción')
                         ->rows(3)
                         ->columnSpanFull(),
@@ -125,10 +125,14 @@ class TaskResource extends Resource
         if (! $tenant) {
             return $query->whereRaw('1 = 0');
         }
+
         return $query->where('tenant_id', $tenant->getKey());
     }
 
-    public static function getRelations(): array { return []; }
+    public static function getRelations(): array
+    {
+        return [];
+    }
 
     public static function getPages(): array
     {

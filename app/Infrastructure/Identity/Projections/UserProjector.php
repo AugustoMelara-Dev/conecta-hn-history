@@ -8,6 +8,7 @@ use App\Domain\Identity\Events\UserRegistered;
 use App\Infrastructure\Common\EventStore\ProjectorInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * UserProjector - The Atomic Builder
@@ -24,9 +25,9 @@ final readonly class UserProjector implements ProjectorInterface
 
     public function reset(): void
     {
-        \Illuminate\Support\Facades\Schema::disableForeignKeyConstraints();
+        Schema::disableForeignKeyConstraints();
         DB::table('users')->truncate();
-        \Illuminate\Support\Facades\Schema::enableForeignKeyConstraints();
+        Schema::enableForeignKeyConstraints();
     }
 
     public function project(object $event): void

@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace App\Application\Reporting;
 
-use App\Application\Reporting\Contracts\ReportInterface;
 use App\Application\Reporting\ValueObjects\ReportData;
 use App\Domain\Reporting\Enums\ReportKey;
 use App\Domain\Reporting\ValueObjects\ReportRange;
-use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Support\Facades\Cache;
 
 /**

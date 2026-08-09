@@ -6,7 +6,6 @@ namespace Tests\Feature\Billing;
 
 use App\Application\Billing\Global\EntitlementServiceInterface;
 use App\Application\Markets\MarketContext;
-use App\Domain\Billing\Global\BillingCapability;
 use App\Domain\Billing\Global\EntitlementDecision;
 use App\Domain\Billing\Global\GlobalTenantContext;
 use App\Domain\Billing\Global\PlanPrice;

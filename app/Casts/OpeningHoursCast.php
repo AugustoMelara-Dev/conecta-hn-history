@@ -6,6 +6,7 @@ namespace App\Casts;
 
 use Illuminate\Contracts\Database\Eloquent\CastsAttributes;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\OpeningHours\OpeningHours;
 
 class OpeningHoursCast implements CastsAttributes
 {
@@ -22,7 +23,7 @@ class OpeningHoursCast implements CastsAttributes
 
         $data = json_decode($value, true);
 
-        return \Spatie\OpeningHours\OpeningHours::create($data ?? []);
+        return OpeningHours::create($data ?? []);
     }
 
     public function set(Model $model, string $key, mixed $value, array $attributes): mixed

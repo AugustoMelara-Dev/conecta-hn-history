@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Persistence\Queries;
 
 use App\Domain\Shared\Services\TenantContext;
+use App\Infrastructure\Persistence\Eloquent\Scopes\TenantScope;
 use App\Models\Product;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -36,7 +37,7 @@ final class AdminProductQuery
         // Option 1: Switch context temporarily (Dangerous)
         // Option 2: Use Model Bypass (Explicit Scope Removal)
 
-        return Product::withoutGlobalScope(\App\Infrastructure\Persistence\Eloquent\Scopes\TenantScope::class)
+        return Product::withoutGlobalScope(TenantScope::class)
             ->with(['tenant']) // Admin usually needs to know who owns what
             ->get();
     }
@@ -46,7 +47,7 @@ final class AdminProductQuery
      */
     public function findSystemProduct(int $id): ?Product
     {
-        return Product::withoutGlobalScope(\App\Infrastructure\Persistence\Eloquent\Scopes\TenantScope::class)
+        return Product::withoutGlobalScope(TenantScope::class)
             ->where('id', $id)
             ->first();
     }

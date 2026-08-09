@@ -16,10 +16,15 @@ use App\Application\Ai\Contracts\AssistantResult;
 abstract class BaseAssistant implements AssistantInterface
 {
     abstract public function key(): string;
+
     abstract public function name(): string;
+
     abstract public function description(): string;
+
     abstract public function estimateCost(): float;
+
     abstract public function category(): string;
+
     abstract public function execute(array $input): AssistantResult;
 
     public function guardrails(): array

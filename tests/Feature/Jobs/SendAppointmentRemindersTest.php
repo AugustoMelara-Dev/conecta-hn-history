@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Jobs;
 
+use App\Domain\Shared\Services\TenantContext;
 use App\Jobs\DispatchAppointmentReminders;
 use App\Jobs\SendAppointmentReminders;
 use App\Mail\AppointmentReminderMail;
@@ -43,7 +44,7 @@ class SendAppointmentRemindersTest extends TestCase
         Mail::fake();
 
         // Initialize TenantContext as System Root for Job execution
-        app(\App\Domain\Shared\Services\TenantContext::class)->setAsSystemRoot();
+        app(TenantContext::class)->setAsSystemRoot();
 
         // ═══════════════════════════════════════════════════════════════════════
         // RAW DB SETUP: Avoids BelongsToTenant TenantContext issues with factories
@@ -302,7 +303,7 @@ class SendAppointmentRemindersTest extends TestCase
 
     public function test_job_middleware_restores_and_cleans_uuid_tenant_context(): void
     {
-        $context = app(\App\Domain\Shared\Services\TenantContext::class);
+        $context = app(TenantContext::class);
         $context->reset();
         $job = new SendAppointmentReminders($this->tenantId);
         $middleware = $job->middleware();

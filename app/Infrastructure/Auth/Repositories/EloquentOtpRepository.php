@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Auth\Repositories;
 
 use App\Domain\Auth\Entities\OtpEntity;
+use App\Domain\Auth\Exceptions\MaxOtpAttemptsExceededException;
 use App\Domain\Auth\Repositories\OtpRepositoryInterface;
 use App\Models\OneTimePassword;
 use Carbon\Carbon;
@@ -123,7 +124,7 @@ final class EloquentOtpRepository implements OtpRepositoryInterface
         if ($affected === 0) {
             // We assume it's exceeded because existence is usually checked prior, but even if not,
             // failing secure is better.
-            throw new \App\Domain\Auth\Exceptions\MaxOtpAttemptsExceededException;
+            throw new MaxOtpAttemptsExceededException;
         }
     }
 

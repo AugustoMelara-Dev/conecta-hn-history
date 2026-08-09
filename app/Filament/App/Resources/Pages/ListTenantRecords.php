@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources\Pages;
 
+use App\Filament\App\Widgets\OnboardingActivationWidget;
 use Filament\Resources\Pages\ListRecords;
 
 abstract class ListTenantRecords extends ListRecords
@@ -24,14 +25,14 @@ abstract class ListTenantRecords extends ListRecords
             return [];
         }
 
-        if (! class_exists(\App\Filament\App\Widgets\OnboardingActivationWidget::class)) {
+        if (! class_exists(OnboardingActivationWidget::class)) {
             return [];
         }
 
         request()->attributes->set('onboarding_module', $this->onboardingModuleContext());
 
         return [
-            \App\Filament\App\Widgets\OnboardingActivationWidget::class,
+            OnboardingActivationWidget::class,
         ];
     }
 

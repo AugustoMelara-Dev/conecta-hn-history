@@ -13,8 +13,8 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
 final class FilamentLivewireTenantContextBoundaryTest extends TestCase
@@ -110,6 +110,7 @@ final class FilamentLivewireTenantContextBoundaryTest extends TestCase
                 $route = new Route(['GET'], 'app/{tenant}', static fn (): Response => new Response('ok'));
                 $route->setParameter('tenant', $candidate);
                 $route->bind($request);
+
                 return $route;
             });
 

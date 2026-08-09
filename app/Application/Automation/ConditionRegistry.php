@@ -22,7 +22,7 @@ class ConditionRegistry
     /**
      * Evalúa un grupo de condiciones (AND lógico).
      *
-     * @param array<int, array{type: string, actual: mixed, expected: mixed}> $conditions
+     * @param  array<int, array{type: string, actual: mixed, expected: mixed}>  $conditions
      */
     public function evaluateAll(array $conditions): bool
     {
@@ -35,13 +35,14 @@ class ConditionRegistry
                 return false;
             }
         }
+
         return true;
     }
 
     /**
      * Evalúa un grupo de condiciones (OR lógico).
      *
-     * @param array<int, array{type: string, actual: mixed, expected: mixed}> $conditions
+     * @param  array<int, array{type: string, actual: mixed, expected: mixed}>  $conditions
      */
     public function evaluateAny(array $conditions): bool
     {
@@ -51,6 +52,7 @@ class ConditionRegistry
                 return true;
             }
         }
+
         return false;
     }
 }

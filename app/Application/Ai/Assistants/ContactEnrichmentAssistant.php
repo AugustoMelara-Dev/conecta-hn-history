@@ -8,11 +8,30 @@ use App\Application\Ai\Contracts\AssistantResult;
 
 class ContactEnrichmentAssistant extends BaseAssistant
 {
-    public function key(): string { return 'contact_enrichment'; }
-    public function name(): string { return 'Contact Enrichment'; }
-    public function description(): string { return 'Enriquece datos de contacto con informaci�n p�blica.'; }
-    public function estimateCost(): float { return 0.02; }
-    public function category(): string { return 'CRM'; }
+    public function key(): string
+    {
+        return 'contact_enrichment';
+    }
+
+    public function name(): string
+    {
+        return 'Contact Enrichment';
+    }
+
+    public function description(): string
+    {
+        return 'Enriquece datos de contacto con informaci�n p�blica.';
+    }
+
+    public function estimateCost(): float
+    {
+        return 0.02;
+    }
+
+    public function category(): string
+    {
+        return 'CRM';
+    }
 
     public function execute(array $input): AssistantResult
     {

@@ -1,12 +1,13 @@
 <?php
 
+use App\Domain\Shared\Services\TenantContext;
 use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Tenant;
 use App\Models\User;
-use App\Domain\Shared\Services\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Sanctum;
 
 uses(RefreshDatabase::class);
@@ -50,7 +51,7 @@ beforeEach(function () {
 // Helper function equivalent
 function assertSecurityBlocked($response, $description)
 {
-    if ($response instanceof \Illuminate\Testing\TestResponse) {
+    if ($response instanceof TestResponse) {
         $status = $response->status();
         $validResponses = [401, 403, 404, 405];
 
@@ -85,7 +86,7 @@ test('it prevents cross tenant order access', function () {
         // No sensitive data leaked
         $content = $response->getContent();
         expect($content)->not->toContain('Cliente Secreto');
-    } catch (\Throwable $e) {
+    } catch (Throwable $e) {
         expect(true)->toBeTrue(); // Exception = Success
     }
 })->group('security', 'idor');
@@ -114,7 +115,7 @@ test('it prevents cross tenant product modification', function () {
         ]);
 
         assertSecurityBlocked($response, "Attacker modified victim's product");
-    } catch (\Throwable $e) {
+    } catch (Throwable $e) {
         expect(true)->toBeTrue();
     }
 
@@ -156,7 +157,7 @@ test('it prevents product listing leakage', function () {
 
         $content = $response->getContent();
         expect($content)->not->toContain('VICTIM_SECRET_PRODUCT');
-    } catch (\Throwable $e) {
+    } catch (Throwable $e) {
         expect(true)->toBeTrue();
     }
 })->group('security', 'information_disclosure');
@@ -209,7 +210,7 @@ test('it prevents cross tenant order deletion', function () {
         $response = $this->deleteJson("/api/orders/{$orderId}");
 
         assertSecurityBlocked($response, "Attacker deleted victim's order");
-    } catch (\Throwable $e) {
+    } catch (Throwable $e) {
         expect(true)->toBeTrue();
     }
 
@@ -246,7 +247,7 @@ test('it does not reveal resource existence through error responses', function (
         expect($nonExistingResponse->status())->toBeGreaterThanOrEqual(400)
             ->toBeLessThan(500);
 
-    } catch (\Throwable $e) {
+    } catch (Throwable $e) {
         expect(true)->toBeTrue();
     }
 })->group('security', 'enumeration');

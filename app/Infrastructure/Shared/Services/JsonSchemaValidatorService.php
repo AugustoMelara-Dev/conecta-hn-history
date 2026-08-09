@@ -17,7 +17,7 @@ final readonly class JsonSchemaValidatorService implements SchemaValidatorInterf
     public function __construct(
         private SchemaRegistryInterface $registry
     ) {
-        $this->validator = new \Opis\JsonSchema\Validator;
+        $this->validator = new Validator;
 
         // Optimize: register a loader if needed, but for now we fetch manually via registry
         // To strictly use Opis with our Registry, we might need a custom loader adapter.

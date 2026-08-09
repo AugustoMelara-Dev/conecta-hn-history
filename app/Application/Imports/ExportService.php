@@ -33,14 +33,12 @@ class ExportService
         return isset($this->registry[$entity]);
     }
 
-    /**
-     * @return object
-     */
     public function getExporterClass(string $entity, string $tenantId, array $filters = []): object
     {
         if (! $this->has($entity)) {
             throw new \InvalidArgumentException("No exporter registered for: {$entity}");
         }
+
         return ($this->registry[$entity])($tenantId, $filters);
     }
 

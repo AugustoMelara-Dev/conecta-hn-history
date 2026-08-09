@@ -28,6 +28,7 @@ trait HasImportTemplate
                 default => 'valor',
             };
         }
+
         return $row;
     }
 }

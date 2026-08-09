@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Security;
 
+use App\Infrastructure\Http\Middleware\IdentifyTenantMiddleware;
 use App\Models\Tenant;
 use App\Models\User;
+use Illuminate\Database\Eloquent\MassAssignmentException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 /**
@@ -31,9 +34,9 @@ class SecurityAuditComplianceTest extends TestCase
     public function tenant_aware_route_aborts_without_context(): void
     {
         // Register a test route that uses the IdentifyTenantMiddleware
-        \Illuminate\Support\Facades\Route::middleware([
+        Route::middleware([
             'web',
-            \App\Infrastructure\Http\Middleware\IdentifyTenantMiddleware::class,
+            IdentifyTenantMiddleware::class,
         ])->get('/__security_test/tenant-required', fn () => response()->json(['status' => 'ok']));
 
         // Request without authentication (no tenant context)
@@ -54,9 +57,9 @@ class SecurityAuditComplianceTest extends TestCase
         $user->tenant_id = $tenant->id;
         $user->save();
 
-        \Illuminate\Support\Facades\Route::middleware([
+        Route::middleware([
             'web',
-            \App\Infrastructure\Http\Middleware\IdentifyTenantMiddleware::class,
+            IdentifyTenantMiddleware::class,
         ])->get('/__security_test/tenant-success', fn () => response()->json(['status' => 'ok']));
 
         $response = $this->actingAs($user)->get('/__security_test/tenant-success');
@@ -74,7 +77,7 @@ class SecurityAuditComplianceTest extends TestCase
      */
     public function user_model_guards_tenant_id_from_mass_assignment(): void
     {
-        $this->expectException(\Illuminate\Database\Eloquent\MassAssignmentException::class);
+        $this->expectException(MassAssignmentException::class);
 
         User::create([
             'name' => 'Test User',

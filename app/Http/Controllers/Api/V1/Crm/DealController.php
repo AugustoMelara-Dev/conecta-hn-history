@@ -38,6 +38,7 @@ class DealController extends Controller
         }
 
         $perPage = (int) $request->query('per_page', 25);
+
         return DealResource::collection($query->paginate(min($perPage, 100)))->response();
     }
 
@@ -68,6 +69,7 @@ class DealController extends Controller
     public function show(CrmDeal $deal): JsonResponse
     {
         Gate::authorize('view', $deal);
+
         return (new DealResource($deal->load(['contact', 'company', 'owner', 'pipeline', 'stage'])))->response();
     }
 
@@ -86,6 +88,7 @@ class DealController extends Controller
             'description' => ['sometimes', 'nullable', 'string'],
         ]);
         $deal->update($data);
+
         return (new DealResource($deal))->response();
     }
 
@@ -93,6 +96,7 @@ class DealController extends Controller
     {
         Gate::authorize('delete', $deal);
         $deal->delete();
+
         return response()->json(['message' => 'Deal deleted successfully']);
     }
 
@@ -103,6 +107,7 @@ class DealController extends Controller
             'stage_id' => ['required', 'string', 'exists:crm_stages,id'],
         ]);
         $deal->update(['stage_id' => $data['stage_id']]);
+
         return (new DealResource($deal))->response();
     }
 
@@ -114,6 +119,7 @@ class DealController extends Controller
             'won_at' => now(),
             'probability' => 100,
         ]);
+
         return (new DealResource($deal))->response();
     }
 
@@ -129,6 +135,7 @@ class DealController extends Controller
             'lost_reason' => $data['lost_reason'],
             'probability' => 0,
         ]);
+
         return (new DealResource($deal))->response();
     }
 }

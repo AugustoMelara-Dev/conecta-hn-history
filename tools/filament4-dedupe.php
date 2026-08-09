@@ -1,12 +1,15 @@
 <?php
-$base = __DIR__ . '/app/Filament';
+
+$base = __DIR__.'/app/Filament';
 $iter = new RecursiveIteratorIterator(
     new RecursiveDirectoryIterator($base, RecursiveDirectoryIterator::SKIP_DOTS),
     RecursiveIteratorIterator::SELF_FIRST
 );
 $count = 0;
 foreach ($iter as $file) {
-    if (!$file->isFile() || $file->getExtension() !== 'php') continue;
+    if (! $file->isFile() || $file->getExtension() !== 'php') {
+        continue;
+    }
     $path = $file->getPathname();
     $original = file_get_contents($path);
     $updated = $original;
@@ -25,7 +28,7 @@ foreach ($iter as $file) {
     if ($updated !== $original) {
         file_put_contents($path, $updated);
         $count++;
-        echo "Deduped: " . basename($path) . "\n";
+        echo 'Deduped: '.basename($path)."\n";
     }
 }
 echo "Total deduped: $count\n";

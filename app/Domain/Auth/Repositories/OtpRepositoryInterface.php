@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Auth\Repositories;
 
 use App\Domain\Auth\Entities\OtpEntity;
+use App\Domain\Auth\Exceptions\MaxOtpAttemptsExceededException;
 
 /**
  * OtpRepositoryInterface - Tenant-Aware Data Mapper Contract
@@ -58,7 +59,7 @@ interface OtpRepositoryInterface
      * @param  string  $otpId  Unique Entity ID
      * @param  int  $maxAttempts  Threshold
      *
-     * @throws \App\Domain\Auth\Exceptions\MaxOtpAttemptsExceededException
+     * @throws MaxOtpAttemptsExceededException
      */
     public function incrementAttemptsAtomically(string $otpId, int $maxAttempts): void;
 

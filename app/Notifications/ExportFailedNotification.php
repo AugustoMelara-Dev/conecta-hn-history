@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Notifications;
 
+use Illuminate\Broadcasting\Channel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\BroadcastMessage;
@@ -75,7 +76,7 @@ final class ExportFailedNotification extends Notification implements ShouldQueue
     /**
      * Get the channels the event should broadcast on.
      *
-     * @return array<\Illuminate\Broadcasting\Channel>
+     * @return array<Channel>
      */
     public function broadcastOn(): array
     {

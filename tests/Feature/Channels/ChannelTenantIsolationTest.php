@@ -8,8 +8,10 @@ use App\Application\Channels\ChannelAuthorizationEnvelope;
 use App\Application\Channels\ChannelContext;
 use App\Application\Channels\ConversationChannelBridge;
 use App\Application\Channels\NormalizedInboundMessage;
+use App\Domain\Shared\Services\TenantContext;
 use App\Models\Tenant;
 use App\Models\User;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -26,7 +28,7 @@ final class ChannelTenantIsolationTest extends TestCase
         $contextA = $this->context($tenantA, $actorA);
         $messageB = $this->message($tenantB, 'event-b');
 
-        $this->expectException(\Illuminate\Auth\Access\AuthorizationException::class);
+        $this->expectException(AuthorizationException::class);
         app(ConversationChannelBridge::class)->resolveOrCreate((string) $tenantA->getKey(), $contextA, $messageB, (string) Str::uuid());
 
         self::assertSame(0, DB::table('dovra_conversation_channel_links')->where('tenant_id', $tenantB->getKey())->count());
@@ -38,8 +40,8 @@ final class ChannelTenantIsolationTest extends TestCase
         $actor = User::factory()->create();
         $tenant = Tenant::factory()->forUser($actor)->pro()->create();
         if ($setContext) {
-            $this->app->make(\App\Domain\Shared\Services\TenantContext::class)->reset();
-            $this->app->make(\App\Domain\Shared\Services\TenantContext::class)->setTenant((string) $tenant->getKey());
+            $this->app->make(TenantContext::class)->reset();
+            $this->app->make(TenantContext::class)->setTenant((string) $tenant->getKey());
         }
 
         return [$tenant, $actor];

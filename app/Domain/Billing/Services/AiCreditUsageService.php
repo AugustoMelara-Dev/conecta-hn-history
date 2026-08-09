@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Billing\Services;
 
+use App\Exceptions\InsufficientAiCreditsException;
 use App\Models\Tenant;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -88,7 +89,7 @@ final class AiCreditUsageService
         $monthlyProjected = $usage['spent'] + $usage['reserved'] + $estimatedCost;
 
         if ($monthlyProjected > $usage['allowance'] + 0.000001) {
-            throw \App\Exceptions\InsufficientAiCreditsException::forOperation(
+            throw InsufficientAiCreditsException::forOperation(
                 tenantId: (string) $tenant->getKey(),
                 operation: 'monthly_limit',
                 estimatedCost: $estimatedCost,
@@ -97,7 +98,7 @@ final class AiCreditUsageService
         }
 
         if ($usage['daily_limit'] > 0 && $projected > $usage['daily_limit'] + 0.000001) {
-            throw \App\Exceptions\InsufficientAiCreditsException::forDailyLimit(
+            throw InsufficientAiCreditsException::forDailyLimit(
                 tenantId: (string) $tenant->getKey(),
                 requiredCredits: $estimatedCost,
                 remainingDailyCredits: max(0, $usage['daily_limit'] - $usage['spent_today'] - $usage['reserved_today']),

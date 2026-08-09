@@ -17,11 +17,13 @@ class ScheduleWorkflowExecution extends Command
     {
         $workflow = AutomationWorkflowDefinition::find($this->argument('workflowId'));
         if (! $workflow) {
-            $this->error("Workflow not found.");
+            $this->error('Workflow not found.');
+
             return self::FAILURE;
         }
         $workflow->update(['cron_expression' => $this->option('cron')]);
-        $this->info("Workflow scheduled.");
+        $this->info('Workflow scheduled.');
+
         return self::SUCCESS;
     }
 }

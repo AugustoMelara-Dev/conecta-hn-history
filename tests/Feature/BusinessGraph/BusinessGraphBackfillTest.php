@@ -90,5 +90,4 @@ final class BusinessGraphBackfillTest extends TestCase
             'tenant_id' => $tenantB->getKey(),
         ]);
     }
-
 }

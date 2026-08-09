@@ -13,12 +13,35 @@ use Illuminate\Support\Facades\DB;
 
 class CustomerLtvReport implements ReportInterface
 {
-    public function getKey(): ReportKey { return ReportKey::CustomerLtv; }
-    public function getName(): string { return 'LTV del cliente'; }
-    public function getDescription(): string { return 'Customer Lifetime Value promedio.'; }
-    public function getChartType(): string { return 'gauge'; }
-    public function getColumns(): array { return ['Segmento', 'LTV (HNL)', 'Órdenes promedio']; }
-    public function getFilters(): array { return []; }
+    public function getKey(): ReportKey
+    {
+        return ReportKey::CustomerLtv;
+    }
+
+    public function getName(): string
+    {
+        return 'LTV del cliente';
+    }
+
+    public function getDescription(): string
+    {
+        return 'Customer Lifetime Value promedio.';
+    }
+
+    public function getChartType(): string
+    {
+        return 'gauge';
+    }
+
+    public function getColumns(): array
+    {
+        return ['Segmento', 'LTV (HNL)', 'Órdenes promedio'];
+    }
+
+    public function getFilters(): array
+    {
+        return [];
+    }
 
     public function getData(string $tenantId, ReportRange $range): ReportData
     {

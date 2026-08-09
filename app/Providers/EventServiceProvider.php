@@ -4,7 +4,15 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Application\Billing\Listeners\ProcessPaymentWebhookReceived;
+use App\Application\Billing\Listeners\PromotePaymentEvidence;
+use App\Domain\Billing\Events\PaymentReported;
+use App\Domain\Billing\Events\PaymentWebhookReceived;
+use App\Domain\Identity\Events\TenantRegistered;
+use App\Domain\User\Events\UserProfileUpdated;
 use App\Infrastructure\Identity\Projections\ProjectionEventSubscriber;
+use App\Infrastructure\Listeners\Identity\BridgeLaravelAuthEvents;
+use App\Infrastructure\User\Listeners\SendProfileUpdateNotificationListener;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
 class EventServiceProvider extends ServiceProvider
@@ -28,19 +36,19 @@ class EventServiceProvider extends ServiceProvider
     protected $listen = [
 
         // Canonical (V2)
-        \App\Domain\User\Events\UserProfileUpdated::NAME => [
-            \App\Infrastructure\User\Listeners\SendProfileUpdateNotificationListener::class,
+        UserProfileUpdated::NAME => [
+            SendProfileUpdateNotificationListener::class,
         ],
 
-        \App\Domain\Identity\Events\TenantRegistered::class => [
-            \App\Infrastructure\Listeners\Identity\BridgeLaravelAuthEvents::class,
+        TenantRegistered::class => [
+            BridgeLaravelAuthEvents::class,
         ],
         // BILLING MODULE (Level 27 - Wired)
-        \App\Domain\Billing\Events\PaymentReported::class => [
-            \App\Application\Billing\Listeners\PromotePaymentEvidence::class,
+        PaymentReported::class => [
+            PromotePaymentEvidence::class,
         ],
-        \App\Domain\Billing\Events\PaymentWebhookReceived::class => [
-            \App\Application\Billing\Listeners\ProcessPaymentWebhookReceived::class,
+        PaymentWebhookReceived::class => [
+            ProcessPaymentWebhookReceived::class,
         ],
 
         /**
@@ -49,8 +57,8 @@ class EventServiceProvider extends ServiceProvider
          * Action: Remove this mapping entry when traffic = 0 for 30 consecutive days.
          * Creation Date: 2026-01-17
          */
-        \App\Domain\User\Events\UserProfileUpdated::LEGACY_NAME => [
-            \App\Infrastructure\User\Listeners\SendProfileUpdateNotificationListener::class,
+        UserProfileUpdated::LEGACY_NAME => [
+            SendProfileUpdateNotificationListener::class,
         ],
     ];
 

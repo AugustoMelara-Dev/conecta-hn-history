@@ -5,21 +5,24 @@ declare(strict_types=1);
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\CouponResource\Pages;
+use App\Filament\Traits\ScopesToTenant;
 use App\Models\Coupon;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\DateTimePicker;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Validation\Rules\Unique;
 
 /**
  * CouponResource - Promotional Discount Management
@@ -31,7 +34,7 @@ class CouponResource extends Resource
 {
     protected static ?string $model = Coupon::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-tag';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-tag';
 
     protected static ?string $navigationLabel = 'Cupones';
 
@@ -39,7 +42,7 @@ class CouponResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Cupones';
 
-    protected static string | \UnitEnum | null $navigationGroup = 'Ventas';
+    protected static string|\UnitEnum|null $navigationGroup = 'Ventas';
 
     protected static ?int $navigationSort = 4;
 
@@ -65,8 +68,8 @@ class CouponResource extends Resource
                                     table: 'coupons',
                                     column: 'code',
                                     ignoreRecord: true,
-                                    modifyRuleUsing: function (\Illuminate\Validation\Rules\Unique $rule) {
-                                        $tenant = \Filament\Facades\Filament::getTenant();
+                                    modifyRuleUsing: function (Unique $rule) {
+                                        $tenant = Filament::getTenant();
                                         if ($tenant) {
                                             return $rule->where('tenant_id', $tenant->id);
                                         }
@@ -286,7 +289,7 @@ class CouponResource extends Resource
             ->poll('60s');
     }
 
-    use \App\Filament\Traits\ScopesToTenant;
+    use ScopesToTenant;
 
     public static function getRelations(): array
     {

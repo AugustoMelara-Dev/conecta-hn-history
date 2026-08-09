@@ -6,6 +6,7 @@ namespace App\Events\Order;
 
 use App\Contracts\Events\DomainEvent;
 use App\Domain\Shared\ValueObjects\TenantId;
+use App\Exceptions\CorruptedDomainEventException;
 use App\Traits\HasDomainMetadata;
 use App\ValueObjects\OrderNumber;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
@@ -166,16 +167,16 @@ final readonly class OrderCancelled implements DomainEvent, ShouldDispatchAfterC
 
         foreach ($requiredKeys as $key) {
             if (! array_key_exists($key, $primitives)) {
-                throw \App\Exceptions\CorruptedDomainEventException::missingKey($key, self::class);
+                throw CorruptedDomainEventException::missingKey($key, self::class);
             }
             if ($primitives[$key] === null) {
-                throw \App\Exceptions\CorruptedDomainEventException::nullValue($key, self::class);
+                throw CorruptedDomainEventException::nullValue($key, self::class);
             }
         }
 
         // was_paid is CRITICAL for refund logic - must be explicitly set
         if (! array_key_exists('was_paid', $primitives)) {
-            throw \App\Exceptions\CorruptedDomainEventException::missingKey('was_paid', self::class);
+            throw CorruptedDomainEventException::missingKey('was_paid', self::class);
         }
 
         return new self(

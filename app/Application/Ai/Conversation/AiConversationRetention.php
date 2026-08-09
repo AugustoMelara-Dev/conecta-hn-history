@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Ai\Conversation;
 
-use Illuminate\Support\Carbon;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -152,7 +152,7 @@ class AiConversationRetention
             ->get();
     }
 
-    protected function expiredConversationCandidates(bool $skipLegalHolds): \Illuminate\Database\Query\Builder
+    protected function expiredConversationCandidates(bool $skipLegalHolds): Builder
     {
         $query = DB::table('ai_conversations')
             ->whereNotNull('ai_conversations.retention_expires_at')

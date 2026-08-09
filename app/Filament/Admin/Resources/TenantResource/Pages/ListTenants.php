@@ -11,5 +11,9 @@ use Filament\Resources\Pages\ListRecords;
 class ListTenants extends ListRecords
 {
     protected static string $resource = TenantResource::class;
-    protected function getHeaderActions(): array { return [CreateAction::make()->label('Nuevo tenant')]; }
+
+    protected function getHeaderActions(): array
+    {
+        return [CreateAction::make()->label('Nuevo tenant')];
+    }
 }

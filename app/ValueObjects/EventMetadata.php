@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\ValueObjects;
 
 use DateTimeImmutable;
+use Illuminate\Support\Str;
 
 /**
  * EventMetadata - Immutable Context Carrier for Domain Events
@@ -166,7 +167,7 @@ final readonly class EventMetadata
      */
     private static function generateCorrelationId(): string
     {
-        return (string) \Illuminate\Support\Str::uuid();
+        return (string) Str::uuid();
     }
 
     /**

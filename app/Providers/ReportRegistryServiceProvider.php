@@ -42,35 +42,35 @@ class ReportRegistryServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(ReportRegistry::class, function () {
-            $registry = new ReportRegistry();
+            $registry = new ReportRegistry;
 
             // Manually register each report
             $reports = [
-                new RevenueByMonthReport(),
-                new MrrArrReport(),
-                new AvgOrderValueReport(),
-                new TopProductsReport(),
-                new CustomerLtvReport(),
-                new ChurnRateReport(),
-                new CampaignRoiReport(),
-                new ConversionFunnelReport(),
-                new DealVelocityReport(),
-                new WinRateReport(),
-                new LeadScoreReport(),
-                new ActivityVolumeReport(),
-                new CohortRetentionReport(),
-                new AttributionBySourceReport(),
-                new ChannelPerformanceReport(),
-                new NpsScoreReport(),
-                new SlowMoversReport(),
-                new InventoryTurnoverReport(),
-                new FulfillmentSlaReport(),
-                new GeographicDistributionReport(),
-                new EmployeePerformanceReport(),
-                new ProductMarginReport(),
-                new DiscountEffectivenessReport(),
-                new RefundRateReport(),
-                new CustomerSegmentsReport(),
+                new RevenueByMonthReport,
+                new MrrArrReport,
+                new AvgOrderValueReport,
+                new TopProductsReport,
+                new CustomerLtvReport,
+                new ChurnRateReport,
+                new CampaignRoiReport,
+                new ConversionFunnelReport,
+                new DealVelocityReport,
+                new WinRateReport,
+                new LeadScoreReport,
+                new ActivityVolumeReport,
+                new CohortRetentionReport,
+                new AttributionBySourceReport,
+                new ChannelPerformanceReport,
+                new NpsScoreReport,
+                new SlowMoversReport,
+                new InventoryTurnoverReport,
+                new FulfillmentSlaReport,
+                new GeographicDistributionReport,
+                new EmployeePerformanceReport,
+                new ProductMarginReport,
+                new DiscountEffectivenessReport,
+                new RefundRateReport,
+                new CustomerSegmentsReport,
             ];
 
             foreach ($reports as $report) {

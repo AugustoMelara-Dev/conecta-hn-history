@@ -3,32 +3,45 @@
 declare(strict_types=1);
 
 use App\Application\AI\AssistantExecutor;
+use App\Application\AI\Assistants\ContactEnrichmentAssistant;
+use App\Application\AI\Assistants\DashboardNarrativeAssistant;
+use App\Application\AI\Assistants\DealEmailDraftAssistant;
+use App\Application\AI\Assistants\EmailReplyAssistant;
+use App\Application\AI\Assistants\InvoiceMemoAssistant;
+use App\Application\AI\Assistants\LeadScoringAssistant;
+use App\Application\AI\Assistants\NextBestActionAssistant;
+use App\Application\AI\Assistants\ProductDescriptionAssistant;
+use App\Application\AI\Assistants\RefundJustificationAssistant;
+use App\Application\AI\Assistants\ReportInsightAssistant;
+use App\Application\AI\Assistants\SentimentAssistant;
+use App\Application\AI\Assistants\TaxCategoryAssistant;
+use App\Application\AI\Assistants\TranslationAssistant;
 
 it('AssistantExecutor registers all 13 assistants', function () {
-    $executor = new AssistantExecutor();
+    $executor = new AssistantExecutor;
     $classes = [
-        \App\Application\AI\Assistants\DealEmailDraftAssistant::class,
-        \App\Application\AI\Assistants\ContactEnrichmentAssistant::class,
-        \App\Application\AI\Assistants\LeadScoringAssistant::class,
-        \App\Application\AI\Assistants\ProductDescriptionAssistant::class,
-        \App\Application\AI\Assistants\InvoiceMemoAssistant::class,
-        \App\Application\AI\Assistants\RefundJustificationAssistant::class,
-        \App\Application\AI\Assistants\DashboardNarrativeAssistant::class,
-        \App\Application\AI\Assistants\EmailReplyAssistant::class,
-        \App\Application\AI\Assistants\SentimentAssistant::class,
-        \App\Application\AI\Assistants\TranslationAssistant::class,
-        \App\Application\AI\Assistants\TaxCategoryAssistant::class,
-        \App\Application\AI\Assistants\NextBestActionAssistant::class,
-        \App\Application\AI\Assistants\ReportInsightAssistant::class,
+        DealEmailDraftAssistant::class,
+        ContactEnrichmentAssistant::class,
+        LeadScoringAssistant::class,
+        ProductDescriptionAssistant::class,
+        InvoiceMemoAssistant::class,
+        RefundJustificationAssistant::class,
+        DashboardNarrativeAssistant::class,
+        EmailReplyAssistant::class,
+        SentimentAssistant::class,
+        TranslationAssistant::class,
+        TaxCategoryAssistant::class,
+        NextBestActionAssistant::class,
+        ReportInsightAssistant::class,
     ];
     foreach ($classes as $class) {
-        $executor->register(new $class());
+        $executor->register(new $class);
     }
     expect(count($executor->all()))->toBe(13);
 });
 
 it('DealEmailDraftAssistant requires deal_id', function () {
-    $assistant = new \App\Application\AI\Assistants\DealEmailDraftAssistant();
+    $assistant = new DealEmailDraftAssistant;
     expect($assistant->key())->toBe('deal_email_draft');
     expect($assistant->estimateCost())->toBe(0.05);
     expect($assistant->category())->toBe('CRM');
@@ -42,7 +55,7 @@ it('DealEmailDraftAssistant requires deal_id', function () {
 });
 
 it('LeadScoringAssistant returns score structure', function () {
-    $assistant = new \App\Application\AI\Assistants\LeadScoringAssistant();
+    $assistant = new LeadScoringAssistant;
     $result = $assistant->execute(['contact_id' => 'abc']);
     expect($result->success)->toBeTrue();
     expect($result->output)->toHaveKey('score');
@@ -50,7 +63,7 @@ it('LeadScoringAssistant returns score structure', function () {
 });
 
 it('TranslationAssistant requires text + target_lang', function () {
-    $assistant = new \App\Application\AI\Assistants\TranslationAssistant();
+    $assistant = new TranslationAssistant;
     $result = $assistant->execute(['text' => 'Hola mundo', 'target_lang' => 'en']);
     expect($result->success)->toBeTrue();
 
@@ -59,8 +72,8 @@ it('TranslationAssistant requires text + target_lang', function () {
 });
 
 it('AssistantExecutor.execute calls assistant and returns result', function () {
-    $executor = new AssistantExecutor();
-    $executor->register(new \App\Application\AI\Assistants\LeadScoringAssistant());
+    $executor = new AssistantExecutor;
+    $executor->register(new LeadScoringAssistant);
 
     $result = $executor->execute('lead_scoring', ['contact_id' => 'test']);
     expect($result->success)->toBeTrue();

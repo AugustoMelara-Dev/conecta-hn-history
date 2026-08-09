@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Common\Projections;
 
 use App\Domain\Common\Contracts\EventStoreRepositoryInterface;
+use App\Infrastructure\Common\EventStore\ProjectorInterface;
 use App\Infrastructure\Identity\Projections\UserProjector;
 
 /**
@@ -15,7 +16,7 @@ use App\Infrastructure\Identity\Projections\UserProjector;
  */
 final class ProjectionManager
 {
-    /** @var array<string, \App\Infrastructure\Common\EventStore\ProjectorInterface> */
+    /** @var array<string, ProjectorInterface> */
     private array $projectors = [];
 
     public function __construct(

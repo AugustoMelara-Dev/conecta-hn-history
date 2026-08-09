@@ -1,26 +1,29 @@
 <?php
+
 declare(strict_types=1);
-$base = __DIR__ . '/app/Filament';
+$base = __DIR__.'/app/Filament';
 $count = 0;
 $iter = new RecursiveIteratorIterator(
     new RecursiveDirectoryIterator($base, RecursiveDirectoryIterator::SKIP_DOTS),
     RecursiveIteratorIterator::SELF_FIRST
 );
 foreach ($iter as $file) {
-    if (!$file->isFile() || $file->getExtension() !== 'php') continue;
+    if (! $file->isFile() || $file->getExtension() !== 'php') {
+        continue;
+    }
     $path = $file->getPathname();
     $original = file_get_contents($path);
     $updated = $original;
 
     // 1. Add Heroicon import if needed
-    if (preg_match("/navigationIcon = 'heroicon-/i", $updated) && !str_contains($updated, 'use Filament\Support\Icons\Heroicon')) {
-        $updated = preg_replace("/(use Filament\\\\Forms\\\\Form;)/", "use Filament\\Forms\\Form;\nuse Filament\\Support\\Icons\\Heroicon;", $updated, 1);
-        $updated = preg_replace("/(use Filament\\\\Tables\\\\Table;)/", "use Filament\\Tables\\Table;\nuse Filament\\Support\\Icons\\Heroicon;", $updated, 1);
+    if (preg_match("/navigationIcon = 'heroicon-/i", $updated) && ! str_contains($updated, 'use Filament\Support\Icons\Heroicon')) {
+        $updated = preg_replace('/(use Filament\\\\Forms\\\\Form;)/', "use Filament\\Forms\\Form;\nuse Filament\\Support\\Icons\\Heroicon;", $updated, 1);
+        $updated = preg_replace('/(use Filament\\\\Tables\\\\Table;)/', "use Filament\\Tables\\Table;\nuse Filament\\Support\\Icons\\Heroicon;", $updated, 1);
     }
 
     // 2. Add Schema import if needed
-    if (str_contains($updated, 'Schema::make()') && !str_contains($updated, 'use Filament\Schemas\Schema')) {
-        $updated = preg_replace("/(use Filament\\\\Forms\\\\Form;)/", "use Filament\\Forms\\Form;\nuse Filament\\Schemas\\Schema;", $updated, 1);
+    if (str_contains($updated, 'Schema::make()') && ! str_contains($updated, 'use Filament\Schemas\Schema')) {
+        $updated = preg_replace('/(use Filament\\\\Forms\\\\Form;)/', "use Filament\\Forms\\Form;\nuse Filament\\Schemas\\Schema;", $updated, 1);
     }
 
     // 3. Convert navigationIcon to Heroicon enum
@@ -29,6 +32,7 @@ foreach ($iter as $file) {
         function ($m) {
             $style = ucfirst($m[1]);
             $name = str_replace(' ', '', ucwords(str_replace('-', ' ', $m[2])));
+
             return "protected static BackedEnum|string|null \$navigationIcon = Heroicon::{$style}{$name};";
         },
         $updated
@@ -52,7 +56,7 @@ foreach ($iter as $file) {
     if ($updated !== $original) {
         file_put_contents($path, $updated);
         $count++;
-        echo "Migrated: " . basename($path) . "\n";
+        echo 'Migrated: '.basename($path)."\n";
     }
 }
 echo "Total: $count\n";

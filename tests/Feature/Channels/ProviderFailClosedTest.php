@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Channels;
 
-use App\Application\Channels\ChannelConnectionService;
 use App\Application\Channels\ChannelAuthorizationEnvelope;
+use App\Application\Channels\ChannelConnectionService;
 use App\Application\Channels\ChannelContext;
 use App\Application\Channels\ChannelDeliveryService;
 use App\Application\Channels\ChannelOutboundMessage;

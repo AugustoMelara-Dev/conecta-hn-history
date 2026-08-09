@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Widgets;
 
 use App\Domain\TenantGovernance\Enums\TenantPlan;
+use App\Domain\TenantGovernance\Services\SubscriptionPricingService;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
@@ -126,7 +127,7 @@ class FinancialStatsOverview extends BaseWidget
 
     private function monthlyPlanPrice(): float
     {
-        return \App\Domain\TenantGovernance\Services\SubscriptionPricingService::canonicalProPriceInMajorUnits();
+        return SubscriptionPricingService::canonicalProPriceInMajorUnits();
     }
 
     private function money(float $amount): string

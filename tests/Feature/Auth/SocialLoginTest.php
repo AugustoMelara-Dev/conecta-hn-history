@@ -41,14 +41,14 @@ class SocialLoginTest extends TestCase
     {
         $payload = [
             'provider' => 'google',
-            'token' => 'ya29.valid-google-oauth-token-' . str_repeat('x', 100),
+            'token' => 'ya29.valid-google-oauth-token-'.str_repeat('x', 100),
             'provider_id' => '123456789012345678901',
             'email' => 'valid.user@gmail.com',
             'name' => 'Test User',
             'avatar' => 'https://lh3.googleusercontent.com/a/photo.jpg',
         ];
 
-        $validator = Validator::make($payload, (new SocialLoginRequest())->rules());
+        $validator = Validator::make($payload, (new SocialLoginRequest)->rules());
         $this->assertFalse($validator->fails(), 'Valid social payload should pass FormRequest validation rules.');
     }
 
@@ -184,7 +184,7 @@ class SocialLoginTest extends TestCase
         foreach ($supportedProviders as $provider) {
             $payload = [
                 'provider' => $provider,
-                'token' => 'valid-token-' . $provider,
+                'token' => 'valid-token-'.$provider,
                 'provider_id' => '123456789',
                 'email' => "user.{$provider}@example.com",
                 'name' => 'Test User',

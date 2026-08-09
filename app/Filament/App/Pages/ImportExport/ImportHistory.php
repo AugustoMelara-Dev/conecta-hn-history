@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Pages\ImportExport;
 
+use Filament\Facades\Filament;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\DB;
 
@@ -12,11 +13,11 @@ use Illuminate\Support\Facades\DB;
  */
 class ImportHistory extends Page
 {
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-clock';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-clock';
 
     protected static ?string $title = 'Historial de importaciones';
 
-    protected static string | \UnitEnum | null $navigationGroup = 'Configuración';
+    protected static string|\UnitEnum|null $navigationGroup = 'Configuración';
 
     protected static ?string $navigationLabel = 'Historial';
 
@@ -26,8 +27,10 @@ class ImportHistory extends Page
 
     public function getRecentImports(): array
     {
-        $tenantId = \Filament\Facades\Filament::getTenant()?->getKey();
-        if (! $tenantId) return [];
+        $tenantId = Filament::getTenant()?->getKey();
+        if (! $tenantId) {
+            return [];
+        }
 
         return DB::table('import_jobs')
             ->where('tenant_id', $tenantId)

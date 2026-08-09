@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources\Crm;
 
-use App\Application\Crm\LeadScoringService;
 use App\Domain\Crm\Enums\DealStatus;
 use App\Filament\App\Resources\Crm\DealResource\Pages;
+use App\Filament\App\Resources\Crm\DealResource\RelationManagers\ActivitiesRelationManager;
 use App\Models\CrmDeal;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -24,7 +24,6 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -34,9 +33,9 @@ class DealResource extends Resource
 {
     protected static ?string $model = CrmDeal::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-currency-dollar';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-currency-dollar';
 
-    protected static string | \UnitEnum | null $navigationGroup = 'CRM';
+    protected static string|\UnitEnum|null $navigationGroup = 'CRM';
 
     protected static ?string $navigationLabel = 'Deals';
 
@@ -309,7 +308,7 @@ class DealResource extends Resource
     public static function getRelations(): array
     {
         return [
-            \App\Filament\App\Resources\Crm\DealResource\RelationManagers\ActivitiesRelationManager::class,
+            ActivitiesRelationManager::class,
         ];
     }
 

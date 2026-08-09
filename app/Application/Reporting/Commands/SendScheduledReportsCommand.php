@@ -17,6 +17,7 @@ class SendScheduledReportsCommand extends Command
     {
         $stats = $scheduler->processDue();
         $this->info("Processed: {$stats['processed']}, Sent: {$stats['sent']}, Errors: {$stats['errors']}");
+
         return self::SUCCESS;
     }
 }

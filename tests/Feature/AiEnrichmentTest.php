@@ -9,6 +9,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Services\AiProfileGeneratorService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
@@ -22,7 +23,7 @@ beforeEach(function () {
 
 afterEach(function () {
     Mockery::close();
-    Log::swap(new \Illuminate\Log\LogManager(app()));
+    Log::swap(new LogManager(app()));
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════

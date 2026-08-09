@@ -26,12 +26,14 @@ class RunImportSync extends Command
 
         if (! $importService->has($entity)) {
             $this->error("Unknown entity: {$entity}");
+
             return self::FAILURE;
         }
 
         $path = Storage::disk('local')->path($file);
         if (! file_exists($path)) {
             $this->error("File not found: {$path}");
+
             return self::FAILURE;
         }
 
@@ -40,10 +42,12 @@ class RunImportSync extends Command
 
         if ($result['success']) {
             $this->info("Imported {$result['imported']} rows in {$result['duration_ms']}ms");
+
             return self::SUCCESS;
         }
 
-        $this->error('Errors: ' . implode(', ', $result['errors']));
+        $this->error('Errors: '.implode(', ', $result['errors']));
+
         return self::FAILURE;
     }
 }

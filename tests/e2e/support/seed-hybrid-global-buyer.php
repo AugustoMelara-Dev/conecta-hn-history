@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Contracts\Console\Kernel;
+use Tests\Support\HybridGlobalBuyerFixture;
 
 $repositoryRoot = dirname(__DIR__, 3);
 $fail = static function (string $message): never {
@@ -51,11 +52,11 @@ try {
         $fail('hybrid global buyer seed database path mismatch');
     }
 
-    if (! class_exists(Tests\Support\HybridGlobalBuyerFixture::class)) {
+    if (! class_exists(HybridGlobalBuyerFixture::class)) {
         require_once $repositoryRoot.'/tests/Support/HybridGlobalBuyerFixture.php';
     }
 
-    $state = Tests\Support\HybridGlobalBuyerFixture::seed();
+    $state = HybridGlobalBuyerFixture::seed();
     echo json_encode([
         'status' => 'ok',
         'fixture' => 'hybrid-global-buyer',

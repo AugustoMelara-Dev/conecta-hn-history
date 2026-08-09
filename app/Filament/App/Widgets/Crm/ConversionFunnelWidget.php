@@ -12,12 +12,15 @@ use Illuminate\Support\Facades\DB;
 class ConversionFunnelWidget extends ChartWidget
 {
     protected ?string $heading = 'Embudo de conversión';
+
     protected static ?int $sort = 22;
 
     protected function getData(): array
     {
         $tenantId = Filament::getTenant()?->getKey();
-        if (! $tenantId) return ['datasets' => [], 'labels' => []];
+        if (! $tenantId) {
+            return ['datasets' => [], 'labels' => []];
+        }
 
         $stages = [
             LifecycleStage::Lead->value,
@@ -41,5 +44,8 @@ class ConversionFunnelWidget extends ChartWidget
         ];
     }
 
-    protected function getType(): string { return 'bar'; }
+    protected function getType(): string
+    {
+        return 'bar';
+    }
 }

@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Channels;
 
+use App\Application\Channels\ChannelAttachmentPolicy;
 use App\Application\Channels\ChannelAuthorizationEnvelope;
 use App\Application\Channels\ChannelContext;
 use App\Application\Channels\ChannelInboundMessage;
-use App\Application\Channels\ChannelAttachmentPolicy;
 use App\Application\Channels\ConversationChannelBridge;
 use App\Application\Channels\WebhookAuthenticityEnvelope;
+use App\Domain\Shared\Services\TenantContext;
 use App\Infrastructure\Channels\Email\FakeEmailAdapter;
 use App\Infrastructure\Channels\Support\AttachmentClassifier;
 use App\Infrastructure\Channels\WebChat\FakeWebChatAdapter;
@@ -392,7 +393,7 @@ final class ChannelAttachmentSecurityTest extends TestCase
         $actor = User::factory()->create();
         $tenant = Tenant::factory()->forUser($actor)->create();
         GlobalMarketFixture::assignCanada($tenant);
-        app(\App\Domain\Shared\Services\TenantContext::class)->setTenant((string) $tenant->id);
+        app(TenantContext::class)->setTenant((string) $tenant->id);
         $context = $this->context($tenant, $actor, 'web_chat', 'foreign-web-chat');
         $message = new ChannelInboundMessage(
             tenantId: (string) $tenant->id,

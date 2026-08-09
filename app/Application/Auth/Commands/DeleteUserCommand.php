@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Application\Auth\Commands;
 
+use App\Application\Common\Contracts\HashableCommandInterface;
+
 /**
  * DeleteUserCommand - Secure User Deletion Intent Contract
  *
@@ -13,7 +15,7 @@ namespace App\Application\Auth\Commands;
  * ║  PRIMITIVES ONLY: No Eloquent models - just scalar types.               ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class DeleteUserCommand implements \App\Application\Common\Contracts\HashableCommandInterface
+final readonly class DeleteUserCommand implements HashableCommandInterface
 {
     public function __construct(
         /** User ID to delete (UUID string) */

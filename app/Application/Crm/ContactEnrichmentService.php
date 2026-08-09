@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Application\Crm;
 
 use App\Models\Contact;
-use Illuminate\Support\Facades\DB;
 
 /**
  * ContactEnrichmentService - Enriquece datos de contacto via OpenAI structured-output.

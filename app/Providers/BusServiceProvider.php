@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Application\Shared\Contracts\EventBusInterface;
 use App\Application\Shared\Middleware\TransactionMiddleware;
 use App\Application\Shared\Middleware\ValidationMiddleware;
+use App\Infrastructure\Bus\LaravelEventBus;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\ServiceProvider;
 
@@ -25,8 +27,8 @@ final class BusServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(
-            \App\Application\Shared\Contracts\EventBusInterface::class,
-            \App\Infrastructure\Bus\LaravelEventBus::class
+            EventBusInterface::class,
+            LaravelEventBus::class
         );
     }
 

@@ -18,7 +18,6 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Filament\Tables;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -26,11 +25,17 @@ use Filament\Tables\Table;
 class UserResource extends Resource
 {
     protected static ?string $model = User::class;
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-user-circle';
-    protected static string | \UnitEnum | null $navigationGroup = 'Plataforma';
+
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-user-circle';
+
+    protected static string|\UnitEnum|null $navigationGroup = 'Plataforma';
+
     protected static ?string $navigationLabel = 'Usuarios globales';
+
     protected static ?string $modelLabel = 'usuario';
+
     protected static ?string $pluralModelLabel = 'Usuarios globales';
+
     protected static ?int $navigationSort = 11;
 
     public static function form(Schema $schema): Schema
@@ -66,7 +71,7 @@ class UserResource extends Resource
                     ->color('warning')
                     ->action(function ($record) {
                         auth()->login($record);
-                        Notification::make()->title('Impersonando a ' . $record->name)->warning()->send();
+                        Notification::make()->title('Impersonando a '.$record->name)->warning()->send();
                     }),
                 Action::make('reset_mfa')
                     ->label('Reset MFA')
@@ -81,7 +86,10 @@ class UserResource extends Resource
             ->defaultSort('created_at', 'desc');
     }
 
-    public static function getRelations(): array { return []; }
+    public static function getRelations(): array
+    {
+        return [];
+    }
 
     public static function getPages(): array
     {

@@ -9,6 +9,7 @@ use App\Application\Auth\Results\VerifyOtpResult;
 use App\Application\Shared\Contracts\OutboxRepositoryInterface;
 use App\Domain\Auth\Events\OtpVerified;
 use App\Domain\Auth\Exceptions\InvalidOtpException;
+use App\Domain\Auth\Exceptions\MaxOtpAttemptsExceededException;
 use App\Domain\Auth\Exceptions\OtpExpiredException;
 use App\Domain\Auth\Repositories\OtpRepositoryInterface;
 use App\Domain\Auth\Services\OtpHasherInterface;
@@ -56,7 +57,7 @@ final readonly class VerifyOtpHandler implements VerifyOtpHandlerInterface
 
         if ($otp->maxAttemptsExceeded($this->maxOtpAttempts)) {
             $this->otpRepository->delete($otp);
-            throw new \App\Domain\Auth\Exceptions\MaxOtpAttemptsExceededException;
+            throw new MaxOtpAttemptsExceededException;
         }
 
         // REMOVED LEGACY CHECK: if ($otp->maxAttemptsExceeded($this->maxOtpAttempts)) ...

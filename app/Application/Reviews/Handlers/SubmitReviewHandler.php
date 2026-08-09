@@ -8,6 +8,7 @@ use App\Application\Reviews\Commands\SubmitReviewCommand;
 use App\Application\Reviews\Results\SubmitReviewResult;
 use App\Application\Shared\Contracts\LoggerInterface;
 use App\Application\Shared\Traits\LogSanitizer;
+use App\Domain\Reviews\Events\ReviewCreated;
 use App\Domain\Reviews\Repositories\ReviewRepositoryInterface;
 use App\Infrastructure\Bus\TransactionalEventDispatcher;
 
@@ -57,7 +58,7 @@ final class SubmitReviewHandler
         ]);
 
         // 2. Dispatch Domain Event (Transactional Outbox)
-        $this->eventDispatcher->dispatch(new \App\Domain\Reviews\Events\ReviewCreated(
+        $this->eventDispatcher->dispatch(new ReviewCreated(
             reviewId: $review->id,
             productId: $command->productId,
             tenantId: $command->tenantId,

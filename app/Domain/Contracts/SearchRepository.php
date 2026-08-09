@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Contracts;
 
+use App\Domain\TenantGovernance\Models\Tenant;
 use Illuminate\Support\Collection;
 
 interface SearchRepository
@@ -15,7 +16,7 @@ interface SearchRepository
      * @param  string|null  $citySlug  Optional city slug filter.
      * @param  string|null  $categorySlug  Optional category slug filter.
      * @param  int  $limit  Max results to return.
-     * @return Collection<int, \App\Domain\TenantGovernance\Models\Tenant>
+     * @return Collection<int, Tenant>
      */
     public function searchTenants(string $query, ?string $citySlug = null, ?string $categorySlug = null, int $limit = 20): Collection;
 }

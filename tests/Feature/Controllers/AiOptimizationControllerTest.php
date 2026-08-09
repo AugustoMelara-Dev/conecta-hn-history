@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\AiOptimizationController;
 use App\Http\Requests\Api\OptimizeProfileRequest;
 use App\Jobs\GenerateBusinessProfileJob;
 use App\Models\User;
+use Illuminate\Routing\Redirector;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function (): void {
@@ -37,7 +38,7 @@ test('optimizeProfile dispatches provider work only after private AI gate allows
     ]);
     $request->setUserResolver(fn () => $user);
     $request->setContainer(app());
-    $request->setRedirector(app(\Illuminate\Routing\Redirector::class));
+    $request->setRedirector(app(Redirector::class));
     $request->validateResolved();
 
     $response = $controller->optimizeProfile($request);
@@ -79,7 +80,7 @@ test('optimizeProfile denies tenants outside the private AI gate', function (): 
     ]);
     $request->setUserResolver(fn () => $user);
     $request->setContainer(app());
-    $request->setRedirector(app(\Illuminate\Routing\Redirector::class));
+    $request->setRedirector(app(Redirector::class));
     $request->validateResolved();
 
     $response = $controller->optimizeProfile($request);

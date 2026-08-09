@@ -14,7 +14,7 @@ use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
 
-class OrdersImport implements ToModel, WithHeadingRow, WithValidation, WithChunkReading, WithBatchInserts, Importable
+class OrdersImport implements Importable, ToModel, WithBatchInserts, WithChunkReading, WithHeadingRow, WithValidation
 {
     use ExcelImportable;
     use HasImportTemplate;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Scopes;
 
+use Filament\Facades\Filament;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Scope;
@@ -155,12 +156,12 @@ class LocationScope implements Scope
      */
     protected function isFilamentContext(): bool
     {
-        if (! class_exists(\Filament\Facades\Filament::class)) {
+        if (! class_exists(Filament::class)) {
             return false;
         }
 
         try {
-            return \Filament\Facades\Filament::isServing();
+            return Filament::isServing();
         } catch (\Throwable $e) {
             return false;
         }

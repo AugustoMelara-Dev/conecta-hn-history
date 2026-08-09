@@ -16,10 +16,11 @@ class SystemHealthWidget extends BaseWidget
     {
         $jobs = DB::table('jobs')->count();
         $failed = DB::table('failed_jobs')->count();
+
         return [
             Stat::make('Jobs en cola', $jobs)->color($jobs > 100 ? 'warning' : 'success'),
             Stat::make('Jobs fallidos', $failed)->color($failed > 0 ? 'danger' : 'success'),
-            Stat::make('Memoria', round(memory_get_usage(true) / 1024 / 1024, 1) . ' MB'),
+            Stat::make('Memoria', round(memory_get_usage(true) / 1024 / 1024, 1).' MB'),
             Stat::make('DB conexiones', DB::select('SHOW STATUS LIKE "Threads_connected"')[0]->Value ?? 'n/a'),
         ];
     }

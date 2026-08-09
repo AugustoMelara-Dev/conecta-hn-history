@@ -142,12 +142,12 @@ final class HondurasMarketBackfill
         $departments = DB::table('departments')->orderBy('id');
         $municipalities = DB::table('municipalities')->orderBy('id');
 
-            if ($limit > 0) {
-                $departments->offset($offset)->limit($limit);
-                $municipalities->offset($offset)->limit($limit);
-            } elseif ($offset > 0) {
-                $departments->offset($offset);
-                $municipalities->offset($offset);
+        if ($limit > 0) {
+            $departments->offset($offset)->limit($limit);
+            $municipalities->offset($offset)->limit($limit);
+        } elseif ($offset > 0) {
+            $departments->offset($offset);
+            $municipalities->offset($offset);
         }
 
         $departments->each(function (object $department) use ($now): void {

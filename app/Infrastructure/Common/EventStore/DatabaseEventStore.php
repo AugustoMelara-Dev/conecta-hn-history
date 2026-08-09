@@ -8,6 +8,7 @@ use App\Domain\Common\Contracts\EventStoreRepositoryInterface;
 use App\Domain\Common\Exceptions\ConcurrencyException;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * DatabaseEventStore - The Titanium Vault
@@ -58,7 +59,7 @@ final readonly class DatabaseEventStore implements EventStoreRepositoryInterface
                     // 2. TRANSACTIONAL OUTBOX (Guaranteed Delivery)
                     // 2. TRANSACTIONAL OUTBOX (Guaranteed Delivery)
                     DB::table('outbox_messages')->insert([
-                        'id' => (string) \Illuminate\Support\Str::uuid(),
+                        'id' => (string) Str::uuid(),
                         'type' => $eventClass,
                         'aggregate_id' => $aggregateId, // Debug context
                         'payload' => $payloadJson,

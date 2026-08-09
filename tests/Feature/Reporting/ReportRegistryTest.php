@@ -3,37 +3,63 @@
 declare(strict_types=1);
 
 use App\Application\Reporting\ReportRegistry;
+use App\Application\Reporting\Reports\ActivityVolumeReport;
+use App\Application\Reporting\Reports\AttributionBySourceReport;
+use App\Application\Reporting\Reports\AvgOrderValueReport;
+use App\Application\Reporting\Reports\CampaignRoiReport;
+use App\Application\Reporting\Reports\ChannelPerformanceReport;
+use App\Application\Reporting\Reports\ChurnRateReport;
+use App\Application\Reporting\Reports\CohortRetentionReport;
+use App\Application\Reporting\Reports\ConversionFunnelReport;
+use App\Application\Reporting\Reports\CustomerLtvReport;
+use App\Application\Reporting\Reports\CustomerSegmentsReport;
+use App\Application\Reporting\Reports\DealVelocityReport;
+use App\Application\Reporting\Reports\DiscountEffectivenessReport;
+use App\Application\Reporting\Reports\EmployeePerformanceReport;
+use App\Application\Reporting\Reports\FulfillmentSlaReport;
+use App\Application\Reporting\Reports\GeographicDistributionReport;
+use App\Application\Reporting\Reports\InventoryTurnoverReport;
+use App\Application\Reporting\Reports\LeadScoreReport;
+use App\Application\Reporting\Reports\MrrArrReport;
+use App\Application\Reporting\Reports\NpsScoreReport;
+use App\Application\Reporting\Reports\ProductMarginReport;
+use App\Application\Reporting\Reports\RefundRateReport;
+use App\Application\Reporting\Reports\RevenueByMonthReport;
+use App\Application\Reporting\Reports\SlowMoversReport;
+use App\Application\Reporting\Reports\TopProductsReport;
+use App\Application\Reporting\Reports\WinRateReport;
+use App\Domain\Reporting\Enums\ReportKey;
 
 it('ReportRegistry has all 25 reports registered', function () {
-    $registry = new ReportRegistry();
+    $registry = new ReportRegistry;
 
     // Register all reports
     $reports = [
-        new \App\Application\Reporting\Reports\RevenueByMonthReport(),
-        new \App\Application\Reporting\Reports\MrrArrReport(),
-        new \App\Application\Reporting\Reports\AvgOrderValueReport(),
-        new \App\Application\Reporting\Reports\TopProductsReport(),
-        new \App\Application\Reporting\Reports\CustomerLtvReport(),
-        new \App\Application\Reporting\Reports\ChurnRateReport(),
-        new \App\Application\Reporting\Reports\CampaignRoiReport(),
-        new \App\Application\Reporting\Reports\ConversionFunnelReport(),
-        new \App\Application\Reporting\Reports\DealVelocityReport(),
-        new \App\Application\Reporting\Reports\WinRateReport(),
-        new \App\Application\Reporting\Reports\LeadScoreReport(),
-        new \App\Application\Reporting\Reports\ActivityVolumeReport(),
-        new \App\Application\Reporting\Reports\CohortRetentionReport(),
-        new \App\Application\Reporting\Reports\AttributionBySourceReport(),
-        new \App\Application\Reporting\Reports\ChannelPerformanceReport(),
-        new \App\Application\Reporting\Reports\NpsScoreReport(),
-        new \App\Application\Reporting\Reports\SlowMoversReport(),
-        new \App\Application\Reporting\Reports\InventoryTurnoverReport(),
-        new \App\Application\Reporting\Reports\FulfillmentSlaReport(),
-        new \App\Application\Reporting\Reports\GeographicDistributionReport(),
-        new \App\Application\Reporting\Reports\EmployeePerformanceReport(),
-        new \App\Application\Reporting\Reports\ProductMarginReport(),
-        new \App\Application\Reporting\Reports\DiscountEffectivenessReport(),
-        new \App\Application\Reporting\Reports\RefundRateReport(),
-        new \App\Application\Reporting\Reports\CustomerSegmentsReport(),
+        new RevenueByMonthReport,
+        new MrrArrReport,
+        new AvgOrderValueReport,
+        new TopProductsReport,
+        new CustomerLtvReport,
+        new ChurnRateReport,
+        new CampaignRoiReport,
+        new ConversionFunnelReport,
+        new DealVelocityReport,
+        new WinRateReport,
+        new LeadScoreReport,
+        new ActivityVolumeReport,
+        new CohortRetentionReport,
+        new AttributionBySourceReport,
+        new ChannelPerformanceReport,
+        new NpsScoreReport,
+        new SlowMoversReport,
+        new InventoryTurnoverReport,
+        new FulfillmentSlaReport,
+        new GeographicDistributionReport,
+        new EmployeePerformanceReport,
+        new ProductMarginReport,
+        new DiscountEffectivenessReport,
+        new RefundRateReport,
+        new CustomerSegmentsReport,
     ];
 
     foreach ($reports as $r) {
@@ -44,49 +70,49 @@ it('ReportRegistry has all 25 reports registered', function () {
 });
 
 it('Every ReportKey has a registered Report class', function () {
-    $registry = new ReportRegistry();
+    $registry = new ReportRegistry;
     foreach ([
-        \App\Application\Reporting\Reports\RevenueByMonthReport::class,
-        \App\Application\Reporting\Reports\MrrArrReport::class,
-        \App\Application\Reporting\Reports\AvgOrderValueReport::class,
-        \App\Application\Reporting\Reports\TopProductsReport::class,
-        \App\Application\Reporting\Reports\CustomerLtvReport::class,
-        \App\Application\Reporting\Reports\ChurnRateReport::class,
-        \App\Application\Reporting\Reports\CampaignRoiReport::class,
-        \App\Application\Reporting\Reports\ConversionFunnelReport::class,
-        \App\Application\Reporting\Reports\DealVelocityReport::class,
-        \App\Application\Reporting\Reports\WinRateReport::class,
-        \App\Application\Reporting\Reports\LeadScoreReport::class,
-        \App\Application\Reporting\Reports\ActivityVolumeReport::class,
-        \App\Application\Reporting\Reports\CohortRetentionReport::class,
-        \App\Application\Reporting\Reports\AttributionBySourceReport::class,
-        \App\Application\Reporting\Reports\ChannelPerformanceReport::class,
-        \App\Application\Reporting\Reports\NpsScoreReport::class,
-        \App\Application\Reporting\Reports\SlowMoversReport::class,
-        \App\Application\Reporting\Reports\InventoryTurnoverReport::class,
-        \App\Application\Reporting\Reports\FulfillmentSlaReport::class,
-        \App\Application\Reporting\Reports\GeographicDistributionReport::class,
-        \App\Application\Reporting\Reports\EmployeePerformanceReport::class,
-        \App\Application\Reporting\Reports\ProductMarginReport::class,
-        \App\Application\Reporting\Reports\DiscountEffectivenessReport::class,
-        \App\Application\Reporting\Reports\RefundRateReport::class,
-        \App\Application\Reporting\Reports\CustomerSegmentsReport::class,
+        RevenueByMonthReport::class,
+        MrrArrReport::class,
+        AvgOrderValueReport::class,
+        TopProductsReport::class,
+        CustomerLtvReport::class,
+        ChurnRateReport::class,
+        CampaignRoiReport::class,
+        ConversionFunnelReport::class,
+        DealVelocityReport::class,
+        WinRateReport::class,
+        LeadScoreReport::class,
+        ActivityVolumeReport::class,
+        CohortRetentionReport::class,
+        AttributionBySourceReport::class,
+        ChannelPerformanceReport::class,
+        NpsScoreReport::class,
+        SlowMoversReport::class,
+        InventoryTurnoverReport::class,
+        FulfillmentSlaReport::class,
+        GeographicDistributionReport::class,
+        EmployeePerformanceReport::class,
+        ProductMarginReport::class,
+        DiscountEffectivenessReport::class,
+        RefundRateReport::class,
+        CustomerSegmentsReport::class,
     ] as $reportClass) {
-        $instance = new $reportClass();
+        $instance = new $reportClass;
         $registry->register($instance);
         expect($registry->has($instance->getKey()))->toBeTrue();
     }
 
     // Check that every ReportKey enum has a registered Report
-    foreach (\App\Domain\Reporting\Enums\ReportKey::cases() as $key) {
+    foreach (ReportKey::cases() as $key) {
         expect($registry->has($key))->toBeTrue("Missing report for {$key->value}");
     }
 });
 
 it('ReportRegistry groups by category', function () {
-    $registry = new ReportRegistry();
-    $registry->register(new \App\Application\Reporting\Reports\RevenueByMonthReport());
-    $registry->register(new \App\Application\Reporting\Reports\ConversionFunnelReport());
+    $registry = new ReportRegistry;
+    $registry->register(new RevenueByMonthReport);
+    $registry->register(new ConversionFunnelReport);
 
     $grouped = $registry->grouped();
     expect($grouped)->toHaveKey('Ingresos');

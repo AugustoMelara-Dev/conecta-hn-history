@@ -7,6 +7,7 @@ namespace App\Application\Billing\Global;
 use App\Domain\Billing\Global\BillingCapability;
 use App\Domain\Billing\Global\EntitlementDecision;
 use App\Domain\Billing\Global\GlobalTenantContext;
+use App\Domain\Billing\Global\PlanPrice;
 use App\Domain\Billing\Global\PriceBookReaderInterface;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -104,7 +105,7 @@ final class GlobalEntitlementService implements EntitlementServiceInterface
     }
 
     /**
-     * @return array{plan:\App\Domain\Billing\Global\PlanPrice,status:string,event_order_verified:bool}
+     * @return array{plan:PlanPrice,status:string,event_order_verified:bool}
      */
     private function currentState(GlobalTenantContext $tenant): array
     {
@@ -122,6 +123,7 @@ final class GlobalEntitlementService implements EntitlementServiceInterface
             $occurredAt = $providerEventId === '' ? CarbonImmutable::parse((string) $candidate->created_at) : $this->payloadOccurredAt($candidate->snapshot);
             if ($providerEventId !== '' && $occurredAt === null) {
                 $eventOrderVerified = false;
+
                 continue;
             }
 

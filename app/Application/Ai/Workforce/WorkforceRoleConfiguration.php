@@ -9,8 +9,8 @@ use InvalidArgumentException;
 final readonly class WorkforceRoleConfiguration
 {
     /**
-     * @param list<string> $allowedJobs
-     * @param list<string> $metricKeys
+     * @param  list<string>  $allowedJobs
+     * @param  list<string>  $metricKeys
      */
     public function __construct(
         public AgentRole $role,

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Domain\Billing\Services\MonthlyAiCreditGrantService;
 use App\Infrastructure\Jobs\Governance\AuditTenantLimits;
 use App\Mail\SubscriptionExpiredMail;
 use App\Mail\SubscriptionExpiringMail;
@@ -285,7 +286,7 @@ class SubscriptionLifecycleCommand extends Command
 
             // Reload tenant to get confirmed state
             $tenant->refresh();
-            app(\App\Domain\Billing\Services\MonthlyAiCreditGrantService::class)->grant($tenant);
+            app(MonthlyAiCreditGrantService::class)->grant($tenant);
 
             // Send expiration notification (now safe - DB is committed)
             if ($tenant->user && ! empty($tenant->user->email)) {

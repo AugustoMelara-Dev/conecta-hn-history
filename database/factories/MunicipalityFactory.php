@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Models\Department;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 class MunicipalityFactory extends Factory
 {
@@ -14,7 +15,7 @@ class MunicipalityFactory extends Factory
         return [
             'department_id' => Department::factory(),
             'name' => $name,
-            'slug' => \Illuminate\Support\Str::slug($name),
+            'slug' => Str::slug($name),
         ];
     }
 }

@@ -7,6 +7,7 @@ namespace App\Infrastructure\Notifications;
 use App\Domain\Contracts\AdminNotifier;
 use App\Domain\Sales\Entities\LeadEntity;
 use App\Domain\Shared\Contracts\AdminNotifierInterface;
+use App\Models\Review;
 use App\Models\Tenant;
 use App\Models\User;
 use Filament\Notifications\Actions\Action;
@@ -54,7 +55,7 @@ final class FilamentAdminNotifier implements AdminNotifier, AdminNotifierInterfa
      */
     public function notifyNewReview(object $review): void
     {
-        /** @var \App\Models\Review $review */
+        /** @var Review $review */
         $tenantOwner = $this->getTenantOwner($review->tenant_id);
 
         if (! $tenantOwner) {

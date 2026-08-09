@@ -28,7 +28,6 @@ interface AssistantInterface
      * Ejecuta el assistant con el input dado.
      *
      * @param  array<string, mixed>  $input
-     * @return AssistantResult
      */
     public function execute(array $input): AssistantResult;
 

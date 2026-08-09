@@ -225,7 +225,6 @@ final class DirectoryGuideService
             $query->where('is_active', true);
         }
 
-
         if ($budget !== null && Schema::hasColumn('services', 'price')) {
             $query->where('price', '<=', $budget);
         }

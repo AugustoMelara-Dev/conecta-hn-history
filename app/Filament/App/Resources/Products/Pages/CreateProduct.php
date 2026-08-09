@@ -6,6 +6,7 @@ namespace App\Filament\App\Resources\Products\Pages;
 
 use App\Filament\App\Resources\Products\ProductResource;
 use Filament\Facades\Filament;
+use Filament\Notifications\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 
@@ -28,7 +29,7 @@ class CreateProduct extends CreateRecord
                 ->body('Has alcanzado el limite de 10 productos de tu Plan Gratuito. Actualiza a PRO para ampliar catalogo y funciones operativas.')
                 ->persistent()
                 ->actions([
-                    \Filament\Notifications\Actions\Action::make('upgrade')
+                    Action::make('upgrade')
                         ->label('Actualizar a PRO')
                         ->url('#') // Link to billing
                         ->button(),

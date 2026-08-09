@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ActivityLogResource\Pages;
+use App\Models\User;
+use Filament\Forms\Components\DatePicker;
+use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Table;
@@ -23,7 +25,7 @@ class ActivityLogResource extends Resource
 {
     protected static ?string $model = Activity::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-shield-exclamation';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-shield-exclamation';
 
     public static function getNavigationLabel(): string
     {
@@ -197,14 +199,14 @@ class ActivityLogResource extends Resource
 
                 Tables\Filters\SelectFilter::make('causer_id')
                     ->label('Usuario')
-                    ->options(fn () => \App\Models\User::pluck('name', 'id')->toArray())
+                    ->options(fn () => User::pluck('name', 'id')->toArray())
                     ->searchable(),
 
                 Tables\Filters\Filter::make('created_at')
                     ->form([
-                        \Filament\Forms\Components\DatePicker::make('desde')
+                        DatePicker::make('desde')
                             ->label('Desde'),
-                        \Filament\Forms\Components\DatePicker::make('hasta')
+                        DatePicker::make('hasta')
                             ->label('Hasta'),
                     ])
                     ->query(function ($query, array $data) {

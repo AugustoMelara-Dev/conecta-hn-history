@@ -6,6 +6,7 @@ namespace App\Infrastructure\Shared;
 
 use App\Domain\Shared\Contracts\TenantContext;
 use App\Domain\Shared\ValueObjects\TenantId;
+use App\Models\Tenant;
 use Illuminate\Http\Request;
 
 /**
@@ -83,7 +84,7 @@ final class RequestTenantContext implements TenantContext
             );
             $sourceTenant = $needsFullTenant
                 // ADMIN_CROSS_TENANT: intentional TenantScope bypass; caller must keep an explicit tenant or local-intent filter.
-                ? (\App\Models\Tenant::withoutGlobalScopes()->find((string) $tenantKey) ?? $tenant)
+                ? (Tenant::withoutGlobalScopes()->find((string) $tenantKey) ?? $tenant)
                 : $tenant;
             $attributes = method_exists($sourceTenant, 'getAttributes') ? $sourceTenant->getAttributes() : [];
             $plan = $attributes['plan_type'] ?? $attributes['plan'] ?? null;

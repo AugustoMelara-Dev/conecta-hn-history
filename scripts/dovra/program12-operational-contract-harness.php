@@ -51,6 +51,7 @@ function program12Redact(mixed $value, array $forbiddenKeys, int &$redactedField
         if (is_string($key) && in_array(program12NormalizedKey($key), $forbidden, true)) {
             $redacted[$key] = PROGRAM12_REDACTION_TOKEN;
             $redactedFieldCount++;
+
             continue;
         }
 
@@ -82,8 +83,8 @@ function program12RegisterIdempotency(array &$ledger, string $digest): string
 }
 
 /** @param array<string, mixed> $observabilityContract
- *  @param array<string, mixed> $fixture
- *  @return array<string, mixed>
+ * @param  array<string, mixed>  $fixture
+ * @return array<string, mixed>
  */
 function program12SimulateTrace(array $observabilityContract, array $fixture): array
 {
@@ -171,9 +172,9 @@ function program12SimulateTrace(array $observabilityContract, array $fixture): a
 }
 
 /** @param array<string, mixed> $queueContract
- *  @param array<string, mixed> $fixture
- *  @param array<string, mixed> $trace
- *  @return array<string, mixed>
+ * @param  array<string, mixed>  $fixture
+ * @param  array<string, mixed>  $trace
+ * @return array<string, mixed>
  */
 function program12SimulateQueues(array $queueContract, array $fixture, array $trace): array
 {

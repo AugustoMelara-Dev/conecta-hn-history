@@ -19,6 +19,7 @@ final readonly class ReportRow
         if ($this->previousValue === null || $this->previousValue == 0) {
             return null;
         }
+
         return (($this->value - $this->previousValue) / abs($this->previousValue)) * 100;
     }
 

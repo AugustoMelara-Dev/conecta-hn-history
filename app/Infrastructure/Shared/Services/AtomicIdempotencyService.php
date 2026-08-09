@@ -7,6 +7,7 @@ namespace App\Infrastructure\Shared\Services;
 use App\Application\Common\Contracts\AtomicIdempotencyInterface;
 use App\Application\Common\Exceptions\ConcurrentRequestException;
 use App\Application\Common\Exceptions\IdempotencyKeyReuseException;
+use Carbon\Carbon;
 use Closure;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -144,7 +145,7 @@ final class AtomicIdempotencyService implements AtomicIdempotencyInterface
      */
     private function checkZombieAndRecover(object $record, string $key, Closure $operation): mixed
     {
-        $updatedAt = \Carbon\Carbon::parse($record->updated_at);
+        $updatedAt = Carbon::parse($record->updated_at);
         $diff = abs(now()->diffInSeconds($updatedAt));
 
         // Case A: Process Alive (Throttle)

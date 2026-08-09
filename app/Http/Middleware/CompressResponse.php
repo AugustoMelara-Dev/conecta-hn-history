@@ -42,6 +42,7 @@ class CompressResponse
         }
 
         $contentType = $response->headers->get('Content-Type', '');
+
         return str_contains($contentType, 'text/html')
             || str_contains($contentType, 'text/css')
             || str_contains($contentType, 'application/javascript')

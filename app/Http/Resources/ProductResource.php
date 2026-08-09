@@ -6,6 +6,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Str;
 use OpenApi\Attributes as OA;
 
 #[OA\Schema(
@@ -40,7 +41,7 @@ class ProductResource extends JsonResource
             'slug' => $this->slug,
             'price' => (float) $this->price,
             'formatted_price' => 'L. '.number_format((float) $this->price, 2),
-            'description' => \Illuminate\Support\Str::limit($this->description ?? '', 100),
+            'description' => Str::limit($this->description ?? '', 100),
             'image_url' => $this->image_url,
             'category' => $this->category?->name,
             'stock_status' => $this->stock_status->value ?? 'out_of_stock',

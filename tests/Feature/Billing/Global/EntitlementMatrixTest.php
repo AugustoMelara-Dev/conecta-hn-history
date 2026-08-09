@@ -10,8 +10,8 @@ use App\Application\Markets\MarketContext;
 use App\Domain\Billing\Global\BillingCapability;
 use App\Domain\Billing\Global\GlobalTenantContext;
 use App\Infrastructure\Billing\Global\ConfigPriceBookReader;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use App\Models\Tenant;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 final class EntitlementMatrixTest extends TestCase

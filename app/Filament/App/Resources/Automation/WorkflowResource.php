@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources\Automation;
 
+use App\Domain\Automation\Enums\TriggerType;
 use App\Domain\Automation\Enums\WorkflowStatus;
 use App\Filament\App\Resources\Automation\WorkflowResource\Pages;
 use App\Models\WorkflowDefinition;
@@ -22,7 +23,6 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Filament\Tables;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -33,9 +33,9 @@ class WorkflowResource extends Resource
 {
     protected static ?string $model = WorkflowDefinition::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-arrows-pointing-out';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-arrows-pointing-out';
 
-    protected static string | \UnitEnum | null $navigationGroup = 'AutomatizaciÃ³n';
+    protected static string|\UnitEnum|null $navigationGroup = 'AutomatizaciÃ³n';
 
     protected static ?string $navigationLabel = 'Workflows';
 
@@ -64,7 +64,7 @@ class WorkflowResource extends Resource
                                     ->required(),
                                 Select::make('trigger_type')
                                     ->label('Trigger')
-                                    ->options(\App\Domain\Automation\Enums\TriggerType::options())
+                                    ->options(TriggerType::options())
                                     ->required(),
                                 TextInput::make('description')
                                     ->label('DescripciÃ³n')
@@ -99,7 +99,7 @@ class WorkflowResource extends Resource
                 TextColumn::make('trigger_type')
                     ->label('Trigger')
                     ->badge()
-                    ->formatStateUsing(fn (string $state): string => \App\Domain\Automation\Enums\TriggerType::tryFrom($state)?->label() ?? $state),
+                    ->formatStateUsing(fn (string $state): string => TriggerType::tryFrom($state)?->label() ?? $state),
                 TextColumn::make('status')
                     ->label('Estado')
                     ->badge()
@@ -118,7 +118,7 @@ class WorkflowResource extends Resource
             ])
             ->filters([
                 SelectFilter::make('status')->label('Estado')->options(WorkflowStatus::options()),
-                SelectFilter::make('trigger_type')->label('Trigger')->options(\App\Domain\Automation\Enums\TriggerType::options()),
+                SelectFilter::make('trigger_type')->label('Trigger')->options(TriggerType::options()),
             ])
             ->actions([
                 EditAction::make(),
@@ -146,7 +146,7 @@ class WorkflowResource extends Resource
                     ->color('info')
                     ->action(function ($record) {
                         $clone = $record->replicate();
-                        $clone->name = $record->name . ' (copia)';
+                        $clone->name = $record->name.' (copia)';
                         $clone->is_active = false;
                         $clone->status = 'draft';
                         $clone->save();
@@ -157,7 +157,7 @@ class WorkflowResource extends Resource
                     ->icon('heroicon-o-arrow-down-tray')
                     ->action(function ($record) {
                         return response()->streamDownload(
-                            fn () => print(json_encode(['graph' => $record->graph_json], JSON_PRETTY_PRINT)),
+                            fn () => print (json_encode(['graph' => $record->graph_json], JSON_PRETTY_PRINT)),
                             "{$record->slug}.json",
                             ['Content-Type' => 'application/json'],
                         );
@@ -175,6 +175,7 @@ class WorkflowResource extends Resource
         if (! $tenant) {
             return $query->whereRaw('1 = 0');
         }
+
         return $query->where('tenant_id', $tenant->getKey());
     }
 

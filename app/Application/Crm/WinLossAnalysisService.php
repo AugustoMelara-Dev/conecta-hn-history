@@ -31,6 +31,7 @@ class WinLossAnalysisService
         foreach ($rows as $row) {
             $result[$row->lost_reason] = (int) $row->count;
         }
+
         return $result;
     }
 

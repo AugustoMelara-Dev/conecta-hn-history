@@ -1,5 +1,14 @@
 <?php
 
+use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
+use Spatie\TypeScriptTransformer\Collectors\DefaultCollector;
+use Spatie\TypeScriptTransformer\Collectors\EnumCollector;
+use Spatie\TypeScriptTransformer\Transformers\DtoTransformer;
+use Spatie\TypeScriptTransformer\Transformers\EnumTransformer;
+use Spatie\TypeScriptTransformer\Transformers\SpatieEnumTransformer;
+use Spatie\TypeScriptTransformer\Writers\TypeDefinitionWriter;
+
 return [
     /*
      * The paths where typescript-transformer will look for PHP classes
@@ -17,8 +26,8 @@ return [
      */
 
     'collectors' => [
-        Spatie\TypeScriptTransformer\Collectors\DefaultCollector::class,
-        Spatie\TypeScriptTransformer\Collectors\EnumCollector::class,
+        DefaultCollector::class,
+        EnumCollector::class,
     ],
 
     /*
@@ -49,9 +58,9 @@ return [
     */
 
     'transformers' => [
-        Spatie\TypeScriptTransformer\Transformers\SpatieEnumTransformer::class,
-        Spatie\TypeScriptTransformer\Transformers\DtoTransformer::class,
-        Spatie\TypeScriptTransformer\Transformers\EnumTransformer::class,
+        SpatieEnumTransformer::class,
+        DtoTransformer::class,
+        EnumTransformer::class,
     ],
 
     /*
@@ -63,8 +72,8 @@ return [
     'default_type_replacements' => [
         DateTime::class => 'string',
         DateTimeImmutable::class => 'string',
-        Carbon\CarbonInterface::class => 'string',
-        Carbon\CarbonImmutable::class => 'string',
+        CarbonInterface::class => 'string',
+        CarbonImmutable::class => 'string',
         Carbon\Carbon::class => 'string',
     ],
 
@@ -80,7 +89,7 @@ return [
      * But you can also use the `ModuleWriter` or implement your own.
      */
 
-    'writer' => Spatie\TypeScriptTransformer\Writers\TypeDefinitionWriter::class,
+    'writer' => TypeDefinitionWriter::class,
 
     /*
      * The generated TypeScript file can be formatted. We ship a Prettier formatter

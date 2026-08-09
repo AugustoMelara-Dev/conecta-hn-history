@@ -6,6 +6,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\GeneratorCommand;
 use Illuminate\Support\Str;
+use Symfony\Component\Console\Input\InputArgument;
 
 /**
  * MakeDomainEventCommand - Generate DDD-Compliant Domain Events
@@ -140,7 +141,7 @@ class MakeDomainEventCommand extends GeneratorCommand
     protected function getArguments(): array
     {
         return [
-            ['name', \Symfony\Component\Console\Input\InputArgument::REQUIRED, 'The name of the event'],
+            ['name', InputArgument::REQUIRED, 'The name of the event'],
         ];
     }
 

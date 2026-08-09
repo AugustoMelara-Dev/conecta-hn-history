@@ -167,7 +167,7 @@ final class DatabaseBusinessGraphRepository implements BusinessGraphRepositoryIn
     }
 
     /**
-     * @param array<string, mixed> $value
+     * @param  array<string, mixed>  $value
      */
     private function encodeJson(array $value): string
     {

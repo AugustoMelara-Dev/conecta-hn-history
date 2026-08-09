@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Filament\Admin\Pages;
 
-use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -19,11 +18,16 @@ use Illuminate\Support\Facades\DB;
  */
 class IncidentLog extends Page
 {
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-exclamation-triangle';
-    protected static string | \UnitEnum | null $navigationGroup = 'Auditoría';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-exclamation-triangle';
+
+    protected static string|\UnitEnum|null $navigationGroup = 'Auditoría';
+
     protected static ?string $navigationLabel = 'Incidentes';
+
     protected static ?string $title = 'Incident Log';
+
     protected static ?int $navigationSort = 10;
+
     protected string $view = 'filament.admin.pages.incident-log';
 
     public ?array $data = [];

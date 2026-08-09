@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 use App\Models\Order;
 use App\Notifications\OrderStatusChangedNotification;
-use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Log;
+use Tests\TestCase;
 
 // Bootstrap Laravel app — needed because toMail() calls loadMissing()
-uses(Tests\TestCase::class);
+uses(TestCase::class);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPER: Build a fully-mocked Order for status-change notification testing
@@ -28,11 +28,11 @@ function makeStatusOrder(array $overrides = []): Order
     ];
 
     $data = array_merge($defaults, $overrides);
-    $data['formatted_total'] = 'L. ' . number_format((float) $data['total'], 2);
+    $data['formatted_total'] = 'L. '.number_format((float) $data['total'], 2);
 
     // Build tenant
     if (($data['_null_tenant'] ?? false) === false) {
-        $tenant = new \stdClass();
+        $tenant = new stdClass;
         $tenant->name = $data['tenant_name'] ?? 'Restaurante El Patio';
         $data['tenant'] = $tenant;
     } else {
@@ -41,9 +41,9 @@ function makeStatusOrder(array $overrides = []): Order
 
     $order = Mockery::mock(Order::class);
     $order->shouldReceive('loadMissing')->andReturnSelf();
-    $order->shouldReceive('getAttribute')->andReturnUsing(fn($key) => $data[$key] ?? null);
-    $order->shouldReceive('__get')->andReturnUsing(fn($key) => $data[$key] ?? null);
-    $order->shouldReceive('offsetExists')->andReturnUsing(fn($key) => array_key_exists($key, $data));
+    $order->shouldReceive('getAttribute')->andReturnUsing(fn ($key) => $data[$key] ?? null);
+    $order->shouldReceive('__get')->andReturnUsing(fn ($key) => $data[$key] ?? null);
+    $order->shouldReceive('offsetExists')->andReturnUsing(fn ($key) => array_key_exists($key, $data));
 
     return $order;
 }

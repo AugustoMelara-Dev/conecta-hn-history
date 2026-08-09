@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use Carbon\CarbonImmutable;
 use App\Application\Availability\AvailabilityQuery;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;

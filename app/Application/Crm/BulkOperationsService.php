@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace App\Application\Crm;
 
 use App\Models\Contact;
-use App\Models\CrmActivity;
-use App\Models\CrmDeal;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -20,7 +18,7 @@ use Illuminate\Support\Facades\DB;
 class BulkOperationsService
 {
     /**
-     * @param array<int, string> $contactIds
+     * @param  array<int, string>  $contactIds
      */
     public function bulkAssignOwner(array $contactIds, string $ownerId, string $tenantId): int
     {
@@ -34,7 +32,7 @@ class BulkOperationsService
     }
 
     /**
-     * @param array<int, string> $contactIds
+     * @param  array<int, string>  $contactIds
      */
     public function bulkUpdateLifecycleStage(array $contactIds, string $lifecycleStage, string $tenantId): int
     {
@@ -48,7 +46,7 @@ class BulkOperationsService
     }
 
     /**
-     * @param array<int, string> $contactIds
+     * @param  array<int, string>  $contactIds
      */
     public function bulkDelete(array $contactIds, string $tenantId): int
     {
@@ -62,7 +60,7 @@ class BulkOperationsService
     }
 
     /**
-     * @param array<int, string> $contactIds
+     * @param  array<int, string>  $contactIds
      */
     public function bulkAddTag(array $contactIds, string $tag, string $tenantId): int
     {
@@ -80,11 +78,12 @@ class BulkOperationsService
                 $count++;
             }
         }
+
         return $count;
     }
 
     /**
-     * @param array<int, string> $contactIds
+     * @param  array<int, string>  $contactIds
      */
     public function bulkRemoveTag(array $contactIds, string $tag, string $tenantId): int
     {
@@ -103,6 +102,7 @@ class BulkOperationsService
                 $count++;
             }
         }
+
         return $count;
     }
 }

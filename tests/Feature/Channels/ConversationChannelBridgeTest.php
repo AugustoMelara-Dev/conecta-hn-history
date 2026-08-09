@@ -8,11 +8,11 @@ use App\Application\Channels\ChannelAuthorizationEnvelope;
 use App\Application\Channels\ChannelContext;
 use App\Application\Channels\ConversationChannelBridge;
 use App\Application\Channels\NormalizedInboundMessage;
+use App\Domain\Shared\Services\TenantContext;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Tests\TestCase;
 
 final class ConversationChannelBridgeTest extends TestCase
@@ -39,7 +39,7 @@ final class ConversationChannelBridgeTest extends TestCase
         $this->supportHondurasMarket();
         $actor = User::factory()->create();
         $tenant = Tenant::factory()->forUser($actor)->pro()->create();
-        $this->app->make(\App\Domain\Shared\Services\TenantContext::class)->setTenant((string) $tenant->getKey());
+        $this->app->make(TenantContext::class)->setTenant((string) $tenant->getKey());
 
         return [$tenant, $actor];
     }

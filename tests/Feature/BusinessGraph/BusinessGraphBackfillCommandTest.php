@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\BusinessGraph;
 
+use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
-use App\Models\Tenant;
 use Tests\TestCase;
 
 final class BusinessGraphBackfillCommandTest extends TestCase

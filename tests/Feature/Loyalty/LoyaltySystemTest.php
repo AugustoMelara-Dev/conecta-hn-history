@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Infrastructure\Persistence\Eloquent\Traits\BelongsToTenant;
+use App\Listeners\AwardLoyaltyPoints;
 use App\Models\LoyaltyLedger;
 use App\Models\LoyaltyProgram;
+use App\Models\User;
 
 // ═══════════════════════════════════════════════════════════════════════
 // UNIT TESTS (No DB required)
@@ -15,7 +18,7 @@ it('calculates points from order total correctly', function () {
         'earn_ratio' => 10,
         'is_active' => true,
     ]);
-    
+
     expect($program->calculatePoints(100))->toBe(10);
     expect($program->calculatePoints(99))->toBe(9);
     expect($program->calculatePoints(5))->toBe(0);
@@ -27,7 +30,7 @@ it('calculates redemption value correctly', function () {
     $program = new LoyaltyProgram([
         'redemption_ratio' => 100, // 100 points = L.1
     ]);
-    
+
     expect($program->calculateRedemptionValue(100))->toBe(1.0);
     expect($program->calculateRedemptionValue(250))->toBe(2.5);
     expect($program->calculateRedemptionValue(50))->toBe(0.5);
@@ -39,7 +42,7 @@ it('returns zero points when program is inactive', function () {
         'earn_ratio' => 10,
         'is_active' => false,
     ]);
-    
+
     expect($program->calculatePoints(100))->toBe(0);
 });
 
@@ -58,24 +61,24 @@ it('has correct type constants', function () {
 // TEST 5: LoyaltyLedger uses BelongsToTenant trait
 it('LoyaltyLedger uses BelongsToTenant trait', function () {
     $traits = class_uses_recursive(LoyaltyLedger::class);
-    expect($traits)->toContain(\App\Infrastructure\Persistence\Eloquent\Traits\BelongsToTenant::class);
+    expect($traits)->toContain(BelongsToTenant::class);
 });
 
 // TEST 6: LoyaltyProgram uses BelongsToTenant trait
 it('LoyaltyProgram uses BelongsToTenant trait', function () {
     $traits = class_uses_recursive(LoyaltyProgram::class);
-    expect($traits)->toContain(\App\Infrastructure\Persistence\Eloquent\Traits\BelongsToTenant::class);
+    expect($traits)->toContain(BelongsToTenant::class);
 });
 
 // TEST 7: User model has loyaltyBalance method
 it('User model has loyaltyBalance method', function () {
-    expect(method_exists(\App\Models\User::class, 'loyaltyBalance'))->toBeTrue();
-    expect(method_exists(\App\Models\User::class, 'loyaltyLedger'))->toBeTrue();
-    expect(method_exists(\App\Models\User::class, 'activeLoyaltyBalance'))->toBeTrue();
+    expect(method_exists(User::class, 'loyaltyBalance'))->toBeTrue();
+    expect(method_exists(User::class, 'loyaltyLedger'))->toBeTrue();
+    expect(method_exists(User::class, 'activeLoyaltyBalance'))->toBeTrue();
 });
 
 // TEST 8: AwardLoyaltyPoints listener exists
 it('AwardLoyaltyPoints listener exists', function () {
-    expect(class_exists(\App\Listeners\AwardLoyaltyPoints::class))->toBeTrue();
-    expect(method_exists(\App\Listeners\AwardLoyaltyPoints::class, 'handle'))->toBeTrue();
+    expect(class_exists(AwardLoyaltyPoints::class))->toBeTrue();
+    expect(method_exists(AwardLoyaltyPoints::class, 'handle'))->toBeTrue();
 });

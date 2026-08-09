@@ -6,6 +6,10 @@ namespace App\Contracts\Payment;
 
 use App\DataTransferObjects\Payment\PaymentData;
 use App\DataTransferObjects\Payment\TransactionResult;
+use App\Exceptions\InvalidWebhookSignatureException;
+use App\Exceptions\PaymentFailedException;
+use App\Exceptions\PaymentRequiresActionException;
+use App\Exceptions\RefundFailedException;
 use App\ValueObjects\Money;
 
 /**
@@ -74,8 +78,8 @@ interface PaymentGateway
      * @param  PaymentData  $data  All payment information (amount, token, customer, etc.)
      * @return TransactionResult NEVER returns vendor-specific objects
      *
-     * @throws \App\Exceptions\PaymentFailedException When charge fails irrecoverably
-     * @throws \App\Exceptions\PaymentRequiresActionException When 3DS/SCA required
+     * @throws PaymentFailedException When charge fails irrecoverably
+     * @throws PaymentRequiresActionException When 3DS/SCA required
      */
     public function charge(PaymentData $data): TransactionResult;
 
@@ -87,7 +91,7 @@ interface PaymentGateway
      * @param  string  $reason  Refund reason for audit trail
      * @return TransactionResult Result of the refund operation
      *
-     * @throws \App\Exceptions\RefundFailedException When refund fails
+     * @throws RefundFailedException When refund fails
      */
     public function refund(
         string $transactionId,
@@ -102,7 +106,7 @@ interface PaymentGateway
      * @param  string  $signature  Signature header from gateway
      * @return array Parsed and validated event data
      *
-     * @throws \App\Exceptions\InvalidWebhookSignatureException On signature mismatch
+     * @throws InvalidWebhookSignatureException On signature mismatch
      */
     public function parseWebhook(string $payload, string $signature): array;
 

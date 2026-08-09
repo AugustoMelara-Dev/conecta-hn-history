@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Exports;
 
-use App\Domain\Shared\ValueObjects\TenantId;
 use App\Domain\Shared\Services\TenantContext;
+use App\Domain\Shared\ValueObjects\TenantId;
 use App\Events\Audit\SalesExportCreated;
 use App\Exports\Criteria\SalesExportCriteria;
 use App\Exports\SalesExport;
 use App\Models\Order;
 use App\Models\Tenant;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
@@ -75,7 +76,7 @@ class SalesExportTest extends TestCase
     /**
      * Helper: Create orders without events.
      */
-    private function createOrdersWithoutEvents(int $count, array $attributes = []): \Illuminate\Database\Eloquent\Collection
+    private function createOrdersWithoutEvents(int $count, array $attributes = []): Collection
     {
         return Model::withoutEvents(function () use ($count, $attributes) {
             return Order::factory()->count($count)->create($attributes);

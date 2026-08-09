@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Domain\Reporting\Enums\ReportKey;
 use App\Domain\Reporting\Enums\ReportFormat;
+use App\Domain\Reporting\Enums\ReportKey;
 use App\Domain\Reporting\ValueObjects\ReportRange;
 
 it('ReportKey enum has 25 cases', function () {

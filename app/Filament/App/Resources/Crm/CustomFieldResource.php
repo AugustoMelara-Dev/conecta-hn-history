@@ -6,11 +6,11 @@ namespace App\Filament\App\Resources\Crm;
 
 use App\Domain\Crm\Enums\CustomFieldType;
 use App\Filament\App\Resources\Crm\CustomFieldResource\Pages;
+use App\Models\CrmCustomField;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\CreateAction;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Select;
@@ -21,7 +21,6 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Filament\Tables;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -30,11 +29,11 @@ use Illuminate\Database\Eloquent\Builder;
 
 class CustomFieldResource extends Resource
 {
-    protected static ?string $model = \App\Models\CrmCustomField::class;
+    protected static ?string $model = CrmCustomField::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-squares-plus';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-squares-plus';
 
-    protected static string | \UnitEnum | null $navigationGroup = 'CRM';
+    protected static string|\UnitEnum|null $navigationGroup = 'CRM';
 
     protected static ?string $navigationLabel = 'Campos personalizados';
 
@@ -122,10 +121,14 @@ class CustomFieldResource extends Resource
         if (! $tenant) {
             return $query->whereRaw('1 = 0');
         }
+
         return $query->where('tenant_id', $tenant->getKey());
     }
 
-    public static function getRelations(): array { return []; }
+    public static function getRelations(): array
+    {
+        return [];
+    }
 
     public static function getPages(): array
     {

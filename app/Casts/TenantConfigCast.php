@@ -7,6 +7,7 @@ namespace App\Casts;
 use App\DataTransferObjects\TenantSettingsDTO;
 use Illuminate\Contracts\Database\Eloquent\CastsAttributes;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 
 /**
@@ -57,7 +58,7 @@ class TenantConfigCast implements CastsAttributes
 
             // Handle JSON decode errors gracefully
             if (json_last_error() !== JSON_ERROR_NONE) {
-                \Illuminate\Support\Facades\Log::warning(
+                Log::warning(
                     "TenantConfigCast: Invalid JSON in '{$key}' column, using defaults",
                     [
                         'model' => get_class($model),

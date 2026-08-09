@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Domain\Reporting\Enums\ReportFrequency;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -66,9 +67,10 @@ class ReportSchedule extends Model
     /**
      * Calcula el next_run_at basado en la frecuencia.
      */
-    public function computeNextRun(): \Carbon\CarbonImmutable
+    public function computeNextRun(): CarbonImmutable
     {
-        $now = \Carbon\CarbonImmutable::now();
+        $now = CarbonImmutable::now();
+
         return match ($this->frequency_enum) {
             ReportFrequency::Daily => $now->addDay()->startOfDay()->addHours(8),
             ReportFrequency::Weekly => $now->addWeek()->startOfWeek()->addHours(8),

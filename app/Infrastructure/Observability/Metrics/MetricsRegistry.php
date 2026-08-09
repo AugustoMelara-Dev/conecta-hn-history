@@ -62,6 +62,7 @@ class MetricsRegistry
         foreach ($labels as $k => $v) {
             $parts[] = "{$k}={$v}";
         }
-        return $name . '{' . implode(',', $parts) . '}';
+
+        return $name.'{'.implode(',', $parts).'}';
     }
 }

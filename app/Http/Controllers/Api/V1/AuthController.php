@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Application\Auth\Commands\LoginViaSocialProviderCommand;
 use App\Application\Auth\Contracts\AuthTokenServiceInterface;
 use App\Application\Auth\Handlers\LoginViaSocialProviderHandler;
 use App\Application\Identity\Handlers\RegisterUserHandler;
 use App\Domain\Shared\Enums\ProviderName;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\RegisterRequest;
+use App\Http\Requests\Auth\SocialLoginRequest;
 use App\Http\Resources\V1\AuthResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -48,7 +50,7 @@ final class AuthController extends Controller
     }
 
     public function socialLogin(
-        \App\Http\Requests\Auth\SocialLoginRequest $request,
+        SocialLoginRequest $request,
         LoginViaSocialProviderHandler $handler
     ): JsonResponse {
         // ═══════════════════════════════════════════════════════════════════════
@@ -63,7 +65,7 @@ final class AuthController extends Controller
             ], 503);
         }
 
-        $command = new \App\Application\Auth\Commands\LoginViaSocialProviderCommand(
+        $command = new LoginViaSocialProviderCommand(
             tenantId: (string) ($validated['tenant_id'] ?? ''),
             providerName: ProviderName::from($validated['provider']),
             providerId: $validated['provider_id'],

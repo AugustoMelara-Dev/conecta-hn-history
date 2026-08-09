@@ -14,12 +14,15 @@ use Illuminate\Support\Facades\DB;
 class DealForecastWidget extends BaseWidget
 {
     protected ?string $heading = 'Forecast de deals';
+
     protected static ?int $sort = 21;
 
     protected function getStats(): array
     {
         $tenantId = Filament::getTenant()?->getKey();
-        if (! $tenantId) return [];
+        if (! $tenantId) {
+            return [];
+        }
 
         $openValue = (float) CrmDeal::where('tenant_id', $tenantId)
             ->where('status', DealStatus::Open->value)
@@ -37,9 +40,9 @@ class DealForecastWidget extends BaseWidget
             ->sum('value');
 
         return [
-            Stat::make('Pipeline abierto', 'L ' . number_format($openValue, 2))->color('info'),
-            Stat::make('Valor ponderado', 'L ' . number_format($weightedValue, 2))->color('primary'),
-            Stat::make('Ganado este mes', 'L ' . number_format($wonThisMonth, 2))->color('success'),
+            Stat::make('Pipeline abierto', 'L '.number_format($openValue, 2))->color('info'),
+            Stat::make('Valor ponderado', 'L '.number_format($weightedValue, 2))->color('primary'),
+            Stat::make('Ganado este mes', 'L '.number_format($wonThisMonth, 2))->color('success'),
         ];
     }
 }

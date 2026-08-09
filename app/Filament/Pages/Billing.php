@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Auth;
  */
 class Billing extends Page
 {
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-credit-card';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-credit-card';
 
     protected static ?string $navigationLabel = 'Facturación';
 
@@ -27,7 +27,7 @@ class Billing extends Page
 
     protected static ?int $navigationSort = 100;
 
-    protected static string | \UnitEnum | null $navigationGroup = 'Mi Cuenta';
+    protected static string|\UnitEnum|null $navigationGroup = 'Mi Cuenta';
 
     protected string $view = 'filament.pages.billing';
 

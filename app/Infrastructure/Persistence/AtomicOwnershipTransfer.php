@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Persistence;
 
+use App\Infrastructure\Exceptions\InfrastructureACIDException;
 use App\Infrastructure\Models\OutboxMessage;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -120,7 +121,7 @@ final class AtomicOwnershipTransfer
                     'action' => 'IMMEDIATE_ABORT',
                 ]);
 
-                throw new \App\Infrastructure\Exceptions\InfrastructureACIDException(
+                throw new InfrastructureACIDException(
                     'RYOW verification failed. '.
                     "UPDATE affected {$claimedCount} rows but pinned fetch returned {$hydratedCount}. ".
                     'Possible replication lag or infrastructure split-brain.'

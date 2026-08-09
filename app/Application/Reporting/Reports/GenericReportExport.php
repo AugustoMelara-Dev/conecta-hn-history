@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Application\Reporting\Reports;
 
+use App\Application\Reporting\Contracts\ReportInterface;
+use App\Domain\Reporting\ValueObjects\ReportRange;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 
@@ -15,9 +17,9 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 class GenericReportExport implements FromArray, WithHeadings
 {
     public function __construct(
-        private readonly \App\Application\Reporting\Contracts\ReportInterface $report,
+        private readonly ReportInterface $report,
         private readonly string $tenantId,
-        private readonly \App\Domain\Reporting\ValueObjects\ReportRange $range,
+        private readonly ReportRange $range,
     ) {}
 
     public function headings(): array
@@ -34,7 +36,7 @@ class GenericReportExport implements FromArray, WithHeadings
                 $row->label,
                 $row->value,
                 $row->previousValue ?? '',
-                $row->change() ? round($row->change(), 2) . '%' : '',
+                $row->change() ? round($row->change(), 2).'%' : '',
                 $row->unit ?? '',
             ],
             $data->rows,

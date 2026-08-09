@@ -5,10 +5,11 @@ declare(strict_types=1);
 use App\Application\Crm\BulkOperationsService;
 use App\Models\Contact;
 use App\Models\Tenant;
+use App\Models\User;
 
 it('BulkOperationsService can assign owner to multiple contacts', function () {
     $tenant = Tenant::factory()->create();
-    $owner = \App\Models\User::factory()->create(['tenant_id' => $tenant->id]);
+    $owner = User::factory()->create(['tenant_id' => $tenant->id]);
 
     $contacts = collect([
         Contact::create(['tenant_id' => $tenant->id, 'first_name' => 'A']),
@@ -16,7 +17,7 @@ it('BulkOperationsService can assign owner to multiple contacts', function () {
         Contact::create(['tenant_id' => $tenant->id, 'first_name' => 'C']),
     ]);
 
-    $count = (new BulkOperationsService())->bulkAssignOwner(
+    $count = (new BulkOperationsService)->bulkAssignOwner(
         $contacts->pluck('id')->toArray(),
         $owner->id,
         $tenant->id,
@@ -37,7 +38,7 @@ it('BulkOperationsService bulk update lifecycle stage', function () {
         Contact::create(['tenant_id' => $tenant->id, 'first_name' => 'B', 'lifecycle_stage' => 'lead']),
     ]);
 
-    $count = (new BulkOperationsService())->bulkUpdateLifecycleStage(
+    $count = (new BulkOperationsService)->bulkUpdateLifecycleStage(
         $contacts->pluck('id')->toArray(),
         'qualified',
         $tenant->id,
@@ -56,7 +57,7 @@ it('BulkOperationsService bulk add tag works idempotently', function () {
         'tags' => ['vip'],
     ]);
 
-    $service = new BulkOperationsService();
+    $service = new BulkOperationsService;
 
     // Adding same tag twice should only count once
     $count1 = $service->bulkAddTag([$contact->id], 'vip', $tenant->id);

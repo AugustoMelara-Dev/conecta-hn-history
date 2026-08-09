@@ -7,6 +7,7 @@ namespace App\Infrastructure\Identity\Persistence;
 use App\Contracts\Events\DomainEventBus;
 use App\Domain\Identity\Entities\UserEntity;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
+use App\Domain\Shared\ValueObjects\TenantId;
 use App\Models\User;
 
 /**
@@ -112,7 +113,7 @@ final class EloquentUserRepository implements UserRepositoryInterface
         $tenantId = null;
         $rawTenantId = $model->tenant_id;
 
-        if ($rawTenantId instanceof \App\Domain\Shared\ValueObjects\TenantId) {
+        if ($rawTenantId instanceof TenantId) {
             $tenantId = (string) $rawTenantId->value;
         } elseif (is_numeric($rawTenantId)) {
             $tenantId = (string) $rawTenantId;

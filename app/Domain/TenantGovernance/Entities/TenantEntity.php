@@ -36,7 +36,7 @@ final class TenantEntity
     // Subscription Properties (Billing Bounded Context)
     private ?string $planId = null;
 
-    private ?\DateTimeImmutable $subscriptionEndsAt = null;
+    private ?DateTimeImmutable $subscriptionEndsAt = null;
 
     private ?string $subscriptionReference = null;
 
@@ -219,7 +219,7 @@ final class TenantEntity
      */
     public function upgradeToPlan(
         string $newPlanId,
-        ?\DateTimeImmutable $subscriptionEndsAt = null,
+        ?DateTimeImmutable $subscriptionEndsAt = null,
         ?string $subscriptionReference = null
     ): void {
         // Note: In a full Event Sourced model, this would record a PlanUpgraded event.
@@ -241,7 +241,7 @@ final class TenantEntity
     /**
      * Get subscription end date.
      */
-    public function subscriptionEndsAt(): ?\DateTimeImmutable
+    public function subscriptionEndsAt(): ?DateTimeImmutable
     {
         return $this->subscriptionEndsAt ?? null;
     }

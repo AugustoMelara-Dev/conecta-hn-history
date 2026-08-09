@@ -5,18 +5,20 @@ declare(strict_types=1);
 namespace Tests\Feature\Channels;
 
 use App\Application\Ai\Conversation\ConversationStore;
-use App\Application\Channels\Contracts\ChannelAdapterInterface;
 use App\Application\Channels\ChannelAuthorizationEnvelope;
+use App\Application\Channels\ChannelCapabilityDecision;
 use App\Application\Channels\ChannelConflictException;
 use App\Application\Channels\ChannelConnectionService;
 use App\Application\Channels\ChannelContext;
 use App\Application\Channels\ChannelDeliveryService;
 use App\Application\Channels\ChannelInboundMessage;
 use App\Application\Channels\ChannelOutboundMessage;
+use App\Application\Channels\Contracts\ChannelAdapterInterface;
 use App\Application\Channels\ConversationChannelBridge;
 use App\Application\Channels\DeliveryReceipt;
 use App\Application\Channels\NormalizedInboundMessage;
 use App\Application\Channels\WebhookAuthenticityEnvelope;
+use App\Domain\Shared\Services\TenantContext;
 use App\Infrastructure\Channels\Email\FakeEmailAdapter;
 use App\Infrastructure\Channels\Sms\FailClosedSmsAdapter;
 use App\Infrastructure\Channels\Sms\SmsProviderInterface;
@@ -24,7 +26,6 @@ use App\Infrastructure\Channels\Voice\FailClosedVoiceAdapter;
 use App\Infrastructure\Channels\Voice\VoiceProviderInterface;
 use App\Infrastructure\Channels\WhatsApp\FailClosedWhatsAppAdapter;
 use App\Infrastructure\Channels\WhatsApp\WhatsAppProviderInterface;
-use App\Models\Tenant;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -424,7 +425,8 @@ final class Program07CompositeCertificationTest extends TestCase
         self::assertNotSame($connectionUpdatedAfterReplay, $connectionUpdatedAfterConflict);
         self::assertNotSame($healthCheckedAfterReplay, $healthCheckedAfterConflict);
 
-        $whatsappProvider = new class implements WhatsAppProviderInterface {
+        $whatsappProvider = new class implements WhatsAppProviderInterface
+        {
             public int $calls = 0;
 
             public function send(array $payload): array
@@ -434,7 +436,8 @@ final class Program07CompositeCertificationTest extends TestCase
                 return ['delivery_state' => 'delivered', 'provider_message_id' => 'unexpected'];
             }
         };
-        $smsProvider = new class implements SmsProviderInterface {
+        $smsProvider = new class implements SmsProviderInterface
+        {
             public int $calls = 0;
 
             public function send(array $payload): array
@@ -444,7 +447,8 @@ final class Program07CompositeCertificationTest extends TestCase
                 return ['delivery_state' => 'delivered', 'provider_message_id' => 'unexpected'];
             }
         };
-        $voiceProvider = new class implements VoiceProviderInterface {
+        $voiceProvider = new class implements VoiceProviderInterface
+        {
             public int $calls = 0;
 
             public function send(array $payload): array
@@ -704,12 +708,13 @@ final class Program07CompositeCertificationTest extends TestCase
 
     private function countingEmailAdapter(FakeEmailAdapter $delegate): ChannelAdapterInterface
     {
-        return new class($delegate) implements ChannelAdapterInterface {
+        return new class($delegate) implements ChannelAdapterInterface
+        {
             public int $sendCalls = 0;
 
             public function __construct(private readonly FakeEmailAdapter $delegate) {}
 
-            public function capability(ChannelContext $context): \App\Application\Channels\ChannelCapabilityDecision
+            public function capability(ChannelContext $context): ChannelCapabilityDecision
             {
                 return $this->delegate->capability($context);
             }
@@ -899,7 +904,7 @@ final class Program07CompositeCertificationTest extends TestCase
 
     private function setTenant(string $tenantId): void
     {
-        $context = $this->app->make(\App\Domain\Shared\Services\TenantContext::class);
+        $context = $this->app->make(TenantContext::class);
         $context->reset();
         $context->setTenant($tenantId);
     }

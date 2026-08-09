@@ -13,12 +13,35 @@ use Illuminate\Support\Facades\DB;
 
 class AvgOrderValueReport implements ReportInterface
 {
-    public function getKey(): ReportKey { return ReportKey::AvgOrderValue; }
-    public function getName(): string { return 'Ticket promedio'; }
-    public function getDescription(): string { return 'Average Order Value (AOV).'; }
-    public function getChartType(): string { return 'gauge'; }
-    public function getColumns(): array { return ['Métrica', 'Valor']; }
-    public function getFilters(): array { return []; }
+    public function getKey(): ReportKey
+    {
+        return ReportKey::AvgOrderValue;
+    }
+
+    public function getName(): string
+    {
+        return 'Ticket promedio';
+    }
+
+    public function getDescription(): string
+    {
+        return 'Average Order Value (AOV).';
+    }
+
+    public function getChartType(): string
+    {
+        return 'gauge';
+    }
+
+    public function getColumns(): array
+    {
+        return ['Métrica', 'Valor'];
+    }
+
+    public function getFilters(): array
+    {
+        return [];
+    }
 
     public function getData(string $tenantId, ReportRange $range): ReportData
     {

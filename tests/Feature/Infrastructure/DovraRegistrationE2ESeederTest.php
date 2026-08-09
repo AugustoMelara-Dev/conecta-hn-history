@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Tests\Feature\Infrastructure;
 
 use App\Application\Markets\HondurasMarketBackfill;
+use App\Models\User;
 use Database\Seeders\DovraRegistrationE2ESeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use App\Models\User;
 use Tests\TestCase;
 
 final class DovraRegistrationE2ESeederTest extends TestCase

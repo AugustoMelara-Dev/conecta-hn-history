@@ -5,20 +5,25 @@ declare(strict_types=1);
 namespace App\Filament\Admin\Resources;
 
 use App\Filament\Admin\Resources\AuditLogResource\Pages;
-use Spatie\Activitylog\Models\Activity;
 use Filament\Resources\Resource;
-use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Spatie\Activitylog\Models\Activity;
 
 class AuditLogResource extends Resource
 {
     protected static ?string $model = Activity::class;
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-shield-check';
-    protected static string | \UnitEnum | null $navigationGroup = 'Auditoría';
+
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-shield-check';
+
+    protected static string|\UnitEnum|null $navigationGroup = 'Auditoría';
+
     protected static ?string $navigationLabel = 'Audit logs';
+
     protected static ?string $modelLabel = 'audit log';
+
     protected static ?string $pluralModelLabel = 'Audit logs';
+
     protected static ?int $navigationSort = 40;
 
     public static function table(Table $table): Table

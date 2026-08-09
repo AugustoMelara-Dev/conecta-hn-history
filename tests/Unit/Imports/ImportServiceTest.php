@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Application\Imports\Concerns\Importable;
+use App\Application\Imports\Imports\ContactsImport;
 use App\Application\Imports\ImportService;
 
 it('ImportService has 8 entities registered', function () {
-    $service = new ImportService();
+    $service = new ImportService;
     $entities = $service->entities();
 
     expect($entities)->toContain('contacts');
@@ -20,12 +22,12 @@ it('ImportService has 8 entities registered', function () {
 });
 
 it('ImportService throws for unknown entity', function () {
-    $service = new ImportService();
+    $service = new ImportService;
     $service->getImporterClass('unknown');
 })->throws(InvalidArgumentException::class);
 
 it('ImportService templates provide headers and sample row', function () {
-    $service = new ImportService();
+    $service = new ImportService;
     $templates = $service->templates();
 
     expect($templates['contacts']['headers'])->toContain('first_name');
@@ -34,19 +36,19 @@ it('ImportService templates provide headers and sample row', function () {
 });
 
 it('ImportService can register custom entities', function () {
-    $service = new ImportService();
-    $service->register('custom', \App\Application\Imports\Imports\ContactsImport::class);
+    $service = new ImportService;
+    $service->register('custom', ContactsImport::class);
 
     expect($service->has('custom'))->toBeTrue();
-    expect($service->getImporterClass('custom'))->toBe(\App\Application\Imports\Imports\ContactsImport::class);
+    expect($service->getImporterClass('custom'))->toBe(ContactsImport::class);
 });
 
 it('Each Import class implements Importable interface', function () {
-    $service = new ImportService();
+    $service = new ImportService;
 
     foreach ($service->entities() as $entity) {
         $class = $service->getImporterClass($entity);
         $instance = app(ImportService::class)->makeImporter($entity, '');
-        expect($instance)->toBeInstanceOf(\App\Application\Imports\Concerns\Importable::class);
+        expect($instance)->toBeInstanceOf(Importable::class);
     }
 });

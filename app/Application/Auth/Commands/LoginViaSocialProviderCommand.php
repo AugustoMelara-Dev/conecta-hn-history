@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Auth\Commands;
 
+use App\Application\Common\Contracts\HashableCommandInterface;
 use App\Domain\Shared\Enums\ProviderName;
 
 /**
@@ -16,7 +17,7 @@ use App\Domain\Shared\Enums\ProviderName;
  * ║  TYPE SAFETY: Enforced via ProviderName Enum.                           ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class LoginViaSocialProviderCommand implements \App\Application\Common\Contracts\HashableCommandInterface
+final readonly class LoginViaSocialProviderCommand implements HashableCommandInterface
 {
     public function __construct(
         /** Mandatory Tenant Context (Axiom A) - Social login is always INTO a specific tenant */

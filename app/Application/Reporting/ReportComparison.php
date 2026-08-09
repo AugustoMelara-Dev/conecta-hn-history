@@ -28,8 +28,11 @@ class ReportComparison
 
             if ($previousValue != 0 && is_numeric($currentRow->value) && is_numeric($previousValue)) {
                 $changePct = (($currentRow->value - $previousValue) / abs($previousValue)) * 100;
-                if ($changePct > 1) $trend = 'up';
-                elseif ($changePct < -1) $trend = 'down';
+                if ($changePct > 1) {
+                    $trend = 'up';
+                } elseif ($changePct < -1) {
+                    $trend = 'down';
+                }
             }
 
             $rows[] = [

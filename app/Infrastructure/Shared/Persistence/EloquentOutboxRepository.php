@@ -7,6 +7,10 @@ namespace App\Infrastructure\Shared\Persistence;
 use App\Domain\Shared\Entities\DomainEventMessage;
 use App\Domain\Shared\OutboxRepositoryInterface;
 use App\Infrastructure\Models\OutboxMessage;
+use App\Infrastructure\Persistence\AtomicSequenceGenerator;
+use App\Infrastructure\Persistence\QueryStrategist;
+use App\Infrastructure\Shared\Telemetry\TraceContext;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -24,7 +28,7 @@ use RuntimeException;
 final class EloquentOutboxRepository implements \App\Application\Shared\Contracts\OutboxRepositoryInterface, OutboxRepositoryInterface
 {
     public function __construct(
-        private readonly \App\Infrastructure\Shared\Telemetry\TraceContext $traceContext
+        private readonly TraceContext $traceContext
     ) {}
 
     /**
@@ -65,7 +69,7 @@ final class EloquentOutboxRepository implements \App\Application\Shared\Contract
 
         // LEVEL 46: Use AtomicSequenceGenerator for O(1) sequence generation
         // This replaces the slow lockForUpdate + max() pattern
-        $sequenceGenerator = app(\App\Infrastructure\Persistence\AtomicSequenceGenerator::class);
+        $sequenceGenerator = app(AtomicSequenceGenerator::class);
         $sequenceNumber = $sequenceGenerator->getNextSequence($aggregateId);
 
         // 3. CONTRACT-BASED SERIALIZATION
@@ -208,9 +212,9 @@ final class EloquentOutboxRepository implements \App\Application\Shared\Contract
      * @param  int  $batchSize  Maximum number of messages to recover
      * @param  int  $staleThresholdSeconds  Seconds after which a lock is considered stale
      * @param  array<int>  $ownedPartitionKeys  Explicit list of partitions this worker owns
-     * @return \Illuminate\Support\Collection<OutboxMessage>
+     * @return Collection<OutboxMessage>
      */
-    public function retrieveNextStaleBatch(int $batchSize, int $staleThresholdSeconds, array $ownedPartitionKeys): \Illuminate\Support\Collection
+    public function retrieveNextStaleBatch(int $batchSize, int $staleThresholdSeconds, array $ownedPartitionKeys): Collection
     {
         $thresholdTime = now()->subSeconds($staleThresholdSeconds);
 
@@ -225,7 +229,7 @@ final class EloquentOutboxRepository implements \App\Application\Shared\Contract
         // 3. This ensures we only pick the stale message if it IS the minimum sequence.
 
         // LEVEL 55: DYNAMIC QUERY STRATEGIST (WATCHDOG)
-        $strategist = app(\App\Infrastructure\Persistence\QueryStrategist::class);
+        $strategist = app(QueryStrategist::class);
         $strategyHint = $strategist->getOptimizationHint('retrieveNextStaleBatch');
 
         // Start Watchdog Timer

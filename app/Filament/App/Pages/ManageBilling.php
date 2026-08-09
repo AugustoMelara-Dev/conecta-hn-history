@@ -12,6 +12,7 @@ use App\Domain\Billing\Gateways\SubscriptionCheckoutGatewayInterface;
 use App\Domain\Billing\Services\AiCreditUsageService;
 use App\Domain\Billing\Services\PlanEntitlementService;
 use App\Domain\TenantGovernance\Enums\Capability;
+use App\Domain\TenantGovernance\Services\SubscriptionPricingService;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
 use App\Models\User;
@@ -24,15 +25,14 @@ use Filament\Forms;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
-use Filament\Schemas\Schema;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\DB;
-
 use Illuminate\Support\HtmlString;
 
 /**
@@ -45,7 +45,7 @@ class ManageBilling extends Page implements HasForms, HasTable
 
     protected string $view = 'filament.app.pages.manage-billing';
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-credit-card';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-credit-card';
 
     public bool $isPending = false;
 
@@ -97,15 +97,15 @@ class ManageBilling extends Page implements HasForms, HasTable
         $user = auth()->user();
         $tenant = Filament::getTenant();
 
-        if (! $user instanceof \App\Models\User || ! $tenant instanceof Tenant) {
+        if (! $user instanceof User || ! $tenant instanceof Tenant) {
             return false;
         }
 
-        return app(\App\Application\Access\Contracts\TenantPermissionGuardInterface::class)->allows(
+        return app(TenantPermissionGuardInterface::class)->allows(
             $user,
             $tenant,
-            \App\Domain\TenantGovernance\Enums\Capability::BILLING_PORTAL,
-            \App\Domain\Access\Enums\Permission::BILLING_VIEW
+            Capability::BILLING_PORTAL,
+            Permission::BILLING_VIEW
         );
     }
 
@@ -591,7 +591,7 @@ class ManageBilling extends Page implements HasForms, HasTable
 
     private function loadSettings(): void
     {
-        $this->subscriptionAmount = \App\Domain\TenantGovernance\Services\SubscriptionPricingService::canonicalProPriceInMajorUnits();
+        $this->subscriptionAmount = SubscriptionPricingService::canonicalProPriceInMajorUnits();
         $this->formattedPrice = 'L. '.number_format($this->subscriptionAmount, 2);
         $this->bankInstructions = '';
         $this->supportWhatsApp = '';

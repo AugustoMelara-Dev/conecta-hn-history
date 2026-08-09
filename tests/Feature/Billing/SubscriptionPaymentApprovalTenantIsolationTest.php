@@ -12,6 +12,7 @@ use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
@@ -60,7 +61,7 @@ final class SubscriptionPaymentApprovalTenantIsolationTest extends TestCase
         self::assertSame('active', $tenant->fresh()->subscription_status);
         self::assertSame(15.0, (float) $tenant->fresh()->ai_balance);
         self::assertSame(100, (int) $tenant->fresh()->product_limit);
-        self::assertSame(1, \Illuminate\Support\Facades\DB::table('ai_credit_grants')
+        self::assertSame(1, DB::table('ai_credit_grants')
             ->where('tenant_id', $tenant->getKey())
             ->where('plan', 'pro')
             ->count());

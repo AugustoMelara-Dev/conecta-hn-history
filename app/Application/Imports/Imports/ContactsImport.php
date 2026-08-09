@@ -17,7 +17,7 @@ use Maatwebsite\Excel\Concerns\WithValidation;
 /**
  * ContactsImport - Importa contactos desde CSV/Excel.
  */
-class ContactsImport implements ToModel, WithHeadingRow, WithValidation, WithChunkReading, WithBatchInserts, Importable
+class ContactsImport implements Importable, ToModel, WithBatchInserts, WithChunkReading, WithHeadingRow, WithValidation
 {
     use ExcelImportable;
     use HasImportTemplate;
@@ -76,6 +76,7 @@ class ContactsImport implements ToModel, WithHeadingRow, WithValidation, WithChu
 
         $contact = new Contact($data);
         $contact->save();
+
         return $contact;
     }
 

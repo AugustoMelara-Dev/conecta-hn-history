@@ -11,5 +11,9 @@ use Filament\Resources\Pages\EditRecord;
 class EditToolPolicy extends EditRecord
 {
     protected static string $resource = ToolPolicyResource::class;
-    protected function getHeaderActions(): array { return [DeleteAction::make()]; }
+
+    protected function getHeaderActions(): array
+    {
+        return [DeleteAction::make()];
+    }
 }

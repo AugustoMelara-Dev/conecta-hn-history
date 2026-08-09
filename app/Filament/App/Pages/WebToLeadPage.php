@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Filament\App\Pages;
 
 use App\Models\Contact;
+use App\Models\CrmActivity;
 use App\Models\CrmCompany;
 use App\Models\CrmDeal;
+use App\Models\CrmPipeline;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\CaptchaField;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -26,13 +29,13 @@ use Illuminate\Support\Facades\RateLimiter;
  */
 class WebToLeadPage extends Page
 {
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-envelope-open';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-envelope-open';
 
     protected static ?string $title = 'Captura de Leads';
 
     protected static ?string $navigationLabel = 'Web-to-Lead';
 
-    protected static string | \UnitEnum | null $navigationGroup = 'CRM';
+    protected static string|\UnitEnum|null $navigationGroup = 'CRM';
 
     protected static ?int $navigationSort = 50;
 
@@ -76,19 +79,20 @@ class WebToLeadPage extends Page
         $state = $this->form->getState();
 
         // Rate limit per IP
-        $key = 'web-to-lead:' . request()->ip();
+        $key = 'web-to-lead:'.request()->ip();
         if (RateLimiter::tooManyAttempts($key, 60)) {
             Notification::make()
                 ->title('Demasiadas solicitudes')
                 ->body('Intenta nuevamente en un minuto.')
                 ->danger()
                 ->send();
+
             return;
         }
         RateLimiter::hit($key, 60);
 
         DB::transaction(function () use ($state) {
-            $tenantId = \Filament\Facades\Filament::getTenant()?->getKey() ?? config('app.default_tenant_id');
+            $tenantId = Filament::getTenant()?->getKey() ?? config('app.default_tenant_id');
 
             $company = null;
             if (! empty($state['company_name'])) {
@@ -110,7 +114,7 @@ class WebToLeadPage extends Page
                 'lifecycle_stage' => 'lead',
             ]);
 
-            $defaultPipeline = \App\Models\CrmPipeline::where('tenant_id', $tenantId)
+            $defaultPipeline = CrmPipeline::where('tenant_id', $tenantId)
                 ->where('is_default', true)
                 ->first();
             if ($defaultPipeline) {
@@ -122,7 +126,7 @@ class WebToLeadPage extends Page
                         'stage_id' => $firstStage->id,
                         'contact_id' => $contact->id,
                         'company_id' => $company?->id,
-                        'name' => 'Lead desde web: ' . $contact->full_name,
+                        'name' => 'Lead desde web: '.$contact->full_name,
                         'value' => 0,
                         'currency' => 'HNL',
                         'probability' => 10,
@@ -131,7 +135,7 @@ class WebToLeadPage extends Page
                 }
             }
 
-            \App\Models\CrmActivity::create([
+            CrmActivity::create([
                 'tenant_id' => $tenantId,
                 'contact_id' => $contact->id,
                 'type' => 'note',

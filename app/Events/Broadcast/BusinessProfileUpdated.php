@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Events\Broadcast;
 
+use App\Models\Tenant;
+use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
@@ -49,7 +51,7 @@ final class BusinessProfileUpdated implements ShouldBroadcast
      * Get the channels the event should broadcast on.
      * Targeted strictly at the tenant owner.
      *
-     * @return array<int, \Illuminate\Broadcasting\Channel>
+     * @return array<int, Channel>
      */
     public function broadcastOn(): array
     {
@@ -85,9 +87,9 @@ final class BusinessProfileUpdated implements ShouldBroadcast
      * Use this at the dispatch site to extract data BEFORE queueing.
      * This moves the DB read to the main process where it's already loaded.
      *
-     * @param  \App\Models\Tenant  $tenant  The tenant model (already loaded)
+     * @param  Tenant  $tenant  The tenant model (already loaded)
      */
-    public static function fromTenant(\App\Models\Tenant $tenant): self
+    public static function fromTenant(Tenant $tenant): self
     {
         return new self(
             tenantId: (string) $tenant->id,

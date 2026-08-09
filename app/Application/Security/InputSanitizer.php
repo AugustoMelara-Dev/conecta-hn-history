@@ -24,6 +24,7 @@ class InputSanitizer
         $clean = preg_replace('/\s*on\w+\s*=\s*["\'][^"\']*["\']/i', '', $clean) ?? '';
         // Remove javascript:/data: URIs
         $clean = preg_replace('/(javascript|data|vbscript)\s*:/i', '', $clean) ?? '';
+
         return trim($clean);
     }
 
@@ -36,6 +37,7 @@ class InputSanitizer
             return false;
         }
         $scheme = strtolower(parse_url($url, PHP_URL_SCHEME) ?? '');
+
         return in_array($scheme, ['http', 'https', 'mailto', 'tel'], true);
     }
 
@@ -46,8 +48,9 @@ class InputSanitizer
     {
         $first = substr($value, 0, 1);
         if (in_array($first, ['=', '+', '-', '@'], true)) {
-            return "'" . $value;
+            return "'".$value;
         }
+
         return $value;
     }
 }

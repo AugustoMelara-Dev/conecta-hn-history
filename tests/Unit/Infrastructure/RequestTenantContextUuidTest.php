@@ -10,7 +10,7 @@ test('request tenant context rejects a numeric active tenant identity', function
     $request->setUserResolver(fn (): object => (object) ['tenant_id' => '42']);
 
     expect(fn () => (new RequestTenantContext($request))->getTenantId())
-        ->toThrow(\InvalidArgumentException::class);
+        ->toThrow(InvalidArgumentException::class);
 });
 
 test('request tenant context normalizes a valid UUID', function () {

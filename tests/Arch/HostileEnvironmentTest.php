@@ -3,6 +3,7 @@
 namespace Tests\Arch;
 
 use Illuminate\Support\Facades\Schema;
+use Tests\TestCase;
 
 /**
  * HostileEnvironmentTest - Defense Against Intentional Attacks
@@ -19,7 +20,7 @@ use Illuminate\Support\Facades\Schema;
  *
  * Run with: php artisan test --filter=HostileEnvironmentTest
  */
-class HostileEnvironmentTest extends \Tests\TestCase
+class HostileEnvironmentTest extends TestCase
 {
     // ═══════════════════════════════════════════════════════════════════════════
     // SPEC 1: IMMUTABLE OWNERSHIP

@@ -430,7 +430,6 @@ final class TenantWorkforceController extends Controller
         ];
     }
 
-    /** @param mixed $value */
     private function json(mixed $value): string
     {
         return json_encode($value, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);

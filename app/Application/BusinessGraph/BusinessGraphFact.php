@@ -11,7 +11,7 @@ use InvalidArgumentException;
 final readonly class BusinessGraphFact
 {
     /**
-     * @param array<string, mixed> $value
+     * @param  array<string, mixed>  $value
      */
     private function __construct(
         public string $tenantId,
@@ -28,7 +28,7 @@ final readonly class BusinessGraphFact
     ) {}
 
     /**
-     * @param array<string, mixed> $value
+     * @param  array<string, mixed>  $value
      */
     public static function fromSource(
         string $tenantId,
@@ -56,7 +56,7 @@ final readonly class BusinessGraphFact
     }
 
     /**
-     * @param array<string, mixed> $value
+     * @param  array<string, mixed>  $value
      */
     public static function fromPersistence(
         string $tenantId,

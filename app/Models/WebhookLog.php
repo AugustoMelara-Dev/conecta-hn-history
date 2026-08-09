@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -23,7 +24,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $attempts
  * @property string|null $payload_hash
  * @property string|null $processing_token
- * @property \Carbon\Carbon $created_at
+ * @property Carbon $created_at
  */
 class WebhookLog extends Model
 {

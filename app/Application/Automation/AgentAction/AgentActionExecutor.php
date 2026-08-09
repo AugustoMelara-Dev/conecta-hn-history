@@ -176,7 +176,7 @@ final readonly class AgentActionExecutor
     }
 
     /** @param array<string, mixed> $metadata
-     *  @return array<string, mixed>
+     * @return array<string, mixed>
      */
     private function workflowMetadata(array $metadata, string $workflowStatus, string $workflowReasonCode): array
     {

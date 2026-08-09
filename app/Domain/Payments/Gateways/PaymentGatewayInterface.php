@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Domain\Payments\Gateways;
 
 use App\Domain\Payments\DTOs\ChargeResult;
+use App\Domain\Payments\Exceptions\PaymentDeclinedException;
+use App\Domain\Payments\Exceptions\PaymentGatewayUnavailableException;
+use App\Domain\Payments\Exceptions\UnknownPaymentException;
 
 /**
  * PaymentGatewayInterface - Port for Payment Processing
@@ -26,9 +29,9 @@ interface PaymentGatewayInterface
      * @param  string  $paymentMethodId  Provider-specific payment method identifier
      * @param  array<string, mixed>  $metadata  Additional transaction metadata
      *
-     * @throws \App\Domain\Payments\Exceptions\PaymentDeclinedException
-     * @throws \App\Domain\Payments\Exceptions\PaymentGatewayUnavailableException
-     * @throws \App\Domain\Payments\Exceptions\UnknownPaymentException
+     * @throws PaymentDeclinedException
+     * @throws PaymentGatewayUnavailableException
+     * @throws UnknownPaymentException
      */
     public function charge(
         int $amountInCents,

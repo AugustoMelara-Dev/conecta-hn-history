@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Application\Common\Contracts;
 
+use App\Application\Common\Exceptions\ConcurrentRequestException;
+use App\Application\Common\Exceptions\IdempotencyKeyReuseException;
 use Closure;
 
 /**
@@ -24,8 +26,8 @@ interface AtomicIdempotencyInterface
      * @param  Closure  $operation  The business logic to execute if lock is acquired
      * @return mixed The result of the operation (or cached result)
      *
-     * @throws \App\Application\Common\Exceptions\ConcurrentRequestException If lock is held by another process
-     * @throws \App\Application\Common\Exceptions\IdempotencyKeyReuseException If key is reused with different hash
+     * @throws ConcurrentRequestException If lock is held by another process
+     * @throws IdempotencyKeyReuseException If key is reused with different hash
      */
     public function execute(string $idempotencyKey, string $tenantId, string $commandHash, Closure $operation): mixed;
 }

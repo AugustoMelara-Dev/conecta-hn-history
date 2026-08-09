@@ -11,5 +11,9 @@ use Filament\Resources\Pages\ListRecords;
 class ListApiKeys extends ListRecords
 {
     protected static string $resource = ApiKeyResource::class;
-    protected function getHeaderActions(): array { return [CreateAction::make()->label('Nueva API key')]; }
+
+    protected function getHeaderActions(): array
+    {
+        return [CreateAction::make()->label('Nueva API key')];
+    }
 }

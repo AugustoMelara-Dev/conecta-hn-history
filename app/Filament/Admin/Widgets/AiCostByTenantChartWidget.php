@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 class AiCostByTenantChartWidget extends ChartWidget
 {
     protected ?string $heading = 'AI Cost por Tenant';
+
     protected static ?int $sort = 7;
 
     protected function getData(): array
@@ -23,6 +24,7 @@ class AiCostByTenantChartWidget extends ChartWidget
             ->get()
             ->map(function ($r) {
                 $name = DB::table('tenants')->where('id', $r->tenant_id)->value('name') ?? 'Unknown';
+
                 return (object) ['name' => $name, 'cost' => (float) $r->total_cost];
             });
 
@@ -36,5 +38,8 @@ class AiCostByTenantChartWidget extends ChartWidget
         ];
     }
 
-    protected function getType(): string { return 'bar'; }
+    protected function getType(): string
+    {
+        return 'bar';
+    }
 }

@@ -6,8 +6,9 @@ namespace App\Filament\Pages;
 
 use App\Filament\Widgets\FinancialStatsOverview;
 use App\Infrastructure\TenantGovernance\SuperAdmin\SuperAdminDashboardBootstrapper;
+use Filament\Pages\Page;
 
-class Dashboard extends \Filament\Pages\Page
+class Dashboard extends Page
 {
     protected static bool $isDiscovered = false;
 
@@ -15,7 +16,7 @@ class Dashboard extends \Filament\Pages\Page
 
     protected static ?int $navigationSort = -2;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-home';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-home';
 
     protected static ?string $navigationLabel = 'Escritorio';
 
@@ -162,5 +163,4 @@ class Dashboard extends \Filament\Pages\Page
             FinancialStatsOverview::class,
         ];
     }
-
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Models\Tenant;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Storage;
@@ -19,7 +20,7 @@ use Illuminate\Support\Facades\Storage;
  * ║  3. Type Safety: Booleans and strings are explicitly cast.               ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  *
- * @mixin \App\Models\Tenant
+ * @mixin Tenant
  */
 final class TenantResource extends JsonResource
 {

@@ -11,7 +11,6 @@ declare(strict_types=1);
  * - Cada Resource declara `protected static ?string $model` (nullable).
  * - Ningún Resource importa Filament\Tables\Actions\HeaderAction (no existe en v4).
  */
-
 $resourceDirs = [
     dirname(__DIR__, 3).'/app/Filament/App/Resources',
     dirname(__DIR__, 3).'/app/Filament/Resources',

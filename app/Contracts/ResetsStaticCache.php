@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Contracts;
 
+use App\Providers\AppServiceProvider;
+
 /**
  * ResetsStaticCache - Infrastructure Contract for Memory Hygiene
  *
@@ -30,7 +32,7 @@ namespace App\Contracts;
  * - App\Observers\ProductObserver (tenant city memoization)
  * - Future: Any Observer/Service with static state
  *
- * @see \App\Providers\AppServiceProvider::boot() for the cleanup loop
+ * @see AppServiceProvider::boot() for the cleanup loop
  */
 interface ResetsStaticCache
 {

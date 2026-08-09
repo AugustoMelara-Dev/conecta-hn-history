@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Auth\Contracts;
 
 use App\Application\Auth\Commands\GenerateOtpCommand;
+use App\Domain\Auth\Exceptions\TooManyOtpRequestsException;
 
 /**
  * GenerateOtpHandlerInterface - Handler Contract for OTP Generation
@@ -22,7 +23,7 @@ interface GenerateOtpHandlerInterface
      *
      * @param  GenerateOtpCommand  $command  The OTP generation request
      *
-     * @throws \App\Domain\Auth\Exceptions\TooManyOtpRequestsException If rate limit exceeded
+     * @throws TooManyOtpRequestsException If rate limit exceeded
      */
     public function handle(GenerateOtpCommand $command): void;
 }

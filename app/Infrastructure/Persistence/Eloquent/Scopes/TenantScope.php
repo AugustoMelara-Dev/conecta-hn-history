@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Persistence\Eloquent\Scopes;
 
+use App\Domain\Shared\Exceptions\TenantContextMissingException;
 use App\Domain\Shared\Services\TenantContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -38,7 +39,7 @@ final class TenantScope implements Scope
 
             $builder->where($model->getTable().'.tenant_id', '=', $tenantId);
 
-        } catch (\App\Domain\Shared\Exceptions\TenantContextMissingException $e) {
+        } catch (TenantContextMissingException $e) {
             // FAIL SECURE: Context Missing.
             // Explicitly re-throw to comply with Zero Trust Architecture.
             throw $e;

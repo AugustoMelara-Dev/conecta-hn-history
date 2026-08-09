@@ -7,6 +7,7 @@ namespace App\Services\AI;
 use App\Domain\Billing\Services\AiCreditPricingService;
 use App\Exceptions\Ai\AiMalformedResponseException;
 use App\Exceptions\Ai\AiProviderUnavailableException;
+use App\Exceptions\InsufficientAiCreditsException;
 use App\Infrastructure\AI\BudgetEnforcer;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\DB;
@@ -88,7 +89,7 @@ final class OpenAIService
      *
      * @throws AiProviderUnavailableException
      * @throws AiMalformedResponseException
-     * @throws \App\Exceptions\InsufficientAiCreditsException
+     * @throws InsufficientAiCreditsException
      */
     public function generateStructuredProfile(
         string $businessName,

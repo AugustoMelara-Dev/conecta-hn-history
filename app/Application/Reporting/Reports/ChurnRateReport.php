@@ -13,12 +13,35 @@ use Illuminate\Support\Facades\DB;
 
 class ChurnRateReport implements ReportInterface
 {
-    public function getKey(): ReportKey { return ReportKey::ChurnRate; }
-    public function getName(): string { return 'Tasa de churn'; }
-    public function getDescription(): string { return 'Porcentaje de clientes que cancelaron.'; }
-    public function getChartType(): string { return 'gauge'; }
-    public function getColumns(): array { return ['Métrica', 'Valor']; }
-    public function getFilters(): array { return []; }
+    public function getKey(): ReportKey
+    {
+        return ReportKey::ChurnRate;
+    }
+
+    public function getName(): string
+    {
+        return 'Tasa de churn';
+    }
+
+    public function getDescription(): string
+    {
+        return 'Porcentaje de clientes que cancelaron.';
+    }
+
+    public function getChartType(): string
+    {
+        return 'gauge';
+    }
+
+    public function getColumns(): array
+    {
+        return ['Métrica', 'Valor'];
+    }
+
+    public function getFilters(): array
+    {
+        return [];
+    }
 
     public function getData(string $tenantId, ReportRange $range): ReportData
     {

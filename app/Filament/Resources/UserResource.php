@@ -7,20 +7,22 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\UserResource\Pages;
 // MIGRATION: Updated to Domain namespace (2026-01-05)
 use App\Models\User;
+use App\Policies\UserPolicy;
 use Filament\Forms;
-use Filament\Schemas\Schema;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Hash;
 
 class UserResource extends Resource
 {
     protected static ?string $model = User::class;
 
-    protected static ?string $modelPolicy = \App\Policies\UserPolicy::class;
+    protected static ?string $modelPolicy = UserPolicy::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-users';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-users';
 
     public static function getNavigationLabel(): string
     {
@@ -136,7 +138,7 @@ class UserResource extends Resource
                     ])
                     ->action(function (User $record, array $data) {
                         $record->update([
-                            'password' => \Illuminate\Support\Facades\Hash::make($data['new_password']),
+                            'password' => Hash::make($data['new_password']),
                         ]);
                         Notification::make()->title('Contraseña actualizada')->success()->send();
                     }),

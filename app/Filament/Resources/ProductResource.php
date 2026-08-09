@@ -5,18 +5,21 @@ declare(strict_types=1);
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ProductResource\Pages;
+use App\Filament\Traits\ScopesToTenant;
 use App\Models\Product;
+use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\HtmlString;
 
 class ProductResource extends Resource
 {
     protected static ?string $model = Product::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-shopping-bag';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-shopping-bag';
 
     public static function getNavigationGroup(): ?string
     {
@@ -57,7 +60,7 @@ class ProductResource extends Resource
     public static function form(Schema $schema): Schema
     {
         // Feature Gating: Check Plan
-        $tenant = \Filament\Facades\Filament::getTenant();
+        $tenant = Filament::getTenant();
         $isPro = $tenant && $tenant->plan_type === 'pro' || $tenant->plan_type === 'enterprise';
 
         return $schema
@@ -110,7 +113,7 @@ class ProductResource extends Resource
                                     ->collapsed()
                                 : Forms\Components\Placeholder::make('upgrade_promo')
                                     ->label('Opciones Avanzadas')
-                                    ->content(new \Illuminate\Support\HtmlString('
+                                    ->content(new HtmlString('
                                         <div class="p-4 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-700">
                                             <p class="font-bold">Disponible en Plan Pro</p>
                                             <p>Actualiza para agregar tallas, colores y extras a tus productos.</p>
@@ -201,7 +204,7 @@ class ProductResource extends Resource
             ->bulkActions([]);
     }
 
-    use \App\Filament\Traits\ScopesToTenant;
+    use ScopesToTenant;
 
     public static function getRelations(): array
     {

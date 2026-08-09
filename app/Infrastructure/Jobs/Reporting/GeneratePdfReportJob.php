@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Jobs\Reporting;
 
+use App\Application\DTOs\ReportRequestData;
 use App\Contracts\LoggerInterface;
 use App\Contracts\ReportGenerationInterface;
 use App\Infrastructure\Shared\Middleware\TenantQueueMiddleware;
@@ -38,7 +39,7 @@ final class GeneratePdfReportJob implements ShouldBeUnique, ShouldQueue
     public bool $deleteWhenMissingModels = true;
 
     public function __construct(
-        public readonly \App\Application\DTOs\ReportRequestData $data,
+        public readonly ReportRequestData $data,
         public readonly string $requestorId
     ) {}
 

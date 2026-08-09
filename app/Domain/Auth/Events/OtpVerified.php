@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Auth\Events;
 
 use DateTimeImmutable;
+use Ramsey\Uuid\Uuid;
 
 final readonly class OtpVerified
 {
@@ -19,7 +20,7 @@ final readonly class OtpVerified
     public static function now(string $otpIdentifier, ?string $userId, string $tenantId): self
     {
         return new self(
-            eventId: \Ramsey\Uuid\Uuid::uuid7()->toString(),
+            eventId: Uuid::uuid7()->toString(),
             otpIdentifier: $otpIdentifier,
             userId: $userId,
             tenantId: $tenantId,

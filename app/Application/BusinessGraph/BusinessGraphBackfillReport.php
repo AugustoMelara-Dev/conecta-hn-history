@@ -7,8 +7,8 @@ namespace App\Application\BusinessGraph;
 final readonly class BusinessGraphBackfillReport
 {
     /**
-     * @param array<string, int> $sourceTypeCounts
-     * @param list<string> $skippedSources
+     * @param  array<string, int>  $sourceTypeCounts
+     * @param  list<string>  $skippedSources
      */
     public function __construct(
         public int $factsWritten,

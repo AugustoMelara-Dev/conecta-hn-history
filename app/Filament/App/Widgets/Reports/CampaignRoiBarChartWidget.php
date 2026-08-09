@@ -9,6 +9,7 @@ use Filament\Widgets\ChartWidget;
 class CampaignRoiBarChartWidget extends ChartWidget
 {
     protected ?string $heading = 'ROI de campañas';
+
     protected static ?int $sort = 7;
 
     protected function getData(): array
@@ -16,5 +17,8 @@ class CampaignRoiBarChartWidget extends ChartWidget
         return ['datasets' => [], 'labels' => []];
     }
 
-    protected function getType(): string { return 'bar'; }
+    protected function getType(): string
+    {
+        return 'bar';
+    }
 }

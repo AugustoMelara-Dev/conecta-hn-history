@@ -234,7 +234,6 @@ final class BackfillAiFoundationCommand extends Command
         return hash('sha256', json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
     }
 
-    /** @param mixed $snapshot */
     private function validSnapshot(mixed $snapshot): bool
     {
         if ($snapshot === null) {

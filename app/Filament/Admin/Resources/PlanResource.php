@@ -16,7 +16,6 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Filament\Tables;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -24,11 +23,17 @@ use Filament\Tables\Table;
 class PlanResource extends Resource
 {
     protected static ?string $model = Plan::class;
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-star';
-    protected static string | \UnitEnum | null $navigationGroup = 'Billing';
+
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-star';
+
+    protected static string|\UnitEnum|null $navigationGroup = 'Billing';
+
     protected static ?string $navigationLabel = 'Planes';
+
     protected static ?string $modelLabel = 'plan';
+
     protected static ?string $pluralModelLabel = 'Planes';
+
     protected static ?int $navigationSort = 21;
 
     public static function form(Schema $schema): Schema

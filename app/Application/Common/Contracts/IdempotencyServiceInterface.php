@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Application\Common\Contracts;
 
+use App\Application\Common\Exceptions\ConcurrentRequestException;
+
 /**
  * IdempotencyServiceInterface - Framework-Agnostic Distributed State Manager
  *
@@ -46,7 +48,7 @@ interface IdempotencyServiceInterface
      * Atomically register a key as PROCESSING.
      * Throws exception if key already exists (in any state).
      *
-     * @throws \App\Application\Common\Exceptions\ConcurrentRequestException
+     * @throws ConcurrentRequestException
      */
     public function registerProcessing(string $key, int $ttlSeconds = 60): void;
 

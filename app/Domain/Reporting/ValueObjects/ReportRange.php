@@ -25,6 +25,7 @@ final readonly class ReportRange
     {
         $start = CarbonImmutable::today();
         $end = CarbonImmutable::today()->endOfDay();
+
         return new self(
             start: $start,
             end: $end,
@@ -37,6 +38,7 @@ final readonly class ReportRange
     {
         $start = CarbonImmutable::yesterday();
         $end = CarbonImmutable::yesterday()->endOfDay();
+
         return new self(
             start: $start,
             end: $end,
@@ -49,6 +51,7 @@ final readonly class ReportRange
     {
         $start = CarbonImmutable::now()->subDays(7)->startOfDay();
         $end = CarbonImmutable::now()->endOfDay();
+
         return new self(
             start: $start,
             end: $end,
@@ -61,6 +64,7 @@ final readonly class ReportRange
     {
         $start = CarbonImmutable::now()->subDays(30)->startOfDay();
         $end = CarbonImmutable::now()->endOfDay();
+
         return new self(
             start: $start,
             end: $end,
@@ -73,6 +77,7 @@ final readonly class ReportRange
     {
         $start = CarbonImmutable::now()->startOfQuarter();
         $end = CarbonImmutable::now()->endOfDay();
+
         return new self(
             start: $start,
             end: $end,
@@ -85,6 +90,7 @@ final readonly class ReportRange
     {
         $start = CarbonImmutable::now()->startOfYear();
         $end = CarbonImmutable::now()->endOfDay();
+
         return new self(
             start: $start,
             end: $end,
@@ -96,6 +102,7 @@ final readonly class ReportRange
     public static function custom(CarbonImmutable $start, CarbonImmutable $end): self
     {
         $duration = $end->diffInDays($start);
+
         return new self(
             start: $start,
             end: $end,

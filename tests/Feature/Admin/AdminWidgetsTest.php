@@ -1,17 +1,25 @@
 <?php
 
 declare(strict_types=1);
+use App\Filament\Admin\Widgets\AiCostByTenantChartWidget;
+use App\Filament\Admin\Widgets\DiskAndQueueWidget;
+use App\Filament\Admin\Widgets\GlobalRevenueChartWidget;
+use App\Filament\Admin\Widgets\PlanDistributionChartWidget;
+use App\Filament\Admin\Widgets\RecentIncidentsWidget;
+use App\Filament\Admin\Widgets\SystemHealthWidget;
+use App\Filament\Admin\Widgets\TenantsOverviewWidget;
+use App\Filament\Admin\Widgets\TopTenantsTableWidget;
 
 it('8 admin widgets exist', function () {
     $widgets = [
-        \App\Filament\Admin\Widgets\TenantsOverviewWidget::class,
-        \App\Filament\Admin\Widgets\GlobalRevenueChartWidget::class,
-        \App\Filament\Admin\Widgets\PlanDistributionChartWidget::class,
-        \App\Filament\Admin\Widgets\TopTenantsTableWidget::class,
-        \App\Filament\Admin\Widgets\SystemHealthWidget::class,
-        \App\Filament\Admin\Widgets\RecentIncidentsWidget::class,
-        \App\Filament\Admin\Widgets\AiCostByTenantChartWidget::class,
-        \App\Filament\Admin\Widgets\DiskAndQueueWidget::class,
+        TenantsOverviewWidget::class,
+        GlobalRevenueChartWidget::class,
+        PlanDistributionChartWidget::class,
+        TopTenantsTableWidget::class,
+        SystemHealthWidget::class,
+        RecentIncidentsWidget::class,
+        AiCostByTenantChartWidget::class,
+        DiskAndQueueWidget::class,
     ];
     expect(count($widgets))->toBe(8);
     foreach ($widgets as $w) {

@@ -23,4 +23,3 @@ final class EntrypointProductionGuardTest extends TestCase
         $this->assertStringContainsString('storage:production-guard', $contents);
     }
 }
-

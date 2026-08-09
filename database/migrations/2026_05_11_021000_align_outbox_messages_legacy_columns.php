@@ -54,7 +54,7 @@ return new class extends Migration
                 if (DB::getDriverName() !== 'sqlite' && $column === 'processed_at') {
                     try {
                         $table->dropIndex('outbox_messages_processed_at_index');
-                    } catch (\Throwable) {
+                    } catch (Throwable) {
                         // Already absent in some local/test schemas.
                     }
                 }
@@ -62,7 +62,7 @@ return new class extends Migration
                 if (DB::getDriverName() !== 'sqlite' && $column === 'processed') {
                     try {
                         $table->dropIndex('outbox_messages_processed_index');
-                    } catch (\Throwable) {
+                    } catch (Throwable) {
                         // Already absent in some local/test schemas.
                     }
                 }

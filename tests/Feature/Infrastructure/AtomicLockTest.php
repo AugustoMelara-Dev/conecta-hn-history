@@ -1,8 +1,11 @@
 <?php
 
+use Illuminate\Cache\ArrayStore;
+use Illuminate\Cache\Repository;
+
 it('enforces exclusion when a lock is actively held', function () {
-    $store = new \Illuminate\Cache\ArrayStore;
-    $repo = new \Illuminate\Cache\Repository($store);
+    $store = new ArrayStore;
+    $repo = new Repository($store);
 
     $resourceKey = 'critical_transaction_REF_500';
 

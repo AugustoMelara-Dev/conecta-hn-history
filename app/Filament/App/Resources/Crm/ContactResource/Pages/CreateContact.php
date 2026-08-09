@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\App\Resources\Crm\ContactResource\Pages;
 
 use App\Filament\App\Resources\Crm\ContactResource;
+use Filament\Facades\Filament;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreateContact extends CreateRecord
@@ -13,10 +14,11 @@ class CreateContact extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        $tenant = \Filament\Facades\Filament::getTenant();
+        $tenant = Filament::getTenant();
         if ($tenant) {
             $data['tenant_id'] = $tenant->getKey();
         }
+
         return $data;
     }
 }

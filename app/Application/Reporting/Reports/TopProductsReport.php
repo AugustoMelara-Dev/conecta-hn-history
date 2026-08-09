@@ -17,12 +17,35 @@ use Illuminate\Support\Facades\DB;
  */
 class TopProductsReport implements ReportInterface
 {
-    public function getKey(): ReportKey { return ReportKey::TopProducts; }
-    public function getName(): string { return 'Top productos'; }
-    public function getDescription(): string { return 'Productos más vendidos por ingresos.'; }
-    public function getChartType(): string { return 'table'; }
-    public function getColumns(): array { return ['Producto', 'Unidades vendidas', 'Ingresos (HNL)']; }
-    public function getFilters(): array { return ['limit' => 'int', 'sort_by' => 'string']; }
+    public function getKey(): ReportKey
+    {
+        return ReportKey::TopProducts;
+    }
+
+    public function getName(): string
+    {
+        return 'Top productos';
+    }
+
+    public function getDescription(): string
+    {
+        return 'Productos más vendidos por ingresos.';
+    }
+
+    public function getChartType(): string
+    {
+        return 'table';
+    }
+
+    public function getColumns(): array
+    {
+        return ['Producto', 'Unidades vendidas', 'Ingresos (HNL)'];
+    }
+
+    public function getFilters(): array
+    {
+        return ['limit' => 'int', 'sort_by' => 'string'];
+    }
 
     public function getData(string $tenantId, ReportRange $range): ReportData
     {

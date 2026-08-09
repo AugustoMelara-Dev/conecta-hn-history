@@ -300,7 +300,7 @@ final class FilamentLivewireTenantContextTest extends TestCase
 
     private function route(string $method, string $uri, string $name): Route
     {
-        $route = new Route([$method], $uri, static fn (): Response => new Response());
+        $route = new Route([$method], $uri, static fn (): Response => new Response);
         $route->name($name);
 
         return $route;

@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\Automation\ValueObjects;
 
-use App\Domain\Automation\Enums\TriggerType;
-
 /**
  * AutomationGraph - Representa el DAG (Directed Acyclic Graph) de un workflow.
  *
@@ -62,6 +60,7 @@ final readonly class AutomationGraph
                 return $node;
             }
         }
+
         return null;
     }
 

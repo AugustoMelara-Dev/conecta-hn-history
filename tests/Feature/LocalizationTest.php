@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Carbon\Carbon;
+
 use function Pest\Laravel\get;
 
 describe('Localization Configuration', function () {

@@ -5,13 +5,17 @@ declare(strict_types=1);
 namespace Tests\Unit\Events;
 
 use App\Broadcasting\ChannelRegistry;
+use App\Contracts\Broadcasting\BroadcastableNotificationInterface;
+use App\Enums\LowStockSeverity;
 use App\Events\Broadcast\LowStockBroadcast;
 use App\Events\Broadcast\NewLoginDetectedBroadcast;
 use App\Events\Broadcast\OrderCancelledBroadcast;
 use App\Events\Broadcast\OrderPaidBroadcast;
 use App\Events\Broadcast\OrderRefundedBroadcast;
 use App\Events\Broadcast\OrderShippedBroadcast;
+use App\Traits\FormatsCurrency;
 use DateTimeImmutable;
+use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 use Tests\TestCase;
 
@@ -735,7 +739,7 @@ class BroadcastPayloadTest extends TestCase
 
         foreach ($events as $event) {
             $this->assertInstanceOf(
-                \App\Contracts\Broadcasting\BroadcastableNotificationInterface::class,
+                BroadcastableNotificationInterface::class,
                 $event,
                 get_class($event).' should implement BroadcastableNotificationInterface interface'
             );
@@ -750,7 +754,7 @@ class BroadcastPayloadTest extends TestCase
     public function broadcast_events_log_when_broadcasting(): void
     {
         // Use Laravel's Log facade spy
-        \Illuminate\Support\Facades\Log::spy();
+        Log::spy();
 
         $event = OrderPaidBroadcast::fromDomainData(
             tenantId: self::TENANT_ID,
@@ -766,7 +770,7 @@ class BroadcastPayloadTest extends TestCase
         $event->broadcastWith();
 
         // Verify log was called (spy mode)
-        \Illuminate\Support\Facades\Log::shouldHaveReceived('channel')->atLeast()->once();
+        Log::shouldHaveReceived('channel')->atLeast()->once();
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -782,7 +786,7 @@ class BroadcastPayloadTest extends TestCase
         // Create a simple class using the trait for testing
         $formatter = new class
         {
-            use \App\Traits\FormatsCurrency;
+            use FormatsCurrency;
 
             public function testFormat(int $cents, string $currency): string
             {
@@ -801,7 +805,7 @@ class BroadcastPayloadTest extends TestCase
     {
         $formatter = new class
         {
-            use \App\Traits\FormatsCurrency;
+            use FormatsCurrency;
 
             public function test_format(int $cents, string $currency): string
             {
@@ -825,7 +829,7 @@ class BroadcastPayloadTest extends TestCase
     /** @test */
     public function low_stock_severity_enum_has_all_values(): void
     {
-        $values = \App\Enums\LowStockSeverity::values();
+        $values = LowStockSeverity::values();
 
         $this->assertContains('info', $values);
         $this->assertContains('warning', $values);
@@ -836,17 +840,17 @@ class BroadcastPayloadTest extends TestCase
     /** @test */
     public function low_stock_severity_enum_provides_labels(): void
     {
-        $this->assertEquals('Warning', \App\Enums\LowStockSeverity::Warning->label());
-        $this->assertEquals('Critical', \App\Enums\LowStockSeverity::Critical->label());
-        $this->assertEquals('Informational', \App\Enums\LowStockSeverity::Info->label());
+        $this->assertEquals('Warning', LowStockSeverity::Warning->label());
+        $this->assertEquals('Critical', LowStockSeverity::Critical->label());
+        $this->assertEquals('Informational', LowStockSeverity::Info->label());
     }
 
     /** @test */
     public function low_stock_severity_critical_requires_immediate_action(): void
     {
-        $this->assertTrue(\App\Enums\LowStockSeverity::Critical->requiresImmediateAction());
-        $this->assertFalse(\App\Enums\LowStockSeverity::Warning->requiresImmediateAction());
-        $this->assertFalse(\App\Enums\LowStockSeverity::Info->requiresImmediateAction());
+        $this->assertTrue(LowStockSeverity::Critical->requiresImmediateAction());
+        $this->assertFalse(LowStockSeverity::Warning->requiresImmediateAction());
+        $this->assertFalse(LowStockSeverity::Info->requiresImmediateAction());
     }
 
     // ═══════════════════════════════════════════════════════════════════════

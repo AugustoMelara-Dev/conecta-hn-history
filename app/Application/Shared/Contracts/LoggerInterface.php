@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Application\Shared\Contracts;
 
+use App\Infrastructure\Logging\LaravelLoggerAdapter;
+
 /**
  * LoggerInterface - Framework-Agnostic Logging Port
  *
@@ -11,7 +13,7 @@ namespace App\Application\Shared\Contracts;
  * without coupling to Laravel's Log facade or any specific logging implementation.
  * The Infrastructure Layer provides the concrete adapter (LaravelLoggerAdapter).
  *
- * @see \App\Infrastructure\Logging\LaravelLoggerAdapter
+ * @see LaravelLoggerAdapter
  */
 interface LoggerInterface
 {

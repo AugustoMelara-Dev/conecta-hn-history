@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Common\Exceptions;
 
 use Exception;
+use Illuminate\Http\Request;
 
 // use Illuminate\Http\JsonResponse; // REMOVED: Domain layer cannot depend on Http layer
 
@@ -13,7 +14,7 @@ class TooManyRequestsException extends Exception
     /**
      * Render the exception into an HTTP response.
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param  Request  $request
      */
     public function render($request): JsonResponse
     {

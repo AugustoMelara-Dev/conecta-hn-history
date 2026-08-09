@@ -6,6 +6,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
+use Spatie\MediaLibrary\MediaLibraryServiceProvider;
 
 class CleanOrphanMedia extends Command
 {
@@ -31,7 +32,7 @@ class CleanOrphanMedia extends Command
         $this->info('Cleaning orphan media...');
 
         // If using spatie/laravel-medialibrary
-        if (class_exists(\Spatie\MediaLibrary\MediaLibraryServiceProvider::class)) {
+        if (class_exists(MediaLibraryServiceProvider::class)) {
             $this->call('media-library:clean');
         } else {
             // Fallback logic for temporary uploads

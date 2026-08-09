@@ -6,6 +6,7 @@ namespace App\Policies;
 
 use App\Models\Campaign;
 use App\Models\User;
+use Filament\Facades\Filament;
 
 class CampaignPolicy
 {
@@ -15,7 +16,7 @@ class CampaignPolicy
      */
     public function viewAny(User $user): bool
     {
-        $tenant = \Filament\Facades\Filament::getTenant();
+        $tenant = Filament::getTenant();
 
         if (! $tenant) {
             return false;
@@ -29,7 +30,7 @@ class CampaignPolicy
      */
     public function view(User $user, Campaign $campaign): bool
     {
-        $tenant = \Filament\Facades\Filament::getTenant();
+        $tenant = Filament::getTenant();
 
         if (! $tenant || ! $tenant->is_pro) {
             return false;
@@ -43,7 +44,7 @@ class CampaignPolicy
      */
     public function create(User $user): bool
     {
-        $tenant = \Filament\Facades\Filament::getTenant();
+        $tenant = Filament::getTenant();
 
         if (! $tenant) {
             return false;
@@ -57,7 +58,7 @@ class CampaignPolicy
      */
     public function update(User $user, Campaign $campaign): bool
     {
-        $tenant = \Filament\Facades\Filament::getTenant();
+        $tenant = Filament::getTenant();
 
         if (! $tenant || ! $tenant->is_pro) {
             return false;
@@ -71,7 +72,7 @@ class CampaignPolicy
      */
     public function delete(User $user, Campaign $campaign): bool
     {
-        $tenant = \Filament\Facades\Filament::getTenant();
+        $tenant = Filament::getTenant();
 
         if (! $tenant || ! $tenant->is_pro) {
             return false;

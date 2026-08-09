@@ -28,22 +28,22 @@ class AIAssistantServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(AssistantExecutor::class, function () {
-            $executor = new AssistantExecutor();
+            $executor = new AssistantExecutor;
 
             $assistants = [
-                new DealEmailDraftAssistant(),
-                new ContactEnrichmentAssistant(),
-                new LeadScoringAssistant(),
-                new ProductDescriptionAssistant(),
-                new InvoiceMemoAssistant(),
-                new RefundJustificationAssistant(),
-                new DashboardNarrativeAssistant(),
-                new EmailReplyAssistant(),
-                new SentimentAssistant(),
-                new TranslationAssistant(),
-                new TaxCategoryAssistant(),
-                new NextBestActionAssistant(),
-                new ReportInsightAssistant(),
+                new DealEmailDraftAssistant,
+                new ContactEnrichmentAssistant,
+                new LeadScoringAssistant,
+                new ProductDescriptionAssistant,
+                new InvoiceMemoAssistant,
+                new RefundJustificationAssistant,
+                new DashboardNarrativeAssistant,
+                new EmailReplyAssistant,
+                new SentimentAssistant,
+                new TranslationAssistant,
+                new TaxCategoryAssistant,
+                new NextBestActionAssistant,
+                new ReportInsightAssistant,
             ];
 
             foreach ($assistants as $assistant) {

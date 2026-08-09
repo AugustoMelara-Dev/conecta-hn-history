@@ -2,11 +2,12 @@
 
 declare(strict_types=1);
 
-use App\Filament\App\Widgets\OrdersChart;
 use App\Filament\App\Widgets\OperationalCockpitWidget;
+use App\Filament\App\Widgets\OrdersChart;
 use App\Filament\App\Widgets\RevenueChart;
 use App\Filament\Pages\Dashboard as SuperAdminDashboard;
 use App\Filament\Widgets\FinancialStatsOverview;
+use Filament\Widgets\ChartWidget;
 
 describe('RevenueChart Widget', function () {
     it('exists and is properly configured', function () {
@@ -17,7 +18,7 @@ describe('RevenueChart Widget', function () {
         $reflection = new ReflectionClass(RevenueChart::class);
 
         expect($reflection->getParentClass()->getName())
-            ->toBe(\Filament\Widgets\ChartWidget::class);
+            ->toBe(ChartWidget::class);
     });
 
     it('has correct chart heading', function () {
@@ -52,7 +53,7 @@ describe('OrdersChart Widget', function () {
         $reflection = new ReflectionClass(OrdersChart::class);
 
         expect($reflection->getParentClass()->getName())
-            ->toBe(\Filament\Widgets\ChartWidget::class);
+            ->toBe(ChartWidget::class);
     });
 
     it('has correct chart heading', function () {

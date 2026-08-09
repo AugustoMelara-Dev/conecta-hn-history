@@ -1,9 +1,8 @@
 <?php
-declare(strict_types=1);
-namespace App\Domain\Reporting\ValueObjects;
 
-use App\Domain\Reporting\ValueObjects\ReportRow;
-use App\Domain\Reporting\ValueObjects\ReportSeries;
+declare(strict_types=1);
+
+namespace App\Domain\Reporting\ValueObjects;
 
 final readonly class ReportData
 {

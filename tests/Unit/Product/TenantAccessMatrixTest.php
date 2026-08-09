@@ -6,8 +6,9 @@ use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Domain\TenantGovernance\Enums\CommercialMode;
 use App\Models\Tenant;
 use App\Support\Product\TenantAccessMatrix;
+use Tests\TestCase;
 
-uses(Tests\TestCase::class);
+uses(TestCase::class);
 
 it('allows retail tenant to access products module', function (): void {
     $tenant = (new Tenant)->forceFill([

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Pages\Automation;
 
+use Filament\Facades\Filament;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\DB;
 
@@ -12,11 +13,11 @@ use Illuminate\Support\Facades\DB;
  */
 class AutomationDashboard extends Page
 {
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-chart-bar-square';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-chart-bar-square';
 
     protected static ?string $title = 'Automation Dashboard';
 
-    protected static string | \UnitEnum | null $navigationGroup = 'Automatización';
+    protected static string|\UnitEnum|null $navigationGroup = 'Automatización';
 
     protected static ?string $navigationLabel = 'Dashboard';
 
@@ -26,8 +27,10 @@ class AutomationDashboard extends Page
 
     public function getTopWorkflows(): array
     {
-        $tenantId = \Filament\Facades\Filament::getTenant()?->getKey();
-        if (! $tenantId) return [];
+        $tenantId = Filament::getTenant()?->getKey();
+        if (! $tenantId) {
+            return [];
+        }
 
         return DB::table('workflow_runs as wr')
             ->join('workflow_definitions as wd', 'wd.id', '=', 'wr.workflow_definition_id')
@@ -43,8 +46,10 @@ class AutomationDashboard extends Page
 
     public function getStats(): array
     {
-        $tenantId = \Filament\Facades\Filament::getTenant()?->getKey();
-        if (! $tenantId) return ['total_workflows' => 0, 'active' => 0, 'runs_today' => 0, 'success_rate' => 0];
+        $tenantId = Filament::getTenant()?->getKey();
+        if (! $tenantId) {
+            return ['total_workflows' => 0, 'active' => 0, 'runs_today' => 0, 'success_rate' => 0];
+        }
 
         return [
             'total_workflows' => DB::table('workflow_definitions')->where('tenant_id', $tenantId)->count(),
@@ -61,6 +66,7 @@ class AutomationDashboard extends Page
             ->whereIn('status', ['completed', 'failed'])->count();
         $success = DB::table('workflow_runs')->where('tenant_id', $tenantId)
             ->where('status', 'completed')->count();
+
         return $total > 0 ? round(($success / $total) * 100, 1) : 0;
     }
 }

@@ -2,6 +2,10 @@
 
 namespace Database\Seeders;
 
+use App\Domain\Identity\Models\User;
+use App\Domain\TenantGovernance\Models\Tenant;
+use App\Models\Category;
+use App\Models\City;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
@@ -16,7 +20,7 @@ class MinimalSeeder extends Seeder
     {
         // 1. Create Super Admin
         // Using Identity Domain Factory
-        \App\Domain\Identity\Models\User::factory()->create([
+        User::factory()->create([
             'name' => 'Super Admin',
             'email' => 'admin@conectahn.com',
             'role' => 'super_admin',
@@ -24,7 +28,7 @@ class MinimalSeeder extends Seeder
         ]);
 
         // 2. Create a Seller User
-        $seller = \App\Domain\Identity\Models\User::factory()->create([
+        $seller = User::factory()->create([
             'name' => 'Carlos Martinez',
             'email' => 'seller@test.com',
             'role' => 'seller',
@@ -38,7 +42,7 @@ class MinimalSeeder extends Seeder
         ];
 
         foreach ($categories as $cat) {
-            \App\Models\Category::firstOrCreate(['slug' => $cat['slug']], $cat);
+            Category::firstOrCreate(['slug' => $cat['slug']], $cat);
         }
 
         // 4. Create Tenants for the Seller
@@ -55,15 +59,15 @@ class MinimalSeeder extends Seeder
         ];
 
         // Retrieve category IDs
-        $restaurantes = \App\Models\Category::where('slug', 'restaurantes')->first()->id;
-        $tecnologia = \App\Models\Category::where('slug', 'tecnologia')->first()->id;
-        $salud = \App\Models\Category::where('slug', 'salud')->first()->id;
+        $restaurantes = Category::where('slug', 'restaurantes')->first()->id;
+        $tecnologia = Category::where('slug', 'tecnologia')->first()->id;
+        $salud = Category::where('slug', 'salud')->first()->id;
 
         // Retrieve Cities (Mock or create if not exist for minimal seed)
         // In a real scenario, use CitySeeder. Here ensuring they exist.
         $cities = ['Tegucigalpa', 'San Pedro Sula', 'La Ceiba'];
         foreach ($cities as $cityName) {
-            \App\Models\City::firstOrCreate(
+            City::firstOrCreate(
                 ['slug' => Str::slug($cityName)],
                 ['name' => $cityName, 'department_id' => 1] // Assuming dept 1 exists or is optional
             );
@@ -76,9 +80,9 @@ class MinimalSeeder extends Seeder
                 2 => $salud,
             };
 
-            $cityId = \App\Models\City::where('name', $biz['city'])->first()->id;
+            $cityId = City::where('name', $biz['city'])->first()->id;
 
-            $factory = \App\Domain\TenantGovernance\Models\Tenant::factory()
+            $factory = Tenant::factory()
                 ->state([
                     'user_id' => $seller->id,
                     'name' => $biz['name'],

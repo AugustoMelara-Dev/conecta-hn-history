@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Municipality;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
@@ -14,7 +15,7 @@ class CityFactory extends Factory
         return [
             'name' => $name,
             'slug' => Str::slug($name),
-            'municipality_id' => \App\Models\Municipality::factory(),
+            'municipality_id' => Municipality::factory(),
             'coordinates' => [
                 'lat' => fake()->latitude(13, 16), // Honduras latitude range
                 'lng' => fake()->longitude(-89, -83), // Honduras longitude range

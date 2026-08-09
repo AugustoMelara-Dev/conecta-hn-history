@@ -6,7 +6,9 @@ namespace App\Http\Controllers\Web;
 
 use App\Application\Shared\Contracts\CommandBusInterface;
 use App\Application\Shared\Contracts\ReferenceDataReaderInterface;
+use App\Application\Tenant\Commands\RegisterTenantCommand;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
+use App\Domain\TenantGovernance\Services\SubscriptionPricingService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\RegisterTenantRequest;
 use App\Infrastructure\Registration\EloquentRegistrationPostProcessor;
@@ -48,7 +50,7 @@ final class RegistrationController extends Controller
             'settings' => [
                 'freeProductLimit' => config('conecta.free_plan_product_limit', 10),
                 'proProductLimit' => config('conecta.pro_plan_product_limit', 100),
-                'proPlanPrice' => \App\Domain\TenantGovernance\Services\SubscriptionPricingService::canonicalProPriceInMajorUnits(),
+                'proPlanPrice' => SubscriptionPricingService::canonicalProPriceInMajorUnits(),
             ],
         ]);
     }
@@ -95,7 +97,7 @@ final class RegistrationController extends Controller
     public function store(RegisterTenantRequest $request)
     {
         // Create command from validated request
-        $command = new \App\Application\Tenant\Commands\RegisterTenantCommand(
+        $command = new RegisterTenantCommand(
             businessName: $request->validated('business_name'),
             slug: Str::slug($request->validated('slug')),
             ownerName: $request->validated('name'),

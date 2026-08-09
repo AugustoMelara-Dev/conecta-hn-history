@@ -22,10 +22,10 @@ return new class extends Migration
             // ── Directory Classification ────────────────────────
             if (! Schema::hasColumn('tenants', 'city_id')) {
                 $table->foreignId('city_id')
-                      ->nullable()
-                      ->after('category_id')
-                      ->constrained('cities')
-                      ->nullOnDelete();
+                    ->nullable()
+                    ->after('category_id')
+                    ->constrained('cities')
+                    ->nullOnDelete();
             }
 
             // ── Lifecycle & Plan ────────────────────────────────
@@ -69,7 +69,7 @@ return new class extends Migration
             }
 
             $columns = ['status', 'is_pro', 'product_limit', 'banner_path',
-                         'description', 'social_links', 'primary_color'];
+                'description', 'social_links', 'primary_color'];
 
             foreach ($columns as $col) {
                 if (Schema::hasColumn('tenants', $col)) {

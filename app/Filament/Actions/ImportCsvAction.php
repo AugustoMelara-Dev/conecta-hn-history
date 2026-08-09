@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Filament\Actions;
 
+use App\Application\Imports\ImportService;
+use App\Infrastructure\Imports\ExcelImporter;
 use Filament\Actions\Action;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
@@ -16,7 +19,7 @@ class ImportCsvAction
 {
     public static function make(string $entity): Action
     {
-        return Action::make('import_csv_' . $entity)
+        return Action::make('import_csv_'.$entity)
             ->label('Importar CSV')
             ->icon('heroicon-o-arrow-up-tray')
             ->color('info')
@@ -38,20 +41,21 @@ class ImportCsvAction
                     ->required(),
             ])
             ->action(function (array $data) use ($entity) {
-                $tenantId = \Filament\Facades\Filament::getTenant()?->getKey();
+                $tenantId = Filament::getTenant()?->getKey();
                 if (! $tenantId) {
                     Notification::make()->title('No tenant context')->danger()->send();
+
                     return;
                 }
 
                 try {
-                    $importClass = app(\App\Application\Imports\ImportService::class)
+                    $importClass = app(ImportService::class)
                         ->getImporterClass($entity);
                     $importer = new $importClass($tenantId);
 
-                    $result = app(\App\Infrastructure\Imports\ExcelImporter::class)->import(
+                    $result = app(ExcelImporter::class)->import(
                         $importClass,
-                        storage_path('app/' . $data['file']),
+                        storage_path('app/'.$data['file']),
                     );
 
                     if ($result['success']) {
@@ -67,7 +71,7 @@ class ImportCsvAction
                             ->send();
                     }
                 } catch (\Throwable $e) {
-                    Notification::make()->title('Error: ' . $e->getMessage())->danger()->send();
+                    Notification::make()->title('Error: '.$e->getMessage())->danger()->send();
                 }
             });
     }

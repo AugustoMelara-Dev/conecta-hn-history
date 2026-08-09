@@ -6,6 +6,7 @@ namespace App\Events\Order;
 
 use App\Contracts\Events\DomainEvent;
 use App\Domain\Shared\ValueObjects\TenantId;
+use App\Exceptions\CorruptedDomainEventException;
 use App\Traits\HasDomainMetadata;
 use App\ValueObjects\Money;
 use App\ValueObjects\OrderNumber;
@@ -169,16 +170,16 @@ final readonly class OrderRefunded implements DomainEvent, ShouldDispatchAfterCo
 
         foreach ($requiredKeys as $key) {
             if (! array_key_exists($key, $primitives)) {
-                throw \App\Exceptions\CorruptedDomainEventException::missingKey($key, self::class);
+                throw CorruptedDomainEventException::missingKey($key, self::class);
             }
             if ($primitives[$key] === null) {
-                throw \App\Exceptions\CorruptedDomainEventException::nullValue($key, self::class);
+                throw CorruptedDomainEventException::nullValue($key, self::class);
             }
         }
 
         // is_partial has boolean semantics - missing is ambiguous, must be explicit
         if (! array_key_exists('is_partial', $primitives)) {
-            throw \App\Exceptions\CorruptedDomainEventException::missingKey('is_partial', self::class);
+            throw CorruptedDomainEventException::missingKey('is_partial', self::class);
         }
 
         return new self(

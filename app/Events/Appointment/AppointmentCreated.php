@@ -9,6 +9,7 @@ use App\Domain\Shared\ValueObjects\TenantId;
 use DateTimeImmutable;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Support\Str;
 
 final readonly class AppointmentCreated implements DomainEvent, ShouldDispatchAfterCommit
 {
@@ -26,7 +27,7 @@ final readonly class AppointmentCreated implements DomainEvent, ShouldDispatchAf
     ) {
         $this->appointmentId = $appointment->id ?? $appointment;
         $this->tenantKey = (string) ($tenantKey ?? ($appointment->tenant_id ?? 0));
-        $this->eventId = $eventId ?? (string) \Illuminate\Support\Str::uuid();
+        $this->eventId = $eventId ?? (string) Str::uuid();
         $this->occurredAt = $occurredAt ?? new DateTimeImmutable;
     }
 

@@ -8,8 +8,8 @@ use App\Filament\Resources\OrderResource;
 use App\Models\Order;
 use Filament\Actions;
 use Filament\Infolists;
-use Filament\Schemas\Schema;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Schemas\Schema;
 
 class ViewOrder extends ViewRecord
 {

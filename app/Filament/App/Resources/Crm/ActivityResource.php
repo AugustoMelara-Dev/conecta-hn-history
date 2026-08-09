@@ -8,7 +8,6 @@ use App\Domain\Crm\Enums\ActivityType;
 use App\Filament\App\Resources\Crm\ActivityResource\Pages;
 use App\Models\CrmActivity;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -31,9 +30,9 @@ class ActivityResource extends Resource
 {
     protected static ?string $model = CrmActivity::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-calendar-days';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-calendar-days';
 
-    protected static string | \UnitEnum | null $navigationGroup = 'CRM';
+    protected static string|\UnitEnum|null $navigationGroup = 'CRM';
 
     protected static ?string $navigationLabel = 'Actividades';
 
@@ -133,6 +132,7 @@ class ActivityResource extends Resource
         if (! $tenant) {
             return $query->whereRaw('1 = 0');
         }
+
         return $query->where('tenant_id', $tenant->getKey());
     }
 

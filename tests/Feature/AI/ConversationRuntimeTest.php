@@ -26,11 +26,11 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 use Tests\Fakes\AI\FakeAiProvider;
 use Tests\Support\AI\AiEligibleRegistryFixture;
 use Tests\Support\GlobalMarketFixture;
 use Tests\TestCase;
-use InvalidArgumentException;
 
 final class ConversationRuntimeTest extends TestCase
 {

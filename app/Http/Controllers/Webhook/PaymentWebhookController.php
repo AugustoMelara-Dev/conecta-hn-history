@@ -105,7 +105,6 @@ final class PaymentWebhookController extends Controller
             return null;
         }
 
-
         return $request->json()->all();
 
     }

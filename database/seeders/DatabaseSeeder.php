@@ -13,6 +13,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
 {
@@ -123,7 +124,7 @@ class DatabaseSeeder extends Seeder
 
             $tenant = Tenant::create([
                 'name' => $data['name'],
-                'slug' => \Illuminate\Support\Str::slug($data['name']),
+                'slug' => Str::slug($data['name']),
                 'user_id' => $user->id,
                 'category_id' => $categories->where('slug', $data['cat'])->first()->id,
                 'city_id' => $data['city']->id,
@@ -166,7 +167,7 @@ class DatabaseSeeder extends Seeder
 
             $tenant = Tenant::create([
                 'name' => $data['name'],
-                'slug' => \Illuminate\Support\Str::slug($data['name']),
+                'slug' => Str::slug($data['name']),
                 'user_id' => $user->id,
                 'category_id' => $categories->where('slug', $data['cat'])->first()->id,
                 'city_id' => $data['city']->id,
@@ -201,7 +202,7 @@ class DatabaseSeeder extends Seeder
 
             Tenant::create([
                 'name' => $data['name'],
-                'slug' => \Illuminate\Support\Str::slug($data['name']),
+                'slug' => Str::slug($data['name']),
                 'user_id' => $user->id,
                 'category_id' => $categories->where('slug', $data['cat'])->first()->id,
                 'city_id' => $tegus->id,

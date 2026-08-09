@@ -2,6 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Application\Automation\ActionRegistry;
+use App\Application\Automation\ConditionRegistry;
+use App\Application\Automation\GraphBuilder;
+use App\Application\Automation\TriggerRegistry;
 use Illuminate\Support\Facades\File;
 
 /**
@@ -10,7 +14,6 @@ use Illuminate\Support\Facades\File;
  * Las acciones de workflow solo pueden mutar estado dentro de un WorkflowRun.
  * Garbage: ninguna Action debe mutar entidades fuera de su contexto controlado.
  */
-
 it('Automation Domain files do not import Filament', function () {
     $domainDir = app_path('Domain/Automation');
     expect(is_dir($domainDir))->toBeTrue();
@@ -32,7 +35,9 @@ it('Automation Application uses strict types', function () {
     foreach ([$domainDir, $appDir] as $dir) {
         $files = File::allFiles($dir);
         foreach ($files as $file) {
-            if ($file->getExtension() !== 'php') continue;
+            if ($file->getExtension() !== 'php') {
+                continue;
+            }
             $contents = File::get($file->getPathname());
             expect($contents)->toContain('declare(strict_types=1);');
         }
@@ -40,13 +45,13 @@ it('Automation Application uses strict types', function () {
 });
 
 it('TriggerRegistry / ActionRegistry / ConditionRegistry exist', function () {
-    expect(class_exists(\App\Application\Automation\TriggerRegistry::class))->toBeTrue();
-    expect(class_exists(\App\Application\Automation\ActionRegistry::class))->toBeTrue();
-    expect(class_exists(\App\Application\Automation\ConditionRegistry::class))->toBeTrue();
+    expect(class_exists(TriggerRegistry::class))->toBeTrue();
+    expect(class_exists(ActionRegistry::class))->toBeTrue();
+    expect(class_exists(ConditionRegistry::class))->toBeTrue();
 });
 
 it('GraphBuilder enforces single trigger', function () {
-    $builder = new \App\Application\Automation\GraphBuilder();
+    $builder = new GraphBuilder;
 
     // 0 triggers
     $result = $builder->build(

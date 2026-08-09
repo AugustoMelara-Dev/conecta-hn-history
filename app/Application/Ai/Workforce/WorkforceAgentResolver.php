@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Application\Ai\Workforce;
 
 use App\Application\Ai\Registry\AiRegistryQuery;
-use App\Exceptions\Ai\AiExecutionDeniedException;
 use App\Application\Ai\Workforce\Contracts\WorkforceRegistryAuthority;
+use App\Exceptions\Ai\AiExecutionDeniedException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -25,8 +25,7 @@ final readonly class WorkforceAgentResolver
         string $marketCode = 'HN',
         int|string|null $actorId = null,
         ?string $cohortSubject = null,
-    ): WorkforceAgentContext
-    {
+    ): WorkforceAgentContext {
         $tenantId = strtolower(trim($tenantId));
         if (! Str::isUuid($tenantId)) {
             throw new InvalidArgumentException('Workforce tenant ID must be a UUID.');

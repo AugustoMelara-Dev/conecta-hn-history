@@ -9,8 +9,8 @@ use App\Application\Discovery\AgentCapabilityProjection;
 use App\Application\Markets\HondurasMarketBackfill;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\Support\AI\AiEligibleRegistryFixture;
 use Tests\TestCase;
 

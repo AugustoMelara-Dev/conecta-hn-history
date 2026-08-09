@@ -9,7 +9,6 @@ use App\Application\Billing\Services\BillingCheckoutService;
 use App\Domain\Billing\DTOs\SubscriptionCheckoutSessionResult;
 use App\Domain\Billing\DTOs\SubscriptionPortalSessionResult;
 use App\Domain\Billing\Gateways\SubscriptionCheckoutGatewayInterface;
-use App\Domain\Billing\Repositories\PlanRepositoryInterface;
 use App\Domain\Billing\Repositories\SubscriptionIntentRepositoryInterface;
 use App\Domain\Shared\Contracts\UuidGeneratorInterface;
 use App\Infrastructure\Billing\Persistence\ConfigPlanRepository;

@@ -17,7 +17,7 @@ use Maatwebsite\Excel\Concerns\WithValidation;
 /**
  * CustomersImport - Importa customer profiles desde CSV/Excel.
  */
-class CustomersImport implements ToModel, WithHeadingRow, WithValidation, WithChunkReading, WithBatchInserts, Importable
+class CustomersImport implements Importable, ToModel, WithBatchInserts, WithChunkReading, WithHeadingRow, WithValidation
 {
     use ExcelImportable;
     use HasImportTemplate;

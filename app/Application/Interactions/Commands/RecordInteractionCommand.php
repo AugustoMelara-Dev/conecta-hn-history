@@ -6,6 +6,8 @@ namespace App\Application\Interactions\Commands;
 
 use App\Application\Shared\Contracts\IdempotentCommandInterface;
 use App\Application\Shared\Contracts\SensitiveDataInterface;
+use App\Application\Shared\Contracts\VersionedCommandInterface;
+use App\Application\Shared\Traits\HasSchemaVersion;
 
 /**
  * RecordInteractionCommand - Immutable Interaction Event DTO
@@ -17,9 +19,9 @@ use App\Application\Shared\Contracts\SensitiveDataInterface;
  * ║  GDPR: ipAddress & userAgent are PII — redacted in logs & Outbox.     ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  */
-final readonly class RecordInteractionCommand implements \App\Application\Shared\Contracts\VersionedCommandInterface, IdempotentCommandInterface, SensitiveDataInterface
+final readonly class RecordInteractionCommand implements IdempotentCommandInterface, SensitiveDataInterface, VersionedCommandInterface
 {
-    use \App\Application\Shared\Traits\HasSchemaVersion;
+    use HasSchemaVersion;
 
     public function __construct(
         /** Tenant context ID (pre-validated) */

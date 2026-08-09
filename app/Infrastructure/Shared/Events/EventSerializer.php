@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Shared\Events;
 
 use App\Domain\Shared\Contracts\UpcasterInterface;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 use RuntimeException;
 
@@ -177,6 +178,6 @@ final readonly class EventSerializer
      */
     private function generateEventId(): string
     {
-        return (string) \Illuminate\Support\Str::uuid();
+        return (string) Str::uuid();
     }
 }

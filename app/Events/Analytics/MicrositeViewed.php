@@ -9,6 +9,7 @@ use App\Domain\Shared\ValueObjects\TenantId;
 use DateTimeImmutable;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Support\Str;
 
 final readonly class MicrositeViewed implements DomainEvent, ShouldDispatchAfterCommit
 {
@@ -30,7 +31,7 @@ final readonly class MicrositeViewed implements DomainEvent, ShouldDispatchAfter
         $this->tenantKey = $tenantKey;
         $this->visitorHash = $ip ? hash('sha256', $tenantKey.'|'.$ip) : null;
         $this->agentHash = $userAgent ? hash('sha256', $userAgent) : null;
-        $this->eventId = $eventId ?? (string) \Illuminate\Support\Str::uuid();
+        $this->eventId = $eventId ?? (string) Str::uuid();
         $this->occurredAt = $occurredAt ?? new DateTimeImmutable;
     }
 

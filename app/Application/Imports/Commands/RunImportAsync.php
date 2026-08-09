@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Imports\Commands;
 
+use App\Jobs\RunImportJob;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Queue;
 
@@ -18,12 +19,13 @@ class RunImportAsync extends Command
 
     public function handle(): int
     {
-        Queue::push(\App\Jobs\RunImportJob::class, [
+        Queue::push(RunImportJob::class, [
             'entity' => $this->argument('entity'),
             'file' => $this->argument('file'),
             'tenant_id' => $this->option('tenant'),
         ]);
         $this->info('Import job queued.');
+
         return self::SUCCESS;
     }
 }

@@ -13,6 +13,7 @@ use App\Infrastructure\Billing\Global\DeterministicBillingProviderFake;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 final class WebhookLifecycleTest extends TestCase
@@ -158,7 +159,7 @@ final class WebhookLifecycleTest extends TestCase
         ]);
 
         DB::table('global_billing_entitlements')->insert([
-            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'id' => (string) Str::uuid(),
             'tenant_id' => (string) $tenant->getKey(),
             'market_key' => 'hn',
             'price_book_version' => 'hn-v1',

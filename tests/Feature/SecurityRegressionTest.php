@@ -2,9 +2,21 @@
 
 namespace Tests\Feature;
 
+use App\Models\Coupon;
+use App\Models\Lead;
+use App\Models\MenuSection;
+use App\Models\Order;
 use App\Models\Product;
+use App\Models\Review;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Policies\CouponPolicy;
+use App\Policies\LeadPolicy;
+use App\Policies\MenuSectionPolicy;
+use App\Policies\OrderPolicy;
+use App\Policies\ProductPolicy;
+use App\Policies\ReviewPolicy;
+use App\Policies\TenantAwarePolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -196,12 +208,12 @@ class SecurityRegressionTest extends TestCase
         // We're documenting that the business rule exists
 
         $this->assertTrue(
-            method_exists(\App\Policies\OrderPolicy::class, 'delete'),
+            method_exists(OrderPolicy::class, 'delete'),
             'OrderPolicy must have delete method with business rules'
         );
 
         $this->assertTrue(
-            method_exists(\App\Policies\OrderPolicy::class, 'cancel'),
+            method_exists(OrderPolicy::class, 'cancel'),
             'OrderPolicy must have cancel method for cancellation logic'
         );
     }
@@ -217,12 +229,12 @@ class SecurityRegressionTest extends TestCase
     public function it_verifies_all_critical_models_have_policies(): void
     {
         $requiredPolicies = [
-            \App\Models\Product::class => \App\Policies\ProductPolicy::class,
-            \App\Models\Order::class => \App\Policies\OrderPolicy::class,
-            \App\Models\Coupon::class => \App\Policies\CouponPolicy::class,
-            \App\Models\MenuSection::class => \App\Policies\MenuSectionPolicy::class,
-            \App\Models\Lead::class => \App\Policies\LeadPolicy::class,
-            \App\Models\Review::class => \App\Policies\ReviewPolicy::class,
+            Product::class => ProductPolicy::class,
+            Order::class => OrderPolicy::class,
+            Coupon::class => CouponPolicy::class,
+            MenuSection::class => MenuSectionPolicy::class,
+            Lead::class => LeadPolicy::class,
+            Review::class => ReviewPolicy::class,
         ];
 
         foreach ($requiredPolicies as $model => $policy) {
@@ -244,17 +256,17 @@ class SecurityRegressionTest extends TestCase
     public function it_verifies_policies_extend_tenant_aware_policy(): void
     {
         $policies = [
-            \App\Policies\ProductPolicy::class,
-            \App\Policies\OrderPolicy::class,
-            \App\Policies\CouponPolicy::class,
-            \App\Policies\MenuSectionPolicy::class,
-            \App\Policies\LeadPolicy::class,
-            \App\Policies\ReviewPolicy::class,
+            ProductPolicy::class,
+            OrderPolicy::class,
+            CouponPolicy::class,
+            MenuSectionPolicy::class,
+            LeadPolicy::class,
+            ReviewPolicy::class,
         ];
 
         foreach ($policies as $policy) {
             $this->assertTrue(
-                is_subclass_of($policy, \App\Policies\TenantAwarePolicy::class),
+                is_subclass_of($policy, TenantAwarePolicy::class),
                 "{$policy} must extend TenantAwarePolicy"
             );
         }

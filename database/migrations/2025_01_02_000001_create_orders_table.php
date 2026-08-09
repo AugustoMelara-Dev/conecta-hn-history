@@ -1,15 +1,19 @@
 <?php
 
+use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        Illuminate\Support\Facades\Schema::create('orders', function (Illuminate\Database\Schema\Blueprint $table) {
+        Schema::create('orders', function (Blueprint $table) {
             $table->id();
-            $table->foreignIdFor(\App\Models\User::class)->nullable();
-            $table->foreignIdFor(\App\Models\Tenant::class)->nullable();
+            $table->foreignIdFor(User::class)->nullable();
+            $table->foreignIdFor(Tenant::class)->nullable();
             $table->string('order_number')->unique();
             $table->uuid('tracking_uuid')->nullable()->unique();
 
@@ -51,6 +55,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Illuminate\Support\Facades\Schema::dropIfExists('orders');
+        Schema::dropIfExists('orders');
     }
 };

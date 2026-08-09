@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Shared\Middleware;
 
+use App\Application\Shared\Contracts\ReadOnlyCommandInterface;
 use App\Application\Shared\Contracts\TransactionManagerInterface;
 use Closure;
 
@@ -24,7 +25,7 @@ final class TransactionMiddleware
     public function handle(object $command, Closure $next): mixed
     {
         // PERFORMANCE OPTIMIZATION: Skip transaction for Read-Only operations
-        if ($command instanceof \App\Application\Shared\Contracts\ReadOnlyCommandInterface) {
+        if ($command instanceof ReadOnlyCommandInterface) {
             return $next($command);
         }
 

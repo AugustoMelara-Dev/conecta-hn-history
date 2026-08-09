@@ -17,6 +17,7 @@ use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\Shared\Contracts\ClockInterface;
 use App\Domain\Shared\Entities\DomainEventMessage;
 use App\Domain\Shared\Exceptions\SecurityException;
+use App\Infrastructure\Shared\Context\IdempotencyContext;
 use App\Infrastructure\Shared\Telemetry\TraceContext;
 use Psr\Log\LoggerInterface;
 use Ramsey\Uuid\Uuid;
@@ -44,7 +45,7 @@ final readonly class GenerateOtpHandler implements GenerateOtpHandlerInterface
         private OtpHasherInterface $hasher,
         private SensitivePayloadCipherInterface $payloadCipher,
         private TraceContext $traceContext,
-        private \App\Infrastructure\Shared\Context\IdempotencyContext $idempotencyContext,
+        private IdempotencyContext $idempotencyContext,
         private int $otpExpiryMinutes,
         private int $otpLength,
     ) {}

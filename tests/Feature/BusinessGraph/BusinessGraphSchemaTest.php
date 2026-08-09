@@ -80,7 +80,7 @@ final class BusinessGraphSchemaTest extends TestCase
     }
 
     /**
-     * @param list<string> $requiredColumns
+     * @param  list<string>  $requiredColumns
      */
     private function hasCompositeIndexContaining(string $table, array $requiredColumns): bool
     {

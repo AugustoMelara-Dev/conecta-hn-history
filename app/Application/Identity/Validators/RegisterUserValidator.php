@@ -10,6 +10,7 @@ use App\Application\Identity\Validators\Rules\UniqueUserEmailRule;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use Illuminate\Contracts\Validation\Factory as ValidatorFactory;
+use Illuminate\Contracts\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 
@@ -58,7 +59,7 @@ final readonly class RegisterUserValidator
     /**
      * Get validation rules for the RegisterUserCommand.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\Rule|array|string>
+     * @return array<string, Rule|array|string>
      */
     public function rules(RegisterUserCommand $command): array
     {

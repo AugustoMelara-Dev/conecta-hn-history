@@ -10,7 +10,6 @@ use Illuminate\Support\Facades\File;
  * Garantiza que el código en app/Domain/Crm/ no importa Filament ni App\Models.
  * (Domain layer debe ser puro PHP, sin dependencias de UI.)
  */
-
 it('CRM Domain files do not import Filament', function () {
     $domainDir = app_path('Domain/Crm');
     expect(is_dir($domainDir))->toBeTrue();

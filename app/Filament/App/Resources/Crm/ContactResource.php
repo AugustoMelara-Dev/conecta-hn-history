@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Filament\App\Resources\Crm;
 
 use App\Application\Crm\BulkOperationsService;
+use App\Application\Crm\ContactEnrichmentService;
 use App\Domain\Crm\Enums\LifecycleStage;
 use App\Filament\App\Resources\Crm\ContactResource\Pages;
+use App\Filament\App\Resources\Crm\ContactResource\RelationManagers\ActivitiesRelationManager;
+use App\Filament\App\Resources\Crm\ContactResource\RelationManagers\DealsRelationManager;
 use App\Models\Contact;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
@@ -19,13 +22,11 @@ use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
@@ -37,9 +38,9 @@ class ContactResource extends Resource
 {
     protected static ?string $model = Contact::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-user';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-user';
 
-    protected static string | \UnitEnum | null $navigationGroup = 'CRM';
+    protected static string|\UnitEnum|null $navigationGroup = 'CRM';
 
     protected static ?string $navigationLabel = 'Contactos';
 
@@ -217,7 +218,7 @@ class ContactResource extends Resource
                     ->icon('heroicon-o-sparkles')
                     ->color('info')
                     ->action(function (Contact $record) {
-                        app(\App\Application\Crm\ContactEnrichmentService::class)
+                        app(ContactEnrichmentService::class)
                             ->applyToContact($record);
                         Notification::make()
                             ->title('Contacto enriquecido')
@@ -227,7 +228,7 @@ class ContactResource extends Resource
                 Action::make('view_deals')
                     ->label('Ver deals')
                     ->icon('heroicon-o-currency-dollar')
-                    ->url(fn (Contact $record) => \App\Filament\App\Resources\Crm\DealResource::getUrl('index', ['tableFilters[contact_id][value]' => $record->id])),
+                    ->url(fn (Contact $record) => DealResource::getUrl('index', ['tableFilters[contact_id][value]' => $record->id])),
                 DeleteAction::make(),
             ])
             ->bulkActions([
@@ -292,8 +293,8 @@ class ContactResource extends Resource
     public static function getRelations(): array
     {
         return [
-            \App\Filament\App\Resources\Crm\ContactResource\RelationManagers\DealsRelationManager::class,
-            \App\Filament\App\Resources\Crm\ContactResource\RelationManagers\ActivitiesRelationManager::class,
+            DealsRelationManager::class,
+            ActivitiesRelationManager::class,
         ];
     }
 

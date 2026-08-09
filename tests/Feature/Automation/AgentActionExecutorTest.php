@@ -506,8 +506,7 @@ final class AgentActionExecutorTest extends TestCase
         array $input = [],
         ?string $agentVersionId = null,
         ?string $conversationId = null,
-    ): AgentActionRequest
-    {
+    ): AgentActionRequest {
         return AgentActionRequest::fromWorkforce(
             (string) $tenant->getKey(),
             $agentVersionId ?? (string) Str::uuid(),
@@ -860,7 +859,7 @@ final class AgentActionExecutorTest extends TestCase
     }
 
     /**
-     * @param list<string> $tables
+     * @param  list<string>  $tables
      * @return array<string, list<array<string, mixed>>>
      */
     private function tableState(array $tables, ?string $tenantId = null): array
@@ -922,7 +921,7 @@ final class AgentActionExecutorTest extends TestCase
     }
 
     /** @param array<string, list<array<string, mixed>>> $state
-     *  @return array<string, int>
+     * @return array<string, int>
      */
     private function automationStateCounts(array $state): array
     {

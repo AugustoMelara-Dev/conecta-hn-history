@@ -11,12 +11,12 @@ use App\Models\City;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Laravel\Sanctum\Sanctum;
+use Tests\Fakes\AI\FakeAiProvider;
 use Tests\Support\AI\AiEligibleRegistryFixture;
 use Tests\Support\GlobalMarketFixture;
-use Tests\Fakes\AI\FakeAiProvider;
 use Tests\TestCase;
 
 final class TenantAiConfigurationApiTest extends TestCase

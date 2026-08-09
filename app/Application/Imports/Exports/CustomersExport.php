@@ -24,6 +24,7 @@ class CustomersExport implements FromQuery, WithHeadings, WithMapping, WithStyle
         if (isset($this->filters['city'])) {
             $query->where('city', $this->filters['city']);
         }
+
         return $query;
     }
 

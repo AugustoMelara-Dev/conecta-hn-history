@@ -98,7 +98,7 @@ return new class extends Migration
 
         try {
             DB::statement($sql);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // Fallback: Some index types don't support INPLACE (e.g., FULLTEXT)
             // Try without the algorithm hints
             $fallbackSql = "CREATE {$indexType} `{$name}` ON `{$table}` ({$columnList})";

@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Channels;
 
-use App\Application\Channels\ChannelConnectionService;
 use App\Application\Channels\ChannelAuthorizationEnvelope;
+use App\Application\Channels\ChannelConnectionService;
 use App\Application\Channels\ChannelConsentService;
 use App\Application\Channels\ChannelContext;
 use App\Application\Channels\ChannelIdentityResolver;
 use App\Application\Channels\ChannelInboundMessage;
+use App\Application\Channels\NormalizedInboundMessage;
 use App\Application\Channels\WebhookAuthenticityEnvelope;
 use App\Infrastructure\Channels\Sms\FailClosedSmsAdapter;
 use App\Models\Tenant;
@@ -49,7 +50,7 @@ final class ChannelIdentityConsentTest extends TestCase
 
         $identityA = $resolver->resolve(
             $this->context($tenantA, $actorA, 'email', 'email-a', 'CA', 'en-CA', 'CAD', 'America/Toronto'),
-            new \App\Application\Channels\NormalizedInboundMessage(
+            new NormalizedInboundMessage(
                 adapterKey: 'email.fake',
                 tenantId: (string) $tenantA->id,
                 channel: 'email',
@@ -73,7 +74,7 @@ final class ChannelIdentityConsentTest extends TestCase
         );
         $identityB = $resolver->resolve(
             $this->context($tenantB, $actorB, 'sms', 'sms-b', 'JP', 'ja-JP', 'JPY', 'Asia/Tokyo'),
-            new \App\Application\Channels\NormalizedInboundMessage(
+            new NormalizedInboundMessage(
                 adapterKey: 'sms.fail_closed',
                 tenantId: (string) $tenantB->id,
                 channel: 'sms',

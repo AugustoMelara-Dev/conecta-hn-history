@@ -3,6 +3,7 @@
 namespace Tests\Arch;
 
 use Illuminate\Support\Facades\Route;
+use Tests\TestCase;
 
 /**
  * SecurityConfigTest - Defensive Architecture Audit
@@ -18,7 +19,7 @@ use Illuminate\Support\Facades\Route;
  *
  * Run with: php artisan test --filter=SecurityConfigTest
  */
-class SecurityConfigTest extends \Tests\TestCase
+class SecurityConfigTest extends TestCase
 {
     // ═══════════════════════════════════════════════════════════════════════════
     // SPEC 1: APP PANEL PROVIDER MIDDLEWARE AUDIT

@@ -11,5 +11,9 @@ use Filament\Resources\Pages\ListRecords;
 class ListTags extends ListRecords
 {
     protected static string $resource = TagResource::class;
-    protected function getHeaderActions(): array { return [CreateAction::make()->label('Nuevo tag')]; }
+
+    protected function getHeaderActions(): array
+    {
+        return [CreateAction::make()->label('Nuevo tag')];
+    }
 }

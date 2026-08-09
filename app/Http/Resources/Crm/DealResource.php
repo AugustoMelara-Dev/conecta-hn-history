@@ -29,7 +29,7 @@ class DealResource extends JsonResource
             'lost_at' => $this->lost_at?->toIso8601String(),
             'lost_reason' => $this->lost_reason,
             'description' => $this->description,
-            'custom_fields' => $this->custom_fields ?? new \stdClass(),
+            'custom_fields' => $this->custom_fields ?? new \stdClass,
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
             'contact' => $this->whenLoaded('contact'),

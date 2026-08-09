@@ -2,8 +2,8 @@
 
 namespace Tests\Feature\Auth;
 
-use App\Models\User;
 use App\Models\Tenant;
+use App\Models\User;
 use App\Support\Panel\CanonicalPanelUrlResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;

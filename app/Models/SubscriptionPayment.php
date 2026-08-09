@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Domain\Billing\Events\SubscriptionPaymentApproved;
 use App\Infrastructure\Persistence\Eloquent\Traits\BelongsToTenant;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -26,9 +27,9 @@ use Illuminate\Support\Facades\Storage;
  * @property string $status
  * @property string|null $admin_notes
  * @property string|null $reviewed_by
- * @property \Carbon\Carbon|null $reviewed_at
- * @property \Carbon\Carbon|null $subscription_extended_at
- *                                                         SECURITY: Uses BelongsToTenant trait for automatic tenant isolation
+ * @property Carbon|null $reviewed_at
+ * @property Carbon|null $subscription_extended_at
+ *                                                 SECURITY: Uses BelongsToTenant trait for automatic tenant isolation
  */
 class SubscriptionPayment extends Model
 {

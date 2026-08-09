@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\App\Resources\CouponResource\Pages;
 
 use App\Filament\App\Resources\CouponResource;
+use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
 class ListCoupons extends ListRecords
@@ -14,7 +15,7 @@ class ListCoupons extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            \Filament\Actions\CreateAction::make()
+            CreateAction::make()
                 ->label('Nuevo Cupón'),
         ];
     }

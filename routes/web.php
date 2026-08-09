@@ -1,14 +1,22 @@
 <?php
 
+use App\Http\Controllers\Auth\ImpersonationController;
 use App\Http\Controllers\Auth\ProfileController;
+use App\Http\Controllers\Auth\RegisterTenantController;
 use App\Http\Controllers\Public\BookingController;
 use App\Http\Controllers\Public\DirectoryController;
 use App\Http\Controllers\Public\InteractionController;
 use App\Http\Controllers\Public\LocationController;
 use App\Http\Controllers\Public\RedirectController;
+use App\Http\Controllers\Public\ReviewController;
 use App\Http\Controllers\Public\TenantMicrositeController;
+use App\Http\Controllers\Public\ToggleFavoriteController;
 use App\Http\Controllers\Public\WelcomeController;
 use App\Http\Controllers\Tenant\AnalyticsController;
+use App\Http\Controllers\Web\BillingController;
+use App\Http\Controllers\Web\RegistrationController;
+use App\Support\Panel\CanonicalPanelUrlResolver;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -99,7 +107,7 @@ Route::get('/categoria/{category:slug}', [DirectoryController::class, 'byCategor
 
 // [MIGRATED TO REACT] Página de Pago Pendiente (PRO Post-Registro)
 // Route::get('/registro/pago-pendiente/{payment}', \App\Livewire\Pages\PaymentPending::class)->name('payment.pending');
-Route::get('/registro/pago-pendiente/{payment}', [\App\Http\Controllers\Web\BillingController::class, 'showPaymentPending'])->middleware('auth')
+Route::get('/registro/pago-pendiente/{payment}', [BillingController::class, 'showPaymentPending'])->middleware('auth')
     ->name('payment.pending');
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -109,7 +117,7 @@ Route::post('/location/set', [LocationController::class, 'setCity'])->name('loca
 Route::post('/location/clear', [LocationController::class, 'clearCity'])->name('location.clear');
 Route::get('/api/cities', [LocationController::class, 'getCities'])->name('cities.all');
 // [REMOVED] Dead code: SearchController was never created. Search is owned by /directorio.
-Route::get('/api/check-slug', [\App\Http\Controllers\Web\RegistrationController::class, 'checkSlug'])->name('api.check-slug');
+Route::get('/api/check-slug', [RegistrationController::class, 'checkSlug'])->name('api.check-slug');
 
 // ... (Skip lines)
 
@@ -134,7 +142,7 @@ Route::prefix('track')
 // FIX #16: Rate limiting for security - prevents DoS/spam attacks
 // Principle: Defense in Depth - 5 attempts per minute per IP
 // ═══════════════════════════════════════════════════════════════════════
-Route::controller(\App\Http\Controllers\Auth\RegisterTenantController::class)->group(function () {
+Route::controller(RegisterTenantController::class)->group(function () {
     Route::get('/registrar-negocio', 'create')->name('tenant.register');
     Route::post('/registrar-negocio', 'store')
         ->middleware('throttle:5,1')  // 5 attempts per minute
@@ -145,14 +153,14 @@ Route::controller(\App\Http\Controllers\Auth\RegisterTenantController::class)->g
 // FAVORITES - Inertia-Compatible Toggle Controller
 // ═══════════════════════════════════════════════════════════════════════
 Route::middleware('auth')->group(function () {
-    Route::post('/favorites/toggle', \App\Http\Controllers\Public\ToggleFavoriteController::class)
+    Route::post('/favorites/toggle', ToggleFavoriteController::class)
         ->name('favorites.toggle');
 });
 
 // ═══════════════════════════════════════════════════════════════════════
 // Auth Routes (Dashboard, Mi Cuenta)
 // ═══════════════════════════════════════════════════════════════════════
-Route::get('/dashboard', function (\Illuminate\Http\Request $request, \App\Support\Panel\CanonicalPanelUrlResolver $panelUrlResolver) {
+Route::get('/dashboard', function (Request $request, CanonicalPanelUrlResolver $panelUrlResolver) {
     return redirect()->to($panelUrlResolver->forUser($request->user()));
 })->middleware(['auth', 'verified'])->name('dashboard');
 
@@ -227,7 +235,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/analytics/data', [AnalyticsController::class, 'index'])->name('analytics.data');
 
     // Reviews
-    Route::post('/reviews', [\App\Http\Controllers\Public\ReviewController::class, 'store'])->name('reviews.store');
+    Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store');
 
     // [REMOVED] Follow/Unfollow feature - FollowController was never created.
     // TODO: Implement follow functionality when needed via dedicated controller.
@@ -235,9 +243,9 @@ Route::middleware('auth')->group(function () {
     // ═══════════════════════════════════════════════════════════════════
     // SHADOW LOGIN - Impersonation Exit Route (SECURED)
     // ═══════════════════════════════════════════════════════════════════
-    Route::post('/impersonate/leave', [\App\Http\Controllers\Auth\ImpersonationController::class, 'leave'])
+    Route::post('/impersonate/leave', [ImpersonationController::class, 'leave'])
         ->name('impersonate.leave');
-    Route::post('/admin/impersonation-grants/{grant}/revoke', [\App\Http\Controllers\Auth\ImpersonationController::class, 'revoke'])
+    Route::post('/admin/impersonation-grants/{grant}/revoke', [ImpersonationController::class, 'revoke'])
         ->middleware('password.confirm')
         ->name('impersonate.revoke');
 });

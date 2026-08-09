@@ -1,6 +1,8 @@
 <?php
 
 declare(strict_types=1);
+use App\Domain\Shared\Services\TenantContext;
+use App\Http\Controllers\Api\V1\ReportDownloadController;
 
 /**
  * VC-AUDIT-008/009/011 Compliance Tests
@@ -22,8 +24,8 @@ test('report download controller uses urldecode not urnDecode', function () {
 
 test('report download validates path without fatal error', function () {
     $tenantId = 'a25122c0-a33e-4a07-91c2-8b00f4d2859e';
-    app(\App\Domain\Shared\Services\TenantContext::class)->setTenant($tenantId);
-    $controller = app(\App\Http\Controllers\Api\V1\ReportDownloadController::class);
+    app(TenantContext::class)->setTenant($tenantId);
+    $controller = app(ReportDownloadController::class);
     $method = new ReflectionMethod($controller, 'validateAndSanitizePath');
     $method->setAccessible(true);
 
@@ -35,7 +37,7 @@ test('report download validates path without fatal error', function () {
 });
 
 test('report download blocks path traversal', function () {
-    $controller = app(\App\Http\Controllers\Api\V1\ReportDownloadController::class);
+    $controller = app(ReportDownloadController::class);
     $method = new ReflectionMethod($controller, 'validateAndSanitizePath');
     $method->setAccessible(true);
 

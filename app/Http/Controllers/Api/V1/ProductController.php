@@ -9,10 +9,15 @@ use App\Application\Products\Commands\CreateCanonicalProductCommand;
 use App\Domain\Product\Contracts\ProductReader;
 use App\Domain\Shared\Services\TenantContext;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreProductRequest;
+use App\Http\Requests\Tenant\UpdateProductRequest;
 use App\Http\Resources\ProductResource;
 use App\Models\Tenant;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use OpenApi\Attributes as OA;
 
 /**
@@ -90,8 +95,8 @@ final class ProductController extends Controller
      * Store a newly created product.
      */
     public function store(
-        \App\Http\Requests\StoreProductRequest $request,
-    ): \Illuminate\Http\JsonResponse {
+        StoreProductRequest $request,
+    ): JsonResponse {
         $data = $request->validated();
         $tenantId = $this->trustedWriteTenant($request);
         try {
@@ -115,11 +120,11 @@ final class ProductController extends Controller
      * Update the specified product.
      */
     public function update(
-        \App\Http\Requests\Tenant\UpdateProductRequest $request,
+        UpdateProductRequest $request,
         int $product
-    ): \Illuminate\Http\JsonResponse {
+    ): JsonResponse {
         $data = $request->validated();
-        $result = \Illuminate\Support\Facades\DB::transaction(function () use ($request, $product, $data) {
+        $result = DB::transaction(function () use ($request, $product, $data) {
             $attributes = $this->writeAttributes($data);
             $attributes['name'] = (string) $data['name'];
             $attributes['price_minor'] = $this->minorHnl($data['price']);
@@ -168,7 +173,7 @@ final class ProductController extends Controller
         }
 
         $tenantId = $request->user()?->tenant_id;
-        abort_unless(is_string($tenantId) && \Illuminate\Support\Str::isUuid($tenantId), 403);
+        abort_unless(is_string($tenantId) && Str::isUuid($tenantId), 403);
 
         return $tenantId;
     }

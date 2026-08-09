@@ -170,7 +170,7 @@ try {
                 (string) $appointment->timezone,
             );
             $errors = CarbonImmutable::getLastErrors();
-        } catch (\Throwable) {
+        } catch (Throwable) {
             continue;
         }
         $hasParseErrors = is_array($errors)

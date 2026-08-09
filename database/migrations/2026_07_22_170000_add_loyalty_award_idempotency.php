@@ -26,7 +26,7 @@ return new class extends Migration
             ->exists();
 
         if ($duplicateHistoricalAwards) {
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 'Cannot enable loyalty award idempotency while duplicate historical earn entries exist.',
             );
         }

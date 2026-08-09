@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Widgets;
 
+use App\Models\CustomerProfile;
 use App\Models\Order;
 use Filament\Facades\Filament;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
@@ -32,7 +33,7 @@ class StatsOverview extends BaseWidget
             ->where('status', 'paid')
             ->sum('total_amount') ?? 0;
 
-        $customers = \App\Models\CustomerProfile::query()
+        $customers = CustomerProfile::query()
             ->where('business_id', $tenant->getKey())
             ->count();
 
@@ -42,7 +43,7 @@ class StatsOverview extends BaseWidget
                 ->descriptionIcon('heroicon-m-shopping-bag')
                 ->color('primary'),
 
-            Stat::make('Ingresos del mes', 'L ' . number_format((float) $revenueThisMonth, 2))
+            Stat::make('Ingresos del mes', 'L '.number_format((float) $revenueThisMonth, 2))
                 ->description('Ingresos generados en el mes actual')
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->color('success'),

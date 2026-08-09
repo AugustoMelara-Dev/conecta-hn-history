@@ -39,12 +39,14 @@ class NoteController extends Controller
         ]);
         $data['tenant_id'] = $request->user()->tenant_id;
         $data['created_by'] = auth()->id();
+
         return response()->json(CustomerNote::create($data), 201);
     }
 
     public function show(CustomerNote $note): JsonResponse
     {
         Gate::authorize('view', $note);
+
         return response()->json($note);
     }
 
@@ -56,6 +58,7 @@ class NoteController extends Controller
             'body' => ['sometimes', 'string'],
         ]);
         $note->update($data);
+
         return response()->json($note);
     }
 
@@ -63,6 +66,7 @@ class NoteController extends Controller
     {
         Gate::authorize('delete', $note);
         $note->delete();
+
         return response()->json(['message' => 'Note deleted successfully']);
     }
 }

@@ -6,8 +6,11 @@ namespace App\Http\Middleware;
 
 use App\Models\Tenant;
 use Closure;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -53,7 +56,7 @@ final class ResolveTenantFromRequest
         // VC-AUDIT-108: Prevent unauthorized header-based context switching
         if ($this->isHeaderBasedResolution($request) && auth()->check()) {
             if (! auth()->user()->tenants()->where('tenants.id', $tenant->id)->exists()) {
-                \Illuminate\Support\Facades\Log::warning('TenantResolution: Unauthorized header access', [
+                Log::warning('TenantResolution: Unauthorized header access', [
                     'user_id' => auth()->id(),
                     'target_tenant' => $tenant->id,
                 ]);
@@ -166,7 +169,7 @@ final class ResolveTenantFromRequest
     /**
      * Apply specific query logic based on available context.
      *
-     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @param  Builder  $query
      */
     private function applyResolutionLogic($query, Request $request): void
     {
@@ -224,7 +227,7 @@ final class ResolveTenantFromRequest
             return null;
         }
 
-        $sub = \Illuminate\Support\Str::beforeLast($host, $suffix);
+        $sub = Str::beforeLast($host, $suffix);
 
         return ($sub && $sub !== 'www' && ! str_contains($sub, '.')) ? $sub : null;
     }

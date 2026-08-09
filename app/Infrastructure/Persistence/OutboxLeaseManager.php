@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Persistence;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -300,7 +301,7 @@ final class OutboxLeaseManager
     {
         $cacheKey = 'outbox:worker_salt:'.$this->workerId;
 
-        return \Illuminate\Support\Facades\Cache::remember($cacheKey, 3600, function () {
+        return Cache::remember($cacheKey, 3600, function () {
             return Str::random(16);
         });
     }

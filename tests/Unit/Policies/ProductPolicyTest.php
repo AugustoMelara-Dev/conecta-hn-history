@@ -3,12 +3,16 @@
 declare(strict_types=1);
 
 use App\Models\Product;
+use App\Models\Tenant;
 use App\Models\User;
 use App\Policies\ProductPolicy;
 use Illuminate\Auth\Access\Response;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Mockery\MockInterface;
+use Tests\TestCase;
 
 // Bootstrap Laravel app — needed for Filament::shouldReceive() in create() tests
-uses(Tests\TestCase::class);
+uses(TestCase::class);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPER: Build a User mock with tenant IDs (reuses OrderPolicy pattern)
@@ -26,7 +30,7 @@ function makeUserForProduct(array $tenantIds, string $role = 'seller'): User
     $user->role = $role;
     $user->_memoized_tenant_ids = $tenantIds;
 
-    $relation = Mockery::mock(\Illuminate\Database\Eloquent\Relations\HasMany::class);
+    $relation = Mockery::mock(HasMany::class);
     $relation->shouldReceive('pluck')->with('id')->andReturn(collect($tenantIds));
     $relation->shouldReceive('exists')->andReturn(count($tenantIds) > 0);
     $relation->shouldReceive('first')->andReturn(
@@ -149,11 +153,11 @@ function makeUserForCreate(bool $isPro, int $productCount, array $tenantIds = [1
     $user->_memoized_tenant_ids = $tenantIds;
 
     // Build a tenant mock with is_pro and products() support
-    $productsRelation = Mockery::mock(\Illuminate\Database\Eloquent\Relations\HasMany::class);
+    $productsRelation = Mockery::mock(HasMany::class);
     $productsRelation->shouldReceive('count')->andReturn($productCount);
 
-    /** @var \App\Models\Tenant&Mockery\MockInterface $tenant */
-    $tenant = Mockery::mock(\App\Models\Tenant::class)->makePartial();
+    /** @var Tenant&MockInterface $tenant */
+    $tenant = Mockery::mock(Tenant::class)->makePartial();
     $tenant->setRawAttributes([
         'is_pro' => $isPro,
         'subscription_status' => 'active',
@@ -161,7 +165,7 @@ function makeUserForCreate(bool $isPro, int $productCount, array $tenantIds = [1
     ], true);
     $tenant->shouldReceive('products')->andReturn($productsRelation);
 
-    $relation = Mockery::mock(\Illuminate\Database\Eloquent\Relations\HasMany::class);
+    $relation = Mockery::mock(HasMany::class);
     $relation->shouldReceive('pluck')->with('id')->andReturn(collect($tenantIds));
     $relation->shouldReceive('exists')->andReturn(count($tenantIds) > 0);
     $relation->shouldReceive('first')->andReturn(

@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 /**
  * RolesAndPermissionsSeeder - Jerarquia RBAC Granular
@@ -20,7 +21,7 @@ class RolesAndPermissionsSeeder extends Seeder
     public function run(): void
     {
         // Resetear cache de permisos
-        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
         // ═══════════════════════════════════════════════════════════════════
         // DEFINIR PERMISOS POR RECURSO

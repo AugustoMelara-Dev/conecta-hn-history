@@ -9,7 +9,7 @@ use App\Domain\Reporting\Enums\ReportKey;
 use App\Domain\Reporting\ValueObjects\ReportRange;
 
 it('RevenueByMonthReport returns rows and series', function () {
-    $report = new RevenueByMonthReport();
+    $report = new RevenueByMonthReport;
     $range = ReportRange::last30Days();
 
     // Use mock tenant ID
@@ -21,8 +21,8 @@ it('RevenueByMonthReport returns rows and series', function () {
 });
 
 it('ReportExecutor caches results', function () {
-    $registry = new ReportRegistry();
-    $registry->register(new RevenueByMonthReport());
+    $registry = new ReportRegistry;
+    $registry->register(new RevenueByMonthReport);
 
     $executor = new ReportExecutor($registry);
 
@@ -36,7 +36,7 @@ it('ReportExecutor caches results', function () {
 });
 
 it('ReportExecutor throws on unknown report', function () {
-    $registry = new ReportRegistry();
+    $registry = new ReportRegistry;
     $executor = new ReportExecutor($registry);
     $executor->execute(ReportKey::MrrArr, 'x', ReportRange::last7Days());
-})->throws(\InvalidArgumentException::class);
+})->throws(InvalidArgumentException::class);

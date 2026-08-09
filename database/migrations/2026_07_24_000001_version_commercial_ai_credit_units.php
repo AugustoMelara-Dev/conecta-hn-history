@@ -124,7 +124,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        throw new \RuntimeException(
+        throw new RuntimeException(
             'Commercial AI credit cutover is forward-only; restore a pre-cutover database snapshot instead.',
         );
     }

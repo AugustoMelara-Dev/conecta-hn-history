@@ -16,6 +16,7 @@ use App\Domain\Billing\Services\DocumentStorageServiceInterface;
 use App\Domain\Shared\Contracts\EventDispatcherInterface;
 use App\Domain\Shared\Contracts\UuidGeneratorInterface;
 use App\Domain\Shared\ValueObjects\Money;
+use App\Infrastructure\Security\ResilientRateLimiter;
 use DateTimeImmutable;
 use Illuminate\Database\QueryException;
 use Psr\Log\LoggerInterface;
@@ -47,7 +48,7 @@ final readonly class ReportPaymentHandler implements ReportPaymentHandlerInterfa
         private UuidGeneratorInterface $uuidGenerator,
         private LoggerInterface $logger,
         private TransactionManagerInterface $transactionManager,
-        private \App\Infrastructure\Security\ResilientRateLimiter $rateLimiter
+        private ResilientRateLimiter $rateLimiter
     ) {}
 
     public function handle(ReportPaymentCommand $command): ReportPaymentResult

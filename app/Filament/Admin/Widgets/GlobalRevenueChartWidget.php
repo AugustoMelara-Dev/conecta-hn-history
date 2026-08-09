@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 class GlobalRevenueChartWidget extends ChartWidget
 {
     protected ?string $heading = 'Ingresos globales (12 meses)';
+
     protected static ?int $sort = 2;
 
     protected function getData(): array
@@ -19,6 +20,7 @@ class GlobalRevenueChartWidget extends ChartWidget
             ->where('created_at', '>=', now()->subMonths(12))
             ->selectRaw("TO_CHAR(created_at, 'YYYY-MM') as month, SUM(total_amount) as revenue")
             ->groupBy('month')->orderBy('month')->get();
+
         return [
             'datasets' => [[
                 'label' => 'Revenue',
@@ -32,5 +34,8 @@ class GlobalRevenueChartWidget extends ChartWidget
         ];
     }
 
-    protected function getType(): string { return 'line'; }
+    protected function getType(): string
+    {
+        return 'line';
+    }
 }

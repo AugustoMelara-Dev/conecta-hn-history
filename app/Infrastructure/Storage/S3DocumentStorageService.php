@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Storage;
 
+use App\Domain\Billing\Exceptions\PaymentEvidenceNotFoundException;
 use App\Domain\Billing\Services\DocumentStorageServiceInterface;
 use Illuminate\Filesystem\FilesystemManager;
+use Illuminate\Support\Str;
+use League\Flysystem\UnableToRetrieveMetadata;
 use RuntimeException;
 use Throwable;
 
@@ -93,7 +96,7 @@ final readonly class S3DocumentStorageService implements DocumentStorageServiceI
             '%s/%s/%s.%s',
             self::PERMANENT_PREFIX,
             $tenantId,
-            \Illuminate\Support\Str::uuid()->toString(),
+            Str::uuid()->toString(),
             $extension
         );
 
@@ -128,7 +131,7 @@ final readonly class S3DocumentStorageService implements DocumentStorageServiceI
         try {
             // OPTIMIZATION: Single S3 Call (Latency Reduction)
             $size = $disk->size($path);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             // CRITICAL: Differentiate "Not Found" from "Infrastructure Failure" (503/Timeout)
             // If the driver explicitly says "Unable to retrieve metadata", it might be missing OR a connection error.
             // AWS SDK typically throws an exception with a code.
@@ -141,8 +144,8 @@ final readonly class S3DocumentStorageService implements DocumentStorageServiceI
             // BUT strict observability requires we don't swallow 500s.
 
             // Simplest Robust Check:
-            if ($e instanceof \League\Flysystem\UnableToRetrieveMetadata || str_contains($e->getMessage(), 'not found') || str_contains($e->getMessage(), '404')) {
-                throw \App\Domain\Billing\Exceptions\PaymentEvidenceNotFoundException::atPath($path);
+            if ($e instanceof UnableToRetrieveMetadata || str_contains($e->getMessage(), 'not found') || str_contains($e->getMessage(), '404')) {
+                throw PaymentEvidenceNotFoundException::atPath($path);
             }
 
             // RETHROW Infrastructure Errors (e.g., 503 Service Unavailable, Curl Error)
@@ -150,7 +153,7 @@ final readonly class S3DocumentStorageService implements DocumentStorageServiceI
         }
 
         if ($size === 0) {
-            throw \App\Domain\Billing\Exceptions\PaymentEvidenceNotFoundException::checkSumFailed($path);
+            throw PaymentEvidenceNotFoundException::checkSumFailed($path);
         }
     }
 }

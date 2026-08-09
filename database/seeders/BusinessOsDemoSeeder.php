@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use App\Domain\Identity\Enums\UserRole;
+use App\Enums\StockStatus;
 use App\Models\Category;
 use App\Models\City;
 use App\Models\Department;
@@ -128,7 +129,7 @@ final class BusinessOsDemoSeeder extends Seeder
                     'manage_stock' => true,
                     'stock_quantity' => 24,
                     'low_stock_threshold' => 4,
-                    'stock_status' => \App\Enums\StockStatus::InStock,
+                    'stock_status' => StockStatus::InStock,
                 ])
             );
         }

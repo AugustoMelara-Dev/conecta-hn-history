@@ -10,11 +10,13 @@ use Filament\Widgets\ChartWidget;
 class PlanDistributionChartWidget extends ChartWidget
 {
     protected ?string $heading = 'Distribución de planes';
+
     protected static ?int $sort = 3;
 
     protected function getData(): array
     {
         $counts = Tenant::selectRaw('plan, COUNT(*) as count')->groupBy('plan')->get();
+
         return [
             'datasets' => [[
                 'data' => $counts->pluck('count')->toArray(),
@@ -24,5 +26,8 @@ class PlanDistributionChartWidget extends ChartWidget
         ];
     }
 
-    protected function getType(): string { return 'doughnut'; }
+    protected function getType(): string
+    {
+        return 'doughnut';
+    }
 }

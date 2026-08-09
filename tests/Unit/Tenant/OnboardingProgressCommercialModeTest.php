@@ -3,11 +3,12 @@
 declare(strict_types=1);
 
 use App\Domain\TenantGovernance\Services\TenantOnboardingProgressService;
+use Tests\TestCase;
 
-uses(Tests\TestCase::class);
+uses(TestCase::class);
 
 it('routes consulting lead offer milestones to settings instead of service catalog', function (): void {
-    $service = new TenantOnboardingProgressService();
+    $service = new TenantOnboardingProgressService;
     $method = new ReflectionMethod($service, 'manifestStateHref');
     $method->setAccessible(true);
 

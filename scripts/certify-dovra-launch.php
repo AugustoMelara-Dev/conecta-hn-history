@@ -8,7 +8,6 @@ declare(strict_types=1);
  * This script intentionally avoids bootstrapping Laravel so that it can still
  * describe the repository state even when the current checkout cannot boot.
  */
-
 $options = parseOptions($argv);
 $root = normalizePath($options['root'] ?? dirname(__DIR__));
 $configPath = normalizePath($options['config'] ?? $root.'/config/dovra/launch.php');
@@ -151,10 +150,10 @@ $payload = [
     ],
     'summary' => [
         'strict_failures' => array_column($errors, 'code'),
-            'manifest_executed_without_strict_failures' => $exitCode === 0,
-            'can_certify_exact_artifact' => $exitCode === 0 && $exactArtifactClean,
-            'dirty_state_is_not_production_readiness' => true,
-            'production_readiness' => 'not_evaluated_by_repository_certifier',
+        'manifest_executed_without_strict_failures' => $exitCode === 0,
+        'can_certify_exact_artifact' => $exitCode === 0 && $exactArtifactClean,
+        'dirty_state_is_not_production_readiness' => true,
+        'production_readiness' => 'not_evaluated_by_repository_certifier',
         'notes' => [
             'A dirty tree can produce an accounting manifest but cannot be certified as an exact immutable artifact.',
             'Repository certification is not public production, legal compliance, independent certification, traction, revenue, PMF, or investment readiness.',

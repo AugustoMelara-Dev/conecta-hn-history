@@ -7,6 +7,7 @@ namespace App\Application\Imports\Imports;
 use App\Application\Imports\Concerns\HasImportTemplate;
 use App\Application\Imports\Concerns\Importable;
 use App\Models\User;
+use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\Importable as ExcelImportable;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithBatchInserts;
@@ -14,7 +15,7 @@ use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
 
-class UsersImport implements ToModel, WithHeadingRow, WithValidation, WithChunkReading, WithBatchInserts, Importable
+class UsersImport implements Importable, ToModel, WithBatchInserts, WithChunkReading, WithHeadingRow, WithValidation
 {
     use ExcelImportable;
     use HasImportTemplate;
@@ -56,11 +57,12 @@ class UsersImport implements ToModel, WithHeadingRow, WithValidation, WithChunkR
             'tenant_id' => $this->tenantId,
             'name' => $row['name'],
             'email' => $row['email'],
-            'password' => bcrypt($row['password'] ?? \Illuminate\Support\Str::random(16)),
+            'password' => bcrypt($row['password'] ?? Str::random(16)),
         ]);
         if (! empty($row['role'])) {
             $user->assignRole($row['role']);
         }
+
         return $user;
     }
 

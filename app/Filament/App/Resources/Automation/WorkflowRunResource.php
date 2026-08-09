@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Filament\App\Resources\Automation;
 
 use App\Filament\App\Resources\Automation\WorkflowRunResource\Pages;
+use App\Models\WorkflowRun;
 use Filament\Facades\Filament;
 use Filament\Resources\Resource;
-use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -17,11 +17,11 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class WorkflowRunResource extends Resource
 {
-    protected static ?string $model = \App\Models\WorkflowRun::class;
+    protected static ?string $model = WorkflowRun::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-play';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-play';
 
-    protected static string | \UnitEnum | null $navigationGroup = 'Automatización';
+    protected static string|\UnitEnum|null $navigationGroup = 'Automatización';
 
     protected static ?string $navigationLabel = 'Runs';
 
@@ -58,10 +58,14 @@ class WorkflowRunResource extends Resource
         if (! $tenant) {
             return $query->whereRaw('1 = 0');
         }
+
         return $query->where('tenant_id', $tenant->getKey());
     }
 
-    public static function getRelations(): array { return []; }
+    public static function getRelations(): array
+    {
+        return [];
+    }
 
     public static function getPages(): array
     {

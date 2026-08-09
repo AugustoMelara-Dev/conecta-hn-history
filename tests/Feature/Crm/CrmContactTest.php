@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 use App\Models\Contact;
 use App\Models\CrmActivity;
-use App\Models\CrmCompany;
 use App\Models\CrmDeal;
 use App\Models\CrmPipeline;
 use App\Models\CrmStage;
 use App\Models\Tenant;
 use App\Models\User;
+use Illuminate\Validation\Factory;
 
 it('can create a contact happy-path', function () {
     $tenant = Tenant::factory()->create();
@@ -31,7 +31,7 @@ it('can create a contact happy-path', function () {
 it('contact validation fails with bad email', function () {
     $tenant = Tenant::factory()->create();
 
-    $request = \Illuminate\Validation\Factory::class;
+    $request = Factory::class;
     $validator = validator(
         ['email' => 'not-an-email'],
         ['email' => 'email'],

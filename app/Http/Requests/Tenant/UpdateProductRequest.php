@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Tenant;
 
+use App\Application\Products\Commands\UpdateProductCommand;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -26,7 +28,7 @@ final class UpdateProductRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -79,11 +81,11 @@ final class UpdateProductRequest extends FormRequest
         ];
     }
 
-    public function toCommand(int $productId): \App\Application\Products\Commands\UpdateProductCommand
+    public function toCommand(int $productId): UpdateProductCommand
     {
         $validated = $this->validated();
 
-        return new \App\Application\Products\Commands\UpdateProductCommand(
+        return new UpdateProductCommand(
             tenantId: (string) $this->user()->tenant_id, productId: $productId,
             name: (string) $validated['name'], description: (string) ($validated['description'] ?? ''),
             price: 0, stock: (int) ($validated['stock_quantity'] ?? 0),

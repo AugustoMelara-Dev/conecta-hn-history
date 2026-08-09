@@ -29,7 +29,7 @@ return new class extends Migration
         Schema::table('tenants', function (Blueprint $table): void {
             try {
                 $table->dropIndex('tenants_domain_index');
-            } catch (\Throwable) {
+            } catch (Throwable) {
                 // The index may not exist in older/local schemas.
             }
 

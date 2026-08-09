@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Domain\Billing\Services\MonthlyAiCreditGrantService;
 use App\Infrastructure\Jobs\Governance\AuditTenantLimits;
 use App\Mail\SubscriptionExpiredMail;
 use App\Mail\SubscriptionExpiringMail;
@@ -167,7 +168,7 @@ class ExpireSubscriptions extends Command
                     'product_limit' => $freeProductLimit, // Limite desde GeneralSettings
                 ]);
 
-                app(\App\Domain\Billing\Services\MonthlyAiCreditGrantService::class)->grant($tenant->refresh());
+                app(MonthlyAiCreditGrantService::class)->grant($tenant->refresh());
 
                 // Disparar auditoria de limites
                 if (class_exists(AuditTenantLimits::class)) {

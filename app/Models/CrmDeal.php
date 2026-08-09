@@ -51,37 +51,37 @@ class CrmDeal extends Model
 
     public function tenant(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Tenant::class);
+        return $this->belongsTo(Tenant::class);
     }
 
     public function pipeline(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\CrmPipeline::class, 'pipeline_id');
+        return $this->belongsTo(CrmPipeline::class, 'pipeline_id');
     }
 
     public function stage(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\CrmStage::class, 'stage_id');
+        return $this->belongsTo(CrmStage::class, 'stage_id');
     }
 
     public function contact(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Contact::class, 'contact_id');
+        return $this->belongsTo(Contact::class, 'contact_id');
     }
 
     public function company(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\CrmCompany::class, 'company_id');
+        return $this->belongsTo(CrmCompany::class, 'company_id');
     }
 
     public function owner(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'owner_id');
+        return $this->belongsTo(User::class, 'owner_id');
     }
 
     public function activities(): HasMany
     {
-        return $this->hasMany(\App\Models\CrmActivity::class, 'deal_id');
+        return $this->hasMany(CrmActivity::class, 'deal_id');
     }
 
     public function getStatusEnumAttribute(): DealStatus

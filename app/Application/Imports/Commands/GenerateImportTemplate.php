@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Imports\Commands;
 
+use App\Application\Imports\Exports\TemplateExport;
 use App\Application\Imports\ImportService;
 use Illuminate\Console\Command;
 use Maatwebsite\Excel\Facades\Excel;
@@ -19,6 +20,7 @@ class GenerateImportTemplate extends Command
         $entity = $this->argument('entity');
         if (! $importService->has($entity)) {
             $this->error("Unknown entity: {$entity}");
+
             return self::FAILURE;
         }
 
@@ -27,16 +29,18 @@ class GenerateImportTemplate extends Command
 
         if (! $template) {
             $this->error("No template available for: {$entity}");
+
             return self::FAILURE;
         }
 
         $output = $this->option('output') ?? storage_path("app/templates/{$entity}.xlsx");
         Excel::store(
-            new \App\Application\Imports\Exports\TemplateExport($template['headers'], $template['sample']),
+            new TemplateExport($template['headers'], $template['sample']),
             basename($output),
             'local'
         );
         $this->info("Template generated: {$output}");
+
         return self::SUCCESS;
     }
 }

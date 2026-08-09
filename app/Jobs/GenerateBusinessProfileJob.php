@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Exceptions\Ai\AiMalformedResponseException;
+use App\Exceptions\Ai\AiProviderUnavailableException;
+use App\Exceptions\InsufficientAiCreditsException;
 use App\Infrastructure\Shared\Middleware\TenantQueueMiddleware;
 use App\Services\AI\OpenAIService;
 use Illuminate\Bus\Queueable;
@@ -69,9 +72,9 @@ class GenerateBusinessProfileJob implements ShouldQueue
     /**
      * Execute the job.
      *
-     * @throws \App\Exceptions\Ai\AiProviderUnavailableException
-     * @throws \App\Exceptions\Ai\AiMalformedResponseException
-     * @throws \App\Exceptions\InsufficientAiCreditsException
+     * @throws AiProviderUnavailableException
+     * @throws AiMalformedResponseException
+     * @throws InsufficientAiCreditsException
      */
     public function handle(OpenAIService $openAIService): void
     {

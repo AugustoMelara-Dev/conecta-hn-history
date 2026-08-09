@@ -16,7 +16,7 @@ class HydrateLocationFromCookie
      * SECURITY DIRECTIVE 2: Sticky Persistence
      * Hydrate session from cookie if session is empty
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {

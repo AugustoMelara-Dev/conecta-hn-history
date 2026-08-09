@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Pages\Automation;
 
+use App\Application\Automation\GraphBuilder;
 use App\Application\Automation\TemplateCatalog;
 use App\Domain\Automation\Enums\TriggerType;
 use App\Domain\Automation\ValueObjects\AutomationGraph;
+use App\Models\WorkflowDefinition;
 use Filament\Actions\Action;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -24,11 +27,11 @@ use Filament\Schemas\Schema;
  */
 class AutomationBuilder extends Page
 {
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-puzzle-piece';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-puzzle-piece';
 
     protected static ?string $title = 'Automation Builder';
 
-    protected static string | \UnitEnum | null $navigationGroup = 'Automatización';
+    protected static string|\UnitEnum|null $navigationGroup = 'Automatización';
 
     protected static ?string $navigationLabel = 'Builder';
 
@@ -52,11 +55,11 @@ class AutomationBuilder extends Page
                 Section::make('1. Selecciona un template (opcional)')->components([
                     Select::make('template_slug')
                         ->label('Template')
-                        ->options(fn () => collect((new TemplateCatalog())->all())->pluck('name', 'slug')->toArray())
+                        ->options(fn () => collect((new TemplateCatalog)->all())->pluck('name', 'slug')->toArray())
                         ->live()
                         ->afterStateUpdated(function ($state) {
                             if ($state) {
-                                $template = (new TemplateCatalog())->findBySlug($state);
+                                $template = (new TemplateCatalog)->findBySlug($state);
                                 if ($template) {
                                     $this->data['name'] = $template['name'];
                                     $this->data['description'] = $template['description'];
@@ -67,7 +70,7 @@ class AutomationBuilder extends Page
                 ]),
                 Section::make('2. Workflow')->components([
                     TextInput::make('name')->label('Nombre')->required()->maxLength(200),
-                    \Filament\Forms\Components\Textarea::make('description')->label('Descripción')->rows(2)->maxLength(500),
+                    Textarea::make('description')->label('Descripción')->rows(2)->maxLength(500),
                     Select::make('trigger_type')
                         ->label('Trigger')
                         ->options(TriggerType::options())
@@ -97,27 +100,28 @@ class AutomationBuilder extends Page
                     $graphJson = $this->data['graph_json'] ?? '{}';
                     try {
                         $graph = AutomationGraph::fromJson($graphJson);
-                        $builder = new \App\Application\Automation\GraphBuilder();
+                        $builder = new GraphBuilder;
                         $result = $builder->validate($graph->nodes, $graph->edges);
                         if (empty($result)) {
                             Notification::make()->title('Graph válido')->success()->send();
                         } else {
-                            Notification::make()->title('Errores: ' . implode(', ', $result))->danger()->send();
+                            Notification::make()->title('Errores: '.implode(', ', $result))->danger()->send();
                         }
                     } catch (\Throwable $e) {
-                        Notification::make()->title('JSON inválido: ' . $e->getMessage())->danger()->send();
+                        Notification::make()->title('JSON inválido: '.$e->getMessage())->danger()->send();
                     }
                 }),
             Action::make('save')
                 ->label('Guardar workflow')
                 ->color('success')
                 ->action(function () {
-                    $tenantId = \Filament\Facades\Filament::getTenant()?->getKey();
+                    $tenantId = Filament::getTenant()?->getKey();
                     if (! $tenantId) {
                         Notification::make()->title('No tenant context')->danger()->send();
+
                         return;
                     }
-                    \App\Models\WorkflowDefinition::create([
+                    WorkflowDefinition::create([
                         'tenant_id' => $tenantId,
                         'name' => $this->data['name'],
                         'description' => $this->data['description'] ?? null,

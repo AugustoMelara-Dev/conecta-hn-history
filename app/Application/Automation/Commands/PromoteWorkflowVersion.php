@@ -17,11 +17,13 @@ class PromoteWorkflowVersion extends Command
     {
         $version = AutomationWorkflowVersion::find($this->argument('versionId'));
         if (! $version) {
-            $this->error("Version not found.");
+            $this->error('Version not found.');
+
             return self::FAILURE;
         }
         $version->update(['is_active' => true]);
-        $this->info("Version promoted.");
+        $this->info('Version promoted.');
+
         return self::SUCCESS;
     }
 }

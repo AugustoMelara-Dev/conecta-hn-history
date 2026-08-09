@@ -10,6 +10,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Coupon Model - Promotional Discount Engine
@@ -485,7 +486,7 @@ class Coupon extends Model
      */
     public function incrementUsage(): bool
     {
-        return \Illuminate\Support\Facades\DB::transaction(function () {
+        return DB::transaction(function () {
             // Acquire exclusive lock on this coupon row
             $coupon = static::lockForUpdate()->find($this->id);
 

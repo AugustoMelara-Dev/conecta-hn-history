@@ -21,6 +21,7 @@ class RunReportCommand extends Command
         $key = ReportKey::tryFrom($this->argument('key'));
         if ($key === null || ! $registry->has($key)) {
             $this->error("Report not found: {$this->argument('key')}");
+
             return self::FAILURE;
         }
 
@@ -29,8 +30,9 @@ class RunReportCommand extends Command
         $data = $executor->execute($key, $tenantId, $range);
 
         $this->info("Report: {$key->label()}");
-        $this->info('Rows: ' . count($data->rows));
-        $this->info('Series: ' . count($data->series));
+        $this->info('Rows: '.count($data->rows));
+        $this->info('Series: '.count($data->series));
+
         return self::SUCCESS;
     }
 }

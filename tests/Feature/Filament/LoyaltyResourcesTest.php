@@ -3,7 +3,13 @@
 declare(strict_types=1);
 
 use App\Filament\App\Resources\LoyaltyProgramResource;
+use App\Filament\App\Resources\LoyaltyProgramResource\Pages\CreateLoyaltyProgram;
+use App\Filament\App\Resources\LoyaltyProgramResource\Pages\EditLoyaltyProgram;
+use App\Filament\App\Resources\LoyaltyProgramResource\Pages\ListLoyaltyPrograms;
 use App\Filament\App\Resources\LoyaltyRewardResource;
+use App\Filament\App\Resources\LoyaltyRewardResource\Pages\CreateLoyaltyReward;
+use App\Filament\App\Resources\LoyaltyRewardResource\Pages\EditLoyaltyReward;
+use App\Filament\App\Resources\LoyaltyRewardResource\Pages\ListLoyaltyRewards;
 use App\Models\LoyaltyProgram;
 use App\Models\LoyaltyReward;
 
@@ -28,27 +34,27 @@ it('LoyaltyRewardResource is properly configured', function () {
 // TEST 3: LoyaltyProgramResource has correct pages
 it('LoyaltyProgramResource has required pages', function () {
     $pages = LoyaltyProgramResource::getPages();
-    
+
     expect($pages)->toHaveKeys(['index', 'create', 'edit']);
 });
 
 // TEST 4: LoyaltyRewardResource has correct pages
 it('LoyaltyRewardResource has required pages', function () {
     $pages = LoyaltyRewardResource::getPages();
-    
+
     expect($pages)->toHaveKeys(['index', 'create', 'edit']);
 });
 
 // TEST 5: Page classes exist
 it('LoyaltyProgram page classes exist', function () {
-    expect(class_exists(\App\Filament\App\Resources\LoyaltyProgramResource\Pages\ListLoyaltyPrograms::class))->toBeTrue();
-    expect(class_exists(\App\Filament\App\Resources\LoyaltyProgramResource\Pages\CreateLoyaltyProgram::class))->toBeTrue();
-    expect(class_exists(\App\Filament\App\Resources\LoyaltyProgramResource\Pages\EditLoyaltyProgram::class))->toBeTrue();
+    expect(class_exists(ListLoyaltyPrograms::class))->toBeTrue();
+    expect(class_exists(CreateLoyaltyProgram::class))->toBeTrue();
+    expect(class_exists(EditLoyaltyProgram::class))->toBeTrue();
 });
 
 // TEST 6: LoyaltyReward page classes exist
 it('LoyaltyReward page classes exist', function () {
-    expect(class_exists(\App\Filament\App\Resources\LoyaltyRewardResource\Pages\ListLoyaltyRewards::class))->toBeTrue();
-    expect(class_exists(\App\Filament\App\Resources\LoyaltyRewardResource\Pages\CreateLoyaltyReward::class))->toBeTrue();
-    expect(class_exists(\App\Filament\App\Resources\LoyaltyRewardResource\Pages\EditLoyaltyReward::class))->toBeTrue();
+    expect(class_exists(ListLoyaltyRewards::class))->toBeTrue();
+    expect(class_exists(CreateLoyaltyReward::class))->toBeTrue();
+    expect(class_exists(EditLoyaltyReward::class))->toBeTrue();
 });

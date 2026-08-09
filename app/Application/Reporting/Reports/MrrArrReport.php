@@ -17,12 +17,35 @@ use Illuminate\Support\Facades\DB;
  */
 class MrrArrReport implements ReportInterface
 {
-    public function getKey(): ReportKey { return ReportKey::MrrArr; }
-    public function getName(): string { return 'MRR / ARR'; }
-    public function getDescription(): string { return 'Monthly Recurring Revenue y Annual Run Rate.'; }
-    public function getChartType(): string { return 'line'; }
-    public function getColumns(): array { return ['Mes', 'MRR (HNL)', 'ARR (HNL)', 'Churn %']; }
-    public function getFilters(): array { return []; }
+    public function getKey(): ReportKey
+    {
+        return ReportKey::MrrArr;
+    }
+
+    public function getName(): string
+    {
+        return 'MRR / ARR';
+    }
+
+    public function getDescription(): string
+    {
+        return 'Monthly Recurring Revenue y Annual Run Rate.';
+    }
+
+    public function getChartType(): string
+    {
+        return 'line';
+    }
+
+    public function getColumns(): array
+    {
+        return ['Mes', 'MRR (HNL)', 'ARR (HNL)', 'Churn %'];
+    }
+
+    public function getFilters(): array
+    {
+        return [];
+    }
 
     public function getData(string $tenantId, ReportRange $range): ReportData
     {

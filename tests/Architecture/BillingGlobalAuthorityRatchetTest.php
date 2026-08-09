@@ -24,6 +24,7 @@ final class BillingGlobalAuthorityRatchetTest extends TestCase
         foreach ($paths as $path) {
             if (! is_dir($path)) {
                 $violations[] = str_replace('\\', '/', substr($path, strlen($root) + 1)).' (missing)';
+
                 continue;
             }
 

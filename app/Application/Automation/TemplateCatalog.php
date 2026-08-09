@@ -221,6 +221,7 @@ class TemplateCatalog
                 return $template;
             }
         }
+
         return null;
     }
 }

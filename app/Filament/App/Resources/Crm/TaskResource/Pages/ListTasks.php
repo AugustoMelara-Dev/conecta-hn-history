@@ -11,5 +11,9 @@ use Filament\Resources\Pages\ListRecords;
 class ListTasks extends ListRecords
 {
     protected static string $resource = TaskResource::class;
-    protected function getHeaderActions(): array { return [CreateAction::make()->label('Nueva tarea')]; }
+
+    protected function getHeaderActions(): array
+    {
+        return [CreateAction::make()->label('Nueva tarea')];
+    }
 }

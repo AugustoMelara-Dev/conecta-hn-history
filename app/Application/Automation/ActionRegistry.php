@@ -38,6 +38,7 @@ class ActionRegistry
 
         try {
             $result = $handler($payload, $context);
+
             return [
                 'status' => $result['status'] ?? 'success',
                 'output' => $result['output'] ?? null,

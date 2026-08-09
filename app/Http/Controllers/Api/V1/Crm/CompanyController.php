@@ -29,6 +29,7 @@ class CompanyController extends Controller
         }
 
         $perPage = (int) $request->query('per_page', 25);
+
         return response()->json($query->paginate(min($perPage, 100)));
     }
 
@@ -48,12 +49,14 @@ class CompanyController extends Controller
         ]);
         $data['tenant_id'] = $request->user()->tenant_id;
         $company = CrmCompany::create($data);
+
         return response()->json($company, 201);
     }
 
     public function show(CrmCompany $company): JsonResponse
     {
         Gate::authorize('view', $company);
+
         return response()->json($company);
     }
 
@@ -71,6 +74,7 @@ class CompanyController extends Controller
             'notes' => ['sometimes', 'nullable', 'string'],
         ]);
         $company->update($data);
+
         return response()->json($company);
     }
 
@@ -78,6 +82,7 @@ class CompanyController extends Controller
     {
         Gate::authorize('delete', $company);
         $company->delete();
+
         return response()->json(['message' => 'Company deleted successfully']);
     }
 }

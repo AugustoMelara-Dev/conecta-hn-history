@@ -1,5 +1,6 @@
 <?php
 
+use App\Providers\AIAssistantServiceProvider;
 use App\Providers\AppServiceProvider;
 use App\Providers\AuthDomainServiceProvider;
 use App\Providers\BusServiceProvider;
@@ -14,12 +15,11 @@ use App\Providers\Domain\SalesServiceProvider;
 use App\Providers\Domain\TenantGovernanceServiceProvider;
 use App\Providers\EventServiceProvider;
 use App\Providers\Filament\AdminPanelProvider;
-use App\Providers\AIAssistantServiceProvider;
-use App\Providers\ReportRegistryServiceProvider;
 use App\Providers\Filament\AppPanelProvider;
 use App\Providers\FortifyServiceProvider;
 use App\Providers\HorizonServiceProvider;
 use App\Providers\InfrastructureServiceProvider;
+use App\Providers\ReportRegistryServiceProvider;
 use App\Providers\SchemaRegistryServiceProvider;
 use App\Providers\TelescopeServiceProvider;
 use App\Providers\TitaniumServiceProvider;

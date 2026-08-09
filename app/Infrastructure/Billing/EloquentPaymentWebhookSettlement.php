@@ -11,6 +11,7 @@ use App\Domain\Billing\Mappers\CanonicalPaymentStateMapper;
 use App\Domain\Billing\Repositories\PlanRepositoryInterface;
 use App\Domain\ValueObjects\Payment\PaymentWebhook;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -203,7 +204,7 @@ final readonly class EloquentPaymentWebhookSettlement implements PaymentWebhookS
         }
 
         $baseDate = $tenant->subscription_ends_at !== null
-            ? \Illuminate\Support\Carbon::parse($tenant->subscription_ends_at)
+            ? Carbon::parse($tenant->subscription_ends_at)
             : now();
 
         if ($baseDate->isPast()) {

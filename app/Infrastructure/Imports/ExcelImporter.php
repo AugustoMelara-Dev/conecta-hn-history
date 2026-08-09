@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Imports;
 
-use Maatwebsite\Excel\Concerns\WithBatchInserts;
-use Maatwebsite\Excel\Concerns\WithChunkReading;
-use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
+use Maatwebsite\Excel\Facades\Excel;
 use Maatwebsite\Excel\Imports\HeadingRowFormatter;
+use Maatwebsite\Excel\Validators\ValidationException;
 
 /**
  * ExcelImporter - Wrapper sobre Maatwebsite\Excel para procesar archivos grandes.
@@ -38,12 +37,12 @@ class ExcelImporter
         HeadingRowFormatter::default('none');
 
         try {
-            $import = new $importClass();
+            $import = new $importClass;
 
             // Validate that required concerns are implemented
             $this->validateConcerns($import);
 
-            \Maatwebsite\Excel\Facades\Excel::import($import, $filePath);
+            Excel::import($import, $filePath);
 
             $imported = method_exists($import, 'getImportedCount') ? $import->getImportedCount() : 0;
 
@@ -53,12 +52,13 @@ class ExcelImporter
                 'errors' => [],
                 'duration_ms' => (int) ((microtime(true) - $startTime) * 1000),
             ];
-        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+        } catch (ValidationException $e) {
             $failures = $e->failures();
             $errors = [];
             foreach ($failures as $failure) {
-                $errors[] = "Row {$failure->row()}: " . implode(', ', $failure->errors());
+                $errors[] = "Row {$failure->row()}: ".implode(', ', $failure->errors());
             }
+
             return [
                 'success' => false,
                 'imported' => 0,

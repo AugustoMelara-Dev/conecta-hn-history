@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Models\Interaction;
 use App\Models\Tenant;
 use Closure;
 use Illuminate\Http\Request;
@@ -63,7 +64,7 @@ class TrackVisits
         if (! session()->has($sessionKey)) {
             // Registrar en tabla de interacciones para analytics detallados
             try {
-                \App\Models\Interaction::create([
+                Interaction::create([
                     'tenant_id' => $tenant->id,
                     'user_id' => $user?->id,
                     'type' => 'view',

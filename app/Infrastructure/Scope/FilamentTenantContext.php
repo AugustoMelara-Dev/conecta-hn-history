@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Infrastructure\Scope;
 
 use App\Contracts\Scope\TenantContextInterface;
+use App\Models\User;
+use Filament\Facades\Filament;
 
 /**
  * FilamentTenantContext - Infrastructure Adapter for Filament Panel
@@ -38,9 +40,9 @@ final class FilamentTenantContext implements TenantContextInterface
         // ═══════════════════════════════════════════════════════════════════
         // METHOD 1: Filament Panel Context (Primary)
         // ═══════════════════════════════════════════════════════════════════
-        if (class_exists(\Filament\Facades\Filament::class)) {
+        if (class_exists(Filament::class)) {
             try {
-                $tenant = \Filament\Facades\Filament::getTenant();
+                $tenant = Filament::getTenant();
                 if ($tenant !== null) {
                     return (string) $tenant->id;
                 }
@@ -53,7 +55,7 @@ final class FilamentTenantContext implements TenantContextInterface
         // METHOD 2: Authenticated User's Primary Tenant (Fallback)
         // ═══════════════════════════════════════════════════════════════════
         if (auth()->check()) {
-            /** @var \App\Models\User $user */
+            /** @var User $user */
             $user = auth()->user();
 
             // User->tenants() returns HasMany (user owns tenants)

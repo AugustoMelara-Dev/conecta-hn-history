@@ -36,41 +36,41 @@ final class IdentityGovernanceBackfill
             }
 
             $owners->each(function (object $tenant) use ($now): void {
-                    $this->upsertMembership(
-                        tenantId: (string) $tenant->id,
-                        userId: (string) $tenant->user_id,
-                        role: 'owner',
-                        permissions: [],
-                        invitedAt: $tenant->created_at ?? $now,
-                        acceptedAt: $tenant->created_at ?? $now,
-                        now: $now,
-                        ownerIsAuthoritative: true,
-                    );
-                });
+                $this->upsertMembership(
+                    tenantId: (string) $tenant->id,
+                    userId: (string) $tenant->user_id,
+                    role: 'owner',
+                    permissions: [],
+                    invitedAt: $tenant->created_at ?? $now,
+                    acceptedAt: $tenant->created_at ?? $now,
+                    now: $now,
+                    ownerIsAuthoritative: true,
+                );
+            });
 
             $acceptedMembers->each(function (object $legacy) use (&$roleConflicts, $now): void {
-                    $role = $this->canonicalRole((string) $legacy->role);
-                    $existingRole = DB::table('tenant_memberships')
-                        ->where('tenant_id', $legacy->tenant_id)
-                        ->where('user_id', $legacy->user_id)
-                        ->value('role');
+                $role = $this->canonicalRole((string) $legacy->role);
+                $existingRole = DB::table('tenant_memberships')
+                    ->where('tenant_id', $legacy->tenant_id)
+                    ->where('user_id', $legacy->user_id)
+                    ->value('role');
 
-                    if (is_string($existingRole) && $existingRole !== $role) {
-                        $roleConflicts++;
+                if (is_string($existingRole) && $existingRole !== $role) {
+                    $roleConflicts++;
 
-                        return;
-                    }
+                    return;
+                }
 
-                    $this->upsertMembership(
-                        tenantId: (string) $legacy->tenant_id,
-                        userId: (string) $legacy->user_id,
-                        role: $role,
-                        permissions: $this->legacyPermissions($legacy),
-                        invitedAt: $legacy->invited_at,
-                        acceptedAt: $legacy->accepted_at,
-                        now: $now,
-                    );
-                });
+                $this->upsertMembership(
+                    tenantId: (string) $legacy->tenant_id,
+                    userId: (string) $legacy->user_id,
+                    role: $role,
+                    permissions: $this->legacyPermissions($legacy),
+                    invitedAt: $legacy->invited_at,
+                    acceptedAt: $legacy->accepted_at,
+                    now: $now,
+                );
+            });
         };
 
         if ($dryRun) {

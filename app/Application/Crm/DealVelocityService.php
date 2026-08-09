@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Application\Crm;
 
-use App\Models\CrmDeal;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -41,6 +40,7 @@ class DealVelocityService
         foreach ($rows as $row) {
             $result[$row->stage_id] = (float) $row->avg_days;
         }
+
         return $result;
     }
 

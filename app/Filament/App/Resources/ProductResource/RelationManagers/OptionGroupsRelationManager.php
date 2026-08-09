@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Filament\App\Resources\ProductResource\RelationManagers;
 
 use Filament\Forms;
-use Filament\Schemas\Schema;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 

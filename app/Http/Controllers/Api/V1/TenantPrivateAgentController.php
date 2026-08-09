@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Application\Access\Contracts\TenantPermissionGuardInterface;
 use App\Domain\Access\Enums\Permission;
+use App\Domain\Access\Enums\Role;
 use App\Domain\TenantGovernance\Enums\Capability;
 use App\Http\Controllers\Controller;
 use App\Infrastructure\Tenant\TenantPrivateAgentService;
@@ -36,7 +37,7 @@ final class TenantPrivateAgentController extends Controller
         $isOwner = (string) $tenant->user_id === (string) $user->id
             || $tenant->memberships()
                 ->where('user_id', $user->id)
-                ->where('role', \App\Domain\Access\Enums\Role::OWNER)
+                ->where('role', Role::OWNER)
                 ->whereNotNull('accepted_at')
                 ->exists();
 

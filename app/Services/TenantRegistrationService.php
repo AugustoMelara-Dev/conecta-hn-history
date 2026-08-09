@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Domain\TenantGovernance\Services\SubscriptionPricingService;
 use App\Models\Payment;
 use App\Models\Tenant;
 use App\Models\User;
@@ -190,7 +191,7 @@ class TenantRegistrationService
             if ($isPro) {
                 $payment = Payment::create([
                     'tenant_id' => $tenant->id,
-                    'amount' => \App\Domain\TenantGovernance\Services\SubscriptionPricingService::canonicalProPriceInMajorUnits(),
+                    'amount' => SubscriptionPricingService::canonicalProPriceInMajorUnits(),
                     'gateway' => 'bank_transfer',
                     'status' => 'pending',
                     'reference_number' => 'PAY-'.now()->timestamp.'-'.strtoupper(Str::random(6)),

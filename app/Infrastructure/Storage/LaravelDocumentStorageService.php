@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Storage;
 
+use App\Domain\Billing\Exceptions\PaymentEvidenceNotFoundException;
 use App\Domain\Billing\Services\DocumentStorageServiceInterface;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -88,11 +89,11 @@ final class LaravelDocumentStorageService implements DocumentStorageServiceInter
         $disk = Storage::disk(self::DISK);
 
         if (! $disk->exists($path)) {
-            throw \App\Domain\Billing\Exceptions\PaymentEvidenceNotFoundException::atPath($path);
+            throw PaymentEvidenceNotFoundException::atPath($path);
         }
 
         if ($disk->size($path) === 0) {
-            throw \App\Domain\Billing\Exceptions\PaymentEvidenceNotFoundException::checkSumFailed($path);
+            throw PaymentEvidenceNotFoundException::checkSumFailed($path);
         }
     }
 }

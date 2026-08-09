@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Listeners;
 
 use App\Domain\Billing\Events\SubscriptionPaymentApproved;
+use App\Domain\Billing\Services\MonthlyAiCreditGrantService;
+use App\Domain\Billing\Services\PlanEntitlementService;
 use App\Infrastructure\Shared\Middleware\TenantQueueMiddleware;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
@@ -120,9 +122,9 @@ class UpdateTenantSubscription implements ShouldQueue
                 'subscription_status' => 'active',
                 'subscription_ends_at' => $newEndDate,
                 'plan_type' => 'pro',
-                'product_limit' => (int) app(\App\Domain\Billing\Services\PlanEntitlementService::class)->forPlan('pro')->limit('products'),
+                'product_limit' => (int) app(PlanEntitlementService::class)->forPlan('pro')->limit('products'),
             ])->save();
-            app(\App\Domain\Billing\Services\MonthlyAiCreditGrantService::class)->grant($tenant);
+            app(MonthlyAiCreditGrantService::class)->grant($tenant);
 
             // ═══════════════════════════════════════════════════════════════
             // STEP 4: MARK PAYMENT AS CONSUMED (Idempotency Flag)

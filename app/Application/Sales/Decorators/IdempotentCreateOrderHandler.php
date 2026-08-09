@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Sales\Decorators;
 
 use App\Application\Common\Contracts\IdempotencyServiceInterface;
+use App\Application\Common\Exceptions\ConcurrentRequestException;
 use App\Application\Sales\Commands\CreateOrderCommand;
 use App\Application\Sales\Handlers\CreateOrderHandlerInterface;
 use App\Application\Sales\Results\CreateOrderResult;
@@ -35,7 +36,7 @@ final readonly class IdempotentCreateOrderHandler implements CreateOrderHandlerI
         // 2. Acquire Atomic Processing Registration
         try {
             $this->service->registerProcessing($key, 60);
-        } catch (\App\Application\Common\Exceptions\ConcurrentRequestException) {
+        } catch (ConcurrentRequestException) {
             // If we can't get lock, it means another process is working on this key.
             // We check once more if result appeared (Double-Check Locking variant via Cache)
             // or we throw ConcurrencyException / 429.

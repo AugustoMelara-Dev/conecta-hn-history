@@ -21,7 +21,7 @@ it('BookingController class exists', function () {
 // TEST 2: BookingController has all required methods
 it('BookingController has all required methods', function () {
     $methods = get_class_methods(BookingController::class);
-    
+
     expect($methods)->toContain('index');
     expect($methods)->toContain('store');
     expect($methods)->toContain('getProviders');
@@ -49,7 +49,7 @@ it('Service model has active scope', function () {
     expect(method_exists(Service::class, 'scopeActive'))->toBeTrue();
 });
 
-// TEST 7: ServiceProvider model has active scope  
+// TEST 7: ServiceProvider model has active scope
 it('ServiceProvider model has active scope', function () {
     expect(method_exists(ServiceProvider::class, 'scopeActive'))->toBeTrue();
 });
@@ -71,7 +71,7 @@ it('Appointment model has status constants', function () {
 it('React booking pages exist', function () {
     $indexPath = base_path('resources/js/Pages/Public/Book/Index.jsx');
     $successPath = base_path('resources/js/Pages/Public/Book/Success.jsx');
-    
+
     expect(file_exists($indexPath))->toBeTrue();
     expect(file_exists($successPath))->toBeTrue();
 });

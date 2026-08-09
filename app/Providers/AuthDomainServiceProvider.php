@@ -4,10 +4,21 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Application\Shared\Contracts\SensitivePayloadCipherInterface;
+use App\Domain\Auth\Contracts\OtpNotifierInterface;
+use App\Domain\Auth\Events\OtpGenerated;
 use App\Domain\Auth\Repositories\OtpRepositoryInterface;
 use App\Domain\Auth\Services\OtpHasherInterface;
+use App\Domain\Shared\Services\PasswordHasherInterface;
+use App\Infrastructure\Auth\Listeners\SendOtpNotificationListener;
 use App\Infrastructure\Auth\Repositories\EloquentOtpRepository;
 use App\Infrastructure\Auth\Services\HmacOtpHasher;
+use App\Infrastructure\Notifications\EmailOtpNotifier;
+use App\Infrastructure\Security\LaravelSensitivePayloadCipher;
+use App\Infrastructure\Shared\Resilience\CircuitBreakerDecorator;
+use App\Infrastructure\Shared\Services\LaravelPasswordHasher;
+use Illuminate\Contracts\Cache\Repository;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use RuntimeException;
 
@@ -33,25 +44,25 @@ class AuthDomainServiceProvider extends ServiceProvider
         $this->app->bind(OtpRepositoryInterface::class, EloquentOtpRepository::class);
 
         $this->app->bind(
-            \App\Application\Shared\Contracts\SensitivePayloadCipherInterface::class,
-            \App\Infrastructure\Security\LaravelSensitivePayloadCipher::class
+            SensitivePayloadCipherInterface::class,
+            LaravelSensitivePayloadCipher::class
         );
 
         // 3. Bind Password Hashing Service (Shared Infrastructure)
         $this->app->bind(
-            \App\Domain\Shared\Services\PasswordHasherInterface::class,
-            \App\Infrastructure\Shared\Services\LaravelPasswordHasher::class
+            PasswordHasherInterface::class,
+            LaravelPasswordHasher::class
         );
 
         // 4. Bind OTP Notifier with Circuit Breaker (Resilience Layer)
-        $this->app->bind(\App\Domain\Auth\Contracts\OtpNotifierInterface::class, function ($app) {
+        $this->app->bind(OtpNotifierInterface::class, function ($app) {
             // Instantiate concrete provider (e.g., Email or SMS based on config)
-            $concreteService = $app->make(\App\Infrastructure\Notifications\EmailOtpNotifier::class);
+            $concreteService = $app->make(EmailOtpNotifier::class);
 
             // Wrap with Circuit Breaker
-            return new \App\Infrastructure\Shared\Resilience\CircuitBreakerDecorator(
+            return new CircuitBreakerDecorator(
                 innerService: $concreteService,
-                cache: $app->make(\Illuminate\Contracts\Cache\Repository::class),
+                cache: $app->make(Repository::class),
                 serviceName: 'otp_notifier_email'
             );
         });
@@ -64,9 +75,9 @@ class AuthDomainServiceProvider extends ServiceProvider
     {
         // Explicitly register Domain Event Listeners
         // This keeps the Auth module self-contained (Events + Listeners)
-        \Illuminate\Support\Facades\Event::listen(
-            \App\Domain\Auth\Events\OtpGenerated::class,
-            \App\Infrastructure\Auth\Listeners\SendOtpNotificationListener::class
+        Event::listen(
+            OtpGenerated::class,
+            SendOtpNotificationListener::class
         );
     }
 }

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\App\Resources\Automation;
 
 use App\Filament\App\Resources\Automation\ToolPolicyResource\Pages;
-use App\Models\User;
+use App\Models\ToolPolicy;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\MultiSelect;
 use Filament\Forms\Components\Select;
@@ -14,7 +14,6 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -24,11 +23,11 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class ToolPolicyResource extends Resource
 {
-    protected static ?string $model = \App\Models\ToolPolicy::class;
+    protected static ?string $model = ToolPolicy::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-shield-check';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-shield-check';
 
-    protected static string | \UnitEnum | null $navigationGroup = 'Automatización';
+    protected static string|\UnitEnum|null $navigationGroup = 'Automatización';
 
     protected static ?string $navigationLabel = 'Tool Policies';
 
@@ -96,10 +95,14 @@ class ToolPolicyResource extends Resource
         if (! $tenant) {
             return $query->whereRaw('1 = 0');
         }
+
         return $query->where('tenant_id', $tenant->getKey());
     }
 
-    public static function getRelations(): array { return []; }
+    public static function getRelations(): array
+    {
+        return [];
+    }
 
     public static function getPages(): array
     {

@@ -28,7 +28,7 @@ class ContactResource extends JsonResource
             'lifecycle_stage' => $this->lifecycle_stage,
             'source' => $this->source,
             'tags' => $this->tags ?? [],
-            'custom_fields' => $this->custom_fields ?? new \stdClass(),
+            'custom_fields' => $this->custom_fields ?? new \stdClass,
             'last_contact_at' => $this->last_contact_at?->toIso8601String(),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),

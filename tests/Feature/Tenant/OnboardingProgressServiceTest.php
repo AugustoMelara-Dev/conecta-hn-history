@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Tenant;
 
+use App\Domain\Shared\Services\TenantContext;
 use App\Domain\TenantGovernance\Services\TenantOnboardingProgressService;
 use App\Enums\UserRole;
 use App\Models\Product;
@@ -662,8 +663,8 @@ final class OnboardingProgressServiceTest extends TestCase
             return;
         }
 
-        if (class_exists(\App\Domain\Shared\Services\TenantContext::class)) {
-            $context = app(\App\Domain\Shared\Services\TenantContext::class);
+        if (class_exists(TenantContext::class)) {
+            $context = app(TenantContext::class);
 
             if (method_exists($context, 'reset')) {
                 $context->reset();

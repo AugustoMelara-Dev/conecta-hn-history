@@ -2,20 +2,23 @@
 
 namespace Tests\Infrastructure\Idempotency;
 
+use App\Application\Common\Exceptions\ConcurrentRequestException;
 use App\Infrastructure\Shared\Services\AtomicIdempotencyService;
+use Carbon\Carbon;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class ZombieLockTest extends TestCase
 {
-    use \Illuminate\Foundation\Testing\RefreshDatabase;
+    use RefreshDatabase;
 
     /** @test */
     public function it_recovers_stale_processing_locks()
     {
         // 0. Freeze Time
-        $fixedNow = \Carbon\Carbon::create(2025, 1, 1, 12, 0, 0);
-        \Carbon\Carbon::setTestNow($fixedNow);
+        $fixedNow = Carbon::create(2025, 1, 1, 12, 0, 0);
+        Carbon::setTestNow($fixedNow);
 
         // 1. Arrange: Create a "Zombie" lock (Stale PROCESSING)
         $key = 'ZOMBIE-KEY-123';
@@ -48,15 +51,15 @@ class ZombieLockTest extends TestCase
         // Verify DB State
         $record = DB::table('processed_commands')->where('idempotency_key', $key)->first();
         $this->assertEquals('COMPLETED', $record->status);
-        $this->assertNotEquals($twoHoursAgo->toIso8601String(), \Carbon\Carbon::parse($record->updated_at)->toIso8601String());
+        $this->assertNotEquals($twoHoursAgo->toIso8601String(), Carbon::parse($record->updated_at)->toIso8601String());
     }
 
     /** @test */
     public function it_throttles_active_processing_locks()
     {
         // 0. Freeze Time
-        $fixedNow = \Carbon\Carbon::create(2025, 1, 1, 12, 0, 0);
-        \Carbon\Carbon::setTestNow($fixedNow);
+        $fixedNow = Carbon::create(2025, 1, 1, 12, 0, 0);
+        Carbon::setTestNow($fixedNow);
 
         // 1. Arrange: Create an "Active" lock (Fresh PROCESSING)
         $key = 'ACTIVE-KEY-123';
@@ -74,7 +77,7 @@ class ZombieLockTest extends TestCase
         $service = $this->app->make(AtomicIdempotencyService::class);
 
         // 2. Act & Assert: Expect Exception
-        $this->expectException(\App\Application\Common\Exceptions\ConcurrentRequestException::class);
+        $this->expectException(ConcurrentRequestException::class);
 
         $service->execute($key, 'tenant-1', 'hash-x', function () {
             return 'SHOULD_NOT_EXECUTE';

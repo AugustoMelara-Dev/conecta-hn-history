@@ -6,6 +6,9 @@ namespace App\Filament\App\Pages\ImportExport;
 
 use App\Application\Imports\ExportService;
 use App\Application\Imports\ImportService;
+use App\Infrastructure\Imports\ExcelExporter;
+use App\Infrastructure\Imports\PdfExporter;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -17,9 +20,9 @@ use Filament\Schemas\Schema;
  */
 class ExportCenter extends Page
 {
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-arrow-down-tray';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-arrow-down-tray';
 
-    protected static string | \UnitEnum | null $navigationGroup = 'Configuración';
+    protected static string|\UnitEnum|null $navigationGroup = 'Configuración';
 
     protected static ?string $title = 'Exportar datos';
 
@@ -64,26 +67,27 @@ class ExportCenter extends Page
     public function export(): mixed
     {
         $state = $this->form->getState();
-        $tenantId = \Filament\Facades\Filament::getTenant()->getKey();
+        $tenantId = Filament::getTenant()->getKey();
 
         try {
             $exportClass = app(ExportService::class)->getExporterClass($state['entity'], $tenantId);
 
             if ($state['format'] === 'pdf') {
-                return app(\App\Infrastructure\Imports\PdfExporter::class)->download(
+                return app(PdfExporter::class)->download(
                     'exports.generic',
                     ['entity' => $state['entity']],
                     "{$state['entity']}.pdf",
                 );
             }
 
-            return app(\App\Infrastructure\Imports\ExcelExporter::class)->download(
-                new $exportClass(),
+            return app(ExcelExporter::class)->download(
+                new $exportClass,
                 "{$state['entity']}.{$state['format']}",
                 $state['format'],
             );
         } catch (\Throwable $e) {
-            Notification::make()->title('Error: ' . $e->getMessage())->danger()->send();
+            Notification::make()->title('Error: '.$e->getMessage())->danger()->send();
+
             return null;
         }
     }

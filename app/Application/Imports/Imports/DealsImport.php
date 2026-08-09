@@ -6,6 +6,7 @@ namespace App\Application\Imports\Imports;
 
 use App\Application\Imports\Concerns\HasImportTemplate;
 use App\Application\Imports\Concerns\Importable;
+use App\Models\Contact;
 use App\Models\CrmDeal;
 use Maatwebsite\Excel\Concerns\Importable as ExcelImportable;
 use Maatwebsite\Excel\Concerns\ToModel;
@@ -14,7 +15,7 @@ use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
 
-class DealsImport implements ToModel, WithHeadingRow, WithValidation, WithChunkReading, WithBatchInserts, Importable
+class DealsImport implements Importable, ToModel, WithBatchInserts, WithChunkReading, WithHeadingRow, WithValidation
 {
     use ExcelImportable;
     use HasImportTemplate;
@@ -61,7 +62,7 @@ class DealsImport implements ToModel, WithHeadingRow, WithValidation, WithChunkR
     {
         $contactId = null;
         if (! empty($row['contact_email'])) {
-            $contact = \App\Models\Contact::where('email', $row['contact_email'])
+            $contact = Contact::where('email', $row['contact_email'])
                 ->where('tenant_id', $this->tenantId)
                 ->first();
             $contactId = $contact?->id;

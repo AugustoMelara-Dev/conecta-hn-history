@@ -7,8 +7,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class CrmActivity extends Model
 {
@@ -42,27 +40,27 @@ class CrmActivity extends Model
 
     public function tenant(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Tenant::class);
+        return $this->belongsTo(Tenant::class);
     }
 
     public function contact(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Contact::class, 'contact_id');
+        return $this->belongsTo(Contact::class, 'contact_id');
     }
 
     public function deal(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\CrmDeal::class, 'deal_id');
+        return $this->belongsTo(CrmDeal::class, 'deal_id');
     }
 
     public function company(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\CrmCompany::class, 'company_id');
+        return $this->belongsTo(CrmCompany::class, 'company_id');
     }
 
     public function owner(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'owner_id');
+        return $this->belongsTo(User::class, 'owner_id');
     }
 
     public function isCompleted(): bool

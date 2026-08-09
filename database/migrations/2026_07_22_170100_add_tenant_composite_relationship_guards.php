@@ -54,7 +54,7 @@ return new class extends Migration
                 ->count();
 
             if ($invalidRows > 0) {
-                throw new \RuntimeException(
+                throw new RuntimeException(
                     "Cannot add tenant relationship guard for {$childTable}.{$childColumn}: {$invalidRows} cross-tenant row(s) exist.",
                 );
             }
@@ -70,7 +70,7 @@ return new class extends Migration
             ->count();
 
         if ($invalidLoyaltyRows > 0) {
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 "Cannot add tenant relationship guard for loyalty_ledger.order_id: {$invalidLoyaltyRows} incompatible row(s) exist.",
             );
         }

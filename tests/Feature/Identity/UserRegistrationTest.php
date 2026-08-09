@@ -1,13 +1,12 @@
 <?php
 
 use App\Actions\Identity\CreateNewUser;
+use App\Domain\Identity\Enums\UserRole;
 use App\Models\Tenant;
 use App\Models\User;
-use App\Domain\Identity\Enums\UserRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+
 use function Pest\Laravel\assertDatabaseHas;
 
 uses(RefreshDatabase::class);
@@ -29,7 +28,7 @@ test('it creates new tenant and owner when no tenant_id provided', function () {
 
     // Assert
     expect($user)->toBeInstanceOf(User::class);
-    
+
     // Check Database State
     assertDatabaseHas('users', [
         'email' => 'owner@example.com',
@@ -50,7 +49,7 @@ test('it joins existing tenant as staff when tenant_id provided', function () {
     $owner = User::factory()->create();
     $tenant = Tenant::factory()->create(['user_id' => $owner->id]);
     $action = app(CreateNewUser::class);
-    
+
     $input = [
         'name' => 'Staff User',
         'email' => 'staff@example.com',
@@ -65,7 +64,7 @@ test('it joins existing tenant as staff when tenant_id provided', function () {
 
     // Assert
     expect((string) $user->tenant_id)->toBe($tenant->id);
-    
+
     // Check Role
     expect($user->role)->toBe(UserRole::STAFF); // 'staff'
 
@@ -75,7 +74,7 @@ test('it joins existing tenant as staff when tenant_id provided', function () {
 
 test('it validates tenant existence', function () {
     $action = app(CreateNewUser::class);
-    
+
     $input = [
         'name' => 'Hacker User',
         'email' => 'hacker@example.com',
@@ -86,5 +85,5 @@ test('it validates tenant existence', function () {
     ];
 
     expect(fn () => $action->create($input))
-        ->toThrow(\Illuminate\Validation\ValidationException::class);
+        ->toThrow(ValidationException::class);
 });

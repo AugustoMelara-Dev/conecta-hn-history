@@ -42,16 +42,16 @@ class CrmCompany extends Model
 
     public function tenant(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Tenant::class);
+        return $this->belongsTo(Tenant::class);
     }
 
     public function contacts(): HasMany
     {
-        return $this->hasMany(\App\Models\Contact::class, 'company_id');
+        return $this->hasMany(Contact::class, 'company_id');
     }
 
     public function deals(): HasMany
     {
-        return $this->hasMany(\App\Models\CrmDeal::class, 'company_id');
+        return $this->hasMany(CrmDeal::class, 'company_id');
     }
 }

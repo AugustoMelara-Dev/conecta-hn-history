@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Application\Automation;
 
+use App\Domain\Automation\Enums\ActionType;
 use App\Domain\Automation\ValueObjects\AutomationGraph;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * WorkflowExecutor - Ejecuta un workflow BFS sobre el DAG.
@@ -33,7 +35,7 @@ class WorkflowExecutor
     public function execute(string $workflowDefinitionId, AutomationGraph $graph, array $triggerPayload): array
     {
         // Create a workflow run record
-        $runId = (string) \Illuminate\Support\Str::uuid();
+        $runId = (string) Str::uuid();
 
         $steps = [];
         $visited = [];
@@ -55,9 +57,10 @@ class WorkflowExecutor
             }
 
             if (($node['type'] ?? null) === 'action') {
-                $actionType = \App\Domain\Automation\Enums\ActionType::tryFrom($node['action_type'] ?? '');
+                $actionType = ActionType::tryFrom($node['action_type'] ?? '');
                 if ($actionType === null) {
                     $steps[] = ['node_id' => $nodeId, 'status' => 'skipped', 'reason' => 'invalid_action_type'];
+
                     continue;
                 }
 
@@ -97,7 +100,7 @@ class WorkflowExecutor
     /**
      * Execute action with exponential backoff retries (max 3).
      */
-    private function executeActionWithRetries(\App\Domain\Automation\Enums\ActionType $actionType, array $payload, array $context): array
+    private function executeActionWithRetries(ActionType $actionType, array $payload, array $context): array
     {
         $maxRetries = 3;
         $baseDelayMs = 100;
@@ -151,7 +154,7 @@ class WorkflowExecutor
         // BFS
         $head = 0;
         while ($head < count($queue)) {
-            [$currentId,] = $queue[$head++];
+            [$currentId] = $queue[$head++];
             foreach ($adj[$currentId] ?? [] as $nextId) {
                 if (! isset($visited[$nextId])) {
                     $visited[$nextId] = true;

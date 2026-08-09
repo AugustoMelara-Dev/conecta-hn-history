@@ -28,13 +28,14 @@ class CsrfExemptions
         foreach ($this->exemptPaths() as $pattern) {
             if (str_contains($pattern, '*')) {
                 $regex = str_replace('*', '.*', $pattern);
-                if (preg_match('#^' . $regex . '#', $path)) {
+                if (preg_match('#^'.$regex.'#', $path)) {
                     return true;
                 }
             } elseif ($path === $pattern) {
                 return true;
             }
         }
+
         return false;
     }
 }

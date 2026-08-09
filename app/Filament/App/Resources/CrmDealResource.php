@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
-use Filament\Schemas\Schema;
 use App\Application\Access\Contracts\TenantPermissionGuardInterface;
 use App\Application\Crm\CanonicalOpportunityWriter;
 use App\Application\Markets\TenantMarketResolver;
@@ -24,9 +23,10 @@ use App\Models\Tenant;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Filament\Forms;
+use Filament\Resources\Resource;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
-use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\EditAction;
@@ -34,14 +34,13 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
-
 class CrmDealResource extends Resource
 {
     protected static ?string $model = CrmDeal::class;
 
     protected static ?string $recordTitleAttribute = 'title';
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-currency-dollar';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-currency-dollar';
 
     public static function getNavigationLabel(): string
     {

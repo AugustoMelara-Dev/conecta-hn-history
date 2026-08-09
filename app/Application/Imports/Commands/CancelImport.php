@@ -18,10 +18,12 @@ class CancelImport extends Command
         $job = ImportJob::find($this->argument('jobId'));
         if (! $job) {
             $this->error('Job not found.');
+
             return self::FAILURE;
         }
         $job->update(['status' => 'cancelled', 'cancelled_at' => now()]);
         $this->info('Import cancelled.');
+
         return self::SUCCESS;
     }
 }

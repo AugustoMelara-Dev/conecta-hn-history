@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Application\Reporting\ValueObjects;
 
+use App\Domain\Reporting\ValueObjects\ReportRow;
+use App\Domain\Reporting\ValueObjects\ReportSeries;
+
 final readonly class ReportData
 {
     /**
-     * @param  array<int, \App\Domain\Reporting\ValueObjects\ReportRow>  $rows
-     * @param  array<int, \App\Domain\Reporting\ValueObjects\ReportSeries>  $series
+     * @param  array<int, ReportRow>  $rows
+     * @param  array<int, ReportSeries>  $series
      */
     public function __construct(
         public array $rows,

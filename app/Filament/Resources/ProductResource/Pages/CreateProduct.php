@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Filament\Resources\ProductResource\Pages;
 
 use App\Filament\Resources\ProductResource;
+use Filament\Facades\Filament;
+use Filament\Notifications\Actions\Action;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreateProduct extends CreateRecord
@@ -13,7 +16,7 @@ class CreateProduct extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        $tenant = \Filament\Facades\Filament::getTenant();
+        $tenant = Filament::getTenant();
 
         // 🛑 GUILLOTINE LOGIC: Hard Stop for Plan Limits
         if ($tenant) {
@@ -26,12 +29,12 @@ class CreateProduct extends CreateRecord
 
             if ($tenant->plan_type === 'semilla' && $currentCount >= $limit) {
 
-                \Filament\Notifications\Notification::make()
+                Notification::make()
                     ->danger()
                     ->title('🛑 Límite de Plan Semilla Alcanzado')
                     ->body("Has llegado al límite de {$limit} productos. ¡Actualiza a Plan PRO para inventario ilimitado!")
                     ->actions([
-                        \Filament\Notifications\Actions\Action::make('upgrade')
+                        Action::make('upgrade')
                             ->button()
                             ->label('Actualizar Plan')
                             ->url('/admin/billing'), // Assuming this route exists

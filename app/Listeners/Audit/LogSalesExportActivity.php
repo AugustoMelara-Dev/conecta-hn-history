@@ -6,6 +6,7 @@ namespace App\Listeners\Audit;
 
 use App\Events\Audit\SalesExportCreated;
 use Illuminate\Support\Facades\Log;
+use Spatie\Activitylog\Facades\Activity;
 
 /**
  * LogSalesExportActivity - Audit Listener for Export Operations
@@ -39,7 +40,7 @@ class LogSalesExportActivity
         );
 
         // If Spatie Activitylog is available, also persist to database
-        if (class_exists(\Spatie\Activitylog\Facades\Activity::class)) {
+        if (class_exists(Activity::class)) {
             $this->persistToActivityLog($event, $auditPayload);
         }
     }
@@ -58,7 +59,7 @@ class LogSalesExportActivity
     protected function persistToActivityLog(SalesExportCreated $event, array $auditPayload): void
     {
         try {
-            \Spatie\Activitylog\Facades\Activity::withoutLogs(function () use ($event) {
+            Activity::withoutLogs(function () use ($event) {
                 activity('export')
                     ->causedBy($event->userId)
                     ->performedOn(null)

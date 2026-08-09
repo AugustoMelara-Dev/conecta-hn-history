@@ -23,4 +23,3 @@ final class DockerComposeContractTest extends TestCase
         $this->assertStringContainsString('condition: service_healthy', $compose);
     }
 }
-

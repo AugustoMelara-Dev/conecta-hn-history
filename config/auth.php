@@ -1,5 +1,8 @@
 <?php
 
+use App\Infrastructure\Identity\Models\FilamentUser;
+use App\Models\User;
+
 return [
 
     /*
@@ -95,11 +98,11 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => env('AUTH_MODEL', App\Models\User::class),
+            'model' => env('AUTH_MODEL', User::class),
         ],
         'admins' => [
             'driver' => 'eloquent',
-            'model' => App\Infrastructure\Identity\Models\FilamentUser::class,
+            'model' => FilamentUser::class,
         ],
     ],
 

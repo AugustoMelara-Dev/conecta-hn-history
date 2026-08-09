@@ -10,6 +10,7 @@ use App\Application\Channels\ChannelContext;
 use App\Application\Channels\ChannelOutboundMessage;
 use App\Application\Channels\ConversationChannelBridge;
 use App\Application\Channels\NormalizedInboundMessage;
+use App\Domain\Shared\Services\TenantContext;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -196,7 +197,7 @@ final class ChannelConversationContinuityTest extends TestCase
         $this->supportHondurasMarket();
         $actor = User::factory()->create();
         $tenant = Tenant::factory()->forUser($actor)->pro()->create();
-        $this->app->make(\App\Domain\Shared\Services\TenantContext::class)->setTenant((string) $tenant->getKey());
+        $this->app->make(TenantContext::class)->setTenant((string) $tenant->getKey());
 
         return [$tenant, $actor];
     }
@@ -264,8 +265,7 @@ final class ChannelConversationContinuityTest extends TestCase
         ?string $thread,
         string $consent,
         array $metadata = [],
-    ): NormalizedInboundMessage
-    {
+    ): NormalizedInboundMessage {
         return new NormalizedInboundMessage(
             adapterKey: $channel.'.adapter', tenantId: (string) $tenant->getKey(), channel: $channel,
             connectionKey: 'primary', externalMessageId: $event, externalThreadReference: $thread,

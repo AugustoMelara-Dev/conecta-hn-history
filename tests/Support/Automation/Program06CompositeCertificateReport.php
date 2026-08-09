@@ -10,7 +10,7 @@ use RuntimeException;
 final class Program06CompositeCertificateReport
 {
     /**
-     * @param array<string, mixed> $facts
+     * @param  array<string, mixed>  $facts
      */
     public static function writeExclusive(string $path, array $facts): void
     {

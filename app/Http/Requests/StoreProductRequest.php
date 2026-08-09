@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Application\Products\Commands\CreateProductCommand;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -106,11 +107,11 @@ final class StoreProductRequest extends FormRequest
         ];
     }
 
-    public function toCommand(): \App\Application\Products\Commands\CreateProductCommand
+    public function toCommand(): CreateProductCommand
     {
         $validated = $this->validated();
 
-        return new \App\Application\Products\Commands\CreateProductCommand(
+        return new CreateProductCommand(
             tenantId: (string) $this->user()->tenant_id,
             sku: (string) ($validated['sku'] ?? ''), name: (string) $validated['name'],
             description: (string) ($validated['description'] ?? ''), price: 0,

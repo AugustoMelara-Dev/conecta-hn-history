@@ -6,19 +6,21 @@ namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\CouponResource\Pages;
 use App\Models\Coupon;
+use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Components\DateTimePicker;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Schemas\Schema;
 use Filament\Forms\Get;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Validation\Rules\Unique;
 
 /**
  * CouponResource - Filament Admin Interface for Promotional Coupons
@@ -33,9 +35,9 @@ class CouponResource extends Resource
 {
     protected static ?string $model = Coupon::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-ticket';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-ticket';
 
-    protected static string | \UnitEnum | null $navigationGroup = 'Marketing';
+    protected static string|\UnitEnum|null $navigationGroup = 'Marketing';
 
     protected static ?string $navigationLabel = 'Cupones';
 
@@ -62,8 +64,8 @@ class CouponResource extends Resource
                                         table: 'coupons',
                                         column: 'code',
                                         ignoreRecord: true,
-                                        modifyRuleUsing: function (\Illuminate\Validation\Rules\Unique $rule) {
-                                            $tenant = \Filament\Facades\Filament::getTenant();
+                                        modifyRuleUsing: function (Unique $rule) {
+                                            $tenant = Filament::getTenant();
                                             if ($tenant) {
                                                 return $rule->where('tenant_id', $tenant->id);
                                             }

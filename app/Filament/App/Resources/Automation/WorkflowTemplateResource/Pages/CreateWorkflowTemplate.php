@@ -10,9 +10,11 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateWorkflowTemplate extends CreateRecord
 {
     protected static string $resource = WorkflowTemplateResource::class;
+
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $data['tenant_id'] = null; // Templates globales
+
         return $data;
     }
 }

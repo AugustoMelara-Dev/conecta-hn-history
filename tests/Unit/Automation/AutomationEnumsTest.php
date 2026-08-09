@@ -39,7 +39,7 @@ it('AutomationGraph fromJson/toJson roundtrip', function () {
 });
 
 it('TemplateCatalog has 12 templates covering different categories', function () {
-    $catalog = new TemplateCatalog();
+    $catalog = new TemplateCatalog;
     $templates = $catalog->all();
     expect(count($templates))->toBe(12);
     $categories = array_unique(array_column($templates, 'category'));
@@ -47,7 +47,7 @@ it('TemplateCatalog has 12 templates covering different categories', function ()
 });
 
 it('Each template graph has valid structure', function () {
-    $catalog = new TemplateCatalog();
+    $catalog = new TemplateCatalog;
     foreach ($catalog->all() as $template) {
         $graph = $template['graph'];
         expect($graph)->toHaveKeys(['nodes', 'edges']);

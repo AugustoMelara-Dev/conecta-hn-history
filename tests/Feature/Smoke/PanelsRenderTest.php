@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\Artisan;
  * PR1 — Filament 4 base + admin skeleton
  * Acceptance: php artisan filament pasa, ambos paneles renderizan, composer.json declara filament/filament: ^4.0.
  */
-
 it('composer.json declares filament/filament at ^4.0', function () {
     $composer = json_decode(file_get_contents(base_path('composer.json')), true);
 

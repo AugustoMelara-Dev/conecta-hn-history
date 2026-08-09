@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Support\AI;
 
-use App\Application\Ai\Workforce\AgentRole;
 use App\Application\Ai\Registry\AiRuntimeSelection;
+use App\Application\Ai\Workforce\AgentRole;
 use App\Models\City;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;

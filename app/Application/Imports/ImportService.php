@@ -54,6 +54,7 @@ class ImportService
         if (! $this->has($entity)) {
             throw new InvalidArgumentException("Unknown entity: {$entity}");
         }
+
         return $this->registry[$entity];
     }
 
@@ -64,6 +65,7 @@ class ImportService
     {
         $class = $this->getImporterClass($entity);
         $args = array_merge([$tenantId], $extraArgs);
+
         return new $class(...$args);
     }
 
@@ -85,6 +87,7 @@ class ImportService
                 'sample' => $instance->templateSampleRow(),
             ];
         }
+
         return $templates;
     }
 }

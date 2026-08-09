@@ -7,7 +7,6 @@ namespace App\Filament\Admin\Widgets;
 use App\Models\Tenant;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use Illuminate\Support\Facades\DB;
 
 class TenantsOverviewWidget extends BaseWidget
 {

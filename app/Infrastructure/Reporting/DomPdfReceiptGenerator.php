@@ -38,7 +38,7 @@ final class DomPdfReceiptGenerator implements ReceiptGeneratorInterface
      */
     public function generate(object $order): string
     {
-        /** @var \App\Models\Order $order */
+        /** @var Order $order */
         try {
             // NO loadMissing() - caller must provide hydrated data
             // This ensures immutability and no side effects

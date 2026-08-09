@@ -14,9 +14,10 @@ use App\Application\BusinessGraph\BusinessGraphEdge;
 use App\Application\BusinessGraph\BusinessGraphFact;
 use App\Application\BusinessGraph\BusinessGraphSnapshot;
 use App\Exceptions\Ai\AiExecutionDeniedException;
-use Illuminate\Support\Str;
+use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 use Mockery;
 use Tests\TestCase;
@@ -51,13 +52,13 @@ final class WorkforceAgentRoleResolverTest extends TestCase
 
     public function test_resolver_accepts_an_active_tenant_owned_version(): void
     {
-        $tenantId = (string) \App\Models\Tenant::factory()->create()->getKey();
+        $tenantId = (string) Tenant::factory()->create()->getKey();
         $versionId = (string) Str::uuid();
         $this->insertRegistryVersion($tenantId, $versionId, 'manager', 'tenant.manager', 'active');
         $authority = Mockery::mock(WorkforceRegistryAuthority::class);
         $authority->shouldReceive('resolvePinned')->once()->andReturn($this->selection($versionId));
 
-        $context = (new \App\Application\Ai\Workforce\WorkforceAgentResolver($authority))
+        $context = (new WorkforceAgentResolver($authority))
             ->resolve($tenantId, $versionId, 'manager');
 
         self::assertSame($tenantId, $context->tenantId);
@@ -67,14 +68,14 @@ final class WorkforceAgentRoleResolverTest extends TestCase
 
     public function test_resolver_denies_cross_tenant_pinned_versions(): void
     {
-        $ownerTenantId = (string) \App\Models\Tenant::factory()->create()->getKey();
-        $otherTenantId = (string) \App\Models\Tenant::factory()->create()->getKey();
+        $ownerTenantId = (string) Tenant::factory()->create()->getKey();
+        $otherTenantId = (string) Tenant::factory()->create()->getKey();
         $versionId = (string) Str::uuid();
         $this->insertRegistryVersion($ownerTenantId, $versionId, 'manager', 'tenant.manager', 'active');
 
         $authority = Mockery::mock(WorkforceRegistryAuthority::class);
         $authority->shouldReceive('resolvePinned')->once()->andReturn($this->selection($versionId));
-        $resolver = new \App\Application\Ai\Workforce\WorkforceAgentResolver($authority);
+        $resolver = new WorkforceAgentResolver($authority);
 
         $this->expectException(AiExecutionDeniedException::class);
         $resolver->resolve($otherTenantId, $versionId, 'manager');
@@ -82,12 +83,12 @@ final class WorkforceAgentRoleResolverTest extends TestCase
 
     public function test_resolver_denies_requested_role_mismatch(): void
     {
-        $tenantId = (string) \App\Models\Tenant::factory()->create()->getKey();
+        $tenantId = (string) Tenant::factory()->create()->getKey();
         $versionId = (string) Str::uuid();
         $this->insertRegistryVersion($tenantId, $versionId, 'manager', 'tenant.manager', 'active');
         $authority = Mockery::mock(WorkforceRegistryAuthority::class);
         $authority->shouldReceive('resolvePinned')->once()->andReturn($this->selection($versionId));
-        $resolver = new \App\Application\Ai\Workforce\WorkforceAgentResolver($authority);
+        $resolver = new WorkforceAgentResolver($authority);
 
         $this->expectException(AiExecutionDeniedException::class);
         $resolver->resolve($tenantId, $versionId, 'service');

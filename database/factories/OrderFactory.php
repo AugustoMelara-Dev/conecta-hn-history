@@ -6,6 +6,7 @@ namespace Database\Factories;
 
 use App\Models\Order;
 use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -20,7 +21,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  * ║  4. PII fields are properly formatted for encryption                    ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  *
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Order>
+ * @extends Factory<Order>
  */
 class OrderFactory extends Factory
 {
@@ -45,7 +46,7 @@ class OrderFactory extends Factory
             // FOREIGN KEYS (Referential Integrity)
             // ═══════════════════════════════════════════════════════════════════════
             'tenant_id' => Tenant::factory(),
-            'user_id' => \App\Models\User::factory(), // Required by MySQL schema
+            'user_id' => User::factory(), // Required by MySQL schema
 
             // ═══════════════════════════════════════════════════════════════════════
             // UNIQUE IDENTIFIERS

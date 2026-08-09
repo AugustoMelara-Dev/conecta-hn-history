@@ -23,7 +23,7 @@ final class InitializePublicAiPlatformTenantContext
      * server-configured identity only for the duration of the request so every
      * AI execution and credit row satisfies PostgreSQL RLS without BYPASSRLS.
      *
-     * @param Closure(Request): Response $next
+     * @param  Closure(Request): Response  $next
      */
     public function handle(Request $request, Closure $next): Response
     {

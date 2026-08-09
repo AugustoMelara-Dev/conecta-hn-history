@@ -42,7 +42,7 @@ final readonly class AgentActionAudit
     }
 
     /** @param array<string, mixed> $metadata
-     *  @return array<string, mixed>
+     * @return array<string, mixed>
      */
     public static function sanitize(array $metadata): array
     {

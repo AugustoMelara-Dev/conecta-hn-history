@@ -103,8 +103,6 @@ class GraphBuilder
 
     /**
      * Detects cycles using DFS.
-     *
-     * @return bool
      */
     private function hasCycle(array $nodes, array $edges): bool
     {
@@ -147,6 +145,7 @@ class GraphBuilder
         }
 
         unset($recStack[$node]);
+
         return false;
     }
 }

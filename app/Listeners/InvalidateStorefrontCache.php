@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Listeners;
 
 use App\Domain\Shared\Contracts\TenantAwareEvent;
+use App\Models\Tenant;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -31,7 +32,7 @@ final class InvalidateStorefrontCache
         // Note: Ideally the event would carry the slug if it's needed for cache keys,
         // but re-hydrating Tenant for the cleanup is acceptable in async listeners.
         // If this is synchronous, it adds a query.
-        $tenant = \App\Models\Tenant::find($tenantId);
+        $tenant = Tenant::find($tenantId);
 
         if ($tenant && $tenant->slug) {
             Cache::forget("storefront:{$tenant->slug}");

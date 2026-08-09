@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Filament\Components;
 
-use Filament\Schemas\Schema;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Schema;
 
 /**
  * SeoFields - Schema Reutilizable para SEO

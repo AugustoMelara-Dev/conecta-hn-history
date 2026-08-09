@@ -17,6 +17,7 @@ use App\Scopes\LocationScope;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 final class TenantAiConfigurationController extends Controller
 {
@@ -42,7 +43,7 @@ final class TenantAiConfigurationController extends Controller
 
         $market = $this->markets->resolve($tenant);
         $conversationId = $request->query('conversation_id');
-        if ($conversationId !== null && (! is_string($conversationId) || ! \Illuminate\Support\Str::isUuid($conversationId))) {
+        if ($conversationId !== null && (! is_string($conversationId) || ! Str::isUuid($conversationId))) {
             abort(422, 'conversation_id must be a UUID.');
         }
         $persistedConversation = $conversationId === null

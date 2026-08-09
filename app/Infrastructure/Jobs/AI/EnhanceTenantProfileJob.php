@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Jobs\AI;
 
 use App\Application\Tenant\Commands\EnhanceTenantProfileCommand;
+use App\Application\Tenant\Handlers\EnhanceTenantProfileHandler;
 use App\Infrastructure\Shared\Middleware\TenantQueueMiddleware;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -64,7 +65,7 @@ class EnhanceTenantProfileJob implements ShouldBeUnique, ShouldQueue
      * @throws TenantDomainException if business invariants are violated
      */
     public function handle(
-        \App\Application\Tenant\Handlers\EnhanceTenantProfileHandler $handler
+        EnhanceTenantProfileHandler $handler
     ): void {
         $handler->handle($this->data);
     }

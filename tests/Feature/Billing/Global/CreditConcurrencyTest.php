@@ -127,18 +127,14 @@ final class CreditConcurrencyTest extends TestCase
         $reservationIndexes = collect(Schema::getIndexes('global_billing_credit_reservations'));
         $ledgerIndexes = collect(Schema::getIndexes('global_billing_credit_ledger_entries'));
 
-        self::assertTrue($reservationIndexes->contains(static fn (array $index): bool =>
-            $index['name'] === 'global_billing_credit_reservations_tenant_idempotency_unique'
+        self::assertTrue($reservationIndexes->contains(static fn (array $index): bool => $index['name'] === 'global_billing_credit_reservations_tenant_idempotency_unique'
             && $index['unique'] === true
             && $index['columns'] === ['tenant_id', 'idempotency_key']));
-        self::assertFalse($reservationIndexes->contains(static fn (array $index): bool =>
-            $index['name'] === 'global_billing_credit_reservations_idempotency_key_unique'));
-        self::assertTrue($ledgerIndexes->contains(static fn (array $index): bool =>
-            $index['name'] === 'global_billing_credit_ledger_entries_tenant_idempotency_unique'
+        self::assertFalse($reservationIndexes->contains(static fn (array $index): bool => $index['name'] === 'global_billing_credit_reservations_idempotency_key_unique'));
+        self::assertTrue($ledgerIndexes->contains(static fn (array $index): bool => $index['name'] === 'global_billing_credit_ledger_entries_tenant_idempotency_unique'
             && $index['unique'] === true
             && $index['columns'] === ['tenant_id', 'idempotency_key']));
-        self::assertFalse($ledgerIndexes->contains(static fn (array $index): bool =>
-            $index['name'] === 'global_billing_credit_ledger_entries_idempotency_key_unique'));
+        self::assertFalse($ledgerIndexes->contains(static fn (array $index): bool => $index['name'] === 'global_billing_credit_ledger_entries_idempotency_key_unique'));
     }
 
     public function test_reservation_ids_are_uuid_format_and_malformed_uuid_access_fails_closed(): void

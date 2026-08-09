@@ -7,6 +7,7 @@ namespace Tests\Feature\Infrastructure;
 use App\Application\Shared\Contracts\SchemaValidatorInterface;
 use App\Domain\Shared\Exceptions\SchemaViolationException;
 use App\Infrastructure\Shared\Services\Upcasting\UpcasterChain;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Ramsey\Uuid\Uuid;
@@ -14,7 +15,7 @@ use Tests\TestCase;
 
 class Scale10xTest extends TestCase
 {
-    use \Illuminate\Foundation\Testing\RefreshDatabase;
+    use RefreshDatabase;
 
     /** @test */
     public function phase_1_schema_registry_blocks_malformed_events()

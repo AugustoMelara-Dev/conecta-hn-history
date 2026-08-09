@@ -7,6 +7,7 @@ namespace App\Policies;
 use App\Domain\TenantGovernance\Services\PlanFeatureFlagService;
 use App\Models\Product;
 use App\Models\User;
+use Filament\Facades\Filament;
 use Illuminate\Auth\Access\Response;
 
 /**
@@ -46,7 +47,7 @@ class ProductPolicy extends TenantAwarePolicy
     public function create(User $user): Response
     {
         // Get user's primary tenant from Filament context or relationship
-        $tenant = \Filament\Facades\Filament::getTenant()
+        $tenant = Filament::getTenant()
             ?? $user->tenants()->first();
 
         if (! $tenant) {

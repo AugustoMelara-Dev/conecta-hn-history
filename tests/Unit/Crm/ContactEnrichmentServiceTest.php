@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 use App\Application\Crm\ContactEnrichmentService;
 use App\Domain\Crm\ValueObjects\CrmMetrics;
+use App\Models\Contact;
 use App\Models\Tenant;
 
 it('ContactEnrichmentService enrich returns array structure', function () {
-    $service = new ContactEnrichmentService();
+    $service = new ContactEnrichmentService;
     $result = $service->enrich('test@example.com');
     expect($result)->toHaveKeys(['job_title', 'company_name', 'confidence', 'raw']);
     expect($result['confidence'])->toBeGreaterThan(0);
@@ -15,13 +16,13 @@ it('ContactEnrichmentService enrich returns array structure', function () {
 
 it('ContactEnrichmentService applies enrichment to contact', function () {
     $tenant = Tenant::factory()->create();
-    $contact = \App\Models\Contact::create([
+    $contact = Contact::create([
         'tenant_id' => $tenant->id,
         'first_name' => 'Test',
         'email' => 'test@example.com',
     ]);
 
-    $service = new ContactEnrichmentService();
+    $service = new ContactEnrichmentService;
     $updated = $service->applyToContact($contact);
 
     expect($updated->job_title)->toBe('Director de Operaciones');

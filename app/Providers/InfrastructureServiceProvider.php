@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
-use App\Domain\Shared\Services\TenantContext;
 use App\Application\Auth\Contracts\AuthTokenServiceInterface;
 use App\Application\Shared\Contracts\ReferenceDataReaderInterface;
 use App\Application\Shared\Contracts\SchemaValidatorInterface;
@@ -16,6 +15,7 @@ use App\Domain\Common\Contracts\SnapshotStrategyInterface;
 use App\Domain\Identity\Repositories\UserRepositoryInterface;
 use App\Domain\Payments\Gateways\PaymentGatewayInterface;
 use App\Domain\Security\Contracts\HasherInterface;
+use App\Domain\Shared\Services\TenantContext;
 use App\Domain\TenantGovernance\Repositories\TenantRepositoryInterface;
 use App\Infrastructure\Auth\SanctumAuthTokenService;
 use App\Infrastructure\Common\Snapshots\DatabaseSnapshotRepository;

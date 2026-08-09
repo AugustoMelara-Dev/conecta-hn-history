@@ -42,12 +42,14 @@ class ActivityController extends Controller
             'priority' => ['nullable', 'integer', 'min:1', 'max:3'],
         ]);
         $data['tenant_id'] = $request->user()->tenant_id;
+
         return response()->json(CrmActivity::create($data), 201);
     }
 
     public function show(CrmActivity $activity): JsonResponse
     {
         Gate::authorize('view', $activity);
+
         return response()->json($activity);
     }
 
@@ -63,6 +65,7 @@ class ActivityController extends Controller
             'priority' => ['sometimes', 'integer', 'min:1', 'max:3'],
         ]);
         $activity->update($data);
+
         return response()->json($activity);
     }
 
@@ -70,6 +73,7 @@ class ActivityController extends Controller
     {
         Gate::authorize('delete', $activity);
         $activity->delete();
+
         return response()->json(['message' => 'Activity deleted successfully']);
     }
 }

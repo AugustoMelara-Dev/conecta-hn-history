@@ -9,6 +9,7 @@ use App\Filament\App\Resources\ProductResource;
 use App\Models\Product;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
 class EditProduct extends EditRecord
@@ -36,7 +37,7 @@ class EditProduct extends EditRecord
     }
 
     /** @param array<string, mixed> $data */
-    protected function handleRecordUpdate(\Illuminate\Database\Eloquent\Model $record, array $data): Product
+    protected function handleRecordUpdate(Model $record, array $data): Product
     {
         if (! $record instanceof Product) {
             throw new \LogicException('The merchant product editor received an invalid record.');

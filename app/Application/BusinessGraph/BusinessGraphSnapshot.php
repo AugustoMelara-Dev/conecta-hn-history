@@ -7,8 +7,8 @@ namespace App\Application\BusinessGraph;
 final readonly class BusinessGraphSnapshot
 {
     /**
-     * @param list<BusinessGraphFact> $facts
-     * @param list<BusinessGraphEdge> $edges
+     * @param  list<BusinessGraphFact>  $facts
+     * @param  list<BusinessGraphEdge>  $edges
      */
     public function __construct(
         public string $tenantId,

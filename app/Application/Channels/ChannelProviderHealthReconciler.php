@@ -94,11 +94,13 @@ final readonly class ChannelProviderHealthReconciler
 
             if ($healthId === null || $healthStatus === null || $rawCheckedAt === null) {
                 $counts['missing_health']++;
+
                 continue;
             }
 
             if (! in_array($healthStatus, $states, true) || ! is_string($rawCheckedAt) || trim($rawCheckedAt) === '') {
                 $counts['invalid_state']++;
+
                 continue;
             }
 
@@ -106,11 +108,13 @@ final readonly class ChannelProviderHealthReconciler
                 $checkedAt = CarbonImmutable::parse($rawCheckedAt, 'UTC')->utc();
             } catch (\Throwable) {
                 $counts['invalid_state']++;
+
                 continue;
             }
 
             if ($healthStatus === 'stale') {
                 $counts['already_stale']++;
+
                 continue;
             }
 
@@ -126,28 +130,33 @@ final readonly class ChannelProviderHealthReconciler
                 || ! hash_equals($connectionProviderKey, $healthProviderKey)) {
                 $counts['provider_mismatch']++;
                 $this->retainCandidate($candidateSnapshots, $limit, $row);
+
                 continue;
             }
 
             if ($checkedAt->greaterThan($futureBoundary)) {
                 $counts['future_dated']++;
                 $this->retainCandidate($candidateSnapshots, $limit, $row);
+
                 continue;
             }
 
             if ($checkedAt->lessThan($pastBoundary)) {
                 $counts['expired']++;
                 $this->retainCandidate($candidateSnapshots, $limit, $row);
+
                 continue;
             }
 
             if ($healthStatus === 'unavailable') {
                 $counts['current_unavailable']++;
+
                 continue;
             }
 
             if ($healthStatus === 'available') {
                 $counts['current_available']++;
+
                 continue;
             }
 

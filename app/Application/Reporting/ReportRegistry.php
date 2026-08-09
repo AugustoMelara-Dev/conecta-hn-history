@@ -28,6 +28,7 @@ class ReportRegistry
         if (! isset($this->reports[$key->value])) {
             throw new InvalidArgumentException("Report not registered: {$key->value}");
         }
+
         return $this->reports[$key->value];
     }
 
@@ -65,6 +66,7 @@ class ReportRegistry
             $cat = $report->getKey()->category();
             $grouped[$cat][] = $report;
         }
+
         return $grouped;
     }
 }

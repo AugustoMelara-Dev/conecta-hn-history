@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Application\Common\Contracts;
 
+use App\Application\Common\Exceptions\LockTimeoutException;
+
 interface LockInterface
 {
     /**
@@ -21,7 +23,7 @@ interface LockInterface
      * @param  callable|null  $callback  Optional callback
      * @return mixed Return value of callback or true
      *
-     * @throws \App\Application\Common\Exceptions\LockTimeoutException
+     * @throws LockTimeoutException
      */
     public function block(int $seconds, ?callable $callback = null): mixed;
 

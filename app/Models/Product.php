@@ -8,12 +8,19 @@ use App\Enums\StockStatus;
 use App\Infrastructure\Persistence\Eloquent\Traits\BelongsToTenant;
 use App\Scopes\LocationScope;
 use App\Scopes\PublicVisibilityScope;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Laravel\Scout\Searchable;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
  * Product Model - E-Commerce Catalog Entity
@@ -50,7 +57,7 @@ use Laravel\Scout\Searchable;
  * - Detail views get full gallery capabilities when needed
  * - Falls back gracefully if either strategy has no data
  */
-class Product extends Model implements \Spatie\MediaLibrary\HasMedia
+class Product extends Model implements HasMedia
 {
     // ═══════════════════════════════════════════════════════════════════════════
     // INFRASTRUCTURE CONSTANTS
@@ -159,12 +166,12 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
 
         static::creating(function ($product) {
             if (empty($product->slug)) {
-                $product->slug = \Illuminate\Support\Str::slug($product->name);
+                $product->slug = Str::slug($product->name);
             }
         });
     }
 
-    public function registerMediaConversions(?\Spatie\MediaLibrary\MediaCollections\Models\Media $media = null): void
+    public function registerMediaConversions(?Media $media = null): void
     {
         // 1. Minuatura cuadrada para Tablas/Grid (400x400)
         $this->addMediaConversion('thumb')
@@ -259,7 +266,7 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
      *
      * @param  array<int>  $excludeIds  Product IDs already in cart (don't suggest)
      */
-    public function scopeImpulseCandidates(\Illuminate\Database\Eloquent\Builder $query, array $excludeIds = []): \Illuminate\Database\Eloquent\Builder
+    public function scopeImpulseCandidates(Builder $query, array $excludeIds = []): Builder
     {
         $query->where('is_impulse_buy', true)
             ->where('is_visible', true);
@@ -285,7 +292,7 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
      * @param  string  $businessId  Tenant UUID for isolation
      * @param  array<int>  $excludeIds  IDs already in cart
      * @param  int  $count  Number of suggestions to return (default 3)
-     * @return \Illuminate\Database\Eloquent\Collection<static>
+     * @return Collection<static>
      */
     /**
      * Get random impulse candidates using performant ID Fetch & Shuffle pattern.
@@ -301,13 +308,13 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
      * @param  string  $businessId  Tenant UUID for isolation
      * @param  array<int>  $excludeIds  IDs already in cart
      * @param  int  $count  Number of suggestions to return (default 3)
-     * @return \Illuminate\Database\Eloquent\Collection<static>
+     * @return Collection<static>
      */
-    public static function getRandomImpulseCandidates(string $businessId, array $excludeIds = [], int $count = 3): \Illuminate\Database\Eloquent\Collection
+    public static function getRandomImpulseCandidates(string $businessId, array $excludeIds = [], int $count = 3): Collection
     {
         // Step 1: Fetch only IDs (uses idx_products_impulse index)
         // REFACTOR: Use DB Facade to avoid "Scope Evasion" architecture violation
-        $query = \Illuminate\Support\Facades\DB::table('products')
+        $query = DB::table('products')
             ->where('tenant_id', $businessId)
             ->where('is_impulse_buy', true)
             ->where('is_visible', true)
@@ -320,14 +327,14 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
         $candidateIds = $query->limit(self::IMPULSE_CANDIDATES_LIMIT)->pluck('id');
 
         if ($candidateIds->isEmpty()) {
-            return new \Illuminate\Database\Eloquent\Collection;
+            return new Collection;
         }
 
         // Step 2: Shuffle in PHP (O(k) complexity)
         $randomIds = $candidateIds->shuffle()->take($count)->values();
 
         if ($randomIds->isEmpty()) {
-            return new \Illuminate\Database\Eloquent\Collection;
+            return new Collection;
         }
 
         $orderedIds = $randomIds->map(fn ($id): int => (int) $id)->all();
@@ -336,7 +343,7 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
             ->implode(' ');
 
         // Step 4: Fetch full models with a bound, cross-database order expression.
-        $rows = \Illuminate\Support\Facades\DB::table('products')
+        $rows = DB::table('products')
             ->whereIn('id', $orderedIds)
             ->orderByRaw("case id {$orderCases} else ".count($orderedIds).' end', $orderedIds)
             ->get();
@@ -379,7 +386,7 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
             return null;
         }
 
-        return \Illuminate\Support\Facades\Storage::disk('public')->url($this->image_path);
+        return Storage::disk('public')->url($this->image_path);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -432,7 +439,7 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
      */
     public static function getAdminList(string $tenantId, string $search = '')
     {
-        $query = \Illuminate\Support\Facades\DB::table('products')
+        $query = DB::table('products')
             ->where('tenant_id', $tenantId)
             ->whereNull('deleted_at');
 
@@ -459,7 +466,7 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
      */
     public static function countAllForTenant(string $tenantId): int
     {
-        return \Illuminate\Support\Facades\DB::table('products')
+        return DB::table('products')
             ->where('tenant_id', $tenantId)
             ->whereNull('deleted_at')
             ->count();
@@ -476,7 +483,7 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
      */
     public static function findInTenant(int $id, string $tenantId): ?self
     {
-        $row = \Illuminate\Support\Facades\DB::table('products')
+        $row = DB::table('products')
             ->where('id', $id)
             ->where('tenant_id', $tenantId)
             ->whereNull('deleted_at')
@@ -496,7 +503,7 @@ class Product extends Model implements \Spatie\MediaLibrary\HasMedia
      */
     public static function searchForPos(string $tenantId, string $term)
     {
-        return \Illuminate\Support\Facades\DB::table('products')
+        return DB::table('products')
             ->where('tenant_id', $tenantId)
             ->where('is_visible', true)
             ->whereNull('deleted_at')

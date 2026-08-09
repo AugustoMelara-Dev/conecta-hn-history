@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Auth;
 
 use App\Domain\Billing\Repositories\PaymentRepositoryInterface;
+use App\Domain\Shared\OutboxRepositoryInterface;
 use App\Domain\TenantGovernance\Enums\BusinessType;
 use App\Domain\TenantGovernance\Enums\CommercialMode;
 use App\Models\Category;
@@ -27,7 +28,7 @@ final class OwnerRegistrationContractTest extends TestCase
 
         $this->withoutMiddleware();
         $this->seedGeneralSettings();
-        $this->app->bind(\App\Domain\Shared\OutboxRepositoryInterface::class, fn () => new class implements \App\Domain\Shared\OutboxRepositoryInterface
+        $this->app->bind(OutboxRepositoryInterface::class, fn () => new class implements OutboxRepositoryInterface
         {
             public function append(object $event): void
             {

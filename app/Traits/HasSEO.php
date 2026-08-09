@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Traits;
 
+use Illuminate\Support\Str;
+
 /**
  * HasSEO Trait - Funcionalidad SEO Reutilizable
  *
@@ -55,7 +57,7 @@ trait HasSEO
         }
 
         if (! empty($this->description)) {
-            return \Illuminate\Support\Str::limit(strip_tags($this->description), 160);
+            return Str::limit(strip_tags($this->description), 160);
         }
 
         $name = $this->name ?? $this->title ?? 'esta página';

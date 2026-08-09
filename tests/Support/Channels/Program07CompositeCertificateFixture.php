@@ -9,13 +9,13 @@ use App\Application\Channels\ChannelContext;
 use App\Application\Channels\ChannelInboundMessage;
 use App\Application\Channels\ConversationChannelBridge;
 use App\Application\Channels\WebhookAuthenticityEnvelope;
+use App\Domain\Shared\Services\TenantContext;
 use App\Infrastructure\Channels\Email\FakeEmailAdapter;
 use App\Models\Tenant;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Tests\Support\GlobalMarketFixture;
 
 /**
@@ -242,7 +242,7 @@ final class Program07CompositeCertificateFixture
 
     private static function setTenant(string $tenantId): void
     {
-        $context = app(\App\Domain\Shared\Services\TenantContext::class);
+        $context = app(TenantContext::class);
         $context->reset();
         $context->setTenant($tenantId);
     }

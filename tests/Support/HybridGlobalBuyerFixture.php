@@ -261,6 +261,7 @@ final class HybridGlobalBuyerFixture
 
         if ($markets->isEmpty() && $locations->isEmpty()) {
             $tenant = Tenant::query()->withoutGlobalScopes()->findOrFail($tenantId);
+
             return GlobalMarketFixture::assignCanada($tenant);
         }
 

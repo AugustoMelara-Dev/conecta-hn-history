@@ -44,7 +44,7 @@ test('TenantContext guard prevents HTTP privilege escalation', function () {
 
 test('TenantContext rejects numeric and malformed tenant identities', function (string $tenantId) {
     expect(fn () => (new TenantContext)->setTenant($tenantId))
-        ->toThrow(\InvalidArgumentException::class);
+        ->toThrow(InvalidArgumentException::class);
 })->with(['42', '', 'tenant-one']);
 
 test('TenantContext normalizes a valid UUID before storing it', function () {

@@ -11,12 +11,15 @@ use Illuminate\Support\Facades\DB;
 class ActivityTimelineWidget extends ChartWidget
 {
     protected ?string $heading = 'Timeline de actividades (30 días)';
+
     protected static ?int $sort = 23;
 
     protected function getData(): array
     {
         $tenantId = Filament::getTenant()?->getKey();
-        if (! $tenantId) return ['datasets' => [], 'labels' => []];
+        if (! $tenantId) {
+            return ['datasets' => [], 'labels' => []];
+        }
 
         $activities = DB::table('crm_activities')
             ->where('tenant_id', $tenantId)
@@ -55,5 +58,8 @@ class ActivityTimelineWidget extends ChartWidget
         return ['datasets' => $datasets, 'labels' => $labels];
     }
 
-    protected function getType(): string { return 'line'; }
+    protected function getType(): string
+    {
+        return 'line';
+    }
 }

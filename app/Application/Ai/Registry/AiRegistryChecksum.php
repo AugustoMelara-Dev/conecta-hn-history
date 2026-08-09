@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Application\Ai\Registry;
 
-use JsonException;
-
 final class AiRegistryChecksum
 {
     /** @param array<string, mixed> $canonicalPayload */

@@ -9,8 +9,8 @@ use App\Filament\App\Resources\TenantProfileResource\RelationManagers;
 use App\Models\Tenant;
 use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -19,9 +19,9 @@ class TenantProfileResource extends Resource
 {
     protected static ?string $model = Tenant::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-building-storefront';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-building-storefront';
 
-    protected static string | \UnitEnum | null $navigationGroup = 'Configuracion';
+    protected static string|\UnitEnum|null $navigationGroup = 'Configuracion';
 
     protected static ?int $navigationSort = 1;
 

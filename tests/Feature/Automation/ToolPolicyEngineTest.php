@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Automation;
 
-use PHPUnit\Framework\Attributes\DataProvider;
+use App\Application\Automation\ToolPolicyEngine;
 use App\Domain\Automation\ToolAuthorizationRequest;
 use App\Infrastructure\Automation\DatabaseWorkflowRepository;
-use App\Application\Automation\ToolPolicyEngine;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 final class ToolPolicyEngineTest extends TestCase

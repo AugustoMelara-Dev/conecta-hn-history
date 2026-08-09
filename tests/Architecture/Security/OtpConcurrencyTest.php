@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Architecture\Security;
 
+use App\Domain\Auth\Exceptions\MaxOtpAttemptsExceededException;
 use App\Domain\Auth\Repositories\OtpRepositoryInterface;
+use App\Domain\Auth\Services\OtpHasherInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -56,7 +58,7 @@ class OtpConcurrencyTest extends TestCase
 
         /** @var OtpRepositoryInterface $repo */
         $repo = $this->app->make(OtpRepositoryInterface::class);
-        $hasher = $this->app->make(\App\Domain\Auth\Services\OtpHasherInterface::class);
+        $hasher = $this->app->make(OtpHasherInterface::class);
         $hashedCode = $hasher->hash($code);
 
         $createdId = null;
@@ -85,7 +87,7 @@ class OtpConcurrencyTest extends TestCase
                 try {
                     $repo->incrementAttemptsAtomically((string) $createdId, (int) config('auth.otp.max_attempts', 3));
                     $results[] = 'INVALID';
-                } catch (\App\Domain\Auth\Exceptions\MaxOtpAttemptsExceededException) {
+                } catch (MaxOtpAttemptsExceededException) {
                     $results[] = 'BLOCKED';
                 }
             }

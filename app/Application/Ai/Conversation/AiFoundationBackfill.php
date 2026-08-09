@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Ai\Conversation;
 
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -207,7 +208,7 @@ final class AiFoundationBackfill
         );
     }
 
-    /** @return array{\Illuminate\Support\Collection<int, object>,array{created_at:string,id:string,empty?:bool}} */
+    /** @return array{Collection<int, object>,array{created_at:string,id:string,empty?:bool}} */
     private function executions(int $limit, ?array $cursor, ?array $snapshot = null): array
     {
         $query = DB::table('ai_executions as backfill_executions')
@@ -559,6 +560,7 @@ final class AiFoundationBackfill
             }
             if (! is_string($value) || ! Str::isUuid($value)) {
                 $invalid = true;
+
                 continue;
             }
             $ids[] = $value;
@@ -845,6 +847,7 @@ final class AiFoundationBackfill
         foreach ($required as $table => $columns) {
             if (! Schema::hasTable($table)) {
                 $missing[] = $table;
+
                 continue;
             }
             foreach ($columns as $column) {

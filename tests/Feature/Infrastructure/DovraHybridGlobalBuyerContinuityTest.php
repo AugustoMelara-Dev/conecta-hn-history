@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature\Infrastructure;
 
 use App\Application\Availability\AvailabilityQuery;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\Support\HybridGlobalBuyerFixture;
 use Tests\TestCase;
@@ -154,7 +155,7 @@ final class DovraHybridGlobalBuyerContinuityTest extends TestCase
             (int) $state['service_id'],
             (int) $state['provider_id'],
             (string) $state['location_id'],
-            \Carbon\CarbonImmutable::parse($date, HybridGlobalBuyerFixture::MARKET_TIMEZONE),
+            CarbonImmutable::parse($date, HybridGlobalBuyerFixture::MARKET_TIMEZONE),
         );
         self::assertNotEmpty($slots);
         $slot = $slots[0];
@@ -198,7 +199,7 @@ final class DovraHybridGlobalBuyerContinuityTest extends TestCase
             (int) $state['service_id'],
             (int) $state['provider_id'],
             (string) $state['location_id'],
-            \Carbon\CarbonImmutable::parse($date, HybridGlobalBuyerFixture::MARKET_TIMEZONE),
+            CarbonImmutable::parse($date, HybridGlobalBuyerFixture::MARKET_TIMEZONE),
         );
         self::assertFalse(collect($afterSlots)->contains('starts_at_utc', $slot['starts_at_utc']));
         $this->assertNoTenantBillingEvidence($tenantId);

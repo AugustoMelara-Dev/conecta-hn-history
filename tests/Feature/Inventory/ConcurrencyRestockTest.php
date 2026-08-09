@@ -29,15 +29,18 @@ class ConcurrencyRestockTest extends TestCase
     use RefreshDatabase;
 
     private InventoryManager $inventoryManager;
+
     private string $tenantId;
+
     private string $userId;
+
     private int $productId;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->inventoryManager = new InventoryManager();
+        $this->inventoryManager = new InventoryManager;
 
         // ═══════════════════════════════════════════════════════════════════════
         // RAW DB SETUP: Avoids LogsActivity MissingAttribute issues with factories
@@ -48,7 +51,7 @@ class ConcurrencyRestockTest extends TestCase
         DB::table('users')->insert([
             'id' => $this->userId,
             'name' => 'Test User',
-            'email' => 'test-' . Str::random(8) . '@example.com',
+            'email' => 'test-'.Str::random(8).'@example.com',
             'password' => bcrypt('password'),
             'role' => 'customer',
             'created_at' => now(),
@@ -61,7 +64,7 @@ class ConcurrencyRestockTest extends TestCase
             'id' => $this->tenantId,
             'user_id' => $this->userId,
             'name' => 'Test Tenant',
-            'slug' => 'test-tenant-' . Str::random(6),
+            'slug' => 'test-tenant-'.Str::random(6),
             'plan' => 'SEED',
             'is_active' => true,
             'plan_type' => 'semilla',
@@ -76,7 +79,7 @@ class ConcurrencyRestockTest extends TestCase
         $this->productId = DB::table('products')->insertGetId([
             'tenant_id' => $this->tenantId,
             'name' => 'Test Product',
-            'slug' => 'test-product-' . Str::random(6),
+            'slug' => 'test-product-'.Str::random(6),
             'price' => 100.00,
             'stock_quantity' => 0,
             'manage_stock' => true,
@@ -97,7 +100,7 @@ class ConcurrencyRestockTest extends TestCase
         $orderId = DB::table('orders')->insertGetId([
             'tenant_id' => $this->tenantId,
             'user_id' => $this->userId,
-            'order_number' => '#' . rand(10000, 99999),
+            'order_number' => '#'.rand(10000, 99999),
             'customer_name' => 'Test Customer',
             'customer_phone' => '9999-9999',
             'subtotal' => 500.00,
@@ -172,11 +175,11 @@ class ConcurrencyRestockTest extends TestCase
         $this->inventoryManager->restock($order);
 
         $queries = DB::getQueryLog();
-        $hasLock = collect($queries)->contains(fn($q) => stripos($q['query'], 'for update') !== false);
+        $hasLock = collect($queries)->contains(fn ($q) => stripos($q['query'], 'for update') !== false);
 
-        $this->assertTrue($hasLock, 
-            "CRITICAL: restock() NO usa lockForUpdate()!\n" .
-            "Queries: " . json_encode(array_column($queries, 'query'), JSON_PRETTY_PRINT)
+        $this->assertTrue($hasLock,
+            "CRITICAL: restock() NO usa lockForUpdate()!\n".
+            'Queries: '.json_encode(array_column($queries, 'query'), JSON_PRETTY_PRINT)
         );
 
         DB::disableQueryLog();
@@ -200,6 +203,7 @@ class ConcurrencyRestockTest extends TestCase
         $queries = DB::getQueryLog();
         $hasTenantLock = collect($queries)->contains(function ($q) {
             $sql = strtolower($q['query']);
+
             return strpos($sql, 'for update') !== false && strpos($sql, 'tenant_id') !== false;
         });
 
@@ -235,7 +239,7 @@ class ConcurrencyRestockTest extends TestCase
         $unmanagedId = DB::table('products')->insertGetId([
             'tenant_id' => $this->tenantId,
             'name' => 'Unmanaged Product',
-            'slug' => 'unmanaged-' . Str::random(6),
+            'slug' => 'unmanaged-'.Str::random(6),
             'price' => 50.00,
             'stock_quantity' => 0,
             'manage_stock' => false, // UNMANAGED
@@ -250,7 +254,7 @@ class ConcurrencyRestockTest extends TestCase
         $orderId = DB::table('orders')->insertGetId([
             'tenant_id' => $this->tenantId,
             'user_id' => $this->userId,
-            'order_number' => '#' . rand(10000, 99999),
+            'order_number' => '#'.rand(10000, 99999),
             'customer_name' => 'Test Customer',
             'customer_phone' => '9999-9999',
             'subtotal' => 50.00,
@@ -291,7 +295,7 @@ class ConcurrencyRestockTest extends TestCase
         $product2Id = DB::table('products')->insertGetId([
             'tenant_id' => $this->tenantId,
             'name' => 'Product 2',
-            'slug' => 'product-2-' . Str::random(6),
+            'slug' => 'product-2-'.Str::random(6),
             'price' => 200.00,
             'stock_quantity' => 0,
             'manage_stock' => true,
@@ -306,7 +310,7 @@ class ConcurrencyRestockTest extends TestCase
         $orderId = DB::table('orders')->insertGetId([
             'tenant_id' => $this->tenantId,
             'user_id' => $this->userId,
-            'order_number' => '#' . rand(10000, 99999),
+            'order_number' => '#'.rand(10000, 99999),
             'customer_name' => 'Test Customer',
             'customer_phone' => '9999-9999',
             'subtotal' => 1100.00,

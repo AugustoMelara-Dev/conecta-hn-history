@@ -15,11 +15,16 @@ use Illuminate\Support\Facades\DB;
  */
 class CrossTenantReports extends Page
 {
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-globe-alt';
-    protected static string | \UnitEnum | null $navigationGroup = 'CRM Global';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-globe-alt';
+
+    protected static string|\UnitEnum|null $navigationGroup = 'CRM Global';
+
     protected static ?string $navigationLabel = 'Cross-tenant';
+
     protected static ?string $title = 'Cross-Tenant Reports';
+
     protected static ?int $navigationSort = 5;
+
     protected string $view = 'filament.admin.pages.cross-tenant-reports';
 
     public ?array $data = [];

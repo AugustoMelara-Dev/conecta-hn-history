@@ -366,7 +366,7 @@ final class BusinessGraphBackfill
     }
 
     /**
-     * @param callable(object): void $handler
+     * @param  callable(object): void  $handler
      */
     private function backfillTenantRows(string $table, string $tenantId, bool $dryRun, callable $handler): void
     {
@@ -414,7 +414,7 @@ final class BusinessGraphBackfill
             confidence: 1.0,
         );
 
-        ++$this->factsWritten;
+        $this->factsWritten++;
         $this->incrementSource($sourceType);
 
         if (! $dryRun) {
@@ -444,7 +444,7 @@ final class BusinessGraphBackfill
             sourceId: $sourceId,
         );
 
-        ++$this->edgesWritten;
+        $this->edgesWritten++;
         $this->incrementSource($sourceType);
 
         if (! $dryRun) {

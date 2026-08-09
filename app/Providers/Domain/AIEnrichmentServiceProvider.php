@@ -16,9 +16,9 @@ use App\Application\Ai\Catalog\CatalogVisionProviderInterface;
 use App\Application\Ai\Workforce\AiRegistryWorkforceAuthority;
 use App\Application\Ai\Workforce\Contracts\WorkforceRegistryAuthority;
 use App\Application\BusinessGraph\Contracts\BusinessGraphRepositoryInterface;
-use App\Infrastructure\BusinessGraph\DatabaseBusinessGraphRepository;
 use App\Infrastructure\AI\LaravelCatalogImportPublisher;
 use App\Infrastructure\AI\OpenAiCatalogVisionProvider;
+use App\Infrastructure\BusinessGraph\DatabaseBusinessGraphRepository;
 use Illuminate\Support\ServiceProvider;
 
 final class AIEnrichmentServiceProvider extends ServiceProvider

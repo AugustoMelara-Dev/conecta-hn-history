@@ -9,6 +9,7 @@ use Filament\Widgets\ChartWidget;
 class ChurnGaugeWidget extends ChartWidget
 {
     protected ?string $heading = 'Tasa de churn';
+
     protected static ?int $sort = 4;
 
     protected function getData(): array
@@ -19,5 +20,8 @@ class ChurnGaugeWidget extends ChartWidget
         ];
     }
 
-    protected function getType(): string { return 'doughnut'; }
+    protected function getType(): string
+    {
+        return 'doughnut';
+    }
 }

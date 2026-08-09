@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Contract;
 
+use App\Infrastructure\Common\SchemaRegistry\SchemaRegistryInterface;
 use Tests\TestCase as BaseTestCase;
 
 /**
@@ -23,7 +24,7 @@ abstract class ContractTestCase extends BaseTestCase
     protected function assertMatchesJsonSchema(string $subject, array $responseData): void
     {
         // 1. REGLA DE ABSTRACCIÓN: Usar el Registry, no el file system.
-        $registry = $this->app->make(\App\Infrastructure\Common\SchemaRegistry\SchemaRegistryInterface::class);
+        $registry = $this->app->make(SchemaRegistryInterface::class);
 
         $schema = $registry->getSchema($subject);
 

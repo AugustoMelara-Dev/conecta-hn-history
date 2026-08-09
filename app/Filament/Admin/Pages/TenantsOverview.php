@@ -12,11 +12,16 @@ use Illuminate\Support\Facades\DB;
  */
 class TenantsOverview extends Page
 {
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-building-office';
-    protected static string | \UnitEnum | null $navigationGroup = 'Plataforma';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-building-office';
+
+    protected static string|\UnitEnum|null $navigationGroup = 'Plataforma';
+
     protected static ?string $navigationLabel = 'Tenants Overview';
+
     protected static ?string $title = 'Tenants Overview';
+
     protected static ?int $navigationSort = 2;
+
     protected string $view = 'filament.admin.pages.tenants-overview';
 
     public function getTopTenants(): array
@@ -30,6 +35,7 @@ class TenantsOverview extends Page
             ->get()
             ->map(function ($row) {
                 $tenant = DB::table('tenants')->where('id', $row->tenant_id)->first();
+
                 return [
                     'name' => $tenant->name ?? 'Unknown',
                     'orders_count' => (int) $row->orders_count,

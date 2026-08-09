@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Products;
 
+use App\Application\Markets\MissingMarketContextException;
 use App\Application\Products\CanonicalProductWriter;
 use App\Application\Products\Commands\CreateCanonicalProductCommand;
-use App\Application\Markets\MissingMarketContextException;
+use App\Enums\StockStatus;
 use App\Models\Tenant;
-use Tests\Support\GlobalMarketFixture;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use Tests\Support\GlobalMarketFixture;
 use Tests\TestCase;
 
 final class CanonicalProductWriterTest extends TestCase
@@ -105,7 +108,7 @@ final class CanonicalProductWriterTest extends TestCase
         try {
             $writer->update((string) $other->getKey(), (int) $product->getKey(), ['name' => 'Hostil']);
             $this->fail('Cross-tenant update must be hidden as not found.');
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+        } catch (ModelNotFoundException) {
             $this->assertSame('Taza', $product->fresh()->name);
         }
 
@@ -130,7 +133,7 @@ final class CanonicalProductWriterTest extends TestCase
             try {
                 $operation();
                 $this->fail('The tenant-scoped write must be hidden as not found.');
-            } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            } catch (ModelNotFoundException) {
                 // expected
             }
         }
@@ -166,7 +169,7 @@ final class CanonicalProductWriterTest extends TestCase
             'sort_order' => 0, 'created_at' => now(), 'updated_at' => now(),
         ]);
 
-        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        $this->expectException(ValidationException::class);
         app(CanonicalProductWriter::class)->create(new CreateCanonicalProductCommand(
             (string) $owner->getKey(), 'foreign-menu-section', 'Seguro', 100, 0,
             ['menu_section_id' => $sectionId],
@@ -176,7 +179,7 @@ final class CanonicalProductWriterTest extends TestCase
     public function test_capacity_is_enforced_after_locking_the_tenant(): void
     {
         $tenant = $this->marketTenant(['product_limit' => 0]);
-        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        $this->expectException(ValidationException::class);
         app(CanonicalProductWriter::class)->create(new CreateCanonicalProductCommand((string) $tenant->getKey(), 'capacity-lock', 'No cabe', 100));
     }
 
@@ -203,7 +206,7 @@ final class CanonicalProductWriterTest extends TestCase
             (string) $tenant->getKey(), 'unmanaged-product', 'Servicio', 100, 0, ['manage_stock' => false],
         ));
         $this->assertFalse((bool) $product->manage_stock);
-        $this->assertSame(\App\Enums\StockStatus::InStock, $product->stock_status);
+        $this->assertSame(StockStatus::InStock, $product->stock_status);
 
         $this->expectException(\InvalidArgumentException::class);
         app(CanonicalProductWriter::class)->create(new CreateCanonicalProductCommand(

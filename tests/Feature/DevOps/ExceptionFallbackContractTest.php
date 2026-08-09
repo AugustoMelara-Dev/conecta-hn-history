@@ -31,9 +31,8 @@ final class ExceptionFallbackContractTest extends TestCase
     {
         $contents = file_get_contents(base_path('bootstrap/app.php'));
         $this->assertIsString($contents);
-        $this->assertStringContainsString("TokenMismatchException", $contents);
+        $this->assertStringContainsString('TokenMismatchException', $contents);
         $this->assertStringContainsString("'message' => 'Tu sesión expiró. Recarga la página e intenta de nuevo.'", $contents);
         $this->assertStringContainsString("->with('toast', 'Tu sesión expiró por seguridad. Reintentemos desde este paso.')", $contents);
     }
 }
-

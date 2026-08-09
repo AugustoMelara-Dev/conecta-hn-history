@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\DevOps;
 
+use App\Domain\TenantGovernance\Services\SubscriptionPricingService;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use SplFileInfo;
@@ -93,6 +94,6 @@ final class LaunchProductTruthContractTest extends TestCase
         $this->expectException(\LogicException::class);
         $this->expectExceptionMessage('minor currency units');
 
-        \App\Domain\TenantGovernance\Services\SubscriptionPricingService::canonicalProPriceInMajorUnits();
+        SubscriptionPricingService::canonicalProPriceInMajorUnits();
     }
 }

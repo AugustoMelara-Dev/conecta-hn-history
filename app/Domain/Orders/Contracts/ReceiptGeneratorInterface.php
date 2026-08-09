@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Orders\Contracts;
 
+use App\Domain\Orders\Exceptions\PdfGenerationException;
+
 // use App\Models\Order; // REMOVED
 
 /**
@@ -23,7 +25,7 @@ interface ReceiptGeneratorInterface
      * @param  Order  $order  Order with items relation loaded
      * @return string Raw binary PDF content
      *
-     * @throws \App\Domain\Orders\Exceptions\PdfGenerationException On render failure
+     * @throws PdfGenerationException On render failure
      */
     public function generate(object $order): string;
 }

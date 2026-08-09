@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Channels;
 
-use App\Application\Channels\ChannelConnectionService;
 use App\Application\Channels\ChannelAuthorizationEnvelope;
+use App\Application\Channels\ChannelConnectionService;
 use App\Application\Channels\ChannelContext;
 use App\Application\Channels\ChannelInboundMessage;
 use App\Application\Channels\ConversationChannelBridge;
 use App\Application\Channels\WebhookAuthenticityEnvelope;
+use App\Domain\Shared\Services\TenantContext;
 use App\Infrastructure\Channels\Email\FakeEmailAdapter;
 use App\Infrastructure\Channels\Support\WebhookAuthenticator;
 use App\Models\Tenant;
@@ -299,7 +300,7 @@ final class ChannelWebhookReplayTest extends TestCase
         $actor = User::factory()->create();
         $tenant = Tenant::factory()->forUser($actor)->create();
         GlobalMarketFixture::assignCanada($tenant);
-        app(\App\Domain\Shared\Services\TenantContext::class)->setTenant((string) $tenant->id);
+        app(TenantContext::class)->setTenant((string) $tenant->id);
         $context = new ChannelContext(
             tenantId: (string) $tenant->id,
             channel: 'email',
@@ -391,19 +392,19 @@ final class ChannelWebhookReplayTest extends TestCase
         $before = self::protectedTableStateHash();
         try {
             $adapter->receive($context, new ChannelInboundMessage(
-            tenantId: (string) $tenant->id,
-            channel: 'email',
-            connectionKey: 'email-local',
-            externalMessageId: 'mail-in-101',
-            externalThreadReference: 'reply-thread@example.test',
-            identityType: 'email',
-            identityValue: 'reply@example.test',
-            content: 'received',
-            webhookEventId: 'mail-evt-101',
-            webhookPayload: '{"event":"message.received","id":"mail-evt-101"}',
-            webhookSignature: str_repeat('0', 64),
-            webhookTimestamp: '2026-08-03T15:00:00Z',
-            webhookReplayKey: 'mail-replay-101',
+                tenantId: (string) $tenant->id,
+                channel: 'email',
+                connectionKey: 'email-local',
+                externalMessageId: 'mail-in-101',
+                externalThreadReference: 'reply-thread@example.test',
+                identityType: 'email',
+                identityValue: 'reply@example.test',
+                content: 'received',
+                webhookEventId: 'mail-evt-101',
+                webhookPayload: '{"event":"message.received","id":"mail-evt-101"}',
+                webhookSignature: str_repeat('0', 64),
+                webhookTimestamp: '2026-08-03T15:00:00Z',
+                webhookReplayKey: 'mail-replay-101',
             ));
             self::fail('Expected bad HMAC to be rejected.');
         } catch (InvalidArgumentException $exception) {

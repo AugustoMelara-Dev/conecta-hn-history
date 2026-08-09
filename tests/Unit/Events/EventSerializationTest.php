@@ -6,7 +6,9 @@ namespace Tests\Unit\Events;
 
 use App\Domain\Shared\ValueObjects\TenantId;
 use App\Events\Audit\SalesExportCreated;
+use App\Events\Order\NewOrderReceived;
 use App\Events\Order\OrderShipped;
+use App\Events\Payment\PaymentApproved;
 use App\Events\Security\FailedLoginAttempt;
 use App\Events\Security\SensitiveDataAccessed;
 use App\Events\Security\TenantSuspended;
@@ -323,7 +325,7 @@ class EventSerializationTest extends TestCase
         // Metadata should generate fresh values when not provided
         $this->assertNotEmpty($event->eventId());
         $this->assertNotEmpty($event->correlationId());
-        $this->assertInstanceOf(\DateTimeImmutable::class, $event->occurredAt());
+        $this->assertInstanceOf(DateTimeImmutable::class, $event->occurredAt());
     }
 
     /**
@@ -432,7 +434,7 @@ class EventSerializationTest extends TestCase
     public function new_order_received_survives_serialization(): void
     {
         // Signature: create(tenantId, orderId, orderNumber, itemCount, totalAmountCents, customerId, customerName, currency)
-        $original = \App\Events\Order\NewOrderReceived::create(
+        $original = NewOrderReceived::create(
             tenantId: '00000000-0000-4000-8000-000000000010',
             orderId: 500,
             orderNumber: 'ORD-2026-TEST',
@@ -449,7 +451,7 @@ class EventSerializationTest extends TestCase
         $json = json_encode($primitives);
         $this->assertNotFalse($json, 'NewOrderReceived primitives must be JSON-serializable');
 
-        $reconstituted = \App\Events\Order\NewOrderReceived::fromPrimitives($primitives);
+        $reconstituted = NewOrderReceived::fromPrimitives($primitives);
 
         // Verify critical data preserved
         $this->assertSame('00000000-0000-4000-8000-000000000010', $reconstituted->tenantId()->toString());
@@ -468,7 +470,7 @@ class EventSerializationTest extends TestCase
     public function payment_approved_survives_serialization(): void
     {
         // Signature: create(tenantId, orderId, orderNumber, transactionId, gatewayName, amountCents, currency)
-        $original = \App\Events\Payment\PaymentApproved::create(
+        $original = PaymentApproved::create(
             tenantId: '00000000-0000-4000-8000-000000000015',
             orderId: 600,
             orderNumber: 'ORD-PAY-TEST',
@@ -484,7 +486,7 @@ class EventSerializationTest extends TestCase
         $json = json_encode($primitives);
         $this->assertNotFalse($json, 'PaymentApproved primitives must be JSON-serializable');
 
-        $reconstituted = \App\Events\Payment\PaymentApproved::fromPrimitives($primitives);
+        $reconstituted = PaymentApproved::fromPrimitives($primitives);
 
         // Verify critical data preserved
         $this->assertSame('00000000-0000-4000-8000-000000000015', $reconstituted->tenantId()->toString());

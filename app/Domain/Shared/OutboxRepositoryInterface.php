@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Shared;
 
+use Illuminate\Support\Collection;
+
 /**
  * Interface OutboxRepositoryInterface
  *
@@ -26,7 +28,7 @@ interface OutboxRepositoryInterface
      * @param  int  $batchSize  Maximum number of messages to recover
      * @param  int  $staleThresholdSeconds  Seconds after which a lock is considered stale
      * @param  array<int>  $ownedPartitionKeys  Explicit list of partitions this worker owns
-     * @return \Illuminate\Support\Collection<mixed>
+     * @return Collection<mixed>
      */
-    public function retrieveNextStaleBatch(int $batchSize, int $staleThresholdSeconds, array $ownedPartitionKeys): \Illuminate\Support\Collection;
+    public function retrieveNextStaleBatch(int $batchSize, int $staleThresholdSeconds, array $ownedPartitionKeys): Collection;
 }

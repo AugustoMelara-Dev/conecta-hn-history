@@ -137,6 +137,7 @@ final class InitializeFilamentLivewireTenantContext
         foreach ($components as $component) {
             if (! is_array($component) || ! is_string($component['snapshot'] ?? null)) {
                 $hasUnresolvableAppSnapshot = true;
+
                 continue;
             }
 
@@ -144,6 +145,7 @@ final class InitializeFilamentLivewireTenantContext
                 $snapshot = json_decode($component['snapshot'], true, 32, JSON_THROW_ON_ERROR);
             } catch (\JsonException) {
                 $hasUnresolvableAppSnapshot = true;
+
                 continue;
             }
 
@@ -153,6 +155,7 @@ final class InitializeFilamentLivewireTenantContext
 
             if (! is_string($path) || $path === '' || ! is_string($method) || $method === '') {
                 $hasUnresolvableAppSnapshot = true;
+
                 continue;
             }
 
@@ -183,12 +186,14 @@ final class InitializeFilamentLivewireTenantContext
                 // when all components classify this way, but become a
                 // fail-closed mixed payload beside a tenant component.
                 $hasOtherClassification = true;
+
                 continue;
             }
 
             $slug = $matchedRoute->parameter('tenant');
             if (! is_string($slug) || $slug === '') {
                 $hasUnresolvableAppSnapshot = true;
+
                 continue;
             }
 

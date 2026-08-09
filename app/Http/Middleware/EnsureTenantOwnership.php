@@ -4,8 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Models\Campaign;
+use App\Models\Coupon;
+use App\Models\Lead;
+use App\Models\MenuSection;
+use App\Models\Order;
+use App\Models\Product;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -39,18 +46,18 @@ class EnsureTenantOwnership
      * Only models with tenant_id column are checked.
      */
     protected array $tenantBoundModels = [
-        'product' => \App\Models\Product::class,
-        'order' => \App\Models\Order::class,
-        'coupon' => \App\Models\Coupon::class,
-        'menuSection' => \App\Models\MenuSection::class,
-        'lead' => \App\Models\Lead::class,
-        'campaign' => \App\Models\Campaign::class,
+        'product' => Product::class,
+        'order' => Order::class,
+        'coupon' => Coupon::class,
+        'menuSection' => MenuSection::class,
+        'lead' => Lead::class,
+        'campaign' => Campaign::class,
     ];
 
     /**
      * Handle an incoming request.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
@@ -153,19 +160,19 @@ class EnsureTenantOwnership
         // Log to security channel if available, fallback to default
         try {
             if (config('logging.channels.security')) {
-                \Illuminate\Support\Facades\Log::channel('security')->warning(
+                Log::channel('security')->warning(
                     'SECURITY: Cross-tenant access attempt detected',
                     $data
                 );
             } else {
-                \Illuminate\Support\Facades\Log::warning(
+                Log::warning(
                     'SECURITY: Cross-tenant access attempt detected',
                     $data
                 );
             }
         } catch (\Throwable $e) {
             // Fallback to default log if any error
-            \Illuminate\Support\Facades\Log::warning(
+            Log::warning(
                 'SECURITY: Cross-tenant access attempt detected',
                 $data
             );

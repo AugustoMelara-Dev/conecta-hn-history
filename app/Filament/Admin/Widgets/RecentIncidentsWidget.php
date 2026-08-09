@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 class RecentIncidentsWidget extends TableWidget
 {
     protected static ?string $heading = 'Incidentes recientes';
+
     protected static ?int $sort = 6;
 
     public function table(Tables\Table $table): Tables\Table

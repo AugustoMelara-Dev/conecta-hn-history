@@ -3,19 +3,19 @@
 declare(strict_types=1);
 
 use App\Application\Tenant\Transformers\TenantMicrositeTransformer;
-use App\Domain\TenantGovernance\Services\PlanFeatureFlagService;
+use App\Domain\Shared\Services\TenantContext;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 
 uses(RefreshDatabase::class);
 beforeEach(function (): void {
-    $context = app(\App\Domain\Shared\Services\TenantContext::class);
+    $context = app(TenantContext::class);
     $context->reset();
     $context->setAsSystemRoot();
 });
 afterEach(function (): void {
-    app(\App\Domain\Shared\Services\TenantContext::class)->reset();
+    app(TenantContext::class)->reset();
 });
 
 describe('TenantMicrositeTransformer Premium Profile Fields', function () {

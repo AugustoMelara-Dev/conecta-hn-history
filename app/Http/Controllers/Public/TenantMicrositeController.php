@@ -9,6 +9,7 @@ use App\Domain\Public\Contracts\TenantStorefrontRepository;
 use App\Domain\Tenant\Services\TenantVisibilityService;
 use App\Domain\TenantGovernance\Services\PlanFeatureFlagService;
 // Assumed Event exists or will be created
+use App\Events\Analytics\MicrositeViewed;
 use App\Http\Controllers\Controller;
 use App\Infrastructure\Public\EloquentTenantMicrositeReader;
 use Illuminate\Http\Request;
@@ -61,8 +62,8 @@ final class TenantMicrositeController extends Controller
         // 3. Side-Effect Managment (Event Driven)
         // Fire and Forget. Listener handles increment logic.
         // Needs basic Event class.
-        if (class_exists(\App\Events\Analytics\MicrositeViewed::class)) {
-            \App\Events\Analytics\MicrositeViewed::dispatch($tenant, $request->ip(), $request->userAgent());
+        if (class_exists(MicrositeViewed::class)) {
+            MicrositeViewed::dispatch($tenant, $request->ip(), $request->userAgent());
         }
 
         // 4. Transform & Respond

@@ -6,6 +6,7 @@ namespace App\Application\Automation;
 
 use App\Application\Automation\Contracts\ToolPolicyEngineInterface;
 use App\Application\Automation\Contracts\WorkflowRepositoryInterface;
+use App\Domain\Automation\ToolAuthorizationDecision;
 use App\Domain\Automation\ToolAuthorizationRequest;
 use App\Domain\Automation\WorkflowResumeRequest;
 use App\Domain\Automation\WorkflowRunResult;
@@ -341,7 +342,7 @@ final class WorkflowRunService
         array $confirmations,
         string $provider,
         string $idempotencyKey,
-    ): ?\App\Domain\Automation\ToolAuthorizationDecision {
+    ): ?ToolAuthorizationDecision {
         $authorization = is_array($step['authorization'] ?? null) ? $step['authorization'] : null;
         if ($authorization === null) {
             return null;
@@ -417,6 +418,7 @@ final class WorkflowRunService
                     'error_code' => 'compensation_handler_missing',
                     'finished_at' => $occurredAt->toIso8601String(),
                 ]);
+
                 continue;
             }
 

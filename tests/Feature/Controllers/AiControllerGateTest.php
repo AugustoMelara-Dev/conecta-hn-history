@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\AiController;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
 
 beforeEach(function (): void {
     Queue::fake();
@@ -15,9 +16,9 @@ beforeEach(function (): void {
 
 test('generate denies tenants outside the private AI gate', function (): void {
     $user = User::factory()->make([
-        'id' => (string) Illuminate\Support\Str::uuid(),
+        'id' => (string) Str::uuid(),
     ]);
-    $user->tenant_id = (string) Illuminate\Support\Str::uuid();
+    $user->tenant_id = (string) Str::uuid();
 
     $privateAiAccess = Mockery::mock(PrivateAiAccessGate::class);
     $privateAiAccess

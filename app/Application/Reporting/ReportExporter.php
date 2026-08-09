@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace App\Application\Reporting;
 
 use App\Application\Reporting\Contracts\ReportInterface;
+use App\Application\Reporting\Reports\GenericReportExport;
 use App\Application\Reporting\ValueObjects\ReportData;
 use App\Domain\Reporting\Enums\ReportFormat;
-use App\Domain\Reporting\Enums\ReportKey;
+use App\Domain\Reporting\ValueObjects\ReportRange;
 use App\Infrastructure\Imports\ExcelExporter;
 use App\Infrastructure\Imports\PdfExporter;
 
@@ -24,7 +25,7 @@ class ReportExporter
     public function export(
         ReportInterface $report,
         string $tenantId,
-        \App\Domain\Reporting\ValueObjects\ReportRange $range,
+        ReportRange $range,
         ReportFormat $format = ReportFormat::Pdf,
     ): string {
         $data = $report->getData($tenantId, $range);
@@ -39,7 +40,7 @@ class ReportExporter
                 ],
             ),
             ReportFormat::Xlsx => $this->excelExporter->export(
-                new \App\Application\Reporting\Reports\GenericReportExport($report, $tenantId, $range),
+                new GenericReportExport($report, $tenantId, $range),
             ),
             ReportFormat::Csv => $this->writeCsv($report, $data),
         };
@@ -47,8 +48,8 @@ class ReportExporter
 
     private function writeCsv(ReportInterface $report, ReportData $data): string
     {
-        $filename = 'report-' . $report->getKey()->value . '-' . now()->format('Ymd-His') . '.csv';
-        $path = storage_path('app/reports/' . $filename);
+        $filename = 'report-'.$report->getKey()->value.'-'.now()->format('Ymd-His').'.csv';
+        $path = storage_path('app/reports/'.$filename);
 
         if (! is_dir(dirname($path))) {
             mkdir(dirname($path), 0755, true);

@@ -8,6 +8,7 @@ use App\Application\Ai\Contracts\AiProviderPool;
 use App\Application\Ai\Conversation\AiFoundationBackfill;
 use App\Application\Ai\Registry\AiRegistryLifecycle;
 use App\Application\Ai\Registry\AiRegistryQuery;
+use App\Application\Ai\Registry\AiRegistryResolver;
 use App\Application\Ai\Registry\Commands\ActivateAgentVersionCommand;
 use App\Application\Ai\Registry\Commands\RollbackAgentActivationCommand;
 use App\Exceptions\Ai\AiExecutionDeniedException;
@@ -16,6 +17,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Tests\Fakes\AI\FakeAiProvider;
 use Tests\Support\AI\Program05CompositeCertificateFixture;
 use Tests\Support\AI\Program05CompositeCertificateReport;
@@ -76,7 +78,7 @@ final class Program05CompositeCertificationTest extends TestCase
         self::assertSame(0, count($provider->requests));
         $this->assertForeignState($foreignTenantId, $foreignBaseline);
 
-        $checkpointDirectory = sys_get_temp_dir().'\program05-composite-'.str_replace('-', '', (string) \Illuminate\Support\Str::uuid());
+        $checkpointDirectory = sys_get_temp_dir().'\program05-composite-'.str_replace('-', '', (string) Str::uuid());
         if (! mkdir($checkpointDirectory, 0700, true) && ! is_dir($checkpointDirectory)) {
             self::fail('Unable to create the Program 05 checkpoint directory.');
         }
@@ -130,8 +132,8 @@ final class Program05CompositeCertificationTest extends TestCase
                 actorId: (string) $fixture['actor_id'],
                 cohortSubject: 'program05-shadow-subject',
             );
-            $shadowOne = app(\App\Application\Ai\Registry\AiRegistryResolver::class)->resolve($shadowQuery);
-            $shadowTwo = app(\App\Application\Ai\Registry\AiRegistryResolver::class)->resolve($shadowQuery);
+            $shadowOne = app(AiRegistryResolver::class)->resolve($shadowQuery);
+            $shadowTwo = app(AiRegistryResolver::class)->resolve($shadowQuery);
             self::assertSame($shadowOne->providerVersionId, $shadowTwo->providerVersionId);
             self::assertSame($shadowOne->modelVersionId, $shadowTwo->modelVersionId);
             self::assertSame($shadowOne->agentVersionId, $shadowTwo->agentVersionId);
@@ -175,7 +177,7 @@ final class Program05CompositeCertificationTest extends TestCase
             $subjects = Program05CompositeCertificateFixture::cohortSubjects((string) $candidateActivation->cohort_salt, 25);
             $canaryQuery = $this->registryQuery($tenantId, (string) $fixture['actor_id'], $subjects['canary_subject']);
             $controlQuery = $this->registryQuery($tenantId, (string) $fixture['actor_id'], $subjects['control_subject']);
-            $resolver = app(\App\Application\Ai\Registry\AiRegistryResolver::class);
+            $resolver = app(AiRegistryResolver::class);
             $canarySelection = $resolver->resolve($canaryQuery);
             $controlSelection = $resolver->resolve($controlQuery);
             self::assertSame((string) $candidate['agent_version_id'], $canarySelection->agentVersionId);
@@ -328,7 +330,7 @@ final class Program05CompositeCertificationTest extends TestCase
             $this->assertMachineFacts($facts);
             $reportPath = (string) getenv('DOVRA_PROGRAM05_COMPOSITE_REPORT');
             if ($reportPath === '') {
-                $reportPath = sys_get_temp_dir().'\dovra-program05-composite-'.str_replace('-', '', (string) \Illuminate\Support\Str::uuid()).'.json';
+                $reportPath = sys_get_temp_dir().'\dovra-program05-composite-'.str_replace('-', '', (string) Str::uuid()).'.json';
             }
             Program05CompositeCertificateReport::writeExclusive($reportPath, $facts);
             self::assertFileExists($reportPath);
@@ -496,7 +498,7 @@ final class Program05CompositeCertificationTest extends TestCase
     {
         $query = $this->registryQuery($tenantId, 'foreign-sentinel-actor', 'program05-foreign-subject');
         try {
-            app(\App\Application\Ai\Registry\AiRegistryResolver::class)->resolve($query);
+            app(AiRegistryResolver::class)->resolve($query);
         } catch (AiExecutionDeniedException $exception) {
             self::assertSame('registry_selection', $exception->reason);
 

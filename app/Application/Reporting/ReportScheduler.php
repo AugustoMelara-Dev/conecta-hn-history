@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Application\Reporting;
 
-use App\Application\Reporting\ValueObjects\ReportData;
 use App\Domain\Reporting\Enums\ReportFormat;
+use App\Domain\Reporting\Enums\ReportKey;
+use App\Domain\Reporting\ValueObjects\ReportRange;
 use App\Models\ReportSchedule;
-use App\Models\Tenant;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -51,13 +51,13 @@ class ReportScheduler
 
     public function runSchedule(ReportSchedule $schedule): string
     {
-        $reportKey = \App\Domain\Reporting\Enums\ReportKey::tryFrom($schedule->report_key);
+        $reportKey = ReportKey::tryFrom($schedule->report_key);
         if ($reportKey === null || ! $this->registry->has($reportKey)) {
             throw new \InvalidArgumentException("Unknown report: {$schedule->report_key}");
         }
 
         $report = $this->registry->get($reportKey);
-        $range = \App\Domain\Reporting\ValueObjects\ReportRange::last30Days();
+        $range = ReportRange::last30Days();
         $format = ReportFormat::from($schedule->format);
 
         $path = $this->exporter->export($report, $schedule->tenant_id, $range, $format);

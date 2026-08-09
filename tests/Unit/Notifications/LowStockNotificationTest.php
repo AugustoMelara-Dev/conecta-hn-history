@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 use App\Enums\LowStockSeverity;
 use App\Events\Broadcast\LowStockBroadcast;
+use Tests\TestCase;
 
 // Bootstrap Laravel — needed for trans_choice() in buildMessage()
-uses(Tests\TestCase::class);
+uses(TestCase::class);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPER: Build a LowStockBroadcast with sensible defaults

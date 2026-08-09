@@ -6,6 +6,7 @@ namespace App\Listeners\Security;
 
 use App\Events\Broadcast\NewLoginDetectedBroadcast;
 use App\Events\Security\NewLoginDetected;
+use App\Infrastructure\Shared\Middleware\TenantQueueMiddleware;
 use App\Mail\Security\LoginAlertMail;
 use App\Models\User;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -23,7 +24,7 @@ final class SendLoginAlertListener implements ShouldQueue
     {
         // UUID STRING: Use toString() for tenant context
         return [
-            new \App\Infrastructure\Shared\Middleware\TenantQueueMiddleware($event->tenantId()?->toString()),
+            new TenantQueueMiddleware($event->tenantId()?->toString()),
         ];
     }
 

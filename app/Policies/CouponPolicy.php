@@ -6,6 +6,7 @@ namespace App\Policies;
 
 use App\Models\Coupon;
 use App\Models\User;
+use Filament\Facades\Filament;
 use Illuminate\Auth\Access\Response;
 
 /**
@@ -38,7 +39,7 @@ class CouponPolicy extends TenantAwarePolicy
      */
     public function create(User $user): Response
     {
-        $tenant = \Filament\Facades\Filament::getTenant()
+        $tenant = Filament::getTenant()
             ?? $user->tenants()->first();
 
         if (! $tenant) {

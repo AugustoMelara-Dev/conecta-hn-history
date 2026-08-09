@@ -2,11 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Application\Crm\LeadScoringService;
 use App\Domain\Crm\ValueObjects\DealScore;
 use App\Models\Contact;
 
 it('LeadScoringService assigns higher score to qualified leads', function () {
-    $service = new \App\Application\Crm\LeadScoringService();
+    $service = new LeadScoringService;
 
     $qualifiedContact = new Contact([
         'lifecycle_stage' => 'qualified',

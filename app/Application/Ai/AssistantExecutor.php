@@ -6,7 +6,6 @@ namespace App\Application\Ai;
 
 use App\Application\Ai\Contracts\AssistantInterface;
 use App\Application\Ai\Contracts\AssistantResult;
-use App\Application\Ai\Contracts\AuditRecord;
 use App\Models\AiAssistantRun;
 use Illuminate\Support\Facades\Log;
 
@@ -41,6 +40,7 @@ class AssistantExecutor
         if (! isset($this->assistants[$key])) {
             throw new \InvalidArgumentException("Assistant not registered: {$key}");
         }
+
         return $this->assistants[$key];
     }
 

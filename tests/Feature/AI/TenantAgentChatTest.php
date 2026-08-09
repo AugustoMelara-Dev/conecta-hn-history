@@ -490,8 +490,7 @@ final class TenantAgentChatTest extends TestCase
         string $aggregateId,
         int $amountMinor,
         CarbonImmutable $sourceOccurredAt,
-    ): void
-    {
+    ): void {
         DB::table('verified_commercial_outcomes')->insert([
             'tenant_id' => $tenantId,
             'aggregate_type' => 'order',

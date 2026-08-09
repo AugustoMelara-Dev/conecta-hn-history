@@ -16,10 +16,10 @@ return new class extends Migration
     {
         Schema::table('tenants', function (Blueprint $table) {
             $table->foreignId('category_id')
-                  ->nullable()
-                  ->after('id')
-                  ->constrained('categories')
-                  ->nullOnDelete();
+                ->nullable()
+                ->after('id')
+                ->constrained('categories')
+                ->nullOnDelete();
         });
     }
 

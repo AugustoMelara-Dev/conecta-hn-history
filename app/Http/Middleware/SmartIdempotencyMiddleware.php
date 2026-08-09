@@ -32,7 +32,7 @@ final readonly class SmartIdempotencyMiddleware
     /**
      * Handle an incoming request.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  Closure(Request): (Response)  $next
      * @param  string  $ledgerService  Class-string of IdempotencyLedgerInterface
      */
     public function handle(Request $request, Closure $next, string $ledgerService): Response

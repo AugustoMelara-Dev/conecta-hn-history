@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Http\Middleware\HandleInertiaRequests;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -64,7 +65,7 @@ class Announcement extends Model
                 return;
             }
 
-            \App\Http\Middleware\HandleInertiaRequests::invalidateAnnouncementsCache(
+            HandleInertiaRequests::invalidateAnnouncementsCache(
                 (string) $announcement->business_id
             );
         };

@@ -20,6 +20,7 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithTitle;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
@@ -311,7 +312,7 @@ class SalesExport implements FromQuery, ShouldQueue, WithChunkReading, WithHeadi
             1 => [
                 'font' => ['bold' => true, 'size' => 12],
                 'fill' => [
-                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                    'fillType' => Fill::FILL_SOLID,
                     'startColor' => ['rgb' => 'E2E8F0'],
                 ],
             ],
@@ -392,7 +393,7 @@ class SalesExport implements FromQuery, ShouldQueue, WithChunkReading, WithHeadi
         try {
             event(SalesExportCreated::create(
                 exportId: $this->exportId,
-                tenantId: \App\Domain\Shared\ValueObjects\TenantId::fromString($this->tenantId->toString()),
+                tenantId: TenantId::fromString($this->tenantId->toString()),
                 userId: $this->userId,
                 format: 'xlsx',
                 criteriaHash: $this->criteria->toHash(),

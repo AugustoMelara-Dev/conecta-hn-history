@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Auth\Handlers;
 
 use App\Application\Auth\Commands\UpdateUserPasswordCommand;
+use App\Application\Auth\Results\UpdateUserPasswordResult;
 use App\Application\Shared\Contracts\OutboxRepositoryInterface;
 use App\Domain\Auth\Events\UserPasswordChanged;
 use App\Domain\Auth\Exceptions\InvalidCredentialsException;
@@ -35,7 +36,7 @@ final readonly class UpdateUserPasswordHandler implements UpdateUserPasswordHand
         private ClockInterface $clock,
     ) {}
 
-    public function handle(UpdateUserPasswordCommand $command): \App\Application\Auth\Results\UpdateUserPasswordResult
+    public function handle(UpdateUserPasswordCommand $command): UpdateUserPasswordResult
     {
         // 1. Load Target User
 
@@ -100,7 +101,7 @@ final readonly class UpdateUserPasswordHandler implements UpdateUserPasswordHand
 
         $this->outboxRepository->save($message);
 
-        return new \App\Application\Auth\Results\UpdateUserPasswordResult(
+        return new UpdateUserPasswordResult(
             status: 'success',
             userId: $command->userId
         );

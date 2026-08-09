@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
@@ -38,7 +39,7 @@ use Illuminate\Support\Facades\DB;
  *
  * @property string $event_id
  * @property string $listener_class
- * @property \Carbon\Carbon $processed_at
+ * @property Carbon $processed_at
  */
 class ProcessedEvent extends Model
 {

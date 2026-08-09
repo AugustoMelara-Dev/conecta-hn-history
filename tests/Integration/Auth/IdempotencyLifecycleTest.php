@@ -4,6 +4,7 @@ namespace Tests\Integration\Auth;
 
 use App\Application\Common\Contracts\AtomicIdempotencyInterface;
 use App\Application\Common\Exceptions\ConcurrentRequestException;
+use Illuminate\Database\ConnectionInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -25,7 +26,7 @@ class IdempotencyLifecycleTest extends TestCase
     /** @test */
     public function it_can_connect_to_db()
     {
-        $this->assertTrue(DB::connection() instanceof \Illuminate\Database\ConnectionInterface);
+        $this->assertTrue(DB::connection() instanceof ConnectionInterface);
     }
 
     /** @test */

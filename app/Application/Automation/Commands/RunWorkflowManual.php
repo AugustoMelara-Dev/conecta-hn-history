@@ -19,7 +19,8 @@ class RunWorkflowManual extends Command
     {
         $workflow = AutomationWorkflowDefinition::find($this->argument('workflowId'));
         if (! $workflow) {
-            $this->error("Workflow not found.");
+            $this->error('Workflow not found.');
+
             return self::FAILURE;
         }
 
@@ -28,6 +29,7 @@ class RunWorkflowManual extends Command
         $result = $executor->execute($workflow->id, $graph, $payload);
 
         $this->info("Run {$result['run_id']} status: {$result['status']}");
+
         return self::SUCCESS;
     }
 }

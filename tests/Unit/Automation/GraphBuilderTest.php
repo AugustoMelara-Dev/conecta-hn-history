@@ -5,7 +5,7 @@ declare(strict_types=1);
 use App\Application\Automation\GraphBuilder;
 
 it('validates a simple graph with trigger + one action', function () {
-    $builder = new GraphBuilder();
+    $builder = new GraphBuilder;
 
     $result = $builder->build(
         nodes: [
@@ -22,7 +22,7 @@ it('validates a simple graph with trigger + one action', function () {
 });
 
 it('rejects graph without trigger', function () {
-    $builder = new GraphBuilder();
+    $builder = new GraphBuilder;
 
     $result = $builder->build(
         nodes: [
@@ -36,7 +36,7 @@ it('rejects graph without trigger', function () {
 });
 
 it('rejects graph with cycle', function () {
-    $builder = new GraphBuilder();
+    $builder = new GraphBuilder;
 
     $result = $builder->build(
         nodes: [
@@ -56,7 +56,7 @@ it('rejects graph with cycle', function () {
 });
 
 it('rejects graph with multiple triggers', function () {
-    $builder = new GraphBuilder();
+    $builder = new GraphBuilder;
 
     $result = $builder->build(
         nodes: [
@@ -74,7 +74,7 @@ it('rejects graph with multiple triggers', function () {
 });
 
 it('rejects orphan action nodes', function () {
-    $builder = new GraphBuilder();
+    $builder = new GraphBuilder;
 
     $result = $builder->build(
         nodes: [
@@ -90,7 +90,7 @@ it('rejects orphan action nodes', function () {
 });
 
 it('rejects duplicate node IDs', function () {
-    $builder = new GraphBuilder();
+    $builder = new GraphBuilder;
 
     $result = $builder->build(
         nodes: [

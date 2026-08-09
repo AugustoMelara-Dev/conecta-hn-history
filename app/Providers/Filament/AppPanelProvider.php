@@ -4,7 +4,16 @@ declare(strict_types=1);
 
 namespace App\Providers\Filament;
 
+use App\Filament\App\Pages\EditTenantProfile;
+use App\Filament\App\Widgets\OperationalCockpitWidget;
+use App\Filament\App\Widgets\OrdersChart;
+use App\Filament\App\Widgets\QuickActionsWidget;
+use App\Filament\App\Widgets\RevenueChart;
+use App\Filament\App\Widgets\StatsOverview;
+use App\Filament\App\Widgets\TenantAiAgentWidget;
 use App\Http\Middleware\InitializeFilamentTenantContext;
+use App\Models\Tenant;
+use Filament\AvatarProviders\UiAvatarsProvider;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -43,8 +52,8 @@ class AppPanelProvider extends PanelProvider
         return $panel
             ->id('app')
             ->path('app')
-            ->tenant(\App\Models\Tenant::class, slugAttribute: 'slug')
-            ->tenantProfile(\App\Filament\App\Pages\EditTenantProfile::class)
+            ->tenant(Tenant::class, slugAttribute: 'slug')
+            ->tenantProfile(EditTenantProfile::class)
             ->tenantMiddleware([
                 InitializeFilamentTenantContext::class,
             ], isPersistent: true)
@@ -124,12 +133,12 @@ class AppPanelProvider extends PanelProvider
 
             // WIDGETS DEL DASHBOARD
             ->widgets([
-                \App\Filament\App\Widgets\StatsOverview::class,
-                \App\Filament\App\Widgets\RevenueChart::class,
-                \App\Filament\App\Widgets\OrdersChart::class,
-                \App\Filament\App\Widgets\QuickActionsWidget::class,
-                \App\Filament\App\Widgets\OperationalCockpitWidget::class,
-                \App\Filament\App\Widgets\TenantAiAgentWidget::class,
+                StatsOverview::class,
+                RevenueChart::class,
+                OrdersChart::class,
+                QuickActionsWidget::class,
+                OperationalCockpitWidget::class,
+                TenantAiAgentWidget::class,
             ])
 
             // MIDDLEWARE
@@ -156,7 +165,7 @@ class AppPanelProvider extends PanelProvider
             )
 
             // AVATAR / PROFILE
-            ->defaultAvatarProvider(\Filament\AvatarProviders\UiAvatarsProvider::class);
+            ->defaultAvatarProvider(UiAvatarsProvider::class);
     }
 
     public function boot(): void

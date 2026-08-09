@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 class TopTenantsTableWidget extends TableWidget
 {
     protected static ?string $heading = 'Top tenants';
+
     protected static ?int $sort = 4;
 
     public function table(Tables\Table $table): Tables\Table

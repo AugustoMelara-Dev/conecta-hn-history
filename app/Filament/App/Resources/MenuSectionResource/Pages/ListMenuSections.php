@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\App\Resources\MenuSectionResource\Pages;
 
 use App\Filament\App\Resources\MenuSectionResource;
+use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
 class ListMenuSections extends ListRecords
@@ -14,7 +15,7 @@ class ListMenuSections extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            \Filament\Actions\CreateAction::make()
+            CreateAction::make()
                 ->label('Nueva sección')
                 ->icon('heroicon-o-plus'),
         ];

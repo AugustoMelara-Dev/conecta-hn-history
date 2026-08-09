@@ -7,6 +7,7 @@ namespace Tests\Traits;
 use App\Http\Middleware\ResolveTenantFromRequest;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Testing\TestResponse;
 
 /**
  * InteractsWithInertiaRoutes - Test Route Registration Trait
@@ -139,7 +140,7 @@ trait InteractsWithInertiaRoutes
     /**
      * Extract Inertia props from test response.
      *
-     * @param  \Illuminate\Testing\TestResponse  $response
+     * @param  TestResponse  $response
      */
     protected function getInertiaProps($response): array
     {

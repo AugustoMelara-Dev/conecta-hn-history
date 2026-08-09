@@ -52,7 +52,7 @@ final class SuperAdminCommercialModeCohortsTest extends TestCase
             'subscription_status' => 'pending',
         ]);
 
-        $dashboard = new Dashboard();
+        $dashboard = new Dashboard;
         app(SuperAdminDashboardBootstrapper::class)->boot($dashboard);
 
         $labels = collect($dashboard->activationCohorts)->pluck('label')->all();

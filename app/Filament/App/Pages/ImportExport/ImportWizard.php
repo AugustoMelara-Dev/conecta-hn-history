@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Filament\App\Pages\ImportExport;
 
 use App\Application\Imports\ImportService;
+use App\Infrastructure\Imports\ExcelImporter;
 use Filament\Actions\Action;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Get;
 use Filament\Notifications\Notification;
@@ -26,9 +29,9 @@ use Filament\Schemas\Schema;
  */
 class ImportWizard extends Page
 {
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-arrow-up-tray';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-arrow-up-tray';
 
-    protected static string | \UnitEnum | null $navigationGroup = 'Configuración';
+    protected static string|\UnitEnum|null $navigationGroup = 'Configuración';
 
     protected static ?string $title = 'Importar datos';
 
@@ -83,7 +86,7 @@ class ImportWizard extends Page
                     ->description('Si los headers de tu archivo coinciden con los esperados, no hay que mapear.')
                     ->visible(fn () => $this->step === 3)
                     ->components([
-                        \Filament\Forms\Components\Placeholder::make('expected_headers')
+                        Placeholder::make('expected_headers')
                             ->label('Headers esperados')
                             ->content(fn (Get $get) => $this->getExpectedHeaders($get('entity'))),
                     ]),
@@ -91,7 +94,7 @@ class ImportWizard extends Page
                 Section::make('Paso 4: Vista previa')
                     ->visible(fn () => $this->step === 4)
                     ->components([
-                        \Filament\Forms\Components\Placeholder::make('preview')
+                        Placeholder::make('preview')
                             ->label('Primeras filas')
                             ->content('Las primeras filas del archivo se muestran aquí.'),
                     ]),
@@ -99,7 +102,7 @@ class ImportWizard extends Page
                 Section::make('Paso 5: Ejecutar importación')
                     ->visible(fn () => $this->step === 5)
                     ->components([
-                        \Filament\Forms\Components\Placeholder::make('confirm')
+                        Placeholder::make('confirm')
                             ->label('Listo para importar')
                             ->content('Click en "Importar" para iniciar.'),
                     ]),
@@ -125,12 +128,12 @@ class ImportWizard extends Page
                 ->requiresConfirmation()
                 ->action(function () {
                     $state = $this->form->getState();
-                    $tenantId = \Filament\Facades\Filament::getTenant()->getKey();
+                    $tenantId = Filament::getTenant()->getKey();
 
                     try {
-                        $result = app(\App\Infrastructure\Imports\ExcelImporter::class)->import(
+                        $result = app(ExcelImporter::class)->import(
                             app(ImportService::class)->getImporterClass($state['entity']),
-                            storage_path('app/' . $state['file']),
+                            storage_path('app/'.$state['file']),
                         );
 
                         if ($result['success']) {
@@ -148,7 +151,7 @@ class ImportWizard extends Page
                                 ->send();
                         }
                     } catch (\Throwable $e) {
-                        Notification::make()->title('Error: ' . $e->getMessage())->danger()->send();
+                        Notification::make()->title('Error: '.$e->getMessage())->danger()->send();
                     }
                 }),
         ];
@@ -160,6 +163,7 @@ class ImportWizard extends Page
             return 'Selecciona una entidad primero.';
         }
         $importer = app(ImportService::class)->makeImporter($entity, '');
+
         return implode(', ', $importer->templateHeaders());
     }
 }

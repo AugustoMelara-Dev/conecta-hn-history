@@ -34,36 +34,36 @@ final class BusinessOperationsBackfill
             }
 
             $tenants->each(function (object $tenant): void {
-                    $tenantId = (string) $tenant->id;
-                    $market = $this->marketForTenant($tenant);
-                    $location = $this->primaryLocation($tenantId);
+                $tenantId = (string) $tenant->id;
+                $market = $this->marketForTenant($tenant);
+                $location = $this->primaryLocation($tenantId);
 
-                    if ($market === null) {
-                        $this->gap(
-                            'tenant_market_missing',
-                            $tenantId,
-                            'tenant',
-                            $tenantId,
-                            'No explicit canonical market or legacy Honduras city can establish currency and timezone.',
-                        );
-                    }
+                if ($market === null) {
+                    $this->gap(
+                        'tenant_market_missing',
+                        $tenantId,
+                        'tenant',
+                        $tenantId,
+                        'No explicit canonical market or legacy Honduras city can establish currency and timezone.',
+                    );
+                }
 
-                    if ($location === null) {
-                        $this->gap(
-                            'tenant_location_missing',
-                            $tenantId,
-                            'tenant',
-                            $tenantId,
-                            'No canonical primary location exists; no operational location was invented.',
-                        );
-                    }
+                if ($location === null) {
+                    $this->gap(
+                        'tenant_location_missing',
+                        $tenantId,
+                        'tenant',
+                        $tenantId,
+                        'No canonical primary location exists; no operational location was invented.',
+                    );
+                }
 
-                    $this->backfillProducts($tenantId, $market);
-                    $this->backfillServices($tenantId, $market, $location);
-                    $this->backfillProviders($tenantId, $market, $location);
-                    $this->backfillAppointments($tenantId, $market, $location);
-                    $this->reportDealCurrencyConflicts($tenantId, $market);
-                });
+                $this->backfillProducts($tenantId, $market);
+                $this->backfillServices($tenantId, $market, $location);
+                $this->backfillProviders($tenantId, $market, $location);
+                $this->backfillAppointments($tenantId, $market, $location);
+                $this->reportDealCurrencyConflicts($tenantId, $market);
+            });
         };
 
         if ($dryRun) {

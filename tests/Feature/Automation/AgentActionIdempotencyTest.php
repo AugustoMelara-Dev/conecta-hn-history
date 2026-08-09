@@ -143,7 +143,7 @@ final class AgentActionIdempotencyTest extends TestCase
     }
 
     /** @param array<string, list<array<string, mixed>>> $state
-     *  @return array<string, int>
+     * @return array<string, int>
      */
     private function automationStateCounts(array $state): array
     {

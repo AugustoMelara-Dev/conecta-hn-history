@@ -7,6 +7,7 @@ namespace App\Infrastructure\Interactions\Persistence;
 use App\Domain\Analytics\Entities\InteractionEntity;
 use App\Domain\Interactions\Repositories\InteractionRepositoryInterface;
 use App\Models\Interaction;
+use Illuminate\Support\Carbon;
 
 final readonly class EloquentInteractionRepository implements InteractionRepositoryInterface
 {
@@ -32,7 +33,7 @@ final readonly class EloquentInteractionRepository implements InteractionReposit
         $query = Interaction::query()->where('tenant_id', $tenantId);
 
         foreach ($criteria as $key => $value) {
-            if ($key === 'created_at' && $value instanceof \Illuminate\Support\Carbon) {
+            if ($key === 'created_at' && $value instanceof Carbon) {
                 // Handle date comparison specifically for created_at
                 $query->whereDate($key, $value);
             } else {

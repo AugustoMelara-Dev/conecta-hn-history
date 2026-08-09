@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Domain\Reporting\ValueObjects\ReportRange;
+use Carbon\CarbonImmutable;
 
 it('ReportRange.fromPreset handles unknown preset gracefully', function () {
     $range = ReportRange::fromPreset('invalid-preset');
@@ -15,8 +16,8 @@ it('ReportRange has comparison for non-custom presets', function () {
 });
 
 it('ReportRange custom uses duration for comparison', function () {
-    $start = \Carbon\CarbonImmutable::parse('2026-01-01');
-    $end = \Carbon\CarbonImmutable::parse('2026-01-31');
+    $start = CarbonImmutable::parse('2026-01-01');
+    $end = CarbonImmutable::parse('2026-01-31');
     $range = ReportRange::custom($start, $end);
 
     expect($range->days())->toBe(30);

@@ -58,7 +58,7 @@ final class OrderShippedBroadcast implements BroadcastableNotificationInterface
     /**
      * SRE: Expiration Strategy - Discard stale events > 60s old
      */
-    public function retryUntil(): \DateTimeImmutable
+    public function retryUntil(): DateTimeImmutable
     {
         return now()->addSeconds(60)->toImmutable();
     }

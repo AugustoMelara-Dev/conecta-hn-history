@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\TenantGovernance\Services;
 
+use App\Application\Tenant\Transformers\TenantMicrositeTransformer;
+
 // use App\Models\Tenant; // REMOVED
 
 /**
@@ -23,7 +25,7 @@ namespace App\Domain\TenantGovernance\Services;
  * ║  HERE, not in 50 scattered files.                                         ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  *
- * @see \App\Application\Tenant\Transformers\TenantMicrositeTransformer - Uses this service
+ * @see TenantMicrositeTransformer - Uses this service
  */
 final class PlanFeatureFlagService
 {

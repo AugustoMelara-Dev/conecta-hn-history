@@ -9,12 +9,14 @@ use App\Actions\Authentication\ResetPasswordAction;
 use App\Application\Ai\Contracts\AiGateway;
 use App\Application\Ai\Contracts\AiProviderPool;
 use App\Application\Ai\Contracts\StructuredOutputValidator;
+use App\Application\Ai\Conversation\ConversationStore;
 use App\Application\Ai\Knowledge\EmbeddingProvider;
 use App\Application\Ai\Knowledge\KnowledgeRetriever;
 use App\Application\Ai\Knowledge\SemanticKnowledgeRetriever;
 use App\Application\Ai\PrivateAiTenantAccessReaderInterface;
-use App\Application\Analytics\Listeners\ProjectCommercialOutcomeFromOrderEvent;
 // Policies
+use App\Application\Ai\Security\AiContentCipher;
+use App\Application\Analytics\Listeners\ProjectCommercialOutcomeFromOrderEvent;
 use App\Application\Auth\Commands\DeleteUserCommand;
 use App\Application\Auth\Commands\GenerateOtpCommand;
 use App\Application\Auth\Commands\LoginViaSocialProviderCommand;
@@ -24,9 +26,9 @@ use App\Application\Auth\Commands\VerifyOtpCommand;
 use App\Application\Auth\Contracts\GenerateOtpHandlerInterface;
 use App\Application\Auth\Decorators\IdempotentGenerateOtpHandler;
 use App\Application\Auth\Decorators\RateLimitedGenerateOtpHandler;
+// Event Bus Infrastructure
 use App\Application\Auth\Decorators\TransactionGenerateOtpHandler;
 use App\Application\Auth\Decorators\TransactionVerifyOtpHandler;
-// Event Bus Infrastructure
 use App\Application\Auth\Decorators\ValidationGenerateOtpHandler;
 use App\Application\Auth\Decorators\VerifyOtpRateLimitDecorator;
 use App\Application\Auth\Handlers\DeleteUserHandler;
@@ -71,10 +73,10 @@ use App\Application\Identity\Handlers\RegisterUserHandlerInterface;
 use App\Application\Interactions\Commands\RecordInteractionCommand;
 use App\Application\Interactions\Contracts\LeadFollowUpPlaybookInterface;
 use App\Application\Interactions\Handlers\RecordInteractionHandler;
-use App\Application\Payments\Commands\HandlePaymentWebhookCommand;
-use App\Application\Payments\Handlers\HandlePaymentWebhookHandler;
 use App\Application\Operations\OperationalCockpit;
 use App\Application\Operations\OperationalKnowledgeHealth;
+use App\Application\Payments\Commands\HandlePaymentWebhookCommand;
+use App\Application\Payments\Handlers\HandlePaymentWebhookHandler;
 use App\Application\Products\ProductImageStorageInterface;
 use App\Application\Reviews\Commands\SubmitReviewCommand;
 use App\Application\Reviews\Handlers\SubmitReviewHandler;
@@ -169,12 +171,14 @@ use App\Events\Order\OrderDelivered;
 use App\Events\Order\OrderPaid;
 use App\Http\Controllers\Webhook\PaymentWebhookController;
 use App\Infrastructure\AI\ConfiguredAiProviderPool;
+use App\Infrastructure\AI\Conversation\EloquentConversationStore;
 use App\Infrastructure\AI\DisabledAiProvider;
 use App\Infrastructure\AI\EloquentPrivateAiTenantAccessReader;
 use App\Infrastructure\AI\Knowledge\OpenAiEmbeddingProvider;
 use App\Infrastructure\AI\LaravelStructuredOutputValidator;
 use App\Infrastructure\AI\OpenAiStructuredTextProvider;
 use App\Infrastructure\AI\ResilientAiGateway;
+use App\Infrastructure\AI\Security\LaravelAiContentCipher;
 use App\Infrastructure\Analytics\EloquentAnalyticsReader;
 use App\Infrastructure\Api\EloquentNotificationRepository;
 use App\Infrastructure\Auth\Repositories\EloquentOtpRepository;
@@ -221,6 +225,8 @@ use App\Infrastructure\Monitoring\DatadogMetricsAdapter;
 use App\Infrastructure\Notifications\EmailOtpNotifier;
 use App\Infrastructure\Notifications\FilamentAdminNotifier;
 use App\Infrastructure\Notifications\LogFailureNotifier;
+use App\Infrastructure\Operations\EloquentOperationalCockpit;
+use App\Infrastructure\Operations\EloquentOperationalKnowledgeHealth;
 use App\Infrastructure\Payments\Stripe\StripeSubscriptionCheckoutGateway;
 use App\Infrastructure\Persistence\EloquentPaymentRepository;
 use App\Infrastructure\Persistence\EloquentSocialIdentityRepository;
@@ -242,8 +248,6 @@ use App\Infrastructure\Sales\EloquentOrderReader;
 use App\Infrastructure\Sales\EloquentReportReader;
 use App\Infrastructure\Search\EloquentGlobalSearchReader;
 use App\Infrastructure\Search\EloquentSearchRepository;
-use App\Infrastructure\Operations\EloquentOperationalCockpit;
-use App\Infrastructure\Operations\EloquentOperationalKnowledgeHealth;
 use App\Infrastructure\Security\CacheTenantRateLimiter;
 use App\Infrastructure\Security\LaravelRateLimitService;
 use App\Infrastructure\Security\MetadataSanitizer;
@@ -383,12 +387,12 @@ class AppServiceProvider extends ServiceProvider
             EloquentPrivateAiTenantAccessReader::class
         );
         $this->app->bind(
-            \App\Application\Ai\Security\AiContentCipher::class,
-            \App\Infrastructure\AI\Security\LaravelAiContentCipher::class,
+            AiContentCipher::class,
+            LaravelAiContentCipher::class,
         );
         $this->app->bind(
-            \App\Application\Ai\Conversation\ConversationStore::class,
-            \App\Infrastructure\AI\Conversation\EloquentConversationStore::class,
+            ConversationStore::class,
+            EloquentConversationStore::class,
         );
         $this->app->bind(
             EmbeddingProvider::class,

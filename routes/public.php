@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Public\AppointmentManagementController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -19,10 +20,10 @@ Route::get('/directory', static function () {
     return redirect('/directorio'.($query ? '?'.$query : ''), 301);
 })->name('directory.legacy');
 
-Route::get('/appointments/{appointment}/manage', [\App\Http\Controllers\Public\AppointmentManagementController::class, 'show'])
+Route::get('/appointments/{appointment}/manage', [AppointmentManagementController::class, 'show'])
     ->name('public.appointment.manage')
     ->middleware('signed');
 
-Route::post('/appointments/{appointment}/cancel', [\App\Http\Controllers\Public\AppointmentManagementController::class, 'cancel'])
+Route::post('/appointments/{appointment}/cancel', [AppointmentManagementController::class, 'cancel'])
     ->name('public.appointment.cancel')
     ->middleware('signed');

@@ -11,5 +11,9 @@ use Filament\Resources\Pages\EditRecord;
 class EditWebhook extends EditRecord
 {
     protected static string $resource = WebhookResource::class;
-    protected function getHeaderActions(): array { return [DeleteAction::make()]; }
+
+    protected function getHeaderActions(): array
+    {
+        return [DeleteAction::make()];
+    }
 }

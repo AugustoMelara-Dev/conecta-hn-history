@@ -74,6 +74,7 @@ class LeadScoringService
         if ($enum === null) {
             return 10;
         }
+
         return match ($enum) {
             LifecycleStage::Won => 100,
             LifecycleStage::Negotiation => 75,
@@ -114,6 +115,7 @@ class LeadScoringService
         if ($contact->company_id) {
             $score += 25;
         }
+
         return $score;
     }
 
@@ -122,6 +124,7 @@ class LeadScoringService
         if (! $source) {
             return 30;
         }
+
         return match (strtolower($source)) {
             'referral' => 100,
             'organic', 'web' => 80,

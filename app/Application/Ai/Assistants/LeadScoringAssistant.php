@@ -8,11 +8,30 @@ use App\Application\Ai\Contracts\AssistantResult;
 
 class LeadScoringAssistant extends BaseAssistant
 {
-    public function key(): string { return 'lead_scoring'; }
-    public function name(): string { return 'Lead Scoring'; }
-    public function description(): string { return 'Calcula score 0-100 para un contacto.'; }
-    public function estimateCost(): float { return 0.01; }
-    public function category(): string { return 'CRM'; }
+    public function key(): string
+    {
+        return 'lead_scoring';
+    }
+
+    public function name(): string
+    {
+        return 'Lead Scoring';
+    }
+
+    public function description(): string
+    {
+        return 'Calcula score 0-100 para un contacto.';
+    }
+
+    public function estimateCost(): float
+    {
+        return 0.01;
+    }
+
+    public function category(): string
+    {
+        return 'CRM';
+    }
 
     public function execute(array $input): AssistantResult
     {

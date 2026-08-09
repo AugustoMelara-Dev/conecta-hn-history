@@ -6,7 +6,6 @@ namespace App\Application\Automation\Commands;
 
 use App\Models\AutomationWorkflowDefinition;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 
 /**
  * SaveWorkflowTemplate - Guarda un template en el catálogo.
@@ -33,6 +32,7 @@ class SaveWorkflowTemplate extends Command
         ]);
 
         $this->info("Template {$slug} saved successfully.");
+
         return self::SUCCESS;
     }
 }

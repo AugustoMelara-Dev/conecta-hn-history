@@ -17,7 +17,8 @@ class CloneWorkflowForTenant extends Command
     {
         $source = AutomationWorkflowDefinition::find($this->argument('sourceId'));
         if (! $source) {
-            $this->error("Source workflow not found.");
+            $this->error('Source workflow not found.');
+
             return self::FAILURE;
         }
 
@@ -28,7 +29,8 @@ class CloneWorkflowForTenant extends Command
         $clone->status = 'draft';
         $clone->save();
 
-        $this->info("Workflow cloned to tenant.");
+        $this->info('Workflow cloned to tenant.');
+
         return self::SUCCESS;
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -24,7 +25,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $event_type
  * @property array|null $payload
  * @property int|null $actor_id
- * @property \Carbon\Carbon $occurred_at
+ * @property Carbon $occurred_at
  */
 final class OrderEvent extends Model
 {

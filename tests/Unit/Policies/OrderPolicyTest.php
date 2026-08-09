@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\User;
 use App\Policies\OrderPolicy;
 use Illuminate\Auth\Access\Response;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPER: Build a User mock with tenant IDs (memoized for ownsResource)
@@ -27,7 +28,7 @@ function makeUserWithTenants(array $tenantIds, string $role = 'seller'): User
 
     // hasAnyTenant() calls $user->tenants()->exists()
     // We mock tenants() to return a HasMany-compatible mock
-    $relation = Mockery::mock(\Illuminate\Database\Eloquent\Relations\HasMany::class);
+    $relation = Mockery::mock(HasMany::class);
     $relation->shouldReceive('pluck')->with('id')->andReturn(collect($tenantIds));
     $relation->shouldReceive('exists')->andReturn(count($tenantIds) > 0);
     $relation->shouldReceive('first')->andReturn(

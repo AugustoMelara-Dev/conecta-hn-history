@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Models\Product;
+use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -123,7 +124,7 @@ class CleanOrphanedUploads extends Command
                 'file' => $file,
                 'size' => $this->formatBytes($disk->size($file)),
                 'age' => now()->diffForHumans(
-                    \Carbon\Carbon::createFromTimestamp($disk->lastModified($file))
+                    Carbon::createFromTimestamp($disk->lastModified($file))
                 ),
             ];
         }, $orphanedFiles);

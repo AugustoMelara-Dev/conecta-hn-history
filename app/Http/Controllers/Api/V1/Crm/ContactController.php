@@ -44,12 +44,14 @@ class ContactController extends Controller
     {
         Gate::authorize('create', Contact::class);
         $contact = Contact::create($request->validated() + ['tenant_id' => $request->user()->tenant_id]);
+
         return (new ContactResource($contact))->response()->setStatusCode(201);
     }
 
     public function show(Contact $contact): JsonResponse
     {
         Gate::authorize('view', $contact);
+
         return (new ContactResource($contact))->response();
     }
 
@@ -57,6 +59,7 @@ class ContactController extends Controller
     {
         Gate::authorize('update', $contact);
         $contact->update($request->validated());
+
         return (new ContactResource($contact))->response();
     }
 
@@ -64,6 +67,7 @@ class ContactController extends Controller
     {
         Gate::authorize('delete', $contact);
         $contact->delete();
+
         return response()->json(['message' => 'Contact deleted successfully']);
     }
 }
