@@ -17,6 +17,7 @@ final readonly class CatalogKnowledgeIndexer
     public function __construct(
         private EmbeddingUsageMeter $embeddings,
         private EloquentKnowledgeIndexRepository $index,
+        private KnowledgeIngressGuard $ingress,
     ) {}
 
     public function indexTenant(string $tenantId): int
@@ -61,9 +62,10 @@ final readonly class CatalogKnowledgeIndexer
                     ? 'public'
                     : 'private';
 
-                $this->store($tenant, 'product', $product, $visibility, $content);
-                $retained[] = 'product:'.(string) $product->getKey();
-                $indexed++;
+                if ($this->store($tenant, 'product', $product, $visibility, $content)) {
+                    $retained[] = 'product:'.(string) $product->getKey();
+                    $indexed++;
+                }
             });
 
         Service::query()
@@ -79,9 +81,10 @@ final readonly class CatalogKnowledgeIndexer
                 ]);
                 $visibility = $tenantIsPublic && (bool) $service->is_active ? 'public' : 'private';
 
-                $this->store($tenant, 'service', $service, $visibility, $content);
-                $retained[] = 'service:'.(string) $service->getKey();
-                $indexed++;
+                if ($this->store($tenant, 'service', $service, $visibility, $content)) {
+                    $retained[] = 'service:'.(string) $service->getKey();
+                    $indexed++;
+                }
             });
 
         $this->index->pruneTenant($tenantId, $retained);
@@ -119,25 +122,40 @@ final readonly class CatalogKnowledgeIndexer
         Model $resource,
         string $visibility,
         string $content,
-    ): void {
+    ): bool {
+        $tenantId = (string) $tenant->getKey();
+        $resourceId = (string) $resource->getKey();
+        $redacted = $this->ingress->inspect($tenantId, [
+            'resource_type' => $resourceType,
+            'resource_id' => $resourceId,
+            'visibility' => $visibility,
+            'content' => $content,
+            'business_name' => $this->plainText((string) $tenant->name),
+        ]);
+        if ($redacted === null) {
+            return false;
+        }
+
         $embedding = $this->embeddings->embed(
-            (string) $tenant->getKey(),
+            $tenantId,
             'knowledge.index.catalog',
-            $content,
+            $redacted['content'],
         );
         $this->index->upsert(
-            (string) $tenant->getKey(),
-            $resourceType,
-            (string) $resource->getKey(),
-            $visibility,
-            $content,
+            $tenantId,
+            $redacted['resource_type'],
+            $redacted['resource_id'],
+            $redacted['visibility'],
+            $redacted['content'],
             $embedding->vector,
             $embedding->model,
             [
-                'business_name' => $this->plainText((string) $tenant->name),
+                'business_name' => $redacted['business_name'],
                 'input_tokens' => $embedding->inputTokens,
             ],
         );
+
+        return true;
     }
 
     private function plainText(string $value): string

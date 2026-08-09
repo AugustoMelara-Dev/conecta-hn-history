@@ -13,6 +13,8 @@ use PhpParser\Node\Expr\Assign;
 use PhpParser\Node\Expr\AssignOp;
 use PhpParser\Node\Expr\Cast\String_ as StringCast;
 use PhpParser\Node\Expr\ClassConstFetch;
+use PhpParser\Node\Expr\ConstFetch;
+use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\New_;
 use PhpParser\Node\Expr\PropertyFetch;
@@ -369,6 +371,75 @@ final class DovraSecurityRatchetTest extends TestCase
     }
 
     #[Test]
+    public function knowledge_indexer_guards_each_resource_before_embedding_and_upsert(): void
+    {
+        $root = dirname(__DIR__, 2);
+        self::assertSecureKnowledgeIndexer(
+            (string) file_get_contents($root.'/app/Application/Ai/Knowledge/CatalogKnowledgeIndexer.php'),
+            (string) file_get_contents($root.'/app/Application/Ai/Knowledge/KnowledgeIngressGuard.php'),
+        );
+    }
+
+    #[Test]
+    public function knowledge_indexer_ratchet_rejects_a_second_embedding_sink_using_raw_content(): void
+    {
+        $guard = <<<'PHP'
+            <?php
+            final class KnowledgeIngressGuard {
+                private const DOVRA_SOURCE = 'knowledge_ingestion';
+                private const CHANNEL = 'knowledge_index_queue';
+                public function inspect($tenantId, $payload) {
+                    $businessType = $this->businessContext->resolvePolicyBusinessType($tenantId);
+                    foreach (['resource_type', 'resource_id', 'visibility'] as $authority) {
+                        hash_equals(hash('sha256', $payload[$authority]), hash('sha256', $payload[$authority]));
+                    }
+                    return $this->ingress->inspect(new DataEnvelope(
+                        sourceSystem: self::DOVRA_SOURCE, payload: $payload, tenantId: $tenantId,
+                        actorId: null, channel: self::CHANNEL, context: ['business_type' => $businessType],
+                    ));
+                }
+            }
+            PHP;
+        $indexer = <<<'PHP'
+            <?php
+            final class CatalogKnowledgeIndexer {
+                public function indexTenant($tenantId) {
+                    Product::query()->where('tenant_id', $tenantId);
+                    Service::query()->where('tenant_id', $tenantId);
+                }
+                private function store($tenant, $resourceType, $resource, $visibility, $content) {
+                    $tenantId = (string) $tenant->getKey();
+                    $resourceId = (string) $resource->getKey();
+                    $redacted = $this->ingress->inspect($tenantId, [
+                        'resource_type' => $resourceType,
+                        'resource_id' => $resourceId,
+                        'visibility' => $visibility,
+                        'content' => $content,
+                        'business_name' => $this->plainText((string) $tenant->name),
+                    ]);
+                    $embedding = $this->embeddings->embed($tenantId, 'knowledge.index.catalog', $redacted['content']);
+                    $this->index->upsert(
+                        $tenantId, $redacted['resource_type'], $redacted['resource_id'], $redacted['visibility'],
+                        $redacted['content'], $embedding->vector, $embedding->model,
+                        ['business_name' => $redacted['business_name'], 'input_tokens' => $embedding->inputTokens],
+                    );
+                    $this->embeddings->embed($tenantId, 'knowledge.index.catalog', $content);
+                }
+            }
+            PHP;
+
+        try {
+            self::assertSecureKnowledgeIndexer($indexer, $guard);
+            self::fail('A second raw knowledge embedding unexpectedly satisfied the ratchet.');
+        } catch (AssertionFailedError $exception) {
+            self::assertSame(
+                'Knowledge indexer must have exactly one embedding sink.',
+                $exception->getMessage(),
+            );
+        }
+    }
+
+    #[Test]
     public function dovra_rls_contract_cannot_pass_by_missing_tables_or_unregistered_inventory(): void
     {
         $root = dirname(__DIR__, 2);
@@ -532,6 +603,200 @@ final class DovraSecurityRatchetTest extends TestCase
         self::assertCatalogInspectArguments($inspect);
         self::assertCatalogProviderArguments($provider);
         self::assertBatchActorSource($handle->stmts ?? []);
+    }
+
+    private static function assertSecureKnowledgeIndexer(string $indexerSource, string $guardSource): void
+    {
+        $guard = self::parsedClass($guardSource, 'KnowledgeIngressGuard');
+        self::assertStringClassConstant($guard, 'DOVRA_SOURCE', 'knowledge_ingestion');
+        self::assertStringClassConstant($guard, 'CHANNEL', 'knowledge_index_queue');
+        $guardMethod = $guard->getMethod('inspect');
+        self::assertInstanceOf(ClassMethod::class, $guardMethod);
+        $guardNodes = self::flattenExecutableNodes($guardMethod->stmts);
+        $businessCalls = array_values(array_filter(
+            $guardNodes,
+            static fn (Node $node): bool => self::isThisReceiverCall($node, 'businessContext', 'resolvePolicyBusinessType'),
+        ));
+        $guardCalls = array_values(array_filter(
+            $guardNodes,
+            static fn (Node $node): bool => self::isThisReceiverCall($node, 'ingress', 'inspect'),
+        ));
+        $hashChecks = array_values(array_filter(
+            $guardNodes,
+            static fn (Node $node): bool => $node instanceof FuncCall
+                && $node->name instanceof Name
+                && $node->name->toString() === 'hash_equals',
+        ));
+        self::assertCount(1, $businessCalls, 'Knowledge guard must resolve canonical business context exactly once.');
+        self::assertCount(1, $guardCalls, 'Knowledge guard must call the real Dovra ingress exactly once.');
+        self::assertCount(1, $hashChecks, 'Knowledge guard must hash-compare authoritative fields.');
+        self::assertInstanceOf(MethodCall::class, $guardCalls[0]);
+        self::assertKnowledgeEnvelope($guardCalls[0]);
+
+        $indexer = self::parsedClass($indexerSource, 'CatalogKnowledgeIndexer');
+        $store = $indexer->getMethod('store');
+        self::assertInstanceOf(ClassMethod::class, $store);
+        $nodes = self::flattenExecutableNodes($store->stmts);
+        $inspectionCalls = [];
+        $embeddingCalls = [];
+        $upsertCalls = [];
+        $inspectionIndex = null;
+        $embeddingIndex = null;
+        $upsertIndex = null;
+
+        foreach ($nodes as $index => $node) {
+            if ($node instanceof MethodCall
+                && $node->name instanceof Identifier
+                && $node->name->toString() === 'inspect') {
+                $inspectionCalls[] = $node;
+                $inspectionIndex ??= $index;
+            }
+            if ($node instanceof MethodCall
+                && $node->name instanceof Identifier
+                && $node->name->toString() === 'embed') {
+                $embeddingCalls[] = $node;
+                $embeddingIndex ??= $index;
+            }
+            if ($node instanceof MethodCall
+                && $node->name instanceof Identifier
+                && $node->name->toString() === 'upsert') {
+                $upsertCalls[] = $node;
+                $upsertIndex ??= $index;
+            }
+        }
+
+        if (count($inspectionCalls) !== 1) {
+            self::fail('Knowledge indexer must have exactly one ingress inspection.');
+        }
+        if (count($embeddingCalls) !== 1) {
+            self::fail('Knowledge indexer must have exactly one embedding sink.');
+        }
+        if (count($upsertCalls) !== 1) {
+            self::fail('Knowledge indexer must have exactly one knowledge upsert sink.');
+        }
+        self::assertIsInt($inspectionIndex);
+        self::assertIsInt($embeddingIndex);
+        self::assertIsInt($upsertIndex);
+        self::assertLessThan($embeddingIndex, $inspectionIndex, 'Knowledge inspection must precede embedding.');
+        self::assertLessThan($upsertIndex, $embeddingIndex, 'Embedding must precede knowledge upsert.');
+        self::assertInstanceOf(MethodCall::class, $inspectionCalls[0]);
+        self::assertInstanceOf(MethodCall::class, $embeddingCalls[0]);
+        self::assertInstanceOf(MethodCall::class, $upsertCalls[0]);
+        self::assertTrue(self::isThisReceiverCall($inspectionCalls[0], 'ingress', 'inspect'));
+        self::assertTrue(self::isThisReceiverCall($embeddingCalls[0], 'embeddings', 'embed'));
+        self::assertTrue(self::isThisReceiverCall($upsertCalls[0], 'index', 'upsert'));
+        self::assertKnowledgeInspection($inspectionCalls[0], $nodes);
+        self::assertKnowledgeEmbedding($embeddingCalls[0]);
+        self::assertKnowledgeUpsert($upsertCalls[0]);
+        self::assertTenantFilteredKnowledgeQueries($indexer);
+    }
+
+    private static function assertKnowledgeEnvelope(MethodCall $inspection): void
+    {
+        self::assertCount(1, $inspection->args);
+        $envelope = $inspection->args[0]->value;
+        self::assertInstanceOf(New_::class, $envelope);
+        self::assertInstanceOf(Name::class, $envelope->class);
+        self::assertSame('DataEnvelope', $envelope->class->getLast());
+        $arguments = self::namedArguments($envelope->args);
+        self::assertSame(['sourceSystem', 'payload', 'tenantId', 'actorId', 'channel', 'context'], array_keys($arguments));
+        self::assertTrue(self::isSelfConstant($arguments['sourceSystem'], 'DOVRA_SOURCE'));
+        self::assertTrue(self::isVariable($arguments['payload'], 'payload'));
+        self::assertTrue(self::isVariable($arguments['tenantId'], 'tenantId'));
+        self::assertInstanceOf(ConstFetch::class, $arguments['actorId']);
+        self::assertSame('null', strtolower($arguments['actorId']->name->toString()));
+        self::assertTrue(self::isSelfConstant($arguments['channel'], 'CHANNEL'));
+        self::assertInstanceOf(Array_::class, $arguments['context']);
+        self::assertCount(1, $arguments['context']->items);
+        $context = $arguments['context']->items[0];
+        self::assertInstanceOf(String_::class, $context?->key);
+        self::assertSame('business_type', $context->key->value);
+        self::assertTrue(self::isVariable($context->value, 'businessType'));
+    }
+
+    /** @param list<Node> $nodes */
+    private static function assertKnowledgeInspection(MethodCall $inspection, array $nodes): void
+    {
+        self::assertCount(2, $inspection->args);
+        self::assertTrue(self::isVariable($inspection->args[0]->value, 'tenantId'));
+        $payload = $inspection->args[1]->value;
+        self::assertInstanceOf(Array_::class, $payload);
+        $items = self::namedArrayItems($payload);
+        self::assertSame(['resource_type', 'resource_id', 'visibility', 'content', 'business_name'], array_keys($items));
+        self::assertTrue(self::isVariable($items['resource_type'], 'resourceType'));
+        self::assertTrue(self::isVariable($items['resource_id'], 'resourceId'));
+        self::assertTrue(self::isVariable($items['visibility'], 'visibility'));
+        self::assertTrue(self::isVariable($items['content'], 'content'));
+        self::assertInstanceOf(MethodCall::class, $items['business_name']);
+        self::assertTrue(
+            $items['business_name']->var instanceof Variable
+            && $items['business_name']->var->name === 'this'
+            && $items['business_name']->name instanceof Identifier
+            && $items['business_name']->name->toString() === 'plainText',
+        );
+        self::assertCount(1, $items['business_name']->args);
+        self::assertInstanceOf(StringCast::class, $items['business_name']->args[0]->value);
+        self::assertTrue(self::isPropertyRead($items['business_name']->args[0]->value->expr, 'tenant', 'name'));
+
+        $parents = array_values(array_filter(
+            $nodes,
+            static fn (Node $node): bool => $node instanceof Assign && $node->expr === $inspection,
+        ));
+        self::assertCount(1, $parents, 'Knowledge inspect() must have one parent assignment.');
+        self::assertTrue(self::isVariable($parents[0]->var, 'redacted'));
+    }
+
+    private static function assertKnowledgeEmbedding(MethodCall $embedding): void
+    {
+        self::assertCount(3, $embedding->args);
+        self::assertTrue(self::isVariable($embedding->args[0]->value, 'tenantId'));
+        self::assertInstanceOf(String_::class, $embedding->args[1]->value);
+        self::assertSame('knowledge.index.catalog', $embedding->args[1]->value->value);
+        self::assertTrue(self::isArrayRead($embedding->args[2]->value, 'redacted', 'content'));
+    }
+
+    private static function assertKnowledgeUpsert(MethodCall $upsert): void
+    {
+        self::assertCount(8, $upsert->args);
+        self::assertTrue(self::isVariable($upsert->args[0]->value, 'tenantId'));
+        foreach ([1 => 'resource_type', 2 => 'resource_id', 3 => 'visibility', 4 => 'content'] as $index => $field) {
+            self::assertTrue(self::isArrayRead($upsert->args[$index]->value, 'redacted', $field));
+        }
+        $metadata = $upsert->args[7]->value;
+        self::assertInstanceOf(Array_::class, $metadata);
+        $items = self::namedArrayItems($metadata);
+        self::assertSame(['business_name', 'input_tokens'], array_keys($items));
+        self::assertTrue(self::isArrayRead($items['business_name'], 'redacted', 'business_name'));
+    }
+
+    private static function assertTenantFilteredKnowledgeQueries(Class_ $indexer): void
+    {
+        $method = $indexer->getMethod('indexTenant');
+        self::assertInstanceOf(ClassMethod::class, $method);
+        $matches = array_values(array_filter(
+            self::flattenExecutableNodes($method->stmts),
+            static fn (Node $node): bool => $node instanceof MethodCall
+                && $node->name instanceof Identifier
+                && $node->name->toString() === 'where'
+                && count($node->args) === 2
+                && $node->args[0]->value instanceof String_
+                && $node->args[0]->value->value === 'tenant_id'
+                && self::isVariable($node->args[1]->value, 'tenantId'),
+        ));
+        self::assertCount(2, $matches, 'Products and services must both retain exact tenant filters.');
+    }
+
+    /** @return array<string, Node> */
+    private static function namedArrayItems(Array_ $array): array
+    {
+        $items = [];
+        foreach ($array->items as $item) {
+            self::assertNotNull($item);
+            self::assertInstanceOf(String_::class, $item->key);
+            $items[$item->key->value] = $item->value;
+        }
+
+        return $items;
     }
 
     private static function assertCatalogGuardEnvelope(MethodCall $inspection): void
