@@ -612,10 +612,41 @@ it('proves the AST ratchet detects bypass shapes while ignoring comments and imp
         }
         PHP;
 
+    $webToLeadFillInsertFamily = <<<'PHP'
+        <?php
+        use App\Models\Contact;
+        use App\Models\CrmCompany;
+        use App\Models\CrmActivity;
+        use Illuminate\Support\Facades\DB;
+
+        function submit(): void
+        {
+            DB::transaction(function (): void {
+                $tenantId = \Filament\Facades\Filament::getTenant()?->getKey();
+                CrmCompany::firstOrCreate(
+                    ['tenant_id' => $tenantId, 'name' => 'Acme'],
+                    ['tenant_id' => $tenantId, 'name' => 'Acme'],
+                );
+                Contact::create(['tenant_id' => $tenantId]);
+                CrmActivity::create(['tenant_id' => $tenantId]);
+                Contact::query()->fillAndInsert([
+                    ['tenant_id' => $tenantId],
+                ]);
+                Contact::query()->fillAndInsertOrIgnore([
+                    ['tenant_id' => $tenantId],
+                ]);
+                Contact::query()->fillAndInsertGetId([
+                    'tenant_id' => $tenantId,
+                ]);
+            });
+        }
+        PHP;
+
     expect(dovraCrmWebToLeadSentinel($webToLeadMaskedDelete, true)['ok'])->toBeFalse();
     expect(dovraCrmWebToLeadSentinel($webToLeadScopedRelation, true)['ok'])->toBeFalse();
     expect(dovraCrmWebToLeadSentinel($webToLeadQuietCreateFamily, true)['ok'])->toBeFalse();
     expect(dovraCrmWebToLeadSentinel($webToLeadAlternatePivotFamily, true)['ok'])->toBeFalse();
+    expect(dovraCrmWebToLeadSentinel($webToLeadFillInsertFamily, true)['ok'])->toBeFalse();
 });
 
 /** @return list<string> */
@@ -1849,7 +1880,8 @@ final class DovraCrmCanonicalAstCollector extends NodeVisitorAbstract
         // Model/Builder create and upsert family.
         'create', 'createQuietly', 'createMany', 'createManyQuietly', 'forceCreate', 'forceCreateQuietly',
         'forceCreateMany', 'forceCreateManyQuietly', 'createOrFirst', 'firstOrCreate', 'updateOrCreate',
-        'incrementOrCreate', 'update', 'updateOrFail', 'updateQuietly', 'upsert',
+        'incrementOrCreate', 'update', 'updateOrFail', 'updateQuietly', 'upsert', 'fillAndInsert',
+        'fillAndInsertOrIgnore', 'fillAndInsertGetId',
         // Model lifecycle and save/update variants.
         'save', 'saveQuietly', 'saveMany', 'saveManyQuietly', 'saveOrFail', 'saveOrIgnore', 'delete',
         'deleteQuietly', 'deleteOrFail', 'forceDelete', 'forceDeleteQuietly', 'restore', 'restoreQuietly',
