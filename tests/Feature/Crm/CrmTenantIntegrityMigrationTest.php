@@ -964,6 +964,55 @@ final class CrmTenantIntegrityMigrationTest extends TestCase
         self::assertSame(0, DB::table('contact_tag')->whereNotNull('tenant_id')->count());
     }
 
+    public function test_backfill_rolls_back_when_selected_endpoint_changes_before_cas(): void
+    {
+        $fixture = $this->prepareBackfillFixture(contactRows: 1, dealRows: 0);
+        $checkpoint = tempnam(sys_get_temp_dir(), 'crm-tenant-integrity-endpoint-race-');
+        self::assertNotFalse($checkpoint);
+        $sentinel = '{"untouched":true}';
+        file_put_contents($checkpoint, $sentinel);
+
+        $selectionSeen = false;
+        $casEndpointReadSeen = false;
+        $endpointChanged = false;
+        DB::listen(function (object $query) use (&$selectionSeen, &$casEndpointReadSeen, &$endpointChanged, $fixture): void {
+            $sql = (string) $query->sql;
+            if (! $selectionSeen
+                && str_contains($sql, 'from "contact_tag" as "pivot"')
+                && str_contains($sql, 'where "pivot"."tenant_id" is null')
+                && str_contains($sql, 'limit 1')) {
+                $selectionSeen = true;
+
+                return;
+            }
+            if (! $selectionSeen || $endpointChanged
+                || ! str_contains($sql, 'from "crm_contacts"')
+                || ! str_contains($sql, 'where "id" = ?')
+                || ! str_contains($sql, 'limit 1')) {
+                return;
+            }
+            $casEndpointReadSeen = true;
+            DB::table('tags')
+                ->where('id', $fixture['tag_a'])
+                ->update(['tenant_id' => $fixture['tenant_b']]);
+            $endpointChanged = true;
+        });
+
+        $report = app(CrmTenantIntegrity::class)->backfill(limit: 1, checkpoint: $checkpoint);
+
+        self::assertTrue($selectionSeen);
+        self::assertTrue($casEndpointReadSeen);
+        self::assertTrue($endpointChanged);
+        self::assertSame('BLOCKED_SOURCE_DRIFT', $report->status);
+        self::assertContains('endpoint_changed_during_batch', $report->blockingIssues);
+        self::assertFalse($report->writesPerformed);
+        self::assertSame($fixture['tenant_a'], DB::table('crm_contacts')->where('id', $fixture['contact_a'])->value('tenant_id'));
+        self::assertSame($fixture['tenant_a'], DB::table('tags')->where('id', $fixture['tag_a'])->value('tenant_id'));
+        self::assertSame(1, DB::table('contact_tag')->whereNull('tenant_id')->count());
+        self::assertSame($sentinel, file_get_contents($checkpoint));
+        @unlink($checkpoint);
+    }
+
     public function test_backfill_fails_closed_for_non_testing_outer_transaction(): void
     {
         $this->prepareBackfillFixture(contactRows: 1, dealRows: 0);

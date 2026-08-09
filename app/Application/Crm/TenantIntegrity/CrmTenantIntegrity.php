@@ -7,6 +7,7 @@ namespace App\Application\Crm\TenantIntegrity;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use InvalidArgumentException;
+use RuntimeException;
 use Throwable;
 
 /** Read-only CRM tenant-integrity preflight plus additive Batch A expansion. */
