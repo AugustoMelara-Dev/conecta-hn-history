@@ -23,6 +23,7 @@ use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\FunctionLike;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
+use PhpParser\Node\Scalar\Int_;
 use PhpParser\Node\Scalar\String_;
 use PhpParser\Node\Stmt\Class_;
 use PhpParser\Node\Stmt\ClassConst;
@@ -440,6 +441,76 @@ final class DovraSecurityRatchetTest extends TestCase
     }
 
     #[Test]
+    public function semantic_knowledge_retriever_guards_public_and_private_queries_before_sinks(): void
+    {
+        $root = dirname(__DIR__, 2);
+        self::assertSecureKnowledgeRetriever(
+            (string) file_get_contents($root.'/app/Application/Ai/Knowledge/SemanticKnowledgeRetriever.php'),
+            (string) file_get_contents($root.'/app/Application/Ai/Knowledge/KnowledgeQueryIngressGuard.php'),
+        );
+    }
+
+    #[Test]
+    public function semantic_knowledge_ratchet_rejects_additional_embedding_and_index_sinks(): void
+    {
+        $guard = <<<'PHP'
+            <?php
+            final class KnowledgeQueryIngressGuard {
+                private const PUBLIC_SOURCE = 'directory_guide_chat';
+                private const PRIVATE_SOURCE = 'tenant_agent_chat';
+                private const CHANNEL = 'knowledge_query_runtime';
+                public function inspectPublic($query) {
+                    return $this->inspect($query, self::PUBLIC_SOURCE, null, []);
+                }
+                public function inspectTenant($query, $tenantId) {
+                    $businessType = $this->businessContext->resolvePolicyBusinessType($tenantId);
+                    return $this->inspect($query, self::PRIVATE_SOURCE, $tenantId, ['business_type' => $businessType]);
+                }
+                private function inspect($query, $source, $tenantId, $context) {
+                    $normalized = $this->normalize($query);
+                    $normalized = mb_substr($normalized, 0, 500);
+                    return $this->ingress->inspect(new DataEnvelope(
+                        sourceSystem: $source, payload: ['query' => $normalized], tenantId: $tenantId,
+                        actorId: null, channel: self::CHANNEL, context: $context,
+                    ));
+                }
+            }
+            PHP;
+        $base = <<<'PHP'
+            <?php
+            final class SemanticKnowledgeRetriever {
+                private function search($query, $tenantId, $includePublic, $limit) {
+                    $redactedQuery = $tenantId === null
+                        ? $this->ingress->inspectPublic($query)
+                        : $this->ingress->inspectTenant($query, $tenantId);
+                    $embedding = $this->embeddings->embed($billingTenantId, $operation, $redactedQuery);
+                    REPLACE_SINK
+                    return $this->index->search($embedding->vector, $tenantId, $includePublic, $boundedLimit);
+                }
+            }
+            PHP;
+        $fixtures = [
+            [
+                str_replace('REPLACE_SINK', '$this->embeddings->embed($billingTenantId, $operation, $query);', $base),
+                'Semantic retriever must have exactly one embedding sink.',
+            ],
+            [
+                str_replace('REPLACE_SINK', '$this->index->search($embedding->vector, $tenantId, true, 1);', $base),
+                'Semantic retriever must have exactly one index search sink.',
+            ],
+        ];
+
+        foreach ($fixtures as [$source, $message]) {
+            try {
+                self::assertSecureKnowledgeRetriever($source, $guard);
+                self::fail('An additional semantic knowledge sink unexpectedly satisfied the ratchet.');
+            } catch (AssertionFailedError $exception) {
+                self::assertSame($message, $exception->getMessage());
+            }
+        }
+    }
+
+    #[Test]
     public function dovra_rls_contract_cannot_pass_by_missing_tables_or_unregistered_inventory(): void
     {
         $root = dirname(__DIR__, 2);
@@ -689,6 +760,194 @@ final class DovraSecurityRatchetTest extends TestCase
         self::assertKnowledgeEmbedding($embeddingCalls[0]);
         self::assertKnowledgeUpsert($upsertCalls[0]);
         self::assertTenantFilteredKnowledgeQueries($indexer);
+    }
+
+    private static function assertSecureKnowledgeRetriever(string $retrieverSource, string $guardSource): void
+    {
+        $guard = self::parsedClass($guardSource, 'KnowledgeQueryIngressGuard');
+        self::assertStringClassConstant($guard, 'PUBLIC_SOURCE', 'directory_guide_chat');
+        self::assertStringClassConstant($guard, 'PRIVATE_SOURCE', 'tenant_agent_chat');
+        self::assertStringClassConstant($guard, 'CHANNEL', 'knowledge_query_runtime');
+
+        $public = $guard->getMethod('inspectPublic');
+        $private = $guard->getMethod('inspectTenant');
+        $inspection = $guard->getMethod('inspect');
+        self::assertInstanceOf(ClassMethod::class, $public);
+        self::assertInstanceOf(ClassMethod::class, $private);
+        self::assertInstanceOf(ClassMethod::class, $inspection);
+        $publicCalls = self::directThisMethodCalls($public, 'inspect');
+        $privateCalls = self::directThisMethodCalls($private, 'inspect');
+        self::assertCount(1, $publicCalls);
+        self::assertCount(1, $privateCalls);
+        self::assertPublicKnowledgeInspection($publicCalls[0]);
+        self::assertPrivateKnowledgeInspection($private, $privateCalls[0]);
+
+        $inspectionNodes = self::flattenExecutableNodes($inspection->stmts);
+        $ingressCalls = array_values(array_filter(
+            $inspectionNodes,
+            static fn (Node $node): bool => self::isThisReceiverCall($node, 'ingress', 'inspect'),
+        ));
+        $bounds = array_values(array_filter(
+            $inspectionNodes,
+            static fn (Node $node): bool => $node instanceof FuncCall
+                && $node->name instanceof Name
+                && $node->name->toString() === 'mb_substr',
+        ));
+        self::assertCount(1, $ingressCalls, 'Query guard must call Dovra ingress exactly once.');
+        self::assertCount(1, $bounds, 'Query guard must bound the normalized payload exactly once.');
+        self::assertCount(3, $bounds[0]->args);
+        self::assertInstanceOf(Int_::class, $bounds[0]->args[2]->value);
+        self::assertSame(500, $bounds[0]->args[2]->value->value);
+        self::assertInstanceOf(MethodCall::class, $ingressCalls[0]);
+        self::assertKnowledgeQueryEnvelope($ingressCalls[0]);
+
+        $retriever = self::parsedClass($retrieverSource, 'SemanticKnowledgeRetriever');
+        $search = $retriever->getMethod('search');
+        self::assertInstanceOf(ClassMethod::class, $search);
+        $nodes = self::flattenExecutableNodes($search->stmts);
+        $publicGuards = [];
+        $privateGuards = [];
+        $embeddingSinks = [];
+        $indexSinks = [];
+        $publicIndex = null;
+        $privateIndex = null;
+        $embeddingIndex = null;
+        $indexSearchIndex = null;
+
+        foreach ($nodes as $index => $node) {
+            if ($node instanceof MethodCall && $node->name instanceof Identifier) {
+                $method = $node->name->toString();
+                if ($method === 'inspectPublic') {
+                    $publicGuards[] = $node;
+                    $publicIndex ??= $index;
+                } elseif ($method === 'inspectTenant') {
+                    $privateGuards[] = $node;
+                    $privateIndex ??= $index;
+                } elseif ($method === 'embed') {
+                    $embeddingSinks[] = $node;
+                    $embeddingIndex ??= $index;
+                } elseif ($method === 'search') {
+                    $indexSinks[] = $node;
+                    $indexSearchIndex ??= $index;
+                }
+            }
+        }
+
+        if (count($publicGuards) !== 1 || count($privateGuards) !== 1) {
+            self::fail('Semantic retriever must have one public and one private query guard call.');
+        }
+        if (count($embeddingSinks) !== 1) {
+            self::fail('Semantic retriever must have exactly one embedding sink.');
+        }
+        if (count($indexSinks) !== 1) {
+            self::fail('Semantic retriever must have exactly one index search sink.');
+        }
+        self::assertIsInt($publicIndex);
+        self::assertIsInt($privateIndex);
+        self::assertIsInt($embeddingIndex);
+        self::assertIsInt($indexSearchIndex);
+        self::assertLessThan($embeddingIndex, $publicIndex);
+        self::assertLessThan($embeddingIndex, $privateIndex);
+        self::assertLessThan($indexSearchIndex, $embeddingIndex);
+        self::assertTrue(self::isThisReceiverCall($publicGuards[0], 'ingress', 'inspectPublic'));
+        self::assertTrue(self::isThisReceiverCall($privateGuards[0], 'ingress', 'inspectTenant'));
+        self::assertTrue(self::isThisReceiverCall($embeddingSinks[0], 'embeddings', 'embed'));
+        self::assertTrue(self::isThisReceiverCall($indexSinks[0], 'index', 'search'));
+        self::assertSemanticGuardArguments($publicGuards[0], $privateGuards[0]);
+        self::assertSemanticEmbeddingArguments($embeddingSinks[0]);
+        self::assertSemanticIndexArguments($indexSinks[0]);
+    }
+
+    /** @return list<MethodCall> */
+    private static function directThisMethodCalls(ClassMethod $method, string $name): array
+    {
+        return array_values(array_filter(
+            self::flattenExecutableNodes($method->stmts),
+            static fn (Node $node): bool => $node instanceof MethodCall
+                && self::isVariable($node->var, 'this')
+                && $node->name instanceof Identifier
+                && $node->name->toString() === $name,
+        ));
+    }
+
+    private static function assertPublicKnowledgeInspection(MethodCall $call): void
+    {
+        self::assertCount(4, $call->args);
+        self::assertTrue(self::isVariable($call->args[0]->value, 'query'));
+        self::assertTrue(self::isSelfConstant($call->args[1]->value, 'PUBLIC_SOURCE'));
+        self::assertInstanceOf(ConstFetch::class, $call->args[2]->value);
+        self::assertSame('null', strtolower($call->args[2]->value->name->toString()));
+        self::assertInstanceOf(Array_::class, $call->args[3]->value);
+        self::assertSame([], $call->args[3]->value->items);
+    }
+
+    private static function assertPrivateKnowledgeInspection(ClassMethod $method, MethodCall $call): void
+    {
+        $resolver = array_values(array_filter(
+            self::flattenExecutableNodes($method->stmts),
+            static fn (Node $node): bool => self::isThisReceiverCall(
+                $node,
+                'businessContext',
+                'resolvePolicyBusinessType',
+            ),
+        ));
+        self::assertCount(1, $resolver);
+        self::assertCount(1, $resolver[0]->args);
+        self::assertTrue(self::isVariable($resolver[0]->args[0]->value, 'tenantId'));
+        self::assertCount(4, $call->args);
+        self::assertTrue(self::isVariable($call->args[0]->value, 'query'));
+        self::assertTrue(self::isSelfConstant($call->args[1]->value, 'PRIVATE_SOURCE'));
+        self::assertTrue(self::isVariable($call->args[2]->value, 'tenantId'));
+        self::assertInstanceOf(Array_::class, $call->args[3]->value);
+        $context = self::namedArrayItems($call->args[3]->value);
+        self::assertSame(['business_type'], array_keys($context));
+        self::assertTrue(self::isVariable($context['business_type'], 'businessType'));
+    }
+
+    private static function assertKnowledgeQueryEnvelope(MethodCall $call): void
+    {
+        self::assertCount(1, $call->args);
+        $envelope = $call->args[0]->value;
+        self::assertInstanceOf(New_::class, $envelope);
+        self::assertInstanceOf(Name::class, $envelope->class);
+        self::assertSame('DataEnvelope', $envelope->class->getLast());
+        $arguments = self::namedArguments($envelope->args);
+        self::assertSame(['sourceSystem', 'payload', 'tenantId', 'actorId', 'channel', 'context'], array_keys($arguments));
+        self::assertTrue(self::isVariable($arguments['sourceSystem'], 'source'));
+        self::assertInstanceOf(Array_::class, $arguments['payload']);
+        $payload = self::namedArrayItems($arguments['payload']);
+        self::assertSame(['query'], array_keys($payload));
+        self::assertTrue(self::isVariable($payload['query'], 'normalized'));
+        self::assertTrue(self::isVariable($arguments['tenantId'], 'tenantId'));
+        self::assertInstanceOf(ConstFetch::class, $arguments['actorId']);
+        self::assertSame('null', strtolower($arguments['actorId']->name->toString()));
+        self::assertTrue(self::isSelfConstant($arguments['channel'], 'CHANNEL'));
+        self::assertTrue(self::isVariable($arguments['context'], 'context'));
+    }
+
+    private static function assertSemanticGuardArguments(MethodCall $public, MethodCall $private): void
+    {
+        self::assertCount(1, $public->args);
+        self::assertTrue(self::isVariable($public->args[0]->value, 'query'));
+        self::assertCount(2, $private->args);
+        self::assertTrue(self::isVariable($private->args[0]->value, 'query'));
+        self::assertTrue(self::isVariable($private->args[1]->value, 'tenantId'));
+    }
+
+    private static function assertSemanticEmbeddingArguments(MethodCall $embedding): void
+    {
+        self::assertCount(3, $embedding->args);
+        self::assertTrue(self::isVariable($embedding->args[0]->value, 'billingTenantId'));
+        self::assertTrue(self::isVariable($embedding->args[2]->value, 'redactedQuery'));
+    }
+
+    private static function assertSemanticIndexArguments(MethodCall $search): void
+    {
+        self::assertCount(4, $search->args);
+        self::assertTrue(self::isPropertyRead($search->args[0]->value, 'embedding', 'vector'));
+        self::assertTrue(self::isVariable($search->args[1]->value, 'tenantId'));
+        self::assertTrue(self::isVariable($search->args[2]->value, 'includePublic'));
+        self::assertTrue(self::isVariable($search->args[3]->value, 'boundedLimit'));
     }
 
     private static function assertKnowledgeEnvelope(MethodCall $inspection): void
