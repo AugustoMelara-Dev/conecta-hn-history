@@ -38,19 +38,25 @@ return new class extends Migration
 
     public function up(?string $expectedFingerprint = null): void
     {
-        if ($expectedFingerprint === null || trim($expectedFingerprint) === '') {
-            // Laravel's migration runner may call public up() without the
-            // preflight contract. Never mutate an unbound or legacy schema.
-            return;
-        }
-
         $service = app(CrmTenantIntegrity::class);
         $preflight = $service->preflight('expand');
+        $fingerprint = $expectedFingerprint === null || trim($expectedFingerprint) === ''
+            ? $preflight->schemaFingerprint
+            : trim($expectedFingerprint);
         if ($preflight->status !== CrmTenantIntegrity::STATUS_READY
-            || ! hash_equals($preflight->schemaFingerprint, trim($expectedFingerprint))) {
+            || $fingerprint === ''
+            || ! hash_equals($preflight->schemaFingerprint, $fingerprint)) {
             throw new LogicException('CRM tenant-integrity migration requires a READY canonical schema fingerprint.');
         }
+        $this->assertEngineProof();
+        $this->apply($fingerprint);
+    }
 
+    private function apply(string $boundFingerprint): void
+    {
+        if ($boundFingerprint === '') {
+            throw new LogicException('CRM tenant-integrity migration requires a bound schema fingerprint.');
+        }
         DB::transaction(function (): void {
             foreach ([
                 ['contact_tag', 'contact_tag_tenant_contact_idx', ['tenant_id', 'contact_id']],
@@ -91,6 +97,14 @@ return new class extends Migration
                 self::$ownedUniques[$table.'.'.$name] = true;
             }
         });
+    }
+
+    private function assertEngineProof(?string $driver = null): void
+    {
+        $resolvedDriver = $driver === null ? DB::getDriverName() : strtolower(trim($driver));
+        if (! in_array($resolvedDriver, ['sqlite', 'pgsql'], true)) {
+            throw new LogicException('EXTERNAL_BLOCKED_ENGINE_PROOF_REQUIRED');
+        }
     }
 
     public function down(): void

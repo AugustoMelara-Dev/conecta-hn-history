@@ -102,14 +102,26 @@ final class CrmTenantIntegrityMigrationTest extends TestCase
         self::assertSame('BLOCKED_UNKNOWN_SHAPE', $narrow->status);
     }
 
+    public function test_mysql_int_unsigned_is_not_accepted_as_canonical_bigint(): void
+    {
+        $service = app(CrmTenantIntegrity::class);
+        $method = new \ReflectionMethod($service, 'isCanonicalBigintId');
+        $method->setAccessible(true);
+
+        self::assertFalse($method->invoke($service, 'int unsigned'));
+        self::assertTrue($method->invoke($service, 'bigint'));
+        self::assertTrue($method->invoke($service, 'bigint unsigned'));
+    }
+
     public function test_expand_requires_non_null_current_fingerprint(): void
     {
         $this->canonicalDealsTable();
+        $beforeHasContactTenant = Schema::hasColumn('contact_tag', 'tenant_id');
         $report = app(CrmTenantIntegrity::class)->expand();
 
         self::assertSame('BLOCKED_FINGERPRINT_REQUIRED', $report->status);
         self::assertFalse($report->writesPerformed);
-        self::assertFalse(Schema::hasColumn('contact_tag', 'tenant_id'));
+        self::assertSame($beforeHasContactTenant, Schema::hasColumn('contact_tag', 'tenant_id'));
     }
 
     public function test_missing_required_column_blocks_preflight_without_writes(): void
@@ -127,6 +139,7 @@ final class CrmTenantIntegrityMigrationTest extends TestCase
         });
         Schema::enableForeignKeyConstraints();
         $before = $this->databaseHash();
+        $beforeHasContactTenant = Schema::hasColumn('contact_tag', 'tenant_id');
 
         $report = app(CrmTenantIntegrity::class)->preflight();
 
@@ -136,7 +149,7 @@ final class CrmTenantIntegrityMigrationTest extends TestCase
         self::assertSame($before, $this->databaseHash());
     }
 
-    public function test_public_migration_refuses_legacy_shape_without_fingerprint(): void
+    public function test_public_migration_runner_refuses_legacy_shape_without_writes(): void
     {
         $this->canonicalDealsTable();
         Schema::dropIfExists('crm_deals');
@@ -148,12 +161,128 @@ final class CrmTenantIntegrityMigrationTest extends TestCase
             $table->string('name');
         });
         $before = $this->databaseHash();
+        $beforeHasContactTenant = Schema::hasColumn('contact_tag', 'tenant_id');
+        $migration = require database_path('migrations/2026_08_22_000001_expand_crm_tenant_integrity.php');
+
+        try {
+            $migration->up();
+            self::fail('Legacy runner invocation must throw before DDL.');
+        } catch (\LogicException $exception) {
+            self::assertStringContainsString('READY canonical schema fingerprint', $exception->getMessage());
+        }
+
+        self::assertSame($before, $this->databaseHash());
+        self::assertSame($beforeHasContactTenant, Schema::hasColumn('contact_tag', 'tenant_id'));
+    }
+
+    public function test_public_migration_runner_applies_canonical_schema_with_fresh_fingerprint(): void
+    {
+        $this->canonicalDealsTable();
+        $before = $this->databaseHash();
         $migration = require database_path('migrations/2026_08_22_000001_expand_crm_tenant_integrity.php');
 
         $migration->up();
 
+        self::assertTrue(Schema::hasColumn('contact_tag', 'tenant_id'));
+        self::assertTrue(Schema::hasColumn('deal_tag', 'tenant_id'));
+        self::assertNotSame($before, $this->databaseHash());
+    }
+
+    public function test_public_migration_runner_refuses_mixed_shape_without_writes(): void
+    {
+        $this->canonicalDealsTable();
+        Schema::table('crm_deals', function (Blueprint $table): void {
+            $table->string('stage_id')->nullable();
+        });
+        $before = $this->databaseHash();
+        $beforeHasContactTenant = Schema::hasColumn('contact_tag', 'tenant_id');
+        $migration = require database_path('migrations/2026_08_22_000001_expand_crm_tenant_integrity.php');
+
+        try {
+            $migration->up();
+            self::fail('Mixed runner invocation must throw before DDL.');
+        } catch (\LogicException $exception) {
+            self::assertStringContainsString('READY canonical schema fingerprint', $exception->getMessage());
+        }
+
         self::assertSame($before, $this->databaseHash());
-        self::assertFalse(Schema::hasColumn('contact_tag', 'tenant_id'));
+        self::assertSame($beforeHasContactTenant, Schema::hasColumn('contact_tag', 'tenant_id'));
+    }
+
+    public function test_public_migration_runner_refuses_missing_required_table_without_writes(): void
+    {
+        $this->canonicalDealsTable();
+        Schema::dropIfExists('crm_contacts');
+        $before = $this->databaseHash();
+        $beforeHasContactTenant = Schema::hasColumn('contact_tag', 'tenant_id');
+        $migration = require database_path('migrations/2026_08_22_000001_expand_crm_tenant_integrity.php');
+
+        try {
+            $migration->up();
+            self::fail('Missing-table runner invocation must throw before DDL.');
+        } catch (\LogicException $exception) {
+            self::assertStringContainsString('READY canonical schema fingerprint', $exception->getMessage());
+        }
+
+        self::assertSame($before, $this->databaseHash());
+        self::assertSame($beforeHasContactTenant, Schema::hasColumn('contact_tag', 'tenant_id'));
+    }
+
+    public function test_public_migration_runner_blocks_mysql_without_engine_proof(): void
+    {
+        $this->canonicalDealsTable();
+        $before = $this->databaseHash();
+        $migration = require database_path('migrations/2026_08_22_000001_expand_crm_tenant_integrity.php');
+        $beforeHasContactTenant = Schema::hasColumn('contact_tag', 'tenant_id');
+        $engineGuard = new \ReflectionMethod($migration, 'assertEngineProof');
+        $engineGuard->setAccessible(true);
+
+        try {
+            $engineGuard->invoke($migration, 'mysql');
+            self::fail('MySQL runner invocation must require an external engine proof.');
+        } catch (\LogicException $exception) {
+            self::assertStringContainsString('EXTERNAL_BLOCKED_ENGINE_PROOF_REQUIRED', $exception->getMessage());
+        }
+
+        self::assertSame($before, $this->databaseHash());
+        self::assertSame($beforeHasContactTenant, Schema::hasColumn('contact_tag', 'tenant_id'));
+    }
+
+    public function test_wrong_traversal_index_blocks_preflight_and_expand_before_ddl(): void
+    {
+        $this->canonicalDealsTable();
+        $this->dropIndexIfPresent('contact_tag', 'contact_tag_tenant_contact_idx');
+        if (! Schema::hasColumn('contact_tag', 'tenant_id')) {
+            Schema::table('contact_tag', function (Blueprint $table): void {
+                $table->uuid('tenant_id')->nullable();
+            });
+        }
+        Schema::table('contact_tag', function (Blueprint $table): void {
+            $table->index(['contact_id', 'tenant_id'], 'contact_tag_tenant_contact_idx');
+        });
+        $before = $this->databaseHash();
+        $beforeHasDealTenant = Schema::hasColumn('deal_tag', 'tenant_id');
+        $service = app(CrmTenantIntegrity::class);
+        $preflight = $service->preflight();
+
+        self::assertSame('BLOCKED_ANOMALIES', $preflight->status);
+        self::assertSame(1, $preflight->anomalies['incompatible_traversal_index_contact_tag_tenant_contact_idx'] ?? 0);
+        $expanded = $service->expand($preflight->schemaFingerprint);
+
+        self::assertSame('BLOCKED_ANOMALIES', $expanded->status);
+        self::assertSame($beforeHasDealTenant, Schema::hasColumn('deal_tag', 'tenant_id'));
+        self::assertSame($before, $this->databaseHash());
+    }
+
+    public function test_report_distinguishes_exact_aggregate_counts_from_bounded_output(): void
+    {
+        $this->canonicalDealsTable();
+        $report = app(CrmTenantIntegrity::class)->preflight();
+
+        self::assertSame('exact', $report->details['query_bounds']['aggregate_counts'] ?? null);
+        self::assertSame('bounded', $report->details['query_bounds']['output_memory'] ?? null);
+        self::assertSame('database-dependent', $report->details['query_bounds']['scan_cost'] ?? null);
+        self::assertSame('EXTERNAL_BLOCKED', $report->details['query_bounds']['staging_plan_proof'] ?? null);
     }
 
     public function test_down_preserves_preexisting_same_name_additions(): void
@@ -182,6 +311,7 @@ final class CrmTenantIntegrityMigrationTest extends TestCase
         $this->canonicalDealsTable();
         Schema::dropIfExists('crm_contacts');
         $before = $this->databaseHash();
+        $beforeHasContactTenant = Schema::hasColumn('contact_tag', 'tenant_id');
 
         $report = app(CrmTenantIntegrity::class)->preflight();
         $after = $this->databaseHash();
@@ -191,7 +321,7 @@ final class CrmTenantIntegrityMigrationTest extends TestCase
         self::assertStringContainsString('crm_contacts', json_encode($report, JSON_THROW_ON_ERROR));
         self::assertFalse($report->writesPerformed);
         self::assertSame($before, $after);
-        self::assertFalse(Schema::hasColumn('contact_tag', 'tenant_id'));
+        self::assertSame($beforeHasContactTenant, Schema::hasColumn('contact_tag', 'tenant_id'));
     }
 
     public function test_cross_tenant_edges_are_counted_with_stable_codes_and_zero_writes(): void
@@ -222,6 +352,7 @@ final class CrmTenantIntegrityMigrationTest extends TestCase
             'updated_at' => now(),
         ]);
         $before = $this->databaseHash();
+        $beforeHasContactTenant = Schema::hasColumn('contact_tag', 'tenant_id');
 
         $report = app(CrmTenantIntegrity::class)->preflight();
 
@@ -231,7 +362,7 @@ final class CrmTenantIntegrityMigrationTest extends TestCase
         self::assertSame(1, $report->anomalies['deal_stage_pipeline_mismatch']);
         self::assertFalse($report->writesPerformed);
         self::assertSame($before, $this->databaseHash());
-        self::assertFalse(Schema::hasColumn('contact_tag', 'tenant_id'));
+        self::assertSame($beforeHasContactTenant, Schema::hasColumn('contact_tag', 'tenant_id'));
     }
 
     public function test_edge_inventory_covers_nullable_endpoints_notes_tasks_quotes_contacts_companies_and_activity_parents(): void
@@ -599,13 +730,14 @@ final class CrmTenantIntegrityMigrationTest extends TestCase
             $table->string('preflight_drift_marker')->nullable();
         });
         $before = $this->databaseHash();
+        $beforeHasContactTenant = Schema::hasColumn('contact_tag', 'tenant_id');
 
         $report = $service->expand($fingerprint);
 
         self::assertSame('BLOCKED_FINGERPRINT_MISMATCH', $report->status);
         self::assertFalse($report->writesPerformed);
         self::assertSame($before, $this->databaseHash());
-        self::assertFalse(Schema::hasColumn('contact_tag', 'tenant_id'));
+        self::assertSame($beforeHasContactTenant, Schema::hasColumn('contact_tag', 'tenant_id'));
     }
 
     public function test_down_preserves_populated_pivot_provenance(): void
@@ -629,6 +761,7 @@ final class CrmTenantIntegrityMigrationTest extends TestCase
 
     private function canonicalDealsTable(): void
     {
+        $this->resetExpansionArtifacts();
         $migration = require database_path('migrations/2026_08_22_000001_expand_crm_tenant_integrity.php');
         $migration->down();
         Schema::disableForeignKeyConstraints();
@@ -651,9 +784,65 @@ final class CrmTenantIntegrityMigrationTest extends TestCase
         Schema::enableForeignKeyConstraints();
     }
 
+    private function resetExpansionArtifacts(): void
+    {
+        Schema::disableForeignKeyConstraints();
+        foreach ([
+            ['contact_tag', ['contact_tag_tenant_contact_idx', 'contact_tag_tenant_tag_idx']],
+            ['deal_tag', ['deal_tag_tenant_deal_idx', 'deal_tag_tenant_tag_idx']],
+        ] as [$table, $indexes]) {
+            if (! Schema::hasTable($table)) {
+                continue;
+            }
+            foreach ($indexes as $index) {
+                $this->dropIndexIfPresent($table, $index);
+            }
+            if (Schema::hasColumn($table, 'tenant_id')
+                && ! DB::table($table)->whereNotNull('tenant_id')->exists()) {
+                Schema::table($table, static function (Blueprint $blueprint): void {
+                    $blueprint->dropColumn('tenant_id');
+                });
+            }
+        }
+
+        foreach ([
+            'crm_pipelines_tenant_id_unique', 'crm_stages_tenant_pipeline_id_unique',
+            'crm_deals_tenant_id_unique', 'crm_companies_tenant_id_unique',
+            'crm_contacts_tenant_id_unique', 'tags_tenant_id_unique',
+            'leads_tenant_id_unique', 'locations_tenant_id_unique',
+            'customer_profiles_tenant_id_unique', 'customer_notes_tenant_id_unique',
+            'customer_tasks_tenant_id_unique', 'quotes_tenant_id_unique',
+            'tenant_memberships_tenant_user_id_unique',
+        ] as $index) {
+            foreach (Schema::getTables() as $tableDefinition) {
+                $table = is_object($tableDefinition)
+                    ? (string) ($tableDefinition->name ?? '')
+                    : (string) ($tableDefinition['name'] ?? '');
+                if ($table === '' || ! $this->hasIndex($table, $index) || DB::table($table)->exists()) {
+                    continue;
+                }
+                Schema::table($table, static function (Blueprint $blueprint) use ($index): void {
+                    $blueprint->dropUnique($index);
+                });
+            }
+        }
+        Schema::enableForeignKeyConstraints();
+    }
+
     private function hasIndex(string $table, string $name): bool
     {
         return collect(Schema::getIndexes($table))->contains(static fn (array $index): bool => (string) ($index['name'] ?? '') === $name);
+    }
+
+    private function dropIndexIfPresent(string $table, string $name): void
+    {
+        if (! Schema::hasTable($table) || ! $this->hasIndex($table, $name)) {
+            return;
+        }
+
+        Schema::table($table, function (Blueprint $blueprint) use ($name): void {
+            $blueprint->dropIndex($name);
+        });
     }
 
     private function databaseHash(): string

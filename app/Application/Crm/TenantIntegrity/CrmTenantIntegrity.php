@@ -27,7 +27,10 @@ final class CrmTenantIntegrity
     public const STATUS_BLOCKED_FINGERPRINT_REQUIRED = 'BLOCKED_FINGERPRINT_REQUIRED';
     public const STATUS_BLOCKED_REQUIRED_SCHEMA = 'BLOCKED_REQUIRED_SCHEMA';
     public const STATUS_BLOCKED_METADATA_FAILURE = 'BLOCKED_METADATA_FAILURE';
-    public const STATUS_BLOCKED_PARTIAL_WRITE = 'BLOCKED_PARTIAL_WRITE';
+    public const STATUS_EXPAND_FAILED = 'EXPAND_FAILED';
+    public const STATUS_RECOVERY_REQUIRED_PARTIAL_WRITE = 'RECOVERY_REQUIRED_PARTIAL_WRITE';
+    public const STATUS_EXTERNAL_BLOCKED_ENGINE_PROOF_REQUIRED = 'EXTERNAL_BLOCKED_ENGINE_PROOF_REQUIRED';
+    public const STATUS_BLOCKED_PARTIAL_WRITE = 'RECOVERY_REQUIRED_PARTIAL_WRITE';
     public const STATUS_BLOCKED_NOT_IMPLEMENTED = 'BLOCKED_NOT_IMPLEMENTED';
     public const STATUS_BLOCKED_EXTERNAL = 'BLOCKED_EXTERNAL';
 
@@ -59,6 +62,14 @@ final class CrmTenantIntegrity
         'customer_tasks_tenant_id_unique' => ['customer_tasks', 'tenant_id', 'id'],
         'quotes_tenant_id_unique' => ['quotes', 'tenant_id', 'id'],
         'tenant_memberships_tenant_user_id_unique' => ['tenant_memberships', 'tenant_id', 'user_id', 'id'],
+    ];
+
+    /** @var array<string, array{table: string, columns: list<string>}> */
+    private const TRAVERSAL_INDEXES = [
+        'contact_tag_tenant_contact_idx' => ['table' => 'contact_tag', 'columns' => ['tenant_id', 'contact_id']],
+        'contact_tag_tenant_tag_idx' => ['table' => 'contact_tag', 'columns' => ['tenant_id', 'tag_id']],
+        'deal_tag_tenant_deal_idx' => ['table' => 'deal_tag', 'columns' => ['tenant_id', 'deal_id']],
+        'deal_tag_tenant_tag_idx' => ['table' => 'deal_tag', 'columns' => ['tenant_id', 'tag_id']],
     ];
 
     /** @var array<string, list<string>> */
@@ -183,7 +194,14 @@ final class CrmTenantIntegrity
                     'optional_tables' => self::OPTIONAL_TABLES,
                     'candidate_keys' => $this->candidateKeyDetails(),
                     'anomaly_hashes' => $this->anomalyHashes($anomalies),
-                    'query_bounds' => ['max_anomaly_hashes' => 20, 'row_boundary' => 'first_and_last_ids_only'],
+                    'query_bounds' => [
+                        'aggregate_counts' => 'exact',
+                        'output_memory' => 'bounded',
+                        'anomaly_hashes_max' => 20,
+                        'row_boundary' => 'first_and_last_ids_only',
+                        'scan_cost' => 'database-dependent',
+                        'staging_plan_proof' => 'EXTERNAL_BLOCKED',
+                    ],
                     'writes_performed' => false,
                 ]);
         } catch (Throwable $exception) {
@@ -209,6 +227,11 @@ final class CrmTenantIntegrity
                 blockingIssues: ['schema_fingerprint_mismatch'],
                 details: ['expected_fingerprint_hash' => hash('sha256', trim($expectedFingerprint))]);
         }
+        if ($this->engineRequiresExternalProof()) {
+            return $this->copyReport($preflight, self::STATUS_EXTERNAL_BLOCKED_ENGINE_PROOF_REQUIRED,
+                blockingIssues: ['EXTERNAL_BLOCKED_ENGINE_PROOF_REQUIRED'],
+                details: [...$preflight->details, 'engine' => DB::getDriverName(), 'writes_performed' => false]);
+        }
 
         $before = $preflight->schemaFingerprint;
         try {
@@ -221,17 +244,17 @@ final class CrmTenantIntegrity
                 $afterFailure = $this->preflight('expand');
                 $afterFingerprint = $afterFailure->schemaFingerprint;
             } catch (Throwable) {
-                return $this->copyReport($preflight, self::STATUS_BLOCKED_PARTIAL_WRITE,
+                return $this->copyReport($preflight, self::STATUS_RECOVERY_REQUIRED_PARTIAL_WRITE,
                     writesPerformed: true,
                     blockingIssues: ['expand_failed', 'schema_fingerprint_unavailable_after_failure'],
                     details: [...$preflight->details, 'error_code' => get_class($exception), 'writes_state' => 'unknown']);
             }
             if ($afterFingerprint !== '' && hash_equals($before, $afterFingerprint)) {
-                return $this->copyReport($preflight, self::STATUS_BLOCKED_ANOMALIES,
+                return $this->copyReport($preflight, self::STATUS_EXPAND_FAILED,
                     blockingIssues: ['expand_failed'],
                     details: [...$preflight->details, 'error_code' => get_class($exception), 'writes_performed' => false]);
             }
-            return $this->copyReport($afterFailure, self::STATUS_BLOCKED_PARTIAL_WRITE,
+            return $this->copyReport($afterFailure, self::STATUS_RECOVERY_REQUIRED_PARTIAL_WRITE,
                 writesPerformed: true,
                 blockingIssues: ['expand_failed', 'schema_fingerprint_changed_after_failure'],
                 details: [
@@ -319,7 +342,7 @@ final class CrmTenantIntegrity
         $tables = [...self::REQUIRED_TABLES, ...array_values(array_filter(self::OPTIONAL_TABLES, static fn (string $table): bool => Schema::hasTable($table)))];
         $inventory = [];
         foreach ($tables as $table) {
-            $inventory[$table] = ['row_count' => $this->boundedCount($table), 'row_boundary' => $this->rowBoundary($table)];
+            $inventory[$table] = ['row_count' => $this->aggregateCount($table), 'row_boundary' => $this->rowBoundary($table)];
         }
         ksort($inventory);
 
@@ -444,7 +467,7 @@ final class CrmTenantIntegrity
             'tenants' => ['id' => ['string', 'uuid', 'char', 'varchar']],
             'crm_pipelines' => ['id' => ['integer', 'bigint', 'int', 'int unsigned']],
             'crm_stages' => ['id' => ['integer', 'bigint', 'int', 'int unsigned']],
-            'crm_deals' => ['id' => ['integer', 'bigint', 'int', 'int unsigned']],
+            'crm_deals' => ['id' => ['integer', 'bigint', 'bigint unsigned']],
             'crm_companies' => ['id' => ['string', 'uuid', 'char', 'varchar']],
             'crm_contacts' => ['id' => ['string', 'uuid', 'char', 'varchar']],
             'crm_activities' => ['id' => ['string', 'uuid', 'char', 'varchar']],
@@ -485,6 +508,22 @@ final class CrmTenantIntegrity
                 $actual = array_values(array_map('strval', is_array($index['columns'] ?? null) ? $index['columns'] : []));
                 if ($actual !== $columns || ! (bool) ($index['unique'] ?? false)) {
                     $this->addAnomaly($counts, 'incompatible_existing_constraint_'.$name, 1);
+                }
+            }
+        }
+        foreach (self::TRAVERSAL_INDEXES as $name => $definition) {
+            $table = $definition['table'];
+            $columns = $definition['columns'];
+            if (! Schema::hasTable($table)) {
+                continue;
+            }
+            foreach ($this->indexes($table) as $index) {
+                if ((string) ($index['name'] ?? '') !== $name) {
+                    continue;
+                }
+                $actual = array_values(array_map('strval', is_array($index['columns'] ?? null) ? $index['columns'] : []));
+                if ($actual !== $columns || (bool) ($index['unique'] ?? false) || (bool) ($index['primary'] ?? false)) {
+                    $this->addAnomaly($counts, 'incompatible_traversal_index_'.$name, 1);
                 }
             }
         }
@@ -604,7 +643,7 @@ final class CrmTenantIntegrity
 
     private function isCanonicalBigintId(string $idType): bool
     {
-        if (in_array($idType, ['bigint', 'bigint unsigned', 'int unsigned', 'unsigned bigint'], true)) {
+        if (in_array($idType, ['bigint', 'bigint unsigned'], true)) {
             return true;
         }
         if ($idType !== 'integer' || DB::getDriverName() !== 'sqlite') {
@@ -618,6 +657,11 @@ final class CrmTenantIntegrity
         $sql = strtolower((string) ($definition->sql ?? ''));
 
         return str_contains($sql, 'primary key autoincrement');
+    }
+
+    private function engineRequiresExternalProof(): bool
+    {
+        return ! in_array(DB::getDriverName(), ['sqlite', 'pgsql'], true);
     }
 
     /** @return list<string> */
@@ -636,7 +680,7 @@ final class CrmTenantIntegrity
         return $missing;
     }
 
-    private function boundedCount(string $table): int
+    private function aggregateCount(string $table): int
     {
         return (int) DB::table($table)->count();
     }
@@ -653,7 +697,7 @@ final class CrmTenantIntegrity
         $first = $query->first();
         $last = (clone $query)->reorder($idColumn, 'desc')->first();
         return [
-            'count' => $this->boundedCount($table),
+            'count' => $this->aggregateCount($table),
             'hash' => hash('sha256', json_encode([
                 'table' => $table,
                 'first' => $this->opaqueValue($first === null ? null : ($first->{$idColumn} ?? null)),
@@ -731,6 +775,12 @@ final class CrmTenantIntegrity
 
     private function normalizedType(string $table, string $column): string
     {
+        foreach (Schema::getColumns($table) as $definition) {
+            if ((string) ($definition['name'] ?? '') === $column) {
+                return strtolower((string) ($definition['type_name'] ?? $definition['type'] ?? ''));
+            }
+        }
+
         return strtolower((string) Schema::getColumnType($table, $column));
     }
 
