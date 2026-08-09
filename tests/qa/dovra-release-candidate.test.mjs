@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
@@ -50,6 +50,9 @@ function createFixture() {
         "'PASSWORD' => \"fake-password\",",
         "'ACCESS_TOKEN' => \"example-token\",",
         "'PRIVATE_KEY' => \"fixture-private-key\",",
+        "'token' => \"required|string|max:4096\",",
+        "'API_TOKEN' => \"sometimes|nullable|string|min:1|max:4096\",",
+        "'PASSWORD' => \"required|string|confirmed|between:8,128\",",
     ].join("\n"));
     writeFixtureFile(root, "gone.txt", "deleted after commit\n");
 
@@ -292,6 +295,9 @@ test("assembler fails closed on static literal secrets without echoing their val
         ["config/leaked.yml", "ACCESS_TOKEN: root\n", "root"],
         ["config/leaked.yml", "PRIVATE_KEY: conecta\n", "conecta"],
         ["config/leaked.yml", "DB_PASSWORD: production-value\n", "production-value"],
+        ["config/leaked.php", "token: \"required|string|max:4096|real-secret\",\n", "real-secret"],
+        ["config/leaked.php", "API_TOKEN: \"required|string|in:real-token\",\n", "real-token"],
+        ["config/leaked.php", "PASSWORD: \"required|string|max:abc\",\n", "max:abc"],
     ];
     const cleanup = [];
     t.after(() => {
@@ -311,6 +317,27 @@ test("assembler fails closed on static literal secrets without echoing their val
         assert.notEqual(result.status, 0, `static literal secret in ${path} must fail assembly`);
         assert.ok(!`${result.stdout}\n${result.stderr}`.includes(marker), "scanner failure must not echo the secret value");
     }
+});
+
+test("assembler reports every static literal secret by path line and name without values", (t) => {
+    const source = createFixture();
+    const outputParent = mkdtempSync(join(tmpdir(), "dovra-rc-output-"));
+    const output = join(outputParent, "bundle");
+    writeFixtureFile(source, "config/first.yml", "APP_ENV: test\nAPI_KEY: aggregate-api-value\n");
+    writeFixtureFile(source, "config/second.yml", "PASSWORD: aggregate-password-value\n");
+    t.after(() => {
+        rmSync(source, { recursive: true, force: true });
+        rmSync(outputParent, { recursive: true, force: true });
+    });
+
+    const result = assemble(source, output);
+    const diagnostics = `${result.stdout}\n${result.stderr}`;
+    assert.notEqual(result.status, 0);
+    assert.match(diagnostics, /config\/first\.yml:2:API_KEY/u);
+    assert.match(diagnostics, /config\/second\.yml:1:PASSWORD/u);
+    assert.ok(!diagnostics.includes("aggregate-api-value"));
+    assert.ok(!diagnostics.includes("aggregate-password-value"));
+    assert.ok(!existsSync(join(output, "manifest.json")));
 });
 
 test("assembler indexes only the verified local database controls and sentinels", (t) => {

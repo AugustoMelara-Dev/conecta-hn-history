@@ -273,6 +273,29 @@ function isKnownLocalDatabaseSentinel(name, value) {
     return sentinels.get(name)?.has(value) ?? false;
 }
 
+function isClosedLaravelValidationRule(value) {
+    const rules = value.split("|");
+    if (rules.length < 3) {
+        return false;
+    }
+    const flags = new Set([
+        "required",
+        "nullable",
+        "sometimes",
+        "string",
+        "integer",
+        "numeric",
+        "boolean",
+        "array",
+        "email",
+        "url",
+        "uuid",
+        "date",
+        "confirmed",
+    ]);
+    return rules.every((rule) => flags.has(rule) || /^(?:min|max|size|between):[0-9]+(?:,[0-9]+)*$/u.test(rule));
+}
+
 function isPlaceholderSecret(value) {
     return value.length === 0
         || /^(?:change|replace|example|dummy|test|fake|fixture|your)[-_ ]?/iu.test(value)
@@ -280,9 +303,10 @@ function isPlaceholderSecret(value) {
         || /^(?:null|none|false|true)$/iu.test(value);
 }
 
-function hasSecretSignature(content) {
+function secretSignatures(content) {
     const text = content.toString("utf8");
-    for (const line of text.split(/\r?\n/u)) {
+    const detections = [];
+    for (const [index, line] of text.split(/\r?\n/u).entries()) {
         const match = line.match(/^[ \t]*(?:(?:export[ \t]+)?(?:const|let|var)[ \t]+)?(?:(['"])([A-Za-z_][A-Za-z0-9_]*)\1|([A-Za-z_][A-Za-z0-9_]*))[ \t]*(=>|:|=)[ \t]*([^#\r\n]*)/u);
         if (!match) {
             continue;
@@ -307,9 +331,12 @@ function hasSecretSignature(content) {
         if (isKnownLocalDatabaseSentinel(name, value)) {
             continue;
         }
-        return true;
+        if (isClosedLaravelValidationRule(value)) {
+            continue;
+        }
+        detections.push({ line: index + 1, name });
     }
-    return false;
+    return detections;
 }
 
 function envNamesFromContent(content) {
@@ -406,6 +433,7 @@ function copyVisibleFiles(source, sourceOutput, visiblePaths) {
     const entries = [];
     const excludedCounts = new Map();
     const envNamesSet = new Set();
+    const secretDetections = [];
 
     for (const candidate of visiblePaths.map(toPosixPath).sort()) {
         if (!isSafeRelativePath(candidate)) {
@@ -455,8 +483,10 @@ function copyVisibleFiles(source, sourceOutput, visiblePaths) {
             excludedCounts.set("private-key-signature", (excludedCounts.get("private-key-signature") ?? 0) + 1);
             continue;
         }
-        if (hasSecretSignature(content)) {
-            throw new Error(`Static literal secret detected in ${candidate}; refusing to assemble.`);
+        const detected = secretSignatures(content);
+        if (detected.length > 0) {
+            secretDetections.push(...detected.map(({ line, name }) => ({ path: candidate, line, name })));
+            continue;
         }
 
         const destination = resolve(sourceOutput, candidate);
@@ -473,6 +503,13 @@ function copyVisibleFiles(source, sourceOutput, visiblePaths) {
                 envNamesSet.add(name);
             }
         }
+    }
+
+    if (secretDetections.length > 0) {
+        const diagnostics = secretDetections
+            .map(({ path, line, name }) => `${path}:${line}:${name}`)
+            .join("\n");
+        throw new Error(`Static literal secrets detected; refusing to assemble:\n${diagnostics}`);
     }
 
     entries.sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0);
