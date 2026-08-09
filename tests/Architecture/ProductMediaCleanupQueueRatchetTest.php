@@ -56,6 +56,48 @@ final class ProductMediaCleanupQueueRatchetTest extends TestCase
                     PHP),
                 'Product media cleanup failure must update the task exactly once.',
             ],
+            [
+                self::fixture('Throwable', '', '$repository->update'),
+                'Product media cleanup failure update must target the cleanup task by id.',
+            ],
+            [
+                self::fixture(
+                    'Throwable',
+                    '',
+                    "DB::table('foreign_cleanup_tasks')->where('id', \$task->id)->update",
+                ),
+                'Product media cleanup failure update must target the cleanup task by id.',
+            ],
+            [
+                self::fixture(
+                    'Throwable',
+                    '',
+                    "DB::table('product_media_cleanup_tasks')->where('tenant_id', \$task->tenant_id)->update",
+                ),
+                'Product media cleanup failure update must target the cleanup task by id.',
+            ],
+            [
+                self::fixture('Throwable', '', null, '$repository->delete'),
+                'Product media cleanup success delete must target the cleanup task by id.',
+            ],
+            [
+                self::fixture(
+                    'Throwable',
+                    '',
+                    null,
+                    "DB::table('foreign_cleanup_tasks')->where('id', \$task->id)->delete",
+                ),
+                'Product media cleanup success delete must target the cleanup task by id.',
+            ],
+            [
+                self::fixture(
+                    'Throwable',
+                    '',
+                    null,
+                    "DB::table('product_media_cleanup_tasks')->where('tenant_id', \$task->tenant_id)->delete",
+                ),
+                'Product media cleanup success delete must target the cleanup task by id.',
+            ],
         ];
 
         $failures = [];
@@ -101,6 +143,14 @@ final class ProductMediaCleanupQueueRatchetTest extends TestCase
 
         $deletes = self::methodCalls($boundary->stmts, 'delete');
         self::assertCount(2, $deletes, 'Success must retain one filesystem delete and one task delete sink.');
+        $taskDeletes = array_values(array_filter(
+            $deletes,
+            static fn (MethodCall $call): bool => ! self::isVariable($call->var, 'filesystem'),
+        ));
+        self::assertCount(1, $taskDeletes, 'Success must delete the cleanup task exactly once.');
+        if (! self::isCleanupTaskMutation($taskDeletes[0], 'delete')) {
+            self::fail('Product media cleanup success delete must target the cleanup task by id.');
+        }
         self::assertCount(1, $boundary->catches);
         $catch = $boundary->catches[0];
         self::assertCount(1, $catch->types);
@@ -112,6 +162,9 @@ final class ProductMediaCleanupQueueRatchetTest extends TestCase
         $updates = self::methodCalls($catch->stmts, 'update');
         if (count($updates) !== 1) {
             self::fail('Product media cleanup failure must update the task exactly once.');
+        }
+        if (! self::isCleanupTaskMutation($updates[0], 'update')) {
+            self::fail('Product media cleanup failure update must target the cleanup task by id.');
         }
         self::assertCount(1, $updates[0]->args);
         self::assertInstanceOf(Array_::class, $updates[0]->args[0]->value);
@@ -205,8 +258,39 @@ final class ProductMediaCleanupQueueRatchetTest extends TestCase
             && $node->name->toString() === $property;
     }
 
-    private static function fixture(string $catch, string $extraCatch): string
+    private static function isCleanupTaskMutation(MethodCall $call, string $method): bool
     {
+        if (! $call->name instanceof Identifier
+            || $call->name->toString() !== $method
+            || ! $call->var instanceof MethodCall
+            || ! $call->var->name instanceof Identifier
+            || $call->var->name->toString() !== 'where'
+            || count($call->var->args) !== 2
+            || ! $call->var->args[0]->value instanceof String_
+            || $call->var->args[0]->value->value !== 'id'
+            || ! self::isTaskProperty($call->var->args[1]->value, 'id')
+            || ! $call->var->var instanceof StaticCall
+            || ! $call->var->var->class instanceof Name
+            || $call->var->var->class->getLast() !== 'DB'
+            || ! $call->var->var->name instanceof Identifier
+            || $call->var->var->name->toString() !== 'table'
+            || count($call->var->var->args) !== 1
+            || ! $call->var->var->args[0]->value instanceof String_) {
+            return false;
+        }
+
+        return $call->var->var->args[0]->value->value === 'product_media_cleanup_tasks';
+    }
+
+    private static function fixture(
+        string $catch,
+        string $extraCatch,
+        ?string $update = null,
+        ?string $successDelete = null,
+    ): string {
+        $update ??= "DB::table('product_media_cleanup_tasks')->where('id', \$task->id)->update";
+        $successDelete ??= "DB::table('product_media_cleanup_tasks')->where('id', \$task->id)->delete";
+
         return <<<PHP
             <?php
             final class ProductMediaCleanupQueue {
@@ -217,11 +301,11 @@ final class ProductMediaCleanupQueueRatchetTest extends TestCase
                         if (\$filesystem->exists(\$path)) {
                             \$filesystem->delete(\$path);
                         }
-                        DB::table('product_media_cleanup_tasks')->where('id', \$task->id)->delete();
+                        {$successDelete}();
                         \$processed++;
                     } catch ({$catch}) {
                         \$attempts = (int) \$task->attempts + 1;
-                        DB::table('product_media_cleanup_tasks')->where('id', \$task->id)->update([
+                        {$update}([
                             'attempts' => \$attempts,
                             'available_at' => now(),
                             'last_error' => 'product_media_cleanup_unavailable',
