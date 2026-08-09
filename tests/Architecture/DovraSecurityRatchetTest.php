@@ -21,6 +21,7 @@ use PhpParser\Node\Expr\New_;
 use PhpParser\Node\Expr\PropertyFetch;
 use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Expr\Ternary;
+use PhpParser\Node\Expr\Throw_;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\FunctionLike;
 use PhpParser\Node\Identifier;
@@ -578,6 +579,51 @@ final class DovraSecurityRatchetTest extends TestCase
     }
 
     #[Test]
+    public function otp_provider_failure_reports_logs_and_rethrows_without_raw_exception_reads(): void
+    {
+        $root = dirname(__DIR__, 2);
+        self::assertSecureOtpProviderFailure(
+            (string) file_get_contents($root.'/app/Infrastructure/Auth/Listeners/SendOtpNotificationListener.php'),
+        );
+    }
+
+    #[Test]
+    public function otp_provider_failure_ratchet_rejects_raw_read_after_compliant_throw(): void
+    {
+        $fixture = <<<'PHP'
+            <?php
+            final class SendOtpNotificationListener {
+                public function handle($event) {
+                    $serviceName = 'sms_provider';
+                    $maskedIdentifier = $this->maskIdentifier($event->identifier);
+                    try {
+                        $this->notifier->send($event);
+                    } catch (Throwable $failure) {
+                        $this->circuitBreaker->reportFailure($serviceName);
+                        Log::error('OTP notification delivery failed', [
+                            'error_code' => 'otp_notification_provider_unavailable',
+                            'identifier' => $maskedIdentifier,
+                            'tenant_id' => $event->tenantId,
+                        ]);
+                        throw $failure;
+                        $raw = $failure->getMessage();
+                    }
+                }
+            }
+            PHP;
+
+        try {
+            self::assertSecureOtpProviderFailure($fixture);
+            self::fail('A raw OTP provider exception read unexpectedly satisfied the ratchet.');
+        } catch (AssertionFailedError $exception) {
+            self::assertSame(
+                'OTP catch variable may only be read by the exact rethrow.',
+                $exception->getMessage(),
+            );
+        }
+    }
+
+    #[Test]
     public function dovra_rls_contract_cannot_pass_by_missing_tables_or_unregistered_inventory(): void
     {
         $root = dirname(__DIR__, 2);
@@ -998,6 +1044,102 @@ final class DovraSecurityRatchetTest extends TestCase
         self::assertCount(6, $finalizes[0]->args);
         self::assertInstanceOf(String_::class, $finalizes[0]->args[5]->value);
         self::assertSame('provider_unavailable', $finalizes[0]->args[5]->value->value);
+    }
+
+    private static function assertSecureOtpProviderFailure(string $source): void
+    {
+        $listener = self::parsedClass($source, 'SendOtpNotificationListener');
+        $handle = $listener->getMethod('handle');
+        self::assertInstanceOf(ClassMethod::class, $handle);
+        $handleNodes = self::flattenExecutableNodes($handle->stmts);
+        $serviceAssignments = array_values(array_filter(
+            $handleNodes,
+            static fn (Node $node): bool => $node instanceof Assign
+                && self::isVariable($node->var, 'serviceName')
+                && $node->expr instanceof String_
+                && $node->expr->value === 'sms_provider',
+        ));
+        self::assertCount(1, $serviceAssignments, 'OTP provider service name must remain exact.');
+
+        $providerTries = [];
+        foreach ((new NodeFinder)->findInstanceOf($handle->stmts ?? [], TryCatch::class) as $tryCatch) {
+            $notifierCalls = array_values(array_filter(
+                self::flattenExecutableNodes($tryCatch->stmts),
+                static fn (Node $node): bool => self::isThisReceiverCall($node, 'notifier', 'send'),
+            ));
+            if ($notifierCalls !== []) {
+                $providerTries[] = $tryCatch;
+            }
+        }
+        self::assertCount(1, $providerTries, 'OTP notifier must have one provider try/catch boundary.');
+        $providerTry = $providerTries[0];
+        self::assertCount(1, $providerTry->catches);
+        $catch = $providerTry->catches[0];
+        self::assertCount(1, $catch->types);
+        self::assertSame('Throwable', $catch->types[0]->getLast());
+        self::assertInstanceOf(Variable::class, $catch->var);
+        self::assertIsString($catch->var->name);
+        $failureVariable = $catch->var->name;
+        $nodes = self::flattenExecutableNodes($catch->stmts);
+        $failureReportIndex = null;
+        $logIndex = null;
+        $throwIndex = null;
+        $failureReports = [];
+        $logs = [];
+        $throws = [];
+        $failureReads = [];
+
+        foreach ($nodes as $index => $node) {
+            if (self::isThisReceiverCall($node, 'circuitBreaker', 'reportFailure')) {
+                $failureReports[] = $node;
+                $failureReportIndex ??= $index;
+            }
+            if ($node instanceof StaticCall
+                && $node->class instanceof Name
+                && $node->class->getLast() === 'Log'
+                && $node->name instanceof Identifier
+                && $node->name->toString() === 'error') {
+                $logs[] = $node;
+                $logIndex ??= $index;
+            }
+            if ($node instanceof Throw_) {
+                $throws[] = $node;
+                $throwIndex ??= $index;
+            }
+            if ($node instanceof Variable && $node->name === $failureVariable) {
+                $failureReads[] = $node;
+            }
+        }
+
+        self::assertCount(1, $failureReports, 'OTP provider catch must report failure exactly once.');
+        self::assertCount(1, $failureReports[0]->args);
+        self::assertTrue(self::isVariable($failureReports[0]->args[0]->value, 'serviceName'));
+        self::assertCount(1, $logs, 'OTP provider catch must emit one error log.');
+        self::assertOtpFailureLog($logs[0]);
+        self::assertCount(1, $throws, 'OTP provider catch must rethrow exactly once.');
+        self::assertTrue(self::isVariable($throws[0]->expr, $failureVariable));
+        if (count($failureReads) !== 1 || $failureReads[0] !== $throws[0]->expr) {
+            self::fail('OTP catch variable may only be read by the exact rethrow.');
+        }
+        self::assertIsInt($failureReportIndex);
+        self::assertIsInt($logIndex);
+        self::assertIsInt($throwIndex);
+        self::assertLessThan($logIndex, $failureReportIndex, 'Circuit failure must be reported before logging.');
+        self::assertLessThan($throwIndex, $logIndex, 'Stable logging must precede the exact rethrow.');
+    }
+
+    private static function assertOtpFailureLog(StaticCall $log): void
+    {
+        self::assertCount(2, $log->args);
+        self::assertInstanceOf(String_::class, $log->args[0]->value);
+        self::assertSame('OTP notification delivery failed', $log->args[0]->value->value);
+        self::assertInstanceOf(Array_::class, $log->args[1]->value);
+        $context = self::namedArrayItems($log->args[1]->value);
+        self::assertSame(['error_code', 'identifier', 'tenant_id'], array_keys($context));
+        self::assertInstanceOf(String_::class, $context['error_code']);
+        self::assertSame('otp_notification_provider_unavailable', $context['error_code']->value);
+        self::assertTrue(self::isVariable($context['identifier'], 'maskedIdentifier'));
+        self::assertTrue(self::isPropertyRead($context['tenant_id'], 'event', 'tenantId'));
     }
 
     private static function isExactSemanticQueryTernary(Node $node): bool

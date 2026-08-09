@@ -88,8 +88,8 @@ final class SendOtpNotificationListener implements ShouldQueue
             // 4. REPORT FAILURE & OBSERVE
             $this->circuitBreaker->reportFailure($serviceName);
 
-            Log::error('SMS Send Failed', [
-                'error' => $e->getMessage(),
+            Log::error('OTP notification delivery failed', [
+                'error_code' => 'otp_notification_provider_unavailable',
                 'identifier' => $maskedIdentifier,
                 'tenant_id' => $event->tenantId,
             ]);
