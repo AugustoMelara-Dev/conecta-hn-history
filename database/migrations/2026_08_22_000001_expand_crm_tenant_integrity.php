@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Application\Crm\TenantIntegrity\CrmTenantIntegrity;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -9,6 +10,15 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    /** @var array<string, true> */
+    private static array $ownedColumns = [];
+
+    /** @var array<string, true> */
+    private static array $ownedIndexes = [];
+
+    /** @var array<string, true> */
+    private static array $ownedUniques = [];
+
     /** @var array<string, list<string>> */
     private const CANDIDATE_KEYS = [
         'crm_pipelines_tenant_id_unique' => ['crm_pipelines', 'tenant_id', 'id'],
@@ -26,70 +36,75 @@ return new class extends Migration
         'tenant_memberships_tenant_user_id_unique' => ['tenant_memberships', 'tenant_id', 'user_id', 'id'],
     ];
 
-    public function up(): void
+    public function up(?string $expectedFingerprint = null): void
     {
-        foreach ([
-            ['contact_tag', 'contact_tag_tenant_contact_idx', ['tenant_id', 'contact_id']],
-            ['contact_tag', 'contact_tag_tenant_tag_idx', ['tenant_id', 'tag_id']],
-            ['deal_tag', 'deal_tag_tenant_deal_idx', ['tenant_id', 'deal_id']],
-            ['deal_tag', 'deal_tag_tenant_tag_idx', ['tenant_id', 'tag_id']],
-        ] as [$table, $index, $columns]) {
-            if (! Schema::hasTable($table)) {
-                continue;
-            }
-            if (! Schema::hasColumn($table, 'tenant_id')) {
-                Schema::table($table, function (Blueprint $blueprint): void {
-                    $blueprint->uuid('tenant_id')->nullable();
-                });
-            }
-            if ($this->hasIndex($table, $index)) {
-                continue;
-            }
-            Schema::table($table, function (Blueprint $blueprint) use ($columns, $index): void {
-                $blueprint->index($columns, $index);
-            });
+        if ($expectedFingerprint === null || trim($expectedFingerprint) === '') {
+            // Laravel's migration runner may call public up() without the
+            // preflight contract. Never mutate an unbound or legacy schema.
+            return;
         }
 
-        foreach (self::CANDIDATE_KEYS as $name => $definition) {
-            $table = (string) $definition[0];
-            $columns = array_slice($definition, 1);
-            if (! Schema::hasTable($table) || ! $this->hasColumns($table, $columns)) {
-                continue;
-            }
-            if ($this->hasCompatibleUnique($table, $columns)) {
-                continue;
-            }
-            Schema::table($table, function (Blueprint $blueprint) use ($columns, $name): void {
-                $blueprint->unique($columns, $name);
-            });
+        $service = app(CrmTenantIntegrity::class);
+        $preflight = $service->preflight('expand');
+        if ($preflight->status !== CrmTenantIntegrity::STATUS_READY
+            || ! hash_equals($preflight->schemaFingerprint, trim($expectedFingerprint))) {
+            throw new LogicException('CRM tenant-integrity migration requires a READY canonical schema fingerprint.');
         }
+
+        DB::transaction(function (): void {
+            foreach ([
+                ['contact_tag', 'contact_tag_tenant_contact_idx', ['tenant_id', 'contact_id']],
+                ['contact_tag', 'contact_tag_tenant_tag_idx', ['tenant_id', 'tag_id']],
+                ['deal_tag', 'deal_tag_tenant_deal_idx', ['tenant_id', 'deal_id']],
+                ['deal_tag', 'deal_tag_tenant_tag_idx', ['tenant_id', 'tag_id']],
+            ] as [$table, $index, $columns]) {
+                if (! Schema::hasTable($table)) {
+                    continue;
+                }
+                if (! Schema::hasColumn($table, 'tenant_id')) {
+                    Schema::table($table, function (Blueprint $blueprint): void {
+                        $blueprint->uuid('tenant_id')->nullable();
+                    });
+                    self::$ownedColumns[$table.'.tenant_id'] = true;
+                }
+                if ($this->hasIndex($table, $index)) {
+                    continue;
+                }
+                Schema::table($table, function (Blueprint $blueprint) use ($columns, $index): void {
+                    $blueprint->index($columns, $index);
+                });
+                self::$ownedIndexes[$table.'.'.$index] = true;
+            }
+
+            foreach (self::CANDIDATE_KEYS as $name => $definition) {
+                $table = (string) $definition[0];
+                $columns = array_slice($definition, 1);
+                if (! Schema::hasTable($table) || ! $this->hasColumns($table, $columns)) {
+                    continue;
+                }
+                if ($this->hasCompatibleUnique($table, $columns)) {
+                    continue;
+                }
+                Schema::table($table, function (Blueprint $blueprint) use ($columns, $name): void {
+                    $blueprint->unique($columns, $name);
+                });
+                self::$ownedUniques[$table.'.'.$name] = true;
+            }
+        });
     }
 
     public function down(): void
     {
-        // Populated provenance is live evidence. Preserve all additions rather
-        // than widening the integrity contract during an application rollback.
-        foreach (['contact_tag', 'deal_tag'] as $table) {
-            if (Schema::hasTable($table) && Schema::hasColumn($table, 'tenant_id')
-                && DB::table($table)->whereNotNull('tenant_id')->exists()) {
-                return;
-            }
-        }
-
-        // Candidate keys are removed only from demonstrably empty parent
-        // tables. Existing rows retain the additive key and historical data.
         foreach (self::CANDIDATE_KEYS as $name => $definition) {
             [$table] = $definition;
-            if (! Schema::hasTable($table) || ! $this->hasIndex($table, $name) || DB::table($table)->exists()) {
+            if (! Schema::hasTable($table) || ! $this->owns(self::$ownedUniques, $table.'.'.$name)
+                || ! $this->hasIndex($table, $name) || DB::table($table)->exists()) {
                 continue;
             }
-            try {
-                Schema::table($table, function (Blueprint $blueprint) use ($name): void {
-                    $blueprint->dropUnique($name);
-                });
-            } catch (Throwable) {
-                // An equivalent deployed name is safe to preserve.
-            }
+            Schema::table($table, function (Blueprint $blueprint) use ($name): void {
+                $blueprint->dropUnique($name);
+            });
+            unset(self::$ownedUniques[$table.'.'.$name]);
         }
 
         foreach ([
@@ -99,17 +114,35 @@ return new class extends Migration
             if (! Schema::hasTable($table) || ! Schema::hasColumn($table, 'tenant_id')) {
                 continue;
             }
+            $provenancePopulated = DB::table($table)->whereNotNull('tenant_id')->exists();
+            if ($provenancePopulated) {
+                continue;
+            }
             foreach ($indexes as $index) {
-                if ($this->hasIndex($table, $index)) {
+                if ($this->owns(self::$ownedIndexes, $table.'.'.$index) && $this->hasIndex($table, $index)) {
                     Schema::table($table, function (Blueprint $blueprint) use ($index): void {
                         $blueprint->dropIndex($index);
                     });
+                    unset(self::$ownedIndexes[$table.'.'.$index]);
                 }
             }
-            Schema::table($table, function (Blueprint $blueprint): void {
-                $blueprint->dropColumn('tenant_id');
-            });
+            if ($this->owns(self::$ownedColumns, $table.'.tenant_id')
+                && ! $this->hasIndex($table, 'contact_tag_tenant_contact_idx')
+                && ! $this->hasIndex($table, 'contact_tag_tenant_tag_idx')
+                && ! $this->hasIndex($table, 'deal_tag_tenant_deal_idx')
+                && ! $this->hasIndex($table, 'deal_tag_tenant_tag_idx')) {
+                Schema::table($table, function (Blueprint $blueprint): void {
+                    $blueprint->dropColumn('tenant_id');
+                });
+                unset(self::$ownedColumns[$table.'.tenant_id']);
+            }
         }
+    }
+
+    /** @param array<string, true> $ownership */
+    private function owns(array $ownership, string $key): bool
+    {
+        return isset($ownership[$key]);
     }
 
     /** @param list<string> $columns */
@@ -148,10 +181,6 @@ return new class extends Migration
     /** @return list<array<string,mixed>> */
     private function indexes(string $table): array
     {
-        try {
-            return Schema::getIndexes($table);
-        } catch (Throwable) {
-            return [];
-        }
+        return Schema::getIndexes($table);
     }
 };

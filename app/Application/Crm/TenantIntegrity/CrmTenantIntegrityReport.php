@@ -17,6 +17,7 @@ final readonly class CrmTenantIntegrityReport implements JsonSerializable
 {
     /**
      * @param list<string> $missingRequiredTables
+     * @param list<string> $missingRequiredColumns
      * @param array<string, int> $anomalies
      * @param array<string, array<string, mixed>> $inventory
      * @param array<string, mixed> $details
@@ -30,6 +31,7 @@ final readonly class CrmTenantIntegrityReport implements JsonSerializable
         public string $dataFingerprint = '',
         public bool $writesPerformed = false,
         public array $missingRequiredTables = [],
+        public array $missingRequiredColumns = [],
         public array $anomalies = [],
         public array $inventory = [],
         public array $blockingIssues = [],
@@ -61,6 +63,8 @@ final readonly class CrmTenantIntegrityReport implements JsonSerializable
         ksort($inventory);
         $missing = array_values(array_unique(array_map('strval', $this->missingRequiredTables)));
         sort($missing);
+        $missingColumns = array_values(array_unique(array_map('strval', $this->missingRequiredColumns)));
+        sort($missingColumns);
         $blocking = array_values(array_unique(array_map('strval', $this->blockingIssues)));
         sort($blocking);
 
@@ -72,6 +76,7 @@ final readonly class CrmTenantIntegrityReport implements JsonSerializable
             'data_fingerprint' => $this->dataFingerprint,
             'writes_performed' => $this->writesPerformed,
             'missing_required_tables' => $missing,
+            'missing_required_columns' => $missingColumns,
             'anomalies' => $anomalies,
             'inventory' => $inventory,
             'blocking_issues' => $blocking,

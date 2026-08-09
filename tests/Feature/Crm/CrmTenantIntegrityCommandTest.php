@@ -58,6 +58,10 @@ final class CrmTenantIntegrityCommandTest extends TestCase
             $table->uuid('tenant_id');
             $table->unsignedBigInteger('crm_pipeline_id');
             $table->unsignedBigInteger('crm_stage_id');
+            $table->unsignedBigInteger('customer_profile_id')->nullable();
+            $table->unsignedBigInteger('lead_id')->nullable();
+            $table->uuid('location_id')->nullable();
+            $table->uuid('owner_user_id')->nullable();
             $table->string('title');
             $table->decimal('value', 12, 2)->default(0);
             $table->string('currency', 3)->default('HNL');

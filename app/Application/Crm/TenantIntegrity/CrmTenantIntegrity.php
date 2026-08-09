@@ -24,6 +24,10 @@ final class CrmTenantIntegrity
     public const STATUS_EXPANDED = 'EXPANDED';
     public const STATUS_EXPANDED_NOOP = 'EXPANDED_NOOP';
     public const STATUS_BLOCKED_FINGERPRINT = 'BLOCKED_FINGERPRINT_MISMATCH';
+    public const STATUS_BLOCKED_FINGERPRINT_REQUIRED = 'BLOCKED_FINGERPRINT_REQUIRED';
+    public const STATUS_BLOCKED_REQUIRED_SCHEMA = 'BLOCKED_REQUIRED_SCHEMA';
+    public const STATUS_BLOCKED_METADATA_FAILURE = 'BLOCKED_METADATA_FAILURE';
+    public const STATUS_BLOCKED_PARTIAL_WRITE = 'BLOCKED_PARTIAL_WRITE';
     public const STATUS_BLOCKED_NOT_IMPLEMENTED = 'BLOCKED_NOT_IMPLEMENTED';
     public const STATUS_BLOCKED_EXTERNAL = 'BLOCKED_EXTERNAL';
 
@@ -57,6 +61,44 @@ final class CrmTenantIntegrity
         'tenant_memberships_tenant_user_id_unique' => ['tenant_memberships', 'tenant_id', 'user_id', 'id'],
     ];
 
+    /** @var array<string, list<string>> */
+    private const REQUIRED_COLUMNS = [
+        'tenants' => ['id'],
+        'crm_pipelines' => ['id', 'tenant_id'],
+        'crm_stages' => ['id', 'tenant_id', 'crm_pipeline_id'],
+        'crm_deals' => ['id', 'tenant_id', 'crm_pipeline_id', 'crm_stage_id', 'title', 'lead_id', 'location_id', 'customer_profile_id', 'owner_user_id'],
+        'crm_companies' => ['id', 'tenant_id'],
+        'crm_contacts' => ['id', 'tenant_id', 'company_id', 'owner_id'],
+        'crm_activities' => ['id', 'tenant_id', 'contact_id', 'deal_id', 'company_id', 'owner_id'],
+        'tags' => ['id', 'tenant_id'],
+        'contact_tag' => ['contact_id', 'tag_id'],
+        'deal_tag' => ['deal_id', 'tag_id'],
+        'leads' => ['id', 'tenant_id'],
+        'locations' => ['id', 'tenant_id'],
+        'customer_profiles' => ['id', 'tenant_id'],
+        'customer_notes' => ['id', 'tenant_id', 'crm_deal_id'],
+        'customer_tasks' => ['id', 'tenant_id', 'crm_deal_id'],
+        'quotes' => ['id', 'tenant_id', 'crm_deal_id'],
+        'tenant_memberships' => ['id', 'tenant_id', 'user_id', 'accepted_at'],
+    ];
+
+    /** @var array<string, list<string>> */
+    private const DUPLICATE_GROUPS = [
+        'crm_pipelines' => ['tenant_id', 'key'],
+        'crm_stages' => ['tenant_id', 'crm_pipeline_id', 'key'],
+        'crm_deals' => ['tenant_id', 'id'],
+        'crm_companies' => ['tenant_id', 'id'],
+        'crm_contacts' => ['tenant_id', 'id'],
+        'tags' => ['tenant_id', 'slug'],
+        'leads' => ['tenant_id', 'id'],
+        'locations' => ['tenant_id', 'id'],
+        'customer_profiles' => ['tenant_id', 'id'],
+        'customer_notes' => ['tenant_id', 'id'],
+        'customer_tasks' => ['tenant_id', 'id'],
+        'quotes' => ['tenant_id', 'id'],
+        'tenant_memberships' => ['tenant_id', 'user_id'],
+    ];
+
     public function run(string $phase = 'preflight', ?string $fingerprint = null): CrmTenantIntegrityReport
     {
         return match (strtolower(trim($phase))) {
@@ -68,8 +110,6 @@ final class CrmTenantIntegrity
         };
     }
 
-    // append marker
-
     public function shape(): string
     {
         if (! Schema::hasTable('crm_deals')) {
@@ -80,14 +120,18 @@ final class CrmTenantIntegrity
             return self::SHAPE_UNKNOWN;
         }
         $idType = $this->normalizedType('crm_deals', 'id');
-        $isBigint = in_array($idType, ['integer', 'bigint', 'int', 'int unsigned', 'unsigned integer', 'unsigned bigint'], true);
+        $isBigint = $this->isCanonicalBigintId($idType);
         $isUuid = in_array($idType, ['string', 'varchar', 'char', 'text', 'uuid'], true);
-        $legacyVocabulary = $this->hasAll($columns, ['pipeline_id', 'stage_id', 'name']);
+        $legacyVocabulary = $this->hasAny($columns, [
+            'pipeline_id', 'stage_id', 'name', 'contact_id', 'company_id', 'owner_id',
+            'probability', 'expected_close_date', 'won_at', 'lost_at', 'description', 'custom_fields',
+        ]);
         $canonicalVocabulary = $this->hasAll($columns, ['crm_pipeline_id', 'crm_stage_id', 'title']);
-        if ($canonicalVocabulary && $isBigint && ! $legacyVocabulary && ! in_array('pipeline_id', $columns, true)) {
+        $canonicalResidue = $this->hasAny($columns, ['crm_pipeline_id', 'crm_stage_id', 'title']);
+        if ($canonicalVocabulary && $isBigint && ! $legacyVocabulary) {
             return self::SHAPE_CANONICAL;
         }
-        if ($legacyVocabulary && $isUuid && ! $canonicalVocabulary && ! in_array('crm_pipeline_id', $columns, true)) {
+        if ($legacyVocabulary && $isUuid && ! $canonicalResidue) {
             return self::SHAPE_LEGACY;
         }
 
@@ -96,41 +140,57 @@ final class CrmTenantIntegrity
 
     public function preflight(string $phase = 'preflight'): CrmTenantIntegrityReport
     {
-        $shape = $this->shape();
-        $schemaFingerprint = $this->schemaFingerprint();
-        if (! Schema::hasTable('crm_deals')) {
-            return $this->report($phase, self::STATUS_BLOCKED_MISSING_REQUIRED_TABLE, $shape, $schemaFingerprint,
-                missingRequiredTables: ['crm_deals'], blockingIssues: ['missing_required_table:crm_deals']);
-        }
-        if ($shape === self::SHAPE_LEGACY) {
-            return $this->report($phase, self::STATUS_BLOCKED_LEGACY, $shape, $schemaFingerprint, blockingIssues: ['BLOCKED_LEGACY_UUID_CONTRACT']);
-        }
-        if ($shape === self::SHAPE_UNKNOWN) {
-            return $this->report($phase, self::STATUS_BLOCKED_UNKNOWN, $shape, $schemaFingerprint, blockingIssues: ['BLOCKED_UNKNOWN_SHAPE']);
-        }
+        $shape = self::SHAPE_UNKNOWN;
+        $schemaFingerprint = '';
+        try {
+            $shape = $this->shape();
+            $schemaFingerprint = $this->schemaFingerprint();
+            if (! Schema::hasTable('crm_deals')) {
+                return $this->report($phase, self::STATUS_BLOCKED_MISSING_REQUIRED_TABLE, $shape, $schemaFingerprint,
+                    missingRequiredTables: ['crm_deals'], blockingIssues: ['missing_required_table:crm_deals']);
+            }
+            if ($shape === self::SHAPE_LEGACY) {
+                return $this->report($phase, self::STATUS_BLOCKED_LEGACY, $shape, $schemaFingerprint, blockingIssues: ['BLOCKED_LEGACY_UUID_CONTRACT']);
+            }
+            if ($shape === self::SHAPE_UNKNOWN) {
+                return $this->report($phase, self::STATUS_BLOCKED_UNKNOWN, $shape, $schemaFingerprint, blockingIssues: ['BLOCKED_UNKNOWN_SHAPE']);
+            }
 
-        $missing = array_values(array_filter(self::REQUIRED_TABLES, static fn (string $table): bool => ! Schema::hasTable($table)));
-        if ($missing !== []) {
-            return $this->report($phase, self::STATUS_BLOCKED_MISSING_REQUIRED_TABLE, $shape, $schemaFingerprint,
-                missingRequiredTables: $missing,
-                blockingIssues: array_map(static fn (string $table): string => 'missing_required_table:'.$table, $missing));
+            $missing = array_values(array_filter(self::REQUIRED_TABLES, static fn (string $table): bool => ! Schema::hasTable($table)));
+            if ($missing !== []) {
+                return $this->report($phase, self::STATUS_BLOCKED_MISSING_REQUIRED_TABLE, $shape, $schemaFingerprint,
+                    missingRequiredTables: $missing,
+                    blockingIssues: array_map(static fn (string $table): string => 'missing_required_table:'.$table, $missing));
+            }
+
+            $missingColumns = $this->missingRequiredColumns();
+            if ($missingColumns !== []) {
+                return $this->report($phase, self::STATUS_BLOCKED_REQUIRED_SCHEMA, $shape, $schemaFingerprint,
+                    missingRequiredColumns: $missingColumns,
+                    blockingIssues: array_map(static fn (string $column): string => 'missing_required_column:'.$column, $missingColumns));
+            }
+
+            $inventory = $this->inventory();
+            $anomalies = $this->anomalies();
+            $blocking = array_keys(array_filter($anomalies, static fn (int $count): bool => $count > 0));
+            sort($blocking);
+
+            return $this->report($phase, $blocking === [] ? self::STATUS_READY : self::STATUS_BLOCKED_ANOMALIES,
+                $shape, $schemaFingerprint, dataFingerprint: $this->dataFingerprint($inventory),
+                anomalies: $anomalies, inventory: $inventory, blockingIssues: $blocking,
+                details: [
+                    'required_tables' => self::REQUIRED_TABLES,
+                    'optional_tables' => self::OPTIONAL_TABLES,
+                    'candidate_keys' => $this->candidateKeyDetails(),
+                    'anomaly_hashes' => $this->anomalyHashes($anomalies),
+                    'query_bounds' => ['max_anomaly_hashes' => 20, 'row_boundary' => 'first_and_last_ids_only'],
+                    'writes_performed' => false,
+                ]);
+        } catch (Throwable $exception) {
+            return $this->report($phase, self::STATUS_BLOCKED_METADATA_FAILURE, $shape, $schemaFingerprint,
+                blockingIssues: ['metadata_introspection_failed'],
+                details: ['error_code' => get_class($exception), 'writes_performed' => false]);
         }
-
-        $inventory = $this->inventory();
-        $anomalies = $this->anomalies();
-        $blocking = array_keys(array_filter($anomalies, static fn (int $count): bool => $count > 0));
-        sort($blocking);
-
-        return $this->report($phase, $blocking === [] ? self::STATUS_READY : self::STATUS_BLOCKED_ANOMALIES,
-            $shape, $schemaFingerprint, dataFingerprint: $this->dataFingerprint($inventory),
-            anomalies: $anomalies, inventory: $inventory, blockingIssues: $blocking,
-            details: [
-                'required_tables' => self::REQUIRED_TABLES,
-                'optional_tables' => self::OPTIONAL_TABLES,
-                'candidate_keys' => $this->candidateKeyDetails(),
-                'anomaly_samples' => $this->anomalySamples($anomalies),
-                'writes_performed' => false,
-            ]);
     }
 
     public function expand(?string $expectedFingerprint = null): CrmTenantIntegrityReport
@@ -139,8 +199,12 @@ final class CrmTenantIntegrity
         if ($preflight->status !== self::STATUS_READY) {
             return $preflight;
         }
-        if ($expectedFingerprint !== null && trim($expectedFingerprint) !== ''
-            && ! hash_equals($preflight->schemaFingerprint, trim($expectedFingerprint))) {
+        if ($expectedFingerprint === null || trim($expectedFingerprint) === '') {
+            return $this->copyReport($preflight, self::STATUS_BLOCKED_FINGERPRINT_REQUIRED,
+                blockingIssues: ['schema_fingerprint_required'],
+                details: [...$preflight->details, 'writes_performed' => false]);
+        }
+        if (! hash_equals($preflight->schemaFingerprint, trim($expectedFingerprint))) {
             return $this->copyReport($preflight, self::STATUS_BLOCKED_FINGERPRINT,
                 blockingIssues: ['schema_fingerprint_mismatch'],
                 details: ['expected_fingerprint_hash' => hash('sha256', trim($expectedFingerprint))]);
@@ -149,10 +213,34 @@ final class CrmTenantIntegrity
         $before = $preflight->schemaFingerprint;
         try {
             $migration = require database_path('migrations/'.self::MIGRATION);
-            $migration->up();
+            DB::transaction(static function () use ($migration, $before): void {
+                $migration->up($before);
+            });
         } catch (Throwable $exception) {
-            return $this->copyReport($preflight, self::STATUS_BLOCKED_ANOMALIES,
-                blockingIssues: ['expand_failed'], details: ['error_code' => get_class($exception)]);
+            try {
+                $afterFailure = $this->preflight('expand');
+                $afterFingerprint = $afterFailure->schemaFingerprint;
+            } catch (Throwable) {
+                return $this->copyReport($preflight, self::STATUS_BLOCKED_PARTIAL_WRITE,
+                    writesPerformed: true,
+                    blockingIssues: ['expand_failed', 'schema_fingerprint_unavailable_after_failure'],
+                    details: [...$preflight->details, 'error_code' => get_class($exception), 'writes_state' => 'unknown']);
+            }
+            if ($afterFingerprint !== '' && hash_equals($before, $afterFingerprint)) {
+                return $this->copyReport($preflight, self::STATUS_BLOCKED_ANOMALIES,
+                    blockingIssues: ['expand_failed'],
+                    details: [...$preflight->details, 'error_code' => get_class($exception), 'writes_performed' => false]);
+            }
+            return $this->copyReport($afterFailure, self::STATUS_BLOCKED_PARTIAL_WRITE,
+                writesPerformed: true,
+                blockingIssues: ['expand_failed', 'schema_fingerprint_changed_after_failure'],
+                details: [
+                    ...$afterFailure->details,
+                    'error_code' => get_class($exception),
+                    'before_schema_fingerprint' => $before,
+                    'after_schema_fingerprint' => $afterFingerprint,
+                    'writes_state' => 'changed',
+                ]);
         }
         $after = $this->preflight('expand');
         $changed = ! hash_equals($before, $after->schemaFingerprint);
@@ -175,7 +263,7 @@ final class CrmTenantIntegrity
             details: [...$preflight->details, 'writes_performed' => false]);
     }
 
-    /** @param list<string> $missingRequiredTables @param array<string,int> $anomalies @param array<string,array<string,mixed>> $inventory @param list<string> $blockingIssues @param array<string,mixed> $details */
+    /** @param list<string> $missingRequiredTables @param list<string> $missingRequiredColumns @param array<string,int> $anomalies @param array<string,array<string,mixed>> $inventory @param list<string> $blockingIssues @param array<string,mixed> $details */
     private function report(
         string $phase,
         string $status,
@@ -184,6 +272,7 @@ final class CrmTenantIntegrity
         string $dataFingerprint = '',
         bool $writesPerformed = false,
         array $missingRequiredTables = [],
+        array $missingRequiredColumns = [],
         array $anomalies = [],
         array $inventory = [],
         array $blockingIssues = [],
@@ -197,6 +286,7 @@ final class CrmTenantIntegrity
             dataFingerprint: $dataFingerprint,
             writesPerformed: $writesPerformed,
             missingRequiredTables: $missingRequiredTables,
+            missingRequiredColumns: $missingRequiredColumns,
             anomalies: $anomalies,
             inventory: $inventory,
             blockingIssues: $blockingIssues,
@@ -215,6 +305,7 @@ final class CrmTenantIntegrity
             dataFingerprint: $report->dataFingerprint,
             writesPerformed: $writesPerformed,
             missingRequiredTables: $report->missingRequiredTables,
+            missingRequiredColumns: $report->missingRequiredColumns,
             anomalies: $report->anomalies,
             inventory: $report->inventory,
             blockingIssues: $blockingIssues === [] ? $report->blockingIssues : $blockingIssues,
@@ -228,7 +319,7 @@ final class CrmTenantIntegrity
         $tables = [...self::REQUIRED_TABLES, ...array_values(array_filter(self::OPTIONAL_TABLES, static fn (string $table): bool => Schema::hasTable($table)))];
         $inventory = [];
         foreach ($tables as $table) {
-            $inventory[$table] = ['row_count' => $this->boundedCount($table), 'opaque_boundary' => $this->opaqueBoundary($table)];
+            $inventory[$table] = ['row_count' => $this->boundedCount($table), 'row_boundary' => $this->rowBoundary($table)];
         }
         ksort($inventory);
 
@@ -337,9 +428,7 @@ final class CrmTenantIntegrity
     /** @param array<string,int> $counts */
     private function duplicateCandidateAnomalies(array &$counts): void
     {
-        foreach (self::CANDIDATE_KEYS as $definition) {
-            $table = (string) $definition[0];
-            $columns = array_slice($definition, 1);
+        foreach (self::DUPLICATE_GROUPS as $table => $columns) {
             if (! Schema::hasTable($table) || ! $this->hasColumns($table, $columns)) {
                 continue;
             }
@@ -501,17 +590,59 @@ final class CrmTenantIntegrity
         return true;
     }
 
+    /** @param list<string> $haystack @param list<string> $columns */
+    private function hasAny(array $haystack, array $columns): bool
+    {
+        foreach ($columns as $column) {
+            if (in_array($column, $haystack, true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function isCanonicalBigintId(string $idType): bool
+    {
+        if (in_array($idType, ['bigint', 'bigint unsigned', 'int unsigned', 'unsigned bigint'], true)) {
+            return true;
+        }
+        if ($idType !== 'integer' || DB::getDriverName() !== 'sqlite') {
+            return false;
+        }
+
+        $definition = DB::selectOne(
+            "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?",
+            ['crm_deals'],
+        );
+        $sql = strtolower((string) ($definition->sql ?? ''));
+
+        return str_contains($sql, 'primary key autoincrement');
+    }
+
+    /** @return list<string> */
+    private function missingRequiredColumns(): array
+    {
+        $missing = [];
+        foreach (self::REQUIRED_COLUMNS as $table => $columns) {
+            foreach ($columns as $column) {
+                if (! Schema::hasColumn($table, $column)) {
+                    $missing[] = $table.'.'.$column;
+                }
+            }
+        }
+        sort($missing);
+
+        return $missing;
+    }
+
     private function boundedCount(string $table): int
     {
-        try {
-            return (int) DB::table($table)->count();
-        } catch (Throwable) {
-            return 0;
-        }
+        return (int) DB::table($table)->count();
     }
 
     /** @return array<string,mixed> */
-    private function opaqueBoundary(string $table): array
+    private function rowBoundary(string $table): array
     {
         $columns = Schema::getColumnListing($table);
         $idColumn = in_array('id', $columns, true) ? 'id' : ($columns[0] ?? null);
@@ -559,11 +690,7 @@ final class CrmTenantIntegrity
     /** @return list<array<string,mixed>> */
     private function columns(string $table): array
     {
-        try {
-            $columns = Schema::getColumns($table);
-        } catch (Throwable) {
-            return [];
-        }
+        $columns = Schema::getColumns($table);
         usort($columns, static fn (array $a, array $b): int => strcmp((string) ($a['name'] ?? ''), (string) ($b['name'] ?? '')));
         return array_map(static fn (array $column): array => [
             'name' => (string) ($column['name'] ?? ''),
@@ -577,11 +704,7 @@ final class CrmTenantIntegrity
     /** @return list<array<string,mixed>> */
     private function indexes(string $table): array
     {
-        try {
-            $indexes = Schema::getIndexes($table);
-        } catch (Throwable) {
-            return [];
-        }
+        $indexes = Schema::getIndexes($table);
         usort($indexes, static fn (array $a, array $b): int => strcmp((string) ($a['name'] ?? ''), (string) ($b['name'] ?? '')));
         return array_map(static fn (array $index): array => [
             'name' => (string) ($index['name'] ?? ''),
@@ -594,11 +717,7 @@ final class CrmTenantIntegrity
     /** @return list<array<string,mixed>> */
     private function foreignKeys(string $table): array
     {
-        try {
-            $keys = Schema::getForeignKeys($table);
-        } catch (Throwable) {
-            return [];
-        }
+        $keys = Schema::getForeignKeys($table);
         usort($keys, static fn (array $a, array $b): int => strcmp(json_encode($a), json_encode($b)));
         return array_map(static fn (array $key): array => [
             'name' => (string) ($key['name'] ?? ''),
@@ -612,11 +731,7 @@ final class CrmTenantIntegrity
 
     private function normalizedType(string $table, string $column): string
     {
-        try {
-            return strtolower((string) Schema::getColumnType($table, $column));
-        } catch (Throwable) {
-            return '';
-        }
+        return strtolower((string) Schema::getColumnType($table, $column));
     }
 
     /** @param array<string,int> $counts */
@@ -650,15 +765,20 @@ final class CrmTenantIntegrity
     }
 
     /** @param array<string,int> $anomalies @return array<string,list<string>> */
-    private function anomalySamples(array $anomalies): array
+    private function anomalyHashes(array $anomalies): array
     {
-        $samples = [];
+        $hashes = [];
+        $remaining = 20;
         foreach ($anomalies as $code => $count) {
             if ($count > 0) {
-                $samples[$code] = [hash('sha256', $code.':'.(string) $count)];
+                $hashes[$code] = [hash('sha256', $code.':'.(string) $count)];
+                $remaining--;
+                if ($remaining === 0) {
+                    break;
+                }
             }
         }
-        ksort($samples);
-        return $samples;
+        ksort($hashes);
+        return $hashes;
     }
 }
