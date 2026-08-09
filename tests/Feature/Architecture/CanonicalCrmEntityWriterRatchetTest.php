@@ -550,8 +550,72 @@ it('proves the AST ratchet detects bypass shapes while ignoring comments and imp
         }
         PHP;
 
+    $webToLeadQuietCreateFamily = <<<'PHP'
+        <?php
+        use App\Models\Contact;
+        use App\Models\CrmCompany;
+        use App\Models\CrmActivity;
+        use Illuminate\Support\Facades\DB;
+
+        function submit(): void
+        {
+            DB::transaction(function (): void {
+                $tenantId = \Filament\Facades\Filament::getTenant()?->getKey();
+                CrmCompany::firstOrCreate(
+                    ['tenant_id' => $tenantId, 'name' => 'Acme'],
+                    ['tenant_id' => $tenantId, 'name' => 'Acme'],
+                );
+                Contact::create(['tenant_id' => $tenantId]);
+                CrmActivity::create(['tenant_id' => $tenantId]);
+                Contact::createQuietly(['tenant_id' => $tenantId]);
+                Contact::forceCreateQuietly(['tenant_id' => $tenantId]);
+                $contact = Contact::find($id);
+                $contact->activities()->createManyQuietly([
+                    ['tenant_id' => $tenantId],
+                ]);
+                $contact->activities()->forceCreateManyQuietly([
+                    ['tenant_id' => $tenantId],
+                ]);
+            });
+        }
+        PHP;
+
+    $webToLeadAlternatePivotFamily = <<<'PHP'
+        <?php
+        use App\Models\Contact;
+        use App\Models\CrmCompany;
+        use App\Models\CrmActivity;
+        use Illuminate\Support\Facades\DB;
+
+        function submit(): void
+        {
+            DB::transaction(function (): void {
+                $tenantId = \Filament\Facades\Filament::getTenant()?->getKey();
+                CrmCompany::firstOrCreate(
+                    ['tenant_id' => $tenantId, 'name' => 'Acme'],
+                    ['tenant_id' => $tenantId, 'name' => 'Acme'],
+                );
+                Contact::create(['tenant_id' => $tenantId]);
+                CrmActivity::create(['tenant_id' => $tenantId]);
+                $contact = Contact::find($id);
+                $contact->tags()->toggle($tagIds);
+                $contact->tags()->toggleOrFail($tagIds);
+                $contact->tags()->syncOrFail($tagIds);
+                $contact->tags()->syncWithoutDetachingOrFail($tagIds);
+                $contact->tags()->syncWithPivotValues($tagIds, ['tenant_id' => $tenantId]);
+                $contact->tags()->syncWithPivotValuesOrFail($tagIds, ['tenant_id' => $tenantId]);
+                $contact->tags()->attachOrFail($tagIds);
+                $contact->tags()->detachOrFail($tagIds);
+                $contact->tags()->updateExistingPivot($tagId, ['tenant_id' => $tenantId]);
+                $contact->tags()->updateExistingPivotOrFail($tagId, ['tenant_id' => $tenantId]);
+            });
+        }
+        PHP;
+
     expect(dovraCrmWebToLeadSentinel($webToLeadMaskedDelete, true)['ok'])->toBeFalse();
     expect(dovraCrmWebToLeadSentinel($webToLeadScopedRelation, true)['ok'])->toBeFalse();
+    expect(dovraCrmWebToLeadSentinel($webToLeadQuietCreateFamily, true)['ok'])->toBeFalse();
+    expect(dovraCrmWebToLeadSentinel($webToLeadAlternatePivotFamily, true)['ok'])->toBeFalse();
 });
 
 /** @return list<string> */
@@ -1775,13 +1839,31 @@ final class DovraCrmCanonicalAstCollector extends NodeVisitorAbstract
     /** @var list<array{method: string, locals: array<string, string>, pending: array<string, list<string>>, derived: array<string, bool>, scoped: array<string, bool>}> */
     private array $scopes = [];
 
+    /**
+     * Union of the installed Eloquent Model/Builder, relation and pivot-table
+     * mutation APIs (installed Laravel 13.x), plus the Query Builder write variants.
+     * Keep this explicit so adding a quiet/fail/or-pivot sibling cannot bypass
+     * the canonical writer ratchet.
+     */
     private const PERSISTENCE = [
-        'create', 'createOrFirst', 'firstOrCreate', 'updateOrCreate', 'forceCreate', 'createQuietly',
-        'update', 'updateQuietly', 'save', 'saveQuietly', 'delete', 'deleteQuietly', 'forceDelete',
-        'forceDeleteQuietly', 'restore', 'restoreQuietly', 'push', 'pushQuietly', 'increment', 'decrement',
-        'incrementQuietly', 'decrementQuietly', 'touch', 'touchQuietly', 'fill', 'forceFill', 'upsert',
-        'insert', 'insertGetId', 'insertOrIgnore', 'truncate', 'associate', 'sync', 'syncWithoutDetaching',
-        'attach', 'detach',
+        // Model/Builder create and upsert family.
+        'create', 'createQuietly', 'createMany', 'createManyQuietly', 'forceCreate', 'forceCreateQuietly',
+        'forceCreateMany', 'forceCreateManyQuietly', 'createOrFirst', 'firstOrCreate', 'updateOrCreate',
+        'incrementOrCreate', 'update', 'updateOrFail', 'updateQuietly', 'upsert',
+        // Model lifecycle and save/update variants.
+        'save', 'saveQuietly', 'saveMany', 'saveManyQuietly', 'saveOrFail', 'saveOrIgnore', 'delete',
+        'deleteQuietly', 'deleteOrFail', 'forceDelete', 'forceDeleteQuietly', 'restore', 'restoreQuietly',
+        'push', 'pushQuietly', 'increment', 'incrementEach', 'incrementQuietly', 'incrementEachQuietly',
+        'decrement', 'decrementEach', 'decrementQuietly', 'decrementEachQuietly', 'touch', 'touchQuietly',
+        'touchIfTouching',
+        'fill', 'forceFill', 'associate', 'dissociate', 'disassociate',
+        // Pivot-table mutation family (including fail/quiet siblings).
+        'sync', 'syncWithoutDetaching', 'syncOrFail', 'syncWithoutDetachingOrFail', 'syncWithPivotValues',
+        'syncWithPivotValuesOrFail', 'toggle', 'toggleOrFail', 'attach', 'attachOrFail', 'detach',
+        'detachOrFail', 'updateExistingPivot', 'updateExistingPivotOrFail',
+        // Query Builder write variants.
+        'insert', 'insertGetId', 'insertOrIgnore', 'insertOrIgnoreReturning', 'insertUsing',
+        'insertOrIgnoreUsing', 'updateFrom', 'updateOrInsert', 'truncate',
     ];
 
     private const SENSITIVE = ['tenant_id', 'company_id', 'contact_id', 'deal_id', 'owner_id', 'tag_id'];
