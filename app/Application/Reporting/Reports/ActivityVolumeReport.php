@@ -10,6 +10,7 @@ use App\Domain\Reporting\Enums\ReportKey;
 use App\Domain\Reporting\ValueObjects\ReportRow;
 use App\Domain\Reporting\ValueObjects\ReportRange;
 use App\Domain\Reporting\ValueObjects\ReportSeries;
+use Illuminate\Support\Facades\DB;
 
 class ActivityVolumeReport implements ReportInterface
 {

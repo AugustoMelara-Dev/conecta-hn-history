@@ -9,6 +9,7 @@ use App\Application\Reporting\ValueObjects\ReportData;
 use App\Domain\Reporting\Enums\ReportKey;
 use App\Domain\Reporting\ValueObjects\ReportRange;
 use App\Domain\Reporting\ValueObjects\ReportRow;
+use Illuminate\Support\Facades\DB;
 
 class RefundRateReport implements ReportInterface
 {

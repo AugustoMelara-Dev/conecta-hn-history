@@ -9,6 +9,8 @@ use App\Application\Reporting\ValueObjects\ReportData;
 use App\Domain\Reporting\Enums\ReportKey;
 use App\Domain\Reporting\ValueObjects\ReportRow;
 use App\Domain\Reporting\ValueObjects\ReportRange;
+use Illuminate\Support\Facades\DB;
+
 class ConversionFunnelReport implements ReportInterface
 {
     public function getKey(): ReportKey { return ReportKey::ConversionFunnel; }

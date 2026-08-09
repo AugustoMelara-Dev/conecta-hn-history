@@ -9,6 +9,8 @@ use App\Application\Reporting\ValueObjects\ReportData;
 use App\Domain\Reporting\Enums\ReportKey;
 use App\Domain\Reporting\ValueObjects\ReportRow;
 use App\Domain\Reporting\ValueObjects\ReportRange;
+use Illuminate\Support\Facades\DB;
+
 class ChannelPerformanceReport implements ReportInterface
 {
     public function getKey(): ReportKey { return ReportKey::ChannelPerformance; }
@@ -21,7 +23,7 @@ class ChannelPerformanceReport implements ReportInterface
     {
         $channels = DB::table('orders')->where('tenant_id', $tenantId)->where('status', 'paid')
             ->whereBetween('created_at', [$range->start, $range->end])
-            ->selectRaw('COALESCE(channel, "direct") as channel, SUM(total_amount) as revenue, COUNT(*) as cnt')
+            ->selectRaw('COALESCE(channel, ?) as channel, SUM(total_amount) as revenue, COUNT(*) as cnt', ['direct'])
             ->groupBy('channel')->get();
         $rows = [];
         foreach ($channels as $c) {

@@ -9,6 +9,8 @@ use App\Application\Reporting\ValueObjects\ReportData;
 use App\Domain\Reporting\Enums\ReportKey;
 use App\Domain\Reporting\ValueObjects\ReportRow;
 use App\Domain\Reporting\ValueObjects\ReportRange;
+use Illuminate\Support\Facades\DB;
+
 class AttributionBySourceReport implements ReportInterface
 {
     public function getKey(): ReportKey { return ReportKey::AttributionBySource; }
@@ -22,7 +24,7 @@ class AttributionBySourceReport implements ReportInterface
         $sources = DB::table('orders as o')->join('crm_contacts as c', 'c.email', '=', 'o.customer_email')
             ->where('o.tenant_id', $tenantId)->where('o.status', 'paid')
             ->whereBetween('o.created_at', [$range->start, $range->end])
-            ->selectRaw('COALESCE(c.source, "unknown") as source, SUM(o.total_amount) as revenue')
+            ->selectRaw('COALESCE(c.source, ?) as source, SUM(o.total_amount) as revenue', ['unknown'])
             ->groupBy('source')->get();
         $total = (float) $sources->sum('revenue');
         $rows = [];
