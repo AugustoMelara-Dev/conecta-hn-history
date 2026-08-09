@@ -201,14 +201,16 @@ final readonly class CanonicalCrmEntityWriter
             throw new \InvalidArgumentException('Contact IDs must not be empty.');
         }
 
-        $contactIds = array_values(array_unique($contactIds));
+        $normalizedContactIds = [];
         foreach ($contactIds as $contactId) {
             if (! is_string($contactId) || ! Str::isUuid($contactId)) {
                 throw new \InvalidArgumentException('Contact IDs must be UUIDs.');
             }
+            $normalizedContactIds[] = strtolower($contactId);
         }
+        $contactIds = array_values(array_unique($normalizedContactIds));
         if ($ownerId !== null) {
-            $this->assertUuid($ownerId, 'owner_id');
+            $ownerId = $this->assertUuid($ownerId, 'owner_id');
         }
 
         return DB::transaction(function () use ($tenantId, $actorId, $contactIds, $ownerId): int {
@@ -258,11 +260,13 @@ final readonly class CanonicalCrmEntityWriter
         }
     }
 
-    private function assertUuid(string $value, string $field): void
+    private function assertUuid(string $value, string $field): string
     {
         if (! Str::isUuid($value)) {
             throw ValidationException::withMessages([$field => [self::REFERENCE_MESSAGE]]);
         }
+
+        return strtolower($value);
     }
 
     private function authority(string $tenantId, string $actorId, string $permission): void
@@ -295,30 +299,9 @@ final readonly class CanonicalCrmEntityWriter
             ->orderBy('id')
             ->lockForUpdate()
             ->get();
-        if ($memberships->count() !== 1 || ! $this->membershipAllows($memberships->first(), $permission, $actor)) {
+        if ($memberships->count() !== 1 || ! $this->spatieAllows($actor, $permission)) {
             throw new AuthorizationException('Actor cannot mutate CRM entities for this tenant.');
         }
-    }
-
-    private function membershipAllows(object $membership, string $permission, User $actor): bool
-    {
-        $role = $membership->role instanceof \BackedEnum
-            ? $membership->role->value
-            : (string) $membership->role;
-        $rolePermissions = config("rbac.roles.{$role}", []);
-        if (in_array($permission, (array) $rolePermissions, true)) {
-            return true;
-        }
-
-        $granted = $membership->granted_permissions;
-        if (is_string($granted)) {
-            $granted = json_decode($granted, true);
-        }
-        if (is_array($granted) && in_array($permission, $granted, true)) {
-            return true;
-        }
-
-        return $this->spatieAllows($actor, $permission);
     }
 
     private function spatieAllows(User $actor, string $permission): bool
@@ -400,6 +383,7 @@ final readonly class CanonicalCrmEntityWriter
         if (! is_string($ownerId) || ! Str::isUuid($ownerId)) {
             throw ValidationException::withMessages(['owner_id' => [self::OWNER_MESSAGE]]);
         }
+        $ownerId = strtolower($ownerId);
 
         $tenant = Tenant::query()
             ->withoutGlobalScopes()
@@ -441,8 +425,11 @@ final readonly class CanonicalCrmEntityWriter
         string $field,
         bool $uuid = false,
     ): string|int {
-        if ($uuid && (! is_string($id) || ! Str::isUuid($id))) {
-            throw ValidationException::withMessages([$field => [self::REFERENCE_MESSAGE]]);
+        if ($uuid) {
+            if (! is_string($id) || ! Str::isUuid($id)) {
+                throw ValidationException::withMessages([$field => [self::REFERENCE_MESSAGE]]);
+            }
+            $id = strtolower($id);
         }
         if (! $uuid && (! is_int($id) || $id < 1)) {
             throw ValidationException::withMessages([$field => [self::REFERENCE_MESSAGE]]);

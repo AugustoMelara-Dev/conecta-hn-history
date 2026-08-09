@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 use App\Application\Crm\CanonicalCrmEntityWriter;
 use App\Models\Contact;
+use App\Models\CrmActivity;
 use App\Models\CrmCompany;
+use App\Models\Tag;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -39,21 +42,32 @@ function canonicalWriterMembership(Tenant $tenant, User $user, array $overrides 
         'tenant_id' => $tenant->id,
         'user_id' => $user->id,
         'role' => 'manager',
-        'granted_permissions' => json_encode([
-            'crm.companies.create',
-            'crm.companies.update',
-            'crm.contacts.create',
-            'crm.contacts.update',
-            'crm.activities.create',
-            'crm.activities.update',
-            'crm.tags.create',
-            'crm.tags.update',
-        ], JSON_THROW_ON_ERROR),
+        'granted_permissions' => null,
         'status' => 'active',
         'accepted_at' => now(),
         'created_at' => now(),
         'updated_at' => now(),
     ], $overrides));
+}
+
+function canonicalWriterGrantSpatie(User $user, string ...$permissions): void
+{
+    foreach ($permissions as $permission) {
+        $permissionId = DB::table('permissions')
+            ->where('name', $permission)
+            ->where('guard_name', 'web')
+            ->value('id');
+        $permissionId ??= DB::table('permissions')->insertGetId([
+            'name' => $permission,
+            'guard_name' => 'web',
+        ]);
+
+        DB::table('model_has_permissions')->insert([
+            'permission_id' => $permissionId,
+            'model_type' => User::class,
+            'model_id' => $user->id,
+        ]);
+    }
 }
 
 function canonicalWriterCompany(Tenant $tenant, string $name = 'Existing company'): CrmCompany
@@ -72,6 +86,47 @@ function canonicalWriterContact(Tenant $tenant, array $attributes = []): Contact
         'last_name' => 'Contact',
         'lifecycle_stage' => 'lead',
     ], $attributes));
+}
+
+function canonicalWriterActivity(Tenant $tenant, array $attributes = []): CrmActivity
+{
+    return CrmActivity::withoutGlobalScopes()->forceCreate(array_merge([
+        'tenant_id' => $tenant->id,
+        'type' => 'call',
+    ], $attributes));
+}
+
+function canonicalWriterDeal(Tenant $tenant, string $key = 'pipeline'): int
+{
+    $pipelineId = DB::table('crm_pipelines')->insertGetId([
+        'tenant_id' => $tenant->id,
+        'name' => 'Pipeline',
+        'key' => $key,
+        'is_active' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+    $stageId = DB::table('crm_stages')->insertGetId([
+        'tenant_id' => $tenant->id,
+        'crm_pipeline_id' => $pipelineId,
+        'name' => 'Open',
+        'key' => 'open',
+        'type' => 'open',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    return (int) DB::table('crm_deals')->insertGetId([
+        'tenant_id' => $tenant->id,
+        'crm_pipeline_id' => $pipelineId,
+        'crm_stage_id' => $stageId,
+        'title' => 'Bigint deal',
+        'value' => 0,
+        'currency' => 'HNL',
+        'status' => 'open',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
 }
 
 it('writes every canonical CRM entity through the writer boundary', function (): void {
@@ -107,6 +162,7 @@ it('accepts an active member with the exact CRM permission and rejects inactive 
     ['tenant' => $tenant] = canonicalWriterTenant();
     $member = canonicalWriterUser();
     canonicalWriterMembership($tenant, $member);
+    canonicalWriterGrantSpatie($member, 'crm.companies.create');
     $writer = app(CanonicalCrmEntityWriter::class);
 
     expect($writer->createCompany((string) $tenant->id, (string) $member->id, ['name' => 'Member company']))
@@ -129,6 +185,7 @@ it('accepts an active member with the exact CRM permission and rejects inactive 
 
     $duplicate = canonicalWriterUser();
     canonicalWriterMembership($tenant, $duplicate);
+    $ambiguousSeeded = false;
     try {
         DB::table('tenant_memberships')->insert([
             'id' => (string) Str::uuid(),
@@ -141,12 +198,14 @@ it('accepts an active member with the exact CRM permission and rejects inactive 
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+        $ambiguousSeeded = true;
+    } catch (QueryException) {
+        // A tenant/user uniqueness constraint may make an ambiguous membership
+        // impossible to seed.
+    }
+    if ($ambiguousSeeded) {
         expect(fn () => $writer->createCompany((string) $tenant->id, (string) $duplicate->id, ['name' => 'Duplicate']))
             ->toThrow(AuthorizationException::class);
-    } catch (Throwable) {
-        // A tenant/user uniqueness constraint may make an ambiguous membership
-        // impossible to seed; the writer still fails closed for zero matches.
-        expect(true)->toBeTrue();
     }
 
     $foreign = canonicalWriterUser();
@@ -203,34 +262,7 @@ it('keeps omitted attributes unchanged, clears explicit nullable references, and
         ->and($updated->last_name)->toBe('Contact')
         ->and($updated->company_id)->toBeNull();
 
-    $pipelineId = DB::table('crm_pipelines')->insertGetId([
-        'tenant_id' => $tenant->id,
-        'name' => 'Pipeline',
-        'key' => 'pipeline',
-        'is_active' => true,
-        'created_at' => now(),
-        'updated_at' => now(),
-    ]);
-    $stageId = DB::table('crm_stages')->insertGetId([
-        'tenant_id' => $tenant->id,
-        'crm_pipeline_id' => $pipelineId,
-        'name' => 'Open',
-        'key' => 'open',
-        'type' => 'open',
-        'created_at' => now(),
-        'updated_at' => now(),
-    ]);
-    $dealId = DB::table('crm_deals')->insertGetId([
-        'tenant_id' => $tenant->id,
-        'crm_pipeline_id' => $pipelineId,
-        'crm_stage_id' => $stageId,
-        'title' => 'Bigint deal',
-        'value' => 0,
-        'currency' => 'HNL',
-        'status' => 'open',
-        'created_at' => now(),
-        'updated_at' => now(),
-    ]);
+    $dealId = canonicalWriterDeal($tenant);
     $activity = $writer->createActivity((string) $tenant->id, (string) $owner->id, [
         'deal_id' => (int) $dealId,
         'type' => 'task',
@@ -260,4 +292,217 @@ it('makes bulk owner assignment atomic when one requested contact is foreign or 
 
     expect($first->fresh()->owner_id)->toBeNull()
         ->and($second->fresh()->owner_id)->toBeNull();
+});
+
+it('denies an active member when only membership grants or role config provide the CRM permission', function (): void {
+    ['tenant' => $tenant] = canonicalWriterTenant();
+    $member = canonicalWriterUser();
+    canonicalWriterMembership($tenant, $member, [
+        'role' => 'owner',
+        'granted_permissions' => json_encode(['crm.companies.create'], JSON_THROW_ON_ERROR),
+    ]);
+
+    expect(fn () => app(CanonicalCrmEntityWriter::class)->createCompany(
+        (string) $tenant->id,
+        (string) $member->id,
+        ['name' => 'No Spatie assignment'],
+    ))->toThrow(AuthorizationException::class);
+});
+
+it('validates bulk UUIDs before canonicalization and accepts case-insensitive duplicate IDs', function (): void {
+    ['tenant' => $tenant, 'owner' => $owner] = canonicalWriterTenant();
+    $contact = canonicalWriterContact($tenant);
+    $writer = app(CanonicalCrmEntityWriter::class);
+
+    expect(fn () => $writer->bulkAssignContactOwner(
+        (string) $tenant->id,
+        (string) $owner->id,
+        [$contact->id, 123],
+        null,
+    ))->toThrow(InvalidArgumentException::class);
+
+    expect($writer->bulkAssignContactOwner(
+        (string) $tenant->id,
+        (string) $owner->id,
+        [$contact->id, strtoupper($contact->id)],
+        null,
+    ))->toBe(1);
+});
+
+it('rejects unknown attributes before any create or update write', function (): void {
+    ['tenant' => $tenant, 'owner' => $owner] = canonicalWriterTenant();
+    $writer = app(CanonicalCrmEntityWriter::class);
+    $before = CrmCompany::query()->where('tenant_id', $tenant->id)->count();
+
+    expect(fn () => $writer->createCompany((string) $tenant->id, (string) $owner->id, [
+        'name' => 'Rejected',
+        'tenant_id' => $tenant->id,
+    ]))->toThrow(InvalidArgumentException::class);
+    expect(CrmCompany::query()->where('tenant_id', $tenant->id)->count())->toBe($before);
+
+    $company = canonicalWriterCompany($tenant, 'Stable');
+    expect(fn () => $writer->updateCompany((string) $tenant->id, (string) $owner->id, (string) $company->id, [
+        'unknown' => 'Rejected',
+    ]))->toThrow(InvalidArgumentException::class);
+    expect($company->fresh()->name)->toBe('Stable');
+});
+
+it('updates each entity only when its target belongs to the explicit tenant', function (): void {
+    ['tenant' => $tenant, 'owner' => $owner] = canonicalWriterTenant();
+    ['tenant' => $foreignTenant] = canonicalWriterTenant();
+    $company = canonicalWriterCompany($tenant);
+    $contact = canonicalWriterContact($tenant, ['company_id' => $company->id]);
+    $activity = canonicalWriterActivity($tenant);
+    $tag = Tag::withoutGlobalScopes()->forceCreate([
+        'tenant_id' => $tenant->id,
+        'name' => 'Original tag',
+        'slug' => 'original-tag',
+    ]);
+    $foreignCompany = canonicalWriterCompany($foreignTenant);
+    $foreignContact = canonicalWriterContact($foreignTenant);
+    $foreignActivity = canonicalWriterActivity($foreignTenant);
+    $foreignTag = Tag::withoutGlobalScopes()->forceCreate([
+        'tenant_id' => $foreignTenant->id,
+        'name' => 'Foreign tag',
+        'slug' => 'foreign-tag',
+    ]);
+    $writer = app(CanonicalCrmEntityWriter::class);
+
+    expect($writer->updateCompany((string) $tenant->id, (string) $owner->id, (string) $company->id, ['name' => 'Changed'])->name)
+        ->toBe('Changed');
+    expect($writer->updateContact((string) $tenant->id, (string) $owner->id, (string) $contact->id, ['first_name' => 'Changed'])->first_name)
+        ->toBe('Changed');
+    expect($writer->updateActivity((string) $tenant->id, (string) $owner->id, (string) $activity->id, ['subject' => 'Changed'])->subject)
+        ->toBe('Changed');
+    expect($writer->updateTag((string) $tenant->id, (string) $owner->id, (string) $tag->id, ['name' => 'Changed'])->name)
+        ->toBe('Changed');
+
+    expect(fn () => $writer->updateCompany((string) $tenant->id, (string) $owner->id, (string) $foreignCompany->id, ['name' => 'Nope']))
+        ->toThrow(AuthorizationException::class);
+    expect(fn () => $writer->updateContact((string) $tenant->id, (string) $owner->id, (string) $foreignContact->id, ['first_name' => 'Nope']))
+        ->toThrow(AuthorizationException::class);
+    expect(fn () => $writer->updateActivity((string) $tenant->id, (string) $owner->id, (string) $foreignActivity->id, ['subject' => 'Nope']))
+        ->toThrow(AuthorizationException::class);
+    expect(fn () => $writer->updateTag((string) $tenant->id, (string) $owner->id, (string) $foreignTag->id, ['name' => 'Nope']))
+        ->toThrow(AuthorizationException::class);
+});
+
+it('rejects absent, foreign, pending, suspended, and revoked owners uniformly', function (): void {
+    ['tenant' => $tenant, 'owner' => $owner] = canonicalWriterTenant();
+    ['tenant' => $foreignTenant, 'owner' => $foreignOwner] = canonicalWriterTenant();
+    $pending = canonicalWriterUser();
+    canonicalWriterMembership($tenant, $pending, ['accepted_at' => null]);
+    $suspended = canonicalWriterUser();
+    canonicalWriterMembership($tenant, $suspended, ['suspended_at' => now()]);
+    $revoked = canonicalWriterUser();
+    canonicalWriterMembership($tenant, $revoked, ['revoked_at' => now()]);
+    $writer = app(CanonicalCrmEntityWriter::class);
+    $ownerIds = [$pending->id, $suspended->id, $revoked->id, $foreignOwner->id, (string) Str::uuid()];
+    $messages = [];
+    foreach ($ownerIds as $ownerId) {
+        try {
+            $writer->createContact((string) $tenant->id, (string) $owner->id, [
+                'owner_id' => $ownerId,
+                'first_name' => 'Rejected',
+            ]);
+        } catch (ValidationException $exception) {
+            $messages[] = $exception->errors()['owner_id'][0] ?? '';
+        }
+    }
+
+    expect(count($messages))->toBe(count($ownerIds))
+        ->and(array_unique($messages))->toHaveCount(1);
+});
+
+it('rejects foreign and absent activity contact, company, and bigint deal references uniformly', function (): void {
+    ['tenant' => $tenant, 'owner' => $owner] = canonicalWriterTenant();
+    ['tenant' => $foreignTenant] = canonicalWriterTenant();
+    $foreignContact = canonicalWriterContact($foreignTenant);
+    $foreignCompany = canonicalWriterCompany($foreignTenant);
+    $foreignDeal = canonicalWriterDeal($foreignTenant, 'foreign-pipeline');
+    $writer = app(CanonicalCrmEntityWriter::class);
+    $cases = [
+        'contact_id' => [$foreignContact->id, (string) Str::uuid()],
+        'company_id' => [$foreignCompany->id, (string) Str::uuid()],
+        'deal_id' => [$foreignDeal, $foreignDeal + 1000000],
+    ];
+
+    foreach ($cases as $field => [$foreignId, $absentId]) {
+        $message = function (mixed $reference) use ($tenant, $owner, $writer, $field): string {
+            try {
+                $writer->createActivity((string) $tenant->id, (string) $owner->id, [
+                    $field => $reference,
+                    'type' => 'call',
+                ]);
+            } catch (ValidationException $exception) {
+                return $exception->errors()[$field][0] ?? '';
+            }
+
+            throw new LogicException('Expected an invalid activity reference.');
+        };
+
+        expect($message($foreignId))->toBe($message($absentId));
+    }
+});
+
+it('isolates tag slugs by tenant and permits updating a tag to its existing slug', function (): void {
+    ['tenant' => $tenant, 'owner' => $owner] = canonicalWriterTenant();
+    ['tenant' => $otherTenant, 'owner' => $otherOwner] = canonicalWriterTenant();
+    $writer = app(CanonicalCrmEntityWriter::class);
+    $tag = $writer->createTag((string) $tenant->id, (string) $owner->id, [
+        'name' => 'Shared',
+        'slug' => 'shared',
+    ]);
+
+    expect($writer->createTag((string) $otherTenant->id, (string) $otherOwner->id, [
+        'name' => 'Shared',
+        'slug' => 'shared',
+    ]))->toBeInstanceOf(Tag::class);
+    expect(fn () => $writer->createTag((string) $tenant->id, (string) $owner->id, [
+        'name' => 'Duplicate',
+        'slug' => 'shared',
+    ]))->toThrow(ValidationException::class);
+    expect($writer->updateTag((string) $tenant->id, (string) $owner->id, (string) $tag->id, [
+        'slug' => 'shared',
+    ])->slug)->toBe('shared');
+});
+
+it('assigns bulk owners once per distinct canonical UUID and clears them atomically', function (): void {
+    ['tenant' => $tenant, 'owner' => $owner] = canonicalWriterTenant();
+    $assignee = canonicalWriterUser();
+    canonicalWriterMembership($tenant, $assignee);
+    $first = canonicalWriterContact($tenant, ['first_name' => 'First']);
+    $second = canonicalWriterContact($tenant, ['first_name' => 'Second']);
+    $writer = app(CanonicalCrmEntityWriter::class);
+
+    expect($writer->bulkAssignContactOwner(
+        (string) $tenant->id,
+        (string) $owner->id,
+        [$first->id, strtoupper($first->id), $second->id],
+        strtoupper($assignee->id),
+    ))->toBe(2);
+    expect($first->fresh()->owner_id)->toBe($assignee->id)
+        ->and($second->fresh()->owner_id)->toBe($assignee->id);
+
+    expect($writer->bulkAssignContactOwner(
+        (string) $tenant->id,
+        (string) $owner->id,
+        [$first->id, $second->id],
+        null,
+    ))->toBe(2);
+    expect($first->fresh()->owner_id)->toBeNull()
+        ->and($second->fresh()->owner_id)->toBeNull();
+
+    expect(fn () => $writer->bulkAssignContactOwner(
+        (string) $tenant->id,
+        (string) $owner->id,
+        [],
+        null,
+    ))->toThrow(InvalidArgumentException::class);
+    expect(fn () => $writer->bulkAssignContactOwner(
+        (string) $tenant->id,
+        (string) $owner->id,
+        ['not-a-uuid'],
+        null,
+    ))->toThrow(InvalidArgumentException::class);
 });
