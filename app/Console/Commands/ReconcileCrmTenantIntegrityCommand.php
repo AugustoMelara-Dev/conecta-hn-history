@@ -37,6 +37,13 @@ final class ReconcileCrmTenantIntegrityCommand extends Command
         $limit = (int) $this->option('limit');
         $checkpoint = $this->option('checkpoint');
         $checkpoint = is_string($checkpoint) && trim($checkpoint) !== '' ? trim($checkpoint) : null;
+        $json = (bool) $this->option('json');
+
+        if ((bool) $this->option('resume') && $checkpoint === null) {
+            $this->emitError('checkpoint_required', 'The --resume option requires --checkpoint.', $json);
+
+            return self::INVALID;
+        }
 
         try {
             $report = $integrity->run(
@@ -48,12 +55,25 @@ final class ReconcileCrmTenantIntegrityCommand extends Command
                 dryRun: (bool) $this->option('dry-run'),
             );
         } catch (InvalidArgumentException $exception) {
-            $this->error($exception->getMessage());
+            $this->emitError('invalid_argument', $exception->getMessage(), $json);
 
             return self::INVALID;
         }
 
-        if ((bool) $this->option('json')) {
+        $checkpointIssue = null;
+        foreach (['checkpoint_invalid', 'checkpoint_lineage_drift'] as $issue) {
+            if (in_array($issue, $report->blockingIssues, true)) {
+                $checkpointIssue = $issue;
+                break;
+            }
+        }
+        if ($checkpointIssue !== null) {
+            $this->emitError($checkpointIssue, 'The backfill checkpoint could not be validated.', $json);
+
+            return self::INVALID;
+        }
+
+        if ($json) {
             $payload = json_encode($report->toArray(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
             $this->line($payload);
         } else {
@@ -73,5 +93,20 @@ final class ReconcileCrmTenantIntegrityCommand extends Command
             CrmTenantIntegrity::STATUS_BLOCKED_UNKNOWN => 6,
             default => 5,
         };
+    }
+
+    private function emitError(string $code, string $message, bool $json): void
+    {
+        if ($json) {
+            $this->line(json_encode([
+                'status' => 'failed',
+                'code' => $code,
+                'message' => $message,
+            ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+
+            return;
+        }
+
+        $this->error($message);
     }
 }

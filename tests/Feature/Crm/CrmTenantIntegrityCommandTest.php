@@ -7,6 +7,7 @@ namespace Tests\Feature\Crm;
 use App\Application\Crm\TenantIntegrity\CrmTenantIntegrity;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
@@ -125,13 +126,17 @@ final class CrmTenantIntegrityCommandTest extends TestCase
         $payload['sequence'] = 99;
         file_put_contents($checkpoint, json_encode($payload, JSON_THROW_ON_ERROR));
 
-        $this->artisan('crm:reconcile-tenant-integrity', [
+        $tamperedExit = Artisan::call('crm:reconcile-tenant-integrity', [
             'phase' => 'backfill',
             '--limit' => 1,
             '--checkpoint' => $checkpoint,
             '--resume' => true,
             '--json' => true,
-        ])->expectsOutputToContain('"status": "BLOCKED_CHECKPOINT"')->assertExitCode(5);
+        ]);
+        $tamperedError = json_decode(Artisan::output(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame(2, $tamperedExit, json_encode($tamperedError, JSON_THROW_ON_ERROR));
+        self::assertSame('failed', $tamperedError['status'] ?? null);
+        self::assertSame('checkpoint_invalid', $tamperedError['code'] ?? null);
         self::assertSame(0, DB::table('contact_tag')->whereNull('tenant_id')->count());
         @unlink($checkpoint);
     }
@@ -149,8 +154,57 @@ final class CrmTenantIntegrityCommandTest extends TestCase
         } finally {
             config(['database.default' => $original]);
             DB::purge('mysql');
-            DB::reconnect('sqlite');
         }
+    }
+
+    public function test_json_invalid_limit_and_phase_emit_stable_error_objects(): void
+    {
+        $invalidLimitExit = Artisan::call('crm:reconcile-tenant-integrity', [
+            'phase' => 'backfill',
+            '--limit' => 0,
+            '--json' => true,
+        ]);
+        $invalidLimit = json_decode(Artisan::output(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame(2, $invalidLimitExit);
+        self::assertSame('failed', $invalidLimit['status'] ?? null);
+        self::assertSame('invalid_argument', $invalidLimit['code'] ?? null);
+
+        $invalidPhaseExit = Artisan::call('crm:reconcile-tenant-integrity', [
+            'phase' => 'not-a-phase',
+            '--json' => true,
+        ]);
+        $invalidPhase = json_decode(Artisan::output(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame(2, $invalidPhaseExit);
+        self::assertSame('failed', $invalidPhase['status'] ?? null);
+        self::assertSame('invalid_argument', $invalidPhase['code'] ?? null);
+    }
+
+    public function test_json_invalid_checkpoint_errors_are_stable_error_objects(): void
+    {
+        $missingExit = Artisan::call('crm:reconcile-tenant-integrity', [
+            'phase' => 'backfill',
+            '--resume' => true,
+            '--json' => true,
+        ]);
+        $missing = json_decode(Artisan::output(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame(2, $missingExit);
+        self::assertSame('failed', $missing['status'] ?? null);
+        self::assertSame('checkpoint_required', $missing['code'] ?? null);
+
+        $checkpoint = tempnam(sys_get_temp_dir(), 'crm-tenant-integrity-command-invalid-');
+        self::assertNotFalse($checkpoint);
+        file_put_contents($checkpoint, '{"tampered":true}');
+        $invalidExit = Artisan::call('crm:reconcile-tenant-integrity', [
+            'phase' => 'backfill',
+            '--checkpoint' => $checkpoint,
+            '--resume' => true,
+            '--json' => true,
+        ]);
+        $invalid = json_decode(Artisan::output(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame(2, $invalidExit);
+        self::assertSame('failed', $invalid['status'] ?? null);
+        self::assertSame('checkpoint_invalid', $invalid['code'] ?? null);
+        @unlink($checkpoint);
     }
 
     /** @return array<string, string> */

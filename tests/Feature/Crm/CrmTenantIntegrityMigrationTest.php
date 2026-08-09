@@ -888,6 +888,109 @@ final class CrmTenantIntegrityMigrationTest extends TestCase
         @unlink($checkpoint);
     }
 
+    public function test_backfill_resume_rejects_external_null_to_valid_provenance_change(): void
+    {
+        $fixture = $this->prepareBackfillFixture(includeValidRows: false, contactRows: 3, dealRows: 0);
+        $checkpoint = tempnam(sys_get_temp_dir(), 'crm-tenant-integrity-external-fill-');
+        self::assertNotFalse($checkpoint);
+        @unlink($checkpoint);
+        for ($i = 0; $i < 3; $i++) {
+            DB::table('contact_tag')->insert([
+                'contact_id' => $fixture['contacts'][$i],
+                'tag_id' => $fixture['tags'][$i],
+                'tenant_id' => null,
+            ]);
+        }
+
+        $first = app(CrmTenantIntegrity::class)->backfill(limit: 1, checkpoint: $checkpoint);
+        self::assertSame('BACKFILLED', $first->status);
+        $checkpointBeforeResume = (string) file_get_contents($checkpoint);
+        DB::table('contact_tag')
+            ->where('contact_id', $fixture['contacts'][1])
+            ->where('tag_id', $fixture['tags'][1])
+            ->update(['tenant_id' => $fixture['tenant_a']]);
+
+        $resume = app(CrmTenantIntegrity::class)->backfill(limit: 1, checkpoint: $checkpoint, resume: true);
+
+        self::assertSame('BLOCKED_SOURCE_DRIFT', $resume->status);
+        self::assertSame(2, DB::table('contact_tag')->whereNotNull('tenant_id')->count());
+        self::assertSame(1, DB::table('contact_tag')->whereNull('tenant_id')->count());
+        self::assertSame($checkpointBeforeResume, file_get_contents($checkpoint));
+        @unlink($checkpoint);
+    }
+
+    public function test_backfill_rechecks_anomalies_inserted_after_outer_gate_before_any_cas(): void
+    {
+        $fixture = $this->prepareBackfillFixture(includeValidRows: false, contactRows: 2, dealRows: 0);
+        DB::table('tags')->where('id', $fixture['tag_b'])->update(['tenant_id' => $fixture['tenant_b']]);
+        DB::table('contact_tag')->insert([
+            'contact_id' => $fixture['contact_a'],
+            'tag_id' => $fixture['tag_a'],
+            'tenant_id' => null,
+        ]);
+
+        $connection = DB::connection();
+        $connection->enableQueryLog();
+        app(CrmTenantIntegrity::class)->preflight('backfill');
+        $queries = $connection->getQueryLog();
+        $connection->disableQueryLog();
+        self::assertNotEmpty($queries);
+        $marker = (string) $queries[array_key_last($queries)]['query'];
+        $seen = 0;
+        $inserted = false;
+        $markerInsideWriteTransaction = false;
+        $pdo = $connection->getPdo();
+        DB::listen(function (object $query) use (&$seen, &$inserted, &$markerInsideWriteTransaction, $marker, $fixture, $pdo): void {
+            if ($inserted || (string) $query->sql !== $marker) {
+                return;
+            }
+            $markerInsideWriteTransaction = $pdo->inTransaction();
+            $inserted = true;
+            DB::table('contact_tag')->insert([
+                'contact_id' => $fixture['contacts'][1],
+                'tag_id' => $fixture['tag_b'],
+                'tenant_id' => null,
+            ]);
+            $seen++;
+        });
+
+        $report = app(CrmTenantIntegrity::class)->backfill(limit: 1);
+
+        self::assertTrue($inserted);
+        self::assertTrue($markerInsideWriteTransaction);
+        self::assertSame(1, $seen);
+        self::assertSame('BLOCKED_ANOMALIES', $report->status);
+        self::assertFalse($report->writesPerformed);
+        self::assertSame(0, DB::table('contact_tag')->whereNotNull('tenant_id')->count());
+    }
+
+    public function test_backfill_fails_closed_for_non_testing_outer_transaction(): void
+    {
+        $this->prepareBackfillFixture(contactRows: 1, dealRows: 0);
+        $application = app();
+        $environment = (string) $application->environment();
+        $application->instance('env', 'production');
+
+        try {
+            $report = app(CrmTenantIntegrity::class)->backfill(limit: 1);
+        } finally {
+            $application->instance('env', $environment);
+        }
+
+        self::assertSame('BLOCKED_METADATA_FAILURE', $report->status);
+        self::assertContains('sqlite_outer_transaction_active', $report->blockingIssues);
+        self::assertFalse($report->writesPerformed);
+        self::assertSame(1, DB::table('contact_tag')->whereNull('tenant_id')->count());
+    }
+
+    public function test_backfill_source_fingerprint_uses_streaming_row_queries(): void
+    {
+        $source = file_get_contents(app_path('Application/Crm/TenantIntegrity/CrmTenantIntegrity.php'));
+        self::assertIsString($source);
+        self::assertGreaterThanOrEqual(2, substr_count($source, '->cursor()'));
+        self::assertStringNotContainsString('->get()->map', $source);
+    }
+
     /** @return array<string, mixed> */
     private function prepareBackfillFixture(bool $includeValidRows = true, int $contactRows = 1, int $dealRows = 1): array
     {

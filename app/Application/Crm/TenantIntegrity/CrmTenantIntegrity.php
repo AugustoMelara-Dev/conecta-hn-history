@@ -373,81 +373,151 @@ final class CrmTenantIntegrity
             );
         }
 
-        $preflight = $this->preflight('backfill');
-        if ($expectedFingerprint !== null
-            && trim($expectedFingerprint) !== ''
-            && ! hash_equals($preflight->schemaFingerprint, trim($expectedFingerprint))) {
-            return $this->copyReport($preflight, self::STATUS_BLOCKED_FINGERPRINT,
-                blockingIssues: ['schema_fingerprint_mismatch'],
-                details: [...$preflight->details, 'writes_performed' => false]);
-        }
-        if ($preflight->shape !== self::SHAPE_CANONICAL
-            || $preflight->schemaFingerprint === ''
-            || $preflight->missingRequiredTables !== []
-            || $preflight->missingRequiredColumns !== []) {
-            return $this->copyReport($preflight, $preflight->status,
-                blockingIssues: $preflight->blockingIssues,
-                details: [...$preflight->details, 'writes_performed' => false]);
-        }
-        foreach (self::BACKFILL_PIVOTS as $definition) {
-            if (! Schema::hasColumn($definition['pivot'], 'tenant_id')) {
-                return $this->copyReport($preflight, self::STATUS_BLOCKED_REQUIRED_SCHEMA,
-                    blockingIssues: ['missing_required_column:'.$definition['pivot'].'.tenant_id'],
-                    details: [...$preflight->details, 'writes_performed' => false]);
+        $pdo = DB::connection()->getPdo();
+        $savepoint = false;
+        try {
+            $outerTransaction = DB::transactionLevel() > 0 || $pdo->inTransaction();
+            if ($outerTransaction) {
+                if (! app()->environment('testing') || ! $pdo->inTransaction()) {
+                    return $this->report(
+                        'backfill',
+                        self::STATUS_BLOCKED_METADATA_FAILURE,
+                        self::SHAPE_UNKNOWN,
+                        '',
+                        writesPerformed: false,
+                        blockingIssues: ['sqlite_outer_transaction_active'],
+                        details: [
+                            'error_code' => $pdo->inTransaction()
+                                ? 'outer_transaction_active'
+                                : 'transaction_level_without_pdo_transaction',
+                            'writes_performed' => false,
+                        ],
+                    );
+                }
+
+                // RefreshDatabase owns the outer test transaction.  The test-only
+                // savepoint keeps service rollback scoped while the zero-row DML
+                // upgrades SQLite to a write snapshot for the structural race proof.
+                $pdo->exec('UPDATE "contact_tag" SET "tenant_id" = "tenant_id" WHERE 0');
+                $pdo->exec('SAVEPOINT crm_tenant_integrity_backfill');
+                $savepoint = true;
+            } else {
+                $pdo->exec('BEGIN IMMEDIATE');
             }
+        } catch (Throwable $exception) {
+            return $this->report(
+                'backfill',
+                self::STATUS_BLOCKED_METADATA_FAILURE,
+                self::SHAPE_UNKNOWN,
+                '',
+                writesPerformed: false,
+                blockingIssues: ['sqlite_write_snapshot_failed'],
+                details: ['error_code' => get_class($exception), 'writes_performed' => false],
+            );
         }
 
-        $sourceHash = $this->backfillSourceFingerprint();
+        $preflight = null;
+        $failureReport = null;
+        $transactionFailure = null;
+        $sourceHashBefore = '';
+        $sourceHashAfter = '';
         $checkpointState = null;
-        if ($resume) {
-            [$checkpointState, $checkpointError] = $this->readBackfillCheckpoint($checkpoint);
-            if ($checkpointError !== null) {
-                return $this->copyReport($preflight, self::STATUS_BLOCKED_CHECKPOINT,
-                    blockingIssues: ['checkpoint_invalid'],
-                    details: [...$preflight->details, 'checkpoint_error' => $checkpointError, 'writes_performed' => false]);
-            }
-            if (! hash_equals((string) ($checkpointState['schema_hash'] ?? ''), $preflight->schemaFingerprint)
-                || ! hash_equals((string) ($checkpointState['data_hash'] ?? ''), $preflight->dataFingerprint)
-                || ! hash_equals((string) ($checkpointState['source_hash'] ?? ''), $sourceHash)) {
-                return $this->copyReport($preflight, self::STATUS_BLOCKED_SOURCE_DRIFT,
-                    blockingIssues: ['checkpoint_lineage_drift'],
-                    details: [
-                        ...$preflight->details,
-                        'checkpoint_schema_hash' => (string) ($checkpointState['schema_hash'] ?? ''),
-                        'checkpoint_data_hash' => (string) ($checkpointState['data_hash'] ?? ''),
-                        'checkpoint_source_hash' => (string) ($checkpointState['source_hash'] ?? ''),
-                        'source_hash' => $sourceHash,
-                        'writes_performed' => false,
-                    ]);
-            }
-        }
-
-        $blockingAnomalies = array_values(array_filter(
-            array_keys(array_filter($preflight->anomalies, static fn (int $count): bool => $count > 0)),
-            static fn (string $code): bool => ! in_array($code, self::BACKFILL_REPAIRABLE_ANOMALIES, true),
-        ));
-        sort($blockingAnomalies);
-        if ($blockingAnomalies !== []) {
-            return $this->copyReport($preflight, self::STATUS_BLOCKED_ANOMALIES,
-                blockingIssues: $blockingAnomalies,
-                details: [
-                    ...$preflight->details,
-                    'backfill_gate' => 'only_null_pivot_provenance_is_repairable',
-                    'writes_performed' => false,
-                ]);
-        }
-
         $counts = [
             'selected' => 0,
             'updated' => 0,
             'contact_tag_updated' => 0,
             'deal_tag_updated' => 0,
         ];
-        $transactionFailure = null;
+        $hasMore = false;
         $dryRunRolledBack = false;
         try {
-            DB::beginTransaction();
+            $preflight = $this->preflight('backfill');
+            if ($expectedFingerprint !== null
+                && trim($expectedFingerprint) !== ''
+                && ! hash_equals($preflight->schemaFingerprint, trim($expectedFingerprint))) {
+                $failureReport = $this->copyReport($preflight, self::STATUS_BLOCKED_FINGERPRINT,
+                    blockingIssues: ['schema_fingerprint_mismatch'],
+                    details: [...$preflight->details, 'writes_performed' => false]);
+                throw new RuntimeException('backfill_gate_abort');
+            }
+            if ($preflight->shape !== self::SHAPE_CANONICAL
+                || $preflight->schemaFingerprint === ''
+                || $preflight->missingRequiredTables !== []
+                || $preflight->missingRequiredColumns !== []) {
+                $failureReport = $this->copyReport($preflight, $preflight->status,
+                    blockingIssues: $preflight->blockingIssues,
+                    details: [...$preflight->details, 'writes_performed' => false]);
+                throw new RuntimeException('backfill_gate_abort');
+            }
+            foreach (self::BACKFILL_PIVOTS as $definition) {
+                if (! Schema::hasColumn($definition['pivot'], 'tenant_id')) {
+                    $failureReport = $this->copyReport($preflight, self::STATUS_BLOCKED_REQUIRED_SCHEMA,
+                        blockingIssues: ['missing_required_column:'.$definition['pivot'].'.tenant_id'],
+                        details: [...$preflight->details, 'writes_performed' => false]);
+                    throw new RuntimeException('backfill_gate_abort');
+                }
+            }
+
+            $sourceHashBefore = $this->backfillSourceFingerprint();
+            if ($resume) {
+                [$checkpointState, $checkpointError] = $this->readBackfillCheckpoint($checkpoint);
+                if ($checkpointError !== null) {
+                    $failureReport = $this->copyReport($preflight, self::STATUS_BLOCKED_CHECKPOINT,
+                        blockingIssues: ['checkpoint_invalid'],
+                        details: [...$preflight->details, 'checkpoint_error' => $checkpointError, 'writes_performed' => false]);
+                    throw new RuntimeException('backfill_gate_abort');
+                }
+                if (! hash_equals((string) ($checkpointState['schema_hash'] ?? ''), $preflight->schemaFingerprint)
+                    || ! hash_equals((string) ($checkpointState['data_hash'] ?? ''), $preflight->dataFingerprint)
+                    || ! hash_equals((string) ($checkpointState['source_hash'] ?? ''), $sourceHashBefore)) {
+                    $failureReport = $this->copyReport($preflight, self::STATUS_BLOCKED_SOURCE_DRIFT,
+                        blockingIssues: ['checkpoint_lineage_drift'],
+                        details: [
+                            ...$preflight->details,
+                            'checkpoint_schema_hash' => (string) ($checkpointState['schema_hash'] ?? ''),
+                            'checkpoint_data_hash' => (string) ($checkpointState['data_hash'] ?? ''),
+                            'checkpoint_source_hash' => (string) ($checkpointState['source_hash'] ?? ''),
+                            'source_hash' => $sourceHashBefore,
+                            'writes_performed' => false,
+                        ]);
+                    throw new RuntimeException('backfill_gate_abort');
+                }
+            }
+
+            // A resumed lineage drift takes precedence over any anomaly it may
+            // introduce; matching lineage still reaches the complete anomaly gate.
+            $blockingAnomalies = $this->backfillBlockingAnomalies($preflight->anomalies);
+            if ($blockingAnomalies !== []) {
+                $failureReport = $this->copyReport($preflight, self::STATUS_BLOCKED_ANOMALIES,
+                    blockingIssues: $blockingAnomalies,
+                    details: [
+                        ...$preflight->details,
+                        'backfill_gate' => 'only_null_pivot_provenance_is_repairable',
+                        'writes_performed' => false,
+                    ]);
+                throw new RuntimeException('backfill_gate_abort');
+            }
+
             $rows = $this->selectBackfillRows($limit);
+            $recheck = $this->preflight('backfill');
+            $recheckBlockingAnomalies = $this->backfillBlockingAnomalies($recheck->anomalies);
+            if ($recheck->schemaFingerprint !== $preflight->schemaFingerprint) {
+                $failureReport = $this->copyReport($recheck, self::STATUS_BLOCKED_SOURCE_DRIFT,
+                    blockingIssues: ['schema_fingerprint_changed_in_transaction'],
+                    details: [...$recheck->details, 'writes_performed' => false]);
+                throw new RuntimeException('backfill_gate_abort');
+            }
+            if ($recheckBlockingAnomalies !== []) {
+                $failureReport = $this->copyReport($recheck, self::STATUS_BLOCKED_ANOMALIES,
+                    blockingIssues: $recheckBlockingAnomalies,
+                    details: [
+                        ...$recheck->details,
+                        'backfill_gate' => 'rechecked_before_compare_and_set',
+                        'writes_performed' => false,
+                    ]);
+                throw new RuntimeException('backfill_gate_abort');
+            }
+
             foreach ($rows as $row) {
                 $counts['selected']++;
                 $leftTenant = DB::table($row['left_table'])->where('id', $row['left_id'])->value('tenant_id');
@@ -470,44 +540,64 @@ final class CrmTenantIntegrity
                 $counts['updated']++;
                 $counts[$row['pivot'].'_updated']++;
             }
+            $hasMore = $this->backfillRemaining();
+            $sourceHashAfter = $this->backfillSourceFingerprint();
             if ($dryRun) {
-                DB::rollBack();
+                if ($savepoint) {
+                    $pdo->exec('ROLLBACK TO SAVEPOINT crm_tenant_integrity_backfill');
+                    $pdo->exec('RELEASE SAVEPOINT crm_tenant_integrity_backfill');
+                } else {
+                    $pdo->rollBack();
+                }
                 $dryRunRolledBack = true;
+            } elseif ($savepoint) {
+                $pdo->exec('RELEASE SAVEPOINT crm_tenant_integrity_backfill');
             } else {
-                DB::commit();
+                $pdo->commit();
             }
         } catch (Throwable $exception) {
             $transactionFailure = $exception;
-            if (DB::transactionLevel() > 0) {
-                DB::rollBack();
+            if ($savepoint) {
+                try {
+                    $pdo->exec('ROLLBACK TO SAVEPOINT crm_tenant_integrity_backfill');
+                    $pdo->exec('RELEASE SAVEPOINT crm_tenant_integrity_backfill');
+                } catch (Throwable) {
+                    // Preserve the original failure report; the outer test transaction owns cleanup.
+                }
+            } elseif ($pdo->inTransaction()) {
+                $pdo->rollBack();
             }
         }
 
         if ($transactionFailure !== null) {
+            if ($failureReport !== null) {
+                return $failureReport;
+            }
             $status = str_contains($transactionFailure->getMessage(), 'changed_endpoint')
                 ? self::STATUS_BLOCKED_SOURCE_DRIFT
                 : self::STATUS_BLOCKED_ANOMALIES;
+            $baseReport = $preflight ?? $this->report('backfill', self::STATUS_BLOCKED_METADATA_FAILURE, self::SHAPE_UNKNOWN, '');
 
-            return $this->copyReport($preflight, $status,
+            return $this->copyReport($baseReport, $status,
                 blockingIssues: [$status === self::STATUS_BLOCKED_SOURCE_DRIFT ? 'endpoint_changed_during_batch' : 'compare_and_set_failed'],
                 details: [
-                    ...$preflight->details,
+                    ...$baseReport->details,
                     'counts' => $counts,
-                    'source_hash' => $sourceHash,
+                    'source_hash' => $sourceHashBefore,
                     'error_code' => get_class($transactionFailure),
                     'writes_performed' => false,
                 ]);
         }
 
-        $hasMore = $this->backfillRemaining();
         $status = $dryRunRolledBack
             ? self::STATUS_BACKFILL_DRY_RUN
             : ($counts['updated'] === 0 ? self::STATUS_BACKFILLED_NOOP : self::STATUS_BACKFILLED);
         $checkpointPayload = null;
+        $lineageHash = $dryRunRolledBack ? $sourceHashBefore : $sourceHashAfter;
         if (! $dryRunRolledBack && $checkpoint !== null && trim($checkpoint) !== '') {
             $checkpointPayload = $this->buildBackfillCheckpoint(
                 $preflight,
-                $sourceHash,
+                $lineageHash,
                 $counts,
                 $hasMore,
                 $checkpointState,
@@ -534,7 +624,7 @@ final class CrmTenantIntegrity
                 'limit' => $limit,
                 'counts' => $counts,
                 'has_more' => $hasMore,
-                'source_hash' => $sourceHash,
+                'source_hash' => $lineageHash,
                 'checkpoint' => $checkpointPayload === null
                     ? ['written' => false]
                     : ['written' => true, 'sequence' => $checkpointPayload['sequence']],
@@ -601,33 +691,58 @@ final class CrmTenantIntegrity
         return false;
     }
 
+    /** @param array<string,int> $anomalies
+     * @return list<string>
+     */
+    private function backfillBlockingAnomalies(array $anomalies): array
+    {
+        $blocking = array_values(array_filter(
+            array_keys(array_filter($anomalies, static fn (int $count): bool => $count > 0)),
+            static fn (string $code): bool => ! in_array($code, self::BACKFILL_REPAIRABLE_ANOMALIES, true),
+        ));
+        sort($blocking);
+
+        return $blocking;
+    }
+
     private function backfillSourceFingerprint(): string
     {
-        $payload = [];
+        $context = hash_init('sha256');
+        $tables = [];
         foreach (self::BACKFILL_PIVOTS as $definition) {
-            foreach ([$definition['left_table'], $definition['right_table']] as $table) {
-                $rows = DB::table($table)->select(['id', 'tenant_id'])->orderBy('id')->get()->map(
-                    fn (object $row): array => [
-                        'id' => $this->opaqueValue($row->id ?? null),
-                        'tenant' => $this->opaqueValue($row->tenant_id ?? null),
-                    ],
-                )->all();
-                $payload[$table] = $rows;
+            $tables[] = $definition['left_table'];
+            $tables[] = $definition['right_table'];
+        }
+        $tables = array_values(array_unique($tables));
+        sort($tables);
+
+        foreach ($tables as $table) {
+            hash_update($context, "endpoint:{$table}\n");
+            foreach (DB::table($table)->select(['id', 'tenant_id'])->orderBy('id')->cursor() as $row) {
+                hash_update($context, json_encode([
+                    'id' => $this->opaqueValue($row->id ?? null),
+                    'tenant' => $this->opaqueValue($row->tenant_id ?? null),
+                ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES)."\n");
             }
-            $pivotRows = DB::table($definition['pivot'])
-                ->select([$definition['left'], $definition['right']])
+        }
+
+        foreach (self::BACKFILL_PIVOTS as $definition) {
+            hash_update($context, "pivot:{$definition['pivot']}\n");
+            foreach (DB::table($definition['pivot'])
+                ->select([$definition['left'], $definition['right'], 'tenant_id'])
                 ->orderBy($definition['left'])
                 ->orderBy($definition['right'])
-                ->get()
-                ->map(fn (object $row): array => [
+                ->orderBy('tenant_id')
+                ->cursor() as $row) {
+                hash_update($context, json_encode([
                     'left' => $this->opaqueValue($row->{$definition['left']} ?? null),
                     'right' => $this->opaqueValue($row->{$definition['right']} ?? null),
-                ])->all();
-            $payload[$definition['pivot']] = $pivotRows;
+                    'tenant' => $this->opaqueValue($row->tenant_id ?? null),
+                ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES)."\n");
+            }
         }
-        ksort($payload);
 
-        return hash('sha256', json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
+        return hash_final($context);
     }
 
     /** @return array{0: array<string,mixed>|null, 1: string|null} */
