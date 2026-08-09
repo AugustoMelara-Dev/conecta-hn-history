@@ -115,9 +115,10 @@ final class DovraSecurityRatchetTest extends TestCase
     public function profile_optimization_ratchet_rejects_comments_strings_reversed_guards_and_raw_aliases(): void
     {
         $fixtures = [
-            <<<'PHP'
+            'A real $this->privateAiAccess->allows() call is required.' => <<<'PHP'
                 <?php
                 final class AiOptimizationController {
+                    private const DOVRA_SOURCE = 'private_ai_prompt';
                     public function optimizeProfile($request) {
                         // $this->privateAiAccess->allows($user, $tenantId);
                         $bait = '$this->dovraIngress->inspect(new DataEnvelope); GenerateBusinessProfileJob::dispatch';
@@ -131,9 +132,10 @@ final class DovraSecurityRatchetTest extends TestCase
                     }
                 }
                 PHP,
-            <<<'PHP'
+            'Private AI authorization must precede Dovra inspection.' => <<<'PHP'
                 <?php
                 final class AiOptimizationController {
+                    private const DOVRA_SOURCE = 'private_ai_prompt';
                     public function optimizeProfile($request) {
                         $decision = $this->dovraIngress->inspect(new DataEnvelope(payload: $validated));
                         $this->privateAiAccess->allows($user, $tenantId);
@@ -146,9 +148,10 @@ final class DovraSecurityRatchetTest extends TestCase
                     }
                 }
                 PHP,
-            <<<'PHP'
+            '$redactedPayload must come directly from $decision->redactedPayload.' => <<<'PHP'
                 <?php
                 final class AiOptimizationController {
+                    private const DOVRA_SOURCE = 'private_ai_prompt';
                     public function optimizeProfile($request) {
                         $this->privateAiAccess->allows($user, $tenantId);
                         $validated = $request->validated();
@@ -167,7 +170,7 @@ final class DovraSecurityRatchetTest extends TestCase
                     }
                 }
                 PHP,
-            <<<'PHP'
+            'DOVRA_SOURCE must equal private_ai_prompt.' => <<<'PHP'
                 <?php
                 final class AiOptimizationController {
                     private const DOVRA_SOURCE = 'changed_private_ai_source';
@@ -188,7 +191,7 @@ final class DovraSecurityRatchetTest extends TestCase
                     }
                 }
                 PHP,
-            <<<'PHP'
+            '$decision must not be overwritten after Dovra inspection.' => <<<'PHP'
                 <?php
                 final class AiOptimizationController {
                     private const DOVRA_SOURCE = 'private_ai_prompt';
@@ -214,15 +217,16 @@ final class DovraSecurityRatchetTest extends TestCase
                 PHP,
         ];
 
-        foreach ($fixtures as $fixture) {
-            $rejected = false;
+        foreach ($fixtures as $expectedFailure => $fixture) {
             try {
                 self::assertSecureProfileOptimizationMethod($fixture);
-            } catch (AssertionFailedError) {
-                $rejected = true;
+            } catch (AssertionFailedError $failure) {
+                self::assertStringContainsString($expectedFailure, $failure->getMessage());
+
+                continue;
             }
 
-            self::assertTrue($rejected, 'Adversarial source must not satisfy the profile ingress ratchet.');
+            self::fail('Adversarial source must not satisfy the profile ingress ratchet.');
         }
     }
 
@@ -324,8 +328,16 @@ final class DovraSecurityRatchetTest extends TestCase
         self::assertIsInt($authorizationIndex, 'A real $this->privateAiAccess->allows() call is required.');
         self::assertIsInt($inspectionIndex, 'A real $this->dovraIngress->inspect() call is required.');
         self::assertIsInt($dispatchIndex, 'A real GenerateBusinessProfileJob::dispatch() call is required.');
-        self::assertLessThan($inspectionIndex, $authorizationIndex);
-        self::assertLessThan($dispatchIndex, $inspectionIndex);
+        self::assertLessThan(
+            $inspectionIndex,
+            $authorizationIndex,
+            'Private AI authorization must precede Dovra inspection.',
+        );
+        self::assertLessThan(
+            $dispatchIndex,
+            $inspectionIndex,
+            'Dovra inspection must precede profile job dispatch.',
+        );
         self::assertInstanceOf(MethodCall::class, $inspection);
         self::assertInstanceOf(StaticCall::class, $dispatch);
 
@@ -391,7 +403,11 @@ final class DovraSecurityRatchetTest extends TestCase
         self::assertInstanceOf(ClassConst::class, $declaration);
         self::assertTrue($declaration->isPrivate(), 'DOVRA_SOURCE must remain private.');
         self::assertInstanceOf(String_::class, $value);
-        self::assertSame('private_ai_prompt', $value->value);
+        self::assertSame(
+            'private_ai_prompt',
+            $value->value,
+            'DOVRA_SOURCE must equal private_ai_prompt.',
+        );
     }
 
     /**
