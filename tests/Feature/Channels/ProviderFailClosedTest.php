@@ -9,6 +9,7 @@ use App\Application\Channels\ChannelConnectionService;
 use App\Application\Channels\ChannelContext;
 use App\Application\Channels\ChannelDeliveryService;
 use App\Application\Channels\ChannelOutboundMessage;
+use App\Infrastructure\Channels\ConfigChannelAdapterResolver;
 use App\Infrastructure\Channels\Sms\FailClosedSmsAdapter;
 use App\Infrastructure\Channels\Voice\FailClosedVoiceAdapter;
 use App\Infrastructure\Channels\Voice\VoiceProviderInterface;
@@ -160,5 +161,51 @@ final class ProviderFailClosedTest extends TestCase
         self::assertSame(2, (int) $attempt->attempt_count);
         self::assertStringNotContainsString('RAW_PROVIDER_TOKEN', (string) $outbox->last_error);
         self::assertStringNotContainsString('+819012345678', (string) $attempt->last_error);
+    }
+
+    public function test_resolver_records_unknown_provider_as_unavailable_without_fake_success(): void
+    {
+        $actor = User::factory()->create();
+        $tenant = Tenant::factory()->forUser($actor)->create();
+        GlobalMarketFixture::assignCanada($tenant);
+        $context = new ChannelContext(
+            tenantId: (string) $tenant->id,
+            channel: 'sms',
+            connectionKey: 'sms-unknown',
+            marketCountryCode: 'CA',
+            locale: 'en-CA',
+            currency: 'CAD',
+            timezone: 'America/Toronto',
+            marketCapabilities: ['channels' => ['sms' => true]],
+            connection: ['provider' => 'unknown.provider'],
+            authorization: new ChannelAuthorizationEnvelope(
+                tenantId: (string) $tenant->id,
+                actorId: (string) $actor->id,
+            ),
+        );
+        $delivery = new ChannelDeliveryService(
+            new ChannelConnectionService,
+            null,
+            new ConfigChannelAdapterResolver,
+        );
+
+        $receipt = $delivery->sendResolved($context, new ChannelOutboundMessage(
+            tenantId: (string) $tenant->id,
+            channel: 'sms',
+            connectionKey: 'sms-unknown',
+            idempotencyKey: 'sms-resolver-001',
+            externalThreadReference: null,
+            recipient: '+14165550100',
+            content: 'Provider-safe message',
+        ));
+
+        self::assertSame('provider_unavailable', $receipt->deliveryState);
+        self::assertSame('adapter_not_configured', $receipt->metadata['reason']);
+        $this->assertDatabaseHas('channel_delivery_outbox', [
+            'tenant_id' => $tenant->id,
+            'idempotency_key' => 'sms-resolver-001',
+            'delivery_state' => 'provider_unavailable',
+            'last_error' => 'provider_unavailable',
+        ]);
     }
 }

@@ -12,6 +12,9 @@ Schedule::command('reports:send-scheduled')->hourly()->withoutOverlapping();
 // Resume canonical workflow runs whose wait step has elapsed.
 Schedule::command('workflows:resume-due')->everyMinute()->withoutOverlapping();
 
+// Claim due marketing campaigns and enqueue tenant-scoped recipient deliveries.
+Schedule::command('campaigns:dispatch-due')->everyMinute()->withoutOverlapping();
+
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');

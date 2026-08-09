@@ -14,7 +14,13 @@ class CreateCampaign extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        $data['tenant_id'] = Filament::getTenant()->id;
+        $tenant = Filament::getTenant();
+        if (! $tenant) {
+            throw new \RuntimeException('A tenant context is required to create a campaign.');
+        }
+
+        $data['tenant_id'] = $tenant->getKey();
+        $data['status'] = 'draft';
 
         return $data;
     }

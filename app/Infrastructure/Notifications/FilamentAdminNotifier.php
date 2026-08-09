@@ -10,7 +10,7 @@ use App\Domain\Shared\Contracts\AdminNotifierInterface;
 use App\Models\Review;
 use App\Models\Tenant;
 use App\Models\User;
-use Filament\Notifications\Actions\Action;
+use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 
 /**
@@ -107,7 +107,38 @@ final class FilamentAdminNotifier implements AdminNotifier, AdminNotifierInterfa
      */
     public function notifyPaymentUpdate(string $tenantId, string $status, float $amount): void
     {
-        // Implementation stub or actual logic
+        $tenantOwner = $this->getTenantOwner($tenantId);
+        if (! $tenantOwner) {
+            return;
+        }
+
+        $normalizedStatus = strtolower(trim($status));
+        [$label, $severity] = match ($normalizedStatus) {
+            'approved', 'paid', 'completed' => ['Pago aprobado', 'success'],
+            'pending', 'processing' => ['Pago pendiente', 'warning'],
+            'rejected', 'failed', 'cancelled', 'canceled' => ['Pago rechazado', 'danger'],
+            'refunded' => ['Pago reembolsado', 'info'],
+            default => ['Estado de pago actualizado', 'info'],
+        };
+
+        $notification = Notification::make()
+            ->title($label)
+            ->body('Monto: L. '.number_format(max(0, $amount), 2))
+            ->actions([
+                Action::make('view')
+                    ->label('Ver facturación')
+                    ->url($this->tenantPanelUrl($tenantId, 'manage-billing'))
+                    ->markAsRead(),
+            ]);
+
+        match ($severity) {
+            'success' => $notification->success(),
+            'warning' => $notification->warning(),
+            'danger' => $notification->danger(),
+            default => $notification->info(),
+        };
+
+        $notification->sendToDatabase($tenantOwner);
     }
 
     /**

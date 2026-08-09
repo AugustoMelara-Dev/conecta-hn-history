@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Marketing;
 
+use App\Application\Marketing\CampaignDispatchService;
 use App\Domain\Shared\Services\TenantContext;
 use App\Infrastructure\Jobs\Marketing\SendCampaignEmail;
 use App\Mail\CampaignOfferMail;
@@ -12,6 +13,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -28,7 +30,20 @@ final class CampaignDeliveryTenantIsolationTest extends TestCase
 
     public function test_campaign_schema_supports_the_active_filament_fields(): void
     {
-        $this->assertTrue(Schema::hasColumns('campaigns', ['subject', 'content', 'sent_at', 'recipients_count']));
+        $this->assertTrue(Schema::hasColumns('campaigns', [
+            'subject',
+            'content',
+            'scheduled_at',
+            'sent_at',
+            'recipients_count',
+            'delivered_count',
+            'failed_count',
+            'blocked_count',
+            'dispatch_started_at',
+            'completed_at',
+            'failure_reason',
+        ]));
+        $this->assertTrue(Schema::hasTable('campaign_deliveries'));
     }
 
     public function test_worker_sends_uuid_tenant_campaign_only_to_a_current_follower(): void
@@ -102,5 +117,46 @@ final class CampaignDeliveryTenantIsolationTest extends TestCase
             'campaign_00000000-0000-4000-8000-000000000010_42_user_00000000-0000-4000-8000-000000000020',
             $job->uniqueId(),
         );
+    }
+
+    public function test_due_campaign_is_claimed_once_and_queues_only_its_tenant_followers(): void
+    {
+        app(TenantContext::class)->setAsSystemRoot();
+        $tenant = Tenant::factory()->create();
+        $foreignTenant = Tenant::factory()->create();
+        $recipient = User::factory()->create(['email' => 'recipient@example.test']);
+        $foreignRecipient = User::factory()->create(['email' => 'foreign@example.test']);
+        $tenant->followers()->attach($recipient->id);
+        $foreignTenant->followers()->attach($foreignRecipient->id);
+        $campaign = Campaign::forceCreate([
+            'tenant_id' => $tenant->id,
+            'title' => 'Oferta programada',
+            'subject' => 'Oferta real',
+            'content' => '<p>Contenido</p>',
+            'type' => 'email',
+            'status' => 'scheduled',
+            'scheduled_at' => now()->subMinute(),
+        ]);
+        Queue::fake();
+
+        $first = (new CampaignDispatchService)->dispatchDue();
+        $second = (new CampaignDispatchService)->dispatchDue();
+
+        self::assertSame(['claimed' => 1, 'queued' => 1, 'completed_empty' => 0, 'errors' => 0], $first);
+        self::assertSame(0, $second['claimed']);
+        Queue::assertPushed(SendCampaignEmail::class, 1);
+        Queue::assertPushed(SendCampaignEmail::class, fn (SendCampaignEmail $job): bool => $job->tenantId === $tenant->id
+            && $job->campaignId === $campaign->id
+            && $job->userId === $recipient->id);
+        $this->assertDatabaseHas('campaigns', [
+            'id' => $campaign->id,
+            'tenant_id' => $tenant->id,
+            'status' => 'dispatching',
+            'recipients_count' => 1,
+        ]);
+        $this->assertDatabaseMissing('campaign_deliveries', [
+            'campaign_id' => $campaign->id,
+            'user_id' => $foreignRecipient->id,
+        ]);
     }
 }

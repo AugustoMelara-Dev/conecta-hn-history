@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Channels;
 
 use App\Application\Channels\Contracts\ChannelAdapterInterface;
+use App\Application\Channels\Contracts\ChannelAdapterResolverInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -15,7 +16,17 @@ final class ChannelDeliveryService
     public function __construct(
         private readonly ChannelConnectionService $connections,
         private readonly ?ConversationChannelBridge $conversationBridge = null,
+        private readonly ?ChannelAdapterResolverInterface $adapterResolver = null,
     ) {}
+
+    public function sendResolved(ChannelContext $context, ChannelOutboundMessage $message): DeliveryReceipt
+    {
+        if ($this->adapterResolver === null) {
+            throw new ChannelProviderUnavailableException('channel_adapter_resolver_unavailable');
+        }
+
+        return $this->send($this->adapterResolver->resolve($context), $context, $message);
+    }
 
     public function send(
         ChannelAdapterInterface $adapter,
@@ -44,6 +55,12 @@ final class ChannelDeliveryService
         }
 
         if (! $decision->allowed) {
+            $providerUnavailable = in_array($decision->reason, [
+                'adapter_not_configured',
+                'fake_adapter_disabled',
+                'credentials_missing',
+                'provider_adapter_missing',
+            ], true);
             $receipt = new DeliveryReceipt(
                 tenantId: $context->tenantId,
                 channel: $context->channel,
@@ -51,7 +68,7 @@ final class ChannelDeliveryService
                 idempotencyKey: $message->idempotencyKey,
                 providerMessageId: null,
                 providerEventId: null,
-                deliveryState: 'blocked',
+                deliveryState: $providerUnavailable ? 'provider_unavailable' : 'blocked',
                 costAmount: '0.00',
                 costCurrency: $context->currency,
                 providerIdempotencyKey: $providerKey,
@@ -60,7 +77,14 @@ final class ChannelDeliveryService
                     'market_country_code' => $context->marketCountryCode,
                 ],
             );
-            $this->finalizeIntent($context, $message, $intent, $payloadHash, $receipt, null);
+            $this->finalizeIntent(
+                $context,
+                $message,
+                $intent,
+                $payloadHash,
+                $receipt,
+                $providerUnavailable ? 'provider_unavailable' : null,
+            );
 
             return $receipt;
         }

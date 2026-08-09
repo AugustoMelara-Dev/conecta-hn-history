@@ -33,6 +33,9 @@ final class FailClosedSmsAdapter implements ChannelAdapterInterface
         if (! $this->credentialsConfigured || empty($context->connection['secret_reference_key'])) {
             return ChannelCapabilityDecision::deny('sms.fail_closed', $providerKey, 'credentials_missing');
         }
+        if ($this->provider === null) {
+            return ChannelCapabilityDecision::deny('sms.fail_closed', $providerKey, 'provider_adapter_missing');
+        }
 
         return ChannelCapabilityDecision::allow('sms.fail_closed', $providerKey);
     }

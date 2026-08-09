@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
+use App\Application\Marketing\CampaignDispatchService;
 use App\Filament\App\Resources\CampaignResource\Pages;
 use App\Models\Campaign;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -16,14 +18,12 @@ use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\ToggleColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -45,142 +45,94 @@ class CampaignResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema
-            ->components([
-                Section::make('Información de la campaña')
-                    ->components([
-                        TextInput::make('name')
-                            ->label('Nombre')
-                            ->required()
-                            ->maxLength(255),
+        return $schema->components([
+            Section::make('Información de la campaña')->components([
+                TextInput::make('title')->label('Nombre interno')->required()->maxLength(255),
+                Select::make('type')
+                    ->label('Canal')
+                    ->required()
+                    ->options(['email' => 'Email'])
+                    ->default('email')
+                    ->helperText('WhatsApp, SMS y push se habilitarán cuando exista un proveedor configurado.'),
+            ])->columns(2),
 
-                        Select::make('type')
-                            ->label('Tipo')
-                            ->required()
-                            ->options([
-                                'email' => 'Email',
-                                'sms' => 'SMS',
-                                'whatsapp' => 'WhatsApp',
-                                'push' => 'Push notification',
-                            ])
-                            ->default('email'),
+            Section::make('Contenido')->components([
+                TextInput::make('subject')->label('Asunto del correo')->required()->maxLength(255),
+                RichEditor::make('content')->label('Contenido')->required()->columnSpanFull(),
+            ]),
 
-                        Select::make('status')
-                            ->label('Estado')
-                            ->required()
-                            ->options([
-                                'draft' => 'Borrador',
-                                'scheduled' => 'Programada',
-                                'running' => 'En curso',
-                                'paused' => 'Pausada',
-                                'completed' => 'Completada',
-                            ])
-                            ->default('draft'),
-                    ]),
-
-                Section::make('Contenido')
-                    ->components([
-                        RichEditor::make('content')
-                            ->label('Contenido')
-                            ->required()
-                            ->columnSpanFull(),
-                    ]),
-
-                Section::make('Programación')
-                    ->components([
-                        Grid::make(2)
-                            ->components([
-                                DateTimePicker::make('scheduled_at')
-                                    ->label('Programada para')
-                                    ->timezone('America/Tegucigalpa')
-                                    ->displayFormat('d/m/Y H:i'),
-
-                                TextInput::make('target_audience_size')
-                                    ->label('Tamaño de audiencia')
-                                    ->numeric()
-                                    ->default(0),
-
-                                Toggle::make('is_active')
-                                    ->label('Activa')
-                                    ->default(true),
-                            ]),
-                    ]),
-            ]);
+            Section::make('Programación')->components([
+                Grid::make(2)->components([
+                    DateTimePicker::make('scheduled_at')
+                        ->label('Programada para')
+                        ->timezone('America/Tegucigalpa')
+                        ->displayFormat('d/m/Y H:i'),
+                    TextInput::make('recipients_count')
+                        ->label('Destinatarios capturados')
+                        ->numeric()
+                        ->disabled()
+                        ->dehydrated(false),
+                ]),
+            ]),
+        ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
-                TextColumn::make('name')
-                    ->label('Nombre')
-                    ->searchable()
-                    ->sortable(),
-
-                TextColumn::make('type')
-                    ->label('Tipo')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'email' => 'info',
-                        'sms' => 'warning',
-                        'whatsapp' => 'success',
-                        'push' => 'primary',
-                        default => 'gray',
-                    }),
-
+                TextColumn::make('title')->label('Nombre')->searchable()->sortable(),
+                TextColumn::make('type')->label('Canal')->badge()->color('info'),
                 TextColumn::make('status')
                     ->label('Estado')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
-                        'draft' => 'gray',
                         'scheduled' => 'info',
-                        'running' => 'success',
-                        'paused' => 'warning',
-                        'completed' => 'primary',
+                        'dispatching' => 'warning',
+                        'completed' => 'success',
+                        'completed_with_errors' => 'warning',
+                        'failed' => 'danger',
                         default => 'gray',
                     }),
-
-                TextColumn::make('scheduled_at')
-                    ->label('Programada')
-                    ->dateTime('d/m/Y H:i')
-                    ->timezone('America/Tegucigalpa')
-                    ->sortable(),
-
-                TextColumn::make('target_audience_size')
-                    ->label('Audiencia')
-                    ->numeric()
-                    ->sortable(),
-
-                ToggleColumn::make('is_active')
-                    ->label('Activa'),
+                TextColumn::make('scheduled_at')->label('Programada')->dateTime('d/m/Y H:i')->timezone('America/Tegucigalpa')->sortable(),
+                TextColumn::make('recipients_count')->label('Audiencia')->numeric()->sortable(),
+                TextColumn::make('delivered_count')->label('Entregados')->numeric(),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('type')
-                    ->label('Tipo')
-                    ->options([
-                        'email' => 'Email',
-                        'sms' => 'SMS',
-                        'whatsapp' => 'WhatsApp',
-                        'push' => 'Push',
-                    ]),
+                SelectFilter::make('status')->label('Estado')->options([
+                    'draft' => 'Borrador',
+                    'scheduled' => 'Programada',
+                    'dispatching' => 'Enviando',
+                    'completed' => 'Completada',
+                    'completed_with_errors' => 'Con incidencias',
+                    'failed' => 'Fallida',
+                ]),
             ])
             ->actions([
+                Action::make('schedule')
+                    ->label('Programar')
+                    ->icon('heroicon-o-calendar')
+                    ->visible(fn (Campaign $record): bool => in_array($record->status, ['draft', 'paused'], true) && $record->scheduled_at !== null)
+                    ->action(fn (Campaign $record) => app(CampaignDispatchService::class)->schedule($record, $record->scheduled_at)),
+                Action::make('send_now')
+                    ->label('Enviar ahora')
+                    ->icon('heroicon-o-paper-airplane')
+                    ->requiresConfirmation()
+                    ->visible(fn (Campaign $record): bool => in_array($record->status, ['draft', 'paused', 'scheduled'], true))
+                    ->action(fn (Campaign $record) => app(CampaignDispatchService::class)->schedule($record, now())),
+                Action::make('pause')
+                    ->label('Pausar')
+                    ->icon('heroicon-o-pause')
+                    ->visible(fn (Campaign $record): bool => $record->status === 'scheduled')
+                    ->action(fn (Campaign $record) => app(CampaignDispatchService::class)->pause($record)),
                 EditAction::make(),
                 DeleteAction::make(),
             ])
-            ->bulkActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
-            ])
+            ->bulkActions([BulkActionGroup::make([DeleteBulkAction::make()])])
             ->emptyStateHeading('No tienes campañas creadas')
-            ->emptyStateDescription('Crea tu primera campaña para empezar a comunicarte con tus clientes.')
+            ->emptyStateDescription('Crea una campaña, define el contenido y programa el envío.')
             ->emptyStateIcon('heroicon-o-megaphone')
-            ->emptyStateActions([
-                CreateAction::make()
-                    ->label('Crear primera campaña')
-                    ->icon('heroicon-o-plus'),
-            ])
+            ->emptyStateActions([CreateAction::make()->label('Crear primera campaña')->icon('heroicon-o-plus')])
             ->defaultSort('created_at', 'desc');
     }
 
@@ -189,11 +141,7 @@ class CampaignResource extends Resource
         $query = parent::getEloquentQuery();
         $tenant = Filament::getTenant();
 
-        if (! $tenant) {
-            return $query->whereRaw('1 = 0');
-        }
-
-        return $query->where('business_id', $tenant->getKey());
+        return $tenant ? $query->where('tenant_id', $tenant->getKey()) : $query->whereRaw('1 = 0');
     }
 
     public static function getRelations(): array
