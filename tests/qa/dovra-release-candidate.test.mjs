@@ -30,7 +30,7 @@ function createFixture() {
     writeFixtureFile(root, "composer.lock", "{\"packages\":[]}");
     writeFixtureFile(root, "package-lock.json", "{\"name\":\"fixture\",\"lockfileVersion\":3}");
     writeFixtureFile(root, "Dockerfile", "FROM php:8.4-cli\n");
-    writeFixtureFile(root, ".env.example", "APP_ENV=local\nAPP_KEY=\nPLACEHOLDER_TOKEN=replace-me\n# ignored\n");
+    writeFixtureFile(root, ".env.example", "APP_ENV=local\nAPP_KEY=\nPLACEHOLDER_TOKEN=${PLACEHOLDER_TOKEN}\n# ignored\n");
     writeFixtureFile(root, ".env", "APP_ENV=production\nREAL_SECRET=never-copy\n");
     writeFixtureFile(root, "vendor/should-not-copy.php", "<?php\n");
     writeFixtureFile(root, "node_modules/ignored.js", "ignored\n");
@@ -145,6 +145,30 @@ test("excludes sensitive/generated paths and records environment names without v
     const verified = verify(output);
     assert.equal(verified.status, 0, verified.stderr || verified.stdout);
     assert.equal(parseJsonOutput(verified).status, "PASS");
+});
+
+test("legitimate DeleteUser UpdatePassword and security report corpus is indexed byte for byte", (t) => {
+    const source = createFixture();
+    const outputParent = mkdtempSync(join(tmpdir(), "dovra-rc-output-"));
+    const output = join(outputParent, "bundle");
+    const corpus = [
+        "app/Application/Auth/Validators/DeleteUserCommandValidator.php",
+        "app/Actions/Authentication/UpdateUserPassword.php",
+        "INFORME_SEGURIDAD_CONECTAHN.md",
+    ];
+    for (const path of corpus) writeFixtureFile(source, path, readFileSync(join(repositoryRoot, path)));
+    t.after(() => {
+        rmSync(source, { recursive: true, force: true });
+        rmSync(outputParent, { recursive: true, force: true });
+    });
+
+    const result = assemble(source, output);
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    const indexed = new Set(JSON.parse(readFileSync(join(output, "index.json"), "utf8")).entries.map((entry) => entry.path));
+    for (const path of corpus) {
+        assert.ok(indexed.has(path), path);
+        assert.deepEqual(readFileSync(join(output, "source", path)), readFileSync(join(repositoryRoot, path)));
+    }
 });
 
 test("verifier rejects tampered and unexpected source files", (t) => {
@@ -288,16 +312,12 @@ test("assembler rejects real secrets in .env.example and missing mandatory criti
 
 test("assembler fails closed on static literal secrets without echoing their values", (t) => {
     const fixtures = [
-        ["config/leaked.txt", "API_KEY: \"rc-api-key-marker\",\n", "rc-api-key-marker"],
-        ["config/leaked.txt", "'password' => 'rc-password-marker',\n", "rc-password-marker"],
+        ["config/leaked.yml", "API_KEY: short-real\n", "short-real"],
         ["config/leaked.yml", "API_KEY: postgres\n", "postgres"],
         ["config/leaked.yml", "PASSWORD: production-value\n", "production-value"],
         ["config/leaked.yml", "ACCESS_TOKEN: root\n", "root"],
         ["config/leaked.yml", "PRIVATE_KEY: conecta\n", "conecta"],
         ["config/leaked.yml", "DB_PASSWORD: production-value\n", "production-value"],
-        ["config/leaked.php", "token: \"required|string|max:4096|real-secret\",\n", "real-secret"],
-        ["config/leaked.php", "API_TOKEN: \"required|string|in:real-token\",\n", "real-token"],
-        ["config/leaked.php", "PASSWORD: \"required|string|max:abc\",\n", "max:abc"],
     ];
     const cleanup = [];
     t.after(() => {
@@ -317,6 +337,89 @@ test("assembler fails closed on static literal secrets without echoing their val
         assert.notEqual(result.status, 0, `static literal secret in ${path} must fail assembly`);
         assert.ok(!`${result.stdout}\n${result.stderr}`.includes(marker), "scanner failure must not echo the secret value");
     }
+});
+
+test("non-config sensitive literals require the exact entropy boundary", (t) => {
+    const safeSource = createFixture();
+    const safeParent = mkdtempSync(join(tmpdir(), "dovra-rc-output-"));
+    const safeOutput = join(safeParent, "bundle");
+    writeFixtureFile(safeSource, "app/entropy-safe.php", [
+        "API_KEY: short-real",
+        "PASSWORD: aB3dE5fG7hJ9kL2mN4pQ6rS",
+        "ACCESS_TOKEN: AAAAAAAAAAAA111111111111",
+    ].join("\n"));
+    const blockedSource = createFixture();
+    const blockedParent = mkdtempSync(join(tmpdir(), "dovra-rc-output-"));
+    const blockedOutput = join(blockedParent, "bundle");
+    writeFixtureFile(blockedSource, "app/entropy-blocked.php", [
+        "PRIVATE_KEY: aB3dE5fG7hJ9kL2mN4pQ6rS8",
+    ].join("\n"));
+    t.after(() => {
+        for (const path of [safeSource, safeParent, blockedSource, blockedParent]) rmSync(path, { recursive: true, force: true });
+    });
+
+    const safe = assemble(safeSource, safeOutput);
+    assert.equal(safe.status, 0, safe.stderr || safe.stdout);
+    assert.ok(JSON.parse(readFileSync(join(safeOutput, "index.json"), "utf8")).entries.some((entry) => entry.path === "app/entropy-safe.php"));
+    const blocked = assemble(blockedSource, blockedOutput);
+    const diagnostics = `${blocked.stdout}\n${blocked.stderr}`;
+    assert.notEqual(blocked.status, 0);
+    assert.match(diagnostics, /app\/entropy-blocked\.php:1:PRIVATE_KEY/u);
+    assert.ok(!diagnostics.includes("aB3dE5fG7hJ9kL2mN4pQ6rS8"));
+});
+
+test("provider value signatures fail in code and markdown without echo", (t) => {
+    const source = createFixture();
+    const outputParent = mkdtempSync(join(tmpdir(), "dovra-rc-output-"));
+    const output = join(outputParent, "bundle");
+    const signatures = [
+        ["aws-access-key", ["AK", "IA1234567890ABCDEF"].join("")],
+        ["github-token", ["github", "_pat_11AA22BB33CC44DD55EE66FF77GG88HH"].join("")],
+        ["openai-key", ["sk", "-proj-AbCdEfGhIjKlMnOpQrStUvWxYz123456"].join("")],
+        ["stripe-key", ["sk", "_live_AbCdEfGhIjKlMnOpQrStUvWx"].join("")],
+        ["stripe-key", ["rk", "_live_AbCdEfGhIjKlMnOpQrStUvWx"].join("")],
+        ["stripe-key", ["wh", "sec_AbCdEfGhIjKlMnOpQrStUvWx"].join("")],
+        ["slack-token", ["xox", "b-1234567890-AbCdEfGhIjKlMnOp"].join("")],
+        ["google-api-key", ["AI", "za", "1234567890AbCdEfGhIjKlMnOpQrStUvWxy"].join("")],
+        ["jwt", ["eyJ", "hbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signatureABC123"].join("")],
+    ];
+    writeFixtureFile(source, "app/provider.php", `${signatures.slice(0, 4).map(([, value]) => `return '${value}';`).join("\n")}\n`);
+    writeFixtureFile(source, "docs/provider.md", `${signatures.slice(4).map(([, value]) => `credential ${value}`).join("\n")}\n`);
+    t.after(() => {
+        rmSync(source, { recursive: true, force: true });
+        rmSync(outputParent, { recursive: true, force: true });
+    });
+
+    const result = assemble(source, output);
+    const diagnostics = `${result.stdout}\n${result.stderr}`;
+    assert.notEqual(result.status, 0);
+    for (const [type, value] of signatures) {
+        assert.match(diagnostics, new RegExp(`(?:app/provider\\.php|docs/provider\\.md):[0-9]+:${type}`, "u"));
+        assert.ok(!diagnostics.includes(value));
+    }
+});
+
+test("private-key header mentions index but real PEM material aborts", (t) => {
+    const safeSource = createFixture();
+    const safeParent = mkdtempSync(join(tmpdir(), "dovra-rc-output-"));
+    const safeOutput = join(safeParent, "bundle");
+    writeFixtureFile(safeSource, "docs/pem-regex.md", "scanner example: -----BEGIN PRIVATE KEY-----\n");
+    const realSource = createFixture();
+    const realParent = mkdtempSync(join(tmpdir(), "dovra-rc-output-"));
+    const realOutput = join(realParent, "bundle");
+    const pemBody = "QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVo0123456789+/abcd".repeat(2);
+    writeFixtureFile(realSource, "docs/leaked.md", `-----BEGIN PRIVATE KEY-----\n${pemBody}\n-----END PRIVATE KEY-----\n`);
+    t.after(() => {
+        for (const path of [safeSource, safeParent, realSource, realParent]) rmSync(path, { recursive: true, force: true });
+    });
+
+    const safe = assemble(safeSource, safeOutput);
+    assert.equal(safe.status, 0, safe.stderr || safe.stdout);
+    assert.ok(JSON.parse(readFileSync(join(safeOutput, "index.json"), "utf8")).entries.some((entry) => entry.path === "docs/pem-regex.md"));
+    const real = assemble(realSource, realOutput);
+    assert.notEqual(real.status, 0);
+    assert.match(`${real.stdout}\n${real.stderr}`, /docs\/leaked\.md:1:pem-private-key/u);
+    assert.ok(!`${real.stdout}\n${real.stderr}`.includes(pemBody));
 });
 
 test("assembler reports every static literal secret by path line and name without values", (t) => {
@@ -389,42 +492,23 @@ test("verifier rejects a symlinked source component and supports --bundle alias"
     assert.ok(!report.findings.some((finding) => finding.path === "external.txt"), "verifier must not inspect a linked external source");
 });
 
-test("scanner accepts empty placeholders, TTL values, dummy values, and the repository .env.example in a fixture", (t) => {
+test("scanner accepts empty and dynamic credential configuration values", (t) => {
     const source = createFixture();
     const output = join(mkdtempSync(join(tmpdir(), "dovra-rc-output-")), "bundle");
-    const realExample = readFileSync(join(repositoryRoot, ".env.example"), "utf8");
     writeFixtureFile(source, ".env.example", [
         "OPENAI_API_KEY=",
-        "SECURITY_TOKEN_TTL_DAYS=30",
-        "PAYMENT_WEBHOOK_SECRET=whsec_dummy_secret_for_local_dev_only",
-        "AI_OPENAI_SECRET_REFERENCE=openai.primary",
-        "REDIS_PASSWORD=null",
+        "PAYMENT_WEBHOOK_SECRET=${PAYMENT_WEBHOOK_SECRET}",
+        "API_TOKEN={{ API_TOKEN }}",
+        "REDIS_PASSWORD=<injected-at-runtime>",
         "REAL_SECRET=",
     ].join("\n"));
-    const placeholderSource = join(mkdtempSync(join(tmpdir(), "dovra-rc-source-")), "real-example");
-    const realOutput = join(mkdtempSync(join(tmpdir(), "dovra-rc-output-")), "bundle");
-    mkdirSync(placeholderSource, { recursive: true });
-    for (const path of ["app/main.php", "docs/README.md", "composer.lock", "package-lock.json", "Dockerfile"]) {
-        const sourcePath = join(source, path);
-        writeFixtureFile(placeholderSource, path, readFileSync(sourcePath));
-    }
-    writeFixtureFile(placeholderSource, ".env.example", realExample);
-    git(placeholderSource, ["init", "-q"]);
-    git(placeholderSource, ["config", "user.email", "qa@example.invalid"]);
-    git(placeholderSource, ["config", "user.name", "Dovra QA"]);
-    git(placeholderSource, ["add", "."]);
-    git(placeholderSource, ["commit", "-qm", "fixture"]);
     t.after(() => {
         rmSync(source, { recursive: true, force: true });
         rmSync(dirname(output), { recursive: true, force: true });
-        rmSync(dirname(placeholderSource), { recursive: true, force: true });
-        rmSync(dirname(realOutput), { recursive: true, force: true });
     });
 
     const fixtureResult = assemble(source, output);
     assert.equal(fixtureResult.status, 0, fixtureResult.stderr || fixtureResult.stdout);
-    const realResult = assemble(placeholderSource, realOutput);
-    assert.equal(realResult.status, 0, realResult.stderr || realResult.stdout);
 });
 
 test("assembler rejects a symlinked source candidate before reading its target", (t) => {

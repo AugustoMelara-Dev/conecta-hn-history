@@ -215,10 +215,6 @@ function hasSensitivePath(relativePath) {
     return { excluded: false, reason: null };
 }
 
-function hasPrivateKeySignature(content) {
-    return /-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----/u.test(content.toString("utf8"));
-}
-
 function normalizeAssignmentName(name) {
     return name
         .replace(/([A-Z]+)([A-Z][a-z])/gu, "$1_$2")
@@ -273,70 +269,91 @@ function isKnownLocalDatabaseSentinel(name, value) {
     return sentinels.get(name)?.has(value) ?? false;
 }
 
-function isClosedLaravelValidationRule(value) {
-    const rules = value.split("|");
-    if (rules.length < 3) {
-        return false;
+function isCredentialConfigSurface(path) {
+    const normalized = toPosixPath(path).toLowerCase();
+    return normalized.endsWith("/.env.example")
+        || normalized === ".env.example"
+        || /\.(?:ya?ml|toml|ini|properties)$/u.test(normalized);
+}
+
+function shannonEntropy(value) {
+    const counts = new Map();
+    for (const character of value) {
+        counts.set(character, (counts.get(character) ?? 0) + 1);
     }
-    const flags = new Set([
-        "required",
-        "nullable",
-        "sometimes",
-        "string",
-        "integer",
-        "numeric",
-        "boolean",
-        "array",
-        "email",
-        "url",
-        "uuid",
-        "date",
-        "confirmed",
-    ]);
-    return rules.every((rule) => flags.has(rule) || /^(?:min|max|size|between):[0-9]+(?:,[0-9]+)*$/u.test(rule));
+    let entropy = 0;
+    for (const count of counts.values()) {
+        const probability = count / value.length;
+        entropy -= probability * Math.log2(probability);
+    }
+    return entropy;
 }
 
-function isPlaceholderSecret(value) {
-    return value.length === 0
-        || /^(?:change|replace|example|dummy|test|fake|fixture|your)[-_ ]?/iu.test(value)
-        || /(?:^|[_-])(?:dummy|placeholder|example|local|test|fake|fixture)(?:$|[_-])/iu.test(value)
-        || /^(?:null|none|false|true)$/iu.test(value);
+function characterClassCount(value) {
+    return [/[a-z]/u, /[A-Z]/u, /[0-9]/u, /[^A-Za-z0-9]/u]
+        .filter((pattern) => pattern.test(value))
+        .length;
 }
 
-function secretSignatures(content) {
-    const text = content.toString("utf8");
+function isHighEntropyCredential(value) {
+    return value.length >= 24 && characterClassCount(value) >= 2 && shannonEntropy(value) >= 3.5;
+}
+
+function valueSignatureDetections(text) {
     const detections = [];
+    const patterns = [
+        ["aws-access-key", /\b(?:AKIA|ASIA)[A-Z0-9]{16}\b/gu],
+        ["github-token", /\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})\b/gu],
+        ["openai-key", /\b(?:sk-proj-|sk-)[A-Za-z0-9_-]{20,}\b/gu],
+        ["stripe-key", /\b(?:sk_live_|rk_live_|whsec_)[A-Za-z0-9]{16,}\b/gu],
+        ["slack-token", /\bxox[a-z]-[A-Za-z0-9-]{16,}\b/giu],
+        ["google-api-key", /\bAIza[0-9A-Za-z_-]{35}\b/gu],
+        ["jwt", /\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/gu],
+    ];
+    for (const [type, pattern] of patterns) {
+        for (const match of text.matchAll(pattern)) {
+            detections.push({ line: text.slice(0, match.index).split("\n").length, name: type });
+        }
+    }
+    const pemPattern = /-----BEGIN ([A-Z0-9 ]*PRIVATE KEY)-----([\s\S]*?)-----END \1-----/gu;
+    for (const match of text.matchAll(pemPattern)) {
+        const material = match[2].replace(/\s+/gu, "");
+        if (material.length >= 64 && /^[A-Za-z0-9+/=]+$/u.test(material)) {
+            detections.push({ line: text.slice(0, match.index).split("\n").length, name: "pem-private-key" });
+        }
+    }
+    return detections;
+}
+
+function secretSignatures(content, path) {
+    const text = content.toString("utf8");
+    const detections = valueSignatureDetections(text);
+    const configSurface = isCredentialConfigSurface(path);
     for (const [index, line] of text.split(/\r?\n/u).entries()) {
         const match = line.match(/^[ \t]*(?:(?:export[ \t]+)?(?:const|let|var)[ \t]+)?(?:(['"])([A-Za-z_][A-Za-z0-9_]*)\1|([A-Za-z_][A-Za-z0-9_]*))[ \t]*(=>|:|=)[ \t]*([^#\r\n]*)/u);
         if (!match) {
             continue;
         }
         const name = normalizeAssignmentName(match[2] ?? match[3]);
-        if (name === "MYSQL_ALLOW_EMPTY_PASSWORD") {
-            continue;
-        }
         if (!isSensitiveAssignmentName(name)) {
             continue;
         }
         const value = staticAssignmentValue(match[5], match[4]);
-        if (value === null) {
+        if (value === null || value.length === 0) {
             continue;
         }
-        if (/(?:_TTL(?:_|$)|_DAYS(?:_|$)|_SECONDS(?:_|$)|_MINUTES(?:_|$)|_HOURS(?:_|$)|_REFERENCE$|_REF$)/u.test(name)) {
+        if (configSurface && name === "MYSQL_ALLOW_EMPTY_PASSWORD") {
             continue;
         }
-        if (isPlaceholderSecret(value)) {
+        if (configSurface && isKnownLocalDatabaseSentinel(name, value)) {
             continue;
         }
-        if (isKnownLocalDatabaseSentinel(name, value)) {
-            continue;
+        const quotedName = match[1] !== undefined;
+        if (configSurface || (!quotedName && isHighEntropyCredential(value))) {
+            detections.push({ line: index + 1, name });
         }
-        if (isClosedLaravelValidationRule(value)) {
-            continue;
-        }
-        detections.push({ line: index + 1, name });
     }
-    return detections;
+    return detections.filter((detection, index, all) => all.findIndex((candidate) => candidate.line === detection.line && candidate.name === detection.name) === index);
 }
 
 function envNamesFromContent(content) {
@@ -479,11 +496,7 @@ function copyVisibleFiles(source, sourceOutput, visiblePaths) {
                 }
             }
         }
-        if (hasPrivateKeySignature(content)) {
-            excludedCounts.set("private-key-signature", (excludedCounts.get("private-key-signature") ?? 0) + 1);
-            continue;
-        }
-        const detected = secretSignatures(content);
+        const detected = secretSignatures(content, candidate);
         if (detected.length > 0) {
             secretDetections.push(...detected.map(({ line, name }) => ({ path: candidate, line, name })));
             continue;
