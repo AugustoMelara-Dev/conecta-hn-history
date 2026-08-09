@@ -88,7 +88,7 @@ final class PermissionModelKeyMigration
                 scope: $scope,
                 anomalies: $anomalies,
                 blockingIssues: ['MISSING_REQUIRED_TABLE'],
-                details: ['missing_tables' => $missing],
+                details: ['missing_tables' => $missing, ...$this->uuidProofDetails($driver)],
             );
         }
 
@@ -152,6 +152,7 @@ final class PermissionModelKeyMigration
                 'command_version' => self::COMMAND_VERSION,
                 'config_fingerprint' => $this->configurationFingerprint(),
                 'source_schema_fingerprint' => $this->sourceSchemaFingerprint(),
+                ...$this->uuidProofDetails($driver),
             ],
         );
     }
@@ -896,9 +897,14 @@ final class PermissionModelKeyMigration
             return in_array($type, ['char', 'varchar'], true) && (int) $length === 36;
         }
 
-        // SQLite only exposes an exact UUID width when the declared engine DDL
-        // retains varchar(36); Blueprint's unconstrained varchar fails closed.
-        return in_array($type, ['char', 'varchar'], true) && (int) $length === 36;
+        if (DB::getDriverName() === 'sqlite') {
+            // Laravel 13 compiles Blueprint::uuid() to an unbounded SQLite varchar.
+            // This certifies only observable equivalence with the repository's
+            // canonical migration shape; the report explicitly marks width unproven.
+            return $type === 'varchar' && $length === null;
+        }
+
+        return false;
     }
 
     private function isExactRolePermissionParent(string $table, string $column): bool
@@ -1982,7 +1988,18 @@ final class PermissionModelKeyMigration
 
     private function verificationScope(string $driver): string
     {
-        return $driver === 'sqlite' ? 'LOCALLY_VERIFIED_SQLITE' : 'EXTERNAL_BLOCKED';
+        return $driver === 'sqlite' ? 'BOUNDED_LOCAL_SQLITE' : 'EXTERNAL_BLOCKED';
+    }
+
+    /** @return array<string, mixed> */
+    private function uuidProofDetails(string $driver): array
+    {
+        return $driver === 'sqlite'
+            ? [
+                'sqlite_uuid_width_proven' => false,
+                'sqlite_uuid_shape_equivalence' => 'LARAVEL_BLUEPRINT_UUID',
+            ]
+            : [];
     }
 
     private function databaseVersion(): string

@@ -57,8 +57,8 @@ it('classifies source shape with a bounded model-id cursor instead of eager rows
         ->and($report['source']['model_has_roles']['count'])->toBe(0);
 });
 
-it('does not drop exact empty foreign shadows on rollback', function (): void {
-    createExactPermissionShadowTables();
+it('does not drop canonical empty foreign shadows on rollback', function (): void {
+    createCanonicalPermissionShadowTables();
 
     $migrationDefinition = require database_path('migrations/2026_08_23_000001_expand_spatie_uuid_permission_pivots.php');
     $migrationDefinition->up();
@@ -81,7 +81,7 @@ it('does not drop exact empty foreign shadows on rollback', function (): void {
         ->and(Schema::hasTable('model_has_roles_uuid_shadow'))->toBeTrue();
 });
 
-it('requires a non-null exact-length uuid primary key and exact numeric key contract', function (): void {
+it('requires a non-null uuid primary key and reports SQLite width as not proven', function (): void {
     Schema::disableForeignKeyConstraints();
     Schema::drop('users');
     Schema::enableForeignKeyConstraints();
@@ -95,17 +95,44 @@ it('requires a non-null exact-length uuid primary key and exact numeric key cont
         ->and($nullable['anomalies']['USER_UUID_SCHEMA_DRIFT'] ?? 0)->toBeGreaterThan(0);
 
     Schema::drop('users');
-    DB::statement('CREATE TABLE users (id varchar(255) NOT NULL PRIMARY KEY)');
-    $wide = app(PermissionModelKeyMigration::class)->preflight()->toArray();
+    Schema::create('users', static function (Blueprint $table): void {
+        $table->string('id')->primary();
+    });
+    $shapeEquivalent = app(PermissionModelKeyMigration::class)->preflight()->toArray();
 
-    expect($wide['status'])->toBe('blocked')
-        ->and($wide['anomalies']['USER_UUID_SCHEMA_DRIFT'] ?? 0)->toBeGreaterThan(0);
+    expect($shapeEquivalent['status'])->toBe('ready')
+        ->and($shapeEquivalent['details']['sqlite_uuid_width_proven'] ?? null)->toBeFalse();
 
     setUpPermissionFixture();
     $canonical = app(PermissionModelKeyMigration::class)->preflight()->toArray();
 
     expect($canonical['status'])->toBe('ready')
         ->and($canonical['shape'])->toBe('legacy_bigint_empty');
+});
+
+it('accepts the real Blueprint uuid migration shape as bounded SQLite equivalence', function (): void {
+    Schema::disableForeignKeyConstraints();
+    Schema::drop('users');
+    Schema::enableForeignKeyConstraints();
+    $userMigration = require database_path('migrations/0001_01_01_000000_create_users_table.php');
+    $userMigration->up();
+
+    try {
+        $migration = app(PermissionModelKeyMigration::class);
+        $before = $migration->preflight()->toArray();
+        $expanded = $migration->expand()->toArray();
+        $userIdColumn = collect($before['schema']['tables']['users']['columns'] ?? [])->firstWhere('name', 'id');
+    } finally {
+        $userMigration->down();
+    }
+
+    expect($before['status'])->toBe('ready')
+        ->and($before['verification_scope'])->toBe('BOUNDED_LOCAL_SQLITE')
+        ->and($before['details']['sqlite_uuid_width_proven'] ?? null)->toBeFalse()
+        ->and($userIdColumn['type'] ?? null)->toBe('varchar')
+        ->and($expanded['status'])->toBe('expanded')
+        ->and($expanded['details']['sqlite_uuid_width_proven'] ?? null)->toBeFalse()
+        ->and(Schema::hasTable('spatie_uuid_permission_pivot_ownership'))->toBeTrue();
 });
 
 it('rejects matching small signed parent and pivot keys', function (): void {
@@ -508,7 +535,7 @@ it('exposes a sanitized artisan report with the sqlite verification scope', func
     ]);
 
     $result->assertExitCode(0)
-        ->expectsOutputToContain('"verification_scope":"LOCALLY_VERIFIED_SQLITE"');
+        ->expectsOutputToContain('"verification_scope":"BOUNDED_LOCAL_SQLITE"');
 });
 
 it('blocks when users id is not an exact uuid primary key', function (): void {
@@ -971,7 +998,13 @@ function setUpPermissionFixture(): void
     }
     Schema::enableForeignKeyConstraints();
 
-    DB::statement('CREATE TABLE users (id varchar(36) NOT NULL PRIMARY KEY, name varchar(255), email varchar(255), password varchar(255), created_at datetime, updated_at datetime)');
+    Schema::create('users', static function (Blueprint $table): void {
+        $table->uuid('id')->primary();
+        $table->string('name')->nullable();
+        $table->string('email')->nullable();
+        $table->string('password')->nullable();
+        $table->timestamps();
+    });
     Schema::create('permissions', static function (Blueprint $table): void {
         $table->bigIncrements('id');
         $table->string('name');
@@ -1009,12 +1042,24 @@ function setUpPermissionFixture(): void
     });
 }
 
-function createExactPermissionShadowTables(): void
+function createCanonicalPermissionShadowTables(): void
 {
-    DB::statement('CREATE TABLE model_has_permissions_uuid_shadow (permission_id integer NOT NULL, model_type varchar NOT NULL, model_id varchar(36) NOT NULL, CONSTRAINT spatie_mhpu_permission_fk FOREIGN KEY (permission_id) REFERENCES permissions (id) ON DELETE CASCADE, CONSTRAINT spatie_mhpu_assignment_pk PRIMARY KEY (permission_id, model_id, model_type))');
-    DB::statement('CREATE INDEX spatie_mhpu_model_lookup_idx ON model_has_permissions_uuid_shadow (model_id, model_type)');
-    DB::statement('CREATE TABLE model_has_roles_uuid_shadow (role_id integer NOT NULL, model_type varchar NOT NULL, model_id varchar(36) NOT NULL, CONSTRAINT spatie_mhru_role_fk FOREIGN KEY (role_id) REFERENCES roles (id) ON DELETE CASCADE, CONSTRAINT spatie_mhru_assignment_pk PRIMARY KEY (role_id, model_id, model_type))');
-    DB::statement('CREATE INDEX spatie_mhru_model_lookup_idx ON model_has_roles_uuid_shadow (model_id, model_type)');
+    Schema::create('model_has_permissions_uuid_shadow', static function (Blueprint $table): void {
+        $table->unsignedBigInteger('permission_id');
+        $table->string('model_type');
+        $table->uuid('model_id');
+        $table->foreign('permission_id', 'spatie_mhpu_permission_fk')->references('id')->on('permissions')->onDelete('cascade');
+        $table->primary(['permission_id', 'model_id', 'model_type'], 'spatie_mhpu_assignment_pk');
+        $table->index(['model_id', 'model_type'], 'spatie_mhpu_model_lookup_idx');
+    });
+    Schema::create('model_has_roles_uuid_shadow', static function (Blueprint $table): void {
+        $table->unsignedBigInteger('role_id');
+        $table->string('model_type');
+        $table->uuid('model_id');
+        $table->foreign('role_id', 'spatie_mhru_role_fk')->references('id')->on('roles')->onDelete('cascade');
+        $table->primary(['role_id', 'model_id', 'model_type'], 'spatie_mhru_assignment_pk');
+        $table->index(['model_id', 'model_type'], 'spatie_mhru_model_lookup_idx');
+    });
 }
 
 /** @param array<string, mixed> $payload @return array<string, mixed> */

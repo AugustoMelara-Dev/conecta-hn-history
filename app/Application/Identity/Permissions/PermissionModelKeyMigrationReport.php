@@ -22,7 +22,7 @@ final readonly class PermissionModelKeyMigrationReport implements JsonSerializab
         public string $phase,
         public string $status,
         public string $shape,
-        public string $verificationScope = 'LOCALLY_VERIFIED_SQLITE',
+        public string $verificationScope = 'BOUNDED_LOCAL_SQLITE',
         public string $driver = '',
         public string $databaseVersion = '',
         public array $source = [],
