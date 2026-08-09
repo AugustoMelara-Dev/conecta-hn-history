@@ -11,7 +11,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-final readonly class OrderReceiptController extends Controller
+final class OrderReceiptController extends Controller
 {
     public function __construct(private TenantContext $tenantContext) {}
 

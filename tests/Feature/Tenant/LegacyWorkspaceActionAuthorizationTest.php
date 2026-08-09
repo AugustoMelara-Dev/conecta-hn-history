@@ -93,11 +93,11 @@ final class LegacyWorkspaceActionAuthorizationTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('reports.sales-pdf', absolute: false))
-            ->assertRedirect('/app/redirect-owner');
+            ->assertRedirect('/app/redirect-owner/reports-overview');
 
         $this->actingAs($user)
             ->get(route('reports.inventory-pdf', absolute: false))
-            ->assertRedirect('/app/redirect-owner');
+            ->assertRedirect('/app/redirect-owner/reports-overview');
     }
 
     private function httpMethod(IlluminateRoute $route): string
