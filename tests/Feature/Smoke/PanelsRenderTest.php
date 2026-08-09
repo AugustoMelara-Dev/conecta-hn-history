@@ -20,7 +20,8 @@ it('AppPanelProvider uses Filament 4 navigation groups', function () {
 
     expect($contents)->toContain('->navigationGroups(')
         ->and($contents)->toContain('->databaseNotifications()')
-        ->and($contents)->toContain('->viteTheme(')
+        ->and($contents)->toContain('->assets([')
+        ->and($contents)->toContain("Vite::asset('resources/css/filament/app/business-components.css')")
         ->and($contents)->toContain('->tenantMiddleware(')
         ->and($contents)->toContain('->tenantRoutePrefix(')
         ->and($contents)->toContain('->breadcrumbs()');
@@ -31,7 +32,8 @@ it('AdminPanelProvider uses Filament 4 navigation groups and database notificati
 
     expect($contents)->toContain('->navigationGroups(')
         ->and($contents)->toContain('->databaseNotifications()')
-        ->and($contents)->toContain('->viteTheme(')
+        ->and($contents)->toContain('->assets([')
+        ->and($contents)->toContain("Vite::asset('resources/css/filament/app/business-components.css')")
         ->and($contents)->toContain('->breadcrumbs()');
 });
 

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Resources;
 
-use Filament\Schemas\Schema as FilamentSchema;
 use App\Application\Access\Contracts\TenantPermissionGuardInterface;
 use App\Application\Crm\CanonicalOpportunityWriter;
 use App\Application\Markets\TenantMarketResolver;
@@ -28,12 +27,13 @@ use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Schema as DatabaseSchema;
 
 
 class CrmDealResource extends Resource
@@ -113,7 +113,7 @@ class CrmDealResource extends Resource
         return static::allows(Permission::CRM_DEALS_MOVE_STAGE);
     }
 
-    public static function form(FilamentSchema $schema): FilamentSchema
+    public static function form(Schema $schema): Schema
     {
         return $schema
             ->components([
@@ -496,7 +496,7 @@ class CrmDealResource extends Resource
     {
         $tenant = static::currentTenant();
 
-        if (! $tenant instanceof Tenant || ! Schema::hasTable('locations')) {
+        if (! $tenant instanceof Tenant || ! DatabaseSchema::hasTable('locations')) {
             return [];
         }
 

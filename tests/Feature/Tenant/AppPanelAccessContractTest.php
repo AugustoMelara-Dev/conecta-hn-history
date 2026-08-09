@@ -129,6 +129,10 @@ final class AppPanelAccessContractTest extends TestCase
 
         $this->actingAs($allowlistedSuperAdmin)
             ->get('/admin')
+            ->assertRedirect('/admin/dashboard');
+
+        $this->actingAs($allowlistedSuperAdmin)
+            ->get('/admin/dashboard')
             ->assertOk();
     }
 
