@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Domain\Crm\ValueObjects\DealScore;
+use App\Models\Concerns\HasImmutableTenantId;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -31,7 +32,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 class Contact extends Model
 {
-    use HasUuids, SoftDeletes;
+    use HasImmutableTenantId, HasUuids, SoftDeletes;
 
     protected $table = 'crm_contacts';
 
