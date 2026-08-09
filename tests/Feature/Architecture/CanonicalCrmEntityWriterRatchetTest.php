@@ -498,6 +498,22 @@ it('proves the AST ratchet detects bypass shapes while ignoring comments and imp
         }
         PHP;
 
+    $webToLeadValidStatic = dovraCrmCanonicalWebToLeadFixture();
+    $webToLeadInvalidInstance = dovraCrmCanonicalWebToLeadFixture(<<<'PHP'
+        $contact = Contact::find($id);
+        $contact->update(['job_title' => 'drift']);
+        PHP);
+    $webToLeadInvalidQuery = dovraCrmCanonicalWebToLeadFixture(<<<'PHP'
+        Contact::query()->where('id', $id)->update(['job_title' => 'drift']);
+        PHP);
+    $webToLeadInvalidTable = dovraCrmCanonicalWebToLeadFixture(<<<'PHP'
+        DB::table('crm_contacts')->where('id', $id)->update(['job_title' => 'drift']);
+        PHP);
+    $webToLeadInvalidRelation = dovraCrmCanonicalWebToLeadFixture(<<<'PHP'
+        $contact = Contact::find($id);
+        $contact->tags()->sync($tagIds);
+        PHP);
+
     expect(dovraCrmWebToLeadSentinel($webToLeadValidStatic, true)['ok'])->toBeTrue();
     expect(dovraCrmWebToLeadSentinel($webToLeadInvalidInstance, true)['ok'])->toBeFalse();
     expect(dovraCrmWebToLeadSentinel($webToLeadInvalidQuery, true)['ok'])->toBeFalse();
@@ -642,12 +658,60 @@ it('proves the AST ratchet detects bypass shapes while ignoring comments and imp
         }
         PHP;
 
+    $webToLeadMaskedDelete = dovraCrmCanonicalWebToLeadFixture(<<<'PHP'
+        $contact = Contact::find($id);
+        $contact->delete();
+        PHP);
+    $webToLeadScopedRelation = dovraCrmCanonicalWebToLeadFixture(<<<'PHP'
+        $contact = Contact::find($id);
+        $contact->tags()->where('tenant_id', $tenantId)->sync($tagIds);
+        PHP);
+    $webToLeadQuietCreateFamily = dovraCrmCanonicalWebToLeadFixture(<<<'PHP'
+        Contact::createQuietly(['tenant_id' => $tenantId]);
+        Contact::forceCreateQuietly(['tenant_id' => $tenantId]);
+        PHP);
+    $webToLeadAlternatePivotFamily = dovraCrmCanonicalWebToLeadFixture(<<<'PHP'
+        $contact = Contact::find($id);
+        $contact->tags()->toggle($tagIds);
+        $contact->tags()->syncOrFail($tagIds);
+        PHP);
+    $webToLeadFillInsertFamily = dovraCrmCanonicalWebToLeadFixture(<<<'PHP'
+        Contact::query()->fillAndInsert([['tenant_id' => $tenantId]]);
+        Contact::query()->fillAndInsertOrIgnore([['tenant_id' => $tenantId]]);
+        PHP);
+
     expect(dovraCrmWebToLeadSentinel($webToLeadMaskedDelete, true)['ok'])->toBeFalse();
     expect(dovraCrmWebToLeadSentinel($webToLeadScopedRelation, true)['ok'])->toBeFalse();
     expect(dovraCrmWebToLeadSentinel($webToLeadQuietCreateFamily, true)['ok'])->toBeFalse();
     expect(dovraCrmWebToLeadSentinel($webToLeadAlternatePivotFamily, true)['ok'])->toBeFalse();
     expect(dovraCrmWebToLeadSentinel($webToLeadFillInsertFamily, true)['ok'])->toBeFalse();
 });
+
+function dovraCrmCanonicalWebToLeadFixture(string $bypass = ''): string
+{
+    $fixture = <<<'PHP'
+        <?php
+        use App\Application\Crm\CanonicalCrmEntityWriter;
+        use App\Models\Contact;
+        use Illuminate\Support\Facades\DB;
+
+        final class CanonicalWebToLeadFixture
+        {
+            public function submit(CanonicalCrmEntityWriter $writer): void
+            {
+                DB::transaction(function () use ($writer): void {
+                    $tenantId = (string) \Filament\Facades\Filament::getTenant()?->getKey();
+                    $writer->createCompany($tenantId, 'actor-id', ['name' => 'Acme']);
+                    $writer->createContact($tenantId, 'actor-id', ['first_name' => 'Ada']);
+                    $writer->createActivity($tenantId, 'actor-id', ['type' => 'note']);
+                    /*__BYPASS__*/
+                });
+            }
+        }
+        PHP;
+
+    return str_replace('/*__BYPASS__*/', $bypass, $fixture);
+}
 
 /** @return list<string> */
 function dovraCrmProductionPhpFiles(): array

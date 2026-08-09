@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Pages\ImportExport;
 
+use App\Application\Imports\ImportService;
 use App\Application\Imports\OperationalImportService;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
@@ -125,6 +126,12 @@ final class ImportWizard extends Page
     {
         if (! is_string($entity) || $entity === '') {
             return 'Selecciona un tipo de datos.';
+        }
+
+        if (in_array($entity, ['contacts', 'companies'], true)) {
+            $importer = app(ImportService::class)->makeImporter($entity, '');
+
+            return implode(', ', $importer->templateHeaders());
         }
 
         return implode(', ', app(OperationalImportService::class)->columns($entity));
