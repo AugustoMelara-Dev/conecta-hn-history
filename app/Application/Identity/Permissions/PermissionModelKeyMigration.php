@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Identity\Permissions;
 
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use InvalidArgumentException;
@@ -37,6 +38,10 @@ final class PermissionModelKeyMigration
     private const BACKUP_PERMISSION = 'model_has_permissions_bigint_legacy';
 
     private const BACKUP_ROLE = 'model_has_roles_bigint_legacy';
+
+    private const OWNERSHIP = 'spatie_uuid_permission_pivot_ownership';
+
+    private const OWNERSHIP_KEY = 'spatie-uuid-shadow-owner-v1';
 
     private const MIGRATION = '2026_08_23_000001_expand_spatie_uuid_permission_pivots.php';
 
@@ -284,13 +289,56 @@ final class PermissionModelKeyMigration
 
     private function migrationOwnsShadows(): bool
     {
-        if (! Schema::hasTable('migrations') || ! Schema::hasColumn('migrations', 'migration')) {
+        if (! Schema::hasTable(self::OWNERSHIP)
+            || Schema::getColumnListing(self::OWNERSHIP) !== [
+                'owner_key',
+                'command_version',
+                'permission_schema_sha256',
+                'role_schema_sha256',
+            ]
+            || ! $this->hasPrimaryKey(self::OWNERSHIP, ['owner_key'])) {
             return false;
         }
 
-        return DB::table('migrations')
-            ->where('migration', pathinfo(self::MIGRATION, PATHINFO_FILENAME))
-            ->exists();
+        $rows = DB::table(self::OWNERSHIP)->get();
+        if ($rows->count() !== 1) {
+            return false;
+        }
+        $row = $rows->first();
+
+        return $row !== null
+            && hash_equals(self::OWNERSHIP_KEY, (string) ($row->owner_key ?? ''))
+            && hash_equals(self::COMMAND_VERSION, (string) ($row->command_version ?? ''))
+            && hash_equals($this->tableFingerprint(self::SHADOW_PERMISSION), (string) ($row->permission_schema_sha256 ?? ''))
+            && hash_equals($this->tableFingerprint(self::SHADOW_ROLE), (string) ($row->role_schema_sha256 ?? ''));
+    }
+
+    public function recordExpansionOwnershipMigration(): void
+    {
+        $this->assertLocalEngine();
+        if (Schema::hasTable(self::OWNERSHIP)) {
+            throw new RuntimeException('EXPANSION_OWNERSHIP_OCCUPIED');
+        }
+        if ($this->shadowSchemaIssues() !== []) {
+            throw new RuntimeException('SHADOW_SCHEMA_DRIFT');
+        }
+        Schema::create(self::OWNERSHIP, static function (Blueprint $table): void {
+            $table->string('owner_key')->primary();
+            $table->string('command_version');
+            $table->char('permission_schema_sha256', 64);
+            $table->char('role_schema_sha256', 64);
+        });
+        DB::table(self::OWNERSHIP)->insert([
+            'owner_key' => self::OWNERSHIP_KEY,
+            'command_version' => self::COMMAND_VERSION,
+            'permission_schema_sha256' => $this->tableFingerprint(self::SHADOW_PERMISSION),
+            'role_schema_sha256' => $this->tableFingerprint(self::SHADOW_ROLE),
+        ]);
+        if (! $this->migrationOwnsShadows()) {
+            Schema::dropIfExists(self::OWNERSHIP);
+
+            throw new RuntimeException('EXPANSION_OWNERSHIP_UNPROVEN');
+        }
     }
 
     public function backfill(int $batchSize = 100, ?string $checkpointPath = null, bool $dryRun = false): PermissionModelKeyMigrationReport
@@ -807,10 +855,8 @@ final class PermissionModelKeyMigration
             }
         }
         foreach (['permissions' => 'id', 'roles' => 'id'] as $table => $column) {
-            $parentContract = $this->columnContract($table, $column);
             if (! Schema::hasColumn($table, $column)
-                || ! $this->isIntegerType(Schema::getColumnType($table, $column))
-                || ($parentContract['auto_increment'] ?? false) !== true) {
+                || ! $this->isExactRolePermissionParent($table, $column)) {
                 $issues[] = 'ROLE_PERMISSION_KEY_TYPE_DRIFT';
             }
         }
@@ -847,14 +893,30 @@ final class PermissionModelKeyMigration
             return $type === 'uuid';
         }
         if (DB::getDriverName() === 'mysql') {
-            return $type === 'uuid'
-                || (in_array($type, ['char', 'varchar'], true) && (int) $length === 36);
+            return in_array($type, ['char', 'varchar'], true) && (int) $length === 36;
         }
 
-        // SQLite's Blueprint::uuid() is represented as varchar(36).  Do not
-        // accept an unconstrained/string(255) primary key as UUID-compatible.
-        return in_array($type, ['uuid', 'char', 'varchar', 'string'], true)
-            && ($length === null || (int) $length === 36);
+        // SQLite only exposes an exact UUID width when the declared engine DDL
+        // retains varchar(36); Blueprint's unconstrained varchar fails closed.
+        return in_array($type, ['char', 'varchar'], true) && (int) $length === 36;
+    }
+
+    private function isExactRolePermissionParent(string $table, string $column): bool
+    {
+        $contract = $this->columnContract($table, $column);
+        if (($contract['nullable'] ?? true) !== false
+            || ($contract['auto_increment'] ?? false) !== true
+            || ! $this->hasPrimaryKey($table, [$column])) {
+            return false;
+        }
+        $storage = $this->integerStorageType($contract);
+
+        return match (DB::getDriverName()) {
+            'mysql' => $storage === 'bigint' && ($contract['unsigned'] ?? false) === true,
+            'pgsql' => $storage === 'bigint' && ($contract['unsigned'] ?? false) === false,
+            'sqlite' => $storage === 'integer',
+            default => false,
+        };
     }
 
     private function hasPrimaryKey(string $table, array $columns): bool
@@ -939,6 +1001,7 @@ final class PermissionModelKeyMigration
         $roleShadow = Schema::hasTable(self::SHADOW_ROLE);
         $permissionBackup = Schema::hasTable(self::BACKUP_PERMISSION);
         $roleBackup = Schema::hasTable(self::BACKUP_ROLE);
+        $ownership = Schema::hasTable(self::OWNERSHIP);
 
         if ($permissionShadow xor $roleShadow) {
             $issues[] = 'PARTIAL_CUTOVER_STATE';
@@ -951,6 +1014,9 @@ final class PermissionModelKeyMigration
         }
         if (($permissionShadow && $roleShadow) && $this->shadowSchemaIssues() !== []) {
             $issues[] = 'SHADOW_SCHEMA_DRIFT';
+        }
+        if ($ownership && (! $permissionShadow || ! $roleShadow || ! $this->migrationOwnsShadows())) {
+            $issues[] = 'SHADOW_OWNERSHIP_DRIFT';
         }
 
         return array_values(array_unique($issues));
@@ -1397,10 +1463,17 @@ final class PermissionModelKeyMigration
     /** @param array<string, mixed> $checkpoint @param array<string, mixed> $snapshots */
     private function validateCheckpoint(array $checkpoint, int $batchSize, array $snapshots, string $schemaFingerprint): ?string
     {
-        foreach (['command_version', 'phase', 'driver', 'database_version', 'cursor_version', 'batch_size', 'batch_sequence', 'source', 'schema_fingerprint', 'source_schema_fingerprint', 'config_fingerprint', 'cursor_schema', 'cursors', 'rows_examined', 'rows_copied', 'rows_already_present', 'has_more', 'anomaly_counts', 'previous_chain_sha256', 'batch_payload_sha256', 'chain_sha256', 'checkpoint_sha256'] as $key) {
+        $requiredKeys = ['command_version', 'phase', 'driver', 'database_version', 'cursor_version', 'batch_size', 'batch_sequence', 'source', 'schema_fingerprint', 'source_schema_fingerprint', 'config_fingerprint', 'cursor_schema', 'cursors', 'rows_examined', 'rows_copied', 'rows_already_present', 'has_more', 'anomaly_counts', 'previous_chain_sha256', 'batch_payload_sha256', 'chain_sha256', 'checkpoint_sha256'];
+        foreach ($requiredKeys as $key) {
             if (! array_key_exists($key, $checkpoint)) {
                 return 'CHECKPOINT_TAMPERED';
             }
+        }
+        $actualKeys = array_keys($checkpoint);
+        sort($actualKeys);
+        sort($requiredKeys);
+        if ($actualKeys !== $requiredKeys) {
+            return 'CHECKPOINT_TAMPERED';
         }
         if (($checkpoint['command_version'] ?? null) !== self::COMMAND_VERSION
             || ($checkpoint['phase'] ?? null) !== 'backfill'
@@ -1434,6 +1507,10 @@ final class PermissionModelKeyMigration
                 return 'CHECKPOINT_TAMPERED';
             }
         }
+        if ($checkpoint['rows_examined'] > $batchSize
+            || $checkpoint['rows_examined'] !== $checkpoint['rows_copied'] + $checkpoint['rows_already_present']) {
+            return 'CHECKPOINT_TAMPERED';
+        }
         $anomalyCounts = $checkpoint['anomaly_counts'] ?? null;
         if (! is_array($anomalyCounts)) {
             return 'CHECKPOINT_TAMPERED';
@@ -1453,8 +1530,33 @@ final class PermissionModelKeyMigration
             || ! hash_equals((string) $checkpoint['chain_sha256'], $this->chainChecksum($checkpoint))) {
             return 'CHECKPOINT_TAMPERED';
         }
+        $genesis = hash('sha256', self::COMMAND_VERSION.'|genesis');
+        if (($checkpoint['batch_sequence'] === 1 && ! hash_equals($genesis, $checkpoint['previous_chain_sha256']))
+            || ($checkpoint['batch_sequence'] > 1 && hash_equals($genesis, $checkpoint['previous_chain_sha256']))) {
+            return 'CHECKPOINT_TAMPERED';
+        }
+        foreach ($cursors as $table => $cursor) {
+            if ($cursor !== null && ! $this->cursorExistsStreaming($table, $cursor)) {
+                return 'CHECKPOINT_CURSOR_STALE';
+            }
+        }
+        if ($checkpoint['has_more'] !== $this->hasMoreStreaming($cursors)) {
+            return 'CHECKPOINT_TAMPERED';
+        }
 
         return null;
+    }
+
+    private function cursorExistsStreaming(string $table, string $cursor): bool
+    {
+        $pivot = $table === self::SOURCE_PERMISSION ? 'permission_id' : 'role_id';
+        foreach ($this->streamRows($table, $pivot) as $row) {
+            if (hash_equals(hash('sha256', self::cursorKey($row, $table)), $cursor)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** @param array<string, mixed> $checkpoint @return array<string, mixed> */
@@ -1657,6 +1759,7 @@ final class PermissionModelKeyMigration
             self::SOURCE_ROLE,
             self::SHADOW_PERMISSION,
             self::SHADOW_ROLE,
+            self::OWNERSHIP,
         ];
         $descriptors = [];
         foreach ($tables as $table) {
@@ -1672,13 +1775,18 @@ final class PermissionModelKeyMigration
     private function schemaPayload(): array
     {
         $tables = [];
-        foreach (['users', 'permissions', 'roles', 'role_has_permissions', self::SOURCE_PERMISSION, self::SOURCE_ROLE, self::SHADOW_PERMISSION, self::SHADOW_ROLE] as $table) {
+        foreach (['users', 'permissions', 'roles', 'role_has_permissions', self::SOURCE_PERMISSION, self::SOURCE_ROLE, self::SHADOW_PERMISSION, self::SHADOW_ROLE, self::OWNERSHIP] as $table) {
             if (Schema::hasTable($table)) {
                 $tables[$table] = $this->tableDescriptor($table);
             }
         }
 
         return ['fingerprint' => $this->schemaFingerprint(), 'tables' => $tables];
+    }
+
+    private function tableFingerprint(string $table): string
+    {
+        return hash('sha256', self::canonicalJson($this->tableDescriptor($table)));
     }
 
     /** @return array<string, mixed> */

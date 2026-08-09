@@ -15,6 +15,7 @@ beforeEach(function (): void {
 afterEach(function (): void {
     Schema::disableForeignKeyConstraints();
     foreach ([
+        'spatie_uuid_permission_pivot_ownership',
         'model_has_permissions_uuid_shadow',
         'model_has_roles_uuid_shadow',
         'model_has_permissions_bigint_legacy',
@@ -57,29 +58,25 @@ it('classifies source shape with a bounded model-id cursor instead of eager rows
 });
 
 it('does not drop exact empty foreign shadows on rollback', function (): void {
-    Schema::create('model_has_permissions_uuid_shadow', static function (Blueprint $table): void {
-        $table->unsignedBigInteger('permission_id');
-        $table->string('model_type');
-        $table->uuid('model_id');
-        $table->foreign('permission_id', 'spatie_mhpu_permission_fk')
-            ->references('id')->on('permissions')->onDelete('cascade');
-        $table->primary(['permission_id', 'model_id', 'model_type'], 'spatie_mhpu_assignment_pk');
-        $table->index(['model_id', 'model_type'], 'spatie_mhpu_model_lookup_idx');
-    });
-    Schema::create('model_has_roles_uuid_shadow', static function (Blueprint $table): void {
-        $table->unsignedBigInteger('role_id');
-        $table->string('model_type');
-        $table->uuid('model_id');
-        $table->foreign('role_id', 'spatie_mhru_role_fk')
-            ->references('id')->on('roles')->onDelete('cascade');
-        $table->primary(['role_id', 'model_id', 'model_type'], 'spatie_mhru_assignment_pk');
-        $table->index(['model_id', 'model_type'], 'spatie_mhru_model_lookup_idx');
-    });
+    createExactPermissionShadowTables();
 
     $migrationDefinition = require database_path('migrations/2026_08_23_000001_expand_spatie_uuid_permission_pivots.php');
+    $migrationDefinition->up();
+    if (! Schema::hasTable('migrations')) {
+        Schema::create('migrations', static function (Blueprint $table): void {
+            $table->increments('id');
+            $table->string('migration');
+            $table->integer('batch');
+        });
+    }
+    DB::table('migrations')->updateOrInsert(
+        ['migration' => '2026_08_23_000001_expand_spatie_uuid_permission_pivots'],
+        ['batch' => 999],
+    );
 
     expect(fn (): mixed => $migrationDefinition->down())
         ->toThrow(RuntimeException::class)
+        ->and(Schema::hasTable('spatie_uuid_permission_pivot_ownership'))->toBeFalse()
         ->and(Schema::hasTable('model_has_permissions_uuid_shadow'))->toBeTrue()
         ->and(Schema::hasTable('model_has_roles_uuid_shadow'))->toBeTrue();
 });
@@ -97,11 +94,38 @@ it('requires a non-null exact-length uuid primary key and exact numeric key cont
     expect($nullable['status'])->toBe('blocked')
         ->and($nullable['anomalies']['USER_UUID_SCHEMA_DRIFT'] ?? 0)->toBeGreaterThan(0);
 
+    Schema::drop('users');
+    DB::statement('CREATE TABLE users (id varchar(255) NOT NULL PRIMARY KEY)');
+    $wide = app(PermissionModelKeyMigration::class)->preflight()->toArray();
+
+    expect($wide['status'])->toBe('blocked')
+        ->and($wide['anomalies']['USER_UUID_SCHEMA_DRIFT'] ?? 0)->toBeGreaterThan(0);
+
     setUpPermissionFixture();
     $canonical = app(PermissionModelKeyMigration::class)->preflight()->toArray();
 
     expect($canonical['status'])->toBe('ready')
         ->and($canonical['shape'])->toBe('legacy_bigint_empty');
+});
+
+it('rejects matching small signed parent and pivot keys', function (): void {
+    Schema::disableForeignKeyConstraints();
+    foreach (['model_has_permissions', 'model_has_roles', 'role_has_permissions', 'permissions', 'roles'] as $table) {
+        Schema::drop($table);
+    }
+    Schema::enableForeignKeyConstraints();
+    DB::statement('CREATE TABLE permissions (id smallint NOT NULL PRIMARY KEY)');
+    DB::statement('CREATE TABLE roles (id smallint NOT NULL PRIMARY KEY)');
+    DB::statement('CREATE TABLE role_has_permissions (permission_id smallint NOT NULL, role_id smallint NOT NULL, PRIMARY KEY (permission_id, role_id), FOREIGN KEY (permission_id) REFERENCES permissions (id) ON DELETE CASCADE, FOREIGN KEY (role_id) REFERENCES roles (id) ON DELETE CASCADE)');
+    DB::statement('CREATE TABLE model_has_permissions (permission_id smallint NOT NULL, model_type varchar NOT NULL, model_id smallint NOT NULL, PRIMARY KEY (permission_id, model_id, model_type), FOREIGN KEY (permission_id) REFERENCES permissions (id) ON DELETE CASCADE)');
+    DB::statement('CREATE INDEX model_has_permissions_model_id_model_type_index ON model_has_permissions (model_id, model_type)');
+    DB::statement('CREATE TABLE model_has_roles (role_id smallint NOT NULL, model_type varchar NOT NULL, model_id smallint NOT NULL, PRIMARY KEY (role_id, model_id, model_type), FOREIGN KEY (role_id) REFERENCES roles (id) ON DELETE CASCADE)');
+    DB::statement('CREATE INDEX model_has_roles_model_id_model_type_index ON model_has_roles (model_id, model_type)');
+
+    $report = app(PermissionModelKeyMigration::class)->preflight()->toArray();
+
+    expect($report['status'])->toBe('blocked')
+        ->and($report['anomalies']['ROLE_PERMISSION_KEY_TYPE_DRIFT'] ?? 0)->toBeGreaterThan(0);
 });
 
 it('reports blank morphs and orphan permission or role assignments', function (): void {
@@ -245,22 +269,15 @@ it('expands exact uuid shadows and only allows an empty safe rollback', function
         ->and(Schema::hasTable('model_has_permissions_uuid_shadow'))->toBeTrue()
         ->and(Schema::hasTable('model_has_roles_uuid_shadow'))->toBeTrue()
         ->and(Schema::getColumnType('model_has_permissions_uuid_shadow', 'model_id'))->toBeIn(['string', 'varchar'])
-        ->and(Schema::getColumnType('model_has_roles_uuid_shadow', 'model_id'))->toBeIn(['string', 'varchar']);
+        ->and(Schema::getColumnType('model_has_roles_uuid_shadow', 'model_id'))->toBeIn(['string', 'varchar'])
+        ->and(Schema::hasTable('spatie_uuid_permission_pivot_ownership'))->toBeTrue();
 
     $migrationDefinition = require database_path('migrations/2026_08_23_000001_expand_spatie_uuid_permission_pivots.php');
-    Schema::create('migrations', static function (Blueprint $table): void {
-        $table->increments('id');
-        $table->string('migration');
-        $table->integer('batch');
-    });
-    DB::table('migrations')->insert([
-        'migration' => '2026_08_23_000001_expand_spatie_uuid_permission_pivots',
-        'batch' => 999,
-    ]);
     $migrationDefinition->down();
 
     expect(Schema::hasTable('model_has_permissions_uuid_shadow'))->toBeFalse()
-        ->and(Schema::hasTable('model_has_roles_uuid_shadow'))->toBeFalse();
+        ->and(Schema::hasTable('model_has_roles_uuid_shadow'))->toBeFalse()
+        ->and(Schema::hasTable('spatie_uuid_permission_pivot_ownership'))->toBeFalse();
 });
 
 it('refuses expansion when source shape is mixed or a legacy backup is occupied', function (): void {
@@ -756,6 +773,87 @@ it('rejects malformed cursor maps and checkpoint counters before array replaceme
     @unlink($checkpoint ?: '');
 });
 
+it('rejects re-signed checkpoints with impossible cursor, counters, chain semantics, or extra fields', function (): void {
+    $userId = '00000000-0000-0000-0000-0000000000b0';
+    DB::table('users')->insert([
+        'id' => $userId,
+        'name' => 'Semantic checkpoint',
+        'email' => 'semantic-checkpoint@example.test',
+        'password' => 'x',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+    $permissionId = DB::table('permissions')->insertGetId([
+        'name' => 'crm.semantic.checkpoint',
+        'guard_name' => 'web',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+    DB::table('model_has_permissions')->insert([
+        'permission_id' => $permissionId,
+        'model_type' => 'user',
+        'model_id' => $userId,
+    ]);
+
+    $migration = app(PermissionModelKeyMigration::class);
+    $migration->expand();
+    $checkpoint = tempnam(sys_get_temp_dir(), 'permission-key-semantic-');
+    $migration->backfill(1, $checkpoint ?: null, false);
+    $valid = json_decode((string) file_get_contents($checkpoint ?: ''), true, 512, JSON_THROW_ON_ERROR);
+    $genesis = hash('sha256', PermissionModelKeyMigration::COMMAND_VERSION.'|genesis');
+    $cases = [
+        'CHECKPOINT_CURSOR_STALE' => static function (array $payload): array {
+            $payload['cursors']['model_has_permissions'] = str_repeat('a', 64);
+            $payload['has_more'] = false;
+
+            return $payload;
+        },
+        'CHECKPOINT_TAMPERED:counters' => static function (array $payload): array {
+            $payload['rows_examined'] = 1;
+            $payload['rows_copied'] = 1;
+            $payload['rows_already_present'] = 1;
+
+            return $payload;
+        },
+        'CHECKPOINT_TAMPERED:has-more' => static function (array $payload): array {
+            $payload['cursors']['model_has_permissions'] = null;
+            $payload['has_more'] = false;
+
+            return $payload;
+        },
+        'CHECKPOINT_TAMPERED:batch-bound' => static function (array $payload): array {
+            $payload['rows_examined'] = 2;
+            $payload['rows_copied'] = 2;
+            $payload['rows_already_present'] = 0;
+
+            return $payload;
+        },
+        'CHECKPOINT_TAMPERED:genesis' => static function (array $payload) use ($genesis): array {
+            $payload['batch_sequence'] = 2;
+            $payload['previous_chain_sha256'] = $genesis;
+
+            return $payload;
+        },
+        'CHECKPOINT_TAMPERED:extra' => static function (array $payload): array {
+            $payload['unexpected'] = true;
+
+            return $payload;
+        },
+    ];
+
+    foreach ($cases as $expected => $mutate) {
+        $payload = resignPermissionCheckpoint($migration, $mutate($valid));
+        file_put_contents($checkpoint ?: '', json_encode($payload, JSON_THROW_ON_ERROR));
+        $report = $migration->backfill(1, $checkpoint ?: null, false)->toArray();
+        $code = explode(':', $expected, 2)[0];
+
+        expect($report['status'])->toBe('blocked')
+            ->and($report['anomalies'][$code] ?? 0)->toBeGreaterThan(0);
+    }
+
+    @unlink($checkpoint ?: '');
+});
+
 it('blocks validation when the repository identity cannot be observed', function (): void {
     $migration = app(PermissionModelKeyMigration::class);
     $migration->expand();
@@ -868,18 +966,12 @@ function setUpPermissionFixture(): void
     ]);
 
     Schema::disableForeignKeyConstraints();
-    foreach (['model_has_permissions_uuid_shadow', 'model_has_roles_uuid_shadow', 'model_has_permissions', 'model_has_roles', 'role_has_permissions', 'permissions', 'roles', 'users'] as $table) {
+    foreach (['spatie_uuid_permission_pivot_ownership', 'model_has_permissions_uuid_shadow', 'model_has_roles_uuid_shadow', 'model_has_permissions', 'model_has_roles', 'role_has_permissions', 'permissions', 'roles', 'users'] as $table) {
         Schema::dropIfExists($table);
     }
     Schema::enableForeignKeyConstraints();
 
-    Schema::create('users', static function (Blueprint $table): void {
-        $table->uuid('id')->primary();
-        $table->string('name')->nullable();
-        $table->string('email')->nullable();
-        $table->string('password')->nullable();
-        $table->timestamps();
-    });
+    DB::statement('CREATE TABLE users (id varchar(36) NOT NULL PRIMARY KEY, name varchar(255), email varchar(255), password varchar(255), created_at datetime, updated_at datetime)');
     Schema::create('permissions', static function (Blueprint $table): void {
         $table->bigIncrements('id');
         $table->string('name');
@@ -915,4 +1007,28 @@ function setUpPermissionFixture(): void
         $table->index(['model_id', 'model_type'], 'model_has_roles_model_id_model_type_index');
         $table->primary(['role_id', 'model_id', 'model_type'], 'model_has_roles_role_model_type_primary');
     });
+}
+
+function createExactPermissionShadowTables(): void
+{
+    DB::statement('CREATE TABLE model_has_permissions_uuid_shadow (permission_id integer NOT NULL, model_type varchar NOT NULL, model_id varchar(36) NOT NULL, CONSTRAINT spatie_mhpu_permission_fk FOREIGN KEY (permission_id) REFERENCES permissions (id) ON DELETE CASCADE, CONSTRAINT spatie_mhpu_assignment_pk PRIMARY KEY (permission_id, model_id, model_type))');
+    DB::statement('CREATE INDEX spatie_mhpu_model_lookup_idx ON model_has_permissions_uuid_shadow (model_id, model_type)');
+    DB::statement('CREATE TABLE model_has_roles_uuid_shadow (role_id integer NOT NULL, model_type varchar NOT NULL, model_id varchar(36) NOT NULL, CONSTRAINT spatie_mhru_role_fk FOREIGN KEY (role_id) REFERENCES roles (id) ON DELETE CASCADE, CONSTRAINT spatie_mhru_assignment_pk PRIMARY KEY (role_id, model_id, model_type))');
+    DB::statement('CREATE INDEX spatie_mhru_model_lookup_idx ON model_has_roles_uuid_shadow (model_id, model_type)');
+}
+
+/** @param array<string, mixed> $payload @return array<string, mixed> */
+function resignPermissionCheckpoint(PermissionModelKeyMigration $migration, array $payload): array
+{
+    $batchPayload = new ReflectionMethod(PermissionModelKeyMigration::class, 'batchPayloadChecksum');
+    $batchPayload->setAccessible(true);
+    $payload['batch_payload_sha256'] = $batchPayload->invoke($migration, $payload);
+    $chain = new ReflectionMethod(PermissionModelKeyMigration::class, 'chainChecksum');
+    $chain->setAccessible(true);
+    $payload['chain_sha256'] = $chain->invoke($migration, $payload);
+    $checksum = new ReflectionMethod(PermissionModelKeyMigration::class, 'checkpointChecksum');
+    $checksum->setAccessible(true);
+    $payload['checkpoint_sha256'] = $checksum->invoke($migration, $payload);
+
+    return $payload;
 }
