@@ -17,7 +17,7 @@
                         <x-filament::badge color="gray">{{ $report->getChartType() }}</x-filament::badge>
                     </div>
                     <p class="biz-muted mt-3">{{ $report->getDescription() }}</p>
-                    <a class="mt-5 inline-flex text-sm font-semibold text-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-600" href="{{ \App\Filament\App\Pages\Reports\ReportsShowcase::getUrl(['reportKey' => $report->getKey()->value], tenant: \Filament\Facades\Filament::getTenant()) }}" aria-label="Consultar {{ $report->getName() }}">Consultar reporte</a>
+                    <a class="mt-5 inline-flex text-sm font-semibold text-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-600" href="{{ \App\Filament\App\Pages\Reports\ReportsShowcase::getUrl(['key' => $report->getKey()->value], tenant: \Filament\Facades\Filament::getTenant()) }}" aria-label="Consultar {{ $report->getName() }}">Consultar reporte</a>
                 </article>
             @empty
                 <div class="biz-empty-state sm:col-span-2 xl:col-span-3" role="status">No hay reportes registrados.</div>

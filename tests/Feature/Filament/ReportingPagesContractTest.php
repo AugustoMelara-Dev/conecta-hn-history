@@ -99,6 +99,43 @@ final class ReportingPagesContractTest extends TestCase
     }
 
     #[Test]
+    public function registered_report_links_route_with_the_canonical_key_and_select_its_heading(): void
+    {
+        [$user, $tenant] = $this->tenantUser();
+        $this->actingAs($user);
+        Filament::setCurrentPanel(Filament::getPanel('app'));
+
+        $guard = Mockery::mock(TenantPermissionGuardInterface::class);
+        $guard->shouldReceive('allows')->andReturnTrue();
+        $this->app->instance(TenantPermissionGuardInterface::class, $guard);
+
+        $registry = new ReportRegistry;
+        $registry->register(new ReportingContractReport(ReportKey::RevenueByMonth));
+        $this->app->instance(ReportRegistry::class, $registry);
+
+        $executor = Mockery::mock(ReportExecutor::class);
+        $executor->shouldReceive('execute')->once()->andReturn(new ReportData([], []));
+        $this->app->instance(ReportExecutor::class, $executor);
+
+        $overviewUrl = ReportsOverview::getUrl(tenant: $tenant);
+        $libraryUrl = ReportsLibrary::getUrl(tenant: $tenant);
+        $showcaseUrl = ReportsShowcase::getUrl(['key' => ReportKey::RevenueByMonth->value], tenant: $tenant);
+
+        $this->get($overviewUrl)
+            ->assertOk()
+            ->assertSee($showcaseUrl, escape: false);
+
+        $this->get($libraryUrl)
+            ->assertOk()
+            ->assertSee($showcaseUrl, escape: false);
+
+        $this->get($showcaseUrl)
+            ->assertOk()
+            ->assertSee(ReportKey::RevenueByMonth->label())
+            ->assertDontSee('Reporte no disponible');
+    }
+
+    #[Test]
     public function showcase_accepts_only_registered_keys_and_closed_ranges(): void
     {
         [, $tenant] = $this->tenantUser();

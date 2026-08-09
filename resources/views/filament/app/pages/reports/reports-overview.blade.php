@@ -15,7 +15,7 @@
                     </div>
                     <div class="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
                         @foreach($reports as $report)
-                            <a class="biz-card group focus:outline-none focus:ring-2 focus:ring-primary-600" href="{{ \App\Filament\App\Pages\Reports\ReportsShowcase::getUrl(['reportKey' => $report->getKey()->value], tenant: \Filament\Facades\Filament::getTenant()) }}" aria-label="Abrir reporte {{ $report->getName() }}">
+                            <a class="biz-card group focus:outline-none focus:ring-2 focus:ring-primary-600" href="{{ \App\Filament\App\Pages\Reports\ReportsShowcase::getUrl(['key' => $report->getKey()->value], tenant: \Filament\Facades\Filament::getTenant()) }}" aria-label="Abrir reporte {{ $report->getName() }}">
                                 <p class="biz-kicker">{{ $report->getKey()->category() }}</p>
                                 <h4 class="biz-heading group-hover:text-primary-600">{{ $report->getName() }}</h4>
                                 <p class="biz-muted">{{ $report->getDescription() }}</p>
