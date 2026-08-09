@@ -9,11 +9,8 @@ use Illuminate\Support\Facades\Schedule;
 // PR5: Scheduled reports processor
 Schedule::command('reports:send-scheduled')->hourly()->withoutOverlapping();
 
-// PR4: Import queue worker
-Schedule::command('imports:run-async')->everyFiveMinutes()->withoutOverlapping();
-
-// PR3: Workflow scheduler tick
-Schedule::command('workflows:run --manual')->everyMinute()->withoutOverlapping();
+// Resume canonical workflow runs whose wait step has elapsed.
+Schedule::command('workflows:resume-due')->everyMinute()->withoutOverlapping();
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());

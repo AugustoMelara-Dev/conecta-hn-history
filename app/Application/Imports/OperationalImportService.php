@@ -60,6 +60,24 @@ final readonly class OperationalImportService
         private CanonicalOpportunityWriter $opportunities,
     ) {}
 
+    /** @return array<string, string> */
+    public function kinds(): array
+    {
+        return [
+            'product' => 'Productos',
+            'service' => 'Servicios',
+            'opportunity' => 'Oportunidades CRM',
+        ];
+    }
+
+    /** @return list<string> */
+    public function columns(string $kind): array
+    {
+        $this->assertKind($kind);
+
+        return self::COLUMNS[$kind];
+    }
+
     public function stage(
         string $tenantId,
         string $actorId,
@@ -67,6 +85,7 @@ final readonly class OperationalImportService
         string $kind,
         string $idempotencyKey,
         string $sourceOrigin = 'upload',
+        bool $dispatch = true,
     ): string {
         $this->assertKind($kind);
         if (! in_array($sourceOrigin, ['upload', 'crm_json'], true)) {
@@ -140,13 +159,15 @@ final readonly class OperationalImportService
             Storage::disk('local')->delete($path);
             throw $exception;
         }
-        ProcessOperationalImport::dispatchAfterResponse(
-            tenantId: $tenantId,
-            actorId: $actorId,
-            batchId: $batchId,
-            correlationId: (string) $batch->correlation_id,
-            idempotencyKey: $idempotencyKey,
-        );
+        if ($dispatch) {
+            ProcessOperationalImport::dispatchAfterResponse(
+                tenantId: $tenantId,
+                actorId: $actorId,
+                batchId: $batchId,
+                correlationId: (string) $batch->correlation_id,
+                idempotencyKey: $idempotencyKey,
+            );
+        }
 
         return $batchId;
     }

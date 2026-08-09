@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Application\Imports\Commands\GenerateImportTemplate;
+use App\Application\Imports\Commands\RunImportAsync;
+use App\Application\Imports\Commands\RunImportSync;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -13,12 +16,17 @@ class ImportExportServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        // Import classes are auto-discovered via ImportService; this provider
-        // exists to register additional bindings (queue, storage, exporters).
+        // Concrete canonical services are container-resolvable without aliases.
     }
 
     public function boot(): void
     {
-        // No-op for now
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                GenerateImportTemplate::class,
+                RunImportAsync::class,
+                RunImportSync::class,
+            ]);
+        }
     }
 }

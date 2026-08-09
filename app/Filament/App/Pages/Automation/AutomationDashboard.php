@@ -32,12 +32,15 @@ class AutomationDashboard extends Page
             return [];
         }
 
-        return DB::table('workflow_runs as wr')
-            ->join('workflow_definitions as wd', 'wd.id', '=', 'wr.workflow_definition_id')
+        return DB::table('automation_workflow_runs as wr')
+            ->join('automation_workflow_definitions as wd', function ($join): void {
+                $join->on('wd.workflow_key', '=', 'wr.workflow_key')
+                    ->on('wd.tenant_id', '=', 'wr.tenant_id');
+            })
             ->where('wr.tenant_id', $tenantId)
             ->where('wr.started_at', '>=', now()->subDays(30))
-            ->selectRaw('wd.id, wd.name, COUNT(*) as executions, AVG(wr.duration_ms) as avg_duration')
-            ->groupBy('wd.id', 'wd.name')
+            ->selectRaw('wd.id, wd.workflow_key, COUNT(*) as executions')
+            ->groupBy('wd.id', 'wd.workflow_key')
             ->orderByDesc('executions')
             ->limit(10)
             ->get()
@@ -52,9 +55,9 @@ class AutomationDashboard extends Page
         }
 
         return [
-            'total_workflows' => DB::table('workflow_definitions')->where('tenant_id', $tenantId)->count(),
-            'active' => DB::table('workflow_definitions')->where('tenant_id', $tenantId)->where('is_active', true)->count(),
-            'runs_today' => DB::table('workflow_runs')->where('tenant_id', $tenantId)
+            'total_workflows' => DB::table('automation_workflow_definitions')->where('tenant_id', $tenantId)->count(),
+            'active' => DB::table('automation_workflow_definitions')->where('tenant_id', $tenantId)->whereNotNull('current_published_version_id')->count(),
+            'runs_today' => DB::table('automation_workflow_runs')->where('tenant_id', $tenantId)
                 ->whereDate('started_at', today())->count(),
             'success_rate' => $this->computeSuccessRate($tenantId),
         ];
@@ -62,9 +65,9 @@ class AutomationDashboard extends Page
 
     private function computeSuccessRate(string $tenantId): float
     {
-        $total = DB::table('workflow_runs')->where('tenant_id', $tenantId)
+        $total = DB::table('automation_workflow_runs')->where('tenant_id', $tenantId)
             ->whereIn('status', ['completed', 'failed'])->count();
-        $success = DB::table('workflow_runs')->where('tenant_id', $tenantId)
+        $success = DB::table('automation_workflow_runs')->where('tenant_id', $tenantId)
             ->where('status', 'completed')->count();
 
         return $total > 0 ? round(($success / $total) * 100, 1) : 0;

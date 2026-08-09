@@ -150,6 +150,7 @@ use App\Domain\Sales\Repositories\LeadRepositoryInterface;
 use App\Domain\Search\Contracts\GlobalSearchReader;
 use App\Domain\Shared\Contracts\AdminNotifierInterface;
 use App\Domain\Shared\Contracts\ClockInterface;
+use App\Domain\Shared\Contracts\CityReader;
 use App\Domain\Shared\Contracts\EventDispatcherInterface;
 use App\Domain\Shared\Contracts\FailureNotifierInterface;
 use App\Domain\Shared\Contracts\MediaStorageServiceInterface;
@@ -254,6 +255,7 @@ use App\Infrastructure\Security\MetadataSanitizer;
 use App\Infrastructure\Shared\Bus\PipelineBuilder;
 use App\Infrastructure\Shared\ConsoleContextProvider;
 use App\Infrastructure\Shared\EloquentTenantReadRepository;
+use App\Infrastructure\Shared\EloquentCityReader;
 use App\Infrastructure\Shared\Persistence\DatabaseTransactionManager;
 use App\Infrastructure\Shared\Persistence\Decorators\SchemaValidatingOutboxRepository;
 use App\Infrastructure\Shared\Persistence\EloquentOutboxRepository;
@@ -329,6 +331,7 @@ class AppServiceProvider extends ServiceProvider
             OperationalKnowledgeHealth::class,
             EloquentOperationalKnowledgeHealth::class,
         );
+        $this->app->bind(CityReader::class, EloquentCityReader::class);
         $this->app->bind(
             OperationalCockpit::class,
             EloquentOperationalCockpit::class,

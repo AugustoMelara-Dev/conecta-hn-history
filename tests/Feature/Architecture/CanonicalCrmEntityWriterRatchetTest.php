@@ -782,8 +782,18 @@ function dovraCrmWebToLeadSentinel(string $sourceOrPath, bool $sourceInput = fal
 
         public bool $tenantDerived = false;
 
+        /** @var list<string> */
+        public array $canonicalWriterCalls = [];
+
+        public bool $writerCallOutsideTransaction = false;
+
+        public bool $writerCallWithoutTenant = false;
+
         /** @var array<string, string> */
         private array $aliases = [];
+
+        /** @var array<string, bool> */
+        private array $writerVariables = [];
 
         /** @var array<string, bool> */
         private array $derivedTenantVariables = [];
@@ -797,6 +807,16 @@ function dovraCrmWebToLeadSentinel(string $sourceOrPath, bool $sourceInput = fal
             if ($node instanceof Node\Stmt\Use_ && $node->type === Node\Stmt\Use_::TYPE_NORMAL) {
                 foreach ($node->uses as $use) {
                     $this->aliases[$use->alias?->toString() ?? $use->name->getLast()] = ltrim($use->name->toString(), '\\');
+                }
+            }
+
+            if ($node instanceof Node\Stmt\ClassMethod) {
+                foreach ($node->params as $parameter) {
+                    if ($parameter->var instanceof Node\Expr\Variable
+                        && is_string($parameter->var->name)
+                        && dovraCrmWriterTypeNode($parameter->type, $this->aliases)) {
+                        $this->writerVariables[$parameter->var->name] = true;
+                    }
                 }
             }
 
@@ -830,6 +850,20 @@ function dovraCrmWebToLeadSentinel(string $sourceOrPath, bool $sourceInput = fal
                 if ($class === 'Filament\\Facades\\Filament' && $method === 'getTenant') {
                     $this->tenantDerived = true;
                 }
+            }
+
+            if ($node instanceof Node\Expr\MethodCall
+                && $node->var instanceof Node\Expr\Variable
+                && is_string($node->var->name)
+                && isset($this->writerVariables[$node->var->name])
+                && $node->name instanceof Node\Identifier
+                && in_array($node->name->toString(), ['createCompany', 'createContact', 'createActivity'], true)) {
+                $this->canonicalWriterCalls[] = $node->name->toString();
+                $this->writerCallOutsideTransaction = $this->writerCallOutsideTransaction || $this->transactionDepth === 0;
+                $tenantArgument = $node->args[0]->value ?? null;
+                $this->writerCallWithoutTenant = $this->writerCallWithoutTenant
+                    || ! $tenantArgument instanceof Node
+                    || ! $this->isDerivedTenantExpression($tenantArgument);
             }
 
             if ($node instanceof Node\Expr\ArrayDimFetch) {
@@ -974,34 +1008,19 @@ function dovraCrmWebToLeadSentinel(string $sourceOrPath, bool $sourceInput = fal
     $traverser->addVisitor($visitor);
     $traverser->traverse($ast);
 
-    $approvedWrites = [
-        'crm_companies:firstOrCreate' => 1,
-        'crm_contacts:create' => 1,
-        'crm_activities:create' => 1,
-    ];
-    $actualWrites = [];
-    foreach ($collector->operationContexts as $operation) {
-        $key = $operation['receiver'].':'.$operation['operation'];
-        $actualWrites[$key] = ($actualWrites[$key] ?? 0) + 1;
-    }
+    $approvedWriterCalls = ['createCompany', 'createContact', 'createActivity'];
+    sort($approvedWriterCalls);
+    $actualWriterCalls = $visitor->canonicalWriterCalls;
+    sort($actualWriterCalls);
 
-    if ($collector->transactions !== 1 || $actualWrites !== $approvedWrites) {
-        return ['ok' => false, 'reason' => 'WebToLead canonical mutation shape drifted from the approved company/contact/activity create signatures'];
+    if ($collector->transactions !== 1 || $actualWriterCalls !== $approvedWriterCalls) {
+        return ['ok' => false, 'reason' => 'WebToLead must delegate exactly one company, contact and activity creation to CanonicalCrmEntityWriter'];
     }
-    if ($collector->operationContexts === []) {
-        return ['ok' => false, 'reason' => 'expected canonical intake operations inside one transaction'];
+    if ($collector->operationContexts !== []) {
+        return ['ok' => false, 'reason' => 'WebToLead contains a direct CRM persistence operation'];
     }
-    foreach ($collector->operationContexts as $operation) {
-        if (! $operation['inTransaction'] || ! $operation['tenantBound']) {
-            return [
-                'ok' => false,
-                'reason' => sprintf(
-                    'canonical %s at line %d is not explicitly tenant-derived or scoped inside the transaction',
-                    $operation['operation'],
-                    $operation['line'],
-                ),
-            ];
-        }
+    if ($visitor->writerCallOutsideTransaction || $visitor->writerCallWithoutTenant) {
+        return ['ok' => false, 'reason' => 'WebToLead writer calls must be tenant-derived and inside one transaction'];
     }
     if (! $visitor->tenantDerived) {
         return ['ok' => false, 'reason' => 'tenant is not derived from Filament context'];

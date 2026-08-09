@@ -20,6 +20,7 @@ use App\Providers\Filament\AppPanelProvider;
 use App\Providers\FortifyServiceProvider;
 use App\Providers\HorizonServiceProvider;
 use App\Providers\InfrastructureServiceProvider;
+use App\Providers\ImportExportServiceProvider;
 use App\Providers\ReportRegistryServiceProvider;
 use App\Providers\SchemaRegistryServiceProvider;
 use App\Providers\TelescopeServiceProvider;
@@ -40,6 +41,7 @@ $providers = [
     BusServiceProvider::class, // Command Bus Middleware Pipeline
     FortifyServiceProvider::class, // Security Actions
     InfrastructureServiceProvider::class,
+    ImportExportServiceProvider::class,
     EventServiceProvider::class, // Central Event Hub (Projections)
     TitaniumServiceProvider::class, // Titanium Standard (ACID, Outbox, Idempotency)
     HorizonServiceProvider::class, // Redis queue supervision (production dependency)

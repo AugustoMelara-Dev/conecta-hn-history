@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Application\Automation\Commands\ResumeDueWorkflowRuns;
+use App\Application\Automation\Commands\RunWorkflowManual;
 use App\Application\Automation\Contracts\ToolPolicyEngineInterface;
 use App\Application\Automation\Contracts\WorkflowRepositoryInterface;
 use App\Application\Automation\Contracts\WorkflowRuntimeInterface;
@@ -22,5 +24,15 @@ final class AutomationServiceProvider extends ServiceProvider
         );
         $this->app->bind(ToolPolicyEngineInterface::class, ToolPolicyEngine::class);
         $this->app->bind(WorkflowRuntimeInterface::class, WorkflowRuntime::class);
+    }
+
+    public function boot(): void
+    {
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                ResumeDueWorkflowRuns::class,
+                RunWorkflowManual::class,
+            ]);
+        }
     }
 }

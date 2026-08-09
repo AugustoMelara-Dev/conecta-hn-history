@@ -4,50 +4,47 @@ declare(strict_types=1);
 
 namespace App\Application\Imports\Commands;
 
-use App\Application\Imports\ImportService;
-use App\Infrastructure\Imports\ExcelImporter;
+use App\Application\Imports\OperationalImportService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Str;
 
 /**
  * RunImportSync - Ejecuta una importación de manera síncrona.
  */
 class RunImportSync extends Command
 {
-    protected $signature = 'imports:run-sync {entity} {file} {--tenant=}';
+    protected $signature = 'imports:run-sync {kind} {file} {--tenant=} {--actor=} {--idempotency=}';
 
     protected $description = 'Run an import synchronously';
 
-    public function handle(ImportService $importService, ExcelImporter $importer): int
+    public function handle(OperationalImportService $imports): int
     {
-        $entity = $this->argument('entity');
-        $file = $this->argument('file');
-        $tenantId = $this->option('tenant') ?? auth()->user()?->tenant_id ?? '1';
-
-        if (! $importService->has($entity)) {
-            $this->error("Unknown entity: {$entity}");
-
-            return self::FAILURE;
-        }
-
-        $path = Storage::disk('local')->path($file);
-        if (! file_exists($path)) {
-            $this->error("File not found: {$path}");
+        $tenantId = (string) $this->option('tenant');
+        $actorId = (string) $this->option('actor');
+        $file = (string) $this->argument('file');
+        $path = str_starts_with($file, DIRECTORY_SEPARATOR) || preg_match('/^[A-Za-z]:[\\\\\/]/', $file)
+            ? $file
+            : storage_path('app/'.$file);
+        if ($tenantId === '' || $actorId === '' || ! is_file($path)) {
+            $this->error('A valid file, --tenant and --actor are required.');
 
             return self::FAILURE;
         }
 
-        $importClass = $importService->getImporterClass($entity);
-        $result = $importer->import($importClass, $path);
+        $batchId = $imports->stage(
+            tenantId: $tenantId,
+            actorId: $actorId,
+            file: new UploadedFile($path, basename($path), null, null, true),
+            kind: (string) $this->argument('kind'),
+            idempotencyKey: (string) ($this->option('idempotency') ?: Str::uuid()),
+            dispatch: false,
+        );
+        $report = $imports->process($tenantId, $batchId);
+        $this->info("Operational import {$batchId} processed: {$report->total} row(s), {$report->failed} failed.");
 
-        if ($result['success']) {
-            $this->info("Imported {$result['imported']} rows in {$result['duration_ms']}ms");
-
-            return self::SUCCESS;
-        }
-
-        $this->error('Errors: '.implode(', ', $result['errors']));
-
-        return self::FAILURE;
+        return $report->failed === $report->total && $report->total > 0
+            ? self::FAILURE
+            : self::SUCCESS;
     }
 }

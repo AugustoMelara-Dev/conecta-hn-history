@@ -6,9 +6,9 @@ namespace App\Filament\App\Pages\Automation;
 
 use App\Application\Automation\GraphBuilder;
 use App\Application\Automation\TemplateCatalog;
+use App\Application\Automation\WorkflowDefinitionService;
 use App\Domain\Automation\Enums\TriggerType;
 use App\Domain\Automation\ValueObjects\AutomationGraph;
-use App\Models\WorkflowDefinition;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
@@ -18,6 +18,7 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Str;
 
 /**
  * AutomationBuilder - Drag-and-drop workflow builder (Livewire + Alpine).
@@ -69,6 +70,7 @@ class AutomationBuilder extends Page
                         }),
                 ]),
                 Section::make('2. Workflow')->components([
+                    TextInput::make('workflow_key')->label('Clave')->required()->maxLength(100),
                     TextInput::make('name')->label('Nombre')->required()->maxLength(200),
                     Textarea::make('description')->label('Descripción')->rows(2)->maxLength(500),
                     Select::make('trigger_type')
@@ -121,16 +123,38 @@ class AutomationBuilder extends Page
 
                         return;
                     }
-                    WorkflowDefinition::create([
-                        'tenant_id' => $tenantId,
-                        'name' => $this->data['name'],
-                        'description' => $this->data['description'] ?? null,
-                        'trigger_type' => $this->data['trigger_type'],
-                        'graph_json' => $this->data['graph_json'],
-                        'is_active' => false,
-                        'status' => 'draft',
-                    ]);
-                    Notification::make()->title('Workflow guardado')->success()->send();
+                    $actorId = auth()->id();
+                    if (! is_string($actorId)) {
+                        abort(403);
+                    }
+                    $graph = AutomationGraph::fromJson((string) $this->data['graph_json']);
+                    $errors = (new GraphBuilder)->validate($graph->nodes, $graph->edges);
+                    if ($errors !== []) {
+                        Notification::make()->title('El workflow no es válido')->body(implode("\n", $errors))->danger()->send();
+
+                        return;
+                    }
+                    app(WorkflowDefinitionService::class)->createDraft(
+                        (string) $tenantId,
+                        Str::slug((string) $this->data['workflow_key']),
+                        [
+                            'name' => (string) $this->data['name'],
+                            'description' => $this->data['description'] ?? null,
+                            'trigger' => (string) $this->data['trigger_type'],
+                            'graph' => $graph->toArray(),
+                            'steps' => collect($graph->actionNodes())->map(static fn (array $node): array => [
+                                'id' => (string) $node['id'],
+                                'type' => 'tool',
+                                'action' => (string) ($node['action_type'] ?? ''),
+                                'provider' => 'dovra',
+                                'tool' => (string) ($node['action_type'] ?? ''),
+                                'tool_version' => 'v1',
+                                'payload' => (array) ($node['config'] ?? []),
+                            ])->all(),
+                        ],
+                        $actorId,
+                    );
+                    Notification::make()->title('Borrador canónico guardado')->success()->send();
                     $this->form->fill();
                 }),
         ];

@@ -4,31 +4,66 @@ declare(strict_types=1);
 
 namespace App\Application\Automation\Commands;
 
-use App\Application\Automation\WorkflowExecutor;
-use App\Domain\Automation\ValueObjects\AutomationGraph;
+use App\Jobs\RunWorkflowJob;
 use App\Models\AutomationWorkflowDefinition;
+use App\Models\User;
 use Illuminate\Console\Command;
+use Illuminate\Support\Str;
 
 class RunWorkflowManual extends Command
 {
-    protected $signature = 'workflows:run {workflowId} {--payload=}';
+    protected $signature = 'workflows:run {workflowId} {--actor=} {--payload=}';
 
     protected $description = 'Manually run a workflow';
 
-    public function handle(WorkflowExecutor $executor): int
+    public function handle(): int
     {
-        $workflow = AutomationWorkflowDefinition::find($this->argument('workflowId'));
-        if (! $workflow) {
-            $this->error('Workflow not found.');
+        $workflow = AutomationWorkflowDefinition::query()
+            ->withoutGlobalScopes()
+            ->with(['currentPublishedVersion', 'tenant'])
+            ->find($this->argument('workflowId'));
+        if (! $workflow || ! $workflow->currentPublishedVersion || ! $workflow->tenant) {
+            $this->error('Published workflow not found.');
 
             return self::FAILURE;
         }
 
-        $graph = AutomationGraph::fromJson($workflow->graph_json ?? '{}');
-        $payload = $this->option('payload') ? json_decode($this->option('payload'), true) : [];
-        $result = $executor->execute($workflow->id, $graph, $payload);
+        $actorId = (string) $this->option('actor');
+        $actor = User::query()->withoutGlobalScopes()->find($actorId);
+        if (! $actor || ! $actor->canAccessTenant($workflow->tenant)) {
+            $this->error('Actor is not authorized for this workflow tenant.');
 
-        $this->info("Run {$result['run_id']} status: {$result['status']}");
+            return self::FAILURE;
+        }
+
+        try {
+            $payload = $this->option('payload')
+                ? json_decode((string) $this->option('payload'), true, 512, JSON_THROW_ON_ERROR)
+                : [];
+        } catch (\JsonException) {
+            $this->error('Payload must be a valid JSON object.');
+
+            return self::FAILURE;
+        }
+        if (! is_array($payload)) {
+            $this->error('Payload must be a valid JSON object.');
+
+            return self::FAILURE;
+        }
+
+        $role = $actor->getAttribute('role');
+        RunWorkflowJob::dispatch(
+            tenantId: (string) $workflow->tenant_id,
+            workflowKey: (string) $workflow->workflow_key,
+            workflowVersion: (string) $workflow->currentPublishedVersion->version,
+            actorId: (string) $actor->getKey(),
+            actorRoles: [(string) ($role instanceof \BackedEnum ? $role->value : $role)],
+            plan: (string) ($workflow->tenant->getRawOriginal('plan_type') ?? 'semilla'),
+            idempotencyKey: (string) Str::uuid(),
+            payload: $payload,
+        );
+
+        $this->info('Workflow queued for canonical execution.');
 
         return self::SUCCESS;
     }

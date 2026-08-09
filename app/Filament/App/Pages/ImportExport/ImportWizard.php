@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\App\Pages\ImportExport;
 
-use App\Application\Imports\ImportService;
-use App\Infrastructure\Imports\ExcelImporter;
+use App\Application\Imports\OperationalImportService;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\FileUpload;
@@ -16,18 +15,11 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
-/**
- * ImportWizard - 5-step wizard para importar datos.
- *
- * Steps:
- * 1. Select entity
- * 2. Upload file
- * 3. Map columns
- * 4. Preview rows
- * 5. Run import
- */
-class ImportWizard extends Page
+final class ImportWizard extends Page
 {
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-arrow-up-tray';
 
@@ -52,106 +44,78 @@ class ImportWizard extends Page
 
     public function form(Schema $schema): Schema
     {
-        return $schema
-            ->components([
-                Section::make('Paso 1: Selecciona la entidad')
-                    ->visible(fn () => $this->step === 1)
-                    ->components([
-                        Select::make('entity')
-                            ->label('Entidad a importar')
-                            ->options(fn () => app(ImportService::class)->entities())
-                            ->required()
-                            ->live()
-                            ->afterStateUpdated(fn () => $this->step = 2),
-                    ]),
-
-                Section::make('Paso 2: Subir archivo')
-                    ->visible(fn () => $this->step === 2)
-                    ->components([
-                        FileUpload::make('file')
-                            ->label('Archivo CSV o Excel')
-                            ->disk('local')
-                            ->directory('imports')
-                            ->acceptedFileTypes([
-                                'text/csv',
-                                'application/vnd.ms-excel',
-                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                            ])
-                            ->required()
-                            ->live()
-                            ->afterStateUpdated(fn () => $this->step = 3),
-                    ]),
-
-                Section::make('Paso 3: Mapear columnas')
-                    ->description('Si los headers de tu archivo coinciden con los esperados, no hay que mapear.')
-                    ->visible(fn () => $this->step === 3)
-                    ->components([
-                        Placeholder::make('expected_headers')
-                            ->label('Headers esperados')
-                            ->content(fn (Get $get) => $this->getExpectedHeaders($get('entity'))),
-                    ]),
-
-                Section::make('Paso 4: Vista previa')
-                    ->visible(fn () => $this->step === 4)
-                    ->components([
-                        Placeholder::make('preview')
-                            ->label('Primeras filas')
-                            ->content('Las primeras filas del archivo se muestran aquí.'),
-                    ]),
-
-                Section::make('Paso 5: Ejecutar importación')
-                    ->visible(fn () => $this->step === 5)
-                    ->components([
-                        Placeholder::make('confirm')
-                            ->label('Listo para importar')
-                            ->content('Click en "Importar" para iniciar.'),
-                    ]),
-            ])
-            ->statePath('data');
+        return $schema->components([
+            Section::make('1. Tipo de datos')->components([
+                Select::make('entity')
+                    ->label('Datos a importar')
+                    ->options(fn (): array => app(OperationalImportService::class)->kinds())
+                    ->required()
+                    ->live(),
+            ]),
+            Section::make('2. Archivo')->components([
+                FileUpload::make('file')
+                    ->label('CSV o Excel')
+                    ->disk('local')
+                    ->directory('imports')
+                    ->acceptedFileTypes([
+                        'text/csv',
+                        'text/plain',
+                        'application/vnd.ms-excel',
+                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    ])
+                    ->maxSize(10240)
+                    ->required(),
+                Placeholder::make('expected_headers')
+                    ->label('Columnas esperadas')
+                    ->content(fn (Get $get): string => $this->getExpectedHeaders($get('entity'))),
+            ]),
+            Section::make('3. Revisión')->components([
+                Placeholder::make('review_notice')
+                    ->label('Publicación controlada')
+                    ->content('El archivo se valida en segundo plano. Después podrás revisar y publicar el lote desde Historial.'),
+            ]),
+        ])->statePath('data');
     }
 
     protected function getFormActions(): array
     {
         return [
-            Action::make('previous')
-                ->label('? Anterior')
-                ->visible(fn () => $this->step > 1)
-                ->action(fn () => $this->step = max(1, $this->step - 1)),
-            Action::make('next')
-                ->label('Siguiente ?')
-                ->visible(fn () => $this->step < 5)
-                ->action(fn () => $this->step = min(5, $this->step + 1)),
             Action::make('import')
-                ->label('Importar ahora')
-                ->visible(fn () => $this->step === 5)
+                ->label('Validar archivo')
                 ->color('success')
                 ->requiresConfirmation()
-                ->action(function () {
+                ->action(function (): void {
                     $state = $this->form->getState();
-                    $tenantId = Filament::getTenant()->getKey();
+                    $tenant = Filament::getTenant();
+                    $actorId = auth()->id();
+                    if ($tenant === null || ! is_string($actorId)) {
+                        abort(403);
+                    }
 
                     try {
-                        $result = app(ExcelImporter::class)->import(
-                            app(ImportService::class)->getImporterClass($state['entity']),
-                            storage_path('app/'.$state['file']),
+                        $storedPath = (string) $state['file'];
+                        $path = Storage::disk('local')->path($storedPath);
+                        $batchId = app(OperationalImportService::class)->stage(
+                            tenantId: (string) $tenant->getKey(),
+                            actorId: $actorId,
+                            file: new UploadedFile($path, basename($storedPath), null, null, true),
+                            kind: (string) $state['entity'],
+                            idempotencyKey: 'filament-import:'.Str::uuid(),
                         );
 
-                        if ($result['success']) {
-                            Notification::make()
-                                ->title("Importación completa: {$result['imported']} filas")
-                                ->success()
-                                ->send();
-                            $this->step = 1;
-                            $this->form->fill();
-                        } else {
-                            Notification::make()
-                                ->title('Errores de importación')
-                                ->body(implode("\n", array_slice($result['errors'], 0, 5)))
-                                ->danger()
-                                ->send();
-                        }
-                    } catch (\Throwable $e) {
-                        Notification::make()->title('Error: '.$e->getMessage())->danger()->send();
+                        Notification::make()
+                            ->title('Importación encolada')
+                            ->body("Lote {$batchId}. Revisa el historial antes de publicar.")
+                            ->success()
+                            ->send();
+                        $this->form->fill();
+                    } catch (\Throwable $exception) {
+                        report($exception);
+                        Notification::make()
+                            ->title('No se pudo validar el archivo')
+                            ->body($exception->getMessage())
+                            ->danger()
+                            ->send();
                     }
                 }),
         ];
@@ -159,11 +123,10 @@ class ImportWizard extends Page
 
     private function getExpectedHeaders(?string $entity): string
     {
-        if (! $entity) {
-            return 'Selecciona una entidad primero.';
+        if (! is_string($entity) || $entity === '') {
+            return 'Selecciona un tipo de datos.';
         }
-        $importer = app(ImportService::class)->makeImporter($entity, '');
 
-        return implode(', ', $importer->templateHeaders());
+        return implode(', ', app(OperationalImportService::class)->columns($entity));
     }
 }

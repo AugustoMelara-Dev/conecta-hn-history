@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\App\Pages\ImportExport;
 
 use App\Application\Imports\ExportService;
-use App\Application\Imports\ImportService;
 use App\Infrastructure\Imports\ExcelExporter;
-use App\Infrastructure\Imports\PdfExporter;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
@@ -47,7 +45,9 @@ class ExportCenter extends Page
                     ->components([
                         Select::make('entity')
                             ->label('Entidad')
-                            ->options(fn () => app(ImportService::class)->entities())
+                            ->options(fn (): array => collect(app(ExportService::class)->entities())
+                                ->mapWithKeys(static fn (string $entity): array => [$entity => ucfirst($entity)])
+                                ->all())
                             ->required()
                             ->live(),
                         Select::make('format')
@@ -55,7 +55,6 @@ class ExportCenter extends Page
                             ->options([
                                 'xlsx' => 'Excel (.xlsx)',
                                 'csv' => 'CSV (.csv)',
-                                'pdf' => 'PDF (.pdf)',
                             ])
                             ->default('xlsx')
                             ->required(),
@@ -70,18 +69,10 @@ class ExportCenter extends Page
         $tenantId = Filament::getTenant()->getKey();
 
         try {
-            $exportClass = app(ExportService::class)->getExporterClass($state['entity'], $tenantId);
-
-            if ($state['format'] === 'pdf') {
-                return app(PdfExporter::class)->download(
-                    'exports.generic',
-                    ['entity' => $state['entity']],
-                    "{$state['entity']}.pdf",
-                );
-            }
+            $export = app(ExportService::class)->getExporterClass($state['entity'], (string) $tenantId);
 
             return app(ExcelExporter::class)->download(
-                new $exportClass,
+                $export,
                 "{$state['entity']}.{$state['format']}",
                 $state['format'],
             );
