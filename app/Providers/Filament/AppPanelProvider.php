@@ -13,6 +13,7 @@ use Filament\Navigation\NavigationGroup;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
+use Filament\Support\Assets\Css;
 use Filament\Support\Colors\Color;
 use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -20,6 +21,7 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Vite;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 /**
@@ -81,8 +83,10 @@ class AppPanelProvider extends PanelProvider
                 'info' => Color::Cyan,
             ])
 
-            // FILAMENT 4: viteTheme para hot reload de tema
-            ->viteTheme('resources/css/filament/app/theme.css')
+            ->assets([
+                Css::make('app-business-components')
+                    ->html(fn () => Vite::asset('resources/css/filament/app/business-components.css')),
+            ])
 
             // FILAMENT 4: database notifications
             ->databaseNotifications()

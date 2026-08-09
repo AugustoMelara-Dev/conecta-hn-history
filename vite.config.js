@@ -12,6 +12,7 @@ export default defineConfig({
         laravel({
             input: [
                 "resources/css/app.css",
+                "resources/css/filament/app/business-components.css",
                 "resources/js/app.js", // Livewire/Alpine (Filament)
                 "resources/js/app.jsx", // Inertia/React (Public App + Breeze Auth)
             ],
