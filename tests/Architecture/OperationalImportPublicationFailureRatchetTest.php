@@ -52,6 +52,12 @@ final class OperationalImportPublicationFailureRatchetTest extends TestCase
                     PHP),
                 'Operational import publication failure must persist exactly once.',
             ],
+            [
+                self::fixture('Throwable', <<<'PHP'
+                    $item->update(['error_message' => 'unsafe']);
+                    PHP),
+                'Operational import publication failure must persist exactly once.',
+            ],
         ];
 
         $failures = [];
@@ -118,7 +124,18 @@ final class OperationalImportPublicationFailureRatchetTest extends TestCase
         }
 
         $failureSaves = self::itemForceFillSaves($catch->stmts);
-        if (count($failureSaves) !== 1) {
+        $failureMutations = array_values(array_filter(
+            (new NodeFinder)->findInstanceOf($catch->stmts, MethodCall::class),
+            static fn (MethodCall $call): bool => $call->name instanceof Identifier
+                && in_array($call->name->toString(), [
+                    'save', 'saveOrFail', 'update', 'updateOrFail', 'delete',
+                    'increment', 'decrement', 'forceDelete', 'restore', 'touch', 'push',
+                ], true)
+                && self::receiverRootIsVariable($call->var, 'item'),
+        ));
+        if (count($failureSaves) !== 1
+            || count($failureMutations) !== 1
+            || $failureMutations[0] !== $failureSaves[0]) {
             self::fail('Operational import publication failure must persist exactly once.');
         }
         $failure = self::forceFillItems($failureSaves[0]);
@@ -180,6 +197,15 @@ final class OperationalImportPublicationFailureRatchetTest extends TestCase
     private static function isVariable(Node $node, string $name): bool
     {
         return $node instanceof Variable && $node->name === $name;
+    }
+
+    private static function receiverRootIsVariable(Node $node, string $name): bool
+    {
+        while ($node instanceof MethodCall) {
+            $node = $node->var;
+        }
+
+        return self::isVariable($node, $name);
     }
 
     private static function isNullConstant(Node $node): bool
