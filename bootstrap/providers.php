@@ -8,6 +8,7 @@ use App\Providers\BusServiceProvider;
 use App\Providers\Domain\AIEnrichmentServiceProvider;
 use App\Providers\Domain\AnalyticsServiceProvider;
 use App\Providers\Domain\DirectoryServiceProvider;
+use App\Providers\Domain\GeographyKnowledgeServiceProvider;
 use App\Providers\Domain\IdentityServiceProvider;
 use App\Providers\Domain\MarketingServiceProvider;
 use App\Providers\Domain\MediaProcessingServiceProvider;
@@ -59,6 +60,7 @@ $providers = [
     AIEnrichmentServiceProvider::class,
     AnalyticsServiceProvider::class,
     DirectoryServiceProvider::class,
+    GeographyKnowledgeServiceProvider::class,
     SalesServiceProvider::class,
     ReportingServiceProvider::class,
     MediaProcessingServiceProvider::class,
