@@ -24,7 +24,7 @@ class DealEmailDraftAssistant extends BaseAssistant
 
     public function description(): string
     {
-        return 'Genera un draft de email contextual para un deal espec�fico.';
+        return 'Genera un borrador de correo contextual para un negocio específico.';
     }
 
     public function estimateCost(): float

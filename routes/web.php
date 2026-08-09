@@ -246,9 +246,6 @@ Route::middleware('auth')->group(function () {
     // Reviews
     Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store');
 
-    // [REMOVED] Follow/Unfollow feature - FollowController was never created.
-    // TODO: Implement follow functionality when needed via dedicated controller.
-
     // ═══════════════════════════════════════════════════════════════════
     // SHADOW LOGIN - Impersonation Exit Route (SECURED)
     // ═══════════════════════════════════════════════════════════════════

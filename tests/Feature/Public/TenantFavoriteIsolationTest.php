@@ -99,4 +99,41 @@ final class TenantFavoriteIsolationTest extends TestCase
         self::assertFalse($unfollowed->engaged);
         self::assertSame(0, $unfollowed->count);
     }
+
+    public function test_authenticated_api_user_can_follow_and_unfollow_a_public_tenant(): void
+    {
+        $user = User::factory()->create();
+        $tenant = Tenant::factory()->create();
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/tenants/{$tenant->getKey()}/follow")
+            ->assertOk()
+            ->assertJsonPath('following', true)
+            ->assertJsonPath('followers_count', 1);
+
+        $this->assertDatabaseHas('follows', [
+            'user_id' => $user->getKey(),
+            'tenant_id' => $tenant->getKey(),
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/tenants/{$tenant->getKey()}/follow")
+            ->assertOk()
+            ->assertJsonPath('following', false)
+            ->assertJsonPath('followers_count', 0);
+    }
+
+    public function test_follow_api_rejects_guests_and_inactive_tenants(): void
+    {
+        $tenant = Tenant::factory()->inactive()->create();
+
+        $this->postJson("/api/v1/tenants/{$tenant->getKey()}/follow")
+            ->assertUnauthorized();
+
+        $this->actingAs(User::factory()->create(), 'sanctum')
+            ->postJson("/api/v1/tenants/{$tenant->getKey()}/follow")
+            ->assertNotFound();
+
+        $this->assertDatabaseCount('follows', 0);
+    }
 }

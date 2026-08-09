@@ -21,7 +21,7 @@ class RefundJustificationAssistant extends BaseAssistant
 
     public function description(): string
     {
-        return 'Justificaci�n para refund request.';
+        return 'Genera una justificación para una solicitud de reembolso.';
     }
 
     public function estimateCost(): float

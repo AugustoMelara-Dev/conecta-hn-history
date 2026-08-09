@@ -21,7 +21,7 @@ class ContactEnrichmentAssistant extends BaseAssistant
 
     public function description(): string
     {
-        return 'Enriquece datos de contacto con informaci�n p�blica.';
+        return 'Enriquece datos de contacto con información pública.';
     }
 
     public function estimateCost(): float

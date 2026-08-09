@@ -47,30 +47,25 @@ class QrCodeService
      */
     protected function generateQrCode(Tenant $tenant, int $size): string
     {
-        try {
-            $url = url('/'.$tenant->slug);
+        $url = url('/'.$tenant->slug);
 
-            $options = new QROptions([
-                'outputType' => QROutputInterface::MARKUP_SVG,
-                'eccLevel' => QRCode::ECC_H, // Alta corrección de errores
-                'svgViewBoxSize' => $size,
-                'addQuietzone' => true,
-                'quietzoneSize' => 2,
-                'drawLightModules' => false,
-                'connectPaths' => true,
-                'drawCircularModules' => false,
-                'keepAsSquare' => [
-                    QRMatrix::M_FINDER_DARK,
-                    QRMatrix::M_FINDER_DOT,
-                    QRMatrix::M_ALIGNMENT_DARK,
-                ],
-            ]);
+        $options = new QROptions([
+            'outputType' => QROutputInterface::MARKUP_SVG,
+            'eccLevel' => QRCode::ECC_H, // Alta corrección de errores
+            'svgViewBoxSize' => $size,
+            'addQuietzone' => true,
+            'quietzoneSize' => 2,
+            'drawLightModules' => false,
+            'connectPaths' => true,
+            'drawCircularModules' => false,
+            'keepAsSquare' => [
+                QRMatrix::M_FINDER_DARK,
+                QRMatrix::M_FINDER_DOT,
+                QRMatrix::M_ALIGNMENT_DARK,
+            ],
+        ]);
 
-            return (new QRCode($options))->render($url);
-        } catch (\Exception $e) {
-            // Fallback: retornar un placeholder SVG si hay error
-            return $this->getFallbackSvg($size);
-        }
+        return (new QRCode($options))->render($url);
     }
 
     /**
@@ -115,18 +110,5 @@ class QrCodeService
         $svg = $this->getQrCode($tenant, $size);
 
         return 'data:image/svg+xml;base64,'.base64_encode($svg);
-    }
-
-    /**
-     * SVG de fallback si falla la generación
-     */
-    protected function getFallbackSvg(int $size): string
-    {
-        return <<<SVG
-<svg xmlns="http://www.w3.org/2000/svg" width="$size" height="$size" viewBox="0 0 $size $size">
-    <rect width="100%" height="100%" fill="#f3f4f6"/>
-    <text x="50%" y="50%" text-anchor="middle" fill="#9ca3af" font-size="16" dy=".3em">QR Code</text>
-</svg>
-SVG;
     }
 }

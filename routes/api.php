@@ -13,10 +13,10 @@ use App\Http\Controllers\Api\V1\CouponController;
 use App\Http\Controllers\Api\V1\Crm\CrmDealController;
 use App\Http\Controllers\Api\V1\Crm\CrmPipelineController;
 use App\Http\Controllers\Api\V1\DirectoryGuideChatController;
+use App\Http\Controllers\Api\V1\FollowController;
 use App\Http\Controllers\Api\V1\InteractionController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\OrderController;
-use App\Http\Controllers\Auth\OtpController;
 use App\Http\Controllers\Api\V1\PlatformAiEvaluationController;
 use App\Http\Controllers\Api\V1\PlatformAiRegistryController;
 use App\Http\Controllers\Api\V1\ProductController;
@@ -28,11 +28,11 @@ use App\Http\Controllers\Api\V1\TenantAgentChatController;
 use App\Http\Controllers\Api\V1\TenantAiConfigurationController;
 use App\Http\Controllers\Api\V1\TenantSettingsController;
 use App\Http\Controllers\Api\V1\TenantWorkforceController;
-use App\Http\Controllers\Api\V1\Crm\ActivityController;
-use App\Http\Controllers\Api\V1\Crm\ContactController;
+use App\Http\Controllers\Auth\OtpController;
 use App\Http\Controllers\Public\CheckoutController;
 use App\Http\Controllers\Webhook\PaymentWebhookController;
 use App\Http\Middleware\EnsurePlatformAiRegistryConfigured;
+use App\Http\Middleware\InitializeAuthenticatedTenantContext;
 use App\Http\Middleware\InitializePublicAiPlatformTenantContext;
 use App\Infrastructure\Identity\Http\Controllers\RegisterUserController;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -144,6 +144,11 @@ Route::prefix('v1')->group(function () {
 
     Route::post('/analytics/conversion', [AnalyticsController::class, 'conversion'])
         ->middleware('throttle:api');
+
+    Route::post('/tenants/{tenantId}/follow', [FollowController::class, 'toggle'])
+        ->whereUuid('tenantId')
+        ->middleware(['auth:sanctum', 'throttle:api'])
+        ->name('api.tenants.follow.toggle');
 
     Route::post('/directory/guide/chat', DirectoryGuideChatController::class)
         ->middleware([
@@ -369,7 +374,7 @@ Route::prefix('v1')->group(function () {
         });
 
     Route::post('/tenant/workforce/activate', [TenantWorkforceController::class, 'activate'])
-        ->middleware(['auth:sanctum', 'tenant.ownership', \App\Http\Middleware\InitializeAuthenticatedTenantContext::class, 'throttle:api'])
+        ->middleware(['auth:sanctum', 'tenant.ownership', InitializeAuthenticatedTenantContext::class, 'throttle:api'])
         ->name('api.tenant.workforce.activate');
 
     Route::prefix('tenant/agent/tools')
@@ -412,7 +417,6 @@ Route::post('/webhooks/payment', [PaymentWebhookController::class, 'handle'])
     ->name('webhooks.payment')
     ->withoutMiddleware([PreventRequestForgery::class]);
 
-
-
-
-if (file_exists(base_path('routes/api-crm.php'))) require base_path('routes/api-crm.php');
+if (file_exists(base_path('routes/api-crm.php'))) {
+    require base_path('routes/api-crm.php');
+}

@@ -21,7 +21,7 @@ class ProductDescriptionAssistant extends BaseAssistant
 
     public function description(): string
     {
-        return 'Genera descripci�n de producto.';
+        return 'Genera una descripción de producto.';
     }
 
     public function estimateCost(): float
@@ -31,7 +31,7 @@ class ProductDescriptionAssistant extends BaseAssistant
 
     public function category(): string
     {
-        return 'Cat�logo';
+        return 'Catálogo';
     }
 
     public function execute(array $input, ?AssistantExecutionContext $context = null): AssistantResult

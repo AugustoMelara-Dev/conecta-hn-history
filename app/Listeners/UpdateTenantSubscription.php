@@ -10,6 +10,8 @@ use App\Domain\Billing\Services\PlanEntitlementService;
 use App\Infrastructure\Shared\Middleware\TenantQueueMiddleware;
 use App\Models\SubscriptionPayment;
 use App\Models\Tenant;
+use App\Models\User;
+use App\Notifications\SubscriptionExtensionFailedNotification;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -155,10 +157,22 @@ class UpdateTenantSubscription implements ShouldQueue
             'tenant_id' => $event->tenantId,
             'reviewer_id' => $event->reviewerId,
             'exception_class' => get_class($exception),
-            'exception_message' => $exception->getMessage(),
-            'exception_trace' => $exception->getTraceAsString(),
         ]);
 
-        // TODO: Notify admin via Slack/Email about failed subscription extension
+        try {
+            User::query()
+                ->where('role', 'super_admin')
+                ->get()
+                ->filter(static fn (User $user): bool => $user->isSuperAdmin())
+                ->each(fn (User $user) => $user->notify(
+                    new SubscriptionExtensionFailedNotification($event->paymentId, $event->tenantId)
+                ));
+        } catch (\Throwable $notificationFailure) {
+            Log::emergency('PaymentApproved: unable to persist the failure notification', [
+                'payment_id' => $event->paymentId,
+                'tenant_id' => $event->tenantId,
+                'exception_class' => $notificationFailure::class,
+            ]);
+        }
     }
 }

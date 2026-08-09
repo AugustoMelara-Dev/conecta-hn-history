@@ -21,7 +21,7 @@ class NextBestActionAssistant extends BaseAssistant
 
     public function description(): string
     {
-        return 'Recomienda pr�xima acci�n para un contacto.';
+        return 'Recomienda la próxima acción para un contacto.';
     }
 
     public function estimateCost(): float

@@ -53,11 +53,9 @@ final class SitemapCloudStorageCompatibilityTest extends TestCase
     public function test_scheduler_uses_the_cloud_storage_compatible_sitemap_command(): void
     {
         $bootstrap = file_get_contents(dirname(__DIR__, 3).'/bootstrap/app.php');
-        $legacy = file_get_contents(dirname(__DIR__, 3).'/app/Console/Commands/GenerateSitemap.php');
-
         self::assertStringContainsString("command('sitemap:generate')", $bootstrap);
         self::assertStringNotContainsString("command('seo:generate-sitemap')", $bootstrap);
-        self::assertStringContainsString("Storage::disk('public')->put('sitemap.xml'", $legacy);
-        self::assertStringNotContainsString("public_path('sitemap.xml')", $legacy);
+        self::assertFileDoesNotExist(dirname(__DIR__, 3).'/app/Console/Commands/GenerateSitemap.php');
+        self::assertFileDoesNotExist(dirname(__DIR__, 3).'/app/Console/Commands/SubscriptionLifecycleCommand.php');
     }
 }
