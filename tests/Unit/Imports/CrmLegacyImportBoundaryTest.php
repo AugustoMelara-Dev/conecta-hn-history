@@ -63,4 +63,7 @@ it('keeps the deleted DealsImport absent and unadvertised', function (): void {
     expect(is_file($dealsPath))->toBeFalse()
         ->and($loaded)->toBeFalse()
         ->and($service->entities())->not->toContain('deals');
+
+    expect($autoloadWarning === null || str_contains($autoloadWarning, 'DealsImport.php'))
+        ->toBeTrue('an autoload warning, when emitted by a stale classmap, must point only at the deleted DealsImport file');
 });

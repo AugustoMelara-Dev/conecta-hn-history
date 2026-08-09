@@ -163,6 +163,120 @@ it('proves the AST ratchet detects bypass shapes while ignoring comments and imp
         dovraCrmAstOperations($commentAndImportOnly, true),
         static fn (array $operation): bool => $operation['canonical'] && $operation['sensitive'],
     ))->toBeEmpty();
+
+    $wrongDelegationReceiver = <<<'PHP'
+        <?php
+        use App\Application\Crm\CanonicalCrmEntityWriter;
+
+        final class WrongDelegationReceiver
+        {
+            public function mutate(): void
+            {
+                CanonicalCrmEntityWriter::class;
+                $other = new stdClass();
+                $other->createActivity([], []);
+            }
+        }
+        PHP;
+
+    expect(dovraCrmDelegationSentinel($wrongDelegationReceiver, 'mutate', 'createActivity', true))
+        ->toBeFalse('an unrelated object must not satisfy the writer delegation sentinel');
+
+    $boundDelegationReceiver = <<<'PHP'
+        <?php
+        use App\Application\Crm\CanonicalCrmEntityWriter;
+
+        final class BoundDelegationReceiver
+        {
+            public function __construct(private CanonicalCrmEntityWriter $writer) {}
+
+            public function mutate(): void
+            {
+                $alias = $this->writer;
+                $alias->createActivity([], []);
+            }
+        }
+        PHP;
+
+    expect(dovraCrmDelegationSentinel($boundDelegationReceiver, 'mutate', 'createActivity', true))
+        ->toBeTrue('a constructor-bound writer property alias must satisfy the sentinel');
+
+    $importBypass = <<<'PHP'
+        <?php
+        use App\Application\Imports\ImportService;
+        use App\Application\Imports\Imports\ContactsImport as ContactCsv;
+        use Maatwebsite\Excel\Facades\Excel as Spreadsheet;
+
+        $service = app(ImportService::class);
+        $candidate = $service->makeImporter('contacts', 'tenant');
+        $alias = $candidate;
+        $alias->model([]);
+        Spreadsheet::import($alias, 'blocked.csv');
+        $direct = new ContactCsv('tenant');
+        $directAlias = $direct;
+        $directAlias->model([]);
+        PHP;
+
+    $importBypassViolations = dovraCrmImportSourceViolations(
+        $importBypass,
+        'app/Tests/Fixtures/ImportBoundaryFixture.php',
+    );
+    expect(implode('; ', $importBypassViolations))->toContain('importer->model() bypass')
+        ->and(implode('; ', $importBypassViolations))->toContain('direct Excel::import caller');
+
+    $webToLeadStateBypass = <<<'PHP'
+        <?php
+        use App\Models\Contact;
+        use App\Models\CrmActivity;
+        use Illuminate\Support\Facades\DB;
+
+        function submit(): void
+        {
+            DB::transaction(function (): void {
+                $tenantId = \Filament\Facades\Filament::getTenant()?->getKey();
+                Contact::create(['tenant_id' => $tenantId, 'company_id' => $this->data['company_id']]);
+                CrmActivity::create(['tenant_id' => $tenantId, 'contact_id' => $this->data['contact_id']]);
+            });
+        }
+        PHP;
+
+    $webToLeadRequestBypass = <<<'PHP'
+        <?php
+        use App\Models\Contact;
+        use App\Models\CrmActivity;
+        use Illuminate\Support\Facades\DB;
+
+        function submit(): void
+        {
+            DB::transaction(function (): void {
+                $tenantId = \Filament\Facades\Filament::getTenant()?->getKey();
+                $payload = request()->validated();
+                Contact::create(['tenant_id' => $tenantId, 'owner_id' => $payload['owner_id']]);
+                CrmActivity::create(['tenant_id' => $tenantId, 'body' => $payload['message'] ?? null]);
+            });
+        }
+        PHP;
+
+    $webToLeadWrongTenant = <<<'PHP'
+        <?php
+        use App\Models\Contact;
+        use App\Models\CrmActivity;
+        use Illuminate\Support\Facades\DB;
+
+        function submit(): void
+        {
+            DB::transaction(function (): void {
+                $tenantId = \Filament\Facades\Filament::getTenant()?->getKey();
+                $wrongTenant = 'foreign-tenant';
+                Contact::create(['tenant_id' => $wrongTenant]);
+                CrmActivity::create(['tenant_id' => $wrongTenant]);
+            });
+        }
+        PHP;
+
+    expect(dovraCrmWebToLeadSentinel($webToLeadStateBypass, true)['ok'])->toBeFalse();
+    expect(dovraCrmWebToLeadSentinel($webToLeadRequestBypass, true)['ok'])->toBeFalse();
+    expect(dovraCrmWebToLeadSentinel($webToLeadWrongTenant, true)['ok'])->toBeFalse();
 });
 
 /** @return list<string> */
@@ -267,9 +381,9 @@ function dovraCrmDelegationRequirements(): array
 /**
  * @return array{ok: bool, reason: string}
  */
-function dovraCrmWebToLeadSentinel(string $path): array
+function dovraCrmWebToLeadSentinel(string $sourceOrPath, bool $sourceInput = false): array
 {
-    $source = (string) file_get_contents($path);
+    $source = $sourceInput ? $sourceOrPath : (string) file_get_contents($sourceOrPath);
     $ast = dovraCrmParse($source);
     if ($ast === []) {
         return ['ok' => false, 'reason' => 'parse failed'];
@@ -281,11 +395,21 @@ function dovraCrmWebToLeadSentinel(string $path): array
 
         public int $canonicalWritesInTransaction = 0;
 
+        public int $canonicalWritesOutsideTransaction = 0;
+
+        public int $unboundTenantWrites = 0;
+
         public bool $sensitiveStateInput = false;
 
         public bool $sensitiveFormInput = false;
 
         public bool $tenantDerived = false;
+
+        /** @var array<string, string> */
+        private array $aliases = [];
+
+        /** @var array<string, bool> */
+        private array $derivedTenantVariables = [];
 
         private int $transactionDepth = 0;
 
@@ -293,6 +417,12 @@ function dovraCrmWebToLeadSentinel(string $path): array
 
         public function enterNode(Node $node): null
         {
+            if ($node instanceof Node\Stmt\Use_ && $node->type === Node\Stmt\Use_::TYPE_NORMAL) {
+                foreach ($node->uses as $use) {
+                    $this->aliases[$use->alias?->toString() ?? $use->name->getLast()] = ltrim($use->name->toString(), '\\');
+                }
+            }
+
             if ($node instanceof Node\Expr\StaticCall && $node->name instanceof Node\Identifier) {
                 $method = $node->name->toString();
                 $class = $node->class instanceof Node\Name ? ltrim($node->class->toString(), '\\') : '';
@@ -305,10 +435,19 @@ function dovraCrmWebToLeadSentinel(string $path): array
                     'create', 'firstOrCreate', 'updateOrCreate', 'update', 'save', 'forceFill', 'upsert',
                 ], true)) {
                     $canonical = $node->class instanceof Node\Name
-                        && dovraCrmCanonicalClassTarget(ltrim($node->class->toString(), '\\')) !== null;
+                        && dovraCrmCanonicalClassTarget(ltrim($node->class->toString(), '\\'), $this->aliases) !== null;
                     if ($canonical) {
                         $this->canonicalWritesInTransaction++;
+                        if (! $this->hasDerivedTenantBinding($node)) {
+                            $this->unboundTenantWrites++;
+                        }
                     }
+                } elseif ($this->transactionDepth === 0 && in_array($method, [
+                    'create', 'firstOrCreate', 'updateOrCreate', 'update', 'save', 'forceFill', 'upsert',
+                ], true)
+                    && $node->class instanceof Node\Name
+                    && dovraCrmCanonicalClassTarget(ltrim($node->class->toString(), '\\'), $this->aliases) !== null) {
+                    $this->canonicalWritesOutsideTransaction++;
                 }
 
                 if ($class === 'Filament\\Facades\\Filament' && $method === 'getTenant') {
@@ -317,23 +456,51 @@ function dovraCrmWebToLeadSentinel(string $path): array
             }
 
             if ($node instanceof Node\Expr\ArrayDimFetch) {
-                $name = $node->var instanceof Node\Expr\Variable && is_string($node->var->name)
-                    ? $node->var->name
-                    : '';
                 $key = $node->dim instanceof Node\Scalar\String_ ? $node->dim->value : null;
-                if (in_array($key, self::SENSITIVE, true) && in_array($name, ['state', 'data', 'request'], true)) {
+                if (in_array($key, self::SENSITIVE, true)) {
+                    $this->sensitiveStateInput = true;
+                }
+            }
+
+            if ($node instanceof Node\Expr\PropertyFetch && $node->name instanceof Node\Identifier
+                && in_array($node->name->toString(), self::SENSITIVE, true)) {
+                $this->sensitiveStateInput = true;
+            }
+
+            if (($node instanceof Node\Expr\MethodCall || $node instanceof Node\Expr\NullsafeMethodCall)
+                && $node->name instanceof Node\Identifier
+                && in_array($node->name->toString(), ['input', 'get', 'validated', 'all'], true)) {
+                $this->sensitiveStateInput = true;
+            }
+
+            if ($node instanceof Node\Expr\StaticCall && $node->name instanceof Node\Identifier
+                && in_array($node->name->toString(), ['input', 'get', 'validated', 'all'], true)) {
+                $this->sensitiveStateInput = true;
+            }
+
+            if ($node instanceof Node\Expr\FuncCall && $node->name instanceof Node\Name
+                && strtolower($node->name->toString()) === 'request' && $node->args !== []) {
+                $key = $node->args[0]->value instanceof Node\Scalar\String_
+                    ? $node->args[0]->value->value
+                    : null;
+                if ($key === null || in_array($key, self::SENSITIVE, true)) {
                     $this->sensitiveStateInput = true;
                 }
             }
 
             if ($node instanceof Node\Expr\StaticCall && $node->name instanceof Node\Identifier
                 && $node->name->toString() === 'make' && $node->args !== []) {
-                $class = $node->class instanceof Node\Name ? $node->class->toString() : '';
-                if (str_ends_with($class, 'TextInput') || str_ends_with($class, 'Select') || str_ends_with($class, 'Textarea')) {
-                    $field = $node->args[0]->value instanceof Node\Scalar\String_
-                        ? $node->args[0]->value->value
-                        : null;
-                    if (is_string($field) && in_array($field, self::SENSITIVE, true)) {
+                $class = $node->class instanceof Node\Name ? ltrim($node->class->toString(), '\\') : '';
+                $field = $node->args[0]->value instanceof Node\Scalar\String_
+                    ? $node->args[0]->value->value
+                    : null;
+                if (is_string($field) && in_array($field, self::SENSITIVE, true)) {
+                    $this->sensitiveFormInput = true;
+                }
+                if (str_ends_with($class, 'TextInput') || str_ends_with($class, 'Select')
+                    || str_ends_with($class, 'Textarea') || str_ends_with($class, 'Hidden')
+                    || str_ends_with($class, 'Field')) {
+                    if (! is_string($field) || in_array($field, self::SENSITIVE, true)) {
                         $this->sensitiveFormInput = true;
                     }
                 }
@@ -344,6 +511,19 @@ function dovraCrmWebToLeadSentinel(string $path): array
 
         public function leaveNode(Node $node): null
         {
+            if ($node instanceof Node\Expr\Assign
+                && $node->var instanceof Node\Expr\Variable
+                && is_string($node->var->name)) {
+                $derived = dovraCrmContainsFilamentTenant($node->expr)
+                    || ($node->expr instanceof Node\Expr\Variable
+                        && is_string($node->expr->name)
+                        && ($this->derivedTenantVariables[$node->expr->name] ?? false));
+                if ($derived) {
+                    $this->derivedTenantVariables[$node->var->name] = $this->transactionDepth > 0;
+                    $this->tenantDerived = $this->transactionDepth > 0;
+                }
+            }
+
             if ($node instanceof Node\Expr\StaticCall && $node->name instanceof Node\Identifier
                 && $node->name->toString() === 'transaction') {
                 $this->transactionDepth = max(0, $this->transactionDepth - 1);
@@ -351,14 +531,76 @@ function dovraCrmWebToLeadSentinel(string $path): array
 
             return null;
         }
+
+        private function hasDerivedTenantBinding(Node $write): bool
+        {
+            $bindings = [];
+            foreach ($write->getSubNodeNames() as $name) {
+                $child = $write->{$name};
+                if ($child instanceof Node) {
+                    $this->collectTenantBindings($child, $bindings);
+                } elseif (is_array($child)) {
+                    foreach ($child as $item) {
+                        if ($item instanceof Node) {
+                            $this->collectTenantBindings($item, $bindings);
+                        }
+                    }
+                }
+            }
+
+            return $bindings !== [] && ! in_array(false, $bindings, true);
+        }
+
+        /** @param list<bool> $bindings */
+        private function collectTenantBindings(Node $node, array &$bindings): void
+        {
+            if ($node instanceof Node\Expr\Array_) {
+                foreach ($node->items as $item) {
+                    if ($item === null) {
+                        continue;
+                    }
+                    if ($item->key instanceof Node\Scalar\String_
+                        && $item->key->value === 'tenant_id') {
+                        $bindings[] = $this->isDerivedTenantExpression($item->value);
+                    } else {
+                        $this->collectTenantBindings($item->value, $bindings);
+                    }
+                }
+
+                return;
+            }
+
+            foreach ($node->getSubNodeNames() as $name) {
+                $child = $node->{$name};
+                if ($child instanceof Node) {
+                    $this->collectTenantBindings($child, $bindings);
+                } elseif (is_array($child)) {
+                    foreach ($child as $item) {
+                        if ($item instanceof Node) {
+                            $this->collectTenantBindings($item, $bindings);
+                        }
+                    }
+                }
+            }
+        }
+
+        private function isDerivedTenantExpression(Node $node): bool
+        {
+            return ($node instanceof Node\Expr\Variable
+                && is_string($node->name)
+                && ($this->derivedTenantVariables[$node->name] ?? false))
+                || dovraCrmContainsFilamentTenant($node);
+        }
     };
 
     $traverser = new NodeTraverser;
     $traverser->addVisitor($visitor);
     $traverser->traverse($ast);
 
-    if ($visitor->transactions !== 1 || $visitor->canonicalWritesInTransaction < 2) {
-        return ['ok' => false, 'reason' => 'expected one transaction containing canonical intake writes'];
+    if ($visitor->transactions !== 1 || $visitor->canonicalWritesInTransaction < 2
+        || $visitor->canonicalWritesOutsideTransaction > 0
+        || $visitor->unboundTenantWrites > 0) {
+        return ['ok' => false, 'reason' => 'expected every canonical intake write bound to derived tenant inside one transaction'];
     }
     if (! $visitor->tenantDerived) {
         return ['ok' => false, 'reason' => 'tenant is not derived from Filament context'];
@@ -370,9 +612,37 @@ function dovraCrmWebToLeadSentinel(string $path): array
     return ['ok' => true, 'reason' => ''];
 }
 
-function dovraCrmDelegationSentinel(string $path, string $methodName, string $writerMethod): bool
+function dovraCrmContainsFilamentTenant(Node $node): bool
 {
-    $ast = dovraCrmParse((string) file_get_contents($path));
+    if ($node instanceof Node\Expr\StaticCall
+        && $node->name instanceof Node\Identifier
+        && $node->name->toString() === 'getTenant'
+        && $node->class instanceof Node\Name
+        && str_ends_with(ltrim($node->class->toString(), '\\'), '\\Filament')) {
+        return true;
+    }
+
+    foreach ($node->getSubNodeNames() as $name) {
+        $child = $node->{$name};
+        if ($child instanceof Node && dovraCrmContainsFilamentTenant($child)) {
+            return true;
+        }
+        if (is_array($child)) {
+            foreach ($child as $item) {
+                if ($item instanceof Node && dovraCrmContainsFilamentTenant($item)) {
+                    return true;
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
+function dovraCrmDelegationSentinel(string $sourceOrPath, string $methodName, string $writerMethod, bool $sourceInput = false): bool
+{
+    $source = $sourceInput ? $sourceOrPath : (string) file_get_contents($sourceOrPath);
+    $ast = dovraCrmParse($source);
     if ($ast === []) {
         return false;
     }
@@ -383,31 +653,86 @@ function dovraCrmDelegationSentinel(string $path, string $methodName, string $wr
 
         private string $currentMethod = '';
 
-        private bool $writerClassSeen = false;
+        /** @var array<string, string> */
+        private array $aliases = [];
 
-        private bool $writerDependencySeen = false;
+        /** @var array<string, bool> */
+        private array $writerLocals = [];
 
-        public function __construct(private readonly string $expectedMethod, private readonly string $expectedWriter) {}
+        /** @var array<string, bool> */
+        private array $writerProperties = [];
+
+        /** @var list<array<string, bool>> */
+        private array $classPropertyScopes = [];
+
+        /** @var list<string> */
+        private array $expectedWriters;
+
+        /** @var list<string> */
+        private array $matchedWriters = [];
+
+        /** @var list<string> */
+        private array $unexpectedWriters = [];
+
+        private const WRITER_METHODS = [
+            'createCompany', 'updateCompany', 'createContact', 'updateContact',
+            'createActivity', 'updateActivity', 'createTag', 'updateTag',
+            'bulkAssignContactOwner',
+        ];
+
+        public function __construct(private readonly string $expectedMethod, string $expectedWriter)
+        {
+            $this->expectedWriters = array_values(array_filter(explode('|', $expectedWriter)));
+        }
 
         public function enterNode(Node $node): null
         {
+            if ($node instanceof Node\Stmt\Use_ && $node->type === Node\Stmt\Use_::TYPE_NORMAL) {
+                foreach ($node->uses as $use) {
+                    $this->aliases[$use->alias?->toString() ?? $use->name->getLast()] = ltrim($use->name->toString(), '\\');
+                }
+            }
+
+            if ($node instanceof Node\Stmt\Class_) {
+                $this->classPropertyScopes[] = $this->writerProperties;
+                $this->writerProperties = [];
+            }
+
+            if ($node instanceof Node\Stmt\Property && dovraCrmWriterTypeNode($node->type, $this->aliases)) {
+                foreach ($node->props as $property) {
+                    $this->writerProperties[$property->name->toString()] = true;
+                }
+            }
+
             if ($node instanceof Node\Stmt\ClassMethod) {
                 $this->currentMethod = $node->name->toString();
-                $this->writerClassSeen = false;
+                $this->writerLocals = [];
                 foreach ($node->params as $parameter) {
-                    if ($parameter->type instanceof Node\Name
-                        && $parameter->type->toString() === 'CanonicalCrmEntityWriter') {
-                        $this->writerDependencySeen = true;
+                    if (! $parameter->var instanceof Node\Expr\Variable || ! is_string($parameter->var->name)) {
+                        continue;
+                    }
+                    if (dovraCrmWriterTypeNode($parameter->type, $this->aliases)) {
+                        $this->writerLocals[$parameter->var->name] = true;
+                        if ($node->name->toString() === '__construct' && $parameter->flags !== 0) {
+                            $this->writerProperties[$parameter->var->name] = true;
+                        }
                     }
                 }
             }
 
-            if ($node instanceof Node\Expr\ClassConstFetch
-                && $node->class instanceof Node\Name
-                && $node->class->toString() === 'CanonicalCrmEntityWriter'
-                && $node->name instanceof Node\Identifier
-                && $node->name->toString() === 'class') {
-                $this->writerClassSeen = true;
+            if ($this->currentMethod === $this->expectedMethod
+                && $node instanceof Node\Expr\MethodCall
+                && $node->name instanceof Node\Identifier) {
+                $method = $node->name->toString();
+                if (! in_array($method, self::WRITER_METHODS, true)
+                    || ! $this->isWriterReceiver($node->var)) {
+                    return null;
+                }
+                if (in_array($method, $this->expectedWriters, true)) {
+                    $this->matchedWriters[] = $method;
+                } else {
+                    $this->unexpectedWriters[] = $method;
+                }
             }
 
             return null;
@@ -415,19 +740,59 @@ function dovraCrmDelegationSentinel(string $path, string $methodName, string $wr
 
         public function leaveNode(Node $node): null
         {
-            if ($node instanceof Node\Expr\MethodCall && $node->name instanceof Node\Identifier
-                && in_array($node->name->toString(), explode('|', $this->expectedWriter), true)
-                && $this->currentMethod === $this->expectedMethod
-                && ($this->writerClassSeen || $this->writerDependencySeen)) {
-                $this->found = true;
+            if ($node instanceof Node\Expr\Assign && $this->currentMethod === $this->expectedMethod) {
+                $writer = $this->isWriterReceiver($node->expr);
+                if ($node->var instanceof Node\Expr\Variable && is_string($node->var->name) && $writer) {
+                    $this->writerLocals[$node->var->name] = true;
+                }
+                if ($node->var instanceof Node\Expr\PropertyFetch
+                    && $node->var->var instanceof Node\Expr\Variable
+                    && $node->var->var->name === 'this'
+                    && $node->var->name instanceof Node\Identifier
+                    && $writer) {
+                    $this->writerProperties[$node->var->name->toString()] = true;
+                }
             }
 
             if ($node instanceof Node\Stmt\ClassMethod) {
                 $this->currentMethod = '';
-                $this->writerClassSeen = false;
+                $this->writerLocals = [];
+            }
+
+            if ($node instanceof Node\Stmt\Class_) {
+                $this->writerProperties = array_pop($this->classPropertyScopes) ?? [];
             }
 
             return null;
+        }
+
+        public function satisfiesContract(): bool
+        {
+            return count(array_unique($this->matchedWriters)) === count($this->expectedWriters)
+                && $this->unexpectedWriters === [];
+        }
+
+        private function isWriterReceiver(Node $node): bool
+        {
+            if ($node instanceof Node\Expr\Variable && is_string($node->name)) {
+                return isset($this->writerLocals[$node->name]);
+            }
+
+            if ($node instanceof Node\Expr\PropertyFetch
+                && $node->var instanceof Node\Expr\Variable
+                && $node->var->name === 'this'
+                && $node->name instanceof Node\Identifier) {
+                return isset($this->writerProperties[$node->name->toString()]);
+            }
+
+            if ($node instanceof Node\Expr\FuncCall
+                && $node->name instanceof Node\Name
+                && in_array(strtolower($node->name->toString()), ['app', 'resolve'], true)
+                && isset($node->args[0])) {
+                return dovraCrmWriterClassConst($node->args[0]->value, $this->aliases);
+            }
+
+            return false;
         }
     };
 
@@ -435,7 +800,41 @@ function dovraCrmDelegationSentinel(string $path, string $methodName, string $wr
     $traverser->addVisitor($visitor);
     $traverser->traverse($ast);
 
+    $visitor->found = $visitor->satisfiesContract();
+
     return $visitor->found;
+}
+
+function dovraCrmWriterClassConst(Node $node, array $aliases = []): bool
+{
+    return $node instanceof Node\Expr\ClassConstFetch
+        && $node->name instanceof Node\Identifier
+        && $node->name->toString() === 'class'
+        && $node->class instanceof Node\Name
+        && dovraCrmWriterClassName($node->class->toString(), $aliases);
+}
+
+function dovraCrmWriterClassName(string $name, array $aliases = []): bool
+{
+    $name = ltrim($name, '\\');
+    $name = ltrim($aliases[$name] ?? $name, '\\');
+
+    return in_array($name, [
+        'CanonicalCrmEntityWriter',
+        'App\\Application\\Crm\\CanonicalCrmEntityWriter',
+    ], true);
+}
+
+function dovraCrmWriterTypeNode(?Node $type, array $aliases = []): bool
+{
+    if ($type instanceof Node\NullableType) {
+        return dovraCrmWriterTypeNode($type->type, $aliases);
+    }
+    if ($type instanceof Node\Name) {
+        return dovraCrmWriterClassName($type->toString(), $aliases);
+    }
+
+    return false;
 }
 
 /** @return array{ok: bool, reason: string} */
@@ -588,82 +987,253 @@ function dovraCrmImportCallerViolations(): array
     $violations = [];
     foreach (dovraCrmProductionPhpFiles() as $path) {
         $relative = dovraCrmRelativePath($path);
-        $ast = dovraCrmParse((string) file_get_contents($path));
-        if ($ast === []) {
-            $violations[] = $relative.':parse-error';
-
-            continue;
-        }
-
-        $visitor = new class($relative) extends NodeVisitorAbstract
-        {
-            /** @var list<string> */
-            public array $violations = [];
-
-            private string $method = '';
-
-            private bool $templateHeadersSeen = false;
-
-            public function __construct(private readonly string $relative) {}
-
-            public function enterNode(Node $node): null
-            {
-                if ($node instanceof Node\Stmt\ClassMethod) {
-                    $this->method = $node->name->toString();
-                    $this->templateHeadersSeen = false;
-                }
-
-                if ($node instanceof Node\Expr\StaticCall && $node->name instanceof Node\Identifier
-                    && $node->name->toString() === 'import') {
-                    $class = $node->class instanceof Node\Name ? $node->class->toString() : '';
-                    if ($this->relative !== 'app/Infrastructure/Imports/ExcelImporter.php'
-                        && str_ends_with($class, '\\Excel')) {
-                        $this->violations[] = $this->relative.':direct Excel::import caller';
-                    }
-                }
-
-                if ($node instanceof Node\Expr\MethodCall && $node->name instanceof Node\Identifier) {
-                    $name = $node->name->toString();
-                    if ($name === 'model' && $node->var instanceof Node\Expr\Variable
-                        && in_array($node->var->name, ['import', 'importer'], true)) {
-                        $this->violations[] = $this->relative.':importer->model() bypass';
-                    }
-                    if ($name === 'templateHeaders') {
-                        $this->templateHeadersSeen = true;
-                    }
-                    if ($name === 'makeImporter'
-                        && ($this->relative !== 'app/Filament/App/Pages/ImportExport/ImportWizard.php'
-                            || $this->method !== 'getExpectedHeaders')) {
-                        $this->violations[] = $this->relative.':makeImporter outside template-only path';
-                    }
-                }
-
-                return null;
-            }
-
-            public function leaveNode(Node $node): null
-            {
-                if ($node instanceof Node\Stmt\ClassMethod
-                    && $this->method === 'getExpectedHeaders'
-                    && ! $this->templateHeadersSeen) {
-                    $this->violations[] = $this->relative.':template path lacks templateHeaders';
-                }
-                if ($node instanceof Node\Stmt\ClassMethod) {
-                    $this->method = '';
-                    $this->templateHeadersSeen = false;
-                }
-
-                return null;
-            }
-        };
-
-        $traverser = new NodeTraverser;
-        $traverser->addVisitor($visitor);
-        $traverser->traverse($ast);
-        $violations = [...$violations, ...$visitor->violations];
+        $violations = [...$violations, ...dovraCrmImportSourceViolations((string) file_get_contents($path), $relative)];
     }
 
     return $violations;
+}
+
+/** @return list<string> */
+function dovraCrmImportSourceViolations(string $source, string $relative): array
+{
+    $ast = dovraCrmParse($source);
+    if ($ast === []) {
+        return [$relative.':parse-error'];
+    }
+
+    $visitor = new class($relative) extends NodeVisitorAbstract
+    {
+        /** @var list<string> */
+        public array $violations = [];
+
+        /** @var array<string, string> */
+        private array $aliases = [];
+
+        /** @var array<string, bool> */
+        private array $serviceReceivers = [];
+
+        /** @var array<string, bool> */
+        private array $importReceivers = [];
+
+        /** @var array<string, bool> */
+        private array $templateReceivers = [];
+
+        private string $method = '';
+
+        private bool $templateHeadersSeen = false;
+
+        public function __construct(private readonly string $relative) {}
+
+        public function enterNode(Node $node): null
+        {
+            if ($node instanceof Node\Stmt\Use_ && $node->type === Node\Stmt\Use_::TYPE_NORMAL) {
+                foreach ($node->uses as $use) {
+                    $this->aliases[$use->alias?->toString() ?? $use->name->getLast()] = ltrim($use->name->toString(), '\\');
+                }
+            }
+
+            if ($node instanceof Node\Stmt\ClassMethod) {
+                $this->method = $node->name->toString();
+                $this->templateHeadersSeen = false;
+                foreach ($node->params as $parameter) {
+                    if ($parameter->var instanceof Node\Expr\Variable
+                        && is_string($parameter->var->name)
+                        && dovraCrmImportServiceTypeNode($parameter->type, $this->aliases)) {
+                        $this->serviceReceivers[$this->symbol($parameter->var)] = true;
+                    }
+                }
+            }
+
+            if ($node instanceof Node\Expr\StaticCall && $node->name instanceof Node\Identifier
+                && $node->name->toString() === 'import'
+                && dovraCrmIsExcelClass($node->class, $this->aliases)
+                && $this->relative !== 'app/Infrastructure/Imports/ExcelImporter.php') {
+                $this->violations[] = $this->relative.':direct Excel::import caller';
+            }
+
+            if ($node instanceof Node\Expr\MethodCall && $node->name instanceof Node\Identifier) {
+                $name = $node->name->toString();
+                if ($name === 'makeImporter'
+                    && ($this->relative !== 'app/Filament/App/Pages/ImportExport/ImportWizard.php'
+                        || $this->method !== 'getExpectedHeaders')) {
+                    $this->violations[] = $this->relative.':makeImporter outside template-only path';
+                }
+
+                if ($name === 'model' && $this->isImportReceiver($node->var)) {
+                    $this->violations[] = $this->relative.':importer->model() bypass';
+                }
+
+                if ($name === 'templateHeaders') {
+                    if ($this->isImportReceiver($node->var)) {
+                        $this->templateHeadersSeen = true;
+                        if (! $this->isAllowedTemplateReceiver($node->var)) {
+                            $this->violations[] = $this->relative.':templateHeaders outside exact template receiver';
+                        }
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        public function leaveNode(Node $node): null
+        {
+            if ($node instanceof Node\Expr\Assign) {
+                $symbol = $this->symbol($node->var);
+                if ($symbol !== null) {
+                    if ($this->isServiceReceiver($node->expr)) {
+                        $this->serviceReceivers[$symbol] = true;
+                    }
+                    if ($this->isImportReceiver($node->expr)) {
+                        $this->importReceivers[$symbol] = true;
+                    }
+                    if ($this->isMakeImporterExpression($node->expr)) {
+                        $this->importReceivers[$symbol] = true;
+                        $this->templateReceivers[$symbol] = true;
+                    }
+                }
+            }
+
+            if ($node instanceof Node\Stmt\ClassMethod) {
+                if ($this->method === 'getExpectedHeaders'
+                    && $this->relative === 'app/Filament/App/Pages/ImportExport/ImportWizard.php'
+                    && ! $this->templateHeadersSeen) {
+                    $this->violations[] = $this->relative.':template path lacks templateHeaders';
+                }
+                $this->method = '';
+                $this->templateHeadersSeen = false;
+            }
+
+            return null;
+        }
+
+        private function symbol(Node $node): ?string
+        {
+            if ($node instanceof Node\Expr\Variable && is_string($node->name)) {
+                return '$'.$node->name;
+            }
+            if ($node instanceof Node\Expr\PropertyFetch
+                && $node->var instanceof Node\Expr\Variable
+                && $node->var->name === 'this'
+                && $node->name instanceof Node\Identifier) {
+                return '$this->'.$node->name->toString();
+            }
+
+            return null;
+        }
+
+        private function isServiceReceiver(Node $node): bool
+        {
+            $symbol = $this->symbol($node);
+            if ($symbol !== null) {
+                return isset($this->serviceReceivers[$symbol]);
+            }
+            if ($node instanceof Node\Expr\FuncCall
+                && $node->name instanceof Node\Name
+                && in_array(strtolower($node->name->toString()), ['app', 'resolve'], true)
+                && isset($node->args[0])) {
+                return dovraCrmImportServiceClassConst($node->args[0]->value, $this->aliases);
+            }
+
+            return false;
+        }
+
+        private function isMakeImporterExpression(Node $node): bool
+        {
+            return $node instanceof Node\Expr\MethodCall
+                && $node->name instanceof Node\Identifier
+                && $node->name->toString() === 'makeImporter'
+                && $this->isServiceReceiver($node->var);
+        }
+
+        private function isImportReceiver(Node $node): bool
+        {
+            $symbol = $this->symbol($node);
+            if ($symbol !== null) {
+                return isset($this->importReceivers[$symbol]);
+            }
+            if ($this->isMakeImporterExpression($node)) {
+                return true;
+            }
+            if ($node instanceof Node\Expr\New_
+                && $node->class instanceof Node\Name) {
+                return dovraCrmLegacyImportClassName($node->class->toString(), $this->aliases) !== null;
+            }
+
+            return false;
+        }
+
+        private function isAllowedTemplateReceiver(Node $node): bool
+        {
+            if ($this->relative !== 'app/Filament/App/Pages/ImportExport/ImportWizard.php'
+                || $this->method !== 'getExpectedHeaders') {
+                return false;
+            }
+            if ($this->isMakeImporterExpression($node)) {
+                return true;
+            }
+
+            $symbol = $this->symbol($node);
+
+            return $symbol !== null && isset($this->templateReceivers[$symbol]);
+        }
+    };
+
+    $traverser = new NodeTraverser;
+    $traverser->addVisitor($visitor);
+    $traverser->traverse($ast);
+
+    return $visitor->violations;
+}
+
+function dovraCrmLegacyImportClassName(string $name, array $aliases = []): ?string
+{
+    $name = ltrim($aliases[ltrim($name, '\\')] ?? ltrim($name, '\\'), '\\');
+
+    return match ($name) {
+        'App\\Application\\Imports\\Imports\\ContactsImport' => 'contacts',
+        'App\\Application\\Imports\\Imports\\CompaniesImport' => 'companies',
+        default => null,
+    };
+}
+
+function dovraCrmImportServiceClassConst(Node $node, array $aliases = []): bool
+{
+    return $node instanceof Node\Expr\ClassConstFetch
+        && $node->name instanceof Node\Identifier
+        && $node->name->toString() === 'class'
+        && $node->class instanceof Node\Name
+        && dovraCrmImportServiceClassName($node->class->toString(), $aliases);
+}
+
+function dovraCrmImportServiceClassName(string $name, array $aliases = []): bool
+{
+    $name = ltrim($aliases[ltrim($name, '\\')] ?? ltrim($name, '\\'), '\\');
+
+    return in_array($name, ['ImportService', 'App\\Application\\Imports\\ImportService'], true);
+}
+
+function dovraCrmImportServiceTypeNode(?Node $type, array $aliases = []): bool
+{
+    if ($type instanceof Node\NullableType) {
+        return dovraCrmImportServiceTypeNode($type->type, $aliases);
+    }
+    if ($type instanceof Node\Name) {
+        return dovraCrmImportServiceClassName($type->toString(), $aliases);
+    }
+
+    return false;
+}
+
+function dovraCrmIsExcelClass(?Node $class, array $aliases = []): bool
+{
+    if (! $class instanceof Node\Name) {
+        return false;
+    }
+    $name = ltrim($class->toString(), '\\');
+    $name = ltrim($aliases[$name] ?? $name, '\\');
+
+    return $name === 'Maatwebsite\\Excel\\Facades\\Excel';
 }
 
 /** @return list<array{canonical: bool, sensitive: bool, operation: string, line: int, receiver: string, keys: list<string>, context: string}> */
