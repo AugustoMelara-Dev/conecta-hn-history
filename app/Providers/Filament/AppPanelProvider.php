@@ -84,7 +84,10 @@ class AppPanelProvider extends PanelProvider
             ])
 
             ->assets([
-                Css::make('app-business-components')
+                Css::make(
+                    'app-business-components',
+                    resource_path('css/filament/app/business-components.css'),
+                )
                     ->html(fn () => Vite::asset('resources/css/filament/app/business-components.css')),
             ])
 
