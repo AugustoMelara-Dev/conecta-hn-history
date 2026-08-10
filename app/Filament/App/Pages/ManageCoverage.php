@@ -15,13 +15,13 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
-use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-/** @property-read Form $form */
+/** @property-read Schema $form */
 final class ManageCoverage extends Page implements HasForms
 {
     use InteractsWithForms;
@@ -78,9 +78,9 @@ final class ManageCoverage extends Page implements HasForms
         ]);
     }
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form->schema([
+        return $schema->components([
             Select::make('location_id')->label('Ubicacion operativa')
                 ->options(function (): array {
                     $tenant = Filament::getTenant();

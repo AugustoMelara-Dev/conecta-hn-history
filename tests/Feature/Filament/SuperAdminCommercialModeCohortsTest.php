@@ -7,11 +7,14 @@ namespace Tests\Feature\Filament;
 use App\Filament\Pages\Dashboard;
 use App\Infrastructure\TenantGovernance\SuperAdmin\SuperAdminDashboardBootstrapper;
 use App\Models\Tenant;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 final class SuperAdminCommercialModeCohortsTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_bootstrapper_populates_activation_cohorts_grouped_by_commercial_mode(): void
     {
         if (! Schema::hasTable('tenants') || ! Schema::hasColumn('tenants', 'commercial_mode')) {

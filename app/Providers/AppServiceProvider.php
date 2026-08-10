@@ -147,10 +147,9 @@ use App\Domain\Reviews\Repositories\ReviewRepositoryInterface;
 use App\Domain\Sales\Contracts\OrderReader;
 use App\Domain\Sales\Contracts\ReportReader;
 use App\Domain\Sales\Repositories\LeadRepositoryInterface;
-use App\Domain\Search\Contracts\GlobalSearchReader;
 use App\Domain\Shared\Contracts\AdminNotifierInterface;
-use App\Domain\Shared\Contracts\ClockInterface;
 use App\Domain\Shared\Contracts\CityReader;
+use App\Domain\Shared\Contracts\ClockInterface;
 use App\Domain\Shared\Contracts\EventDispatcherInterface;
 use App\Domain\Shared\Contracts\FailureNotifierInterface;
 use App\Domain\Shared\Contracts\MediaStorageServiceInterface;
@@ -247,15 +246,14 @@ use App\Infrastructure\Repositories\TenantGovernance\EloquentTenantRepository;
 use App\Infrastructure\Resilience\RedisCircuitBreaker;
 use App\Infrastructure\Sales\EloquentOrderReader;
 use App\Infrastructure\Sales\EloquentReportReader;
-use App\Infrastructure\Search\EloquentGlobalSearchReader;
 use App\Infrastructure\Search\EloquentSearchRepository;
 use App\Infrastructure\Security\CacheTenantRateLimiter;
 use App\Infrastructure\Security\LaravelRateLimitService;
 use App\Infrastructure\Security\MetadataSanitizer;
 use App\Infrastructure\Shared\Bus\PipelineBuilder;
 use App\Infrastructure\Shared\ConsoleContextProvider;
-use App\Infrastructure\Shared\EloquentTenantReadRepository;
 use App\Infrastructure\Shared\EloquentCityReader;
+use App\Infrastructure\Shared\EloquentTenantReadRepository;
 use App\Infrastructure\Shared\Persistence\DatabaseTransactionManager;
 use App\Infrastructure\Shared\Persistence\Decorators\SchemaValidatingOutboxRepository;
 use App\Infrastructure\Shared\Persistence\EloquentOutboxRepository;
@@ -595,10 +593,6 @@ class AppServiceProvider extends ServiceProvider
         // ═══════════════════════════════════════════════════════════════════════
         // SEARCH & PUBLIC CATALOG
         // ═══════════════════════════════════════════════════════════════════════
-        $this->app->bind(
-            GlobalSearchReader::class,
-            EloquentGlobalSearchReader::class
-        );
         $this->app->bind(
             PublicCatalogReader::class,
             EloquentPublicCatalogReader::class

@@ -19,7 +19,7 @@ final class EloquentNotificationRepository implements NotificationRepository
     /**
      * {@inheritDoc}
      */
-    public function getUserNotifications(int $userId, int $perPage = 20): LengthAwarePaginator
+    public function getUserNotifications(string $userId, int $perPage = 20): LengthAwarePaginator
     {
         return DatabaseNotification::query()
             ->where('notifiable_id', $userId)
@@ -29,13 +29,23 @@ final class EloquentNotificationRepository implements NotificationRepository
             ->paginate($perPage);
     }
 
+    public function countUnread(string $userId): int
+    {
+        return DatabaseNotification::query()
+            ->where('notifiable_id', $userId)
+            ->where('notifiable_type', 'App\\Models\\User')
+            ->whereNull('read_at')
+            ->count();
+    }
+
     /**
      * {@inheritDoc}
      */
-    public function markAsRead(int $userId, string $notificationId): void
+    public function markAsRead(string $userId, string $notificationId): void
     {
         DatabaseNotification::query()
             ->where('notifiable_id', $userId)
+            ->where('notifiable_type', 'App\\Models\\User')
             ->where('id', $notificationId)
             ->update(['read_at' => now()]);
     }
@@ -43,10 +53,11 @@ final class EloquentNotificationRepository implements NotificationRepository
     /**
      * {@inheritDoc}
      */
-    public function markAllAsRead(int $userId): void
+    public function markAllAsRead(string $userId): void
     {
         DatabaseNotification::query()
             ->where('notifiable_id', $userId)
+            ->where('notifiable_type', 'App\\Models\\User')
             ->whereNull('read_at')
             ->update(['read_at' => now()]);
     }

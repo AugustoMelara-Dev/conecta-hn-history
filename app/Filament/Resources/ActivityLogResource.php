@@ -6,12 +6,12 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ActivityLogResource\Pages;
 use App\Models\User;
+use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
-use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Table;
 use Spatie\Activitylog\Models\Activity;
 

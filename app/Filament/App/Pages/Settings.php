@@ -6,6 +6,7 @@ namespace App\Filament\App\Pages;
 
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
+use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -90,6 +91,9 @@ class Settings extends Page
     {
         $state = $this->form->getState();
         // Persist settings logic here
-        $this->notify('success', 'Ajustes guardados correctamente.');
+        Notification::make()
+            ->success()
+            ->title('Ajustes guardados correctamente.')
+            ->send();
     }
 }

@@ -13,9 +13,13 @@ use App\Models\Tenant;
 use App\Models\TenantMembership;
 use App\Models\User;
 use BackedEnum;
+use Filament\Actions\Action;
+use Filament\Actions\CreateAction;
+use Filament\Actions\EditAction;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables;
@@ -86,7 +90,7 @@ class TenantUserResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $form->components([
-            Forms\Components\Section::make('Identidad y rol')
+            Section::make('Identidad y rol')
                 ->description('Dovra enviará una invitación de acceso. La persona no obtiene acceso hasta aceptarla con este mismo correo.')
                 ->icon('heroicon-o-user')
                 ->columns(2)
@@ -119,7 +123,7 @@ class TenantUserResource extends Resource
                         ->helperText('Identificador opcional de un preset de permisos.'),
                 ]),
 
-            Forms\Components\Section::make('Permisos adicionales')
+            Section::make('Permisos adicionales')
                 ->description('Solo se pueden delegar permisos que la persona que invita ya posee.')
                 ->icon('heroicon-o-shield-check')
                 ->schema([
@@ -130,7 +134,7 @@ class TenantUserResource extends Resource
                         ->bulkToggleable(),
                 ]),
 
-            Forms\Components\Section::make('Estado')
+            Section::make('Estado')
                 ->icon('heroicon-o-information-circle')
                 ->visible(fn (?TenantMembership $record): bool => $record !== null)
                 ->columns(3)
@@ -214,9 +218,9 @@ class TenantUserResource extends Resource
                     ]),
             ])
             ->actions([
-                Tables\Actions\EditAction::make()
+                EditAction::make()
                     ->visible(fn (TenantMembership $record): bool => ! $record->isOwner() && $record->status === 'active'),
-                Tables\Actions\Action::make('suspend')
+                Action::make('suspend')
                     ->label('Suspender')
                     ->icon('heroicon-o-pause-circle')
                     ->color('warning')
@@ -228,7 +232,7 @@ class TenantUserResource extends Resource
                             (string) auth()->id(),
                         );
                     }),
-                Tables\Actions\Action::make('reactivate')
+                Action::make('reactivate')
                     ->label('Reactivar')
                     ->icon('heroicon-o-play-circle')
                     ->color('success')
@@ -240,7 +244,7 @@ class TenantUserResource extends Resource
                             (string) auth()->id(),
                         );
                     }),
-                Tables\Actions\Action::make('revoke')
+                Action::make('revoke')
                     ->label('Revocar')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
@@ -259,7 +263,7 @@ class TenantUserResource extends Resource
             ->emptyStateDescription('Invita miembros con un rol y permisos explícitos.')
             ->emptyStateIcon('heroicon-o-user-group')
             ->emptyStateActions([
-                Tables\Actions\CreateAction::make()
+                CreateAction::make()
                     ->label('Invitar miembro'),
             ]);
     }

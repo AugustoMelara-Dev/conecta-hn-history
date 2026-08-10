@@ -6,9 +6,11 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\PaymentResource\Pages;
 use App\Models\Payment;
+use Filament\Actions\Action;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -76,7 +78,7 @@ class PaymentResource extends Resource
     {
         return $schema
             ->components([
-                Forms\Components\Section::make('Información del Pago')
+                Section::make('Información del Pago')
                     ->schema([
                         Forms\Components\Select::make('tenant_id')
                             ->relationship('tenant', 'name')
@@ -249,7 +251,7 @@ class PaymentResource extends Resource
                 // Dispara: status=approved, is_pro=true, is_active=true,
                 //          plan_expires_at=+30 días
                 // ═══════════════════════════════════════════════════════
-                Tables\Actions\Action::make('approve')
+                Action::make('approve')
                     ->label('Aprobar')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
@@ -313,7 +315,7 @@ class PaymentResource extends Resource
                 // ACCIÓN: RECHAZAR PAGO
                 // Solicita motivo y notifica al usuario
                 // ═══════════════════════════════════════════════════════
-                Tables\Actions\Action::make('reject')
+                Action::make('reject')
                     ->label('Rechazar')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')

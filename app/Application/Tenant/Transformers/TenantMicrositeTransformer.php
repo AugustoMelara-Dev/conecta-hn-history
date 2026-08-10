@@ -173,7 +173,11 @@ final class TenantMicrositeTransformer
                 'currency' => $market?->currencyCode,
                 'locale' => $market?->localeCode,
                 'formatted_price' => $this->formatMoney((float) ($product->price ?? 0), $market),
-                'image' => $this->resolveImageUrl($product->image ?? null, 'product'),
+                'image' => $this->resolveImageUrl(
+                    $this->modelAttribute($product, 'image_path')
+                        ?? $this->modelAttribute($product, 'image'),
+                    'product',
+                ),
                 'is_visible' => (bool) ($product->is_visible ?? true),
                 'is_featured' => (bool) ($product->is_featured ?? false),
                 'category_id' => $this->modelAttribute($product, 'category_id'),
@@ -452,15 +456,10 @@ final class TenantMicrositeTransformer
     /**
      * Resolve image path to full URL with placeholder fallback.
      */
-    private function resolveImageUrl(?string $path, string $type): string
+    private function resolveImageUrl(?string $path, string $type): ?string
     {
         if (empty($path)) {
-            return match ($type) {
-                'cover' => 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800&h=600&fit=crop',
-                'logo' => 'https://ui-avatars.com/api/?name=Dovra AI&background=0ea5e9&color=fff&size=200',
-                'product' => 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop',
-                default => 'https://via.placeholder.com/400',
-            };
+            return null;
         }
 
         if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {

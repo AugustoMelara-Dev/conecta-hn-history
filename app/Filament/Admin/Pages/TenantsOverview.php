@@ -32,8 +32,8 @@ class TenantsOverview extends Page
         }
 
         return DB::table('orders')
-            ->selectRaw('tenant_id, COUNT(*) as orders_count, SUM(total_amount) as revenue')
-            ->where('status', 'paid')
+            ->selectRaw('tenant_id, COUNT(*) as orders_count, SUM(total) as revenue')
+            ->where('payment_status', 'paid')
             ->groupBy('tenant_id')
             ->orderByDesc('revenue')
             ->limit(10)

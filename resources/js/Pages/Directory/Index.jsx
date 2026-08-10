@@ -259,11 +259,12 @@ function Pagination({ links }) {
     return (
         <nav className="mt-10 flex flex-wrap justify-center gap-2" aria-label="Paginación del directorio">
             {links.map((link, index) => {
-                const label = link.label
-                    .replace('&laquo;', 'Anterior')
-                    .replace('&raquo;', 'Siguiente')
-                    .replace('Previous', 'Anterior')
-                    .replace('Next', 'Siguiente');
+                const rawLabel = String(link.label || '');
+                const label = /(?:&laquo;|«|Previous|Anterior)/i.test(rawLabel)
+                    ? 'Anterior'
+                    : /(?:&raquo;|»|Next|Siguiente)/i.test(rawLabel)
+                        ? 'Siguiente'
+                        : rawLabel;
 
                 if (!link.url) {
                     return (

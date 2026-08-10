@@ -11,8 +11,12 @@ use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Pages\Tenancy\EditTenantProfile as BaseEditTenantProfile;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema as DatabaseSchema;
 
 class EditTenantProfile extends BaseEditTenantProfile
 {
@@ -38,23 +42,23 @@ class EditTenantProfile extends BaseEditTenantProfile
         $tenant = Filament::getTenant();
         $isPro = $tenant instanceof Tenant && (bool) $tenant->is_pro;
         $tenantAttributes = $this->tenant?->getAttributes() ?? [];
-        $hasCategoryColumn = Schema::hasTable('categories')
-            && Schema::hasColumn('tenants', 'category_id')
+        $hasCategoryColumn = DatabaseSchema::hasTable('categories')
+            && DatabaseSchema::hasColumn('tenants', 'category_id')
             && array_key_exists('category_id', $tenantAttributes);
-        $hasCityColumn = Schema::hasTable('cities')
-            && Schema::hasColumn('tenants', 'city_id')
+        $hasCityColumn = DatabaseSchema::hasTable('cities')
+            && DatabaseSchema::hasColumn('tenants', 'city_id')
             && array_key_exists('city_id', $tenantAttributes);
 
         return $schema
             ->model($this->tenant)
             ->components([
-                Forms\Components\Tabs::make('ProfileSettings')
+                Tabs::make('ProfileSettings')
                     ->extraAttributes(['data-testid' => 'business-profile-tabs'])
                     ->tabs([
-                        Forms\Components\Tabs\Tab::make('Identidad')
+                        Tab::make('Identidad')
                             ->icon('heroicon-o-paint-brush')
                             ->schema([
-                                Forms\Components\Section::make('Informacion publica')
+                                Section::make('Informacion publica')
                                     ->description('Estos datos se muestran en el directorio y en tu micrositio.')
                                     ->schema([
                                         Forms\Components\TextInput::make('name')
@@ -107,7 +111,7 @@ class EditTenantProfile extends BaseEditTenantProfile
                                     ])
                                     ->columns(2),
 
-                                Forms\Components\Section::make('Logo')
+                                Section::make('Logo')
                                     ->description('Usa una imagen simple, legible y centrada.')
                                     ->schema([
                                         Forms\Components\FileUpload::make('logo_path')
@@ -122,7 +126,7 @@ class EditTenantProfile extends BaseEditTenantProfile
                                             ->helperText('Maximo 2 MB. Recomendado: formato cuadrado.'),
                                     ]),
 
-                                Forms\Components\Section::make('Marca visual')
+                                Section::make('Marca visual')
                                     ->description($isPro
                                         ? 'Personaliza la apariencia publica de tu negocio.'
                                         : 'Disponible en Pro. Puedes preparar los datos y activar el plan cuando lo necesites.')
@@ -170,10 +174,10 @@ class EditTenantProfile extends BaseEditTenantProfile
                                     ->columns(2),
                             ]),
 
-                        Forms\Components\Tabs\Tab::make('Ubicacion')
+                        Tab::make('Ubicacion')
                             ->icon('heroicon-o-map-pin')
                             ->schema([
-                                Forms\Components\Section::make('Contacto')
+                                Section::make('Contacto')
                                     ->description('Canales visibles para clientes y pedidos.')
                                     ->schema([
                                         Forms\Components\TextInput::make('email')
@@ -193,7 +197,7 @@ class EditTenantProfile extends BaseEditTenantProfile
                                     ])
                                     ->columns(3),
 
-                                Forms\Components\Section::make('Direccion')
+                                Section::make('Direccion')
                                     ->description('Ubicacion principal para clientes.')
                                     ->schema([
                                         ...($hasCityColumn ? [
@@ -214,7 +218,7 @@ class EditTenantProfile extends BaseEditTenantProfile
                                             ->columnSpanFull(),
                                     ]),
 
-                                Forms\Components\Section::make('Coordenadas')
+                                Section::make('Coordenadas')
                                     ->description($isPro ? 'Opcional para ubicar el negocio en mapa.' : 'Disponible en Pro.')
                                     ->collapsed()
                                     ->schema([
@@ -233,10 +237,10 @@ class EditTenantProfile extends BaseEditTenantProfile
                                     ->columns(2),
                             ]),
 
-                        Forms\Components\Tabs\Tab::make('Operaciones')
+                        Tab::make('Operaciones')
                             ->icon('heroicon-o-clock')
                             ->schema([
-                                Forms\Components\Section::make('Redes y enlaces')
+                                Section::make('Redes y enlaces')
                                     ->description($isPro ? 'Conecta canales externos del negocio.' : 'Disponible en Pro.')
                                     ->schema([
                                         Forms\Components\TextInput::make('facebook_url')
@@ -265,7 +269,7 @@ class EditTenantProfile extends BaseEditTenantProfile
                                     ])
                                     ->columns(2),
 
-                                Forms\Components\Section::make('Horario general')
+                                Section::make('Horario general')
                                     ->description('Texto simple para mostrar disponibilidad cuando no usas horarios detallados.')
                                     ->visible(! $isPro)
                                     ->schema([
@@ -275,7 +279,7 @@ class EditTenantProfile extends BaseEditTenantProfile
                                             ->columnSpanFull(),
                                     ]),
 
-                                Forms\Components\Section::make('Horarios detallados')
+                                Section::make('Horarios detallados')
                                     ->description('Configura dias y horas de apertura.')
                                     ->visible($isPro)
                                     ->collapsed()
@@ -315,7 +319,7 @@ class EditTenantProfile extends BaseEditTenantProfile
                                             ->maxItems(7),
                                     ]),
 
-                                Forms\Components\Section::make('WhatsApp')
+                                Section::make('WhatsApp')
                                     ->description('Mensaje sugerido para iniciar conversaciones con clientes.')
                                     ->collapsed()
                                     ->schema([

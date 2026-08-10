@@ -28,6 +28,10 @@ class TagResource extends Resource
 {
     protected static ?string $model = Tag::class;
 
+    // The model stores tenant_id directly and this resource applies an
+    // explicit fail-closed tenant query; no Eloquent tenant relationship exists.
+    protected static bool $isScopedToTenant = false;
+
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-tag';
 
     protected static string|\UnitEnum|null $navigationGroup = 'CRM';

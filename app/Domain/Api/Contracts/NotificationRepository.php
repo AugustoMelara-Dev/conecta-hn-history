@@ -17,15 +17,20 @@ interface NotificationRepository
     /**
      * Get paginated notifications for a user.
      */
-    public function getUserNotifications(int $userId, int $perPage = 20): LengthAwarePaginator;
+    public function getUserNotifications(string $userId, int $perPage = 20): LengthAwarePaginator;
+
+    /**
+     * Count unread notifications for a user.
+     */
+    public function countUnread(string $userId): int;
 
     /**
      * Mark a specific notification as read.
      */
-    public function markAsRead(int $userId, string $notificationId): void;
+    public function markAsRead(string $userId, string $notificationId): void;
 
     /**
      * Mark all notifications as read for a user.
      */
-    public function markAllAsRead(int $userId): void;
+    public function markAllAsRead(string $userId): void;
 }

@@ -6,8 +6,10 @@ namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\LoyaltyProgramResource\Pages;
 use App\Models\LoyaltyProgram;
+use Filament\Actions\EditAction;
 use Filament\Forms;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -28,7 +30,7 @@ class LoyaltyProgramResource extends Resource
     {
         return $schema
             ->components([
-                Forms\Components\Section::make('Reglas del Programa')
+                Section::make('Reglas del Programa')
                     ->description('Define cómo tus clientes ganan y canjean puntos.')
                     ->schema([
                         Forms\Components\TextInput::make('name')
@@ -89,7 +91,7 @@ class LoyaltyProgramResource extends Resource
             ])
             ->filters([])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                EditAction::make(),
             ])
             ->bulkActions([]);
     }

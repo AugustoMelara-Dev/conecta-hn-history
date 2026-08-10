@@ -22,17 +22,18 @@ use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Forms\Components\Section;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema as DatabaseSchema;
 use Illuminate\Support\HtmlString;
 
 /**
@@ -147,9 +148,9 @@ class ManageBilling extends Page implements HasForms, HasTable
         $this->loadSettings();
         $this->planPresentation = $this->resolvePlanPresentation($tenant);
         $this->planEntitlements = app(PlanEntitlementService::class)->forTenant($tenant)->toArray();
-        $this->paymentsTableAvailable = Schema::hasTable((new SubscriptionPayment)->getTable());
+        $this->paymentsTableAvailable = DatabaseSchema::hasTable((new SubscriptionPayment)->getTable());
 
-        if (Schema::hasTable('ai_credit_reservations')) {
+        if (DatabaseSchema::hasTable('ai_credit_reservations')) {
             $this->aiUsage = app(AiCreditUsageService::class)->forTenant($tenant);
             $this->aiUsage['reset_label'] = Carbon::parse((string) $this->aiUsage['resets_at'])
                 ->timezone(config('app.timezone'))
@@ -478,7 +479,7 @@ class ManageBilling extends Page implements HasForms, HasTable
                     }),
             ])
             ->actions([
-                Tables\Actions\Action::make('download_receipt')
+                Action::make('download_receipt')
                     ->label('Recibo')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('gray')

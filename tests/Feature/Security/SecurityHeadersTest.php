@@ -27,6 +27,14 @@ class SecurityHeadersTest extends TestCase
             ->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
 
         self::assertStringContainsString("default-src 'self'", (string) $response->headers->get('Content-Security-Policy'));
+        self::assertStringContainsString(
+            "style-src 'self' 'unsafe-inline' https://fonts.bunny.net https://fonts.googleapis.com",
+            (string) $response->headers->get('Content-Security-Policy')
+        );
+        self::assertStringContainsString(
+            "font-src 'self' data: https://fonts.bunny.net https://fonts.gstatic.com",
+            (string) $response->headers->get('Content-Security-Policy')
+        );
     }
 
     public function test_production_csp_uses_the_same_nonce_for_vite_and_ziggy(): void

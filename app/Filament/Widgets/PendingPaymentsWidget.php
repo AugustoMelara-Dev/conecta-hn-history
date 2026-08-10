@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Filament\Widgets;
 
 use App\Models\Payment;
+use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
-use Filament\Tables\Actions\Action;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;

@@ -7,9 +7,15 @@ namespace App\Filament\App\Resources;
 use App\Filament\App\Resources\MenuSectionResource\Pages;
 use App\Models\MenuSection;
 use App\Support\Product\TenantAccessMatrix;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\CreateAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -82,7 +88,7 @@ class MenuSectionResource extends Resource
     {
         return $schema
             ->components([
-                Forms\Components\Section::make('Nueva sección')
+                Section::make('Nueva sección')
                     ->description('Organiza tu menú por categorías como entradas, bebidas, platos fuertes o postres.')
                     ->icon('heroicon-o-folder-plus')
                     ->schema([
@@ -157,10 +163,10 @@ class MenuSectionResource extends Resource
                     ->falseLabel('Inactivas'),
             ])
             ->actions([
-                Tables\Actions\EditAction::make()
+                EditAction::make()
                     ->iconButton(),
 
-                Tables\Actions\DeleteAction::make()
+                DeleteAction::make()
                     ->iconButton()
                     ->modalHeading('Eliminar esta sección')
                     ->modalDescription('Los productos dentro de esta sección no se eliminarán. Solo quedarán sin sección asignada para que puedas reorganizarlos después.')
@@ -168,8 +174,8 @@ class MenuSectionResource extends Resource
                     ->successNotificationTitle('Sección eliminada'),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make()
+                BulkActionGroup::make([
+                    DeleteBulkAction::make()
                         ->modalHeading('Eliminar secciones seleccionadas')
                         ->modalDescription('Los productos dentro de estas secciones no se eliminarán. Solo quedarán sin sección asignada.'),
                 ]),
@@ -178,7 +184,7 @@ class MenuSectionResource extends Resource
             ->emptyStateDescription('Crea secciones para organizar tu catálogo: entradas, bebidas, platos fuertes, postres y más.')
             ->emptyStateIcon('heroicon-o-folder-plus')
             ->emptyStateActions([
-                Tables\Actions\CreateAction::make()
+                CreateAction::make()
                     ->label('Crear primera sección')
                     ->icon('heroicon-o-plus'),
             ]);

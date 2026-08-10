@@ -9,12 +9,16 @@ use App\Models\MenuSection;
 use App\Services\QrCodeService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions\Action;
+use Filament\Actions\CreateAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\EditAction;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Concerns\InteractsWithTable;
@@ -90,7 +94,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
     {
         return $schema
             ->components([
-                Forms\Components\Section::make('WhatsApp del negocio')
+                Section::make('WhatsApp del negocio')
                     ->description('Define el numero y el mensaje que se abre cuando un cliente quiere consultar un producto.')
                     ->schema([
                         Forms\Components\TextInput::make('whatsapp_number')
@@ -162,7 +166,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
             ->reorderable('sort_order')
             ->defaultSort('sort_order')
             ->headerActions([
-                Tables\Actions\CreateAction::make()
+                CreateAction::make()
                     ->label('Nueva seccion')
                     ->icon('heroicon-o-plus')
                     ->modalHeading('Crear seccion del menu')
@@ -179,12 +183,12 @@ class ManageMarketing extends Page implements HasForms, HasTable
                     ->successNotificationTitle('Seccion creada'),
             ])
             ->actions([
-                Tables\Actions\EditAction::make()
+                EditAction::make()
                     ->iconButton()
                     ->modalHeading('Editar seccion')
                     ->form($this->sectionForm(includeHelperText: false)),
 
-                Tables\Actions\DeleteAction::make()
+                DeleteAction::make()
                     ->iconButton()
                     ->modalHeading('Eliminar seccion')
                     ->modalDescription(function (MenuSection $record): string {
@@ -203,7 +207,7 @@ class ManageMarketing extends Page implements HasForms, HasTable
             ->emptyStateDescription('Crea una seccion para ordenar tu catalogo antes de publicar mas productos.')
             ->emptyStateIcon('heroicon-o-folder-open')
             ->emptyStateActions([
-                Tables\Actions\CreateAction::make()
+                CreateAction::make()
                     ->label('Crear primera seccion')
                     ->icon('heroicon-o-plus')
                     ->form($this->sectionForm())

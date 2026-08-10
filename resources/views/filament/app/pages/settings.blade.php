@@ -2,8 +2,8 @@
     <form wire:submit="save" data-testid="panel-settings-page">
         {{ $this->form }}
 
-        <x-filament::actions
-            :actions="$this->getFormActions()"
-        />
+        <x-filament::button type="submit">
+            Guardar ajustes
+        </x-filament::button>
     </form>
 </x-filament-panels::page>

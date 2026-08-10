@@ -11,15 +11,21 @@ use App\Infrastructure\Identity\ImpersonationGrantService;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Policies\TenantPolicy;
+use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
@@ -51,7 +57,7 @@ class TenantResource extends Resource
     {
         return $schema
             ->components([
-                Forms\Components\Section::make('Informacion Principal')
+                Section::make('Informacion Principal')
                     ->schema([
                         TextInput::make('name')
                             ->label('Nombre del Negocio')
@@ -106,7 +112,7 @@ class TenantResource extends Resource
                             ->url(),
                     ])->columns(2),
 
-                Forms\Components\Section::make('Configuracion de Plan')
+                Section::make('Configuracion de Plan')
                     ->schema([
                         Forms\Components\Toggle::make('is_pro')
                             ->label('Plan PRO Activo')
@@ -127,7 +133,7 @@ class TenantResource extends Resource
                             ->helperText('Si se desactiva, el negocio no podra operar.'),
                     ])->columns(3),
 
-                Forms\Components\Section::make('Personalizacion (PRO)')
+                Section::make('Personalizacion (PRO)')
                     ->description('Personaliza la apariencia del micrositio. Exclusivo para planes PRO.')
                     ->schema([
                         Forms\Components\FileUpload::make('logo_path')
@@ -171,7 +177,7 @@ class TenantResource extends Resource
                 // BRAND IDENTITY SECTION - White-Label Customization
                 // These fields control CSS variable injection on the frontend
                 // ═══════════════════════════════════════════════════════════════
-                Forms\Components\Section::make('Identidad de Marca')
+                Section::make('Identidad de Marca')
                     ->description('Personaliza colores y portada del micrositio. Se aplica automáticamente a botones y elementos interactivos.')
                     ->icon('heroicon-o-paint-brush')
                     ->schema([
@@ -202,7 +208,7 @@ class TenantResource extends Resource
                 // CHECKOUT CONFIGURATION - Operational Settings
                 // These settings control payment and delivery options
                 // ═══════════════════════════════════════════════════════════════
-                Forms\Components\Section::make('Configuración de Checkout')
+                Section::make('Configuración de Checkout')
                     ->description('Controla las opciones de pago y entrega disponibles para tus clientes.')
                     ->icon('heroicon-o-shopping-cart')
                     ->schema([
@@ -351,7 +357,6 @@ class TenantResource extends Resource
 
                 Tables\Columns\TextColumn::make('products_count')
                     ->label('Productos')
-                    ->counts('products')
                     ->sortable()
                     ->badge()
                     ->color('gray'),
@@ -404,7 +409,7 @@ class TenantResource extends Resource
             ])
             ->filtersFormColumns(3)
             ->actions([
-                Tables\Actions\Action::make('approve')
+                Action::make('approve')
                     ->label('Aprobar')
                     ->icon('heroicon-o-check-badge')
                     ->color('success')
@@ -424,7 +429,7 @@ class TenantResource extends Resource
                             ->send();
                     }),
 
-                Tables\Actions\Action::make('reject')
+                Action::make('reject')
                     ->label('Rechazar')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
@@ -447,7 +452,7 @@ class TenantResource extends Resource
                             ->send();
                     }),
 
-                Tables\Actions\Action::make('impersonate')
+                Action::make('impersonate')
                     ->label('Acceder como Cliente')
                     ->icon('heroicon-o-user-circle')
                     ->color('warning')
@@ -523,7 +528,7 @@ class TenantResource extends Resource
                         return redirect('/app');
                     }),
 
-                Tables\Actions\Action::make('killSwitch')
+                Action::make('killSwitch')
                     ->label(fn ($record) => $record->is_active ? 'SUSPENDER' : 'REACTIVAR')
                     ->icon(fn ($record) => $record->is_active ? 'heroicon-o-no-symbol' : 'heroicon-o-bolt')
                     ->color(fn ($record) => $record->is_active ? 'danger' : 'success')
@@ -546,7 +551,7 @@ class TenantResource extends Resource
                             ->send();
                     }),
 
-                Tables\Actions\Action::make('forceUpgrade')
+                Action::make('forceUpgrade')
                     ->label('Forzar PRO')
                     ->icon('heroicon-o-arrow-up-circle')
                     ->color('info')
@@ -582,14 +587,26 @@ class TenantResource extends Resource
                             ->send();
                     }),
 
-                Tables\Actions\EditAction::make(),
+                EditAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ])
             ->defaultSort('created_at', 'desc');
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        // The platform administration panel is intentionally cross-tenant.
+        // Build this aggregate without the tenant-bound Product global scope;
+        // otherwise a super-admin request has no TenantContext and fails closed.
+        return parent::getEloquentQuery()
+            ->with(['user', 'city', 'category'])
+            ->withCount([
+                'products' => fn (Builder $query): Builder => $query->withoutGlobalScopes(),
+            ]);
     }
 
     public static function getRelations(): array

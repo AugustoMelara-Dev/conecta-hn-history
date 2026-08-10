@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Application\Tenant\Transformers\TenantMicrositeTransformer;
 use App\Domain\Shared\Services\TenantContext;
+use App\Models\Product;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
@@ -94,5 +95,24 @@ describe('TenantMicrositeTransformer Premium Profile Fields', function () {
         // Assert
         expect($result['location']['lat'])->toBeNull()
             ->and($result['location']['lng'])->toBeNull();
+    });
+
+    it('does not invent remote media when the business has not published images', function () {
+        $tenant = Tenant::withoutEvents(fn () => Tenant::factory()->create([
+            'logo_path' => null,
+            'cover_path' => null,
+            'banner_path' => null,
+        ]));
+        Product::factory()->forTenant($tenant)->create([
+            'image_path' => null,
+            'is_visible' => true,
+        ]);
+
+        $result = app(TenantMicrositeTransformer::class)->transform($tenant);
+
+        expect($result['logo'])->toBeNull()
+            ->and($result['cover'])->toBeNull()
+            ->and($result['products'])->toHaveCount(1)
+            ->and($result['products'][0]['image'])->toBeNull();
     });
 });

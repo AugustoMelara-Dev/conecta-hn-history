@@ -9,6 +9,7 @@ use App\Filament\App\Resources\TenantInvitationResource\Pages;
 use App\Models\TenantInvitation;
 use App\Models\User;
 use App\Notifications\TenantInvitationNotification;
+use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification as FilamentNotification;
 use Filament\Resources\Resource;
@@ -92,7 +93,7 @@ final class TenantInvitationResource extends Resource
                     }),
             ])
             ->actions([
-                Tables\Actions\Action::make('reissue')
+                Action::make('reissue')
                     ->label('Reenviar')
                     ->icon('heroicon-o-paper-airplane')
                     ->requiresConfirmation()
@@ -123,7 +124,7 @@ final class TenantInvitationResource extends Resource
                             ->success()
                             ->send();
                     }),
-                Tables\Actions\Action::make('revoke')
+                Action::make('revoke')
                     ->label('Revocar')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')

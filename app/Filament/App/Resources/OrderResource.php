@@ -10,14 +10,14 @@ use App\Filament\App\Resources\OrderResource\Pages;
 use App\Models\Order;
 use App\Models\Tenant;
 use App\Models\User;
+use Filament\Actions\Action;
+use Filament\Actions\ViewAction;
 use Filament\Facades\Filament;
 use Filament\Infolists;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables;
-use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 

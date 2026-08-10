@@ -6,8 +6,13 @@ namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\LoyaltyRewardResource\Pages;
 use App\Models\LoyaltyReward;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -28,7 +33,7 @@ class LoyaltyRewardResource extends Resource
     {
         return $schema
             ->components([
-                Forms\Components\Section::make('Detalles del Premio')
+                Section::make('Detalles del Premio')
                     ->schema([
                         Forms\Components\TextInput::make('name')
                             ->label('Nombre del Premio')
@@ -88,12 +93,12 @@ class LoyaltyRewardResource extends Resource
                     ->label('Estado'),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                EditAction::make(),
+                DeleteAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }

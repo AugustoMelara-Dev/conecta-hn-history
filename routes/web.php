@@ -241,7 +241,9 @@ Route::middleware('auth')->group(function () {
     Route::delete('/mi-cuenta', [ProfileController::class, 'destroy'])->name('mi-cuenta.destroy');
 
     // Analytics API
-    Route::get('/analytics/data', [AnalyticsController::class, 'index'])->name('analytics.data');
+    Route::get('/analytics/data', [AnalyticsController::class, 'index'])
+        ->middleware('tenant.context')
+        ->name('analytics.data');
 
     // Reviews
     Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store');
