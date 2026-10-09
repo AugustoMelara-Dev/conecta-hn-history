@@ -1,0 +1,191 @@
+[
+  {
+    "file": "tests/qa/dovra-release-candidate.test.mjs",
+    "rule": "generic-api-key",
+    "commit": "003dd63ba2b906961d317f9e65ced16b7a956fbe",
+    "fingerprint": "003dd63ba2b906961d317f9e65ced16b7a956fbe:tests/qa/dovra-release-candidate.test.mjs:generic-api-key:348",
+    "reason": "Synthetic test identifier or deliberately fabricated secret-scanner fixture; no real provider credential."
+  },
+  {
+    "file": "tests/qa/dovra-release-candidate.test.mjs",
+    "rule": "generic-api-key",
+    "commit": "003dd63ba2b906961d317f9e65ced16b7a956fbe",
+    "fingerprint": "003dd63ba2b906961d317f9e65ced16b7a956fbe:tests/qa/dovra-release-candidate.test.mjs:generic-api-key:355",
+    "reason": "Synthetic test identifier or deliberately fabricated secret-scanner fixture; no real provider credential."
+  },
+  {
+    "file": "tests/qa/dovra-release-candidate.test.mjs",
+    "rule": "private-key",
+    "commit": "003dd63ba2b906961d317f9e65ced16b7a956fbe",
+    "fingerprint": "003dd63ba2b906961d317f9e65ced16b7a956fbe:tests/qa/dovra-release-candidate.test.mjs:private-key:406",
+    "reason": "PEM-header string in a test fixture; scanner overmatches JavaScript source, not a valid private key."
+  },
+  {
+    "file": "app/Application/Identity/Permissions/PermissionModelKeyMigration.php",
+    "rule": "generic-api-key",
+    "commit": "cf5cc1dbb3fcb119b86d3fd6c6c54dc49ee1bced",
+    "fingerprint": "cf5cc1dbb3fcb119b86d3fd6c6c54dc49ee1bced:app/Application/Identity/Permissions/PermissionModelKeyMigration.php:generic-api-key:44",
+    "reason": "Migration ownership marker constant, not an authentication credential."
+  },
+  {
+    "file": "tests/Feature/Billing/PaymentPendingLaunchContractTest.php",
+    "rule": "generic-api-key",
+    "commit": "fcf66f37b65cac6a928618dc570477ad6a9fa7b7",
+    "fingerprint": "fcf66f37b65cac6a928618dc570477ad6a9fa7b7:tests/Feature/Billing/PaymentPendingLaunchContractTest.php:generic-api-key:49",
+    "reason": "Synthetic test identifier or deliberately fabricated secret-scanner fixture; no real provider credential."
+  },
+  {
+    "file": "tests/Feature/Channels/ChannelProviderHealthReconcilerTest.php",
+    "rule": "generic-api-key",
+    "commit": "fcf66f37b65cac6a928618dc570477ad6a9fa7b7",
+    "fingerprint": "fcf66f37b65cac6a928618dc570477ad6a9fa7b7:tests/Feature/Channels/ChannelProviderHealthReconcilerTest.php:generic-api-key:441",
+    "reason": "Synthetic test identifier or deliberately fabricated secret-scanner fixture; no real provider credential."
+  },
+  {
+    "file": "tests/Feature/Inventory/InventoryMovementLedgerTest.php",
+    "rule": "generic-api-key",
+    "commit": "fcf66f37b65cac6a928618dc570477ad6a9fa7b7",
+    "fingerprint": "fcf66f37b65cac6a928618dc570477ad6a9fa7b7:tests/Feature/Inventory/InventoryMovementLedgerTest.php:generic-api-key:98",
+    "reason": "Synthetic test identifier or deliberately fabricated secret-scanner fixture; no real provider credential."
+  },
+  {
+    "file": "tests/Feature/Inventory/InventoryMovementLedgerTest.php",
+    "rule": "generic-api-key",
+    "commit": "fcf66f37b65cac6a928618dc570477ad6a9fa7b7",
+    "fingerprint": "fcf66f37b65cac6a928618dc570477ad6a9fa7b7:tests/Feature/Inventory/InventoryMovementLedgerTest.php:generic-api-key:216",
+    "reason": "Synthetic test identifier or deliberately fabricated secret-scanner fixture; no real provider credential."
+  },
+  {
+    "file": "tests/Feature/Inventory/InventoryMovementLedgerTest.php",
+    "rule": "generic-api-key",
+    "commit": "fcf66f37b65cac6a928618dc570477ad6a9fa7b7",
+    "fingerprint": "fcf66f37b65cac6a928618dc570477ad6a9fa7b7:tests/Feature/Inventory/InventoryMovementLedgerTest.php:generic-api-key:235",
+    "reason": "Synthetic test identifier or deliberately fabricated secret-scanner fixture; no real provider credential."
+  },
+  {
+    "file": "tests/Feature/Auth/GlobalMarketRegistrationTest.php",
+    "rule": "generic-api-key",
+    "commit": "cc7cff834cd5ef022a24debb4e806b85e6ee8287",
+    "fingerprint": "cc7cff834cd5ef022a24debb4e806b85e6ee8287:tests/Feature/Auth/GlobalMarketRegistrationTest.php:generic-api-key:131",
+    "reason": "Synthetic test identifier or deliberately fabricated secret-scanner fixture; no real provider credential."
+  },
+  {
+    "file": "tests/Feature/Automation/AgentOutcomeAttributionTest.php",
+    "rule": "generic-api-key",
+    "commit": "5a2b1eb968e9a6a470f8b4c132f14d29de90dfb8",
+    "fingerprint": "5a2b1eb968e9a6a470f8b4c132f14d29de90dfb8:tests/Feature/Automation/AgentOutcomeAttributionTest.php:generic-api-key:35",
+    "reason": "Synthetic test identifier or deliberately fabricated secret-scanner fixture; no real provider credential."
+  },
+  {
+    "file": "tests/Feature/Channels/ChannelFixRoundTest.php",
+    "rule": "generic-api-key",
+    "commit": "0deee48c989bf337e77b062d897e8b73eae320c4",
+    "fingerprint": "0deee48c989bf337e77b062d897e8b73eae320c4:tests/Feature/Channels/ChannelFixRoundTest.php:generic-api-key:211",
+    "reason": "Synthetic test identifier or deliberately fabricated secret-scanner fixture; no real provider credential."
+  },
+  {
+    "file": "tests/Feature/Automation/WorkflowRuntimeTest.php",
+    "rule": "generic-api-key",
+    "commit": "ad9ad5eed83c320d67accf5bd2688e5e019ebc88",
+    "fingerprint": "ad9ad5eed83c320d67accf5bd2688e5e019ebc88:tests/Feature/Automation/WorkflowRuntimeTest.php:generic-api-key:347",
+    "reason": "Synthetic test identifier or deliberately fabricated secret-scanner fixture; no real provider credential."
+  },
+  {
+    "file": "tests/Feature/Automation/WorkflowRuntimeTest.php",
+    "rule": "generic-api-key",
+    "commit": "d801d0d6d7211614b084995b00a65b22833563d9",
+    "fingerprint": "d801d0d6d7211614b084995b00a65b22833563d9:tests/Feature/Automation/WorkflowRuntimeTest.php:generic-api-key:280",
+    "reason": "Synthetic test identifier or deliberately fabricated secret-scanner fixture; no real provider credential."
+  },
+  {
+    "file": "tests/Feature/AI/GroundingLineageTest.php",
+    "rule": "generic-api-key",
+    "commit": "337ef4d4701fd9f307017d911f44a1aa51aaa269",
+    "fingerprint": "337ef4d4701fd9f307017d911f44a1aa51aaa269:tests/Feature/AI/GroundingLineageTest.php:generic-api-key:253",
+    "reason": "Synthetic test identifier or deliberately fabricated secret-scanner fixture; no real provider credential."
+  },
+  {
+    "file": "tests/Feature/AI/ConversationStoreTest.php",
+    "rule": "generic-api-key",
+    "commit": "6778b1f761f28e0b897c2b5d14a335763a844cb7",
+    "fingerprint": "6778b1f761f28e0b897c2b5d14a335763a844cb7:tests/Feature/AI/ConversationStoreTest.php:generic-api-key:162",
+    "reason": "Synthetic test identifier or deliberately fabricated secret-scanner fixture; no real provider credential."
+  },
+  {
+    "file": "tests/Feature/AI/ConversationStoreTest.php",
+    "rule": "generic-api-key",
+    "commit": "6778b1f761f28e0b897c2b5d14a335763a844cb7",
+    "fingerprint": "6778b1f761f28e0b897c2b5d14a335763a844cb7:tests/Feature/AI/ConversationStoreTest.php:generic-api-key:713",
+    "reason": "Synthetic test identifier or deliberately fabricated secret-scanner fixture; no real provider credential."
+  },
+  {
+    "file": "tests/Feature/AI/ConversationStoreTest.php",
+    "rule": "generic-api-key",
+    "commit": "4ecfe9016683f4dab543a447cb2122b68f40875b",
+    "fingerprint": "4ecfe9016683f4dab543a447cb2122b68f40875b:tests/Feature/AI/ConversationStoreTest.php:generic-api-key:121",
+    "reason": "Synthetic test identifier or deliberately fabricated secret-scanner fixture; no real provider credential."
+  },
+  {
+    "file": "tests/Feature/AI/ConversationStoreTest.php",
+    "rule": "generic-api-key",
+    "commit": "4ecfe9016683f4dab543a447cb2122b68f40875b",
+    "fingerprint": "4ecfe9016683f4dab543a447cb2122b68f40875b:tests/Feature/AI/ConversationStoreTest.php:generic-api-key:128",
+    "reason": "Synthetic test identifier or deliberately fabricated secret-scanner fixture; no real provider credential."
+  },
+  {
+    "file": "tests/Feature/AI/ConversationStoreTest.php",
+    "rule": "generic-api-key",
+    "commit": "4ecfe9016683f4dab543a447cb2122b68f40875b",
+    "fingerprint": "4ecfe9016683f4dab543a447cb2122b68f40875b:tests/Feature/AI/ConversationStoreTest.php:generic-api-key:147",
+    "reason": "Synthetic test identifier or deliberately fabricated secret-scanner fixture; no real provider credential."
+  },
+  {
+    "file": "tests/Feature/AI/AiRegistryLifecycleTest.php",
+    "rule": "jwt",
+    "commit": "d27a869b9378e28514038e1b3e8a80b6733edffb",
+    "fingerprint": "d27a869b9378e28514038e1b3e8a80b6733edffb:tests/Feature/AI/AiRegistryLifecycleTest.php:jwt:744",
+    "reason": "Synthetic invalid-token fixture with a non-cryptographic signature segment."
+  },
+  {
+    "file": "tests/Feature/CRM/CustomerConversationTemplateManagerTest.php",
+    "rule": "generic-api-key",
+    "commit": "0c13a91a0edab67542a19aafa7b7a423fcbdffb4",
+    "fingerprint": "0c13a91a0edab67542a19aafa7b7a423fcbdffb4:tests/Feature/CRM/CustomerConversationTemplateManagerTest.php:generic-api-key:268",
+    "reason": "Synthetic test identifier or deliberately fabricated secret-scanner fixture; no real provider credential."
+  },
+  {
+    "file": "tests/Feature/Console/DispatchCustomerJourneyStepsCommandTest.php",
+    "rule": "generic-api-key",
+    "commit": "0c8a00138f26ec9160e46f4ee845a9f9e1c8e770",
+    "fingerprint": "0c8a00138f26ec9160e46f4ee845a9f9e1c8e770:tests/Feature/Console/DispatchCustomerJourneyStepsCommandTest.php:generic-api-key:59",
+    "reason": "Synthetic test identifier or deliberately fabricated secret-scanner fixture; no real provider credential."
+  },
+  {
+    "file": "tests/Feature/Console/DispatchCustomerJourneyStepsCommandTest.php",
+    "rule": "generic-api-key",
+    "commit": "0c8a00138f26ec9160e46f4ee845a9f9e1c8e770",
+    "fingerprint": "0c8a00138f26ec9160e46f4ee845a9f9e1c8e770:tests/Feature/Console/DispatchCustomerJourneyStepsCommandTest.php:generic-api-key:85",
+    "reason": "Synthetic test identifier or deliberately fabricated secret-scanner fixture; no real provider credential."
+  },
+  {
+    "file": "tests/Feature/Console/DispatchCustomerJourneyStepsCommandTest.php",
+    "rule": "generic-api-key",
+    "commit": "0c8a00138f26ec9160e46f4ee845a9f9e1c8e770",
+    "fingerprint": "0c8a00138f26ec9160e46f4ee845a9f9e1c8e770:tests/Feature/Console/DispatchCustomerJourneyStepsCommandTest.php:generic-api-key:91",
+    "reason": "Synthetic test identifier or deliberately fabricated secret-scanner fixture; no real provider credential."
+  },
+  {
+    "file": "tests/Feature/CRM/CustomerConversationTemplateManagerTest.php",
+    "rule": "generic-api-key",
+    "commit": "f6340413a4a729d5d6795a6b8c7689f9daf7df7a",
+    "fingerprint": "f6340413a4a729d5d6795a6b8c7689f9daf7df7a:tests/Feature/CRM/CustomerConversationTemplateManagerTest.php:generic-api-key:48",
+    "reason": "Synthetic test identifier or deliberately fabricated secret-scanner fixture; no real provider credential."
+  },
+  {
+    "file": "tests/Infrastructure/Idempotency/ZombieLockTest.php",
+    "rule": "generic-api-key",
+    "commit": "74e3811b87e0cb84b5dbed47902dd1da41ddd959",
+    "fingerprint": "74e3811b87e0cb84b5dbed47902dd1da41ddd959:tests/Infrastructure/Idempotency/ZombieLockTest.php:generic-api-key:21",
+    "reason": "Synthetic test identifier or deliberately fabricated secret-scanner fixture; no real provider credential."
+  }
+]
