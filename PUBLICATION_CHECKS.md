@@ -4,7 +4,7 @@
 
 - Based on GitHub main `d2e10dbf1c9050a46dd48e01eeb757d20cb63537`, copied into an isolated archive.
 - Private environments, storage, dependency/build artifacts, internal reports and agent state were filtered from history. The original working checkout was not reset, cleaned or overwritten.
-- First retained commit remains dated 23 November 2025. Historical author/committer dates were not fabricated for publication.
+- First retained commit remains dated 23 November 2025. Historical author/committer dates and author names were preserved. The founder's personal email metadata was changed to GitHub noreply for public privacy; no dates were fabricated.
 - `git fsck --full --no-reflogs` and `git diff --check` passed.
 - Gitleaks 8.30.1 executable matched its official release checksum.
 - Retained history scan passed with **27 exact reviewed synthetic-fixture fingerprints**. Entire test directories were not excluded. Reasons are in PUBLICATION_FIXTURES.json.
