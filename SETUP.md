@@ -4,7 +4,7 @@ This historical implementation is in development. Publication checks cover conte
 
 Requirements: PHP 8.4+ and required extensions, Composer, Node.js 22, npm and a disposable supported database.
 
-1. Inspect package scripts before execution.
+1. Inspect package scripts before execution. Create empty writable local directories `bootstrap/cache`, `storage/app`, `storage/logs`, `storage/framework/cache/data`, `storage/framework/sessions` and `storage/framework/views`; runtime directory contents are excluded from this archive.
 2. Install dependencies in an isolated checkout: `composer install`, `npm ci`.
 3. Copy `.env.example` to `.env`; use local-only database credentials.
 4. Generate a local Laravel key: `php artisan key:generate`.
