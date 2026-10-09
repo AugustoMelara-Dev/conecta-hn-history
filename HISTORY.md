@@ -4,15 +4,15 @@
 
 The predecessor repository, [Vito-Business-OS](https://github.com/AugustoMelara-Dev/Vito-Business-OS), was created on 23 November 2025. Its [first commit](https://github.com/AugustoMelara-Dev/conecta-hn-history/commit/8ed55035c950c2cd59e2822441238e1a234b04c2) records development that day.
 
-The [early Conecta HN README](https://github.com/AugustoMelara-Dev/conecta-hn-history/blob/c5f82267b99e4d580a258e98c869517048a6dbc4/README.md) describes a directory, commerce and business-management platform connecting Honduran businesses and customers. That commit is dated 24 November UTC, or 23 November in Honduras.
+The [early Conecta HN README](https://github.com/AugustoMelara-Dev/conecta-hn-history/blob/6a256e92b9f79a2c8c26ceb7c110d12e4fb7707a/README.md) describes a directory, commerce and business-management platform connecting Honduran businesses and customers. That commit is dated 24 November UTC, or 23 November in Honduras.
 
 ## Vito Business OS — documented in April 2026
 
-The [README at commit 1c539670](https://github.com/AugustoMelara-Dev/conecta-hn-history/blob/f9341f6a1319c3f848fa530aeaad3b91238d7553/README.md), committed on 11 April 2026 in Honduras, identifies the product as Vito Business OS and explicitly describes inherited Conecta HN naming. This is a dated record of the intermediate identity, not a claim that the rename first occurred on that day.
+The [README at commit 1c539670](https://github.com/AugustoMelara-Dev/conecta-hn-history/blob/6ce8e44e58b7dba62d2ea894ecb992428ede70a7/README.md), committed on 11 April 2026 in Honduras, identifies the product as Vito Business OS and explicitly describes inherited Conecta HN naming. This is a dated record of the intermediate identity, not a claim that the rename first occurred on that day.
 
 ## Dovra — July 2026
 
-The [canonical Dovra identity commit](https://github.com/AugustoMelara-Dev/conecta-hn-history/commit/71e248554ea75aea68152876c1514ad38e677323), dated 28 July 2026, records the product identity change. The project expanded toward business-owned agents, shared operational context and customer discovery. This dated milestone does not establish the first appearance of every individual capability.
+The [canonical Dovra identity commit](https://github.com/AugustoMelara-Dev/conecta-hn-history/commit/d069adf0f6ba0d01b412085564152ec6f972b377), dated 28 July 2026, records the product identity change. The project expanded toward business-owned agents, shared operational context and customer discovery. This dated milestone does not establish the first appearance of every individual capability.
 
 ## Dovra Next / Zilviko — October 2026
 
