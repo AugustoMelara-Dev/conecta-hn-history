@@ -14,7 +14,6 @@
 - Scanner results do not prove absence of all private content or vulnerabilities. Independent publication review remains required.
 - Complete dependency installation, functional application tests, databases and provider integrations were not certified.
 - Local Laravel WIP is held separately, not automatically included in the archive.
-- A credential formerly embedded in the original remote URL was removed from that configuration; it still requires revocation. No credential value appears in this document.
 - No GitHub visibility change, public upload or force-push was performed.
 
 ## Recommended release
