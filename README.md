@@ -1,46 +1,43 @@
-# Zilviko — historical platform: Conecta HN → Dovra
+# Dovra — Conecta HN / Vito Business OS
 
-Zilviko is a founder-led project from Honduras building a platform where businesses create voice and chat AI agents, connect their tools and data, and keep customer context from discovery through action and follow-up, with human oversight.
+Plataforma para conectar negocios y clientes, administrar operaciones comerciales y desarrollar agentes de IA con contexto del negocio y supervisión humana.
 
-This repository documents the **historical Laravel implementation**. Development was recorded in GitHub in November 2025 as Conecta HN and later identified as Dovra. The public Zilviko brand dates from October 2026. The repository name Vito-Business-OS remains in historical references.
+Este repositorio contiene la implementación Laravel que comenzó como **Conecta HN** en noviembre de 2025 y evolucionó hacia **Dovra**. Conserva el nombre Vito-Business-OS y las referencias históricas del código. La implementación actual en Next.js se mantiene por separado en [dovra-next](https://github.com/AugustoMelara-Dev/dovra-next). La marca pública es [Zilviko](https://zilviko.lat).
 
-The current Next.js implementation is separate. This archive does not claim that the Next.js code existed in November 2025 or that every current voice capability is implemented in this version.
+## Funcionalidades
 
-## Founder and contact
+- Directorio, descubrimiento y páginas de negocios.
+- Catálogo, clientes, pedidos y reservas.
+- Conversaciones, seguimiento y operaciones del negocio.
+- Paneles de administración y separación entre negocios.
+- Módulos de automatización, agentes y conexiones con servicios externos.
 
-- Founder and developer: **Augusto Melara**, Honduras.
-- Website: https://zilviko.lat
-- GitHub: https://github.com/AugustoMelara-Dev
-- LinkedIn: https://www.linkedin.com/in/augusto-melara-a519a22a9
-- Email: augusto@zilviko.lat
+El proyecto está en desarrollo; la disponibilidad de integraciones depende de su configuración y validación.
 
-## Verifiable history
+## Stack
 
-| Period | Evidence |
-|---|---|
-| November 2025 | Repository creation, first commit and a README explicitly titled Conecta HN. |
-| July 2026 | Commit establishing canonical Dovra identity. |
-| October 2026 | Zilviko public brand and a separate Next.js implementation in development. |
+PHP 8.4+, Laravel 13, React con Inertia, Filament 4, Vite y Node.js. Consulta `composer.json`, `package.json` y sus lockfiles para las dependencias y scripts exactos.
 
-See [HISTORY.md](HISTORY.md) for original identifiers, preserved dates and evidence limits.
+## Desarrollo local
 
-## Historical source
+1. Instala las dependencias con `composer install` y `npm ci`.
+2. Crea un `.env` local desde `.env.example`, revisa sus valores y configura una base de datos de desarrollo aislada.
+3. Genera la clave de aplicación con `php artisan key:generate`.
+4. Revisa las migraciones y la configuración de colas, almacenamiento y servicios antes de ejecutarlos.
+5. Usa `php artisan serve` y `npm run dev` para desarrollo local.
 
-- Laravel multi-tenant backend and business operational objects.
-- React/Inertia interfaces and Filament administration surfaces.
-- Catalog, customer conversations, workflows and controlled agent-related modules.
-- Tests and contracts for permissions, tenant boundaries and human oversight.
+Las pruebas y scripts que escriben datos deben usar una base desechable. No incluyas credenciales, datos de clientes ni archivos de entorno en los commits.
 
-Source and tests are development artifacts. They do not establish production availability, customers, revenue, certification or active model integration.
+## Estructura
 
-## Local development
+- `app`: dominio, servicios y controladores.
+- `resources`: interfaces y recursos del cliente.
+- `routes`: rutas web y API.
+- `database`: migraciones y datos de desarrollo.
+- `tests`: pruebas automatizadas.
 
-Current manifests require PHP 8.4+, Laravel 13, Node.js 22, Composer and npm. Inspect manifests and lockfiles before installing. See [SETUP.md](SETUP.md).
+Desarrollado por [Augusto Melara](https://github.com/AugustoMelara-Dev), Honduras. Contacto: augusto@zilviko.lat.
 
-The archive omits environment credentials, dependencies, uploaded data, caches, internal agent logs and operational reports. This publication preparation does not certify the complete application as runnable.
+## Archivo histórico
 
-## Publication integrity
-
-Historical filtering changes some Git object identifiers while preserving retained dates and authors. Publication documentation uses current dates. No earlier development chronology has been fabricated.
-
-No startup-program acceptance, API credits, investment or production deployment is implied.
+Esta copia conserva el historial de desarrollo del proyecto. Se retiraron entornos, datos locales e informes internos del historial; por ello algunos identificadores de commits cambian, conservando sus fechas y autores. Consulta [HISTORY.md](HISTORY.md).

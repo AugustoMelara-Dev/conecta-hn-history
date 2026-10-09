@@ -1,35 +1,25 @@
-# Project lineage and evidence
+# Project history
 
-## November 2025: Conecta HN
+## Conecta HN — November 2025
 
-GitHub records `AugustoMelara-Dev/Vito-Business-OS` as created at **2025-11-23 20:09:05 UTC**, 14:09:05 in Honduras.
+The predecessor repository, [Vito-Business-OS](https://github.com/AugustoMelara-Dev/Vito-Business-OS), was created on 23 November 2025. Its [first commit](https://github.com/AugustoMelara-Dev/Vito-Business-OS/commit/8ed55035c950c2cd59e2822441238e1a234b04c2) records development that day.
 
-First commit: `8ed55035c950c2cd59e2822441238e1a234b04c2`, authored by AugustoMelara-Dev at **2025-11-23 20:09:26 UTC**. This establishes recorded software development, not legal incorporation.
+The [early Conecta HN README](https://github.com/AugustoMelara-Dev/Vito-Business-OS/blob/fb45f5834294acdc58dab15087ddd8d61e96ec7c/README.md) describes a directory, commerce and business-management platform connecting Honduran businesses and customers. That commit is dated 24 November UTC, or 23 November in Honduras.
 
-Original link: https://github.com/AugustoMelara-Dev/Vito-Business-OS/commit/8ed55035c950c2cd59e2822441238e1a234b04c2
+## Vito Business OS — documented in April 2026
 
-README commit `fb45f5834294acdc58dab15087ddd8d61e96ec7c` explicitly uses **Conecta HN** and describes connecting businesses and customers in Honduras, with directory, commerce and management surfaces. Timestamp: **2025-11-24 05:53:30 UTC**, still **23 November, 23:53:30 in Honduras**.
+The [README at commit 1c539670](https://github.com/AugustoMelara-Dev/Vito-Business-OS/blob/1c5396702ccfbbeaa600bf5e36dbc73bb20f6e2a/README.md), committed on 11 April 2026 in Honduras, identifies the product as Vito Business OS and explicitly describes inherited Conecta HN naming. This is a dated record of the intermediate identity, not a claim that the rename first occurred on that day.
 
-Original link: https://github.com/AugustoMelara-Dev/Vito-Business-OS/blob/fb45f5834294acdc58dab15087ddd8d61e96ec7c/README.md
+## Dovra — July 2026
 
-## July 2026: Dovra identity
+The [canonical Dovra identity commit](https://github.com/AugustoMelara-Dev/Vito-Business-OS/commit/e6a92621135910f456fad4e5ac9c3578c3c2e965), dated 28 July 2026, records the product identity change. The project expanded toward business-owned agents, shared operational context and customer discovery. This dated milestone does not establish the first appearance of every individual capability.
 
-Commit `e6a92621135910f456fad4e5ac9c3578c3c2e965`, **2026-07-28 15:37:16 UTC**, is titled `feat: establish canonical Dovra product identity`. The historical README explicitly documents Conecta HN → Dovra AI.
+## Dovra Next / Zilviko — October 2026
 
-Original link: https://github.com/AugustoMelara-Dev/Vito-Business-OS/commit/e6a92621135910f456fad4e5ac9c3578c3c2e965
+The current implementation uses Next.js, React, TypeScript and PostgreSQL. It is maintained in its own repository, separate from the Laravel predecessor. Zilviko is the public brand at https://zilviko.lat. The founder explains that the latest naming choice reflects the availability of an affordable domain; it does not mark the beginning of a different venture.
 
-This is a verified identity-change commit, not proof that no Dovra work preceded it.
+The initial source import and documentation commits are dated October 2026. They capture existing local development; they do not reconstruct an earlier Next.js commit history. Original Laravel commit dates and identifiers remain in the predecessor repository.
 
-## October 2026: Zilviko and Next.js
+## Archive integrity
 
-The current public brand is Zilviko, at https://zilviko.lat. The founder's vision connects agents, business operations and discovery around shared context, starting in Honduras and intended for broader markets.
-
-The local Next.js implementation is a separate codebase. Its import must use actual current commit dates. Earlier Laravel history demonstrates lineage, not the retrospective existence of the new code.
-
-## Sanitization
-
-This archive is based on GitHub main commit `d2e10dbf1c9050a46dd48e01eeb757d20cb63537`. Unreviewed local WIP is kept separately.
-
-Publication filtering removes private environments, storage, internal reports and agent state. Retained commit dates and authors are preserved; SHA changes must be disclosed. The original links remain private unless their source repository becomes public. Corresponding filtered identifiers are in PUBLICATION_HISTORY_MAP.json.
-
-Software history does not establish incorporation, revenue, paid customers or startup eligibility.
+This archive was filtered from the predecessor history to exclude local environments, runtime files and internal reports. Retained commit dates and authors are preserved. Some identifiers differ; PUBLICATION_HISTORY_MAP.json links original milestone identifiers to their sanitized counterparts. Original working copies and private branches remain separate.
