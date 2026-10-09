@@ -15,7 +15,7 @@
 - Scanner/review results do not prove absence of every private datum or certify functional application security.
 - Complete dependency installation, functional application tests, databases and provider integrations were not certified.
 - Local Laravel WIP is held separately, not automatically included in the archive.
-- No GitHub visibility change, public upload or force-push was performed.
+- The sanitized archive was uploaded to the new public `conecta-hn-history` repository on 9 October 2026. The original private repository was not made public or force-pushed.
 
 ## Repository separation
 
