@@ -123,3 +123,15 @@ docs/qa/_tmp-*
 
 # Isolated implementation worktrees
 .worktrees/
+
+# Public source archive: retain only the sanitized environment template.
+!.env.example
+.agents/
+.codex/
+.opencode/
+.serena/
+.playwright-cli/
+.superpowers/
+output/
+logs/
+ .worktrees/
