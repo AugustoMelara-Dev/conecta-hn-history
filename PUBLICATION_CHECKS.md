@@ -11,11 +11,12 @@
 
 ## Limits and final gates
 
-- Scanner results do not prove absence of all private content or vulnerabilities. Independent publication review remains required.
+- Independent publication review completed on sanitized source commit `78e71a7bdc176a671c2ac27a4a53f2f4fbb0b703`: 60 historical artifact exclusions absent; personal author email metadata sanitized; five milestone mappings and 27 exact fixture fingerprints checked; Gitleaks, fsck and diff checks passed. The later setup documentation describes empty local runtime directories.
+- Scanner/review results do not prove absence of every private datum or certify functional application security.
 - Complete dependency installation, functional application tests, databases and provider integrations were not certified.
 - Local Laravel WIP is held separately, not automatically included in the archive.
 - No GitHub visibility change, public upload or force-push was performed.
 
-## Recommended release
+## Repository separation
 
-Publish a separately approved public archive with the sanitized history and preserve the original private working repository. Replacing the original history requires specific approval because it changes commit identities and references. Private pull-request/cached references require separate consideration before changing visibility.
+Publication target: `AugustoMelara-Dev/conecta-hn-history`, using only `refs/heads/main`. Local historical tags are excluded from upload. The original working repository remains private with its original branches and pull-request references; its history is not overwritten. The current Next.js implementation remains in the separate `dovra-next` repository.
